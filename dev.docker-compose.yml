@@ -116,7 +116,7 @@ services:
         container_name: openelisglobal-proxy
         # platform: linux/amd64
         ports:
-            - 80:80
+            - 9000:80
             - 443:443
         volumes:
             - certs-vol:/etc/nginx/certs/
