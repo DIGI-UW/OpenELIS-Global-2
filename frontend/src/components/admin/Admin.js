@@ -97,14 +97,20 @@ function Admin() {
               <FormattedMessage id="sidenav.label.admin.testmgt.ViewtestCatalog" />
             </SideNavMenuItem>
             <SideNavMenuItem href="#MethodManagment">
-              <FormattedMessage id="sidenav.label.admin.testmgt.ManageMethod" />           
+              <FormattedMessage id="sidenav.label.admin.testmgt.ManageMethod" />
             </SideNavMenuItem>
-        {/* New "Manage Sample Types" menu */}
-        <SideNavMenu title="Manage Sample Types" >
-          <SideNavMenuItem href="#sample-type-1">Sample Type</SideNavMenuItem>
-          <SideNavMenuItem href="#sample-type-2">Sample Type Order</SideNavMenuItem>
-          <SideNavMenuItem href="#sample-type-3">Test Assignment</SideNavMenuItem>
-        </SideNavMenu>
+            {/* New "Manage Sample Types" menu */}
+            <SideNavMenu title="Manage Sample Types">
+              <SideNavMenuItem href="#sample-type-1">
+                Sample Type
+              </SideNavMenuItem>
+              <SideNavMenuItem href="#sample-type-2">
+                Sample Type Order
+              </SideNavMenuItem>
+              <SideNavMenuItem href="#sample-type-3">
+                Test Assignment
+              </SideNavMenuItem>
+            </SideNavMenu>
           </SideNavMenu>
           <SideNavLink href="#AnalyzerTestName" renderIcon={ListDropdown}>
             <FormattedMessage id="sidenav.label.admin.analyzerTest" />
