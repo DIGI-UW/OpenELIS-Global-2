@@ -100,15 +100,15 @@ function Admin() {
               <FormattedMessage id="sidenav.label.admin.testmgt.ManageMethod" />
             </SideNavMenuItem>
             {/* New "Manage Sample Types" menu */}
-            <SideNavMenu title="Manage Sample Types">
+            <SideNavMenu title={intl.formatMessage({ id: "sidenav.label.admin.testmgt.ManageSampleTypes" })}>
               <SideNavMenuItem href="#sample-type-1">
-                Sample Type
+              <FormattedMessage id="sidenav.label.admin.testmgt.SampleType" />
               </SideNavMenuItem>
               <SideNavMenuItem href="#sample-type-2">
-                Sample Type Order
+              <FormattedMessage id="sidenav.label.admin.testmgt.SampleTypeOrder" />
               </SideNavMenuItem>
               <SideNavMenuItem href="#sample-type-3">
-                Test Assignment
+              <FormattedMessage id="sidenav.label.admin.testmgt.TestAssignment" />
               </SideNavMenuItem>
             </SideNavMenu>
           </SideNavMenu>
