@@ -84,6 +84,7 @@ function OEHeader(props) {
     if (res) {
       let newMenus = menus;
       newMenus[tag] = res;
+      newMenus.menu[12].menu.openInNewWindow = false;
       setMenus(newMenus);
     }
   };
