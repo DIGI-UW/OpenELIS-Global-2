@@ -234,6 +234,12 @@ export default function App() {
                   role="Global Administrator"
                 />
                 <SecureRoute
+                  path="/billing"
+                  exact
+                  component={() => <Billing />}
+                  role=""
+                />
+                <SecureRoute
                   path="/PathologyDashboard"
                   exact
                   component={() => <PathologyDashboard />}
