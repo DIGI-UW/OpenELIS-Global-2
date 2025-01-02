@@ -371,13 +371,28 @@ const GenericConfigEdit = ({ menuType, ID }) => {
               <br />
               <br />
               <Grid fullWidth={true}>
-                <Column lg={2}>
-                  <Button onClick={handleSubmitButton} disabled={isLoading}>
+                <Column lg={2} sm={4}>
+                  <Button
+                    onClick={handleSubmitButton}
+                    disabled={isLoading}
+                    style={{
+                      margin: "4px 1px",
+                      fontSize: "20px",
+                      padding: "8px 10px",
+                    }}
+                  >
                     <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.save" />
                   </Button>
                 </Column>
-                <Column lg={2}>
-                  <Button onClick={() => window.location.reload()}>
+                <Column lg={2} sm={4}>
+                  <Button
+                    onClick={() => window.location.reload()}
+                    style={{
+                      margin: "4px 1px",
+                      fontSize: "20px",
+                      padding: "8px 10px",
+                    }}
+                  >
                     <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.exit" />
                   </Button>
                 </Column>

@@ -196,13 +196,38 @@ function ConfigMenuDisplay(props) {
                 <Section>
                   <Form onSubmit={handleModify}>
                     <Column lg={16} md={8} sm={4}>
-                      <Button disabled={modifyButton} type="submit">
+                      <Button
+                        disabled={modifyButton}
+                        type="submit"
+                        style={{
+                          marginBottom: "5px",
+                          fontSize: "20px",
+                          padding: "8px 16px",
+                        }}
+                      >
                         <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.modify" />
                       </Button>{" "}
-                      <Button kind="tertiary" disabled={true} type="submit">
+                      <Button
+                        kind="tertiary"
+                        disabled={true}
+                        type="submit"
+                        style={{
+                          marginBottom: "5px",
+                          fontSize: "20px",
+                          padding: "8px 16px",
+                        }}
+                      >
                         <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.deactivate" />
                       </Button>{" "}
-                      <Button kind="tertiary" disabled={true} type="submit">
+                      <Button
+                        kind="tertiary"
+                        disabled={true}
+                        type="submit"
+                        style={{
+                          fontSize: "20px",
+                          padding: "10px 16px",
+                        }}
+                      >
                         <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.add" />
                       </Button>
                     </Column>
