@@ -122,7 +122,10 @@ const ReportByDate = (props) => {
           getFromOpenElisServer("/rest/panels", setTempData);
           break;
         case "activityReportByTestSection":
-          getFromOpenElisServer("/rest/user-test-sections/"+ Roles.REPORTS, setTempData);
+          getFromOpenElisServer(
+            "/rest/user-test-sections/" + Roles.REPORTS,
+            setTempData,
+          );
           break;
         default:
           break;
