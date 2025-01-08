@@ -625,7 +625,14 @@ function CreatePatientForm(props) {
                   })}
                   id="years"
                   type="number"
-                  onChange={(e) => handleYearsChange(e, values)}
+                  min="0" // Prevent negative years
+                  onChange={(e) => {
+                    const value = Math.max(0, parseInt(e.target.value || 0)); // Ensure no negative values
+                    handleYearsChange(
+                      { ...e, target: { ...e.target, value } },
+                      values,
+                    );
+                  }}
                   placeholder={intl.formatMessage({
                     id: "patient.information.age",
                   })}
@@ -637,8 +644,17 @@ function CreatePatientForm(props) {
                   name="months"
                   labelText={intl.formatMessage({ id: "patient.age.months" })}
                   type="number"
-                  onChange={(e) => handleMonthsChange(e, values)}
                   id="months"
+                  min="0" // Prevent negative months
+                  max="11" // Limit months to 0–11
+                  onChange={(e) => {
+                    let value = parseInt(e.target.value || 0);
+                    value = Math.min(11, Math.max(0, value)); // value between 0 and 11
+                    handleMonthsChange(
+                      { ...e, target: { ...e.target, value } },
+                      values,
+                    );
+                  }}
                   placeholder={intl.formatMessage({
                     id: "patient.information.months",
                   })}
@@ -649,16 +665,22 @@ function CreatePatientForm(props) {
                   value={dateOfBirthFormatter.days}
                   name="days"
                   type="number"
-                  onChange={(e) => handleDaysChange(e, values)}
-                  labelText={intl.formatMessage({ id: "patient.age.days" })}
                   id="days"
+                  min="0" // Prevent negative days
+                  max="30" // Limit days to 0–30
+                  onChange={(e) => {
+                    let value = parseInt(e.target.value || 0);
+                    value = Math.min(30, Math.max(0, value)); //value between 0 and 30
+                    handleDaysChange(
+                      { ...e, target: { ...e.target, value } },
+                      values,
+                    );
+                  }}
+                  labelText={intl.formatMessage({ id: "patient.age.days" })}
                   placeholder={intl.formatMessage({
                     id: "patient.information.days",
                   })}
                 />
-                <div className="error">
-                  <ErrorMessage name="birthDateForDisplay"></ErrorMessage>
-                </div>
               </Column>
               <Column lg={16} md={8} sm={4}>
                 {" "}
