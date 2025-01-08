@@ -779,6 +779,7 @@ export function SearchResults(props) {
   const [validationState, setValidationState] = useState({});
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const componentMounted = useRef(false);
 
@@ -1542,6 +1543,10 @@ export function SearchResults(props) {
 
   const handleSave = (values) => {
     console.debug("handleSave:" + values);
+    if (isSubmitting) {
+      return;
+    }
+    setIsSubmitting(true);
     values.status = saveStatus;
     var searchEndPoint = "/rest/ReactLogbookResultsUpdate";
     props.results.testResult.forEach((result) => {
@@ -1557,6 +1562,7 @@ export function SearchResults(props) {
 
   const setResponse = (resp) => {
     console.debug("setStatus" + JSON.stringify(resp));
+    setIsSubmitting(false);
     if (resp) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
@@ -1707,6 +1713,7 @@ export function SearchResults(props) {
                 id="submit"
                 onClick={handleSave}
                 style={{ marginTop: "16px" }}
+                disabled={isSubmitting}
               >
                 <FormattedMessage id="label.button.save" />
               </Button>

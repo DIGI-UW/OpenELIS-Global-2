@@ -1,11 +1,7 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import "../Style.css";
-import {
-  getFromOpenElisServer,
-  getFromOpenElisServerSync,
-  postToOpenElisServer,
-} from "../utils/Utils";
+import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
 import { nationalityList } from "../data/countries";
 import format from "date-fns/format";
 import {
@@ -66,6 +62,9 @@ function CreatePatientForm(props) {
   const [subjectNo, setSubjectNo] = useState(
     props.selectedPatient.subjectNumber,
   );
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleNationalIdChange = (event) => {
     const newValue = event.target.value;
     setNationalId(newValue);
@@ -308,6 +307,13 @@ function CreatePatientForm(props) {
   };
 
   const handleSubmit = async (values, { resetForm }) => {
+    // Prevent multiple submissions.
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
     if ("years" in values) {
       delete values.years;
     }
@@ -335,6 +341,7 @@ function CreatePatientForm(props) {
 
   const handlePost = (status) => {
     setNotificationVisible(true);
+    setIsSubmitting(false);
     if (status === 200) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
@@ -1007,7 +1014,7 @@ function CreatePatientForm(props) {
               {props.showActionsButton && (
                 <>
                   <Column lg={4} md={4} sm={4}>
-                    <Button type="submit" id="submit">
+                    <Button type="submit" id="submit" disabled={isSubmitting}>
                       <FormattedMessage id="label.button.save" />
                     </Button>
                   </Column>
@@ -1015,6 +1022,7 @@ function CreatePatientForm(props) {
                     <Button
                       id="clear"
                       kind="danger"
+                      disabled={isSubmitting}
                       onClick={() => {
                         resetForm({ values: CreatePatientFormValues });
                         setHealthDistricts([]);

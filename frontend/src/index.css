@@ -71,7 +71,7 @@ code {
   .slide-over-panel {
     width: 25%;
     /* Use percentage for width on larger screens */
-   /* max-width: 25%;*/
+    /* max-width: 25%;*/
     max-width: 50%;
     /* Use percentage for max-width on larger screens */
   }

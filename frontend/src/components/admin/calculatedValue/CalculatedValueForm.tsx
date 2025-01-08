@@ -88,6 +88,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   const [sampleList, setSampleList] = useState([]);
   const [sampleTestList, setSampleTestList] = useState(TestListObj);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext<NotificationContextType>(NotificationContext);
   const [mathFunctions, setMathFunctions] = useState([mathFunction]);
@@ -342,6 +343,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   };
 
   const handleCalculationSubmited = (status, index) => {
+    setIsSubmitting(false);
     setNotificationVisible(true);
     if (status == "200") {
       const element = document.getElementById(
@@ -373,6 +375,10 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
 
   const handleSubmit = (event: any, index: number) => {
     event.preventDefault();
+    if (isSubmitting) {
+      return;
+    }
+    setIsSubmitting(true);
     let mathematicalOperation = "";
     calculationList[index]["operations"].forEach(
       (operation, operationIndex) => {
@@ -943,6 +949,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         type="submit"
                         kind="primary"
                         size="sm"
+                        disabled={isSubmitting}
                       >
                         <FormattedMessage id="label.button.submit" />
                       </Button>
