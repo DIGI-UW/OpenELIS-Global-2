@@ -1276,5 +1276,8 @@
   "searchindexmanagement.reindex.success": "Reindexing completed successfully",
   "searchindexmanagement.reindex.error": "Reindexing failed",
   "searchindexmanagement.description": "The search index updates automatically when data is added or modified. If you need to manually update the search index, click the Start Reindexing button. This may take some time.",
-  "searchindexmanagement.reindex": "Start Reindexing"
+  "searchindexmanagement.reindex": "Start Reindexing",
+  "label.total.tests": "Total Tests",
+  "header.label.selectLab": "Select Lab",
+  "patient.nationalid": "National ID"
 }
