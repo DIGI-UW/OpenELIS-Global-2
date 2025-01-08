@@ -1,41 +1,41 @@
-import React, { useState, useRef, useEffect, useContext } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
-import "../Style.css";
-import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
-import { nationalityList } from "../data/countries";
-import format from "date-fns/format";
 import {
-  differenceInYears,
-  differenceInMonths,
-  differenceInDays,
-  addYears,
-  addMonths,
-} from "date-fns";
-
-import {
-  Heading,
+  Accordion,
+  AccordionItem,
+  Button,
+  Column,
   Form,
   FormLabel,
-  TextInput,
-  Button,
+  Grid,
+  Heading,
   RadioButton,
   RadioButtonGroup,
   Section,
   Select,
   SelectItem,
-  Accordion,
-  AccordionItem,
-  Grid,
-  Column,
+  TextInput,
 } from "@carbon/react";
+import {
+  addMonths,
+  addYears,
+  differenceInDays,
+  differenceInMonths,
+  differenceInYears,
+} from "date-fns";
+import format from "date-fns/format";
+import { ErrorMessage, Field, Formik } from "formik";
+import React, { useContext, useEffect, useRef, useState } from "react";
+import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 
-import { Formik, Field, ErrorMessage } from "formik";
-import CreatePatientFormValues from "../formModel/innitialValues/CreatePatientFormValues";
-import PatientFormObserver from "./PatientFormObserver";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { NotificationContext, ConfigurationContext } from "../layout/Layout";
-import CreatePatientValidationSchema from "../formModel/validationSchema/CreatePatientValidationShema";
+import "../Style.css";
 import CustomDatePicker from "../common/CustomDatePicker";
+import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import { nationalityList } from "../data/countries";
+import CreatePatientFormValues from "../formModel/innitialValues/CreatePatientFormValues";
+import CreatePatientValidationSchema from "../formModel/validationSchema/CreatePatientValidationShema";
+import { ConfigurationContext, NotificationContext } from "../layout/Layout";
+import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
+import PatientFormObserver from "./PatientFormObserver";
+
 function CreatePatientForm(props) {
   const componentMounted = useRef(false);
 
@@ -141,6 +141,14 @@ function CreatePatientForm(props) {
       birthDateForDisplay: dob,
     }));
   };
+  function handleKeyDown(e) {
+    // Allow only numeric keys, backspace, and arrow keys
+    const allowedKeys = ["Backspace", "ArrowLeft", "ArrowRight", "Delete"];
+
+    if (!/[0-9]/.test(e.key) && !allowedKeys.includes(e.key)) {
+      e.preventDefault(); // Prevent non-numeric key input
+    }
+  }
 
   function handleYearsChange(e, values) {
     setPatientDetails(values);
