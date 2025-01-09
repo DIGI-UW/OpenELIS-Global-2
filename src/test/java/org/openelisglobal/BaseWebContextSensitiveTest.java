@@ -5,6 +5,10 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.*;
 import javax.sql.DataSource;
 import org.dbunit.database.DatabaseConfig;
@@ -170,6 +174,45 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
 
             try {
                 DatabaseOperation.REFRESH.execute(connection, dataset);
+            } finally {
+                connection.close();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Resets the sequence for a given table and column.
+     *
+     * @param tableName    The name of the table.
+     * @param columnName   The name of the column with the numeric ID.
+     * @param sequenceName The name of the sequence to reset.
+     * @throws Exception If any database error occurs.
+     */
+    protected void resetSequence(String tableName, String columnName, String sequenceName) throws Exception {
+        String maxIdQuery = String.format("SELECT COALESCE(MAX(CAST(%s AS BIGINT)), 0) AS max_id FROM %s", columnName,
+                tableName);
+        String resetSequenceQuery = String.format("SELECT setval('%s', ?, false)", sequenceName);
+
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement maxIdStmt = connection.prepareStatement(maxIdQuery);
+                ResultSet resultSet = maxIdStmt.executeQuery()) {
+
+            long maxId = 0;
+            if (resultSet.next()) {
+                maxId = resultSet.getLong("max_id");
+            }
+
+            try (PreparedStatement resetSeqStmt = connection.prepareStatement(resetSequenceQuery)) {
+                resetSeqStmt.setLong(1, maxId + 1);
+
+                // Use executeQuery here because setval returns a value
+                try (ResultSet rs = resetSeqStmt.executeQuery()) {
+                    if (rs.next()) {
+                        System.out.printf("Sequence %s reset to %d%n", sequenceName, rs.getLong(1));
+                    }
+                }
             } finally {
                 connection.close();
             }

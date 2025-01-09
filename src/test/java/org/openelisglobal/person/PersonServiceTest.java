@@ -34,34 +34,30 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/person.xml");
+        resetSequence("PERSON", "ID", "person_seq");
+        resetSequence("PATIENT", "ID", "patient_seq");
     }
-    //DOTO CRUD methods need to be looked into
-    // @Test
-    // public void createPerson_shouldCreateNewPerson() throws Exception {
-    // String firstName = "John";
-    // String lastname = "moe";
 
-    // Person pat = new Person();
-    // pat.setFirstName(firstName);
-    // pat.setLastName(lastname);
-    // personService.save(pat);
+    @Test
+    public void createPerson_shouldCreatePerson() throws Exception {
+        Person person = new Person();
+        person.setFirstName(PERSON1_FIRSTNAME);
+        person.setLastName(PERSON1_LASTNAME);
 
-    // String personIdId = personService.insert(pat);
-    // Person savedPerson = personService.get(personIdId);
+        Person savedPerson = personService.save(person);
 
-    // Assert.assertEquals(1, personService.getAllPersons().size());
-    // Assert.assertEquals(firstName, savedPerson.getFirstName());
-    // Assert.assertEquals(lastname, savedPerson.getLastName());
-    // }
+        Assert.assertEquals(PERSON1_FIRSTNAME, savedPerson.getFirstName());
+    }
 
-    //DOTO this needs to be looked into
     // @Test
     // @Transactional
     // @SuppressWarnings("unchecked")
     // public void createPersonWithMultiplePatients_shouldLinkPatientsToPerson()
     // throws Exception {
 
-    // Person savedPerson = personService.get("1");
+    // Person person = new Person();
+    // String personId = personService.insert(person);
+    // Person savedPerson = personService.get(personId);
 
     // Patient patient1 = patientService.get("1");
     // Patient patient2 = patientService.get("2");
@@ -80,7 +76,7 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllPerson_shouldGetAllPerson() throws Exception {
-        Assert.assertEquals(3, personService.getAllPersons().size());
+        Assert.assertEquals(4, personService.getAllPersons().size());
     }
 
     @Test
@@ -200,19 +196,20 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals("siannah@gmail.com", retrievedEmail);
     }
 
-    // @Test
-    // public void updatePerson_shouldUpdatePersonInformation() throws Exception {
-    //     Person savedPerson = personService.get("1");
+    @Test
+    public void updatePerson_shouldUpdatePersonInformation() throws Exception {
+        Person savedPerson = personService.get("1");
 
-    //     savedPerson.setCity("Los Angeles");
-    //     savedPerson.setStreetAddress("456 Oak St");
-    //     personService.update(savedPerson);
+        savedPerson.setCity("Los Angeles");
+        savedPerson.setStreetAddress("456 Oak St");
+        savedPerson.setSysUserId("admin");
+        personService.update(savedPerson);
 
-    //     Person updatedPerson = personService.get("1");
+        Person updatedPerson = personService.get("1");
 
-    //     Assert.assertEquals("Los Angeles", updatedPerson.getCity());
-    //     Assert.assertEquals("456 Oak St", updatedPerson.getStreetAddress());
-    // }
+        Assert.assertEquals("Los Angeles", updatedPerson.getCity());
+        Assert.assertEquals("456 Oak St", updatedPerson.getStreetAddress());
+    }
 
     @Test
     public void getPhone_shouldReturnCorrectPhoneNumber() throws Exception {
@@ -248,12 +245,13 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
         assertTrue(result.isEmpty());
     }
 
-    // @Test
-    // public void deletePerson_shouldDeletePerson() {
-    //     Person savedPerson = personService.get("2");
+    @Test
+    public void deletePerson_shouldDeletePerson() {
+        Person savedPerson = personService.get("3");
+        savedPerson.setSysUserId("admin");
 
-    //     personService.delete(savedPerson);
+        personService.delete(savedPerson);
 
-    //     Assert.assertEquals("", personService.getFirstName(savedPerson));
-    // }
+        Assert.assertThrows(RuntimeException.class, () -> personService.get("3"));
+    }
 }
