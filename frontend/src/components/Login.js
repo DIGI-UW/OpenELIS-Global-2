@@ -166,6 +166,9 @@ function Login(props) {
                   password: "",
                 }}
                 onSubmit={(values) => {
+                  // trimming password before login validation
+                  values.password = values.password.trim();
+
                   fetch(config.serverBaseUrl + "/LoginPage", {
                     //includes the browser sessionId in the Header for Authentication on the backend server
                     credentials: "include",
