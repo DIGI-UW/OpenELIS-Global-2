@@ -205,8 +205,8 @@ public class PatientSearchRestController extends BaseRestController {
             // convert fhir object to patient search result
             PatientSearchResults transformedPatientSearchResult = SpringContext.getBean(FhirTransformService.class)
                     .transformToOpenElisPatientSearchResults(externalPatient);
-            // in case the patient object has no NationalId ,
-            // we can construct a dynamic National ID like "NID-{gender}-{dob}-{initials}"
+
+            // Check for null NationalId and generate if needed
             if (transformedPatientSearchResult.getNationalId() == null
                     || transformedPatientSearchResult.getNationalId().isEmpty()) {
                 String nationalId = generateDynamicID(transformedPatientSearchResult);
@@ -214,8 +214,17 @@ public class PatientSearchRestController extends BaseRestController {
                 transformedPatientSearchResult.setNationalId(nationalId);
             }
 
-            transformedPatientSearchResult.setDataSourceName(MessageUtil.getMessage("patient.cr.source"));
-            finalResults.add(transformedPatientSearchResult);
+            // Skip this patient if it's already in the local database
+            if (!isPatientDuplicate(transformedPatientSearchResult)) {
+                transformedPatientSearchResult.setDataSourceName(MessageUtil.getMessage("patient.cr.source"));
+                finalResults.add(transformedPatientSearchResult);
+            } else {
+                LogEvent.logInfo("PatientSearchRestController", "searchPatientInClientRegistry",
+                        String.format("Skipped duplicate patient with NationalId: %s, Name: %s %s",
+                                transformedPatientSearchResult.getNationalId(),
+                                transformedPatientSearchResult.getFirstName(),
+                                transformedPatientSearchResult.getLastName()));
+            }
         }
 
         return finalResults;
@@ -332,5 +341,30 @@ public class PatientSearchRestController extends BaseRestController {
         }
 
         return query;
+    }
+
+    private boolean isPatientDuplicate(PatientSearchResults externalPatient) {
+        List<PatientSearchResults> localResults = searchResultsService.getSearchResults(externalPatient.getLastName(),
+                externalPatient.getFirstName(), null, null, externalPatient.getNationalId(), null, null, null, null,
+                null);
+        for (PatientSearchResults localPatient : localResults) {
+            if (isMatchingPatient(localPatient, externalPatient)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isMatchingPatient(PatientSearchResults local, PatientSearchResults external) {
+        boolean nationalIdMatch = (local.getNationalId() != null && external.getNationalId() != null)
+                && local.getNationalId().equalsIgnoreCase(external.getNationalId());
+
+        boolean firstNameMatch = (local.getFirstName() != null && external.getFirstName() != null)
+                && local.getFirstName().equalsIgnoreCase(external.getFirstName());
+
+        boolean lastNameMatch = (local.getLastName() != null && external.getLastName() != null)
+                && local.getLastName().equalsIgnoreCase(external.getLastName());
+
+        return nationalIdMatch && firstNameMatch && lastNameMatch;
     }
 }

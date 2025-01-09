@@ -15,7 +15,7 @@ import "../../Style.css";
 import { AlertDialog } from "../../common/CustomNotification";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import config from "../../../config.json";
-import { encodeDate } from "../../utils/Utils";
+import { encodeDate, Roles } from "../../utils/Utils";
 import { getFromOpenElisServer } from "../../utils/Utils";
 const ReportByDate = (props) => {
   const intl = useIntl();
@@ -122,7 +122,10 @@ const ReportByDate = (props) => {
           getFromOpenElisServer("/rest/panels", setTempData);
           break;
         case "activityReportByTestSection":
-          getFromOpenElisServer("/rest/test-sections", setTempData);
+          getFromOpenElisServer(
+            "/rest/user-test-sections/" + Roles.REPORTS,
+            setTempData,
+          );
           break;
         default:
           break;

@@ -13,10 +13,10 @@ import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.login.dao.UserModuleService;
-import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.view.PageBuilderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -28,7 +28,7 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.support.RequestContextUtils;
 
 @Component
-public abstract class BaseController implements IActionConstants {
+public abstract class BaseController extends ControllerUtills implements IActionConstants {
 
     // Request being autowired appears to be threadsafe because of how Spring
     // handles autowiring, despite all controllers being singletons
@@ -181,17 +181,6 @@ public abstract class BaseController implements IActionConstants {
         if (null != pageSubtitle) {
             request.setAttribute(PAGE_SUBTITLE_KEY, pageSubtitle);
         }
-    }
-
-    protected String getSysUserId(HttpServletRequest request) {
-        UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
-        if (usd == null) {
-            usd = (UserSessionData) request.getAttribute(USER_SESSION_DATA);
-            if (usd == null) {
-                return null;
-            }
-        }
-        return String.valueOf(usd.getSystemUserId());
     }
 
     protected void setSuccessFlag(HttpServletRequest request, boolean success) {
