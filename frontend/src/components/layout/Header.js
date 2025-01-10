@@ -184,8 +184,9 @@ function OEHeader(props) {
   const generateMenuItems = (menuItem, index, level, path) => {
     if (menuItem.menu.isActive) {
       if (level === 0 && menuItem.childMenus.length > 0) {
+     
         return (
-          <span id={menuItem.menu.elementId} key={path}>
+          <span id={menuItem.menu.ld} key={path}>
             <span
               id={menuItem.menu.elementId + "_dropdown"}
               onClick={(e) => {
@@ -225,7 +226,8 @@ function OEHeader(props) {
             </span>
           </span>
         );
-      } else if (level === 0) {
+      }
+      else if (level === 0) {
         return (
           <span key={path} id={menuItem.menu.elementId}>
             <SideNavMenuItem
@@ -299,6 +301,24 @@ function OEHeader(props) {
 
   const renderSingleNavButton = (menuItem, index, level, path) => {
     const marginValue = (level - 1) * 0.5 + "rem";
+    if(menuItem.menu.actionURL == "/PatientEditByProject?type=readonly"){
+      return (
+        <button
+          className={"custom-sidenav-button"}
+          style={{ width: "100%", marginLeft: marginValue }}
+          id={menuItem.menu.elementId + "_nav"}
+          onClick={() => {
+            if (menuItem.menu.openInNewWindow) {
+              window.open("/viewPatient");
+            } else {
+              window.location.href = "/viewPatient";
+            }
+          }}
+        >
+          {renderSideNavMenuItemLabel(menuItem, level)}
+        </button>
+      );
+    }else{
     return (
       <button
         className={"custom-sidenav-button"}
@@ -314,7 +334,7 @@ function OEHeader(props) {
       >
         {renderSideNavMenuItemLabel(menuItem, level)}
       </button>
-    );
+    );}
   };
 
   const renderSingleDropdownButton = (menuItem, index, level, path) => {
@@ -590,6 +610,7 @@ function OEHeader(props) {
                               );
                             }
                           })}
+                          
                         </SideNavItems>
                       </SideNav>
                     </>
