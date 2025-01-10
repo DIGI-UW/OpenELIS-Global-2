@@ -530,6 +530,10 @@ public abstract class CSVRoutineColumnBuilder {
         SQLConstant listName = SQLConstant.RESULT;
         query.append(", \n\n ( SELECT si.samp_id, si.id AS sampleItem_id, si.sort_order AS sampleItemNo, " + listName
                 + ".* " + " FROM sample_item AS si JOIN \n ");
+                String labUnitFilter = "";
+    if (labUnit != null && !labUnit.isEmpty()) {
+        labUnitFilter = " AND ts.id = '" + labUnit + "' ";
+    }
 
         // Begin cross tab / pivot table
         query.append(" crosstab( \n" + " 'SELECT si.id, t.description, replace(replace(replace(replace(r.value ,E''\\n"

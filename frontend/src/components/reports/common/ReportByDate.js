@@ -17,6 +17,7 @@ import CustomDatePicker from "../../common/CustomDatePicker";
 import config from "../../../config.json";
 import { encodeDate, Roles } from "../../utils/Utils";
 import { getFromOpenElisServer } from "../../utils/Utils";
+
 const ReportByDate = (props) => {
   const intl = useIntl();
   const [loading, setLoading] = useState(false);
@@ -27,6 +28,7 @@ const ReportByDate = (props) => {
     startDate: null,
     endDate: null,
     value: "",
+    labUnit: "",
     error: null,
   });
 
@@ -94,7 +96,7 @@ const ReportByDate = (props) => {
     ) {
       baseParams = `type=indicator&report=${props.report}&selectList.selection=${reportFormValues.value}`;
     } else if (props.report === "CISampleRoutineExport") {
-      baseParams = `report=${props.report}&type=routine`;
+      baseParams = `report=${props.report}&type=routine${reportFormValues.labUnit ? `&labUnit=${reportFormValues.labUnit}` : ''}`;
     } else {
       baseParams = `report=${props.report}&type=patient`;
     }
@@ -107,36 +109,33 @@ const ReportByDate = (props) => {
     setNotificationVisible(true);
   };
 
-  const setTempData = (data) => {
-    setList(data);
-    setLoading(false);
-  };
-
   useEffect(() => {
     const fetchData = async () => {
-      switch (props.report) {
-        case "activityReportByTest":
-          getFromOpenElisServer("/rest/test-list", setTempData);
-          break;
-        case "activityReportByPanel":
-          getFromOpenElisServer("/rest/panels", setTempData);
-          break;
-        case "activityReportByTestSection":
-          getFromOpenElisServer(
-            "/rest/user-test-sections/" + Roles.REPORTS,
-            setTempData,
-          );
-          break;
-        default:
-          break;
+      if (props.report === "CISampleRoutineExport") {
+        getFromOpenElisServer("/rest/user-test-sections/ALL", setList);
+      } else {
+        switch (props.report) {
+          case "activityReportByTest":
+            getFromOpenElisServer("/rest/test-list", setList);
+            break;
+          case "activityReportByPanel":
+            getFromOpenElisServer("/rest/panels", setList);
+            break;
+          case "activityReportByTestSection":
+            getFromOpenElisServer(
+              "/rest/user-test-sections/" + Roles.REPORTS,
+              setList,
+            );
+            break;
+        }
       }
     };
 
-    console.log("props", props);
     if (
       props.report === "activityReportByTest" ||
       props.report === "activityReportByPanel" ||
-      props.report === "activityReportByTestSection"
+      props.report === "activityReportByTestSection" ||
+      props.report === "CISampleRoutineExport"
     ) {
       fetchData();
     }
@@ -208,8 +207,44 @@ const ReportByDate = (props) => {
                 {" "}
                 <br />
               </Column>
-              <Column lg={8} md={8} sm={4}>
-                {list && list.length > 0 && (
+
+              {props.report === "CISampleRoutineExport" && list && list.length > 0 && (
+                <Column lg={8} md={8} sm={4}>
+                  <Select
+                    id="labUnit"
+                    labelText={intl.formatMessage({
+                      id: "label.form.labunit",
+                      defaultMessage: "Lab Unit"
+                    })}
+                    value={reportFormValues.labUnit}
+                    onChange={(e) =>
+                      setReportFormValues({
+                        ...reportFormValues,
+                        labUnit: e.target.value,
+                      })
+                    }
+                  >
+                    <SelectItem
+                      key={"emptyselect"}
+                      value={""}
+                      text={intl.formatMessage({
+                        id: "label.form.alllabunits",
+                        defaultMessage: "All Lab Units"
+                      })}
+                    />
+                    {list.map((unit) => (
+                      <SelectItem
+                        key={unit.id}
+                        value={unit.id}
+                        text={unit.value}
+                      />
+                    ))}
+                  </Select>
+                </Column>
+              )}
+
+              {props.report !== "CISampleRoutineExport" && list && list.length > 0 && (
+                <Column lg={8} md={8} sm={4}>
                   <Select
                     id="type"
                     labelText={intl.formatMessage({
@@ -236,8 +271,8 @@ const ReportByDate = (props) => {
                       />
                     ))}
                   </Select>
-                )}
-              </Column>
+                </Column>
+              )}
             </Grid>
             <br />
             <Section>
