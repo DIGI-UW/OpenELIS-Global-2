@@ -59,6 +59,16 @@ import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
  * @since Mar 18, 2011
  */
 public abstract class CSVRoutineColumnBuilder {
+    protected String selectedLabUnit;
+
+    // Add getter/setter
+    public void setLabUnit(String labUnit) {
+        this.selectedLabUnit = labUnit;
+    }
+
+    public String getLabUnit() {
+        return selectedLabUnit;
+    }
 
     // these are used so we are not passing around strings in the methods that are
     // appended to sql
@@ -529,11 +539,11 @@ public abstract class CSVRoutineColumnBuilder {
         // String excludeAnalytes = getExcludedAnalytesSet();
         SQLConstant listName = SQLConstant.RESULT;
         query.append(", \n\n ( SELECT si.samp_id, si.id AS sampleItem_id, si.sort_order AS sampleItemNo, " + listName
-                + ".* " + " FROM sample_item AS si JOIN \n ");
+        + ".* " + " FROM sample_item AS si JOIN \n ");
         String labUnitFilter = "";
-        if (labUnit != null && !labUnit.isEmpty()) {
-            labUnitFilter = " AND ts.id = '" + labUnit + "' ";
-        }
+        if (selectedLabUnit != null && !selectedLabUnit.isEmpty()) {
+            labUnitFilter = " AND ts.id = '" + selectedLabUnit + "' ";
+        };
 
         // Begin cross tab / pivot table
         query.append(" crosstab( \n" + " 'SELECT si.id, t.description, replace(replace(replace(replace(r.value ,E''\\n"
@@ -552,6 +562,7 @@ public abstract class CSVRoutineColumnBuilder {
                 // + (( excludeAnalytes == null)?"":
                 // " AND r.analyte_id NOT IN ( " + excludeAnalytes) + ")"
                 // + " AND a.test_id = t.id "
+                + labUnitFilter
                 + "\n ORDER BY 1, 2 "
                 + "\n ', 'SELECT t.description FROM test t where t.is_active = ''Y'' ORDER BY 1' ) ");
         // end of cross tab
