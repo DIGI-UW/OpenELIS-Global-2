@@ -41,9 +41,9 @@ class ModifyOrderPage {
 
   clickRespectivePatient() {
     return cy
-    .get('tbody tr')
-    .first()
-    .find('.cds--radio-button__appearance')
+      .get("tbody tr")
+      .first()
+      .find(".cds--radio-button__appearance")
       .click();
   }
 }

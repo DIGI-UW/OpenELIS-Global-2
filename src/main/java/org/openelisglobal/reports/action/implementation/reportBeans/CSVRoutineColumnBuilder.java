@@ -539,6 +539,7 @@ public abstract class CSVRoutineColumnBuilder {
                 + "  join clinlims.sample AS s on s.id = si.samp_id \n"
                 + " join clinlims.test_result AS tr on r.test_result_id = tr.id \n"
                 + " join clinlims.test AS t on tr.test_id = t.id \n"
+                + " join clinlims.test_section ts on t.test_section_id = ts.id \n"
                 + " left join sample_projects sp on si.samp_id = sp.samp_id \n" + "\n"
                 + " WHERE sp.id IS NULL AND s.entered_date >= date(''" + formatDateForDatabaseSql(lowDate)
                 + "'')  AND s.entered_date <= date(''" + formatDateForDatabaseSql(highDate) + " '') " + "\n "
@@ -631,7 +632,11 @@ public abstract class CSVRoutineColumnBuilder {
     }
 
     protected void appendCrosstabPreamble(SQLConstant listName) {
-        query.append(", \n\n ( SELECT s.id AS samp_id, " + listName + ".* " + " FROM sample AS s LEFT JOIN \n ");
+        query.append(", \n\n ( SELECT s.id AS samp_id, " + " (SELECT ts.name FROM clinlims.test_section ts "
+                + "   JOIN clinlims.test t ON t.test_section_id = ts.id "
+                + "   JOIN clinlims.analysis a ON a.test_id = t.id "
+                + "   WHERE a.sampitem_id = si.id LIMIT 1) as lab_unit, " + listName + ".* " + " FROM sample AS s "
+                + " LEFT JOIN sample_item si ON s.id = si.samp_id " + " LEFT JOIN \n ");
     }
 
     protected void appendCrosstabPostfix(java.sql.Date lowDate, java.sql.Date highDate, SQLConstant listName) {
