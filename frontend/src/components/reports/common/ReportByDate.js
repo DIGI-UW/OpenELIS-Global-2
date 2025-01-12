@@ -96,7 +96,7 @@ const ReportByDate = (props) => {
     ) {
       baseParams = `type=indicator&report=${props.report}&selectList.selection=${reportFormValues.value}`;
     } else if (props.report === "CISampleRoutineExport") {
-      baseParams = `report=${props.report}&type=routine${reportFormValues.labUnit ? `&labUnit=${reportFormValues.labUnit}` : ''}`;
+      baseParams = `report=${props.report}&type=routine${reportFormValues.labUnit ? `&labUnit=${reportFormValues.labUnit}` : ""}`;
     } else {
       baseParams = `report=${props.report}&type=patient`;
     }
@@ -208,71 +208,75 @@ const ReportByDate = (props) => {
                 <br />
               </Column>
 
-              {props.report === "CISampleRoutineExport" && list && list.length > 0 && (
-                <Column lg={8} md={8} sm={4}>
-                  <Select
-                    id="labUnit"
-                    labelText={intl.formatMessage({
-                      id: "label.form.labunit",
-                      defaultMessage: "Lab Unit"
-                    })}
-                    value={reportFormValues.labUnit}
-                    onChange={(e) =>
-                      setReportFormValues({
-                        ...reportFormValues,
-                        labUnit: e.target.value,
-                      })
-                    }
-                  >
-                    <SelectItem
-                      key={"emptyselect"}
-                      value={""}
-                      text={intl.formatMessage({
-                        id: "label.form.alllabunits",
-                        defaultMessage: "All Lab Units"
+              {props.report === "CISampleRoutineExport" &&
+                list &&
+                list.length > 0 && (
+                  <Column lg={8} md={8} sm={4}>
+                    <Select
+                      id="labUnit"
+                      labelText={intl.formatMessage({
+                        id: "label.form.labunit",
+                        defaultMessage: "Lab Unit",
                       })}
-                    />
-                    {list.map((unit) => (
+                      value={reportFormValues.labUnit}
+                      onChange={(e) =>
+                        setReportFormValues({
+                          ...reportFormValues,
+                          labUnit: e.target.value,
+                        })
+                      }
+                    >
                       <SelectItem
-                        key={unit.id}
-                        value={unit.id}
-                        text={unit.value}
+                        key={"emptyselect"}
+                        value={""}
+                        text={intl.formatMessage({
+                          id: "label.form.alllabunits",
+                          defaultMessage: "All Lab Units",
+                        })}
                       />
-                    ))}
-                  </Select>
-                </Column>
-              )}
+                      {list.map((unit) => (
+                        <SelectItem
+                          key={unit.id}
+                          value={unit.id}
+                          text={unit.value}
+                        />
+                      ))}
+                    </Select>
+                  </Column>
+                )}
 
-              {props.report !== "CISampleRoutineExport" && list && list.length > 0 && (
-                <Column lg={8} md={8} sm={4}>
-                  <Select
-                    id="type"
-                    labelText={intl.formatMessage({
-                      id: "label.form.searchby",
-                    })}
-                    value={reportFormValues.value}
-                    onChange={(e) =>
-                      setReportFormValues({
-                        ...reportFormValues,
-                        value: e.target.value,
-                      })
-                    }
-                  >
-                    <SelectItem
-                      key={"emptyselect"}
-                      value={""}
-                      text="Select Test Type"
-                    />
-                    {list.map((statusOption) => (
+              {props.report !== "CISampleRoutineExport" &&
+                list &&
+                list.length > 0 && (
+                  <Column lg={8} md={8} sm={4}>
+                    <Select
+                      id="type"
+                      labelText={intl.formatMessage({
+                        id: "label.form.searchby",
+                      })}
+                      value={reportFormValues.value}
+                      onChange={(e) =>
+                        setReportFormValues({
+                          ...reportFormValues,
+                          value: e.target.value,
+                        })
+                      }
+                    >
                       <SelectItem
-                        key={statusOption.id}
-                        value={statusOption.id}
-                        text={statusOption.value}
+                        key={"emptyselect"}
+                        value={""}
+                        text="Select Test Type"
                       />
-                    ))}
-                  </Select>
-                </Column>
-              )}
+                      {list.map((statusOption) => (
+                        <SelectItem
+                          key={statusOption.id}
+                          value={statusOption.id}
+                          text={statusOption.value}
+                        />
+                      ))}
+                    </Select>
+                  </Column>
+                )}
             </Grid>
             <br />
             <Section>
