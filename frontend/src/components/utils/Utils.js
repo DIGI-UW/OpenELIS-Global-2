@@ -1,45 +1,34 @@
 import config from "../../config.json";
 
-export const getFromOpenElisServer = (endPoint, callback) => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
+export const getFromOpenElisServer = async (endPoint, callback) => {
+  try {
+    const response = await fetch(config.serverBaseUrl + endPoint, {
       credentials: "include",
       method: "GET",
-    },
-  )
-    .then((response) => {
-      console.debug("checking response");
-      // if (response.url.includes("LoginPage")) {
-      //     throw "No Login Session";
-      // }
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.indexOf("application/json") !== -1) {
-        return response.json().then((jsonResp) => {
-          callback(jsonResp);
-        });
-      } else {
-        callback();
-      }
-    })
-    .catch((error) => {
-      console.error(error);
     });
+
+    console.debug("checking response");
+    const contentType = response.headers.get("content-type");
+
+    if (contentType && contentType.indexOf("application/json") !== -1) {
+      const jsonResp = await response.json();
+      callback(jsonResp);
+    } else {
+      callback();
+    }
+  } catch (error) {
+    console.error(error);
+  }
 };
 
-export const postToOpenElisServer = (
+export const postToOpenElisServer = async (
   endPoint,
   payLoad,
   callback,
   extraParams,
 ) => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
+  try {
+    const response = await fetch(config.serverBaseUrl + endPoint, {
       credentials: "include",
       method: "POST",
       headers: {
@@ -47,28 +36,23 @@ export const postToOpenElisServer = (
         "X-CSRF-Token": localStorage.getItem("CSRF"),
       },
       body: payLoad,
-    },
-  )
-    .then((response) => response.status)
-    .then((status) => {
-      callback(status, extraParams);
-    })
-    .catch((error) => {
-      console.error(error);
     });
+
+    const status = response.status;
+    callback(status, extraParams);
+  } catch (error) {
+    console.error(error);
+  }
 };
 
-export const postToOpenElisServerFullResponse = (
+export const postToOpenElisServerFullResponse = async (
   endPoint,
   payLoad,
   callback,
   extraParams,
 ) => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
+  try {
+    const response = await fetch(config.serverBaseUrl + endPoint, {
       credentials: "include",
       method: "POST",
       headers: {
@@ -76,52 +60,45 @@ export const postToOpenElisServerFullResponse = (
         "X-CSRF-Token": localStorage.getItem("CSRF"),
       },
       body: payLoad,
-    },
-  )
-    .then((response) => callback(response, extraParams))
-    .catch((error) => {
-      console.error(error);
     });
+
+    callback(response, extraParams);
+  } catch (error) {
+    console.error(error);
+  }
 };
 
-export const postToOpenElisServerFormData = (
+export const postToOpenElisServerFormData = async (
   endPoint,
   formData,
   callback,
   extraParams,
 ) => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
+  try {
+    const response = await fetch(config.serverBaseUrl + endPoint, {
       credentials: "include",
       method: "POST",
       headers: {
         "X-CSRF-Token": localStorage.getItem("CSRF"),
       },
       body: formData,
-    },
-  )
-    .then((response) => response.status)
-    .then((status) => {
-      callback(status, extraParams);
-    })
-    .catch((error) => {
-      console.error(error);
     });
+
+    const status = response.status;
+    callback(status, extraParams);
+  } catch (error) {
+    console.error(error);
+  }
 };
 
-export const postToOpenElisServerJsonResponse = (
+export const postToOpenElisServerJsonResponse = async (
   endPoint,
   payLoad,
   callback,
   extraParams,
 ) => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
+  try {
+    const response = await fetch(config.serverBaseUrl + endPoint, {
       credentials: "include",
       method: "POST",
       headers: {
@@ -129,35 +106,30 @@ export const postToOpenElisServerJsonResponse = (
         "X-CSRF-Token": localStorage.getItem("CSRF"),
       },
       body: payLoad,
-    },
-  )
-    .then((response) => response.json())
-    .then((json) => {
-      callback(json, extraParams);
-    })
-    .catch((error) => {
-      console.error(error);
     });
+
+    const json = await response.json();
+    callback(json, extraParams);
+  } catch (error) {
+    console.error(error);
+  }
 };
 
-//provides Synchronous calls to the api
 export const getFromOpenElisServerSync = (endPoint, callback) => {
   const request = new XMLHttpRequest();
   request.open("GET", config.serverBaseUrl + endPoint, false);
   request.setRequestHeader("credentials", "include");
   request.send();
-  // if (request.response.url.includes("LoginPage")) {
-  //     throw "No Login Session";
-  // }
   return callback(JSON.parse(request.response));
 };
 
-export const postToOpenElisServerForPDF = (endPoint, payLoad, callback) => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
+export const postToOpenElisServerForPDF = async (
+  endPoint,
+  payLoad,
+  callback,
+) => {
+  try {
+    const response = await fetch(config.serverBaseUrl + endPoint, {
       credentials: "include",
       method: "POST",
       headers: {
@@ -165,49 +137,44 @@ export const postToOpenElisServerForPDF = (endPoint, payLoad, callback) => {
         "X-CSRF-Token": localStorage.getItem("CSRF"),
       },
       body: payLoad,
-    },
-  )
-    .then((response) => response.blob())
-    .then((blob) => {
-      callback(true, blob);
-      let link = document.createElement("a");
-      link.href = window.URL.createObjectURL(blob, { type: "application/pdf" });
-      link.target = "_blank";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    })
-    .catch((error) => {
-      callback(false);
-      console.error(error);
     });
+
+    const blob = await response.blob();
+    callback(true, blob);
+
+    const link = document.createElement("a");
+    link.href = window.URL.createObjectURL(blob, { type: "application/pdf" });
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (error) {
+    callback(false);
+    console.error(error);
+  }
 };
 
-export const putToOpenElisServer = (endPoint, payLoad, callback) => {
-  // Build the request options
-  let options = {
-    // includes the browser sessionId in the Header for Authentication on the backend server
-    credentials: "include",
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-  };
+export const putToOpenElisServer = async (endPoint, payLoad, callback) => {
+  try {
+    const options = {
+      credentials: "include",
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": localStorage.getItem("CSRF"),
+      },
+    };
 
-  // Include the body only if payLoad is provided
-  if (payLoad) {
-    options.body = payLoad;
+    if (payLoad) {
+      options.body = payLoad;
+    }
+
+    const response = await fetch(config.serverBaseUrl + endPoint, options);
+    const status = response.status;
+    callback(status);
+  } catch (error) {
+    console.error(error);
   }
-
-  fetch(config.serverBaseUrl + endPoint, options)
-    .then((response) => response.status)
-    .then((status) => {
-      callback(status);
-    })
-    .catch((error) => {
-      console.error(error);
-    });
 };
 
 export const hasRole = (userSessionDetails, role) => {
