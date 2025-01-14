@@ -3,7 +3,6 @@ package org.openelisglobal.patient.controller.rest;
 import java.lang.reflect.InvocationTargetException;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
-
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.patient.controller.BasePatientEntryByProject;
@@ -18,18 +17,14 @@ import org.openelisglobal.patient.saving.RequestType;
 import org.openelisglobal.patient.validator.PatientEditByProjectFormValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
-
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-
 import org.springframework.web.bind.annotation.RestController;
-
 
 @RestController
 @RequestMapping(value = "/rest")
@@ -44,8 +39,8 @@ public class PatientEditByProjectRestController extends BasePatientEntryByProjec
         binder.setAllowedFields(allowedFields);
     }
 
-    @GetMapping(value = "/patient-edit-by-project")
-    public ResponseEntity<PatientEditByProjectForm> showPatientEditByProject(){
+    @GetMapping(value = "/PatientEditByProject")
+    public ResponseEntity<PatientEditByProjectForm> showPatientEditByProject() {
         PatientEditByProjectForm form = new PatientEditByProjectForm();
 
         // Set current date and entered date to today's date
@@ -56,15 +51,14 @@ public class PatientEditByProjectRestController extends BasePatientEntryByProjec
         return ResponseEntity.ok(form);
     }
 
-    @PostMapping(value = "/edit-by-project")
-    public ResponseEntity<String> showPatientEditByProjectSave(HttpServletRequest request,
-            @RequestBody @Valid PatientEditByProjectForm form, BindingResult result
-            ) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException
-             {
+    @PostMapping(value = "/PatientEditByProject")
+    public ResponseEntity<PatientEditByProjectForm> showPatientEditByProjectSave(HttpServletRequest request,
+            @RequestBody @Valid PatientEditByProjectForm form, BindingResult result)
+            throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
         formValidator.validate(form, result);
         if (result.hasErrors()) {
             saveErrors(result);
-            return ResponseEntity.ok(FWD_FAIL_INSERT);
+            return ResponseEntity.ok(form);
         }
 
         String forward = FWD_FAIL_INSERT;
@@ -98,25 +92,25 @@ public class PatientEditByProjectRestController extends BasePatientEntryByProjec
             logAndAddMessage(request, "performAction", "errors.UpdateException");
             forward = FWD_FAIL_INSERT;
         } else if (FWD_SUCCESS_INSERT.equals(forward)) {
-             ResponseEntity.ok(FWD_SUCCESS_INSERT);
+            ResponseEntity.ok(form);
         }
 
-        return ResponseEntity.ok(forward);
+        return ResponseEntity.ok(form);
     }
 
     @Override
     protected String findLocalForward(String forward) {
-            return forward;
+        return forward;
         // if (FWD_SUCCESS.equals(forward)) {
-        //     return "patientEditByProjectDefinition";
+        // return "patientEditByProjectDefinition";
         // } else if (FWD_FAIL.equals(forward)) {
-        //     return "redirect:/Dashboard";
+        // return "redirect:/Dashboard";
         // } else if (FWD_SUCCESS_INSERT.equals(forward)) {
-        //     return "redirect:/PatientEditByProject?type=readwrite";
+        // return "redirect:/PatientEditByProject?type=readwrite";
         // } else if (FWD_FAIL_INSERT.equals(forward)) {
-        //     return "patientEditByProjectDefinition";
+        // return "patientEditByProjectDefinition";
         // } else {
-        //     return "PageNotFound";
+        // return "PageNotFound";
         // }
     }
 
