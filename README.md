@@ -49,6 +49,8 @@ see [OpenELIS-Docker setup](https://github.com/I-TECH-UW/openelis-docker)
     Github profile.
 
          git clone https://github.com/username/OpenELIS-Global-2.git
+         cd OpenELIS-Global-2
+         git submodule update --init --recursive
 
 1.  Build the War file
 
