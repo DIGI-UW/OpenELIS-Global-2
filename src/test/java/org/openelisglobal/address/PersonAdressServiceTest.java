@@ -43,6 +43,8 @@ public class PersonAdressServiceTest extends BaseWebContextSensitiveTest {
     public void createPersonAddress_shouldCreatePersonAddress() throws Exception {
 
         Person person = new Person();
+        person.setFirstName("john");
+        person.setLastName("Doe");
         String personId = personService.insert(person);
 
         AddressPart part = new AddressPart();
@@ -69,6 +71,8 @@ public class PersonAdressServiceTest extends BaseWebContextSensitiveTest {
     public void updatePersonAddress_shouldUpdatePersonAdress() throws Exception {
 
         Person person = new Person();
+        person.setFirstName("john");
+        person.setLastName("Doe");
         String personId = personService.insert(person);
 
         AddressPart part = new AddressPart();
@@ -98,6 +102,8 @@ public class PersonAdressServiceTest extends BaseWebContextSensitiveTest {
     public void deletePersonAddress_shouldDeletePersonAddress() throws Exception {
 
         Person person = new Person();
+        person.setFirstName("john");
+        person.setLastName("Doe");
         String personId = personService.insert(person);
 
         AddressPart part = new AddressPart();
@@ -122,6 +128,8 @@ public class PersonAdressServiceTest extends BaseWebContextSensitiveTest {
     public void insert_shouldInsertPersonAdress() throws Exception {
 
         Person person = new Person();
+        person.setFirstName("john");
+        person.setLastName("Doe");
         String personId = personService.insert(person);
 
         AddressPart part = new AddressPart();
@@ -149,6 +157,8 @@ public class PersonAdressServiceTest extends BaseWebContextSensitiveTest {
     public void getAddressPartsByPersonId_shouldAddressPartsByPersonId() throws Exception {
 
         Person person = new Person();
+        person.setFirstName("john");
+        person.setLastName("Doe");
         String personId = personService.insert(person);
 
         AddressPart part = new AddressPart();
@@ -174,6 +184,8 @@ public class PersonAdressServiceTest extends BaseWebContextSensitiveTest {
     public void getByPersonIdAndPartId_shouldReturnPersonAdressByPersonIdAndPartId() throws Exception {
 
         Person person = new Person();
+        person.setFirstName("john");
+        person.setLastName("Doe");
         String personId = personService.insert(person);
 
         AddressPart part = new AddressPart();
