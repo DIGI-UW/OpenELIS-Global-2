@@ -27,4 +27,9 @@ public class AddressPartServiceImpl extends AuditableBaseObjectServiceImpl<Addre
     public AddressPart getAddresPartByName(String name) {
         return getMatch("partName", name).orElse(null);
     }
+    
+    @Override
+    public AddressPart getAddresPartById(String id) {
+    return baseObjectDAO.getById(id);
+    }
 }

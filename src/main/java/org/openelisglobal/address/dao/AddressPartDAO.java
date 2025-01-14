@@ -17,4 +17,5 @@ import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.common.dao.BaseDAO;
 
 public interface AddressPartDAO extends BaseDAO<AddressPart, String> {
+    AddressPart getById(String id);
 }

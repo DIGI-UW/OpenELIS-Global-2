@@ -26,4 +26,8 @@ public class AddressPartDAOImpl extends BaseDAOImpl<AddressPart, String> impleme
     public AddressPartDAOImpl() {
         super(AddressPart.class);
     }
+    @Override
+    public AddressPart getById(String id) {
+        return entityManager.find(AddressPart.class, id);
+    }
 }

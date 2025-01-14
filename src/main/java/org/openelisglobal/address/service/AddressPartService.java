@@ -8,4 +8,5 @@ public interface AddressPartService extends BaseObjectService<AddressPart, Strin
     List<AddressPart> getAll();
 
     AddressPart getAddresPartByName(String name);
+    AddressPart getAddresPartById(String id);
 }
