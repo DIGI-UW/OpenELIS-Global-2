@@ -48,7 +48,7 @@ see [OpenELIS-Docker setup](https://github.com/I-TECH-UW/openelis-docker)
     and clone the forked repo. The `username` below is the `username` of your
     Github profile.
 
-         git clone https://github.com/username/OpenELIS-Global-2.gitgit submodule update --init --recursive
+         git clone https://github.com/username/OpenELIS-Global-2.git
          cd OpenELIS-Global-2
          git submodule update --init --recursive
 
