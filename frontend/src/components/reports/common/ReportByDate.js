@@ -94,7 +94,7 @@ const ReportByDate = (props) => {
     ) {
       baseParams = `type=indicator&report=${props.report}&selectList.selection=${reportFormValues.value}`;
     } else if (props.report === "CISampleRoutineExport") {
-      baseParams = `report=${props.report}&type=routine`;
+      baseParams = `report=${props.report}&type=routine${reportFormValues.value ? `&selectList.selection=${reportFormValues.value}` : ""}`;
     } else {
       baseParams = `report=${props.report}&type=patient`;
     }
@@ -112,6 +112,19 @@ const ReportByDate = (props) => {
     setLoading(false);
   };
 
+  const getSelectLabel = () => {
+    switch (props.report) {
+      case "activityReportByTest":
+        return "input.placeholder.selectTest";
+      case "activityReportByPanel":
+        return "input.placeholder.selectPanel";
+      case "activityReportByTestSection":
+        return "input.placeholder.selectTestSection";
+      case "CISampleRoutineExport":
+        return "input.placeholder.selectTestSection";
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       switch (props.report) {
@@ -127,6 +140,9 @@ const ReportByDate = (props) => {
             setTempData,
           );
           break;
+        case "CISampleRoutineExport":
+          getFromOpenElisServer("/rest/user-test-sections/ALL", setTempData);
+          break;
         default:
           break;
       }
@@ -136,7 +152,8 @@ const ReportByDate = (props) => {
     if (
       props.report === "activityReportByTest" ||
       props.report === "activityReportByPanel" ||
-      props.report === "activityReportByTestSection"
+      props.report === "activityReportByTestSection" ||
+      props.report === "CISampleRoutineExport"
     ) {
       fetchData();
     }
@@ -226,7 +243,10 @@ const ReportByDate = (props) => {
                     <SelectItem
                       key={"emptyselect"}
                       value={""}
-                      text="Select Test Type"
+                      text={intl.formatMessage({
+                        id: getSelectLabel(),
+                        defaultMessage: "Seelect Test",
+                      })}
                     />
                     {list.map((statusOption) => (
                       <SelectItem
