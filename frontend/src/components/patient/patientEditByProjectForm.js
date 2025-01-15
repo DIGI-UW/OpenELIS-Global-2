@@ -1,112 +1,159 @@
-import React, { useEffect, useState } from "react";
-import { 
-  TextInput, 
-  Select, 
-  SelectItem, 
-  Button, 
-  Form, 
-  DataTable, 
-  Grid,
-  Column
+import React, { useState, useEffect } from 'react';
+import {
+  Button,
+  Form,
+  Select,
+  SelectItem,
+  TextInput,
+  DataTable,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableHeader,
+  TableContainer,
+  TableCell,
+  Column,
+  Grid
 } from "@carbon/react";
+import { getFromOpenElisServer } from '../utils/Utils';
+import { useIntl ,FormattedMessage } from 'react-intl';
 import PageBreadCrumb from "../common/PageBreadCrumb.js";
 
-import { getFromOpenElisServer } from "../utils/Utils";
-import { FormattedMessage, useIntl } from "react-intl";
-
-const { TableContainer, Table, TableHead, TableRow, TableHeader, TableBody, TableCell } = DataTable;
+let breadcrumbs = [{ label: "home.label", link: "/" }];
 
 const PatientEditByProject = () => {
-  const [searchBy, setSearchBy] = useState("");
-  const [query, setQuery] = useState("");
-  const [data, setData] = useState([]);
-  const [scan,setScan] = useState(false)
-
   const intl = useIntl();
+  const [scan, setScan] = useState(false); // Scan state
+  const [data, setData] = useState(null); // Initialize as null to handle asynchronous data loading
+  const [selectedCriteria, setSelectedCriteria] = useState(""); // Track selected criteria
+  const [inputValue, setInputValue] = useState(""); // Track text input value
+  const [rows, setRows] = useState([]); // For table rows
+  const endpoint = "/rest/PatientEditByProject";
 
-  const headers = [
-    { id: 0, header: " " },
-    { id: 1, header: intl.formatMessage({ id: "patient.first.name" }), key: "lastName" },
-    { id: 2, header: intl.formatMessage({ id: "patient.last.name" }), key: "firstName" },
-    { id: 3, header: intl.formatMessage({ id: "patient.gender" }), key: "gender" },
-    { id: 4, header: intl.formatMessage({ id: "patient.dob" }), key: "birthdate" },
-    { id: 5, header: intl.formatMessage({ id: "patient.subject.number" }), key: "subjectNumber" },
-    { id: 6, header: intl.formatMessage({ id: "patient.natioanalid" }), key: "nationalId" },
-  ];
-
-  const searchCriteria = [
-    { id: "0", value: "Search by..." },
-    { id: "2", value: "1. Last name" },
-    { id: "1", value: "2. First name" },
-    { id: "3", value: "3. label.select.last.first.name" },
-    { id: "4", value: "4. Patient identification code" },
-    { id: "5", value: "5. Lab No" },
-  ];
-
-  const handleSearchSubmit = () => {
-    const endpoint = `/rest/patient-edit-by-project?searchBy=${searchBy}&query=${query}`;
+  // Fetch initial data for search criteria
+  const fetchData = () => {
     getFromOpenElisServer(endpoint, (response) => {
-      setData(response || []);
+      if (response?.patientSearch?.searchCriteria) {
+        setData(response);
+      } else {
+        console.error("Unexpected API response:", response);
+      }
     });
   };
 
+  useEffect(() => {
+    fetchData(); // Fetch data on component mount
+  }, []);
+
+  // Handle form submission
+  const handleSubmit = (e) => {
+    e.preventDefault(); // Prevent page reload
+
+    if (!selectedCriteria || !inputValue) {
+      alert("Please select a search criteria and enter a value.");
+      return;
+    }
+
+    const queryParams = new URLSearchParams({
+      criteria: selectedCriteria,
+      value: inputValue,
+    }).toString();
+
+    getFromOpenElisServer(`${endpoint}?${queryParams}`, (response) => {
+      if (response?.patientSearch?.results) {
+        const transformedRows = response.patientSearch.results.map((patient, index) => ({
+          id: index.toString(),
+          firstName: patient.firstName,
+          lastName: patient.lastName,
+          gender: patient.gender,
+          birthdate: patient.birthdate,
+          subjectNumber: patient.subjectNumber,
+          nationalId: patient.nationalId,
+        }));
+        setRows(transformedRows);
+      } else {
+        console.error("Unexpected API response:", response);
+        setRows([]);
+      }
+    });
+  };
+
+  if (!data) {
+    // Show a loading state until data is fetched
+    return <div>Loading...</div>;
+  }
+
+  // Table headers
+  const headers = [
+    { key: "firstName", header: "First Name" },
+    { key: "lastName", header: "Last Name" },
+    { key: "gender", header: "Gender" },
+    { key: "birthdate", header: "Date of Birth" },
+    { key: "subjectNumber", header: "Subject Number" },
+    { key: "nationalId", header: "National ID" },
+  ];
+
   return (
     <div style={{ padding: "1rem" }}>
-      <PageBreadCrumb breadcrumbs={[{ label: "home.label", link: "/" }]} />
-      <h1>
-        <b>
-          <FormattedMessage id="banner.menu.patientConsult" />{" "}
-          <FormattedMessage id="banner.menu.patient" />
-        </b>
-      </h1>
-      <h2>
-        <b>
-          <FormattedMessage id="patient.label.info" />
-        </b>
-      </h2>
+      <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      <h1><b>
+        <FormattedMessage id="banner.menu.patientConsult" />{" "}
+        <FormattedMessage id="banner.menu.patient" /></b></h1>
 
-    
+<h2><b><FormattedMessage id="patient.label.info" /> </b></h2>
+      <Form onSubmit={handleSubmit}>
       <Grid>
       <Column lg={4} md={8} sm={4}>
-          <Select
-          style={{margin:"10px"}}
-            id="search-criteria"
-            labelText={intl.formatMessage({ id: "order.legend.selectMethod" })}
-            value={searchBy}
-            onChange={(e) => setSearchBy(e.target.value)}
-          >
-            {searchCriteria.map((item) => (
-              <SelectItem key={item.id} value={item.id} text={item.value} />
-            ))}
-          </Select>
+        <Select
+          id="search-criteria"
+          labelText="Search Criteria"
+          style={{ marginBottom: "10px" }}
+          onChange={(e) => {
+            const value = e.target.value;
+            setSelectedCriteria(value);
+            setScan(value === "patient.lab.no"); // Dynamically set scan state
+          }}
+        >
+          <SelectItem text="Select Criteria" value="" />
+          {data.patientSearch.searchCriteria.map((item) => (
+            <SelectItem key={item.id} value={item.id} text={item.value} />
+          ))}
+        </Select>
         </Column>
-        {searchBy !== "0" && (
-           <Column lg={6} md={4} sm={2}>
-            <TextInput
-              id="search-query"
-              labelText={intl.formatMessage({ id: "search.patient.label" })}
-              placeholder={intl.formatMessage({ id: "search.patient.label" })}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </Column>
-        )}
+        <Column lg={6} md={4} sm={2}>
+              <TextInput
+                id="search-input"
+                labelText="Search Input"
+                placeholder="Enter your search value"
+                value={inputValue}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setInputValue(value);
+                  if (selectedCriteria === "patient.lab.no") {
+                    setScan(true);
+                  } else {
+                    setScan(false);
+                  }
+                }}
+                style={{ marginBottom: "10px" }}
+              />
+      </Column>
         <Column lg={2} md={2} sm={1}>
-          <Button onClick={handleSearchSubmit}>
-            <FormattedMessage id="label.search.patient" />
-          </Button>
+                <Button type="submit">Search</Button>
+                  
         </Column>
-      </Grid>
-      {scan && (
+          {scan && (
              <Column lg={3} md={2} sm={1}>
              <p  style={{margin:"10px"}} ><b><FormattedMessage id="referral.input" /> </b></p>
-           </Column>
+           </Column>)}
+           </Grid>
+      </Form>
 
-          )}
-<div  style={{margin:"5px"}}>
-      <DataTable rows={data} headers={headers}>
+      {/* Render DataTable */}
+      <DataTable rows={rows} headers={headers}>
         {({ rows, headers, getHeaderProps, getRowProps }) => (
-          <TableContainer title="">
+          <TableContainer title="Search Results">
             <Table>
               <TableHead>
                 <TableRow>
@@ -130,48 +177,15 @@ const PatientEditByProject = () => {
           </TableContainer>
         )}
       </DataTable>
-      </div>
-      <Grid>
-        
-        <Column  lg={4} >
-    
-        <Select
-              id="search-criteria"
-              labelText=""
-              
-              
-            >
-              <SelectItem
-                text=""
-              />
-              <SelectItem
-                
-                text={intl.formatMessage({ id: "project.ARVStudy.name" })}
-              />
-              <SelectItem
-                
-                text={intl.formatMessage({ id: "project.ARVFollowupStudy.name" })}
-              />
-              <SelectItem
-                
-                text={intl.formatMessage({ id: "project.RTNStudy.name" })}
-              />
-              <SelectItem
-                
-                text={intl.formatMessage({ id: "banner.menu.resultvalidation.viralload" })}
-              />
-              <SelectItem
-                
-                text={intl.formatMessage({ id: "project.EIDStudy.name" })}
-              />
-               <SelectItem
-                
-                text={intl.formatMessage({ id: "project.Recency.name" })}
-              />
-            </Select>
-        </Column>
-      </Grid>
-      
+
+      <Select id="additional-project">
+        <SelectItem text={intl.formatMessage({ id: "project.ARVStudy.name" })} />
+        <SelectItem text={intl.formatMessage({ id: "project.ARVFollowupStudy.name" })} />
+        <SelectItem text={intl.formatMessage({ id: "project.RTNStudy.name" })} />
+        <SelectItem text={intl.formatMessage({ id: "banner.menu.resultvalidation.viralload" })} />
+        <SelectItem text={intl.formatMessage({ id: "project.EIDStudy.name" })} />
+        <SelectItem text={intl.formatMessage({ id: "project.Recency.name" })} />
+      </Select>
     </div>
   );
 };
