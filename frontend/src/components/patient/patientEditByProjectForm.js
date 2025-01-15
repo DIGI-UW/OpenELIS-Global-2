@@ -48,7 +48,7 @@ const PatientEditByProject = () => {
 
   // Handle form submission
   const handleSubmit = (e) => {
-    e.preventDefault(); // Prevent page reload
+    e.preventDefault(); 
 
     if (!selectedCriteria || !inputValue) {
       alert("Please select a search criteria and enter a value.");
