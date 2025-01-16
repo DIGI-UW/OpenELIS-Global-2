@@ -7,7 +7,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import java.util.Map;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -45,7 +44,6 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
         patientService.deleteAll(patientService.getAll());
         personService.deleteAll(personService.getAll());
     }
-
 
     @Test
     public void createPerson_shouldCreatePerson() throws Exception {
@@ -186,7 +184,7 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getData_shouldRetrieveDataForPerson() throws Exception {
-        
+
         String firstName = "John";
         String lastName = "Doe";
 
