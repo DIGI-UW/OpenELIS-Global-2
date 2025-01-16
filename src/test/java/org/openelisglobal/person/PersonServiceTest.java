@@ -7,6 +7,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import java.util.Map;
+
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,6 +40,13 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
         resetSequence("PATIENT", "ID", "patient_seq");
     }
 
+    @After
+    public void cleanup() throws Exception {
+        patientService.deleteAll(patientService.getAll());
+        personService.deleteAll(personService.getAll());
+    }
+
+
     @Test
     public void createPerson_shouldCreatePerson() throws Exception {
         Person person = new Person();
@@ -47,6 +56,8 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
         Person savedPerson = personService.save(person);
 
         Assert.assertEquals(PERSON1_FIRSTNAME, savedPerson.getFirstName());
+
+        personService.delete(savedPerson);
     }
 
     // @Test
@@ -76,7 +87,7 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllPerson_shouldGetAllPerson() throws Exception {
-        Assert.assertEquals(4, personService.getAllPersons().size());
+        Assert.assertEquals(3, personService.getAllPersons().size());
     }
 
     @Test
@@ -175,7 +186,7 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getData_shouldRetrieveDataForPerson() throws Exception {
-        // Create a new person
+        
         String firstName = "John";
         String lastName = "Doe";
 

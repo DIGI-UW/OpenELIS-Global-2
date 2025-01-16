@@ -1,7 +1,6 @@
 package org.openelisglobal.patient;
 
 import java.util.List;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -17,13 +16,9 @@ public class PatientTypeServiceTest extends BaseWebContextSensitiveTest {
     PatientTypeService typeService;
 
     @Before
-    public void init() {
-        typeService.deleteAll(typeService.getAll());
-    }
-
-    @After
-    public void tearDown() {
-        typeService.deleteAll(typeService.getAll());
+    public void init() throws Exception {
+        executeDataSetWithStateManagement("testdata/patient.xml");
+        resetSequence("PATIENT_TYPE", "ID", "patient_type_seq");
     }
 
     @Test
@@ -32,113 +27,57 @@ public class PatientTypeServiceTest extends BaseWebContextSensitiveTest {
         patientType.setDescription("Test Type Description");
         patientType.setType("Test Type");
 
-        Assert.assertEquals(0, typeService.getAllPatientTypes().size());
+        Assert.assertEquals(6, typeService.getAllPatientTypes().size());
 
         String patientTypeId = typeService.insert(patientType);
         PatientType savedPatientType = typeService.get(patientTypeId);
 
-        Assert.assertEquals(1, typeService.getAllPatientTypes().size());
+        Assert.assertEquals(7, typeService.getAllPatientTypes().size());
         Assert.assertEquals("Test Type Description", savedPatientType.getDescription());
         Assert.assertEquals("Test Type", savedPatientType.getType());
+
+        typeService.delete(savedPatientType);
     }
 
     @Test
     public void UpdatePatientType_shouldReturnUpdatedPatientType() throws Exception {
-        PatientType patientType = new PatientType();
-        patientType.setDescription("Test Type Description");
-        patientType.setType("Test Type");
-
-        Assert.assertEquals(0, typeService.getAllPatientTypes().size());
-
-        String patientTypeId = typeService.insert(patientType);
-        PatientType savedPatientType = typeService.get(patientTypeId);
+        PatientType savedPatientType = typeService.get("6");
         savedPatientType.setType("Test2 Type");
         typeService.save(savedPatientType);
 
-        Assert.assertEquals(1, typeService.getAllPatientTypes().size());
-        Assert.assertEquals("Test Type Description", savedPatientType.getDescription());
+        Assert.assertEquals("Discharged", savedPatientType.getDescription());
         Assert.assertEquals("Test2 Type", savedPatientType.getType());
     }
 
     @Test
     public void deletePatientType_shouldDeletePatientType() throws Exception {
-        PatientType patientType = new PatientType();
-        patientType.setDescription("Test Type Description");
-        patientType.setType("Test Type");
-
-        Assert.assertEquals(0, typeService.getAllPatientTypes().size());
-
-        String patientTypeId = typeService.insert(patientType);
-        PatientType savedPatientType = typeService.get(patientTypeId);
+        PatientType savedPatientType = typeService.get("6");
         typeService.delete(savedPatientType);
 
-        Assert.assertEquals(0, typeService.getAllPatientTypes().size());
+        Assert.assertEquals(5, typeService.getAllPatientTypes().size());
     }
 
     @Test
     public void getallPatientTypes_shouldReturnPatientType() throws Exception {
-        PatientType patientType = new PatientType();
-        patientType.setDescription("Test Type Description");
-        patientType.setType("Test Type");
 
-        Assert.assertEquals(0, typeService.getAllPatientTypes().size());
-
-        String patientTypeId = typeService.insert(patientType);
-        PatientType savedPatientType = typeService.get(patientTypeId);
-
-        Assert.assertEquals(1, typeService.getAllPatientTypes().size());
+        Assert.assertEquals(6, typeService.getAllPatientTypes().size());
     }
 
     @Test
     public void getTotalPatientTypeCount_shouldReturnTotalPatientTypeCount() throws Exception {
-        PatientType patientType = new PatientType();
-        patientType.setDescription("Test Type Description");
-        patientType.setType("Test Type");
 
-        Assert.assertEquals(0, typeService.getAllPatientTypes().size());
-
-        String patientTypeId = typeService.insert(patientType);
-        PatientType savedPatientType = typeService.get(patientTypeId);
-
-        Assert.assertEquals(1, typeService.getTotalPatientTypeCount().longValue());
+        Assert.assertEquals(6, typeService.getTotalPatientTypeCount().longValue());
     }
 
     @Test
     public void getPatientTypes_shouldReturnListOfFilteredPatientTypes() throws Exception {
-        PatientType patientType = new PatientType();
-        patientType.setDescription("Test Type Description");
-        patientType.setType("Test Type");
+        List<PatientType> savedPatientTypes = typeService.getPatientTypes("patient");
 
-        String patientTypeId = typeService.insert(patientType);
-        PatientType savedPatientType = typeService.get(patientTypeId);
-
-        PatientType patientType2 = new PatientType();
-        patientType2.setDescription("Test2 Type Description");
-        patientType2.setType("Test2 Type");
-
-        String patientTypeId2 = typeService.insert(patientType2);
-        Assert.assertEquals(2, typeService.getAll().size());
-
-        List<PatientType> savedPatientTypes = typeService.getPatientTypes("Test2");
-
-        Assert.assertEquals(1, savedPatientTypes.size());
+        Assert.assertEquals(2, savedPatientTypes.size());
     }
 
     @Test
     public void getPageOfPatientType_shouldReturnPatientTypes() throws Exception {
-        PatientType patientType = new PatientType();
-        patientType.setDescription("Test Type Description");
-        patientType.setType("Test Type");
-
-        String patientTypeId = typeService.insert(patientType);
-        PatientType savedPatientType = typeService.get(patientTypeId);
-
-        PatientType patientType2 = new PatientType();
-        patientType2.setDescription("Test2 Type Description");
-        patientType2.setType("Test2 Type");
-
-        String patientTypeId2 = typeService.insert(patientType2);
-        Assert.assertEquals(2, typeService.getAll().size());
 
         List<PatientType> patientTypesPage = typeService.getPageOfPatientType(1);
 
@@ -148,37 +87,28 @@ public class PatientTypeServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertTrue(patientTypesPage.size() <= expectedPageSize);
 
         if (expectedPageSize >= 2) {
-            Assert.assertTrue(patientTypesPage.stream().anyMatch(p -> p.getType().equals("Test Type")));
-            Assert.assertTrue(patientTypesPage.stream().anyMatch(p -> p.getType().equals("Test2 Type")));
+            Assert.assertTrue(patientTypesPage.stream().anyMatch(p -> p.getType().equals("R")));
+            Assert.assertTrue(patientTypesPage.stream().anyMatch(p -> p.getType().equals("E")));
         }
     }
 
     @Test
     public void getData_shouldCopyPropertiesFromDatabase() throws Exception {
-        PatientType patientType = new PatientType();
-        patientType.setDescription("Test Type Description");
-        patientType.setType("Test Type");
-
-        String patientTypeId = typeService.insert(patientType);
+        String patientTypeId = "6";
 
         PatientType patientType2 = new PatientType();
         patientType2.setId(patientTypeId);
         typeService.getData(patientType2);
 
-        Assert.assertEquals("Test Type", patientType2.getType());
+        Assert.assertEquals("D", patientType2.getType());
     }
 
     @Test
     public void getallPatientTypeByName_shouldReturnPatientType() throws Exception {
-        PatientType patientType = new PatientType();
-        patientType.setDescription("Test Type Description");
-        patientType.setType("Test Type");
+        PatientType patientType = typeService.get("6");
 
-        Assert.assertEquals(0, typeService.getAllPatientTypes().size());
-
-        String patientTypeId = typeService.insert(patientType);
         PatientType savedPatientType = typeService.getPatientTypeByName(patientType);
 
-        Assert.assertEquals("Test Type", savedPatientType.getType());
+        Assert.assertEquals("D", savedPatientType.getType());
     }
 }
