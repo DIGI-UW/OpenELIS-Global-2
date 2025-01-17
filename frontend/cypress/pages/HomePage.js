@@ -12,6 +12,7 @@ import RoutineReportPage from "./RoutineReportPage";
 import StudyReportPage from "./StudyReportPage";
 
 import DashBoardPage from "./DashBoard";
+import AdminPage from "./AdminPage";
 
 class HomePage {
   constructor() {}
@@ -191,6 +192,12 @@ class HomePage {
     cy.get("#menu_immunochem_dropdown").click();
     cy.get("#menu_immunochemdashboard_nav").click();
     return new DashBoardPage();
+  }
+
+  goToAdminPage() {
+    this.openNavigationMenu();
+    cy.get("#menu_administration").click();
+    return new AdminPage();
   }
 }
 
