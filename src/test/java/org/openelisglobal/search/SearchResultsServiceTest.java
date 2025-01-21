@@ -54,8 +54,6 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void init() throws Exception {
-        humanService.deleteAll(humanService.getAll());
-        providerService.deleteAll(providerService.getAll());
         patientService.deleteAll(patientService.getAll());
         personService.deleteAll(personService.getAll());
     }
