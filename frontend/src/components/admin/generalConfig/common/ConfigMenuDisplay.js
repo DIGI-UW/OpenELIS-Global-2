@@ -35,7 +35,6 @@ import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../../common/PageBreadCrumb.js";
 import GenericConfigEdit from "../../generalConfig/common/GenericConfigEdit.js";
 
-let breadcrumbs = [{ label: "home.label", link: "/" }];
 function ConfigMenuDisplay(props) {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -53,6 +52,12 @@ function ConfigMenuDisplay(props) {
     useState([]);
 
   const [ConfigEdit, setConfigEdit] = useState(false);
+
+  let breadcrumbs = [
+    { label: "home.label", link: "/" },
+    { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+    { label: `${props.label}`, link: `/MasterListsPage#${props.menuType}` },
+  ];
 
   function handleModify(event) {
     event.preventDefault();
@@ -185,7 +190,7 @@ function ConfigMenuDisplay(props) {
           {notificationVisible === true ? <AlertDialog /> : ""}
           <div className="adminPageContent">
             <PageBreadCrumb breadcrumbs={breadcrumbs} />
-            <Grid>
+            <Grid fullWidth={true}>
               <Column lg={16} md={8} sm={4}>
                 <Section>
                   <Heading>
