@@ -20,6 +20,26 @@ const CustomDatePicker = (props) => {
     props.onChange(currentDate);
   }
 
+  function handleInputChange(e) {
+    const inputValue = e.target.value;
+
+    const isFrenchLocale =
+      configurationProperties.DEFAULT_DATE_LOCALE === "fr-FR";
+    const partialDateRegex = isFrenchLocale
+      ? /^(\d{0,2})(\/(\d{0,2})(\/(\d{0,4})?)?)?$/
+      : /^(\d{0,2})(\/(\d{0,2})(\/(\d{0,4})?)?)?$/;
+
+    const fullDateRegex = isFrenchLocale
+      ? /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/
+      : /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/\d{4}$/;
+
+    if (partialDateRegex.test(inputValue)) {
+      e.target.value = inputValue;
+    } else {
+      e.target.value = ""; // Clear invalid input
+    }
+  }
+
   useEffect(() => {
     props.onChange(currentDate);
   }, [currentDate]);
@@ -76,6 +96,7 @@ const CustomDatePicker = (props) => {
           invalid={props.invalid}
           invalidText={props.invalidText}
           disabled={props.disabled}
+          onChange={handleInputChange}
         />
       </DatePicker>
     </>
