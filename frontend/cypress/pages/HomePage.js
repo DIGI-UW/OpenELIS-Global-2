@@ -182,15 +182,13 @@ class HomePage {
 
   goToPathologyDashboard() {
     this.openNavigationMenu();
-    cy.get("#menu_pathology_dropdown").click();
-    cy.get("#menu_pathologydashboard_nav").click();
+    cy.get("#menu_pathology").click(); // Changed from menu_pathology_dropdown
     return new DashBoardPage();
   }
 
   goToImmunoChemistryDashboard() {
     this.openNavigationMenu();
-    cy.get("#menu_immunochem_dropdown").click();
-    cy.get("#menu_immunochemdashboard_nav").click();
+    cy.get("#menu_immunochem").click(); // Changed from menu_immunochem_dropdown
     return new DashBoardPage();
   }
 
