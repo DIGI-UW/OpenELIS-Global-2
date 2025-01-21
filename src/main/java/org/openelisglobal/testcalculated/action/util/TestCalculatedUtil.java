@@ -202,9 +202,12 @@ public class TestCalculatedUtil {
                         ScriptEngine scriptEngine = scriptEngineManager.getEngineByName("JavaScript");
                         String value = null;
                         try {
+                            Log.debug("Caliculation Rule: " + calculation.getName() + " Function : "
+                                    + function.toString());
                             value = scriptEngine.eval(function.toString()).toString();
+                            Log.debug("Caliculation Rule: " + calculation.getName() + " Value  : " + value);
                         } catch (ScriptException e) {
-                            Log.error("Invalid Calication Rule: " + calculation.getName(), e);
+                            Log.error("Invalid Caliculation Rule: " + calculation.getName(), e);
                         }
                         Analysis analysis = createCalculatedResult(resultCalculation, resultSet, calculation, value,
                                 sysUserId);
@@ -257,6 +260,9 @@ public class TestCalculatedUtil {
                 result.setMaxNormal(resultLimit.getHighNormal());
                 result.setMinNormal(resultLimit.getLowNormal());
             }
+            if (testResult.getSignificantDigits() != null) {
+                result.setSignificantDigits(Integer.valueOf(testResult.getSignificantDigits()));
+            }
             result.setResultType(testService.getResultType(test));
             result.setSysUserId(systemUserId);
             Boolean resultCalculated = false;
@@ -276,6 +282,10 @@ public class TestCalculatedUtil {
                         result.setValue("");
                     }
                 } else if ("N".equals(resultType)) {
+                    if (testResult.getSignificantDigits() != null) {
+                        double factor = Math.pow(10, Double.valueOf(testResult.getSignificantDigits()));
+                        value = String.valueOf(Math.round(Double.valueOf(value) * factor) / factor);
+                    }
                     result.setValue(value);
                     resultCalculated = true;
                 }
@@ -360,7 +370,8 @@ public class TestCalculatedUtil {
             // we are assuming there is only one testResult for a numeric
             // type result
             if (!testResultList.isEmpty()) {
-                return testResultList.get(0);
+                // get the latest modified test result
+                return testResultList.get(testResultList.size() - 1);
             }
         }
 

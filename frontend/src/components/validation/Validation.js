@@ -35,6 +35,7 @@ const Validation = (props) => {
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -114,6 +115,10 @@ const Validation = (props) => {
   ];
 
   const handleSave = (values) => {
+    if (isSubmitting) {
+      return;
+    }
+    setIsSubmitting(true);
     postToOpenElisServer(
       "/rest/accessionValidationByRangeUpdate",
       JSON.stringify(props.results),
@@ -123,6 +128,7 @@ const Validation = (props) => {
   const handleResponse = (status) => {
     let message = intl.formatMessage({ id: "validation.save.error" });
     let kind = NotificationKinds.error;
+    setIsSubmitting(false);
     if (status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
@@ -464,6 +470,7 @@ const Validation = (props) => {
               onClick={() => handleSave(values)}
               id="submit"
               style={{ marginTop: "16px" }}
+              disabled={isSubmitting}
             >
               <FormattedMessage id="label.button.save" />
             </Button>

@@ -1,7 +1,6 @@
 .main {
   position: absolute;
-  right: 175px;
-  width: 700px;
+  width: 100%;
 }
 
 .search-bar-container {
@@ -9,7 +8,9 @@
   display: flex;
   width: 100%;
   top: 10px;
-  right: -30px;
+  margin-top: 38px;
+  right: 1px;
+  /*right: -20px;*/
   box-shadow: 0em 0.1em 0.05em #ccc;
 }
 
@@ -28,17 +29,18 @@
   max-height: 250px;
   position: absolute;
   background-color: #f0e7e7;
-  top: 45px;
-  right: -30px;
+  top: 89px;
+  right: -1px;
   box-shadow: 0em 0.1em 0.5em #ccc;
 }
 
 .patientHead {
-  width: 680px;
+  width: 103%;
   position: relative;
   border-bottom: 2px solid #eee3e3;
   background-color: #fcfbfb;
   height: 52px;
+  right: -1px;
   box-shadow: 0em 0.01em 0.05em #ccc;
 }
 .tags {
@@ -49,32 +51,37 @@
   cursor: pointer;
 }
 
-@media (max-width: 768px) {
-  .patientHead {
-    flex-direction: column;
-  }
-
+/* Large screens (1208px and up) */
+@media (min-width: 1208px) {
   .search-bar-container {
-    flex-direction: column;
-    align-items: stretch;
+    width: 45%;
+    margin-top: 0%;
+    right: 130px;
   }
 
   .search-input {
-    width: 100%;
+    width: 45%;
   }
-}
 
-@media (min-width: 769px) and (max-width: 1024px) {
+  .patients {
+    overflow-y: auto;
+    width: 45%;
+    max-height: 250px;
+    position: absolute;
+    background-color: #f0e7e7;
+    top: 48px;
+    right: 130px;
+    box-shadow: 0em 0.1em 0.5em #ccc;
+  }
+
   .patientHead {
-    flex-direction: row;
-  }
-
-  .search-bar-container {
-    flex-direction: row;
-    align-items: center;
-  }
-
-  .search-input {
-    width: 75%;
+    overflow-y: auto;
+    width: 600px;
+    right: -1px;
+    position: relative;
+    border-bottom: 2px solid #eee3e3;
+    background-color: #fcfbfb;
+    height: 52px;
+    box-shadow: 0em 0.01em 0.05em #ccc;
   }
 }

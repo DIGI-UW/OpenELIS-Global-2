@@ -6,7 +6,7 @@
 
 tasks:
   - name: Build the Dependencies and Start the docker containers
-    init:  cd dataexport && mvn clean install -DskipTests && cd .. && mvn clean install && cd frontend && npm install && cd ..
+    init:  mvn clean install && cd frontend && npm install && cd ..
     command:  docker-compose -f dev.docker-compose.yml up -d    
 
 

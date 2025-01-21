@@ -1,0 +1,122 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: Publish Dev Docker Images - Frontend
+
+on:
+  push:
+    branches: [develop]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ github.repository }}
+  DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2
+
+jobs:
+  build-and-push-image-frontend-dev:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - amd64
+          - arm64
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Prepare
+        run: |
+          platform=linux/${{ matrix.platform }}
+          echo "PLATFORM_PAIR_FRONTEND=${platform//\//-}" >> $GITHUB_ENV
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+        # Add support for more platforms with QEMU (optional)
+        # https://github.com/docker/setup-qemu-action
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_NAME }}-frontend-dev
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          # push: true
+          platforms: linux/${{ matrix.platform }}
+          # tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.DOCKER_NAME }}-frontend-dev:${{ matrix.platform }}-buildcache-dev
+          cache-to: type=registry,ref=${{ env.DOCKER_NAME }}-frontend-dev:${{ matrix.platform }}-buildcache-dev,mode=max
+          outputs: type=image,name=${{ env.DOCKER_NAME }}-frontend-dev,push-by-digest=true,name-canonical=true,push=true
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests/frontend
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/frontend/${digest#sha256:}"
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ env.PLATFORM_PAIR_FRONTEND }}-frontend
+          path: /tmp/digests/frontend/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge-frontend-dev-platform-images:
+    runs-on: ubuntu-latest
+    needs:
+      - build-and-push-image-frontend-dev
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests/frontend
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_NAME }}-frontend-dev
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests/frontend
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.DOCKER_NAME }}-frontend-dev@sha256:%s ' *)
+
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ${{ env.DOCKER_NAME }}-frontend-dev:${{ steps.meta.outputs.version }}

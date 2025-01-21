@@ -40,7 +40,7 @@ li.clickableUserDetails:hover {
 }
 
 .adminPageContent {
-  margin-left: 17%;
+  margin-left: 18%;
   margin-right: 1%;
 }
 
@@ -57,7 +57,8 @@ li.clickableUserDetails:hover {
 
 .inputSearch {
   --cds-text-primary: black;
-  width: 100%;
+  /*width: 100%;*/
+  width: 50%;
   --cds-text-secondary: black;
   --cds-icon-primary: black;
 }
@@ -277,13 +278,6 @@ button {
   --cds-text-primary: black;
   width: 380px;
   --cds-text-secondary: black;
-}
-
-.inputSearch {
-  --cds-text-primary: black;
-  width: 100%;
-  --cds-text-secondary: black;
-  --cds-icon-primary: black;
 }
 
 .results {
@@ -522,20 +516,24 @@ button {
     grid-template-columns: 1fr;
   }
 }
-@media screen and (max-width: 550px) {
+
+@media screen and (max-width: 1053px) {
+  .adminPageContent {
+    margin-left: 9%;
+    margin-right: 5%;
+  }
+}
+
+@media screen and (max-width: 500px) {
   .adminPageContent {
     margin-left: 15%;
+    margin-right: 5%;
   }
 }
 
 @media screen and (max-width: 460px) {
   .inlineDiv {
     flex-direction: column;
-  }
-}
-@media screen and (max-width: 500px) {
-  .adminPageContent {
-    margin-left: 17%;
   }
 }
 

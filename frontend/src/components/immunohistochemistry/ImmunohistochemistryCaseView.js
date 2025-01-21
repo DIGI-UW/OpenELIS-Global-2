@@ -78,6 +78,7 @@ function ImmunohistochemistryCaseView() {
   const [pagination, setPagination] = useState(false);
   const [currentApiPage, setCurrentApiPage] = useState(null);
   const [totalApiPages, setTotalApiPages] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [reportParams, setReportParams] = useState({
     0: {
       erPercent: "",
@@ -108,6 +109,7 @@ function ImmunohistochemistryCaseView() {
   async function displayStatus(response) {
     var body = await response.json();
     console.debug(body);
+    setIsSubmitting(false);
     var status = response.status;
     setNotificationVisible(true);
     if (status == "200") {
@@ -875,6 +877,10 @@ function ImmunohistochemistryCaseView() {
     });
 
   const save = () => {
+    if (isSubmitting) {
+      return;
+    }
+    setIsSubmitting(true);
     let submitValues = {
       assignedTechnicianId: immunohistochemistrySampleInfo.assignedTechnicianId,
       assignedPathologistId:
@@ -1024,6 +1030,7 @@ function ImmunohistochemistryCaseView() {
           <Column lg={16} md={8} sm={4}>
             <Button
               id="pathology_save"
+              disabled={isSubmitting}
               onClick={(e) => {
                 e.preventDefault();
                 save(e);
@@ -1633,6 +1640,7 @@ function ImmunohistochemistryCaseView() {
           <Column>
             <Button
               id="pathology_save2"
+              disabled={isSubmitting}
               onClick={(e) => {
                 e.preventDefault();
                 save(e);

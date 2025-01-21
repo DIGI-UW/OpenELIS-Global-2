@@ -18,6 +18,9 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.service.PatientTypeService;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.patientidentity.service.PatientIdentityService;
+import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
+import org.openelisglobal.patientidentitytype.service.PatientIdentityTypeService;
 import org.openelisglobal.patienttype.valueholder.PatientType;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
@@ -34,15 +37,26 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
     @Autowired
     PersonService personService;
 
+    @Autowired
+    PatientIdentityTypeService identityTypeService;
+
+    @Autowired
+    PatientIdentityService identityService;
+
     @Before
     public void init() throws Exception {
+        // identityTypeService.deleteAll(identityTypeService.getAll());
+        identityService.deleteAll(identityService.getAll());
         patientService.deleteAll(patientService.getAll());
         personService.deleteAll(personService.getAll());
         patientTypeService.deleteAll(patientTypeService.getAll());
+
     }
 
     @After
     public void tearDown() {
+        // identityTypeService.deleteAll(identityTypeService.getAll());
+        identityService.deleteAll(identityService.getAll());
         patientService.deleteAll(patientService.getAll());
         personService.deleteAll(personService.getAll());
         patientTypeService.deleteAll(patientTypeService.getAll());
@@ -79,6 +93,413 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
         Patient savedPatient = new Patient();
         savedPatient.setId(patientId);
         patientService.getData(savedPatient);
+
+        Assert.assertEquals(gender, savedPatient.getGender());
+    }
+
+    @Test
+    public void getSubjectNumber_shouldReturnSubjectNumber() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("SUBJECT").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("334-422-A");
+        identityService.insert(patientIdentity);
+
+        Assert.assertEquals("334-422-A", patientService.getSubjectNumber(patient));
+    }
+
+    @Test
+    public void getIdentityList_shouldReturnIdentityList() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("AKA").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("BigMan");
+        identityService.insert(patientIdentity);
+
+        String typeID2 = identityTypeService.getNamedIdentityType("GUID").getId();
+
+        PatientIdentity patientIdentity2 = new PatientIdentity();
+        patientIdentity2.setIdentityTypeId(typeID2);
+        patientIdentity2.setPatientId(patientId);
+        patientIdentity2.setIdentityData("EA400A1");
+        identityService.insert(patientIdentity2);
+
+        Assert.assertEquals(2, patientService.getIdentityList(patient).size());
+    }
+
+    @Test
+    public void getNationality_shouldReturnNationality() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("NATIONALITY").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("Ugandan");
+        identityService.insert(patientIdentity);
+
+        Assert.assertEquals("Ugandan", patientService.getNationality(patient));
+    }
+
+    @Test
+    public void getOtherNationality_shouldReturnOtherNationality() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("OTHER NATIONALITY").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("USA");
+        identityService.insert(patientIdentity);
+
+        Assert.assertEquals("USA", patientService.getOtherNationality(patient));
+    }
+
+    @Test
+    public void getMother_shouldReturnMother() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("MOTHER").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("Jackie Moore");
+        identityService.insert(patientIdentity);
+
+        Assert.assertEquals("Jackie Moore", patientService.getMother(patient));
+    }
+
+    @Test
+    public void getMothersInitial_shouldReturnMothersInitial() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("MOTHERS_INITIAL").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("Jackie Moore");
+        identityService.insert(patientIdentity);
+
+        Assert.assertEquals("Jackie Moore", patientService.getMothersInitial(patient));
+    }
+
+    @Test
+    public void getInsurance_shouldReturnInsurance() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("INSURANCE").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("US119a36");
+        identityService.insert(patientIdentity);
+
+        Assert.assertEquals("US119a36", patientService.getInsurance(patient));
+    }
+
+    @Test
+    public void getOccupation_shouldReturnOccupation() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("OCCUPATION").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("Truck Driver");
+        identityService.insert(patientIdentity);
+
+        Assert.assertEquals("Truck Driver", patientService.getOccupation(patient));
+    }
+
+    @Test
+    public void getOrgSite_shouldReturnOrgSite() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("ORG_SITE").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("orgSite");
+        identityService.insert(patientIdentity);
+
+        Assert.assertEquals("orgSite", patientService.getOrgSite(patient));
+    }
+
+    @Test
+    public void getEducation_shouldReturnEducationQualification() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("EDUCATION").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("MBA Certificate");
+        identityService.insert(patientIdentity);
+
+        Assert.assertEquals("MBA Certificate", patientService.getEducation(patient));
+    }
+
+    @Test
+    public void getHealthDistrict_shouldReturnHealthDistrict() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("HEALTH DISTRICT").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("Jinja");
+        identityService.insert(patientIdentity);
+
+        Assert.assertEquals("Jinja", patientService.getHealthDistrict(patient));
+    }
+
+    @Test
+    public void getHealthRegion_shouldReturnHealthRegion() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("HEALTH REGION").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("EastAfrica");
+        identityService.insert(patientIdentity);
+
+        Assert.assertEquals("EastAfrica", patientService.getHealthRegion(patient));
+    }
+
+    @Test
+    public void getMaritalStatus_shouldReturnMaritalStatus() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("MARITIAL").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("Married");
+        identityService.insert(patientIdentity);
+
+        Assert.assertEquals("Married", patientService.getMaritalStatus(patient));
+    }
+
+    @Test
+    public void getObNumber_shouldReturngObNumber() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("OB_NUMBER").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("1234");
+        identityService.insert(patientIdentity);
+
+        Assert.assertEquals("1234", patientService.getObNumber(patient));
+    }
+
+    @Test
+    public void getPCNumber_shouldReturngPCNumber() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("PC_NUMBER").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("1234");
+        identityService.insert(patientIdentity);
+
+        Assert.assertEquals("1234", patientService.getPCNumber(patient));
+    }
+
+    @Test
+    public void getSTNumber_shouldReturngSTNumber() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("ST").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("1234");
+        identityService.insert(patientIdentity);
+
+        Assert.assertEquals("1234", patientService.getSTNumber(patient));
+    }
+
+    @Test
+    public void getAKA_shouldReturnAKA() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("AKA").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("BigMan");
+        identityService.insert(patientIdentity);
+
+        Assert.assertEquals("BigMan", patientService.getAKA(patient));
+    }
+
+    @Test
+    public void getGUID_shouldReturnGUID() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("GUID").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("EA400A1");
+        identityService.insert(patientIdentity);
+
+        Assert.assertEquals("EA400A1", patientService.getGUID(patient));
+    }
+
+    @Test
+    public void getGUID_shouldReturnEmptyStringForNullPatient() throws Exception {
+        Assert.assertEquals("", patientService.getGUID(null));
+    }
+
+    @Test
+    public void getGUID_shouldReturnEmptyStringForNullPatientWithNoGUID() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        Assert.assertEquals("", patientService.getGUID(patient));
+    }
+
+    @Test
+    public void getPatientForGuid_shouldReturnPatientForGuid() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        String patientId = patientService.insert(patient);
+
+        String typeID = identityTypeService.getNamedIdentityType("GUID").getId();
+
+        PatientIdentity patientIdentity = new PatientIdentity();
+        patientIdentity.setIdentityTypeId(typeID);
+        patientIdentity.setPatientId(patientId);
+        patientIdentity.setIdentityData("EA400A1");
+        identityService.insert(patientIdentity);
+
+        Patient savedPatient = patientService.getPatientForGuid("EA400A1");
 
         Assert.assertEquals(gender, savedPatient.getGender());
     }
@@ -169,6 +590,18 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
         Patient patient = createPatient(firstName, lastname, dob, gender);
         patientService.insert(patient);
         Assert.assertEquals(1, patientService.getAllPatients().size());
+    }
+
+    @Test
+    public void getByExternalId_shouldGetAllPatients() throws Exception {
+        String firstName = "John";
+        String lastname = "Doe";
+        String dob = "12/12/1992";
+        String gender = "M";
+        Patient patient = createPatient(firstName, lastname, dob, gender);
+        patient.setExternalId("432");
+        patientService.insert(patient);
+        Assert.assertEquals(gender, patientService.getByExternalId("432").getGender());
     }
 
     @Test
@@ -499,6 +932,18 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
         String localizedGender = patientService.getLocalizedGender(pat);
 
         Assert.assertEquals("MALE", localizedGender);
+    }
+
+    @Test
+    public void getBirthdayForDisplay_shouldReturnBirthdayForDisplay() throws Exception {
+        String firstName = "Tayebwa";
+        String lastName = "Noah";
+        String dob = "01/01/2020";
+        String gender = "M";
+        Patient pat = createPatient(firstName, lastName, dob, gender);
+        pat.setBirthDateForDisplay("01/01/2020");
+
+        Assert.assertEquals(dob, patientService.getBirthdayForDisplay(pat));
     }
 
     @Test

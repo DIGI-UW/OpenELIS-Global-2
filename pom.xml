@@ -16,7 +16,7 @@
     <minor.version>1</minor.version>
     <state.version>0</state.version>
     <!-- 0 = alpha, 1 = beta, 2 = rc, 3 = deployable -->
-    <fix.version>0</fix.version>
+    <fix.version>3</fix.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <liquibase.propertyFile>${project.basedir}/liquibase/liquibase.properties</liquibase.propertyFile>
     <castor.version>1.4.1</castor.version>
@@ -402,6 +402,12 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>org.dbunit</groupId>
+      <artifactId>dbunit</artifactId>
+      <version>2.7.3</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
       <version>2.21.0</version>
@@ -517,6 +523,11 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>pl.pragmatists</groupId>
+      <artifactId>JUnitParams</artifactId>
+      <version>1.1.0</version>
+    </dependency>
+    <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
       <version>${postgresql.version}</version>
@@ -563,14 +574,20 @@
   </dependencies>
   <repositories>
     <repository>
-      <id>jaspersoft-third-party</id>
-      <url>https://jaspersoft.jfrog.io/jaspersoft/third-party-ce-artifacts/</url>
+        <id>jaspersoft-third-party</id>
+        <url>https://jaspersoft.jfrog.io/jaspersoft/third-party-ce-artifacts/</url>
     </repository>
     <repository>
-      <id>shibboleth</id> <!-- openSaml-->
-      <url>https://build.shibboleth.net/maven/releases/</url>
+        <id>shibboleth</id>
+        <!-- openSaml-->
+        <url>https://build.shibboleth.net/maven/releases/</url>
     </repository>
-  </repositories>
+    <repository>
+        <id>uwdigi-repo-central</id>
+        <name>DIGI Public Repository</name>
+        <url>https://packages.uwdigi.org/artifactory/public</url>
+    </repository>
+</repositories>
   <build>
     <finalName>OpenELIS-Global</finalName>
     <resources>

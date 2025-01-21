@@ -224,7 +224,7 @@ public class PatientTypeDAOImpl extends BaseDAOImpl<PatientType, String> impleme
     public List<PatientType> getPatientTypes(String description) throws LIMSRuntimeException {
         List<PatientType> list = new Vector<>();
         try {
-            String sql = "from patientType l where upper(l.description) like upper(:param) order by"
+            String sql = "from PatientType l where upper(l.description) like upper(:param) order by"
                     + " upper(l.description)";
             org.hibernate.query.Query query = entityManager.unwrap(Session.class).createQuery(sql);
             query.setParameter("param", description + "%");

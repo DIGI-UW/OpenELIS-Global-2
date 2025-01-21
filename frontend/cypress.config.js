@@ -20,6 +20,8 @@ module.exports = defineConfig({
         "cypress/e2e/report.cy.js",
         "cypress/e2e/batchOrderEntry.cy.js",
         "cypress/e2e/dashboard.cy.js",
+        "cypress/e2e/labNumberManagement.cy.js",
+        "cypress/e2e/AdminE2E/MenuConfig/globalMenuConfig.cy.js",
       ];
       return config;
     },

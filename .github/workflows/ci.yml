@@ -31,11 +31,11 @@ jobs:
       - name: check formatting
         run: mvn spotless:check
 
-      - name: Initialize and build submodules
-        run: |
-          cd dataexport
-          mvn clean install  
-          cd ..
+      # - name: Initialize and build submodules
+      #   run: |
+      #     cd dataexport
+      #     mvn clean install  
+      #     cd ..
 
       - name: Build OpenELIS-Global2
         run: mvn clean install -Dspotless.check.skip=true

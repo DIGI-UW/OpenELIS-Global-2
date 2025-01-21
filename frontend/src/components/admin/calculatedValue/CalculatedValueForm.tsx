@@ -38,7 +38,14 @@ import {
 } from "../../common/CustomNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
-const breadcrumbs = [{ label: "home.label", link: "/" }];
+const breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+  {
+    label: "sidenav.label.admin.testmgt.calculated",
+    link: "/MasterListsPage#calculatedValue",
+  },
+];
 interface CalculatedValueProps {}
 
 type TestListField = "TEST_RESULT" | "FINAL_RESULT";
@@ -88,6 +95,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   const [sampleList, setSampleList] = useState([]);
   const [sampleTestList, setSampleTestList] = useState(TestListObj);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext<NotificationContextType>(NotificationContext);
   const [mathFunctions, setMathFunctions] = useState([mathFunction]);
@@ -342,6 +350,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   };
 
   const handleCalculationSubmited = (status, index) => {
+    setIsSubmitting(false);
     setNotificationVisible(true);
     if (status == "200") {
       const element = document.getElementById(
@@ -373,6 +382,10 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
 
   const handleSubmit = (event: any, index: number) => {
     event.preventDefault();
+    if (isSubmitting) {
+      return;
+    }
+    setIsSubmitting(true);
     let mathematicalOperation = "";
     calculationList[index]["operations"].forEach(
       (operation, operationIndex) => {
@@ -617,7 +630,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   return (
     <div className="adminPageContent">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
-      <Grid>
+      <Grid fullWidth={true}>
         <Column lg={16}>
           <Section>
             <Heading>
@@ -760,7 +773,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                 </div>
                               ),
                             )}{" "}
-                            {<b style={{ color: "red" }}>{" => "}</b>} &nbsp;{" "}
+                            {<b style={{ color: "red" }}>{" ⟶ "}</b>} &nbsp;{" "}
                             {calculation.testId ? "'" : ""}
                             {sampleTestList["FINAL_RESULT"][index]
                               ? sampleTestList["FINAL_RESULT"][index]?.filter(
@@ -943,6 +956,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         type="submit"
                         kind="primary"
                         size="sm"
+                        disabled={isSubmitting}
                       >
                         <FormattedMessage id="label.button.submit" />
                       </Button>

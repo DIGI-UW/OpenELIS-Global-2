@@ -147,6 +147,9 @@ function OrganizationAddModify() {
         isActive: typeOfActivity.isActive,
         internetAddress: typeOfActivity.internetAddress,
         selectedTypes: typeOfActivity.selectedTypes,
+        cliaNum: typeOfActivity.cliaNum,
+        streetAddress: typeOfActivity.streetAddress,
+        city: typeOfActivity.city,
       };
 
       const organizationsManagementIdInfoPost = {
@@ -169,6 +172,9 @@ function OrganizationAddModify() {
         internetAddress: typeOfActivity.internetAddress,
         selectedTypes: typeOfActivity.selectedTypes,
         organization: typeOfActivity.organization,
+        cliaNum: typeOfActivity.cliaNum,
+        streetAddress: typeOfActivity.streetAddress,
+        city: typeOfActivity.city,
       };
       setOrgInfo(organizationsManagementIdInfo);
       setOrgInfoPost(organizationsManagementIdInfoPost);
@@ -227,6 +233,42 @@ function OrganizationAddModify() {
     setOrgInfo((prevOrgInfo) => ({
       ...prevOrgInfo,
       shortName: e.target.value,
+    }));
+  }
+
+  function handleStreetAddressChange(e) {
+    setSaveButton(false);
+    setOrgInfoPost((prevOrgInfoPost) => ({
+      ...prevOrgInfoPost,
+      streetAddress: e.target.value,
+    }));
+    setOrgInfo((prevOrgInfo) => ({
+      ...prevOrgInfo,
+      streetAddress: e.target.value,
+    }));
+  }
+
+  function handleCityChange(e) {
+    setSaveButton(false);
+    setOrgInfoPost((prevOrgInfoPost) => ({
+      ...prevOrgInfoPost,
+      city: e.target.value,
+    }));
+    setOrgInfo((prevOrgInfo) => ({
+      ...prevOrgInfo,
+      city: e.target.value,
+    }));
+  }
+
+  function handleCliaNumberChange(e) {
+    setSaveButton(false);
+    setOrgInfoPost((prevOrgInfoPost) => ({
+      ...prevOrgInfoPost,
+      cliaNum: e.target.value,
+    }));
+    setOrgInfo((prevOrgInfo) => ({
+      ...prevOrgInfo,
+      cliaNum: e.target.value,
     }));
   }
 
@@ -501,7 +543,7 @@ function OrganizationAddModify() {
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
-                      id="internet-address"
+                      id="org-internet-address"
                       className="defalut"
                       type="text"
                       labelText=""
@@ -516,6 +558,80 @@ function OrganizationAddModify() {
                           : ""
                       }
                       onChange={(e) => handleInternetAddressChange(e)}
+                    />
+                  </Column>
+                </Grid>
+                <Grid fullWidth={true}>
+                  <Column lg={8} md={4} sm={4}>
+                    <>
+                      <FormattedMessage id="organization.streetAddress" /> :
+                    </>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <TextInput
+                      id="org-street-address"
+                      className="defalut"
+                      type="text"
+                      labelText=""
+                      maxLength={15}
+                      placeholder={intl.formatMessage({
+                        id: "organization.add.placeholder",
+                      })}
+                      // invalid={errors.order && touched.order}
+                      // invalidText={errors.order}
+                      // required={true}
+                      value={
+                        orgInfo && orgInfo.streetAddress
+                          ? orgInfo.streetAddress
+                          : ""
+                      }
+                      onChange={(e) => handleStreetAddressChange(e)}
+                    />
+                  </Column>
+                </Grid>
+                <Grid fullWidth={true}>
+                  <Column lg={8} md={4} sm={4}>
+                    <>
+                      <FormattedMessage id="organization.city" /> :
+                    </>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <TextInput
+                      id="org-city"
+                      className="defalut"
+                      type="text"
+                      labelText=""
+                      maxLength={15}
+                      placeholder={intl.formatMessage({
+                        id: "organization.add.placeholder",
+                      })}
+                      // invalid={errors.order && touched.order}
+                      // invalidText={errors.order}
+                      // required={true}
+                      value={orgInfo && orgInfo.city ? orgInfo.city : ""}
+                      onChange={(e) => handleCityChange(e)}
+                    />
+                  </Column>
+                </Grid>
+                <Grid fullWidth={true}>
+                  <Column lg={8} md={4} sm={4}>
+                    <>
+                      <FormattedMessage id="organization.clia.number" /> :
+                    </>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <TextInput
+                      id="org-clia-number"
+                      className="defalut"
+                      type="text"
+                      placeholder={intl.formatMessage({
+                        id: "organization.add.placeholder",
+                      })}
+                      // invalid={errors.order && touched.order}
+                      // invalidText={errors.order}
+                      // required={true}
+                      value={orgInfo && orgInfo.cliaNum ? orgInfo.cliaNum : ""}
+                      onChange={(e) => handleCliaNumberChange(e)}
                     />
                   </Column>
                 </Grid>
@@ -623,16 +739,10 @@ function OrganizationAddModify() {
                           <TableSelectAll
                             id="table-select-all"
                             {...getSelectionProps()}
-                            checked={
-                              selectedRowIds.length === pageSize &&
-                              typeOfActivityShow
-                                .slice((page - 1) * pageSize, page * pageSize)
-                                .filter(
-                                  (row) =>
-                                    !row.disabled &&
-                                    selectedRowIds.includes(row.id),
-                                ).length === pageSize
-                            }
+                            checked={typeOfActivityShow
+                              .slice((page - 1) * pageSize, page * pageSize)
+                              .filter((row) => !row.disabled)
+                              .every((row) => selectedRowIds.includes(row.id))}
                             indeterminate={
                               selectedRowIds.length > 0 &&
                               selectedRowIds.length <

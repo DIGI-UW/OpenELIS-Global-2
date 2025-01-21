@@ -30,3 +30,4 @@ src/main/resources/adminPassword.txt
 /.apt_generated/
 */plugins/*.jar
 Patient/*
+volume/*

@@ -16,7 +16,7 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
 ADD ./pom.xml /build/pom.xml
 ADD ./tools /build/tools
 ADD ./src /build/src
-ADD ./dataexport /build/dataexport
+# ADD ./dataexport /build/dataexport
 
 WORKDIR /build
 
@@ -28,17 +28,20 @@ RUN ./install/createDefaultPassword.sh -c -p ${DEFAULT_PW}
 ##
 # Build DataExport
 #
-WORKDIR /build/dataexport/dataexport-core
-RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn dependency:go-offline 
-RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn clean install -DskipTests
-WORKDIR /build/dataexport/
-RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn dependency:go-offline 
-RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn clean install -DskipTests
+# WORKDIR /build/dataexport/dataexport-core
+# RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+#     mvn dependency:go-offline 
+# RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+#     mvn clean install -DskipTests
+# WORKDIR /build/dataexport/
+# RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+#     mvn dependency:go-offline 
+# RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+#     mvn clean install -DskipTests
 
+##
+# Build the Project
+#    
 WORKDIR /build
 
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \

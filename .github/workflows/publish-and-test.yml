@@ -19,90 +19,6 @@ env:
   DOCKER_TEST_NAME: ${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2-test
 
 jobs:
-  build-and-push-image-backend-dev:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-        # Add support for more platforms with QEMU (optional)
-        # https://github.com/docker/setup-qemu-action
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ vars.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.DOCKER_NAME }}-dev
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile.dev
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.DOCKER_TEST_NAME }}:buildcache-dev
-          cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}:buildcache-dev,mode=max
-          build-args: SKIP_SPOTLESS=true
-
-  build-and-push-image-frontend-dev:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-        # Add support for more platforms with QEMU (optional)
-        # https://github.com/docker/setup-qemu-action
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ vars.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.DOCKER_NAME }}-frontend-dev
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-frontend:buildcache-dev
-          cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-frontend:buildcache-dev,mode=max
-
   build-and-push-test-image-backend:
     runs-on: ubuntu-latest
     permissions:
@@ -227,8 +143,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           # cache-from: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-frontend:buildcache
-          cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-proxy:buildcache,mode=max      
-   
+          cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-proxy:buildcache,mode=max
+
   build-and-push-test-image-fhir:
     runs-on: ubuntu-latest
     permissions:
@@ -386,9 +302,7 @@ jobs:
           cache-from: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-frontend:buildcache
           cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-frontend:buildcache,mode=max
 
-
   build-and-push-image-proxy:
-    needs: [run-e2e-qa]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -427,10 +341,9 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-proxy:buildcache
-          cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-proxy:buildcache,mode=max      
-   
+          cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-proxy:buildcache,mode=max
+
   build-and-push-image-fhir:
-    needs: [run-e2e-qa]
     runs-on: ubuntu-latest
     permissions:
       contents: read

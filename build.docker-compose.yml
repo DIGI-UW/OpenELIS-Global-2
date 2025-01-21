@@ -2,7 +2,10 @@ version: '3.3'
 services:
   certs:
     container_name: oe-certs
-    image: itechuw/certgen:main
+    image: certgen
+    build:
+      context: ./frontend
+      dockerfile: ./Dockerfile.certs
     restart: always
     environment:
       - KEYSTORE_PW="kspass"
