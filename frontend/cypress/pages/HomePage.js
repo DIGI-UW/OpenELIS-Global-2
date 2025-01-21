@@ -197,6 +197,7 @@ class HomePage {
   goToAdminPage() {
     this.openNavigationMenu();
     cy.get("#menu_administration").click();
+    //cy.get("#menu_administration_nav").click();
     return new AdminPage();
   }
 }
