@@ -27,11 +27,13 @@ import org.openelisglobal.notification.service.AnalysisNotificationConfigService
 import org.openelisglobal.notification.service.TestNotificationConfigService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
+import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.program.service.ImmunohistochemistrySampleService;
 import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.service.ProgramSampleService;
+import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.referral.service.ReferralResultService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.service.ReferralSetService;
@@ -404,6 +406,16 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public StatusOfSampleService statusOfSampleService() {
         return mock(StatusOfSampleService.class);
+    }
+
+    @Bean
+    public OrganizationService organizationService() {
+        return mock(OrganizationService.class);
+    }
+
+    @Bean
+    public ProviderService providerService() {
+        return mock(ProviderService.class);
     }
 
     @Override
