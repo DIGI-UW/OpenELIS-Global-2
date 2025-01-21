@@ -16,6 +16,7 @@ import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.search.service.SearchResultsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -35,6 +36,9 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
     PatientService patientService;
 
     @Autowired
+    SampleHumanService humanService;
+
+    @Autowired
     PersonService personService;
 
     @Autowired
@@ -46,12 +50,14 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void init() throws Exception {
+        humanService.deleteAll(humanService.getAll());
         patientService.deleteAll(patientService.getAll());
         personService.deleteAll(personService.getAll());
     }
 
     @After
     public void tearDown() {
+        humanService.deleteAll(humanService.getAll());
         patientService.deleteAll(patientService.getAll());
         personService.deleteAll(personService.getAll());
     }
