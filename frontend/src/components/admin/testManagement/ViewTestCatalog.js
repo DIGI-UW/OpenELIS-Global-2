@@ -330,7 +330,7 @@ const TestCatalog = () => {
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <br />
       <div className="orderLegendBody">
-        <Grid>
+        <Grid fullWidth={true}>
           <Column lg={12}>
             <h1>
               {" "}

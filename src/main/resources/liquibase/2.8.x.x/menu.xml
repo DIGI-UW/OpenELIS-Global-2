@@ -298,4 +298,40 @@
         </update>
     </changeSet>
 
+    <changeSet author="vishal" id="14">
+        <comment>Update pathology menu to remove dashboard submenu and add direct URL</comment>
+        <!-- Delete the dashboard submenu -->
+        <delete tableName="menu" schemaName="clinlims">
+            <where>element_id='menu_pathologydashboard'</where>
+        </delete>
+        <!-- Update the parent menu with the action URL -->
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/PathologyDashboard"/>
+            <where>element_id='menu_pathology'</where>
+        </update>
+    </changeSet>
+
+    <changeSet author="vishal" id="15">
+        <comment>Update cytology menu to remove dashboard submenu and add direct URL</comment>
+        <delete tableName="menu" schemaName="clinlims">
+            <where>element_id='menu_cytologydashboard'</where>
+        </delete>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/CytologyDashboard"/>
+            <where>element_id='menu_cytology'</where>
+        </update>
+    </changeSet>
+
+    <changeSet author="vishal" id="16">
+        <comment>Update immunochemistry menu to remove dashboard submenu and add direct URL</comment>
+        <delete tableName="menu" schemaName="clinlims">
+            <where>element_id='menu_immunochemdashboard'</where>
+        </delete>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/ImmunohistochemistryDashboard"/>
+            <where>element_id='menu_immunochem'</where>
+        </update>
+    </changeSet>
+
+
 </databaseChangeLog>

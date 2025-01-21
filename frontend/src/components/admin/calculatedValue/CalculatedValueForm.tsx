@@ -38,7 +38,14 @@ import {
 } from "../../common/CustomNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
-const breadcrumbs = [{ label: "home.label", link: "/" }];
+const breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+  {
+    label: "sidenav.label.admin.testmgt.calculated",
+    link: "/MasterListsPage#calculatedValue",
+  },
+];
 interface CalculatedValueProps {}
 
 type TestListField = "TEST_RESULT" | "FINAL_RESULT";
@@ -623,7 +630,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   return (
     <div className="adminPageContent">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
-      <Grid>
+      <Grid fullWidth={true}>
         <Column lg={16}>
           <Section>
             <Heading>

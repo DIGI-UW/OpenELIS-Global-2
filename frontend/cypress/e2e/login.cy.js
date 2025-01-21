@@ -45,12 +45,10 @@ describe("Failing or Succeeding to Login", function () {
         login.signIn();
 
         if (user.correctPass === true) {
-          cy.get("header#mainHeader > button[title='Open menu']")
-            .should("exist")
-            .and(
-              "span:nth-of-type(3) > .cds--btn.cds--btn--icon-only.cds--btn--primary.cds--header__action > svg > path:nth-of-type(1)",
-              "exist",
-            );
+          cy.get("header#mainHeader > button[title='Open menu']").should(
+            "exist",
+          );
+          cy.get(".custom-action svg path:first-of-type").should("exist");
         } else {
           cy.get("div[role='status']").should("be.visible");
         }
