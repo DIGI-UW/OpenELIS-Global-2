@@ -278,6 +278,7 @@
   "sidenav.label.admin.testmgt.reflex": "Reflex Tests Management",
   "sidenav.label.admin.testmgt.calculated": "Calculated Value Tests Management",
   "sidenav.label.admin.testmgt.ViewtestCatalog": "View Test Catalog",
+  "sidenav.label.admin.testmgt.AddNewTest": "Add New Test",
   "sidenav.label.admin.testmgt.ManageMethod": "Manage Method",
   "sidenav.label.admin.analyzerTest": "Analyzer Test Name",
   "sidenav.label.admin.program": "Program Entry",
