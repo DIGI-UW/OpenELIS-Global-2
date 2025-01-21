@@ -60,8 +60,6 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
 
     @After
     public void tearDown() {
-        humanService.deleteAll(humanService.getAll());
-        providerService.deleteAll(providerService.getAll());
         patientService.deleteAll(patientService.getAll());
         personService.deleteAll(personService.getAll());
     }

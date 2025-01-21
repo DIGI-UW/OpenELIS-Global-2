@@ -190,6 +190,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * @param sequenceName The name of the sequence to reset.
      * @throws Exception If any database error occurs.
      */
+    @AfterTransaction
     protected void resetSequence(String tableName, String columnName, String sequenceName) throws Exception {
         String maxIdQuery = String.format("SELECT COALESCE(MAX(CAST(%s AS BIGINT)), 0) AS max_id FROM %s", columnName,
                 tableName);
