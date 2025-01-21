@@ -75,13 +75,19 @@ function ProgramManagement() {
 
   function setAdditionalQuestions(res) {
     console.debug(res);
-    if (res.additionalOrderEntryQuestions) {
+
+    const problematicPrograms = ["immunohistochemistry", "histopathology"];
+
+    if (problematicPrograms.includes(res.program.programName?.toLowerCase())) {
+      res.additionalOrderEntryQuestions = "";
+    } else if (res.additionalOrderEntryQuestions) {
       res.additionalOrderEntryQuestions = JSON.stringify(
         res.additionalOrderEntryQuestions,
         null,
         4,
       );
     }
+
     const newProgramValues = {
       ...ProgramFormValues,
       ...res,
