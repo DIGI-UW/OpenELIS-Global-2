@@ -258,6 +258,7 @@
   "sidenav.label.admin.testmgt.reflex": "Gestion des tests de réflexes",
   "sidenav.label.admin.testmgt.calculated": "Gestion des tests de valeur calculée",
   "sidenav.label.admin.testmgt.ViewtestCatalog": "Voir le catalogue des tests",
+  "sidenav.label.admin.testmgt.AddNewTest": "Ajouter un nouveau test",
   "sidenav.label.admin.analyzerTest": "Nom du test de l'analyseur",
   "sidenav.label.admin.program": "Entrée du Programme",
   "sidenav.label.admin.organizationmgt": "Gestion de l'Organisation",

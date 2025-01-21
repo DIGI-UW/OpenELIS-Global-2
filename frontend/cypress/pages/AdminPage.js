@@ -13,13 +13,13 @@ class AdminPage {
   goToLabNumberManagementPage() {
     // Click on the element using the provided selector
     cy.get("a.cds--side-nav__link[href='#labNumber']")
-      .should("be.visible") 
-      .click(); 
+      .should("be.visible")
+      .click();
 
-    cy.url().should("include", "#labNumber"); 
-    cy.contains("Lab Number Management").should("be.visible"); 
+    cy.url().should("include", "#labNumber");
+    cy.contains("Lab Number Management").should("be.visible");
 
-    return new LabNumberManagementPage(); 
+    return new LabNumberManagementPage();
   }
 
   //global menu configuration
