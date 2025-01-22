@@ -8,46 +8,27 @@ import {
   SelectItem,
   MultiSelect,
   Button,
+  Checkbox,
   StructuredListWrapper,
   StructuredListHead,
   StructuredListRow,
   StructuredListCell,
   StructuredListBody,
   Section,
+  Heading,
 } from "@carbon/react";
+import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils.js";
+import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import { FormattedMessage, useIntl } from "react-intl";
 
-// Utility functions for API calls
-const getFromOpenElisServer = async (endpoint) => {
-  try {
-    const response = await fetch(`http://your-backend-server${endpoint}`);
-    if (!response.ok) {
-      throw new Error("Network response was not ok");
-    }
-    return await response.json();
-  } catch (error) {
-    console.error("Error fetching data:", error);
-    return [];
-  }
-};
-
-const postToOpenElisServer = async (endpoint, data) => {
-  try {
-    const response = await fetch(`http://your-backend-server${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      throw new Error("Network response was not ok");
-    }
-    return await response.json();
-  } catch (error) {
-    console.error("Error posting data:", error);
-    throw error;
-  }
-};
+let breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+  {
+    label: "sidenav.label.admin.testmgt.AddNewTest",
+    link: "/MasterListsPage#AddNewTest",
+  },
+];
 
 const AddNewTest = () => {
   const [step, setStep] = useState(1);
@@ -77,7 +58,7 @@ const AddNewTest = () => {
       lowReportingRange: "-Infinity",
       highReportingRange: "Infinity",
       lowCritical: "-Infinity",
-      highCritical: "Infinity",
+      highCritical: "-Infinity",
       significantDigits: "",
     },
   });
@@ -88,58 +69,38 @@ const AddNewTest = () => {
   const [resultTypes, setResultTypes] = useState([]);
   const [sampleTypes, setSampleTypes] = useState([]);
   const [dictionaries, setDictionaries] = useState([]);
+  const [ageRangeList, setAgeRangeList] = useState([]);
+  const [error, setError] = useState(null);
+  const intl = useIntl();
 
-  // Fetch data from the backend on component mount
+  const fetchAllData = async () => {
+    try {
+      const response = await getFromOpenElisServer("/api/test/add");
+      setTestUnits(response.labUnitList || []);
+      setPanels(response.panelList || []);
+      setUoms(response.uomList || []);
+      setResultTypes(response.resultTypeList || []);
+      setSampleTypes(response.sampleTypeList || []);
+      setDictionaries(response.dictionaryList || []);
+      setAgeRangeList(response.ageRangeList || []);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setError("Failed to fetch data.");
+    }
+  };
+
   useEffect(() => {
-    console.log("Fetching data...");
-    fetchTestUnits();
-    fetchPanels();
-    fetchUoms();
-    fetchResultTypes();
-    fetchSampleTypes();
-    fetchDictionaries();
+    fetchAllData();
   }, []);
 
-  const fetchTestUnits = async () => {
-    console.log("Fetching test units...");
-    const response = await getFromOpenElisServer("/rest/TestUnits");
-    console.log("Test Units:", response);
-    setTestUnits(response);
-  };
-
-  const fetchPanels = async () => {
-    console.log("Fetching panels...");
-    const response = await getFromOpenElisServer("/rest/Panels");
-    console.log("Panels:", response);
-    setPanels(response);
-  };
-
-  const fetchUoms = async () => {
-    console.log("Fetching UOMs...");
-    const response = await getFromOpenElisServer("/rest/Uoms");
-    console.log("UOMs:", response);
-    setUoms(response);
-  };
-
-  const fetchResultTypes = async () => {
-    console.log("Fetching result types...");
-    const response = await getFromOpenElisServer("/rest/ResultTypes");
-    console.log("Result Types:", response);
-    setResultTypes(response);
-  };
-
-  const fetchSampleTypes = async () => {
-    console.log("Fetching sample types...");
-    const response = await getFromOpenElisServer("/rest/SampleTypes");
-    console.log("Sample Types:", response);
-    setSampleTypes(response);
-  };
-
-  const fetchDictionaries = async () => {
-    console.log("Fetching dictionaries...");
-    const response = await getFromOpenElisServer("/rest/Dictionaries");
-    console.log("Dictionaries:", response);
-    setDictionaries(response);
+  const handleTestAdd = (response) => {
+    if (response && (response.status === 200 || response.status === 201)) {
+      console.log("Test added successfully:", response.data);
+      alert("Test added successfully!");
+    } else {
+      setError("Failed to add test. Please try again.");
+      console.error("Error adding test:", response);
+    }
   };
 
   const nextStep = () => setStep(step + 1);
@@ -156,19 +117,17 @@ const AddNewTest = () => {
   const handleMultiSelectChange = (selectedItems) => {
     setFormData({
       ...formData,
-      panelSelection: selectedItems.selectedItems,
+      panelSelection: selectedItems.selectedItems || selectedItems,
     });
   };
 
   const handleSubmit = async () => {
     try {
-      console.log("Submitting form data:", formData);
       const response = await postToOpenElisServer("/rest/TestAdd", formData);
-      console.log("Test added successfully:", response);
-      alert("Test added successfully!");
+      handleTestAdd(response); 
     } catch (error) {
+      setError("Failed to add test. Please try again.");
       console.error("Error adding test:", error);
-      alert("Failed to add test.");
     }
   };
 
@@ -176,83 +135,225 @@ const AddNewTest = () => {
     setShowGuide(!showGuide);
   };
 
+  const rows = [
+     {
+       id: "name",
+       field: intl.formatMessage({ id: "field.name" }),
+       description: <FormattedMessage id="description.name" />,
+     },
+     {
+       id: "reportName",
+       field: intl.formatMessage({ id: "field.reportName" }),
+       description: <FormattedMessage id="description.reportName" />,
+     },
+     {
+       id: "active",
+       field: intl.formatMessage({ id: "field.active" }),
+       description: <FormattedMessage id="description.active" />,
+     },
+     {
+       id: "orderable",
+       field: intl.formatMessage({ id: "field.orderable" }),
+       description: <FormattedMessage id="description.orderable" />,
+     },
+     {
+       id: "testUnit",
+       field: intl.formatMessage({ id: "field.testUnit" }),
+       description: <FormattedMessage id="description.testUnit" />,
+     },
+     {
+       id: "sampleType",
+       field: intl.formatMessage({ id: "field.sampleType" }),
+       description: <FormattedMessage id="description.sampleType" />,
+     },
+     {
+       id: "panel",
+       field: intl.formatMessage({ id: "field.panel" }),
+       description: <FormattedMessage id="description.panel" />,
+     },
+     {
+       id: "resultType",
+       field: intl.formatMessage({ id: "field.resultType" }),
+       description: (
+         <>
+           <p>
+             <FormattedMessage id="description.resultType.kind" />
+           </p>
+           <ul>
+             <li>
+               <strong>
+                 <FormattedMessage id="description.resultType.numeric" />
+               </strong>
+               <FormattedMessage id="description.resultType.numericDesc" />
+             </li>
+             <li>
+               <strong>
+                 <FormattedMessage id="description.resultType.alphanumeric" />
+               </strong>
+               <FormattedMessage id="description.resultType.alphanumericDesc" />
+             </li>
+             <li>
+               <strong>
+                 <FormattedMessage id="description.resultType.textArea" />
+               </strong>
+               <FormattedMessage id="description.resultType.textAreaDesc" />
+             </li>
+             <li>
+               <strong>
+                 <FormattedMessage id="description.resultType.selectList" />
+               </strong>
+               <FormattedMessage id="description.resultType.selectListDesc" />
+             </li>
+             <li>
+               <strong>
+                 <FormattedMessage id="description.resultType.multiSelectList" />
+               </strong>
+               <FormattedMessage id="description.resultType.multiSelectListDesc" />
+             </li>
+             <li>
+               <strong>
+                 <FormattedMessage id="description.resultType.cascadingMultiSelectList" />
+               </strong>
+               <FormattedMessage id="description.resultType.cascadingMultiSelectListDesc" />
+             </li>
+           </ul>
+         </>
+       ),
+     },
+     {
+       id: "uom",
+       field: intl.formatMessage({ id: "field.uom" }),
+       description: <FormattedMessage id="description.uom" />,
+     },
+     {
+       id: "significantDigits",
+       field: intl.formatMessage({ id: "field.significantDigits" }),
+       description: <FormattedMessage id="description.significantDigits" />,
+     },
+     {
+       id: "selectValues",
+       field: intl.formatMessage({ id: "field.selectValues" }),
+       description: <FormattedMessage id="description.selectValues" />,
+     },
+     {
+       id: "referenceValue",
+       field: intl.formatMessage({ id: "field.referenceValue" }),
+       description: <FormattedMessage id="description.referenceValue" />,
+     },
+     {
+       id: "resultLimits",
+       field: intl.formatMessage({ id: "field.resultLimits" }),
+       description: <FormattedMessage id="description.resultLimits" />,
+     },
+     {
+       id: "sex",
+       field: intl.formatMessage({ id: "field.sex" }),
+       description: <FormattedMessage id="description.sex" />,
+     },
+     {
+       id: "ageRange",
+       field: intl.formatMessage({ id: "field.ageRange" }),
+       description: <FormattedMessage id="description.ageRange" />,
+     },
+     {
+       id: "normalRange",
+       field: intl.formatMessage({ id: "field.normalRange" }),
+       description: <FormattedMessage id="description.normalRange" />,
+     },
+     {
+       id: "validRange",
+       field: intl.formatMessage({ id: "field.validRange" }),
+       description: <FormattedMessage id="description.validRange" />,
+     },
+     {
+       id: "note",
+       field: intl.formatMessage({ id: "field.note" }),
+       description: <FormattedMessage id="description.note" />,
+     },
+   ];
+
   return (
     <div className="adminPageContent">
-      <Grid fullWidth>
-        <Column lg={16}>
-          <h1>Add New Test</h1>
-        </Column>
-        <Column lg={4}>
-          <Toggle
-            id="toggle-guide"
-            labelText="Show Guide"
-            toggled={showGuide}
-            onToggle={handleToggle}
+      <br />
+      <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      <br />
+      <div className="orderLegendBody">
+        <Grid fullWidth={true}>
+          <Column lg={12}>
+            <h1>
+              {" "}
+              <FormattedMessage id="Add New Test" />
+            </h1>
+          </Column>
+          <Column lg={4} md={8} sm={12}>
+            <Toggle id="toggle" labelText="Show Guide" onClick={handleToggle} />
+          </Column>
+        </Grid>
+        <hr />
+
+        {showGuide && (
+          <>
+            <StructuredListWrapper ariaLabel="Structured list">
+              <StructuredListHead>
+                <StructuredListRow head>
+                  <StructuredListCell head>Field</StructuredListCell>
+                  <StructuredListCell head>Description</StructuredListCell>
+                </StructuredListRow>
+              </StructuredListHead>
+              <StructuredListBody>
+                {rows.map((row) => (
+                  <StructuredListRow key={row.id}>
+                    <StructuredListCell>{row.field}</StructuredListCell>
+                    <StructuredListCell>{row.description}</StructuredListCell>
+                  </StructuredListRow>
+                ))}
+              </StructuredListBody>
+            </StructuredListWrapper>
+            <hr />
+            <br />
+          </>
+        )}
+
+        {step === 1 && (
+          <TestForm
+            formData={formData}
+            handleChange={handleChange}
+            nextStep={nextStep}
+            testUnits={testUnits}
+            panels={panels}
+            uoms={uoms}
+            resultTypes={resultTypes}
+            handleMultiSelectChange={handleMultiSelectChange}
           />
-        </Column>
-      </Grid>
-      <hr />
-
-      {showGuide && (
-        <Section>
-          <StructuredListWrapper ariaLabel="Form Guide">
-            <StructuredListHead>
-              <StructuredListRow head>
-                <StructuredListCell head>Field</StructuredListCell>
-                <StructuredListCell head>Description</StructuredListCell>
-              </StructuredListRow>
-            </StructuredListHead>
-            <StructuredListBody>
-              <StructuredListRow>
-                <StructuredListCell>Test Name</StructuredListCell>
-                <StructuredListCell>
-                  Enter the name of the test in English and French.
-                </StructuredListCell>
-              </StructuredListRow>
-              {/* Add more guide rows as needed */}
-            </StructuredListBody>
-          </StructuredListWrapper>
-        </Section>
-      )}
-
-      {step === 1 && (
-        <TestForm
-          formData={formData}
-          handleChange={handleChange}
-          nextStep={nextStep}
-          testUnits={testUnits}
-          panels={panels}
-          uoms={uoms}
-          resultTypes={resultTypes}
-          handleMultiSelectChange={handleMultiSelectChange}
-        />
-      )}
-      {step === 2 && (
-        <SampleTypeSelection
-          formData={formData}
-          handleChange={handleChange}
-          nextStep={nextStep}
-          prevStep={prevStep}
-          sampleTypes={sampleTypes}
-        />
-      )}
-      {step === 3 && (
-        <DictionarySelection
-          formData={formData}
-          handleChange={handleChange}
-          nextStep={nextStep}
-          prevStep={prevStep}
-          dictionaries={dictionaries}
-        />
-      )}
-      {step === 4 && (
-        <NormalRangeComponent
-          formData={formData}
-          handleChange={handleChange}
-          handleSubmit={handleSubmit}
-          prevStep={prevStep}
-        />
-      )}
+        )}
+        {step === 2 && (
+          <SampleTypeSelection
+            formData={formData}
+            handleChange={handleChange}
+            nextStep={nextStep}
+            prevStep={prevStep}
+            sampleTypes={sampleTypes}
+          />
+        )}
+        {step === 3 && (
+          <DictionarySelection
+            formData={formData}
+            handleChange={handleChange}
+            nextStep={nextStep}
+            prevStep={prevStep}
+            dictionaries={dictionaries}
+          />
+        )}
+        {step === 4 && (
+          <NormalRangeComponent
+            formData={formData}
+            handleChange={handleChange}
+            handleSubmit={handleSubmit}
+            prevStep={prevStep}
+            ageRangeList={ageRangeList}
+          />
+        )}
+      </div>
     </div>
   );
 };
@@ -272,30 +373,35 @@ const TestForm = ({
       <Column lg={8}>
         <TextInput
           id="testNameEnglish"
+          name="testNameEnglish"
           labelText="Test Name (English)"
           value={formData.testNameEnglish}
           onChange={handleChange}
         />
         <TextInput
           id="testNameFrench"
+          name="testNameFrench"
           labelText="Test Name (French)"
           value={formData.testNameFrench}
           onChange={handleChange}
         />
         <TextInput
           id="testReportNameEnglish"
+          name="testReportNameEnglish"
           labelText="Test Report Name (English)"
           value={formData.testReportNameEnglish}
           onChange={handleChange}
         />
         <TextInput
           id="testReportNameFrench"
+          name="testReportNameFrench"
           labelText="Test Report Name (French)"
           value={formData.testReportNameFrench}
           onChange={handleChange}
         />
         <Select
           id="testUnitSelection"
+          name="testUnitSelection"
           labelText="Test Section"
           value={formData.testUnitSelection}
           onChange={handleChange}
@@ -307,6 +413,7 @@ const TestForm = ({
         </Select>
         <MultiSelect
           id="panelSelection"
+          name="panelSelection"
           labelText="Panels"
           items={panels}
           itemToString={(item) => item?.value}
@@ -315,6 +422,7 @@ const TestForm = ({
         />
         <Select
           id="uomSelection"
+          name="uomSelection"
           labelText="Unit of Measure"
           value={formData.uomSelection}
           onChange={handleChange}
@@ -326,6 +434,7 @@ const TestForm = ({
         </Select>
         <Select
           id="resultTypeSelection"
+          name="resultTypeSelection"
           labelText="Result Type"
           value={formData.resultTypeSelection}
           onChange={handleChange}
@@ -337,8 +446,44 @@ const TestForm = ({
         </Select>
         <TextInput
           id="loinc"
+          name="loinc"
           labelText="LOINC"
           value={formData.loinc}
+          onChange={handleChange}
+        />
+        <Checkbox
+          id="active"
+          name="active"
+          labelText="Is Active"
+          checked={formData.active}
+          onChange={handleChange}
+        />
+        <Checkbox
+          id="orderable"
+          name="orderable"
+          labelText="Orderable"
+          checked={formData.orderable}
+          onChange={handleChange}
+        />
+        <Checkbox
+          id="notifyResults"
+          name="notifyResults"
+          labelText="Notify Results"
+          checked={formData.notifyResults}
+          onChange={handleChange}
+        />
+        <Checkbox
+          id="inLabOnly"
+          name="inLabOnly"
+          labelText="In Lab Only"
+          checked={formData.inLabOnly}
+          onChange={handleChange}
+        />
+        <Checkbox
+          id="antimicrobialResistance"
+          name="antimicrobialResistance"
+          labelText="Antimicrobial Resistance"
+          checked={formData.antimicrobialResistance}
           onChange={handleChange}
         />
         <Button onClick={nextStep}>Next</Button>
@@ -359,6 +504,7 @@ const SampleTypeSelection = ({
       <Column lg={8}>
         <MultiSelect
           id="sampleTypeSelection"
+          name="sampleTypes"
           labelText="Sample Type"
           items={sampleTypes}
           itemToString={(item) => item?.value}
@@ -384,6 +530,7 @@ const DictionarySelection = ({
       <Column lg={8}>
         <MultiSelect
           id="dictionarySelection"
+          name="dictionary"
           labelText="Dictionary"
           items={dictionaries}
           itemToString={(item) => item?.value}
@@ -402,24 +549,28 @@ const NormalRangeComponent = ({
   handleChange,
   handleSubmit,
   prevStep,
+  ageRangeList,
 }) => {
   return (
     <Grid>
       <Column lg={8}>
         <TextInput
           id="lowNormal"
+          name="normalRange.lowNormal"
           labelText="Low Normal"
           value={formData.normalRange.lowNormal}
           onChange={handleChange}
         />
         <TextInput
           id="highNormal"
+          name="normalRange.highNormal"
           labelText="High Normal"
           value={formData.normalRange.highNormal}
           onChange={handleChange}
         />
         <TextInput
           id="significantDigits"
+          name="normalRange.significantDigits"
           labelText="Significant Digits"
           value={formData.normalRange.significantDigits}
           onChange={handleChange}
