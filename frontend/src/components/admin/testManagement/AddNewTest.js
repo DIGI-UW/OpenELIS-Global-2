@@ -17,7 +17,10 @@ import {
   Section,
   Heading,
 } from "@carbon/react";
-import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils.js";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServer,
+} from "../../utils/Utils.js";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import { FormattedMessage, useIntl } from "react-intl";
 
@@ -124,7 +127,7 @@ const AddNewTest = () => {
   const handleSubmit = async () => {
     try {
       const response = await postToOpenElisServer("/rest/TestAdd", formData);
-      handleTestAdd(response); 
+      handleTestAdd(response);
     } catch (error) {
       setError("Failed to add test. Please try again.");
       console.error("Error adding test:", error);
@@ -136,141 +139,141 @@ const AddNewTest = () => {
   };
 
   const rows = [
-     {
-       id: "name",
-       field: intl.formatMessage({ id: "field.name" }),
-       description: <FormattedMessage id="description.name" />,
-     },
-     {
-       id: "reportName",
-       field: intl.formatMessage({ id: "field.reportName" }),
-       description: <FormattedMessage id="description.reportName" />,
-     },
-     {
-       id: "active",
-       field: intl.formatMessage({ id: "field.active" }),
-       description: <FormattedMessage id="description.active" />,
-     },
-     {
-       id: "orderable",
-       field: intl.formatMessage({ id: "field.orderable" }),
-       description: <FormattedMessage id="description.orderable" />,
-     },
-     {
-       id: "testUnit",
-       field: intl.formatMessage({ id: "field.testUnit" }),
-       description: <FormattedMessage id="description.testUnit" />,
-     },
-     {
-       id: "sampleType",
-       field: intl.formatMessage({ id: "field.sampleType" }),
-       description: <FormattedMessage id="description.sampleType" />,
-     },
-     {
-       id: "panel",
-       field: intl.formatMessage({ id: "field.panel" }),
-       description: <FormattedMessage id="description.panel" />,
-     },
-     {
-       id: "resultType",
-       field: intl.formatMessage({ id: "field.resultType" }),
-       description: (
-         <>
-           <p>
-             <FormattedMessage id="description.resultType.kind" />
-           </p>
-           <ul>
-             <li>
-               <strong>
-                 <FormattedMessage id="description.resultType.numeric" />
-               </strong>
-               <FormattedMessage id="description.resultType.numericDesc" />
-             </li>
-             <li>
-               <strong>
-                 <FormattedMessage id="description.resultType.alphanumeric" />
-               </strong>
-               <FormattedMessage id="description.resultType.alphanumericDesc" />
-             </li>
-             <li>
-               <strong>
-                 <FormattedMessage id="description.resultType.textArea" />
-               </strong>
-               <FormattedMessage id="description.resultType.textAreaDesc" />
-             </li>
-             <li>
-               <strong>
-                 <FormattedMessage id="description.resultType.selectList" />
-               </strong>
-               <FormattedMessage id="description.resultType.selectListDesc" />
-             </li>
-             <li>
-               <strong>
-                 <FormattedMessage id="description.resultType.multiSelectList" />
-               </strong>
-               <FormattedMessage id="description.resultType.multiSelectListDesc" />
-             </li>
-             <li>
-               <strong>
-                 <FormattedMessage id="description.resultType.cascadingMultiSelectList" />
-               </strong>
-               <FormattedMessage id="description.resultType.cascadingMultiSelectListDesc" />
-             </li>
-           </ul>
-         </>
-       ),
-     },
-     {
-       id: "uom",
-       field: intl.formatMessage({ id: "field.uom" }),
-       description: <FormattedMessage id="description.uom" />,
-     },
-     {
-       id: "significantDigits",
-       field: intl.formatMessage({ id: "field.significantDigits" }),
-       description: <FormattedMessage id="description.significantDigits" />,
-     },
-     {
-       id: "selectValues",
-       field: intl.formatMessage({ id: "field.selectValues" }),
-       description: <FormattedMessage id="description.selectValues" />,
-     },
-     {
-       id: "referenceValue",
-       field: intl.formatMessage({ id: "field.referenceValue" }),
-       description: <FormattedMessage id="description.referenceValue" />,
-     },
-     {
-       id: "resultLimits",
-       field: intl.formatMessage({ id: "field.resultLimits" }),
-       description: <FormattedMessage id="description.resultLimits" />,
-     },
-     {
-       id: "sex",
-       field: intl.formatMessage({ id: "field.sex" }),
-       description: <FormattedMessage id="description.sex" />,
-     },
-     {
-       id: "ageRange",
-       field: intl.formatMessage({ id: "field.ageRange" }),
-       description: <FormattedMessage id="description.ageRange" />,
-     },
-     {
-       id: "normalRange",
-       field: intl.formatMessage({ id: "field.normalRange" }),
-       description: <FormattedMessage id="description.normalRange" />,
-     },
-     {
-       id: "validRange",
-       field: intl.formatMessage({ id: "field.validRange" }),
-       description: <FormattedMessage id="description.validRange" />,
-     },
-     {
-       id: "note",
-       field: intl.formatMessage({ id: "field.note" }),
-       description: <FormattedMessage id="description.note" />,
-     },
-   ];
+    {
+      id: "name",
+      field: intl.formatMessage({ id: "field.name" }),
+      description: <FormattedMessage id="description.name" />,
+    },
+    {
+      id: "reportName",
+      field: intl.formatMessage({ id: "field.reportName" }),
+      description: <FormattedMessage id="description.reportName" />,
+    },
+    {
+      id: "active",
+      field: intl.formatMessage({ id: "field.active" }),
+      description: <FormattedMessage id="description.active" />,
+    },
+    {
+      id: "orderable",
+      field: intl.formatMessage({ id: "field.orderable" }),
+      description: <FormattedMessage id="description.orderable" />,
+    },
+    {
+      id: "testUnit",
+      field: intl.formatMessage({ id: "field.testUnit" }),
+      description: <FormattedMessage id="description.testUnit" />,
+    },
+    {
+      id: "sampleType",
+      field: intl.formatMessage({ id: "field.sampleType" }),
+      description: <FormattedMessage id="description.sampleType" />,
+    },
+    {
+      id: "panel",
+      field: intl.formatMessage({ id: "field.panel" }),
+      description: <FormattedMessage id="description.panel" />,
+    },
+    {
+      id: "resultType",
+      field: intl.formatMessage({ id: "field.resultType" }),
+      description: (
+        <>
+          <p>
+            <FormattedMessage id="description.resultType.kind" />
+          </p>
+          <ul>
+            <li>
+              <strong>
+                <FormattedMessage id="description.resultType.numeric" />
+              </strong>
+              <FormattedMessage id="description.resultType.numericDesc" />
+            </li>
+            <li>
+              <strong>
+                <FormattedMessage id="description.resultType.alphanumeric" />
+              </strong>
+              <FormattedMessage id="description.resultType.alphanumericDesc" />
+            </li>
+            <li>
+              <strong>
+                <FormattedMessage id="description.resultType.textArea" />
+              </strong>
+              <FormattedMessage id="description.resultType.textAreaDesc" />
+            </li>
+            <li>
+              <strong>
+                <FormattedMessage id="description.resultType.selectList" />
+              </strong>
+              <FormattedMessage id="description.resultType.selectListDesc" />
+            </li>
+            <li>
+              <strong>
+                <FormattedMessage id="description.resultType.multiSelectList" />
+              </strong>
+              <FormattedMessage id="description.resultType.multiSelectListDesc" />
+            </li>
+            <li>
+              <strong>
+                <FormattedMessage id="description.resultType.cascadingMultiSelectList" />
+              </strong>
+              <FormattedMessage id="description.resultType.cascadingMultiSelectListDesc" />
+            </li>
+          </ul>
+        </>
+      ),
+    },
+    {
+      id: "uom",
+      field: intl.formatMessage({ id: "field.uom" }),
+      description: <FormattedMessage id="description.uom" />,
+    },
+    {
+      id: "significantDigits",
+      field: intl.formatMessage({ id: "field.significantDigits" }),
+      description: <FormattedMessage id="description.significantDigits" />,
+    },
+    {
+      id: "selectValues",
+      field: intl.formatMessage({ id: "field.selectValues" }),
+      description: <FormattedMessage id="description.selectValues" />,
+    },
+    {
+      id: "referenceValue",
+      field: intl.formatMessage({ id: "field.referenceValue" }),
+      description: <FormattedMessage id="description.referenceValue" />,
+    },
+    {
+      id: "resultLimits",
+      field: intl.formatMessage({ id: "field.resultLimits" }),
+      description: <FormattedMessage id="description.resultLimits" />,
+    },
+    {
+      id: "sex",
+      field: intl.formatMessage({ id: "field.sex" }),
+      description: <FormattedMessage id="description.sex" />,
+    },
+    {
+      id: "ageRange",
+      field: intl.formatMessage({ id: "field.ageRange" }),
+      description: <FormattedMessage id="description.ageRange" />,
+    },
+    {
+      id: "normalRange",
+      field: intl.formatMessage({ id: "field.normalRange" }),
+      description: <FormattedMessage id="description.normalRange" />,
+    },
+    {
+      id: "validRange",
+      field: intl.formatMessage({ id: "field.validRange" }),
+      description: <FormattedMessage id="description.validRange" />,
+    },
+    {
+      id: "note",
+      field: intl.formatMessage({ id: "field.note" }),
+      description: <FormattedMessage id="description.note" />,
+    },
+  ];
 
   return (
     <div className="adminPageContent">
