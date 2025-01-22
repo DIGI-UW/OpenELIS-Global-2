@@ -581,15 +581,12 @@ function OEHeader(props) {
                       >
                         <SideNavItems>
                           {menus["menu"].map((childMenuItem, index) => {
-                            // ignore the Home Menu in the new UI
-                            if (childMenuItem.menu.elementId != "menu_home") {
-                              return generateMenuItems(
-                                childMenuItem,
-                                index,
-                                0,
-                                "$.menu[" + index + "]",
-                              );
-                            }
+                            return generateMenuItems(
+                              childMenuItem,
+                              index,
+                              0,
+                              "$.menu[" + index + "]",
+                            );
                           })}
                         </SideNavItems>
                       </SideNav>
