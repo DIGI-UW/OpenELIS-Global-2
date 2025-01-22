@@ -55,48 +55,62 @@ public class PatientEditByProjectRestController extends BasePatientEntryByProjec
     public ResponseEntity<PatientEditByProjectForm> showPatientEditByProjectSave(HttpServletRequest request,
             @RequestBody @Valid PatientEditByProjectForm form, BindingResult result)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+    
+        // Validate the form with the custom validator
         formValidator.validate(form, result);
         if (result.hasErrors()) {
+            // Save errors and return the form with validation errors
             saveErrors(result);
             return ResponseEntity.ok(form);
         }
-
+    
+        // Default to fail insert
         String forward = FWD_FAIL_INSERT;
-
+    
+        // Get the system user ID and add necessary patient form lists
         String sysUserId = getSysUserId(request);
         Accessioner accessioner;
         addAllPatientFormLists(form);
+    
+        // Try saving with different Accessioners if canAccession() is true
         accessioner = new PatientEditUpdate(form, sysUserId, request);
         if (accessioner.canAccession()) {
             forward = handleSave(request, accessioner);
         }
-
+    
         accessioner = new PatientSecondEntry(form, sysUserId, request);
         if (accessioner.canAccession()) {
             forward = handleSave(request, accessioner);
         }
-
+    
         accessioner = new PatientEntry(form, sysUserId, request);
         if (accessioner.canAccession()) {
             forward = handleSave(request, accessioner);
         }
+    
         accessioner = new PatientEntryAfterSampleEntry(form, sysUserId, request);
         if (accessioner.canAccession()) {
             forward = handleSave(request, accessioner);
         }
+    
         accessioner = new PatientEntryAfterAnalyzer(form, sysUserId, request);
         if (accessioner.canAccession()) {
             forward = handleSave(request, accessioner);
         }
+    
+        // Handle response based on the result of saving
         if (forward == null || FWD_FAIL_INSERT.equals(forward)) {
             logAndAddMessage(request, "performAction", "errors.UpdateException");
             forward = FWD_FAIL_INSERT;
         } else if (FWD_SUCCESS_INSERT.equals(forward)) {
-            ResponseEntity.ok(form);
+            // If success, return form with 200 OK status
+            return ResponseEntity.ok(form);
         }
-
+    
+        // If no success, return form with 200 OK but indicating failure
         return ResponseEntity.ok(form);
     }
+    
 
     @Override
     protected String findLocalForward(String forward) {
