@@ -35,28 +35,31 @@ export const postToOpenElisServer = (
   callback,
   extraParams,
 ) => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
-      credentials: "include",
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
-      },
-      body: payLoad,
+  fetch(config.serverBaseUrl + endPoint, {
+    credentials: "include",  // include browser sessionId for authentication
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
     },
-  )
-    .then((response) => response.status)
-    .then((status) => {
-      callback(status, extraParams);
+    body: payLoad,
+  })
+    .then((response) => {
+      // Get the response data as JSON
+      return response.json().then((data) => {
+        if (response.ok) {
+          callback(data, extraParams);  // Pass response data to callback
+        } else {
+          callback(null, extraParams);  // Pass null if error
+          console.error("Error:", response.status, data);  // Log error message
+        }
+      });
     })
     .catch((error) => {
-      console.error(error);
+      console.error("Error:", error);
     });
 };
+
 
 export const postToOpenElisServerFullResponse = (
   endPoint,
