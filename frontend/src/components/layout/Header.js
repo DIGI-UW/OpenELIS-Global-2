@@ -299,7 +299,7 @@ function OEHeader(props) {
 
   const renderSingleNavButton = (menuItem, index, level, path) => {
     const marginValue = (level - 1) * 0.5 + "rem";
-    if(menuItem.menu.actionURL == "/PatientEditByProject?type=readwrite"){
+    if (menuItem.menu.actionURL == "/PatientEditByProject?type=readwrite") {
       return (
         <button
           className={"custom-sidenav-button"}
@@ -316,23 +316,24 @@ function OEHeader(props) {
           {renderSideNavMenuItemLabel(menuItem, level)}
         </button>
       );
-    }else{
-    return (
-      <button
-        className={"custom-sidenav-button"}
-        style={{ width: "100%", marginLeft: marginValue }}
-        id={menuItem.menu.elementId + "_nav"}
-        onClick={() => {
-          if (menuItem.menu.openInNewWindow) {
-            window.open(menuItem.menu.actionURL);
-          } else {
-            window.location.href = menuItem.menu.actionURL;
-          }
-        }}
-      >
-        {renderSideNavMenuItemLabel(menuItem, level)}
-      </button>
-    )};
+    } else {
+      return (
+        <button
+          className={"custom-sidenav-button"}
+          style={{ width: "100%", marginLeft: marginValue }}
+          id={menuItem.menu.elementId + "_nav"}
+          onClick={() => {
+            if (menuItem.menu.openInNewWindow) {
+              window.open(menuItem.menu.actionURL);
+            } else {
+              window.location.href = menuItem.menu.actionURL;
+            }
+          }}
+        >
+          {renderSideNavMenuItemLabel(menuItem, level)}
+        </button>
+      );
+    }
   };
 
   const renderSingleDropdownButton = (menuItem, index, level, path) => {

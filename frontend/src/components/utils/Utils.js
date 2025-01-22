@@ -64,7 +64,7 @@ export const postToOpenElisServer2 = (
   extraParams,
 ) => {
   fetch(config.serverBaseUrl + endPoint, {
-    credentials: "include",  // include browser sessionId for authentication
+    credentials: "include", // include browser sessionId for authentication
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -76,10 +76,10 @@ export const postToOpenElisServer2 = (
       // Get the response data as JSON
       return response.json().then((data) => {
         if (response.ok) {
-          callback(data, extraParams);  // Pass response data to callback
+          callback(data, extraParams); // Pass response data to callback
         } else {
-          callback(null, extraParams);  // Pass null if error
-          console.error("Error:", response.status, data);  // Log error message
+          callback(null, extraParams); // Pass null if error
+          console.error("Error:", response.status, data); // Log error message
         }
       });
     })

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Button,
   Form,
@@ -7,12 +7,11 @@ import {
   TextInput,
   Column,
   Grid,
-  
 } from "@carbon/react";
-import { getFromOpenElisServer, postToOpenElisServer2 } from '../utils/Utils';
-import { useIntl, FormattedMessage } from 'react-intl';
+import { getFromOpenElisServer, postToOpenElisServer2 } from "../utils/Utils";
+import { useIntl, FormattedMessage } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb.js";
-import PatientEditByProjectForm from './patientEdit.js';
+import PatientEditByProjectForm from "./patientEdit.js";
 
 let breadcrumbs = [{ label: "home.label", link: "/" }];
 
@@ -85,7 +84,7 @@ const PatientEditByProject = () => {
     postToOpenElisServer2(endpoint, JSON.stringify(requestBody), (response) => {
       setLoading(false); // Hide loading spinner after response
       if (response) {
-        console.log(response)
+        console.log(response);
         setInfo(response);
       } else {
         console.error("Unexpected API response:", response);
@@ -123,11 +122,17 @@ const PatientEditByProject = () => {
   return (
     <div style={{ padding: "1rem" }}>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
-      <h1><b>
-        <FormattedMessage id="project.edit.title" /> {" "}
-      </b></h1>
+      <h1>
+        <b>
+          <FormattedMessage id="project.edit.title" />{" "}
+        </b>
+      </h1>
 
-      <h2><b><FormattedMessage id="patient.label.info" /> </b></h2>
+      <h2>
+        <b>
+          <FormattedMessage id="patient.label.info" />{" "}
+        </b>
+      </h2>
       <Form onSubmit={handleSubmit}>
         <Grid>
           <Column lg={4} md={8} sm={4}>
@@ -152,29 +157,50 @@ const PatientEditByProject = () => {
             />
           </Column>
           <Column lg={2} md={2} sm={1}>
-            <Button type="submit" disabled={loading}>Search</Button>
+            <Button type="submit" disabled={loading}>
+              Search
+            </Button>
           </Column>
         </Grid>
       </Form>
-<Grid>
-  <Column  lg={4} md={4} sm={4} >
-      <Select
-        id="additional-project"
-        labelText={intl.formatMessage({ id: "project.select.label" })}
-        onChange={(e) => setSelectedForm(e.target.value)}
-      >
-        <SelectItem text={intl.formatMessage({ id: "project.ARVStudy.name" })} value="InitialARV_Id" />
-        <SelectItem text={intl.formatMessage({ id: "project.ARVFollowupStudy.name" })} value="FollowUpARV_Id" />
-        <SelectItem text={intl.formatMessage({ id: "project.RTNStudy.name" })} value="RTN_Id" />
-        <SelectItem text={intl.formatMessage({ id: "banner.menu.resultvalidation.viralload" })} value="VL_Id" />
-        <SelectItem text={intl.formatMessage({ id: "project.EIDStudy.name" })} value="EID_Id" />
-        <SelectItem text={intl.formatMessage({ id: "project.Recency.name" })} value="Recency_Id" />
-      </Select>
-      </Column>
+      <Grid>
+        <Column lg={4} md={4} sm={4}>
+          <Select
+            id="additional-project"
+            labelText={intl.formatMessage({ id: "project.select.label" })}
+            onChange={(e) => setSelectedForm(e.target.value)}
+          >
+            <SelectItem
+              text={intl.formatMessage({ id: "project.ARVStudy.name" })}
+              value="InitialARV_Id"
+            />
+            <SelectItem
+              text={intl.formatMessage({ id: "project.ARVFollowupStudy.name" })}
+              value="FollowUpARV_Id"
+            />
+            <SelectItem
+              text={intl.formatMessage({ id: "project.RTNStudy.name" })}
+              value="RTN_Id"
+            />
+            <SelectItem
+              text={intl.formatMessage({
+                id: "banner.menu.resultvalidation.viralload",
+              })}
+              value="VL_Id"
+            />
+            <SelectItem
+              text={intl.formatMessage({ id: "project.EIDStudy.name" })}
+              value="EID_Id"
+            />
+            <SelectItem
+              text={intl.formatMessage({ id: "project.Recency.name" })}
+              value="Recency_Id"
+            />
+          </Select>
+        </Column>
       </Grid>
       <hr />
-      {info &&  <PatientEditByProjectForm formData={info} /> }
-     
+      {info && <PatientEditByProjectForm formData={info} />}
     </div>
   );
 };
