@@ -57,7 +57,36 @@ export const postToOpenElisServer = (
       console.error(error);
     });
 };
-
+export const postToOpenElisServer2 = (
+  endPoint,
+  payLoad,
+  callback,
+  extraParams,
+) => {
+  fetch(config.serverBaseUrl + endPoint, {
+    credentials: "include",  // include browser sessionId for authentication
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
+    },
+    body: payLoad,
+  })
+    .then((response) => {
+      // Get the response data as JSON
+      return response.json().then((data) => {
+        if (response.ok) {
+          callback(data, extraParams);  // Pass response data to callback
+        } else {
+          callback(null, extraParams);  // Pass null if error
+          console.error("Error:", response.status, data);  // Log error message
+        }
+      });
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+    });
+};
 export const postToOpenElisServerFullResponse = (
   endPoint,
   payLoad,
