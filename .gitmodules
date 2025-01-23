@@ -1,6 +1,6 @@
 [submodule "plugins"]
 	path = plugins
-	url = https://github.com/openelisglobal/openelisglobal-plugins.git
+	url = https://github.com/I-TECH-UW/openelisglobal-plugins.git
 [submodule "tools/Liquibase-Outdated"]
 	path = tools/Liquibase-Outdated
 	url = https://github.com/I-TECH-UW/Liquibase-Outdated.git

@@ -285,54 +285,63 @@ function Admin() {
       <PathRoute path="#NonConformityConfigurationMenu">
         <ConfigMenuDisplay
           menuType="NonConformityConfigurationMenu"
+          label="Non Conformity Configuration Menu"
           id="sidenav.label.admin.formEntry.nonconformityconfig"
         />
       </PathRoute>
       <PathRoute path="#MenuStatementConfigMenu">
         <ConfigMenuDisplay
           menuType="MenuStatementConfigMenu"
+          label="Menu Statement Configuration Menu"
           id="sidenav.label.admin.formEntry.menustatementconfig"
         />
       </PathRoute>
       <PathRoute path="#ValidationConfigurationMenu">
         <ConfigMenuDisplay
           menuType="ValidationConfigurationMenu"
+          label="Validation Configuration Menu"
           id="sidenav.label.admin.formEntry.validationconfig"
         />
       </PathRoute>
       <PathRoute path="#SampleEntryConfigurationMenu">
         <ConfigMenuDisplay
           menuType="SampleEntryConfigMenu"
+          label="Sample Entry Configuration Menu"
           id="sidenav.label.admin.formEntry.sampleEntryconfig"
         />
       </PathRoute>
       <PathRoute path="#WorkPlanConfigurationMenu">
         <ConfigMenuDisplay
           menuType="WorkplanConfigurationMenu"
+          label="WorkPlan Configuration Menu"
           id="sidenav.label.admin.formEntry.Workplanconfig"
         />
       </PathRoute>
       <PathRoute path="#SiteInformationMenu">
         <ConfigMenuDisplay
           menuType="SiteInformationMenu"
+          label="Site Information Menu"
           id="sidenav.label.admin.formEntry.siteInfoconfig"
         />
       </PathRoute>
       <PathRoute path="#ResultConfigurationMenu">
         <ConfigMenuDisplay
           menuType="ResultConfigurationMenu"
+          label="Result Configuration Menu"
           id="sidenav.label.admin.formEntry.resultConfig"
         />
       </PathRoute>
       <PathRoute path="#PatientConfigurationMenu">
         <ConfigMenuDisplay
           menuType="PatientConfigurationMenu"
+          label="Patient Configuration Menu"
           id="sidenav.label.admin.formEntry.patientconfig"
         />
       </PathRoute>
       <PathRoute path="#PrintedReportsConfigurationMenu">
         <ConfigMenuDisplay
           menuType="PrintedReportsConfigurationMenu"
+          label="PrintedReports Configuration Menu"
           id="sidenav.label.admin.formEntry.PrintedReportsconfig"
         />
       </PathRoute>

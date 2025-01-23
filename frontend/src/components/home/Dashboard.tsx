@@ -360,7 +360,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   };
 
   const handleMaximizeClick = (tile) => {
-    console.log("Icon clicked!");
     if (
       testSections?.length > 0 ||
       hasRole(userSessionDetails, "Global Administrator")
@@ -504,7 +503,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       {selectedTile == null ? (
         <div className="home-dashboard-container">
           {tileList.map((tile, index) => (
-            <ClickableTile key={index} className="dashboard-tile">
+            <ClickableTile
+              key={index}
+              className="dashboard-tile"
+              onClick={() => handleMaximizeClick(tile)}
+            >
               <h3 className="tile-title">{tile.title}</h3>
               <p className="tile-subtitle">{tile.subTitle}</p>
               <p className="tile-value">{tile.value}</p>

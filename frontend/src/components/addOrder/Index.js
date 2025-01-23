@@ -45,6 +45,7 @@ const Index = () => {
   const [orderFormValues, setOrderFormValues] = useState(SampleOrderFormValues);
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   let SampleTypes = [];
   let sampleTypeMap = {};
@@ -536,6 +537,7 @@ const Index = () => {
   };
 
   const handlePost = (status) => {
+    setIsSubmitting(false);
     if (status === 200) {
       showAlertMessage(
         <FormattedMessage id="save.order.success.msg" />,
@@ -562,6 +564,11 @@ const Index = () => {
 
   const handleSubmitOrderForm = (e) => {
     e.preventDefault();
+    // Prevent multiple submissions.
+    if (isSubmitting) {
+      return;
+    }
+    setIsSubmitting(true);
     if ("years" in orderFormValues.patientProperties) {
       delete orderFormValues.patientProperties.years;
     }
@@ -802,7 +809,9 @@ const Index = () => {
                 <Button
                   kind="primary"
                   className="forwardButton"
-                  disabled={errors?.errors?.length > 0 ? true : false}
+                  disabled={
+                    isSubmitting || errors?.errors?.length > 0 ? true : false
+                  }
                   onClick={handleSubmitOrderForm}
                 >
                   <FormattedMessage id="label.button.submit" />

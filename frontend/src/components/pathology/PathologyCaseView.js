@@ -70,6 +70,7 @@ function PathologyCaseView() {
   const [pagination, setPagination] = useState(false);
   const [currentApiPage, setCurrentApiPage] = useState(null);
   const [totalApiPages, setTotalApiPages] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [reportParams, setReportParams] = useState({
     0: {
       submited: false,
@@ -80,6 +81,7 @@ function PathologyCaseView() {
   async function displayStatus(response) {
     var body = await response.json();
     console.debug(body);
+    setIsSubmitting(false);
     var status = response.status;
     setNotificationVisible(true);
     if (status == "200") {
@@ -145,6 +147,10 @@ function PathologyCaseView() {
     });
 
   const save = (e) => {
+    if (isSubmitting) {
+      return;
+    }
+    setIsSubmitting(true);
     let submitValues = {
       assignedTechnicianId: pathologySampleInfo.assignedTechnicianId,
       assignedPathologistId: pathologySampleInfo.assignedPathologistId,
@@ -375,6 +381,7 @@ function PathologyCaseView() {
         <Column lg={16} md={8} sm={4}>
           <Button
             id="pathology_save"
+            disabled={isSubmitting}
             onClick={(e) => {
               e.preventDefault();
               save(e);
@@ -1267,6 +1274,7 @@ function PathologyCaseView() {
         <Column lg={16}>
           <Button
             id="pathology_save2"
+            disabled={isSubmitting}
             onClick={(e) => {
               e.preventDefault();
               save(e);

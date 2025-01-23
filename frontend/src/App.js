@@ -222,6 +222,12 @@ export default function App() {
                   role=""
                 />
                 <SecureRoute
+                  path="/Dashboard"
+                  exact
+                  component={() => <Home />}
+                  role=""
+                />
+                <SecureRoute
                   path="/admin"
                   exact
                   component={() => <Admin />}

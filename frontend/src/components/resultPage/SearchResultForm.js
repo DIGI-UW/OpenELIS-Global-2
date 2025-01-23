@@ -779,6 +779,7 @@ export function SearchResults(props) {
   const [validationState, setValidationState] = useState({});
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const componentMounted = useRef(false);
 
@@ -809,6 +810,40 @@ export function SearchResults(props) {
       componentMounted.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (props.results.testResult) {
+      let newValidationState = { ...validationState };
+      props.results.testResult.forEach((row) => {
+        if (row.resultType === "N") {
+          let value = row.resultValue;
+          if (!value) {
+            return;
+          }
+          let validation = (newValidationState[row.id] = validateNumericResults(
+            value,
+            row,
+          ));
+
+          row.resultValue = validation.newValue;
+          validation.style = {
+            ...validation?.style,
+            borderColor: validation.isCritical
+              ? "orange"
+              : validation.isInvalid
+                ? "red"
+                : "",
+            background: validation.outsideValid
+              ? "#ffa0a0"
+              : validation.outsideNormal
+                ? "#ffffa0"
+                : "var(--cds-field)",
+          };
+        }
+      });
+      setValidationState(newValidationState);
+    }
+  }, [props.results]);
 
   const loadReferalOrganizations = (values) => {
     if (componentMounted.current) {
@@ -1116,45 +1151,46 @@ export function SearchResults(props) {
                 type="number"
                 value={row.resultValue}
                 style={validationState[row.id]?.style}
-                onMouseOut={(e) => {
-                  let value = e.target.value;
-                  if (value == null || value == "") {
-                    return;
-                  }
-                  let newValidationState = { ...validationState };
-                  let validation = (newValidationState[row.id] =
-                    validateNumericResults(value, row));
-                  //e.target.value = validation.newValue;
-                  row.resultValue = validation.newValue;
-                  validation.style = {
-                    ...validation?.style,
-                    borderColor: validation.isCritical
-                      ? "orange"
-                      : validation.isInvalid
-                        ? "red"
-                        : "",
-                    background: validation.outsideValid
-                      ? "#ffa0a0"
-                      : validation.outsideNormal
-                        ? "#ffffa0"
-                        : "var(--cds-field)",
-                  };
-
-                  setValidationState(newValidationState);
-
+                onBlur={(e) => {
                   if (
-                    validation.isInvalid &&
+                    validationState[row.id].isInvalid &&
                     configurationProperties.ALERT_FOR_INVALID_RESULTS
                   ) {
-                    alert(
-                      intl.formatMessage({
-                        id: "result.outOfValidRange.msg",
-                      }),
-                    );
+                    addNotification({
+                      title: intl.formatMessage({ id: "notification.title" }),
+                      message:
+                        intl.formatMessage({
+                          id: "result.outOfValidRange.msg",
+                        }) +
+                        " " +
+                        row.testName +
+                        " : " +
+                        row.resultValue,
+                      kind: NotificationKinds.error,
+                    });
+                    setNotificationVisible(true);
                   }
                 }}
                 onChange={(e) => {
                   handleChange(e, row.id);
+                  if (
+                    validationState[row.id].isInvalid &&
+                    configurationProperties.ALERT_FOR_INVALID_RESULTS
+                  ) {
+                    addNotification({
+                      title: intl.formatMessage({ id: "notification.title" }),
+                      message:
+                        intl.formatMessage({
+                          id: "result.outOfValidRange.msg",
+                        }) +
+                        " " +
+                        row.testName +
+                        " : " +
+                        row.resultValue,
+                      kind: NotificationKinds.error,
+                    });
+                    setNotificationVisible(true);
+                  }
                 }}
               />
             );
@@ -1542,6 +1578,10 @@ export function SearchResults(props) {
 
   const handleSave = (values) => {
     console.debug("handleSave:" + values);
+    if (isSubmitting) {
+      return;
+    }
+    setIsSubmitting(true);
     values.status = saveStatus;
     var searchEndPoint = "/rest/ReactLogbookResultsUpdate";
     props.results.testResult.forEach((result) => {
@@ -1557,6 +1597,7 @@ export function SearchResults(props) {
 
   const setResponse = (resp) => {
     console.debug("setStatus" + JSON.stringify(resp));
+    setIsSubmitting(false);
     if (resp) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
@@ -1707,6 +1748,7 @@ export function SearchResults(props) {
                 id="submit"
                 onClick={handleSave}
                 style={{ marginTop: "16px" }}
+                disabled={isSubmitting}
               >
                 <FormattedMessage id="label.button.save" />
               </Button>

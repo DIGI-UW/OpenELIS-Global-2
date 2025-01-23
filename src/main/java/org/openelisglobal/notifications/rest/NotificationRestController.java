@@ -10,7 +10,7 @@ import javax.servlet.http.HttpServletRequest;
 import nl.martijndwars.webpush.PushService;
 import org.apache.http.HttpResponse;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.notifications.dao.NotificationDAO;
 import org.openelisglobal.notifications.dao.NotificationSubscriptionDAO;
 import org.openelisglobal.notifications.entity.Notification;
@@ -31,12 +31,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RequestMapping("/rest")
 @RestController
-public class NotificationRestController {
+public class NotificationRestController extends BaseRestController {
 
     private final NotificationDAO notificationDAO;
     private final SystemUserService systemUserService;
     private final NotificationSubscriptionDAO notificationSubscriptionDAO;
-    private static final String USER_SESSION_DATA = "userSessionData";
 
     @Autowired
     private ConfigurableEnvironment env;
@@ -209,16 +208,5 @@ public class NotificationRestController {
         notificationSubscriptionDAO.delete(ns);
 
         return ResponseEntity.ok().body("Unsubscribed successfully");
-    }
-
-    protected String getSysUserId(HttpServletRequest request) {
-        UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
-        if (usd == null) {
-            usd = (UserSessionData) request.getAttribute(USER_SESSION_DATA);
-            if (usd == null) {
-                return null;
-            }
-        }
-        return String.valueOf(usd.getSystemUserId());
     }
 }

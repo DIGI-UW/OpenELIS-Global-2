@@ -57,24 +57,28 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
         personService.deleteAll(personService.getAll());
     }
 
+    @SuppressWarnings("unused")
     private Object[] parametersForGetSearchResults_shouldGetSearchResultsFromDB() {
         return new Object[] { new Object[] { "Jo", "Do", "12/12/1992", "M" }, new Object[] { "Jo", null, null, null },
                 new Object[] { null, "Do", null, null }, new Object[] { null, null, "12/12/1992", null },
                 new Object[] { null, null, null, "M" } };
     }
 
+    @SuppressWarnings("unused")
     private Object[] parametersForGetSearchResultsExact_shouldGetExactSearchResultsFromDB() {
         return new Object[] { new Object[] { "John", "Doe", "12/12/1992", "M" },
                 new Object[] { "John", null, null, null }, new Object[] { null, "Doe", null, null },
                 new Object[] { null, null, "12/12/1992", null }, new Object[] { null, null, null, "M" } };
     }
 
+    @SuppressWarnings("unused")
     private Object[] parametersForGetSearchResults_shouldGetSearchResultsFromLuceneIndexes() {
         return new Object[] { new Object[] { "Johm", "Doee", "12/12/1992", "M" },
                 new Object[] { "Johm", null, null, null }, new Object[] { null, "Doee", null, null },
                 new Object[] { null, null, "12/12/1992", null }, new Object[] { null, null, null, "M" } };
     }
 
+    @SuppressWarnings("unused")
     private Object[] parametersForGetSearchResultsExact_shouldGetExactSearchResultsFromLuceneIndexes() {
         return new Object[] { new Object[] { "John", "Doe", "12/12/1992", "M" },
                 new Object[] { "John", null, null, null }, new Object[] { null, "Doe", null, null },
