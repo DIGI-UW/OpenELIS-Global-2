@@ -4,6 +4,7 @@ module.exports = defineConfig({
   defaultCommandTimeout: 8000,
   viewportWidth: 1200,
   viewportHeight: 700,
+  video: false,
   watchForFileChanges: false,
   e2e: {
     setupNodeEvents(on, config) {

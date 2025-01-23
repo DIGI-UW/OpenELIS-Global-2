@@ -20,6 +20,7 @@ env:
 
 jobs:
   build-and-push-test-image-backend:
+    if: ${{ github.repository == 'I-TECH-UW/OpenELIS-Global-2' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -63,6 +64,7 @@ jobs:
           build-args: SKIP_SPOTLESS=true
 
   build-and-push-test-image-frontend:
+    if: ${{ github.repository == 'I-TECH-UW/OpenELIS-Global-2' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -105,6 +107,7 @@ jobs:
           cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-frontend:buildcache,mode=max
 
   build-and-push-test-image-proxy:
+    if: ${{ github.repository == 'I-TECH-UW/OpenELIS-Global-2' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -146,6 +149,7 @@ jobs:
           cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-proxy:buildcache,mode=max
 
   build-and-push-test-image-fhir:
+    if: ${{ github.repository == 'I-TECH-UW/OpenELIS-Global-2' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -303,6 +307,7 @@ jobs:
           cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-frontend:buildcache,mode=max
 
   build-and-push-image-proxy:
+    if: ${{ github.repository == 'I-TECH-UW/OpenELIS-Global-2' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -344,6 +349,7 @@ jobs:
           cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-proxy:buildcache,mode=max
 
   build-and-push-image-fhir:
+    if: ${{ github.repository == 'I-TECH-UW/OpenELIS-Global-2' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
