@@ -198,6 +198,52 @@ class HomePage {
     //cy.get("#menu_administration_nav").click();
     return new AdminPage();
   }
+
+  //home page navigation
+
+  afterAll() {
+    //This closes the navigation components after each test
+    cy.get(".icon-wrapper > svg.clickable-icon").click();
+  }
+  selectInProgress() {
+    cy.contains("a.cds--link", "In Progress").click();
+  }
+
+  selectReadyforValidation() {
+    cy.contains("a.cds--link", "Ready For Validation").click();
+  }
+
+  selectOrdersCompletedToday() {
+    cy.contains("a.cds--link", "Orders Completed Today").click();
+  }
+
+  selectPartiallyCompletedToday() {
+    cy.contains("a.cds--link", "Partially Completed Today").click();
+  }
+
+  selectOrdersEnteredByUsers() {
+    cy.contains("a.cds--link", "Orders Entered By Users").click();
+  }
+
+  selectOrdersRejected() {
+    cy.contains("a.cds--link", "Orders Rejected").click();
+  }
+
+  selectUnPrintedResults() {
+    cy.contains("a.cds--link", "UnPrinted Results").click();
+  }
+
+  selectElectronicOrders() {
+    cy.contains("a.cds--link", "Electronic Orders").click();
+  }
+
+  selectAverageTurnAroundTime() {
+    cy.contains("a.cds--link", "Average Turn Around time").click();
+  }
+
+  selectDelayedTurnAround() {
+    cy.contains("a.cds--link", "Delayed Turn Around").click();
+  }
 }
 
 export default HomePage;
