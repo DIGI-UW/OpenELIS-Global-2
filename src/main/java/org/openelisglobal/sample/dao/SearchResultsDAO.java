@@ -21,6 +21,7 @@ public interface SearchResultsDAO {
     String ID_TYPE_FOR_ST = "stNumberId";
     String ID_TYPE_FOR_SUBJECT_NUMBER = "subjectNumberId";
     String ID_TYPE_FOR_GUID = "guidId";
+    String ID_LIST = "idList";
 
     public List<PatientSearchResults> getSearchResults(String lastName, String firstName, String STNumber,
             String subjectNumber, String nationalID, String externalID, String patientID, String guid,

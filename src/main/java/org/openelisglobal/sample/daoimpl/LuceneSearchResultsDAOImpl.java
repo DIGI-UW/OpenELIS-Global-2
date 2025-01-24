@@ -14,6 +14,9 @@ import org.hibernate.search.mapper.orm.Search;
 import org.hibernate.search.mapper.orm.session.SearchSession;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patientidentitytype.util.PatientIdentityTypeMap;
 import org.openelisglobal.sample.dao.SearchResultsDAO;
@@ -35,25 +38,43 @@ public class LuceneSearchResultsDAOImpl implements SearchResultsDAO {
 
         SearchSession searchSession = Search.session(entityManager);
 
+        boolean queryFirstName = !GenericValidator.isBlankOrNull(firstName);
+        boolean queryLastName = !GenericValidator.isBlankOrNull(lastName);
+        boolean queryNationalId = !GenericValidator.isBlankOrNull(nationalID);
+        boolean querySTNumber = !GenericValidator.isBlankOrNull(STNumber);
+        boolean querySubjectNumber = !GenericValidator.isBlankOrNull(subjectNumber);
+        boolean queryExternalId = !GenericValidator.isBlankOrNull(externalID);
+        boolean queryPatientID = !GenericValidator.isBlankOrNull(patientID);
+        boolean queryGuid = !GenericValidator.isBlankOrNull(guid);
+        boolean queryDateOfBirth = !GenericValidator.isBlankOrNull(dateOfBirth);
+        boolean queryGender = !GenericValidator.isBlankOrNull(gender);
+
+        // fields searched from DB
+        nationalID = '%' + nationalID + '%';
+        STNumber = '%' + STNumber + '%';
+        subjectNumber = '%' + subjectNumber + '%';
+        externalID = '%' + externalID + '%';
+
         List<String> hits = searchSession.search(Patient.class).select(f -> f.id(String.class)).where(f -> f.bool(b -> {
-            if (!GenericValidator.isBlankOrNull(patientID)) {
+            if (queryPatientID) {
                 b.must(f.match().field("id").matching(patientID));
             }
-            if (!GenericValidator.isBlankOrNull(gender)) {
+            if (queryGender) {
                 b.must(f.match().field("gender").matching(gender));
             }
-            if (!GenericValidator.isBlankOrNull(dateOfBirth)) {
-                b.must(f.match().field("birthDateForDisplay").matching(dateOfBirth));
+            if (queryDateOfBirth) {
+                b.must(f.bool().should(f.match().field("birthDateForDisplay").matching(dateOfBirth))
+                        .should(f.match().field("birthDateForDisplay").matching(getFormatedDOB(dateOfBirth))));
             }
-            if (!GenericValidator.isBlankOrNull(firstName) && !GenericValidator.isBlankOrNull(lastName)) {
+            if (queryFirstName && queryLastName) {
                 b.must(f.nested().objectField("person")
                         .nest(f.bool().must(f.match().field("person.firstName").matching(firstName).fuzzy())
                                 .must(f.match().field("person.lastName").matching(lastName).fuzzy())));
             } else {
-                if (!GenericValidator.isBlankOrNull(firstName)) {
+                if (queryFirstName) {
                     b.must(f.match().field("person.firstName").matching(firstName).fuzzy());
                 }
-                if (!GenericValidator.isBlankOrNull(lastName)) {
+                if (queryLastName) {
                     b.must(f.match().field("person.lastName").matching(lastName).fuzzy());
                 }
             }
@@ -64,7 +85,8 @@ public class LuceneSearchResultsDAOImpl implements SearchResultsDAO {
         longHits.add(-1L);
         int hitsCount = longHits.size();
 
-        String sqlString = buildQueryString(nationalID, externalID, STNumber, subjectNumber, guid, hitsCount);
+        String sqlString = buildQueryString(queryNationalId, queryExternalId, querySTNumber, querySubjectNumber,
+                queryGuid, hitsCount);
         Query query = entityManager.unwrap(Session.class).createNativeQuery(sqlString);
         query.setParameter(ID_TYPE_FOR_ST, Integer.valueOf(PatientIdentityTypeMap.getInstance().getIDForType("ST")));
         query.setParameter(ID_TYPE_FOR_SUBJECT_NUMBER,
@@ -72,23 +94,23 @@ public class LuceneSearchResultsDAOImpl implements SearchResultsDAO {
         query.setParameter(ID_TYPE_FOR_GUID,
                 Integer.valueOf(PatientIdentityTypeMap.getInstance().getIDForType("GUID")));
 
-        if (!GenericValidator.isBlankOrNull(nationalID)) {
+        if (queryNationalId) {
             query.setParameter(NATIONAL_ID_PARAM, nationalID);
         }
-        if (!GenericValidator.isBlankOrNull(externalID)) {
+        if (queryExternalId) {
             query.setParameter(EXTERNAL_ID_PARAM, nationalID);
         }
-        if (!GenericValidator.isBlankOrNull(STNumber)) {
+        if (querySTNumber) {
             query.setParameter(ST_NUMBER_PARAM, STNumber);
         }
-        if (!GenericValidator.isBlankOrNull(subjectNumber)) {
+        if (querySubjectNumber) {
             query.setParameter(SUBJECT_NUMBER_PARAM, subjectNumber);
         }
-        if (!GenericValidator.isBlankOrNull(guid)) {
+        if (queryGuid) {
             query.setParameter(GUID, guid);
         }
         if (hitsCount > 1) {
-            query.setParameter("idList", longHits);
+            query.setParameter(ID_LIST, longHits);
         }
 
         List<Object[]> queryResults = query.list();
@@ -124,25 +146,37 @@ public class LuceneSearchResultsDAOImpl implements SearchResultsDAO {
 
         SearchSession searchSession = Search.session(entityManager);
 
+        boolean queryFirstName = !GenericValidator.isBlankOrNull(firstName);
+        boolean queryLastName = !GenericValidator.isBlankOrNull(lastName);
+        boolean queryNationalId = !GenericValidator.isBlankOrNull(nationalID);
+        boolean querySTNumber = !GenericValidator.isBlankOrNull(STNumber);
+        boolean querySubjectNumber = !GenericValidator.isBlankOrNull(subjectNumber);
+        boolean queryExternalId = !GenericValidator.isBlankOrNull(externalID);
+        boolean queryPatientID = !GenericValidator.isBlankOrNull(patientID);
+        boolean queryGuid = !GenericValidator.isBlankOrNull(guid);
+        boolean queryDateOfBirth = !GenericValidator.isBlankOrNull(dateOfBirth);
+        boolean queryGender = !GenericValidator.isBlankOrNull(gender);
+
         List<String> hits = searchSession.search(Patient.class).select(f -> f.id(String.class)).where(f -> f.bool(b -> {
-            if (!GenericValidator.isBlankOrNull(patientID)) {
+            if (queryPatientID) {
                 b.must(f.match().field("id").matching(patientID));
             }
-            if (!GenericValidator.isBlankOrNull(gender)) {
+            if (queryGender) {
                 b.must(f.match().field("gender").matching(gender));
             }
-            if (!GenericValidator.isBlankOrNull(dateOfBirth)) {
-                b.must(f.match().field("birthDateForDisplay").matching(dateOfBirth));
+            if (queryDateOfBirth) {
+                b.must(f.bool().should(f.match().field("birthDateForDisplay").matching(dateOfBirth))
+                        .should(f.match().field("birthDateForDisplay").matching(getFormatedDOB(dateOfBirth))));
             }
-            if (!GenericValidator.isBlankOrNull(firstName) && !GenericValidator.isBlankOrNull(lastName)) {
+            if (queryFirstName && queryLastName) {
                 b.must(f.nested().objectField("person")
                         .nest(f.bool().must(f.match().field("person.firstName").matching(firstName))
                                 .must(f.match().field("person.lastName").matching(lastName))));
             } else {
-                if (!GenericValidator.isBlankOrNull(firstName)) {
+                if (queryFirstName) {
                     b.must(f.match().field("person.firstName").matching(firstName));
                 }
-                if (!GenericValidator.isBlankOrNull(lastName)) {
+                if (queryLastName) {
                     b.must(f.match().field("person.lastName").matching(lastName));
                 }
             }
@@ -153,7 +187,8 @@ public class LuceneSearchResultsDAOImpl implements SearchResultsDAO {
         longHits.add(-1L);
         int hitsCount = longHits.size();
 
-        String sqlString = buildQueryString(nationalID, externalID, STNumber, subjectNumber, guid, hitsCount);
+        String sqlString = buildQueryString(queryNationalId, queryExternalId, querySTNumber, querySubjectNumber,
+                queryGuid, hitsCount);
         Query query = entityManager.unwrap(Session.class).createNativeQuery(sqlString);
         query.setParameter(ID_TYPE_FOR_ST, Integer.valueOf(PatientIdentityTypeMap.getInstance().getIDForType("ST")));
         query.setParameter(ID_TYPE_FOR_SUBJECT_NUMBER,
@@ -161,23 +196,23 @@ public class LuceneSearchResultsDAOImpl implements SearchResultsDAO {
         query.setParameter(ID_TYPE_FOR_GUID,
                 Integer.valueOf(PatientIdentityTypeMap.getInstance().getIDForType("GUID")));
 
-        if (!GenericValidator.isBlankOrNull(nationalID)) {
+        if (queryNationalId) {
             query.setParameter(NATIONAL_ID_PARAM, nationalID);
         }
-        if (!GenericValidator.isBlankOrNull(externalID)) {
+        if (queryExternalId) {
             query.setParameter(EXTERNAL_ID_PARAM, nationalID);
         }
-        if (!GenericValidator.isBlankOrNull(STNumber)) {
+        if (querySTNumber) {
             query.setParameter(ST_NUMBER_PARAM, STNumber);
         }
-        if (!GenericValidator.isBlankOrNull(subjectNumber)) {
+        if (querySubjectNumber) {
             query.setParameter(SUBJECT_NUMBER_PARAM, subjectNumber);
         }
-        if (!GenericValidator.isBlankOrNull(guid)) {
+        if (queryGuid) {
             query.setParameter(GUID, guid);
         }
         if (hitsCount > 1) {
-            query.setParameter("idList", longHits);
+            query.setParameter(ID_LIST, longHits);
         }
 
         List<Object[]> queryResults = query.list();
@@ -195,8 +230,8 @@ public class LuceneSearchResultsDAOImpl implements SearchResultsDAO {
         return patientSearchResultsList;
     }
 
-    private String buildQueryString(String nationalID, String externalID, String STNumber, String subjectNumber,
-            String guid, int hitsCount) {
+    private String buildQueryString(Boolean queryNationalID, Boolean queryExternalID, Boolean querySTNumber,
+            Boolean querySubjectNumber, Boolean queryGuid, int hitsCount) {
 
         StringBuilder queryBuilder = new StringBuilder();
         queryBuilder.append("select p.id, pr.first_name, pr.last_name, p.gender, p.entered_birth_date, p.national_id,"
@@ -213,22 +248,22 @@ public class LuceneSearchResultsDAOImpl implements SearchResultsDAO {
         queryBuilder.append("where ");
 
         queryBuilder.append("( false or ");
-        if (!GenericValidator.isBlankOrNull(subjectNumber)) {
+        if (querySubjectNumber) {
             queryBuilder.append("piSN.identity_data ilike :");
             queryBuilder.append(SUBJECT_NUMBER_PARAM).append(" or ");
         }
 
-        if (!GenericValidator.isBlankOrNull(nationalID)) {
+        if (queryExternalID) {
             queryBuilder.append("p.national_id ilike :");
             queryBuilder.append(NATIONAL_ID_PARAM).append(" or ");
         }
 
-        if (!GenericValidator.isBlankOrNull(externalID)) {
+        if (queryExternalID) {
             queryBuilder.append("p.external_id ilike :");
             queryBuilder.append(EXTERNAL_ID_PARAM).append(" or ");
         }
 
-        if (!GenericValidator.isBlankOrNull(STNumber)) {
+        if (querySTNumber) {
             queryBuilder.append("pi.identity_data ilike :");
             queryBuilder.append(ST_NUMBER_PARAM).append(" and ");
         }
@@ -245,7 +280,7 @@ public class LuceneSearchResultsDAOImpl implements SearchResultsDAO {
             queryBuilder.append(") or ");
         }
 
-        if (!GenericValidator.isBlankOrNull(guid)) {
+        if (queryGuid) {
             queryBuilder.append("piGUID.identity_data = :");
             queryBuilder.append(GUID).append(" and ");
         }
@@ -253,7 +288,8 @@ public class LuceneSearchResultsDAOImpl implements SearchResultsDAO {
         // idList contains patient IDs from Lucene search results matching the fields
         // id, person.firstName, person.lastName, birthDateForDisplay and gender
         if (hitsCount > 1) {
-            queryBuilder.append("p.id in :idList").append(" and ");
+            queryBuilder.append("p.id in :");
+            queryBuilder.append(ID_LIST).append(" and ");
         }
 
         // No matter which was added last there is one dangling AND to remove.
@@ -266,5 +302,14 @@ public class LuceneSearchResultsDAOImpl implements SearchResultsDAO {
             queryBuilder.delete(lastOrIndex, queryBuilder.length());
         }
         return queryBuilder.toString();
+    }
+
+    private String getFormatedDOB(String dob) {
+        String format1 = "dd/MM/yyyy";
+        String format2 = "MM/dd/yyyy";
+        String dobFormated = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE)
+                .equals("fr-FR") ? DateUtil.formatStringDate(dob, format2) : DateUtil.formatStringDate(dob, format1);
+
+        return dobFormated;
     }
 }
