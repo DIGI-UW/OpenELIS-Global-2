@@ -253,7 +253,7 @@ public class LuceneSearchResultsDAOImpl implements SearchResultsDAO {
             queryBuilder.append(SUBJECT_NUMBER_PARAM).append(" or ");
         }
 
-        if (queryExternalID) {
+        if (queryNationalID) {
             queryBuilder.append("p.national_id ilike :");
             queryBuilder.append(NATIONAL_ID_PARAM).append(" or ");
         }
