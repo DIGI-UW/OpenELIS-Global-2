@@ -112,7 +112,7 @@ const PatientInfo = (props) => {
             <Column lg={16} md={8} sm={4}>
               {newPatientTab.active && (
                 <CreatePatientForm
-                  showActionsButton={false}
+                  showActionsButton={true}
                   selectedPatient={selectedPatient}
                   orderFormValues={orderFormValues}
                   setOrderFormValues={setOrderFormValues}
