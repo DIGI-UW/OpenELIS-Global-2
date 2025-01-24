@@ -11,6 +11,7 @@ module.exports = defineConfig({
       // implement node event listeners here
       config.specPattern = [
         "cypress/e2e/login.cy.js",
+        "cypress/e2e/home.cy.js",
         "cypress/e2e/patientEntry.cy.js",
         "cypress/e2e/orderEntity.cy.js",
         "cypress/e2e/workplan.cy.js",
