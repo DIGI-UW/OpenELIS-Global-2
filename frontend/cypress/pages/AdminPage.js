@@ -1,5 +1,6 @@
 //This handles all pages of the admin
 import LabNumberManagementPage from "./LabNumberManagementPage";
+import GlobalMenuConfigPage from "./GlobalMenuConfigPage";
 
 class AdminPage {
   constructor() {}
@@ -7,26 +8,33 @@ class AdminPage {
   visit() {
     cy.visit("/administration"); //need to confirm this
   }
-  //this page is also included in the homepage
-  goToAdminPage() {
-    this.openNavigationMenu();
-    cy.get("#menu_administration").click();
-    cy.get("#menu_administration_nav").click();
-    return new AdminPage();
-  }
 
   //lab number management
   goToLabNumberManagementPage() {
     // Click on the element using the provided selector
     cy.get("a.cds--side-nav__link[href='#labNumber']")
-      .should("be.visible") // Ensure the element is visible
-      .click(); // Click to navigate to the page
+      .should("be.visible")
+      .click();
 
-    // Verify the URL or some unique identifier of the target page
-    cy.url().should("include", "#labNumber"); // Validate URL fragment
-    cy.contains("Lab Number Management").should("be.visible"); // Confirm presence of the page content
+    cy.url().should("include", "#labNumber");
+    cy.contains("Lab Number Management").should("be.visible");
 
-    return new LabNumberManagementPage(); // Return the page object
+    return new LabNumberManagementPage();
+  }
+
+  //global menu configuration
+  goToGlobalMenuConfigPage() {
+    // Expand the dropdown by clicking the button with the expanded state
+    cy.contains("span", "Menu Configuration").click();
+    cy.get("ul.cds--side-nav__menu").should("be.visible"); // Ensure the dropdown menu is visible
+    // Click the link for "Global Menu Configuration"
+    cy.get('a.cds--side-nav__link[href="#globalMenuManagement"]').click(); // Click the "Global Menu Configuration" link
+
+    // Verify the URL and the visibility of the content
+    cy.url().should("include", "#globalMenuManagement");
+    cy.contains("Global Menu Management").should("be.visible");
+
+    return new GlobalMenuConfigPage();
   }
 }
 

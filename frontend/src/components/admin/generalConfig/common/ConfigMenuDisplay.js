@@ -296,9 +296,6 @@ function ConfigMenuDisplay(props) {
                               {rows.map((row) => (
                                 <TableRow
                                   key={row.id}
-                                  onClick={() => {
-                                    setSelectedRowId(row.id);
-                                  }}
                                 >
                                   {row.cells.map((cell) =>
                                     renderCell(cell, row),

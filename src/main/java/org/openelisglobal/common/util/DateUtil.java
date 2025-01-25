@@ -716,6 +716,9 @@ public class DateUtil {
     }
 
     public static String formatStringDate(String dateStr, String outputFormat) {
+        if (dateStr == null) {
+            return "";
+        }
         // Define the input date formats
         DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("MM/dd/yyyy");
         DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("dd/MM/yyyy");
