@@ -42,6 +42,8 @@ import NonConformIndex from "./components/nonconform/index";
 import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup.js";
 import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index.js";
 import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests.js";
+import PatientEditByProject from "./components/patient/patientEditByProject.js";
+import PatientEditByProjectForm from "./components/patient/patientEdit.js";
 
 export default function App() {
   let i18nConfig = {
@@ -494,6 +496,19 @@ export default function App() {
                   component={() => <StudyValidation />}
                   role="Validation"
                 />
+                <SecureRoute
+                  path="/patientEditByProject"
+                  exact
+                  component={() => <PatientEditByProject />}
+                  role="Validation"
+                />
+                <SecureRoute
+                  path="/projectFill"
+                  exact
+                  component={() => <PatientEditByProjectForm />}
+                  role="Validation"
+                />
+
                 <Route path="*" component={() => <RedirectOldUI />} />
               </Switch>
             </Layout>
