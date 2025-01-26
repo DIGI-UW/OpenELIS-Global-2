@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.HibernateException;
@@ -32,6 +33,7 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.testconfiguration.controller.TestAddController.TestSet;
 import org.openelisglobal.testconfiguration.form.TestAddForm;
 import org.openelisglobal.testconfiguration.service.TestAddService;
 import org.openelisglobal.testconfiguration.validator.TestAddFormValidator;
@@ -45,8 +47,7 @@ import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.WebDataBinder;
@@ -60,22 +61,31 @@ public class TestAddRestController extends BaseController {
 
     @Autowired
     private TestAddFormValidator formValidator;
+
     @Autowired
     private DisplayListService displayListService;
+
     @Autowired
     private DictionaryService dictionaryService;
+
     @Autowired
     private PanelService panelService;
+
     @Autowired
     private TypeOfSampleService typeOfSampleService;
+
     @Autowired
     private TestResultService testResultService;
+
     @Autowired
     private UnitOfMeasureService unitOfMeasureService;
+
     @Autowired
     private TestAddService testAddService;
+
     @Autowired
     private TestSectionService testSectionService;
+
     @Autowired
     private TestService testService;
 
@@ -84,16 +94,18 @@ public class TestAddRestController extends BaseController {
         binder.setAllowedFields(ALLOWED_FIELDS);
     }
 
-    @GetMapping(value = "/TestAdd", produces = "application/json")
-    public ResponseEntity<TestAddForm> getTestAddForm() {
+    @GetMapping(value = "/TestAdd", produces = MediaType.APPLICATION_JSON_VALUE)
+    public TestAddForm showTestAdd(HttpServletRequest request) {
+        LogEvent.logTrace(this.getClass().getSimpleName(), "showTestAdd",
+                "Hibernate Version: " + org.hibernate.Version.getVersionString());
         TestAddForm form = new TestAddForm();
         Test test = new Test();
 
         List<IdValuePair> allSampleTypesList = new ArrayList<>();
         allSampleTypesList.addAll(DisplayListService.getInstance().getList(ListType.SAMPLE_TYPE_ACTIVE));
         allSampleTypesList.addAll(DisplayListService.getInstance().getList(ListType.SAMPLE_TYPE_INACTIVE));
-
         form.setSampleTypeList(allSampleTypesList);
+
         form.setPanelList(DisplayListService.getInstance().getList(ListType.PANELS));
         form.setResultTypeList(DisplayListService.getInstance().getList(ListType.RESULT_TYPE_LOCALIZED));
         form.setUomList(DisplayListService.getInstance().getList(ListType.UNIT_OF_MEASURE));
@@ -102,35 +114,39 @@ public class TestAddRestController extends BaseController {
         allLabUnitsList.addAll(DisplayListService.getInstance().getList(ListType.TEST_SECTION_ACTIVE));
         allLabUnitsList.addAll(DisplayListService.getInstance().getList(ListType.TEST_SECTION_INACTIVE));
         form.setLabUnitList(allLabUnitsList);
+
         form.setAgeRangeList(SpringContext.getBean(ResultLimitService.class).getPredefinedAgeRanges());
         form.setDictionaryList(DisplayListService.getInstance().getList(ListType.DICTIONARY_TEST_RESULTS));
         form.setGroupedDictionaryList(createGroupedDictionaryList());
         form.setLoinc(test.getLoinc());
 
-        return new ResponseEntity<>(form, HttpStatus.OK);
+        return form;
     }
 
-    @PostMapping(value = "/TestAdd", consumes = "application/json", produces = "application/json")
-    public ResponseEntity<?> addTest(@Valid @RequestBody TestAddForm form, BindingResult result) {
+    @PostMapping(value = "/TestAdd", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public TestAddForm postTestAdd(HttpServletRequest request, @RequestBody @Valid TestAddForm form,
+            BindingResult result) {
         formValidator.validate(form, result);
+
         if (result.hasErrors()) {
-            return new ResponseEntity<>(result.getAllErrors(), HttpStatus.BAD_REQUEST);
+            saveErrors(result);
+            return form;
         }
 
         String currentUserId = getSysUserId(request);
         String jsonString = form.getJsonWad();
-
         JSONParser parser = new JSONParser();
-        JSONObject obj;
+        JSONObject obj = null;
+
         try {
             obj = (JSONObject) parser.parse(jsonString);
         } catch (ParseException e) {
             LogEvent.logError(e.getMessage(), e);
-            return new ResponseEntity<>("Invalid JSON format", HttpStatus.BAD_REQUEST);
         }
 
         TestAddParams testAddParams = extractTestAddParms(obj, parser);
         validateLoinc(testAddParams.loinc, result);
+
         List<TestSet> testSets = createTestSets(testAddParams);
         Localization nameLocalization = createNameLocalization(testAddParams);
         Localization reportingNameLocalization = createReportingNameLocalization(testAddParams);
@@ -139,7 +155,6 @@ public class TestAddRestController extends BaseController {
             testAddService.addTests(testSets, nameLocalization, reportingNameLocalization, currentUserId);
         } catch (HibernateException e) {
             LogEvent.logDebug(e);
-            return new ResponseEntity<>("Database error", HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         testService.refreshTestNames();
@@ -153,7 +168,7 @@ public class TestAddRestController extends BaseController {
         displayListService.refreshList(DisplayListService.ListType.TEST_SECTION_INACTIVE);
         SpringContext.getBean(TypeOfSampleService.class).clearCache();
 
-        return new ResponseEntity<>("Test added successfully", HttpStatus.CREATED);
+        return form;
     }
 
     private Errors validateLoinc(String loincCode, Errors errors) {
@@ -189,9 +204,11 @@ public class TestAddRestController extends BaseController {
                 .isDictionaryVarientById(testAddParams.resultTypeId);
         List<TestSet> testSets = new ArrayList<>();
         UnitOfMeasure uom = null;
+
         if (!GenericValidator.isBlankOrNull(testAddParams.uomId) || "0".equals(testAddParams.uomId)) {
             uom = unitOfMeasureService.getUnitOfMeasureById(testAddParams.uomId);
         }
+
         TestSection testSection = testSectionService.get(testAddParams.testSectionId);
 
         if (numericResults) {
@@ -202,17 +219,20 @@ public class TestAddRestController extends BaseController {
             lowCritical = StringUtil.doubleWithInfinity(testAddParams.lowCritical);
             highCritical = StringUtil.doubleWithInfinity(testAddParams.highCritical);
         }
-        // The number of test sets depend on the number of sampleTypes
+
         for (int i = 0; i < testAddParams.sampleList.size(); i++) {
             TypeOfSample typeOfSample = typeOfSampleService
                     .getTypeOfSampleById(testAddParams.sampleList.get(i).sampleTypeId);
+
             if (typeOfSample == null) {
                 continue;
             } else {
                 typeOfSample.setActive("Y".equals(testAddParams.active));
             }
+
             TestSet testSet = new TestSet();
             testSet.typeOfSample = typeOfSample;
+
             Test test = new Test();
             test.setUnitOfMeasure(uom);
             test.setLoinc(testAddParams.loinc);
@@ -227,6 +247,7 @@ public class TestAddRestController extends BaseController {
             test.setIsReportable("N");
             test.setTestSection(testSection);
             test.setGuid(String.valueOf(UUID.randomUUID()));
+
             ArrayList<String> orderedTests = testAddParams.sampleList.get(i).orderedTests;
             for (int j = 0; j < orderedTests.size(); j++) {
                 if ("0".equals(orderedTests.get(j))) {
@@ -246,6 +267,7 @@ public class TestAddRestController extends BaseController {
 
             createPanelItems(testSet.panelItems, testAddParams);
             createTestResults(testSet.testResults, significantDigits, testAddParams);
+
             if (numericResults) {
                 testSet.resultLimits = createResultLimits(lowValid, highValid, lowReportingRange, highReportingRange,
                         testAddParams, highCritical, lowCritical);
@@ -267,7 +289,6 @@ public class TestAddRestController extends BaseController {
             limit.setDictionaryNormalId(testAddParams.dictionaryReferenceId);
             resultLimits.add(limit);
         }
-
         return resultLimits;
     }
 
@@ -284,15 +305,16 @@ public class TestAddRestController extends BaseController {
             limit.setHighNormal(StringUtil.doubleWithInfinity(params.highNormalLimit));
             limit.setLowValid(lowValid);
             limit.setHighValid(highValid);
+
             if (lowCritical != null && highCritical != null) {
                 limit.setLowReportingRange(lowReportingRange);
                 limit.setHighReportingRange(highReportingRange);
                 limit.setLowCritical(lowCritical);
                 limit.setHighCritical(highCritical);
             }
+
             resultLimits.add(limit);
         }
-
         return resultLimits;
     }
 
@@ -336,7 +358,6 @@ public class TestAddRestController extends BaseController {
     private TestAddParams extractTestAddParms(JSONObject obj, JSONParser parser) {
         TestAddParams testAddParams = new TestAddParams();
         try {
-
             testAddParams.testNameEnglish = (String) obj.get("testNameEnglish");
             testAddParams.testNameFrench = (String) obj.get("testNameFrench");
             testAddParams.testReportNameEnglish = (String) obj.get("testReportNameEnglish");
@@ -353,6 +374,7 @@ public class TestAddRestController extends BaseController {
             testAddParams.notifyResults = (String) obj.get("notifyResults");
             testAddParams.inLabOnly = (String) obj.get("inLabOnly");
             testAddParams.antimicrobialResistance = (String) obj.get("antimicrobialResistance");
+
             if (TypeOfTestResultServiceImpl.ResultType.isNumericById(testAddParams.resultTypeId)) {
                 testAddParams.lowValid = (String) obj.get("lowValid");
                 testAddParams.highValid = (String) obj.get("highValid");
@@ -373,11 +395,9 @@ public class TestAddRestController extends BaseController {
                     testAddParams.dictionaryParamList.add(params);
                 }
             }
-
         } catch (ParseException e) {
             LogEvent.logDebug(e);
         }
-
         return testAddParams;
     }
 
@@ -391,6 +411,7 @@ public class TestAddRestController extends BaseController {
             if (gender) {
                 params.gender = "M";
             }
+
             String highAge = (String) (((JSONObject) limitArray.get(i)).get("highAgeRange"));
             params.displayRange = (String) (((JSONObject) limitArray.get(i)).get("reportingRange"));
             params.lowNormalLimit = (String) (((JSONObject) limitArray.get(i)).get("lowNormal"));
@@ -418,7 +439,6 @@ public class TestAddRestController extends BaseController {
     private void extractPanels(JSONObject obj, JSONParser parser, TestAddParams testAddParams) throws ParseException {
         String panels = (String) obj.get("panels");
         JSONArray panelArray = (JSONArray) parser.parse(panels);
-
         for (int i = 0; i < panelArray.size(); i++) {
             testAddParams.panelList.add((String) (((JSONObject) panelArray.get(i)).get("id")));
         }
@@ -428,11 +448,9 @@ public class TestAddRestController extends BaseController {
             throws ParseException {
         String sampleTypes = (String) obj.get("sampleTypes");
         JSONArray sampleTypeArray = (JSONArray) parser.parse(sampleTypes);
-
         for (int i = 0; i < sampleTypeArray.size(); i++) {
             SampleTypeListAndTestOrder sampleTypeTests = new SampleTypeListAndTestOrder();
             sampleTypeTests.sampleTypeId = (String) (((JSONObject) sampleTypeArray.get(i)).get("typeId"));
-
             JSONArray testArray = (JSONArray) (((JSONObject) sampleTypeArray.get(i)).get("tests"));
             for (int j = 0; j < testArray.size(); j++) {
                 sampleTypeTests.orderedTests.add(String.valueOf(((JSONObject) testArray.get(j)).get("id")));
@@ -442,10 +460,8 @@ public class TestAddRestController extends BaseController {
     }
 
     private List<List<IdValuePair>> createGroupedDictionaryList() {
-        List<TestResult> testResults = testResultService.getAllSortedTestResults(); // getSortedTestResults();
-
+        List<TestResult> testResults = testResultService.getAllSortedTestResults();
         HashSet<String> dictionaryIdGroups = getDictionaryIdGroups(testResults);
-
         return getGroupedDictionaryPairs(dictionaryIdGroups);
     }
 
@@ -462,16 +478,13 @@ public class TestAddRestController extends BaseController {
                     if (dictionaryIdGroup != null) {
                         dictionaryIdGroups.add(dictionaryIdGroup);
                     }
-
                     dictionaryIdGroup = testResult.getValue();
                 }
             }
         }
-
         if (dictionaryIdGroup != null) {
             dictionaryIdGroups.add(dictionaryIdGroup);
         }
-
         return dictionaryIdGroups;
     }
 
@@ -487,7 +500,6 @@ public class TestAddRestController extends BaseController {
             }
             groups.add(dictionaryPairs);
         }
-
         Collections.sort(groups, new Comparator<List<IdValuePair>>() {
             @Override
             public int compare(List<IdValuePair> o1, List<IdValuePair> o2) {
@@ -520,7 +532,7 @@ public class TestAddRestController extends BaseController {
         return null;
     }
 
-    public class TestAddParams {
+    public static class TestAddParams {
         String testId;
         public String testNameEnglish;
         public String testNameFrench;
@@ -549,22 +561,20 @@ public class TestAddRestController extends BaseController {
         public ArrayList<DictionaryParams> dictionaryParamList = new ArrayList<>();
     }
 
-    public class TestSet {
-        public Test test;
-        public TypeOfSampleTest sampleTypeTest;
-        public TypeOfSample typeOfSample;
-        public ArrayList<Test> sortedTests = new ArrayList<>();
-        public ArrayList<PanelItem> panelItems = new ArrayList<>();
-        public ArrayList<TestResult> testResults = new ArrayList<>();
-        public ArrayList<ResultLimit> resultLimits = new ArrayList<>();
-    }
+    /*
+     * public static class TestSet { public Test test; public TypeOfSampleTest
+     * sampleTypeTest; public TypeOfSample typeOfSample; public ArrayList<Test>
+     * sortedTests = new ArrayList<>(); public ArrayList<PanelItem> panelItems = new
+     * ArrayList<>(); public ArrayList<TestResult> testResults = new ArrayList<>();
+     * public ArrayList<ResultLimit> resultLimits = new ArrayList<>(); }
+     */
 
-    public class SampleTypeListAndTestOrder {
+    public static class SampleTypeListAndTestOrder {
         String sampleTypeId;
         ArrayList<String> orderedTests = new ArrayList<>();
     }
 
-    public class ResultLimitParams {
+    public static class ResultLimitParams {
         String gender;
         String lowAge;
         String highAge;
@@ -575,7 +585,7 @@ public class TestAddRestController extends BaseController {
         String highCritical;
     }
 
-    public class DictionaryParams {
+    public static class DictionaryParams {
         public boolean isDefault;
         public String dictionaryId;
         public boolean isQuantifiable = false;

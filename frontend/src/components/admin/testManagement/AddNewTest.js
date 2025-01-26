@@ -1,21 +1,26 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Grid,
   Column,
   Toggle,
+  FilterableMultiSelect,
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableHeader,
+  TableBody,
+  TableCell,
+  Button,
   TextInput,
+  Checkbox,
   Select,
   SelectItem,
-  MultiSelect,
-  Button,
-  Checkbox,
   StructuredListWrapper,
   StructuredListHead,
   StructuredListRow,
   StructuredListCell,
   StructuredListBody,
-  Section,
-  Heading,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
@@ -24,118 +29,144 @@ import {
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import { FormattedMessage, useIntl } from "react-intl";
 
-let breadcrumbs = [
+const breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "sidenav.label.admin.testmgt.AddNewTest",
-    link: "/MasterListsPage#AddNewTest",
+    link: "/MasterListsPage#TestAdd",
   },
 ];
 
 const AddNewTest = () => {
-  const [step, setStep] = useState(1);
   const [showGuide, setShowGuide] = useState(false);
-  const [formData, setFormData] = useState({
+  const [sampleTypeList, setSampleTypeList] = useState([]);
+  const [panelList, setPanelList] = useState([]);
+  const [uomList, setUomList] = useState([]);
+  const [resultTypeList, setResultTypeList] = useState([]);
+  const [testUnitList, setTestUnitList] = useState([]);
+  const [ageRangeList, setAgeRangeList] = useState([]);
+  const [dictionaryList, setDictionaryList] = useState([]);
+  const [groupedDictionaryList, setGroupedDictionaryList] = useState([]);
+  const [form, setForm] = useState({
     testNameEnglish: "",
     testNameFrench: "",
     testReportNameEnglish: "",
     testReportNameFrench: "",
-    testUnitSelection: "",
-    panelSelection: [],
-    uomSelection: "",
-    resultTypeSelection: "",
+    testSection: "",
+    panels: [],
+    uom: "",
     loinc: "",
-    antimicrobialResistance: false,
-    active: true,
-    orderable: true,
+    resultType: "",
+    orderable: false,
     notifyResults: false,
     inLabOnly: false,
+    antimicrobialResistance: false,
+    active: true,
     sampleTypes: [],
+    resultLimits: [],
     dictionary: [],
-    normalRange: {
-      lowNormal: "-Infinity",
-      highNormal: "Infinity",
-      lowValid: "-Infinity",
-      highValid: "Infinity",
-      lowReportingRange: "-Infinity",
-      highReportingRange: "Infinity",
-      lowCritical: "-Infinity",
-      highCritical: "-Infinity",
-      significantDigits: "",
-    },
+    dictionaryReference: "",
+    defaultTestResult: "",
+    significantDigits: "",
+    lowValid: "-Infinity",
+    highValid: "Infinity",
+    lowReportingRange: "-Infinity",
+    highReportingRange: "Infinity",
+    lowCritical: "-Infinity",
+    highCritical: "Infinity",
   });
-
-  const [testUnits, setTestUnits] = useState([]);
-  const [panels, setPanels] = useState([]);
-  const [uoms, setUoms] = useState([]);
-  const [resultTypes, setResultTypes] = useState([]);
-  const [sampleTypes, setSampleTypes] = useState([]);
-  const [dictionaries, setDictionaries] = useState([]);
-  const [ageRangeList, setAgeRangeList] = useState([]);
-  const [error, setError] = useState(null);
+  const [step, setStep] = useState("step1");
   const intl = useIntl();
 
-  const fetchAllData = async () => {
-    try {
-      const response = await getFromOpenElisServer("/api/test/add");
-      setTestUnits(response.labUnitList || []);
-      setPanels(response.panelList || []);
-      setUoms(response.uomList || []);
-      setResultTypes(response.resultTypeList || []);
-      setSampleTypes(response.sampleTypeList || []);
-      setDictionaries(response.dictionaryList || []);
-      setAgeRangeList(response.ageRangeList || []);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setError("Failed to fetch data.");
-    }
-  };
-
   useEffect(() => {
-    fetchAllData();
+    getFromOpenElisServer(`/rest/TestAdd`, handleFormData);
   }, []);
 
-  const handleTestAdd = (response) => {
-    if (response && (response.status === 200 || response.status === 201)) {
-      console.log("Test added successfully:", response.data);
-      alert("Test added successfully!");
-    } else {
-      setError("Failed to add test. Please try again.");
-      console.error("Error adding test:", response);
-    }
-  };
-
-  const nextStep = () => setStep(step + 1);
-  const prevStep = () => setStep(step - 1);
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value,
-    });
-  };
-
-  const handleMultiSelectChange = (selectedItems) => {
-    setFormData({
-      ...formData,
-      panelSelection: selectedItems.selectedItems || selectedItems,
-    });
-  };
-
-  const handleSubmit = async () => {
-    try {
-      const response = await postToOpenElisServer("/rest/TestAdd", formData);
-      handleTestAdd(response);
-    } catch (error) {
-      setError("Failed to add test. Please try again.");
-      console.error("Error adding test:", error);
-    }
+  const handleFormData = (res) => {
+    console.log("Fetched data:", res);
+    setSampleTypeList(res.sampleTypeList || []);
+    setPanelList(res.panelList || []);
+    setUomList(res.uomList || []);
+    setResultTypeList(res.resultTypeList || []);
+    setTestUnitList(res.testUnitList || []);
+    setAgeRangeList(res.ageRangeList || []);
+    setDictionaryList(res.dictionaryList || []);
+    setGroupedDictionaryList(res.groupedDictionaryList || []);
   };
 
   const handleToggle = () => {
     setShowGuide(!showGuide);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setForm((prevForm) => ({
+      ...prevForm,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleMultiSelectChange = (name, selectedItems) => {
+    setForm((prevForm) => ({
+      ...prevForm,
+      [name]: selectedItems.selectedItems,
+    }));
+  };
+
+  const copyFromTestName = () => {
+    setForm((prevForm) => ({
+      ...prevForm,
+      testReportNameEnglish: prevForm.testNameEnglish,
+      testReportNameFrench: prevForm.testNameFrench,
+    }));
+  };
+
+  const handleSubmit = () => {
+    console.log("Submitting form:", form);
+    postToOpenElisServer(`/rest/TestAdd`, form, (res) => {
+      console.log("Form submitted successfully", res);
+    });
+  };
+
+  const nextStep = () => {
+    if (step === "step1") {
+      setStep("step2");
+    } else if (step === "step2") {
+      if (form.resultType === "NUMERIC") {
+        setStep("step3Numeric");
+      } else if (
+        ["DICTIONARY", "MULTISELECT", "CASCADING_MULTISELECT"].includes(
+          form.resultType,
+        )
+      ) {
+        setStep("step3Dictionary");
+      } else {
+        setStep("confirm");
+      }
+    } else if (step === "step3Numeric" || step === "step3Dictionary") {
+      setStep("confirm");
+    }
+  };
+
+  const previousStep = () => {
+    if (step === "step2") {
+      setStep("step1");
+    } else if (step === "step3Numeric" || step === "step3Dictionary") {
+      setStep("step2");
+    } else if (step === "confirm") {
+      if (form.resultType === "NUMERIC") {
+        setStep("step3Numeric");
+      } else if (
+        ["DICTIONARY", "MULTISELECT", "CASCADING_MULTISELECT"].includes(
+          form.resultType,
+        )
+      ) {
+        setStep("step3Dictionary");
+      } else {
+        setStep("step2");
+      }
+    }
   };
 
   const rows = [
@@ -284,7 +315,6 @@ const AddNewTest = () => {
         <Grid fullWidth={true}>
           <Column lg={12}>
             <h1>
-              {" "}
               <FormattedMessage id="Add New Test" />
             </h1>
           </Column>
@@ -293,7 +323,6 @@ const AddNewTest = () => {
           </Column>
         </Grid>
         <hr />
-
         {showGuide && (
           <>
             <StructuredListWrapper ariaLabel="Structured list">
@@ -316,272 +345,613 @@ const AddNewTest = () => {
             <br />
           </>
         )}
-
-        {step === 1 && (
-          <TestForm
-            formData={formData}
-            handleChange={handleChange}
-            nextStep={nextStep}
-            testUnits={testUnits}
-            panels={panels}
-            uoms={uoms}
-            resultTypes={resultTypes}
-            handleMultiSelectChange={handleMultiSelectChange}
-          />
+        {step === "step1" && (
+          <div id="step1Div">
+            <Grid>
+              <Column lg={6}>
+                <text>Test Name</text>
+                <TextInput
+                  id="testNameEnglish"
+                  name="testNameEnglish"
+                  labelText="English"
+                  value={form.testNameEnglish}
+                  onChange={handleInputChange}
+                  required
+                />
+                <TextInput
+                  id="testNameFrench"
+                  name="testNameFrench"
+                  labelText={intl.formatMessage({ id: "French" })}
+                  value={form.testNameFrench}
+                  onChange={handleInputChange}
+                  required
+                />
+                <br></br>
+                <text>Reporting Name</text>
+                <br></br>
+                <Button
+                  onClick={copyFromTestName}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-around",
+                    marginTop: "10px",
+                  }}
+                >
+                  <FormattedMessage id="Copy from Test Name" />
+                </Button>
+                <TextInput
+                  id="testReportNameEnglish"
+                  name="testReportNameEnglish"
+                  labelText={intl.formatMessage({ id: "English" })}
+                  value={form.testReportNameEnglish}
+                  onChange={handleInputChange}
+                  required
+                />
+                <TextInput
+                  id="testReportNameFrench"
+                  name="testReportNameFrench"
+                  labelText={intl.formatMessage({ id: "French" })}
+                  value={form.testReportNameFrench}
+                  onChange={handleInputChange}
+                  required
+                />
+              </Column>
+              <Column lg={6}>
+                <Select
+                  id="testUnitSelection"
+                  name="testSection"
+                  labelText={intl.formatMessage({ id: "Test Section" })}
+                  value={form.testSection}
+                  onChange={handleInputChange}
+                  required
+                >
+                  <SelectItem value="" text="Select a test section" />
+                  {testUnitList.map((item) => (
+                    <SelectItem
+                      key={item.id}
+                      value={item.id}
+                      text={item.value}
+                    />
+                  ))}
+                </Select>
+                <FilterableMultiSelect
+                  id="panelSelection"
+                  titleText={intl.formatMessage({ id: "Panel" })}
+                  items={panelList}
+                  itemToString={(item) => (item ? item.value : "")}
+                  onChange={(selectedItems) =>
+                    handleMultiSelectChange("panels", selectedItems)
+                  }
+                  selectedItems={form.panels}
+                />
+                <Select
+                  id="uomSelection"
+                  name="uom"
+                  labelText={intl.formatMessage({ id: "Unit of Measure" })}
+                  value={form.uom}
+                  onChange={handleInputChange}
+                >
+                  <SelectItem value="" text="Select a unit of measure" />
+                  {uomList.map((item) => (
+                    <SelectItem
+                      key={item.id}
+                      value={item.id}
+                      text={item.value}
+                    />
+                  ))}
+                </Select>
+                <TextInput
+                  id="loinc"
+                  name="loinc"
+                  labelText={intl.formatMessage({ id: "LOINC" })}
+                  value={form.loinc}
+                  onChange={handleInputChange}
+                />
+                <Select
+                  id="resultTypeSelection"
+                  name="resultType"
+                  labelText={intl.formatMessage({ id: "Result Type" })}
+                  value={form.resultType}
+                  onChange={handleInputChange}
+                  required
+                >
+                  <SelectItem value="" text="Select a result type" />
+                  {resultTypeList.map((item) => (
+                    <SelectItem
+                      key={item.id}
+                      value={item.id}
+                      text={item.value}
+                    />
+                  ))}
+                </Select>
+                <Checkbox
+                  id="antimicrobialResistance"
+                  name="antimicrobialResistance"
+                  labelText={intl.formatMessage({
+                    id: "Antimicrobial Resistance",
+                  })}
+                  checked={form.antimicrobialResistance}
+                  onChange={handleInputChange}
+                />
+                <Checkbox
+                  id="active"
+                  name="active"
+                  labelText={intl.formatMessage({ id: "Is Active" })}
+                  checked={form.active}
+                  onChange={handleInputChange}
+                />
+                <Checkbox
+                  id="orderable"
+                  name="orderable"
+                  labelText={intl.formatMessage({ id: "Orderable" })}
+                  checked={form.orderable}
+                  onChange={handleInputChange}
+                />
+                <Checkbox
+                  id="notifyResults"
+                  name="notifyResults"
+                  labelText={intl.formatMessage({ id: "Notify Results" })}
+                  checked={form.notifyResults}
+                  onChange={handleInputChange}
+                />
+                <Checkbox
+                  id="inLabOnly"
+                  name="inLabOnly"
+                  labelText={intl.formatMessage({ id: "In Lab Only" })}
+                  checked={form.inLabOnly}
+                  onChange={handleInputChange}
+                />
+              </Column>
+            </Grid>
+          </div>
         )}
-        {step === 2 && (
-          <SampleTypeSelection
-            formData={formData}
-            handleChange={handleChange}
-            nextStep={nextStep}
-            prevStep={prevStep}
-            sampleTypes={sampleTypes}
-          />
+        {step === "step2" && (
+          <div id="sampleTypeContainer">
+            <Grid>
+              <Column lg={4}>
+                <FilterableMultiSelect
+                  id="sampleTypeSelection"
+                  titleText={intl.formatMessage({ id: "Sample Type" })}
+                  items={sampleTypeList}
+                  itemToString={(item) => (item ? item.value : "")}
+                  onChange={(selectedItems) =>
+                    handleMultiSelectChange("sampleTypes", selectedItems)
+                  }
+                  selectedItems={form.sampleTypes}
+                />
+              </Column>
+              <Column lg={8}>
+                <div id="sortTitleDiv" align="center">
+                  <FormattedMessage id="Display Order" />
+                </div>
+                <div id="endOrderMarker"></div>
+              </Column>
+            </Grid>
+          </div>
         )}
-        {step === 3 && (
-          <DictionarySelection
-            formData={formData}
-            handleChange={handleChange}
-            nextStep={nextStep}
-            prevStep={prevStep}
-            dictionaries={dictionaries}
-          />
+        {step === "step3Numeric" && (
+          <div id="normalRangeDiv">
+            <h3>
+              <FormattedMessage id="label.range" />
+            </h3>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeader colSpan={6}>
+                      <FormattedMessage id="label.age.range" />
+                    </TableHeader>
+                    <TableHeader colSpan={2}>
+                      <FormattedMessage id="configuration.test.catalog.normal.range" />
+                    </TableHeader>
+                    <TableHeader colSpan={2}>
+                      <FormattedMessage id="label.reporting.range" />
+                    </TableHeader>
+                    <TableHeader colSpan={2}>
+                      <FormattedMessage id="configuration.test.catalog.valid.range" />
+                    </TableHeader>
+                    <TableHeader colSpan={4}>
+                      <FormattedMessage id="configuration.test.catalog.critical.range" />
+                    </TableHeader>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>
+                      <Checkbox
+                        id="genderCheck_0"
+                        name="genderCheck_0"
+                        labelText={intl.formatMessage({
+                          id: "label.sex.dependent",
+                        })}
+                        onChange={handleInputChange}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <span className="sexRange_0" style={{ display: "none" }}>
+                        <FormattedMessage id="label.sex" />
+                      </span>
+                    </TableCell>
+                    <TableCell colSpan={4} align="center"></TableCell>
+                    <TableCell colSpan={2} align="center"></TableCell>
+                    <TableCell colSpan={2} align="center"></TableCell>
+                    <TableCell colSpan={2}></TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>
+                      <TextInput
+                        id="lowNormal_0"
+                        name="lowNormal_0"
+                        value={form.lowNormal_0}
+                        onChange={handleInputChange}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextInput
+                        id="highNormal_0"
+                        name="highNormal_0"
+                        value={form.highNormal_0}
+                        onChange={handleInputChange}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextInput
+                        id="lowReportingRange"
+                        name="lowReportingRange"
+                        value={form.lowReportingRange}
+                        onChange={handleInputChange}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextInput
+                        id="highReportingRange"
+                        name="highReportingRange"
+                        value={form.highReportingRange}
+                        onChange={handleInputChange}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextInput
+                        id="lowValid"
+                        name="lowValid"
+                        value={form.lowValid}
+                        onChange={handleInputChange}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextInput
+                        id="highValid"
+                        name="highValid"
+                        value={form.highValid}
+                        onChange={handleInputChange}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextInput
+                        id="lowCritical"
+                        name="lowCritical"
+                        value={form.lowCritical}
+                        onChange={handleInputChange}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextInput
+                        id="highCritical"
+                        name="highCritical"
+                        value={form.highCritical}
+                        onChange={handleInputChange}
+                      />
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TextInput
+              id="significantDigits"
+              name="significantDigits"
+              labelText={intl.formatMessage({ id: "Significant Digits" })}
+              value={form.significantDigits}
+              onChange={handleInputChange}
+            />
+          </div>
         )}
-        {step === 4 && (
-          <NormalRangeComponent
-            formData={formData}
-            handleChange={handleChange}
-            handleSubmit={handleSubmit}
-            prevStep={prevStep}
-            ageRangeList={ageRangeList}
-          />
+        {step === "step3Dictionary" && (
+          <div id="dictionarySelectId">
+            <FilterableMultiSelect
+              id="dictionarySelection"
+              titleText={intl.formatMessage({ id: "List Options" })}
+              items={dictionaryList}
+              itemToString={(item) => (item ? item.value : "")}
+              onChange={(selectedItems) =>
+                handleMultiSelectChange("dictionary", selectedItems)
+              }
+              selectedItems={form.dictionary}
+            />
+            <Select
+              id="referenceSelection"
+              name="dictionaryReference"
+              labelText={intl.formatMessage({ id: "Reference Value" })}
+              value={form.dictionaryReference}
+              onChange={handleInputChange}
+            >
+              <SelectItem value="" text="Select a reference value" />
+              {dictionaryList.map((item) => (
+                <SelectItem key={item.id} value={item.id} text={item.value} />
+              ))}
+            </Select>
+            <Select
+              id="defaultTestResultSelection"
+              name="defaultTestResult"
+              labelText={intl.formatMessage({ id: "Default Result" })}
+              value={form.defaultTestResult}
+              onChange={handleInputChange}
+            >
+              <SelectItem value="" text="Select a default test result" />
+              {dictionaryList.map((item) => (
+                <SelectItem key={item.id} value={item.id} text={item.value} />
+              ))}
+            </Select>
+            <FilterableMultiSelect
+              id="qualifierSelection"
+              titleText={intl.formatMessage({ id: "Qualifiers" })}
+              items={dictionaryList}
+              itemToString={(item) => (item ? item.value : "")}
+              onChange={(selectedItems) =>
+                handleMultiSelectChange("qualifiers", selectedItems)
+              }
+              selectedItems={form.qualifiers}
+            />
+          </div>
         )}
+        {step === "confirm" && (
+          <div id="confirmDiv">
+            <h3>
+              <FormattedMessage id="Confirmation" />
+            </h3>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeader>
+                      <FormattedMessage id="field" />
+                    </TableHeader>
+                    <TableHeader>
+                      <FormattedMessage id="value" />
+                    </TableHeader>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>
+                      <FormattedMessage id="Test Name(English)" />
+                    </TableCell>
+                    <TableCell>{form.testNameEnglish}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>
+                      <FormattedMessage id="Test Name(French)" />
+                    </TableCell>
+                    <TableCell>{form.testNameFrench}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>
+                      <FormattedMessage id="Reporting Name(English)" />
+                    </TableCell>
+                    <TableCell>{form.testReportNameEnglish}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>
+                      <FormattedMessage id="Reporting Name(French)" />
+                    </TableCell>
+                    <TableCell>{form.testReportNameFrench}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>
+                      <FormattedMessage id="Section Name" />
+                    </TableCell>
+                    <TableCell>
+                      {
+                        testUnitList.find(
+                          (item) => item.id === form.testSection,
+                        )?.value
+                      }
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>
+                      <FormattedMessage id="Panel" />
+                    </TableCell>
+                    <TableCell>
+                      {form.panels.map((panel) => panel.value).join(", ")}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>
+                      <FormattedMessage id="Unit of Measure" />
+                    </TableCell>
+                    <TableCell>
+                      {uomList.find((item) => item.id === form.uom)?.value}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>
+                      <FormattedMessage id="LOINC" />
+                    </TableCell>
+                    <TableCell>{form.loinc}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>
+                      <FormattedMessage id="Result Type" />
+                    </TableCell>
+                    <TableCell>
+                      {
+                        resultTypeList.find(
+                          (item) => item.id === form.resultType,
+                        )?.value
+                      }
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>
+                      <FormattedMessage id="Antimicrobial Resistance" />
+                    </TableCell>
+                    <TableCell>
+                      {form.antimicrobialResistance ? "Yes" : "No"}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>
+                      <FormattedMessage id="Is Active" />
+                    </TableCell>
+                    <TableCell>{form.active ? "Yes" : "No"}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>
+                      <FormattedMessage id="Orderable" />
+                    </TableCell>
+                    <TableCell>{form.orderable ? "Yes" : "No"}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>
+                      <FormattedMessage id="Notify Results" />
+                    </TableCell>
+                    <TableCell>{form.notifyResults ? "Yes" : "No"}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>
+                      <FormattedMessage id="In Lab Only" />
+                    </TableCell>
+                    <TableCell>{form.inLabOnly ? "Yes" : "No"}</TableCell>
+                  </TableRow>
+                  {form.resultType === "NUMERIC" && (
+                    <>
+                      <TableRow>
+                        <TableCell>
+                          <FormattedMessage id="Significant Digits" />
+                        </TableCell>
+                        <TableCell>{form.significantDigits}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>
+                          <FormattedMessage id="Low Valid" />
+                        </TableCell>
+                        <TableCell>{form.lowValid}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>
+                          <FormattedMessage id="High Valid" />
+                        </TableCell>
+                        <TableCell>{form.highValid}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>
+                          <FormattedMessage id="Low Reporting Range" />
+                        </TableCell>
+                        <TableCell>{form.lowReportingRange}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>
+                          <FormattedMessage id="High Reporting Range" />
+                        </TableCell>
+                        <TableCell>{form.highReportingRange}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>
+                          <FormattedMessage id="Low Critical" />
+                        </TableCell>
+                        <TableCell>{form.lowCritical}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>
+                          <FormattedMessage id="High Critical" />
+                        </TableCell>
+                        <TableCell>{form.highCritical}</TableCell>
+                      </TableRow>
+                    </>
+                  )}
+                  {[
+                    "DICTIONARY",
+                    "MULTISELECT",
+                    "CASCADING_MULTISELECT",
+                  ].includes(form.resultType) && (
+                    <>
+                      <TableRow>
+                        <TableCell>
+                          <FormattedMessage id="Value" />
+                        </TableCell>
+                        <TableCell>
+                          {
+                            dictionaryList.find(
+                              (item) => item.id === form.dictionaryReference,
+                            )?.value
+                          }
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>
+                          <FormattedMessage id="Result" />
+                        </TableCell>
+                        <TableCell>
+                          {
+                            dictionaryList.find(
+                              (item) => item.id === form.defaultTestResult,
+                            )?.value
+                          }
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>
+                          <FormattedMessage id="Qualifiers" />
+                        </TableCell>
+                        <TableCell>
+                          {form.qualifiers
+                            .map((qualifier) => qualifier.value)
+                            .join(", ")}
+                        </TableCell>
+                      </TableRow>
+                    </>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </div>
+        )}
+        <div
+          className="selectShow"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginTop: "20px",
+          }}
+        >
+          {step !== "confirm" && (
+            <Button onClick={previousStep} disabled={step === "step1"}>
+              <FormattedMessage id="Back" />
+            </Button>
+          )}
+          {step !== "confirm" && (
+            <Button onClick={nextStep}>
+              <FormattedMessage id="Next" />
+            </Button>
+          )}
+        </div>
+        <div
+          className="confirmShow"
+          style={{ display: "flex", justifyContent: "space-between" }}
+        >
+          {step === "confirm" && (
+            <Button onClick={previousStep}>
+              <FormattedMessage id="Back" />
+            </Button>
+          )}
+          {step === "confirm" && (
+            <Button onClick={handleSubmit}>
+              <FormattedMessage id="Accept" />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
-  );
-};
-
-const TestForm = ({
-  formData,
-  handleChange,
-  nextStep,
-  testUnits,
-  panels,
-  uoms,
-  resultTypes,
-  handleMultiSelectChange,
-}) => {
-  return (
-    <Grid>
-      <Column lg={8}>
-        <TextInput
-          id="testNameEnglish"
-          name="testNameEnglish"
-          labelText="Test Name (English)"
-          value={formData.testNameEnglish}
-          onChange={handleChange}
-        />
-        <TextInput
-          id="testNameFrench"
-          name="testNameFrench"
-          labelText="Test Name (French)"
-          value={formData.testNameFrench}
-          onChange={handleChange}
-        />
-        <TextInput
-          id="testReportNameEnglish"
-          name="testReportNameEnglish"
-          labelText="Test Report Name (English)"
-          value={formData.testReportNameEnglish}
-          onChange={handleChange}
-        />
-        <TextInput
-          id="testReportNameFrench"
-          name="testReportNameFrench"
-          labelText="Test Report Name (French)"
-          value={formData.testReportNameFrench}
-          onChange={handleChange}
-        />
-        <Select
-          id="testUnitSelection"
-          name="testUnitSelection"
-          labelText="Test Section"
-          value={formData.testUnitSelection}
-          onChange={handleChange}
-        >
-          <SelectItem value="" text="Select" />
-          {testUnits.map((unit) => (
-            <SelectItem key={unit?.id} value={unit?.id} text={unit?.value} />
-          ))}
-        </Select>
-        <MultiSelect
-          id="panelSelection"
-          name="panelSelection"
-          labelText="Panels"
-          items={panels}
-          itemToString={(item) => item?.value}
-          onChange={handleMultiSelectChange}
-          selectedItems={formData.panelSelection}
-        />
-        <Select
-          id="uomSelection"
-          name="uomSelection"
-          labelText="Unit of Measure"
-          value={formData.uomSelection}
-          onChange={handleChange}
-        >
-          <SelectItem value="" text="Select" />
-          {uoms.map((uom) => (
-            <SelectItem key={uom?.id} value={uom?.id} text={uom?.value} />
-          ))}
-        </Select>
-        <Select
-          id="resultTypeSelection"
-          name="resultTypeSelection"
-          labelText="Result Type"
-          value={formData.resultTypeSelection}
-          onChange={handleChange}
-        >
-          <SelectItem value="" text="Select" />
-          {resultTypes.map((type) => (
-            <SelectItem key={type?.id} value={type?.id} text={type?.value} />
-          ))}
-        </Select>
-        <TextInput
-          id="loinc"
-          name="loinc"
-          labelText="LOINC"
-          value={formData.loinc}
-          onChange={handleChange}
-        />
-        <Checkbox
-          id="active"
-          name="active"
-          labelText="Is Active"
-          checked={formData.active}
-          onChange={handleChange}
-        />
-        <Checkbox
-          id="orderable"
-          name="orderable"
-          labelText="Orderable"
-          checked={formData.orderable}
-          onChange={handleChange}
-        />
-        <Checkbox
-          id="notifyResults"
-          name="notifyResults"
-          labelText="Notify Results"
-          checked={formData.notifyResults}
-          onChange={handleChange}
-        />
-        <Checkbox
-          id="inLabOnly"
-          name="inLabOnly"
-          labelText="In Lab Only"
-          checked={formData.inLabOnly}
-          onChange={handleChange}
-        />
-        <Checkbox
-          id="antimicrobialResistance"
-          name="antimicrobialResistance"
-          labelText="Antimicrobial Resistance"
-          checked={formData.antimicrobialResistance}
-          onChange={handleChange}
-        />
-        <Button onClick={nextStep}>Next</Button>
-      </Column>
-    </Grid>
-  );
-};
-
-const SampleTypeSelection = ({
-  formData,
-  handleChange,
-  nextStep,
-  prevStep,
-  sampleTypes,
-}) => {
-  return (
-    <Grid>
-      <Column lg={8}>
-        <MultiSelect
-          id="sampleTypeSelection"
-          name="sampleTypes"
-          labelText="Sample Type"
-          items={sampleTypes}
-          itemToString={(item) => item?.value}
-          onChange={handleChange}
-          selectedItems={formData.sampleTypes}
-        />
-        <Button onClick={prevStep}>Back</Button>
-        <Button onClick={nextStep}>Next</Button>
-      </Column>
-    </Grid>
-  );
-};
-
-const DictionarySelection = ({
-  formData,
-  handleChange,
-  nextStep,
-  prevStep,
-  dictionaries,
-}) => {
-  return (
-    <Grid>
-      <Column lg={8}>
-        <MultiSelect
-          id="dictionarySelection"
-          name="dictionary"
-          labelText="Dictionary"
-          items={dictionaries}
-          itemToString={(item) => item?.value}
-          onChange={handleChange}
-          selectedItems={formData.dictionary}
-        />
-        <Button onClick={prevStep}>Back</Button>
-        <Button onClick={nextStep}>Next</Button>
-      </Column>
-    </Grid>
-  );
-};
-
-const NormalRangeComponent = ({
-  formData,
-  handleChange,
-  handleSubmit,
-  prevStep,
-  ageRangeList,
-}) => {
-  return (
-    <Grid>
-      <Column lg={8}>
-        <TextInput
-          id="lowNormal"
-          name="normalRange.lowNormal"
-          labelText="Low Normal"
-          value={formData.normalRange.lowNormal}
-          onChange={handleChange}
-        />
-        <TextInput
-          id="highNormal"
-          name="normalRange.highNormal"
-          labelText="High Normal"
-          value={formData.normalRange.highNormal}
-          onChange={handleChange}
-        />
-        <TextInput
-          id="significantDigits"
-          name="normalRange.significantDigits"
-          labelText="Significant Digits"
-          value={formData.normalRange.significantDigits}
-          onChange={handleChange}
-        />
-        <Button onClick={prevStep}>Back</Button>
-        <Button onClick={handleSubmit}>Submit</Button>
-      </Column>
-    </Grid>
   );
 };
 

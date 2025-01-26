@@ -575,7 +575,7 @@ public class TestAddController extends BaseController {
         public ArrayList<DictionaryParams> dictionaryParamList = new ArrayList<>();
     }
 
-    public class TestSet {
+    public static class TestSet {
         public Test test;
         public TypeOfSampleTest sampleTypeTest;
         public TypeOfSample typeOfSample;
