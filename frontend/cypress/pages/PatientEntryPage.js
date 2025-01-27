@@ -1,18 +1,19 @@
 class PatientEntryPage {
   subjectNumber = "input#subjectNumber";
   nationalId = "input#nationalId";
-  firstNameSelector = "input#firstName";
-  lastNameSelector = "input#lastName";
-  personContactLastName = "input#patientContact\\.person\\.lastName";
-  personContactFirstName = "input#patientContact\\.person\\.firstName";
-  personContactPrimaryPhone = "input#patientContact\\.person\\.primaryPhone";
+  firstNameSelector = "#firstName";
+  lastNameSelector = "#lastName";
+  personContactLastName = "#patientContact\\.person\\.lastName";
+  personContactFirstName = "#patientContact\\.person\\.firstName";
+  personContactPrimaryPhone = "#patientContact\\.person\\.primaryPhone";
   personContactEmail = "input#patientContact\\.person\\.email";
-  patientIdSelector = "input#patientId";
+  patientIdSelector = "#patientId";
   labNoSelector = "#labNumber";
   city = "input#city";
-  primaryPhone = "input#primaryPhone";
-  dateOfBirth = "input#date-picker-default-id";
+  primaryPhone = "#primaryPhone";
+  dateOfBirth = "#date-picker-default-id";
   savePatientBtn = "#submit";
+  previousLabNo = "#display_labNumber";
 
   constructor() {}
 
@@ -20,12 +21,16 @@ class PatientEntryPage {
     cy.visit("/PatientManagement");
   }
 
-  getPatientEntryPageTitle() {
-    return cy.get("section > h3");
+  clickSearchPatientBtn() {
+    cy.get("#root > div > div.cds--white.cds--layer-one > main > div.orderLegendBody > div > div:nth-child(1) > button").click();
   }
 
-  clickNewPatientTab() {
-    cy.get(":nth-child(1) > :nth-child(2) > .cds--btn").click();
+  clickSearchBtn(){
+    cy.get("#local_search").click();
+  }
+
+  clickNewPatientBtn() {
+    cy.get('[data-cy="new-patient-button"]').click();
   }
 
   enterPatientInfo(
@@ -49,13 +54,7 @@ class PatientEntryPage {
   }
 
   getMaleGenderRadioButton() {
-    return cy.getElement(
-      ":nth-child(2) > .cds--radio-button__label > .cds--radio-button__appearance",
-    );
-  }
-
-  clickSearchPatientButton() {
-    cy.getElement("#local_search").click();
+    cy.get("#search-radio-1").check();
   }
 
   getExternalSearchButton() {
@@ -82,11 +81,6 @@ class PatientEntryPage {
   }
   getSubmitButton() {
     return cy.getElement(this.savePatientBtn);
-  }
-
-  searchPatientByFirstAndLastName(firstName, lastName) {
-    cy.enterText(this.firstNameSelector, firstName);
-    cy.enterText(this.lastNameSelector, lastName);
   }
 
   searchPatientByPatientId(PID) {
@@ -166,6 +160,6 @@ class PatientEntryPage {
       .find("td:nth-child(1)")
       .click();
   }
-}
+} 
 
 export default PatientEntryPage;
