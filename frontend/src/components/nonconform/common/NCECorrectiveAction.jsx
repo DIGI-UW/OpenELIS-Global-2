@@ -485,7 +485,7 @@ export const NCECorrectiveAction = () => {
                 <div style={{ marginBottom: "10px" }}>
                   {data.labComponentList.find(
                     (obj) => obj.id === data.laboratoryComponent,
-                  ).value ?? ""}
+                  )?.value ?? ""}
                 </div>
               </Column>
 
@@ -497,7 +497,7 @@ export const NCECorrectiveAction = () => {
                 </div>
                 <div style={{ marginBottom: "10px" }}>
                   {data.nceCategories.find((obj) => obj.id === data.nceCategory)
-                    .name ?? ""}
+                    ?.name ?? ""}
                 </div>
               </Column>
 
@@ -508,7 +508,7 @@ export const NCECorrectiveAction = () => {
                   </span>
                 </div>
                 <div style={{ marginBottom: "10px" }}>
-                  {data.nceTypes.find((obj) => obj.id === data.nceType).name ??
+                  {data.nceTypes.find((obj) => obj.id === data.nceType)?.name ??
                     ""}
                 </div>
               </Column>
