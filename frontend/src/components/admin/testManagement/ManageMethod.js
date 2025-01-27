@@ -122,6 +122,7 @@ function ManageMethod() {
             </Section>
           </Column>
         </Grid>
+        <Grid>
         <Modal
           open={isAddModalOpen}
           size="sm"
@@ -131,6 +132,7 @@ function ManageMethod() {
           onRequestSubmit={handleAddMethod}
           onRequestClose={closeAddModal}
         >
+        <Column lg={4} md={4} sm={4} >
           <TextInput
             id="englishLabel"
             labelText="English"
@@ -143,6 +145,8 @@ function ManageMethod() {
             invalid={inputError && !englishLabel}
             invalidText="This field is required"
           />
+          </Column>
+          <Column lg={4} md={4} sm={4}  >
           <TextInput
             id="frenchLabel"
             labelText="French"
@@ -155,41 +159,42 @@ function ManageMethod() {
             invalid={inputError && !frenchLabel}
             invalidText="This field is required"
           />
+          </Column>
           {confirmationStep && (
             <p style={{ color: "#3366B3", marginTop: "1rem" }}>
               <FormattedMessage id="message.method.activation" />
             </p>
           )}
         </Modal>
-
+</Grid>
         <div className="orderLegendBody">
           <h4 style={{ color: "#3366B3" }}>
             <FormattedMessage id="label.existing.methods" />
           </h4>
-          <div style={{ display: "flex", flexWrap: "wrap", marginTop: "1rem" }}>
+          < Grid style={{marginz:"5px"}} >
             {existingMethods.map((method) => (
-              <div
+              <Column lg={5} md={4} sm={4}
                 key={method.id}
-                style={{ width: "25%", padding: "0.5rem 0" }}
+               
               >
                 {method.value}
-              </div>
+              </Column>
             ))}
-          </div>
+          </Grid>
           <hr />
           <h4 style={{ color: "#3366B3" }}>
             <FormattedMessage id="label.inactive.methods" />
           </h4>
-          <div style={{ display: "flex", flexWrap: "wrap", marginTop: "1rem" }}>
+          <Grid style={{  marginTop: "1rem" }}>
             {inactiveMethods.map((method) => (
-              <div
+              <Column lg={8} md={4} sm={4}
                 key={method.id}
                 style={{ width: "25%", padding: "0.5rem 0" }}
               >
                 {method.value}
-              </div>
+              </Column>
             ))}
-          </div>
+          </Grid>
         </div>
       </div>
     </>
