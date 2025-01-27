@@ -123,60 +123,57 @@ function ManageMethod() {
           </Column>
         </Grid>
         <Grid>
-        <Modal
-          open={isAddModalOpen}
-          size="sm"
-          modalHeading="Add New Method"
-          primaryButtonText={confirmationStep ? "Accept" : "Save"}
-          secondaryButtonText={confirmationStep ? "Reject" : "Cancel"}
-          onRequestSubmit={handleAddMethod}
-          onRequestClose={closeAddModal}
-        >
-        <Column lg={4} md={4} sm={4} >
-          <TextInput
-            id="englishLabel"
-            labelText="English"
-            value={englishLabel}
-            onChange={(e) => {
-              setEnglishLabel(e.target.value);
-              setInputError(false);
-            }}
-            required
-            invalid={inputError && !englishLabel}
-            invalidText="This field is required"
-          />
-          </Column>
-          <Column lg={4} md={4} sm={4}  >
-          <TextInput
-            id="frenchLabel"
-            labelText="French"
-            value={frenchLabel}
-            onChange={(e) => {
-              setFrenchLabel(e.target.value);
-              setInputError(false);
-            }}
-            required
-            invalid={inputError && !frenchLabel}
-            invalidText="This field is required"
-          />
-          </Column>
-          {confirmationStep && (
-            <p style={{ color: "#3366B3", marginTop: "1rem" }}>
-              <FormattedMessage id="message.method.activation" />
-            </p>
-          )}
-        </Modal>
-</Grid>
+          <Modal
+            open={isAddModalOpen}
+            size="sm"
+            modalHeading="Add New Method"
+            primaryButtonText={confirmationStep ? "Accept" : "Save"}
+            secondaryButtonText={confirmationStep ? "Reject" : "Cancel"}
+            onRequestSubmit={handleAddMethod}
+            onRequestClose={closeAddModal}
+          >
+            <Column lg={4} md={4} sm={4}>
+              <TextInput
+                id="englishLabel"
+                labelText="English"
+                value={englishLabel}
+                onChange={(e) => {
+                  setEnglishLabel(e.target.value);
+                  setInputError(false);
+                }}
+                required
+                invalid={inputError && !englishLabel}
+                invalidText="This field is required"
+              />
+            </Column>
+            <Column lg={4} md={4} sm={4}>
+              <TextInput
+                id="frenchLabel"
+                labelText="French"
+                value={frenchLabel}
+                onChange={(e) => {
+                  setFrenchLabel(e.target.value);
+                  setInputError(false);
+                }}
+                required
+                invalid={inputError && !frenchLabel}
+                invalidText="This field is required"
+              />
+            </Column>
+            {confirmationStep && (
+              <p style={{ color: "#3366B3", marginTop: "1rem" }}>
+                <FormattedMessage id="message.method.activation" />
+              </p>
+            )}
+          </Modal>
+        </Grid>
         <div className="orderLegendBody">
           <h4 style={{ color: "#3366B3" }}>
             <FormattedMessage id="label.existing.methods" />
           </h4>
-          < Grid style={{marginz:"5px"}} >
+          <Grid style={{ marginz: "5px" }}>
             {existingMethods.map((method) => (
-              <Column lg={5} md={4} sm={4}
-                key={method.id}
-               
-              >
+              <Column lg={5} md={4} sm={4} key={method.id}>
                 {method.value}
               </Column>
             ))}
@@ -185,9 +182,12 @@ function ManageMethod() {
           <h4 style={{ color: "#3366B3" }}>
             <FormattedMessage id="label.inactive.methods" />
           </h4>
-          <Grid style={{  marginTop: "1rem" }}>
+          <Grid style={{ marginTop: "1rem" }}>
             {inactiveMethods.map((method) => (
-              <Column lg={8} md={4} sm={4}
+              <Column
+                lg={8}
+                md={4}
+                sm={4}
                 key={method.id}
                 style={{ width: "25%", padding: "0.5rem 0" }}
               >
