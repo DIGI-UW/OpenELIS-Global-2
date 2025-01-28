@@ -1149,7 +1149,7 @@
   "notification.slideover.button.subscribe.fail": "Échec de l'abonnement",
   "testnotificationconfig.browse.title": "Configuration des notifications de test",
   "label.testName": "Noms des tests",
-  "testnotification.instructionis.variables.body": "[testName] : Nom du test correspondant",
+  "testnotification.instructionis.variables.body": "[testName] :Nom du test pour lequel cela es",
   "testnotification.instructionis.variables.body.0": "[testResult] : Résultat du test",
   "testnotification.instructionis.variables.body.1": "[patientFirstName] : Prénom du patient",
   "testnotification.instructionis.variables.body.2": "[patientLastNameInitial] : Initiale du nom de famille du patient",
