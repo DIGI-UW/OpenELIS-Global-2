@@ -4,7 +4,7 @@ class BatchOrderEntry {
   }
 
   checkNextButtonDisabled() {
-    cy.get(":nth-child(12) > .cds--btn").should("be.disabled");
+    cy.get("[data-testid='next-button-BatchOrderEntry']").should("be.disabled");
   }
 
   selectForm(formTypeRoutine) {
@@ -36,7 +36,7 @@ class BatchOrderEntry {
   }
 
   checkNextLabel() {
-    return cy.get(":nth-child(8) > .cds--btn");
+    return cy.get("[data-testid='next-button-BatchOrderEntry']");
   }
 
   //clickSavePatientButton() {
@@ -44,7 +44,7 @@ class BatchOrderEntry {
   // }
 
   clickGenerateButton() {
-    cy.get(":nth-child(2) > .cds--link").click();
+    cy.get("[data-testid='generate-barcode-btn-BatchOrderEntry']").click();
   }
 
   selectMethod(method) {
@@ -138,12 +138,13 @@ class BatchOrderEntry {
     cy.get("h2").should("contain.text", "Batch Order Entry");
   }
 
+
   clickGenerateAndSaveBarcode() {
-    cy.get(".cds--link > p").click();
+    cy.get("[data-testid='generate-barcode-link-BatchOrderEntry']").click();
   }
 
   saveOrder() {
-    cy.get(":nth-child(6) > .cds--btn").click();
+    cy.get("[data-testid='generate-barcode-btn-BatchOrderEntry']").click();
   }
 
   clickFinishButton() {
