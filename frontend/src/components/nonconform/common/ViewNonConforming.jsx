@@ -313,7 +313,7 @@ export const ViewNonConformingEvent = () => {
                 <br></br>
               </Column>
               <Column lg={16}>
-                <Button type="button" onClick={handleSubmit}>
+                <Button type="button" data-testid='nce-search-button' onClick={handleSubmit}>
                   <FormattedMessage id="label.button.search" />
                 </Button>
               </Column>
@@ -338,7 +338,7 @@ export const ViewNonConformingEvent = () => {
         <div>
           <Grid>
             <Column lg={16} md={8} sm={4}>
-              <Table style={{ marginTop: "1em" }}>
+              <Table style={{ marginTop: "1em" }} >
                 <TableHead>
                   <TableRow>
                     <TableHeader key="checkbox" />
@@ -351,8 +351,8 @@ export const ViewNonConformingEvent = () => {
                 </TableHead>
                 <TableBody>
                   {tData.nceEventsSearchResults.map((row) => (
-                    <TableRow key={row.nceNumber}>
-                      <TableCell key={`${row}-checkbox`}>
+                    <TableRow key={row.nceNumber} > 
+                      <TableCell key={`${row}-checkbox`} data-testid='Radio-button'>
                         <RadioButton
                           name="radio-group"
                           onClick={() => {
@@ -363,12 +363,12 @@ export const ViewNonConformingEvent = () => {
                           id={row.id}
                         />
                       </TableCell>
-
-                      <TableCell key={row.key + "date"}>
+                      
+                      <TableCell key={row.key + "date"} >
                         {new Date(row.reportDate).toDateString()}
                       </TableCell>
 
-                      <TableCell key={row.key + "1"}>{row.nceNumber}</TableCell>
+                      <TableCell key={row.key + "1"} >{row.nceNumber}</TableCell>
 
                       <TableCell key={row.key + "2"}>
                         {
@@ -396,7 +396,7 @@ export const ViewNonConformingEvent = () => {
                 </b>
               </span>
             </div>
-            <div style={{ marginBottom: "10px", color: "#555" }}>
+            <div style={{ marginBottom: "10px", color: "#555" }} data-testid="nce-number-result">
               {data.nceEventsSearchResults[0].nceNumber}
             </div>
           </Column>
@@ -446,11 +446,11 @@ export const ViewNonConformingEvent = () => {
           <Column lg={1}></Column>
           <Column lg={3} style={{ marginBottom: "20px" }}>
             <div style={{ marginBottom: "10px" }}>
-              <span style={{ color: "#3366B3", fontWeight: "bold" }}>
+              <span style={{ color: "#3366B3", fontWeight: "bold" }} >
                 <FormattedMessage id="sample.label.labnumber" />
               </span>
             </div>
-            <div style={{ marginBottom: "10px" }}>
+            <div style={{ marginBottom: "10px" }} data-testid='nce-search-result'>
               {data.nceEventsSearchResults[0].labOrderNumber}
             </div>
           </Column>
@@ -706,7 +706,7 @@ export const ViewNonConformingEvent = () => {
                 {formData.error}
               </div>
             )}
-            <Button type="button" onClick={() => handleNCEFormSubmit()}>
+            <Button type="button" data-testid='nce-submit-button' onClick={() => handleNCEFormSubmit()}>
               <FormattedMessage id="label.button.submit" />
             </Button>
           </Column>
