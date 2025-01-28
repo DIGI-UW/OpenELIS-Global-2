@@ -701,8 +701,7 @@ function CreatePatientForm(props) {
                   >
                     <Grid>
                       <Column lg={16} md={8} sm={4}>
-                        {" "}
-                        <br></br>
+                        <br />
                       </Column>
                       <Column lg={8} md={4} sm={4}>
                         <Field name="patientContact.person.lastName">
@@ -715,7 +714,7 @@ function CreatePatientForm(props) {
                               labelText={intl.formatMessage({
                                 id: "patientcontact.person.lastname",
                               })}
-                              id={field.name}
+                              id="emergency-lastname" // Added ID
                               placeholder={intl.formatMessage({
                                 id: "patient.emergency.lastname",
                               })}
@@ -734,7 +733,7 @@ function CreatePatientForm(props) {
                               labelText={intl.formatMessage({
                                 id: "patientcontact.person.firstname",
                               })}
-                              id={field.name}
+                              id="emergency-firstname" // Added ID
                               placeholder={intl.formatMessage({
                                 id: "patient.emergency.firstname",
                               })}
@@ -743,8 +742,7 @@ function CreatePatientForm(props) {
                         </Field>
                       </Column>
                       <Column lg={16} md={8} sm={4}>
-                        {" "}
-                        <br></br>
+                        <br />
                       </Column>
                       <Column lg={8} md={4} sm={4}>
                         <Field name="patientContact.person.email">
@@ -755,7 +753,7 @@ function CreatePatientForm(props) {
                               labelText={intl.formatMessage({
                                 id: "patientcontact.person.email",
                               })}
-                              id={field.name}
+                              id="emergency-email" // Added ID
                               placeholder={intl.formatMessage({
                                 id: "patient.emergency.email",
                               })}
@@ -763,7 +761,7 @@ function CreatePatientForm(props) {
                           )}
                         </Field>
                         <div className="error">
-                          <ErrorMessage name="patientContact.person.email"></ErrorMessage>
+                          <ErrorMessage name="patientContact.person.email" />
                         </div>
                         <div className="error"></div>
                       </Column>
@@ -787,7 +785,7 @@ function CreatePatientForm(props) {
                                     configurationProperties.PHONE_FORMAT,
                                 },
                               )}
-                              id={field.name}
+                              id="emergency-phone" // Added ID
                               placeholder={intl.formatMessage({
                                 id: "patient.emergency.phone",
                               })}
@@ -796,11 +794,11 @@ function CreatePatientForm(props) {
                         </Field>
                       </Column>
                       <Column lg={16} md={8} sm={4}>
-                        {" "}
-                        <br></br>
+                        <br />
                       </Column>
                     </Grid>
                   </AccordionItem>
+
                   <AccordionItem
                     id="additional-info"
                     title={intl.formatMessage({
