@@ -39,8 +39,8 @@ Cypress.Commands.add("getElement", (selector) => {
 Cypress.Commands.add("enterText", (selector, value) => {
   const field = cy.getElement(selector);
   if (field != null) {
-    field.clear();
-    field.type(value);
+    //field.clear();
+    //field.type(value);
     return field;
   }
 });

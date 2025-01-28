@@ -694,6 +694,7 @@ function CreatePatientForm(props) {
               <Column lg={16} md={8} sm={4}>
                 <Accordion>
                   <AccordionItem
+                    id="emergency-contact"
                     title={intl.formatMessage({
                       id: "emergencyContactInfo.title",
                     })}
@@ -801,6 +802,7 @@ function CreatePatientForm(props) {
                     </Grid>
                   </AccordionItem>
                   <AccordionItem
+                    id="additional-info"
                     title={intl.formatMessage({
                       id: "patient.label.additionalInfo",
                     })}
