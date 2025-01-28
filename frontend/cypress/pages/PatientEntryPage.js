@@ -1,15 +1,23 @@
 class PatientEntryPage {
-  subjectNumber = "input#subjectNumber";
-  nationalId = "input#nationalId";
+  subjectNumber = "#subjectNumber";
+  nationalId = "#nationalId";
   firstNameSelector = "#firstName";
   lastNameSelector = "#lastName";
-  personContactLastName = "#patientContact\\.person\\.lastName";
-  personContactFirstName = "#patientContact\\.person\\.firstName";
-  personContactPrimaryPhone = "#patientContact\\.person\\.primaryPhone";
-  personContactEmail = "input#patientContact\\.person\\.email";
+  personContactLastName = "#patientContact.person.lastName";
+  personContactFirstName = "#patientContact.person.firstName";
+  personContactPrimaryPhone = "#patientContact.person.primaryPhone";
+  personContactEmail = "#patientContact.person.email";
   patientIdSelector = "#patientId";
   labNoSelector = "#labNumber";
-  city = "input#city";
+  town = "#city";
+  street = "#streetAddress";
+  camp = "#commune";
+  region = "#health_region";
+  district = "#health_district";
+  education = "#education";
+  maritalStatus = "#maritialStatus";
+  nationality = "#nationality";
+  otherNationality = "#otherNationality";
   primaryPhone = "#primaryPhone";
   dateOfBirth = "#date-picker-default-id";
   savePatientBtn = "#submit";
@@ -22,65 +30,46 @@ class PatientEntryPage {
   }
 
   clickSearchPatientBtn() {
-    cy.get("#root > div > div.cds--white.cds--layer-one > main > div.orderLegendBody > div > div:nth-child(1) > button").click();
+    cy.get("#search-patient-button").click();
   }
 
-  clickSearchBtn(){
+  clickSearchBtn() {
     cy.get("#local_search").click();
   }
 
   clickNewPatientBtn() {
-    cy.get('[data-cy="new-patient-button"]').click();
-  }
-
-  enterPatientInfo(
-    firstName,
-    lastName,
-    subjectNumber,
-    NationalId,
-    dateOfBirth,
-  ) {
-    cy.enterText(this.subjectNumber, subjectNumber);
-    cy.enterText(this.nationalId, NationalId);
-    cy.enterText(this.lastNameSelector, lastName);
-    cy.enterText(this.firstNameSelector, firstName);
-    cy.enterText(this.dateOfBirth, dateOfBirth);
-    this.getMaleGenderRadioButton().click();
-    cy.getElement("#submit").click();
+    cy.get("#new-patient-button").click();
   }
 
   clickSavePatientButton() {
-    this.getSubmitButton().click();
+    cy.get(this.savePatientBtn).click();
   }
 
   getMaleGenderRadioButton() {
-    cy.get("#search-radio-1").check();
+    cy.get("#search-radio-1").check({ force: true });
+  }
+
+  selectMaleGenderRadioButton() {
+    cy.get("#radio-1").click({ force: true });
   }
 
   getExternalSearchButton() {
     cy.get("#external_search").should("be.disabled");
   }
 
-  getLastName() {
-    return cy.getElement(this.lastNameSelector);
-  }
-
-  getFirstName() {
-    return cy.getElement(this.firstNameSelector);
-  }
-  searchPatientByFirstNameOnly(firstName) {
+  patientFirstName(firstName) {
     cy.enterText(this.firstNameSelector, firstName);
   }
 
-  searchPatientByLastNameOnly(lastName) {
+  patientLastName(lastName) {
     cy.enterText(this.lastNameSelector, lastName);
   }
 
-  searchPatientByDateOfBirth(dateOfBirth) {
-    cy.enterText(this.dateOfBirth, dateOfBirth);
+  patientDateOfBirth(dOB) {
+    cy.get(this.dateOfBirth).find("input").clear().type(dOB);
   }
   getSubmitButton() {
-    return cy.getElement(this.savePatientBtn);
+    cy.get(this.savePatientBtn).click();
   }
 
   searchPatientByPatientId(PID) {
@@ -88,14 +77,86 @@ class PatientEntryPage {
   }
 
   searchPatientBylabNo(labNo) {
-    cy.enterText(this.labNoSelector, labNo);
+    cy.enterText(this.previousLabNo, labNo);
   }
 
+  enterUniquePatientNo(uniquePatientID) {
+    cy.enterText(this.subjectNumber, uniquePatientID);
+  }
+
+  enterNationalID(nationalId) {
+    cy.enterText(this.nationalId, nationalId);
+  }
+
+  enterPersonContactPrimaryPhone(personContactPrimaryPhone) {
+    cy.enterText(this.personContactPrimaryPhone, personContactPrimaryPhone);
+  }
   getPatientSearchResultsTable() {
     return cy.getElement(
       ".cds--data-table.cds--data-table--lg.cds--data-table--sort > tbody",
     );
   }
+
+  emergencyDropDown() {
+    cy.get("#emergency-contact").click();
+  }
+
+  emergencyContactLastName(personContactLastName) {
+    cy.enterText(this.personContactLastName, personContactLastName);
+  }
+
+  emergencyContactFirstName(personContactFirstName) {
+    cy.enterText(this.personContactLastName, personContactFirstName);
+  }
+
+  emergencyContactPhone(personContactPrimaryPhone) {
+    cy.enterText(this.personContactPrimaryPhone, personContactPrimaryPhone);
+  }
+
+  emergencyContactEmail(personContactEmail) {
+    cy.enterText(this.personContactEmail, personContactEmail);
+  }
+
+  additionalInformationDropDown() {
+    cy.get("#additional-info").click();
+  }
+
+  enterTown(town) {
+    cy.enterText(this.town, town);
+  }
+
+  enterStreet(street) {
+    cy.enterText(this.street, street);
+  }
+
+  enterCamp(camp) {
+    cy.enterText(this.camp, camp);
+  }
+
+  selectRegion(region) {
+    cy.get(this.region).select(region);
+  }
+
+  selectDistrict(district) {
+    cy.get(this.district).select(district);
+  }
+
+  selectEducation(education) {
+    cy.get(this.education).select(education);
+  }
+
+  selectMaritalStatus(maritalStatus) {
+    cy.get(this.maritalStatus).select(maritalStatus);
+  }
+
+  selectNationality(nationality) {
+    cy.get(this.nationality).select(nationality);
+  }
+
+  selectOtherNationality(otherNationality) {
+    cy.enterText(this.otherNationality, otherNationality);
+  }
+
   validatePatientSearchTablebyRespectiveField(expectedFieldValue, searchBy) {
     this.getPatientSearchResultsTable()
       .find("tr")
@@ -160,6 +221,6 @@ class PatientEntryPage {
       .find("td:nth-child(1)")
       .click();
   }
-} 
+}
 
 export default PatientEntryPage;

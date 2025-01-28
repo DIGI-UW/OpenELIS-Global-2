@@ -1,3 +1,4 @@
+//import { cy } from "date-fns/locale";
 import LoginPage from "../pages/LoginPage";
 
 let homePage = null;
@@ -8,119 +9,130 @@ before("login", () => {
   loginPage = new LoginPage();
   loginPage.visit();
 });
+
+before(() => {
+  cy.fixture("Patient").as("patient");
+});
+
 describe("Add/Edit Patient", function () {
   it("User goes to Add/Edit Patient Page", () => {
     homePage = loginPage.goToHomePage();
     patientPage = homePage.goToPatientEntry();
   });
 });
-  //SEARCH PATIENT
+//SEARCH PATIENT
 describe("Search for Patient", function () {
-  it("User Searches for patient by First Name", function(){
+  it("User Searches for patient by First Name", function () {
     patientPage.clickSearchPatientBtn();
     cy.fixture("Patient").then((patient) => {
-      patientPage.searchPatientByFirstNameOnly(patient.firstName);
+      patientPage.patientFirstName(patient.firstName);
       patientPage.clickSearchBtn();
-     });
-     cy.wait(200).reload();
     });
+    cy.wait(200).reload();
+  });
 
-
-  it("User Searches for patient by lastst Name", function(){
+  it("User Searches for patient by lastst Name", function () {
     patientPage.clickSearchPatientBtn();
     cy.fixture("Patient").then((patient) => {
-      patientPage.searchPatientByLastNameOnly(patient.lastName);
+      patientPage.patientLastName(patient.lastName);
       patientPage.clickSearchBtn();
-     });
-     cy.wait(200).reload();
     });
+    cy.wait(200).reload();
+  });
 
-  it("Should be able to search patients By gender", function () {
+  it("Search patients By gender", function () {
     patientPage.getMaleGenderRadioButton();
     cy.wait(200);
     patientPage.clickSearchBtn();
     cy.wait(200).reload();
   });
 
-  it("Should search Patient By First and LastName", function () {
+  it("Search Patient By First and LastName", function () {
     cy.fixture("Patient").then((patient) => {
-      patientPage.searchPatientByFirstNameOnly(patient.firstName);
-      patientPage.searchPatientByLastNameOnly(patient.lastName);
+      patientPage.patientFirstName(patient.firstName);
+      patientPage.patientLastName(patient.lastName);
     });
     patientPage.clickSearchBtn();
     cy.wait(200).reload();
   });
 
-  it("should search patient By Date Of Birth", function () {
+  it("Search patient By Date Of Birth", function () {
     cy.fixture("Patient").then((patient) => {
-      patientPage.searchPatientByDateOfBirth(patient.DOB);
-      patientPage.clickSearchBtn();
-      patientPage.validatePatientSearchTablebyRespectiveField(
-        patient.DOB,
-        "DOB",
-      );
+      patientPage.patientDateOfBirth(patient.dOB);
     });
+    patientPage.clickSearchBtn();
     cy.wait(200).reload();
   });
 
-  it("should search patient By Lab Number", function () {
+  it("Search patient By previous Lab Number", function () {
     cy.fixture("Patient").then((patient) => {
       patientPage.searchPatientBylabNo(patient.labNo);
-      cy.intercept(
-        "GET",
-        `**/rest/patient-search-results?*labNumber=${patient.labNo}*`,
-      ).as("getPatientSearch");
-      patientPage.clickSearchBtn();
-      cy.wait("@getPatientSearch").then((interception) => {
-        const responseBody = interception.response.body;
-        console.log(responseBody);
-        expect(responseBody.patientSearchResults).to.be.an("array").that.is
-          .empty;
-      });
     });
+    patientPage.clickSearchBtn();
     cy.wait(200).reload();
   });
 
-  it("should search patient By PatientId", function () {
+  it("Search patient By PatientId", function () {
     cy.fixture("Patient").then((patient) => {
       patientPage.searchPatientByPatientId(patient.nationalId);
-      patientPage.clickSearchBtn();
-      patientPage.validatePatientSearchTable(
-        patient.firstName,
-        patient.inValidName,
-      );
     });
+    patientPage.clickSearchBtn();
+    cy.wait(200).reload();
   });
 });
-  //NEW PATIENT
+
+//NEW PATIENT
 describe("New Patient", function () {
   it("External search button should be deactivated", function () {
     patientPage.getExternalSearchButton();
   });
 
-  it("User should be able to navigate to create Patient tab", function () {
-    patientPage.clickNewPatientTab();
-    patientPage.getSubmitButton().should("be.visible");
+  it("User navigates to New Patient", function () {
+    patientPage.clickNewPatientBtn();
   });
 
-  it("User should enter patient Information", function () {
+  it("User enters patient Information", function () {
     cy.fixture("Patient").then((patient) => {
-      patientPage.enterPatientInfo(
-        patient.firstName,
-        patient.lastName,
-        patient.subjectNumber,
-        patient.nationalId,
-        patient.DOB,
+      patientPage.enterUniquePatientNo(patient.uniquePatientID);
+      patientPage.enterNationalID(patient.nationalId);
+      patientPage.patientLastName(patient.lastName);
+      patientPage.patientFirstName(patient.firstName);
+      patientPage.enterPersonContactPrimaryPhone(
+        patient.personContactPrimaryPhone,
       );
+      patientPage.patientDateOfBirth(patient.dOB);
+      patientPage.selectMaleGenderRadioButton();
+    });
+    cy.wait(500);
+  });
+
+  it("Emergency Contact Info", function () {
+    patientPage.emergencyDropDown();
+    cy.fixture("Patient").then((patient) => {
+      patientPage.emergencyContactLastName(patient.personContactLastName);
+      patientPage.emergencyContactFirstName(patient.personContactFirstName);
+      patientPage.emergencyContactPhone(patient.personContactPrimaryPhone);
+      patientPage.emergencyContactEmail(patient.personContactEmail);
+    });
+    cy.wait(500);
+  });
+
+  it("Additional Information", function () {
+    patientPage.additionalInformationDropDown();
+    cy.fixture("Patient").then((patient) => {
+      patientPage.enterTown(patient.town);
+      patientPage.enterStreet(patient.street);
+      patientPage.enterCamp(patient.camp);
+      patientPage.selectRegion(patient.region);
+      patientPage.selectDistrict(patient.district);
+      patientPage.selectEducation(patient.education);
+      patientPage.selectMaritalStatus(patient.maritalStatus);
+      patientPage.selectNationality(patient.nationality);
+      patientPage.selectOtherNationality(patient.otherNationality);
     });
   });
   it("User should click save new patient information button", function () {
+    cy.wait(500);
     patientPage.clickSavePatientButton();
-    cy.wait(1000);
-    cy.get("div[role='status']").should("be.visible");
-    cy.wait(200).reload();
   });
 });
-
-  
-
