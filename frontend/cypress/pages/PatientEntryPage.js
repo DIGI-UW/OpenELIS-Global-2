@@ -3,10 +3,11 @@ class PatientEntryPage {
   nationalId = "#nationalId";
   firstNameSelector = "#firstName";
   lastNameSelector = "#lastName";
-  personContactLastName = "#patientContact.person.lastName";
-  personContactFirstName = "#patientContact.person.firstName";
-  personContactPrimaryPhone = "#patientContact.person.primaryPhone";
-  personContactEmail = "#patientContact.person.email";
+  patientPhoneNumb = "#primaryPhone";
+  personContactLastName = "#emergency-lastname";
+  personContactFirstName = "#emergency-firstname";
+  personContactPrimaryPhone = "#emergency-phone";
+  personContactEmail = "#emergency-email";
   patientIdSelector = "#patientId";
   labNoSelector = "#labNumber";
   town = "#city";
@@ -58,11 +59,15 @@ class PatientEntryPage {
   }
 
   patientFirstName(firstName) {
-    cy.enterText(this.firstNameSelector, firstName);
+    cy.get(this.firstNameSelector).type(firstName);
   }
 
   patientLastName(lastName) {
-    cy.enterText(this.lastNameSelector, lastName);
+    cy.get(this.lastNameSelector).type(lastName);
+  }
+
+  patientPhoneNumber(patientPhone) {
+    cy.get(this.patientPhoneNumber).type(patientPhone);
   }
 
   patientDateOfBirth(dOB) {
@@ -72,24 +77,24 @@ class PatientEntryPage {
     cy.get(this.savePatientBtn).click();
   }
 
-  searchPatientByPatientId(PID) {
-    cy.enterText(this.patientIdSelector, PID);
+  searchPatientByPatientId(uniqueID) {
+    cy.get(this.patientIdSelector).type(uniqueID);
   }
 
   searchPatientBylabNo(labNo) {
-    cy.enterText(this.previousLabNo, labNo);
+    cy.get(this.previousLabNo).type(labNo);
   }
 
-  enterUniquePatientNo(uniquePatientID) {
-    cy.enterText(this.subjectNumber, uniquePatientID);
+  enterUniquePatientNo(uniqueID) {
+    cy.get(this.subjectNumber).type(uniqueID);
   }
 
   enterNationalID(nationalId) {
-    cy.enterText(this.nationalId, nationalId);
+    cy.get(this.nationalId).type(nationalId);
   }
 
-  enterPersonContactPrimaryPhone(personContactPrimaryPhone) {
-    cy.enterText(this.personContactPrimaryPhone, personContactPrimaryPhone);
+  patientPhoneNumber(patientPhone) {
+    cy.get(this.patientPhoneNumb).type(patientPhone);
   }
   getPatientSearchResultsTable() {
     return cy.getElement(
@@ -102,19 +107,19 @@ class PatientEntryPage {
   }
 
   emergencyContactLastName(personContactLastName) {
-    cy.enterText(this.personContactLastName, personContactLastName);
+    cy.get(this.personContactLastName).type(personContactLastName);
   }
 
   emergencyContactFirstName(personContactFirstName) {
-    cy.enterText(this.personContactLastName, personContactFirstName);
+    cy.get(this.personContactFirstName).type(personContactFirstName);
   }
 
   emergencyContactPhone(personContactPrimaryPhone) {
-    cy.enterText(this.personContactPrimaryPhone, personContactPrimaryPhone);
+    cy.get(this.personContactPrimaryPhone).type(personContactPrimaryPhone);
   }
 
   emergencyContactEmail(personContactEmail) {
-    cy.enterText(this.personContactEmail, personContactEmail);
+    cy.get(this.personContactEmail).type(personContactEmail);
   }
 
   additionalInformationDropDown() {
@@ -122,15 +127,15 @@ class PatientEntryPage {
   }
 
   enterTown(town) {
-    cy.enterText(this.town, town);
+    cy.get(this.town).type(town);
   }
 
   enterStreet(street) {
-    cy.enterText(this.street, street);
+    cy.get(this.street).type(street);
   }
 
   enterCamp(camp) {
-    cy.enterText(this.camp, camp);
+    cy.get(this.camp).type(camp);
   }
 
   selectRegion(region) {
@@ -154,72 +159,7 @@ class PatientEntryPage {
   }
 
   selectOtherNationality(otherNationality) {
-    cy.enterText(this.otherNationality, otherNationality);
-  }
-
-  validatePatientSearchTablebyRespectiveField(expectedFieldValue, searchBy) {
-    this.getPatientSearchResultsTable()
-      .find("tr")
-      .each(($el, index, $list) => {
-        if (searchBy === "firstName") {
-          cy.wrap($el)
-            .find("td:nth-child(3)")
-            .invoke("text")
-            .then((cellText) => {
-              const trimmedText = cellText.trim();
-              expect(trimmedText).to.contain(expectedFieldValue);
-            });
-        } else if (searchBy === "lastName") {
-          cy.wrap($el)
-            .find("td:nth-child(2)")
-            .invoke("text")
-            .then((cellText) => {
-              const trimmedText = cellText.trim();
-              expect(trimmedText).to.contain(expectedFieldValue);
-            });
-        } else if (searchBy === "DOB") {
-          cy.wrap($el)
-            .find("td:nth-child(5)")
-            .invoke("text")
-            .then((cellText) => {
-              const trimmedText = cellText.trim();
-              expect(trimmedText).to.contain(expectedFieldValue);
-            });
-        }
-      });
-  }
-
-  validatePatientSearchTable(actualName, inValidName) {
-    this.getPatientSearchResultsTable()
-      .find("tr")
-      .last()
-      .find("td:nth-child(3)")
-      .invoke("text")
-      .then((cellText) => {
-        const trimmedText = cellText.trim();
-        expect(trimmedText).to.contain(actualName);
-        expect(trimmedText).not.eq(inValidName);
-      });
-  }
-
-  validatePatientByGender(expectedGender) {
-    this.getPatientSearchResultsTable()
-      .find("tr")
-      .last()
-      .find("td:nth-child(4)")
-      .invoke("text")
-      .then((cellText) => {
-        const trimmedText = cellText.trim();
-        expect(trimmedText).to.eq(expectedGender);
-      });
-  }
-
-  selectPatientFromSearchResults() {
-    this.getPatientSearchResultsTable()
-      .find("tr")
-      .first()
-      .find("td:nth-child(1)")
-      .click();
+    cy.get(this.otherNationality).type(otherNationality);
   }
 }
 
