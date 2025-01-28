@@ -1,0 +1,13 @@
+{
+  "pageTitle": "Results",
+  "pcrTestMethod": "PCR",
+  "stainTestMethod": "STAIN",
+  "positiveResult": "Positive HIV1",
+  "referralPageTitle": "Referrals",
+  "westernBlotHiv": "Western blot HIV",
+  "acceptedStatus": "Accepted by technician",
+  "eiaTestMethod": "EIA",
+  "invalidTestMethod": "Invalid",
+  "testNotPerformed": "Test not performed",
+  "cedres": "CEDRES"
+}

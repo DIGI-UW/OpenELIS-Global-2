@@ -1,0 +1,14 @@
+{
+  "nceCategory": "General",
+  "nceType": "Documentation error",
+  "consequences": "1- no severe consequences",
+  "recurrence": "1- Not at all likely",
+  "labComponent": "Organization",
+  "test": "This is a test",
+  "dateOfEvent": "10/07/2024",
+  "reportingUnit": "Serology-Immunology",
+  "description": "Incorrect blood sample test results recorded",
+  "suspectedCause": "A software bug",
+  "proposedCorrectiveAction": "Fix the software bug and add validation checks.",
+  "NceNumber": "1720781367696"
+}
