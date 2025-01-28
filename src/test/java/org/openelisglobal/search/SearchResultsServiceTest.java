@@ -44,30 +44,18 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
     @Qualifier("luceneSearchResultsServiceImpl")
     SearchResultsService luceneSearchResultsServiceImpl;
 
-    @Before
-    public void init() throws Exception {
-        patientService.deleteAll(patientService.getAll());
-        personService.deleteAll(personService.getAll());
-    }
-
-    @After
-    public void tearDown() {
-        patientService.deleteAll(patientService.getAll());
-        personService.deleteAll(personService.getAll());
-    }
-
     @SuppressWarnings("unused")
     private Object[] parametersForGetSearchResults_shouldGetSearchResultsFromDB() {
-        return new Object[] { new Object[] { "Jo", "Do", "12/12/1992", "M" }, new Object[] { "Jo", null, null, null },
-                new Object[] { null, "Do", null, null }, new Object[] { null, null, "12/12/1992", null },
+        return new Object[] { new Object[] { "Jo", "Do", "1992-12-12", "M" }, new Object[] { "Jo", null, null, null },
+                new Object[] { null, "Do", null, null }, new Object[] { null, null, "1992-12-12", null },
                 new Object[] { null, null, null, "M" } };
     }
 
     @SuppressWarnings("unused")
     private Object[] parametersForGetSearchResultsExact_shouldGetExactSearchResultsFromDB() {
-        return new Object[] { new Object[] { "John", "Doe", "12/12/1992", "M" },
+        return new Object[] { new Object[] { "John", "Doe", "1992-12-12", "M" },
                 new Object[] { "John", null, null, null }, new Object[] { null, "Doe", null, null },
-                new Object[] { null, null, "12/12/1992", null }, new Object[] { null, null, null, "M" } };
+                new Object[] { null, null, "1992-12-12", null }, new Object[] { null, null, null, "M" } };
     }
 
     @SuppressWarnings("unused")
@@ -88,52 +76,48 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
     @Parameters
     public void getSearchResults_shouldGetSearchResultsFromDB(String searchFirstName, String searchLastName,
             String searchDateOfBirth, String searchGender) throws Exception {
+
+        executeDataSetWithStateManagement("testdata/patient-person-search.xml");
+
         String firstName = "John";
         String lastname = "Doe";
         String dob = "12/12/1992";
         String gender = "M";
-        Patient pat = createPatient(firstName, lastname, dob, gender);
-        String patientId = patientService.insert(pat);
 
         List<PatientSearchResults> searchResults = DBSearchResultsServiceImpl.getSearchResults(searchLastName,
                 searchFirstName, null, null, null, null, null, null, searchDateOfBirth, searchGender);
 
         Assert.assertEquals(1, searchResults.size());
         PatientSearchResults result = searchResults.get(0);
-        Assert.assertEquals(patientId, result.getPatientID());
-        Assert.assertEquals(firstName, result.getFirstName());
-        Assert.assertEquals(lastname, result.getLastName());
-        Assert.assertEquals(dob, result.getBirthdate());
-        Assert.assertEquals(gender, result.getGender());
+        assertSearchResult(result, "1", firstName, lastname, dob, gender);
     }
 
     @Test
     @Parameters
     public void getSearchResultsExact_shouldGetExactSearchResultsFromDB(String searchFirstName, String searchLastName,
             String searchDateOfBirth, String searchGender) throws Exception {
+
+        executeDataSetWithStateManagement("testdata/patient-person-search.xml");
+
         String firstName = "John";
         String lastname = "Doe";
         String dob = "12/12/1992";
         String gender = "M";
-        Patient pat = createPatient(firstName, lastname, dob, gender);
-        String patientId = patientService.insert(pat);
 
         List<PatientSearchResults> searchResults = DBSearchResultsServiceImpl.getSearchResultsExact(searchLastName,
                 searchFirstName, null, null, null, null, null, null, searchDateOfBirth, searchGender);
 
         Assert.assertEquals(1, searchResults.size());
         PatientSearchResults result = searchResults.get(0);
-        Assert.assertEquals(patientId, result.getPatientID());
-        Assert.assertEquals(firstName, result.getFirstName());
-        Assert.assertEquals(lastname, result.getLastName());
-        Assert.assertEquals(dob, result.getBirthdate());
-        Assert.assertEquals(gender, result.getGender());
+        assertSearchResult(result, "1", firstName, lastname, dob, gender);
     }
 
     @Test
     @Parameters
     public void getSearchResults_shouldGetSearchResultsFromLuceneIndexes(String searchFirstName, String searchLastName,
             String searchDateOfBirth, String searchGender) throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "person", "patient" });
+
         String firstName = "John";
         String lastname = "Doe";
         String dob = "12/12/1992";
@@ -157,6 +141,8 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
     @Parameters
     public void getSearchResultsExact_shouldGetExactSearchResultsFromLuceneIndexes(String searchFirstName,
             String searchLastName, String searchDateOfBirth, String searchGender) throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "person", "patient" });
+
         String firstName = "John";
         String lastname = "Doe";
         String dob = "12/12/1992";
@@ -173,6 +159,17 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals(firstName, result.getFirstName());
         Assert.assertEquals(lastname, result.getLastName());
         Assert.assertEquals(dob, result.getBirthdate());
+        Assert.assertEquals(gender, result.getGender());
+    }
+
+    private void assertSearchResult(PatientSearchResults result, String patientID, String firstName, String lastName,
+            String birthdate, String gender) throws ParseException {
+        Assert.assertEquals(patientID, result.getPatientID());
+        Assert.assertEquals(firstName, result.getFirstName());
+        Assert.assertEquals(lastName, result.getLastName());
+        Assert.assertEquals(
+                new SimpleDateFormat("yyyy-MM-dd").format(new SimpleDateFormat("dd/MM/yyyy").parse(birthdate)),
+                result.getBirthdate().replace("Invalid date format: ", ""));
         Assert.assertEquals(gender, result.getGender());
     }
 
@@ -195,5 +192,4 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
 
         return pat;
     }
-
 }

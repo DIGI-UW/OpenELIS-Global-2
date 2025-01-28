@@ -77,7 +77,7 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
         assertEquals(200, status);
         String content = getMenu.getResponse().getContentAsString();
         List<DictionaryMenuForm> menuList = Arrays.asList(super.mapFromJson(content, DictionaryMenuForm[].class));
-        String idToBeDeleted = menuList.get(0).getMenuList().get(10).getId();
+        String idToBeDeleted = menuList.get(0).getMenuList().get(2).getId();
 
         // deleting the selected ID
         MvcResult mvcResult = super.mockMvc.perform(post("/rest/delete-dictionary").param("selectedIDs", idToBeDeleted))

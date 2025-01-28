@@ -311,8 +311,11 @@ export const ReportNonConformingEvent = () => {
               <Column lg={16} md={12} sm={12}>
                 <br />
               </Column>
-              <Column lg={16} md={12} sm={12}>
-                <Button type="button" onClick={handleSubmit}>
+
+              <Column lg={16} md={8} sm={4}>
+                <Button type="button" data-testid='nce-search-button'
+                 onClick={handleSubmit}>
+
                   <FormattedMessage id="label.button.search" />
                 </Button>
               </Column>
@@ -351,12 +354,13 @@ export const ReportNonConformingEvent = () => {
                   <TableRow key={row.id}>
                     <TableCell key={`${row.id}-checkbox`}></TableCell>
                     {headers.map((header) => (
-                      <TableCell key={header.key}>
+                      <TableCell key={header.key} data-testid='nce-search-result' >
                         <UnorderedList>
                           {header.key === "type"
                             ? row.sampleItems.map((item) => (
                                 <Checkbox
                                   id={row.labOrderNumber + "-" + item.number}
+                                  data-testid="nce-sample-checkbox"
                                   key={item.id}
                                   labelText={
                                     item.type +
@@ -423,6 +427,7 @@ export const ReportNonConformingEvent = () => {
                   });
                 }
               }}
+              data-testid="nce-goto-form-button"
             >
               <FormattedMessage id="nonconform.goToNceForm" />
             </Button>
@@ -457,7 +462,7 @@ export const ReportNonConformingEvent = () => {
                 <FormattedMessage id="nonconform.nce.number" />
               </span>
             </div>
-            <div style={{ marginBottom: "10px" }}>{nceForm.data.nceNumber}</div>
+            <div style={{ marginBottom: "10px" }} data-testid='nce-number-result'>{nceForm.data.nceNumber}</div>
           </Column>
   
           <Column lg={3} md={4} sm={6}>
@@ -645,7 +650,7 @@ export const ReportNonConformingEvent = () => {
             {!!nceForm.error && (
               <div style={{ color: "#c62828", margin: 4 }}>{nceForm.error}</div>
             )}
-            <Button type="button" onClick={() => handleNCEFormSubmit()}>
+            <Button type="button" data-testid="nce-submit-button" onClick={() => handleNCEFormSubmit()}>
               <FormattedMessage id="label.button.submit" />
             </Button>
           </Column>
