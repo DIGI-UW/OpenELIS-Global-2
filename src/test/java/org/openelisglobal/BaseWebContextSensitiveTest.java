@@ -5,21 +5,25 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import javax.sql.DataSource;
+import org.dbunit.DatabaseUnitException;
 import org.dbunit.database.DatabaseConfig;
 import org.dbunit.database.DatabaseConnection;
 import org.dbunit.database.IDatabaseConnection;
 import org.dbunit.dataset.IDataSet;
 import org.dbunit.dataset.xml.FlatXmlDataSet;
 import org.dbunit.operation.DatabaseOperation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.AbstractTransactionalJUnit4SpringContextTests;
-import org.springframework.test.context.transaction.AfterTransaction;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -34,6 +38,8 @@ import org.springframework.web.context.WebApplicationContext;
 @ActiveProfiles("test")
 public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJUnit4SpringContextTests {
 
+    Logger logger = LoggerFactory.getLogger(getClass());
+
     @Autowired
     protected WebApplicationContext webApplicationContext;
 
@@ -41,20 +47,6 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     private DataSource dataSource;
 
     protected MockMvc mockMvc;
-
-    private Map<String, IDataSet> originalStateCache;
-
-    private List<String[]> tablesToRestore;
-
-    protected BaseWebContextSensitiveTest() {
-        this.originalStateCache = new HashMap<>();
-        this.tablesToRestore = new ArrayList<>();
-    }
-
-    protected BaseWebContextSensitiveTest(List<String[]> tablesToRestore) {
-        this.originalStateCache = new HashMap<>();
-        this.tablesToRestore = tablesToRestore != null ? tablesToRestore : new ArrayList<>();
-    }
 
     protected void setUp() throws Exception {
         mockMvc = MockMvcBuilders.webAppContextSetup(this.webApplicationContext).build();
@@ -74,30 +66,40 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     /**
-     * Executes a dataset with state management - preserves and restores the
-     * original state of affected tables after execution.
+     * Executes a database test with the specified dataset and sequence reset
+     * information.
+     *
+     * @param datasetFileName The filename of the dataset file in the classpath.
+     * @throws Exception If an error occurs while executing the test.
      */
-    protected void executeDataSetWithStateManagement(String datasetFilename) throws Exception {
-        if (datasetFilename == null) {
+    protected void executeDataSetWithStateManagement(String datasetFileName) throws Exception {
+        if (datasetFileName == null) {
             throw new NullPointerException("Please provide test dataset file to execute!");
         }
 
         IDatabaseConnection connection = null;
+        InputStream inputStream = null;
+
         try {
             connection = new DatabaseConnection(dataSource.getConnection());
             DatabaseConfig config = connection.getConfig();
             config.setProperty(DatabaseConfig.FEATURE_ALLOW_EMPTY_FIELDS, true);
 
-            IDataSet newDataSet = loadDataSet(datasetFilename);
-            String[] tableNames = newDataSet.getTableNames();
+            inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName);
 
-            // Backup current state of affected tables
-            IDataSet currentState = connection.createDataSet(tableNames);
-            originalStateCache.put(Arrays.toString(tableNames), currentState);
-            tablesToRestore.add(tableNames);
+            if (inputStream == null) {
+                throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
+            }
 
-            executeDataSet(datasetFilename);
+            IDataSet dataset = new FlatXmlDataSet(inputStream);
+            String[] tableNames = dataset.getTableNames();
+            cleanRowsInCurrentConnection(tableNames);
+
+            DatabaseOperation.REFRESH.execute(connection, dataset);
         } finally {
+            if (inputStream != null) {
+                inputStream.close();
+            }
             if (connection != null) {
                 connection.close();
             }
@@ -105,73 +107,19 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     /**
-     * This method will be called after each transaction to restore the database
-     * state
+     * Helper method to clear out all rows in specified tables within the given
+     * dataset in the current connection.
+     *
+     * @param tableNames The names of the tables to truncate.
+     * @throws SQLException If an error occurs during truncation.
      */
-    @AfterTransaction
-    @SuppressWarnings("unused")
-    protected void restoreDatabase() throws Exception {
-        try {
-            for (String[] tableNames : tablesToRestore) {
-                String key = Arrays.toString(tableNames);
-                IDataSet originalState = originalStateCache.get(key);
-                if (originalState != null) {
-                    IDatabaseConnection connection = null;
-                    try {
-                        connection = new DatabaseConnection(dataSource.getConnection());
-                        DatabaseConfig config = connection.getConfig();
-                        config.setProperty(DatabaseConfig.FEATURE_ALLOW_EMPTY_FIELDS, true);
-
-                        DatabaseOperation.CLEAN_INSERT.execute(connection, originalState);
-                    } finally {
-                        if (connection != null) {
-                            connection.close();
-                        }
-                    }
-                    originalStateCache.remove(key);
-                }
-            }
-        } finally {
-            originalStateCache.clear();
-            tablesToRestore.clear();
-        }
-    }
-
-    /**
-     * Loads a dataset from an XML file.
-     */
-    private IDataSet loadDataSet(String datasetFilename) throws Exception {
-        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(datasetFilename)) {
-            if (inputStream == null) {
-                throw new IllegalArgumentException("Dataset file '" + datasetFilename + "' not found in classpath");
-            }
-            return new FlatXmlDataSet(inputStream);
-        }
-    }
-
-    /**
-     * Executes a dataset from an XML file.
-     */
-    protected void executeDataSet(String datasetFilename) throws Exception {
-        if (datasetFilename == null) {
-            throw new NullPointerException("please provide test dataset file to execute!");
-        }
-
-        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(datasetFilename);
-        try (inputStream) {
-            if (inputStream == null) {
-                throw new IllegalArgumentException("Dataset file '" + datasetFilename + "' not found in classpath");
-            }
-            IDatabaseConnection connection = new DatabaseConnection(dataSource.getConnection());
-
-            DatabaseConfig config = connection.getConfig();
-            config.setProperty(DatabaseConfig.FEATURE_ALLOW_EMPTY_FIELDS, true);
-            IDataSet dataset = new FlatXmlDataSet(inputStream);
-
-            try {
-                DatabaseOperation.REFRESH.execute(connection, dataset);
-            } finally {
-                connection.close();
+    protected void cleanRowsInCurrentConnection(String[] tableNames) throws SQLException, DatabaseUnitException {
+        IDatabaseConnection connection = new DatabaseConnection(dataSource.getConnection());
+        try (Connection conn = connection.getConnection(); Statement stmt = conn.createStatement()) {
+            for (String tableName : tableNames) {
+                String truncateQuery = "TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE";
+                logger.info("Truncating table: {}", tableName);
+                stmt.execute(truncateQuery);
             }
         }
     }
