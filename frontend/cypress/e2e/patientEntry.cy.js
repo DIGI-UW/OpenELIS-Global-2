@@ -131,8 +131,4 @@ describe("Search for Patient", function () {
     });
     patientPage.clickSearchBtn();
   });
-
-  it("Back to home page", function () {
-    patientPage=loginPage.goToHomePage();
-  });
 });

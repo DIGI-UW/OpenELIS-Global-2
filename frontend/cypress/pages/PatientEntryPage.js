@@ -96,11 +96,6 @@ class PatientEntryPage {
   patientPhoneNumber(patientPhone) {
     cy.get(this.patientPhoneNumb).type(patientPhone);
   }
-  getPatientSearchResultsTable() {
-    return cy.getElement(
-      ".cds--data-table.cds--data-table--lg.cds--data-table--sort > tbody",
-    );
-  }
 
   emergencyDropDown() {
     cy.get("#emergency-contact").click();
