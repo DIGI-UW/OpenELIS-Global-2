@@ -493,12 +493,13 @@ const AddOrder = (props) => {
                     </>
                   }
                   id="labNo"
+                  data-cy="labNo"
                   invalid={error("sampleOrderItems.labNo") ? true : false}
                   invalidText={error("sampleOrderItems.labNo")}
                 />
                 <div>
                   <FormattedMessage id="label.order.scan.text" />{" "}
-                  <Link href="#" onClick={(e) => handleLabNoGeneration(e)}>
+                  <Link data-cy="generateLabNo" href="#" onClick={(e) => handleLabNoGeneration(e)}>
                     <FormattedMessage id="sample.label.labnumber.generate" />
                   </Link>
                 </div>
@@ -596,6 +597,7 @@ const AddOrder = (props) => {
               <AutoComplete
                 name="siteName"
                 id="siteName"
+                data-cy="siteName"
                 allowFreeText={
                   !(
                     configurationProperties.restrictFreeTextRefSiteEntry ===
@@ -702,6 +704,7 @@ const AddOrder = (props) => {
                 }
                 invalidText={error("sampleOrderItems.providerFirstName")}
                 id="requesterFirstName"
+                data-cy="requesterFirstName"
               />
             </Column>
 
@@ -724,6 +727,7 @@ const AddOrder = (props) => {
                 value={orderFormValues.sampleOrderItems.providerLastName}
                 onChange={handleRequesterLastName}
                 id="requesterLastName"
+                data-cy="requesterLastName"
                 invalid={
                   error("sampleOrderItems.providerLastName") ? true : false
                 }
