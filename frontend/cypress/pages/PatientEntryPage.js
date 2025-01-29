@@ -82,7 +82,7 @@ class PatientEntryPage {
   }
 
   searchPatientBylabNo(labNo) {
-    cy.get(this.previousLabNo).type(labNo);
+    cy.get(this.previousLabNo).should("be.visible").type(labNo);
   }
 
   enterUniquePatientNo(uniqueID) {
