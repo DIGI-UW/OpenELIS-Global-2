@@ -29,6 +29,7 @@ import {
   Bullhorn,
   User,
   BatchJob,
+  ResultNew,
   Popup,
   Search,
 } from "@carbon/icons-react";
@@ -59,6 +60,35 @@ import BatchTestReassignmentAndCancelation from "./BatchTestReassignmentAndCance
 import TestNotificationConfigMenu from "./testNotificationConfigMenu/TestNotificationConfigMenu.js";
 import TestNotificationConfigEdit from "./testNotificationConfigMenu/TestNotificationConfigEdit.js";
 import SearchIndexManagement from "./searchIndexManagement/SearchIndexManagement";
+import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu.js";
+import ResultSelectListAdd from "./testManagementConfigMenu/ResultSelectListAdd.js";
+import TestAdd from "./testManagementConfigMenu/TestAdd.js";
+import TestModifyEntry from "./testManagementConfigMenu/TestModifyEntry.js";
+import TestOrderability from "./testManagementConfigMenu/TestOrderability.js";
+import MethodManagement from "./testManagementConfigMenu/MethodManagement.js";
+import MethodCreate from "./testManagementConfigMenu/MethodCreate.js";
+import TestSectionManagement from "./testManagementConfigMenu/TestSectionManagement.js";
+import TestSectionCreate from "./testManagementConfigMenu/TestSectionCreate.js";
+import TestSectionOrder from "./testManagementConfigMenu/TestSectionOrder.js";
+import SampleTypeManagement from "./testManagementConfigMenu/SampleTypeManagement.js";
+import TestSectionTestAssign from "./testManagementConfigMenu/TestSectionTestAssign.js";
+import SampleTypeOrder from "./testManagementConfigMenu/SampleTypeOrder.js";
+import SampleTypeCreate from "./testManagementConfigMenu/SampleTypeCreate.js";
+import SampleTypeTestAssign from "./testManagementConfigMenu/SampleTypeTestAssign.js";
+import UomManagement from "./testManagementConfigMenu/UomManagement.js";
+import UomCreate from "./testManagementConfigMenu/UomCreate.js";
+import PanelManagement from "./testManagementConfigMenu/PanelManagement.js";
+import PanelCreate from "./testManagementConfigMenu/PanelCreate.js";
+import PanelOrder from "./testManagementConfigMenu/PanelOrder.js";
+import PanelTestAssign from "./testManagementConfigMenu/PanelTestAssign.js";
+import TestActivation from "./testManagementConfigMenu/TestActivation.js";
+import TestRenameEntry from "./testManagementConfigMenu/TestRenameEntry.js";
+import PanelRenameEntry from "./testManagementConfigMenu/PanelRenameEntry.js";
+import SampleTypeRenameEntry from "./testManagementConfigMenu/SampleTypeRenameEntry.js";
+import TestSectionRenameEntry from "./testManagementConfigMenu/TestSectionRenameEntry.js";
+import UomRenameEntry from "./testManagementConfigMenu/UomRenameEntry.js";
+import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry.js";
+import MethodRenameEntry from "./testManagementConfigMenu/MethodRenameEntry.js";
 
 function Admin() {
   const intl = useIntl();
@@ -93,12 +123,6 @@ function Admin() {
             <SideNavMenuItem href="#calculatedValue">
               <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#TestCatalog">
-              <FormattedMessage id="sidenav.label.admin.testmgt.ViewtestCatalog" />
-            </SideNavMenuItem>
-            <SideNavMenuItem href="#MethodManagment">
-              <FormattedMessage id="sidenav.label.admin.testmgt.ManageMethod" />
-            </SideNavMenuItem>
           </SideNavMenu>
           <SideNavLink href="#AnalyzerTestName" renderIcon={ListDropdown}>
             <FormattedMessage id="sidenav.label.admin.analyzerTest" />
@@ -132,6 +156,9 @@ function Admin() {
           </SideNavLink>
           <SideNavLink renderIcon={BatchJob} href="#batchTestReassignment">
             <FormattedMessage id="configuration.batch.test.reassignment" />
+          </SideNavLink>
+          <SideNavLink renderIcon={ResultNew} href="#testManagementConfigMenu">
+            <FormattedMessage id="master.lists.page.test.management" />
           </SideNavLink>
           <SideNavMenu
             title={intl.formatMessage({ id: "sidenav.label.admin.menu" })}
@@ -224,7 +251,7 @@ function Admin() {
       <PathRoute path="#TestCatalog">
         <TestCatalog />
       </PathRoute>
-      <PathRoute path="#MethodManagment">
+      <PathRoute path="#MethodManagement">
         <ManageMethod />
       </PathRoute>
       <PathRoute path="#AnalyzerTestName">
@@ -280,6 +307,90 @@ function Admin() {
       </PathRoute>
       <PathRoute path="#commonproperties">
         <CommonProperties />
+      </PathRoute>
+      <PathRoute path="#testManagementConfigMenu">
+        <TestManagementConfigMenu />
+      </PathRoute>
+      <PathRoute path="#ResultSelectListAdd">
+        <ResultSelectListAdd />
+      </PathRoute>
+      <PathRoute path="#TestAdd">
+        <TestAdd />
+      </PathRoute>
+      <PathRoute path="#TestModifyEntry">
+        <TestModifyEntry />
+      </PathRoute>
+      <PathRoute path="#TestOrderability">
+        <TestOrderability />
+      </PathRoute>
+      <PathRoute path="#MethodCreate">
+        <MethodCreate />
+      </PathRoute>
+      <PathRoute path="#TestSectionManagement">
+        <TestSectionManagement />
+      </PathRoute>
+      <PathRoute path="#TestSectionCreate">
+        <TestSectionCreate />
+      </PathRoute>
+      <PathRoute path="#TestSectionOrder">
+        <TestSectionOrder />
+      </PathRoute>
+      <PathRoute path="#TestSectionTestAssign">
+        <TestSectionTestAssign />
+      </PathRoute>
+      <PathRoute path="#SampleTypeManagement">
+        <SampleTypeManagement />
+      </PathRoute>
+      <PathRoute path="#SampleTypeCreate">
+        <SampleTypeCreate />
+      </PathRoute>
+      <PathRoute path="#SampleTypeOrder">
+        <SampleTypeOrder />
+      </PathRoute>
+      <PathRoute path="#SampleTypeTestAssign">
+        <SampleTypeTestAssign />
+      </PathRoute>
+      <PathRoute path="#UomManagement">
+        <UomManagement />
+      </PathRoute>
+      <PathRoute path="#UomCreate">
+        <UomCreate />
+      </PathRoute>
+      <PathRoute path="#PanelManagement">
+        <PanelManagement />
+      </PathRoute>
+      <PathRoute path="#PanelCreate">
+        <PanelCreate />
+      </PathRoute>
+      <PathRoute path="#PanelOrder">
+        <PanelOrder />
+      </PathRoute>
+      <PathRoute path="#PanelTestAssign">
+        <PanelTestAssign />
+      </PathRoute>
+      <PathRoute path="#TestActivation">
+        <TestActivation />
+      </PathRoute>
+      <PathRoute path="#TestRenameEntry">
+        <TestRenameEntry />
+      </PathRoute>
+      <PathRoute path="#PanelRenameEntry">
+        <PanelRenameEntry />
+      </PathRoute>
+      <PathRoute path="#SampleTypeRenameEntry">
+        <SampleTypeRenameEntry />
+      </PathRoute>
+      <PathRoute path="#TestSectionRenameEntry">
+        <TestSectionRenameEntry />
+      </PathRoute>
+      <PathRoute path="#UomRenameEntry">
+        <UomRenameEntry />
+      </PathRoute>
+      <PathRoute path="#SelectListRenameEntry">
+        <SelectListRenameEntry />
+      </PathRoute>
+      <PathRoute path="#MethodRenameEntry">
+        <MethodRenameEntry />
       </PathRoute>
 
       <PathRoute path="#NonConformityConfigurationMenu">

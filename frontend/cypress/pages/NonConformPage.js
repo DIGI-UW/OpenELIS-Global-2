@@ -1,4 +1,5 @@
 class NonConform {
+  // Title validation (kept as-is per request)
   getReportNonConformTitle() {
     return cy.get("h2");
   }
@@ -7,6 +8,7 @@ class NonConform {
     return cy.get("h2");
   }
 
+  // Form interactions
   selectSearchType(type) {
     cy.get("#type").select(type);
   }
@@ -16,41 +18,41 @@ class NonConform {
   }
 
   clickSearchButton() {
-    cy.get(":nth-child(4) > .cds--btn").click();
+    cy.get("[data-testid='nce-search-button']").click();
   }
 
+  // Search results validation
   validateSearchResult(expectedValue) {
-    cy.get("tbody > tr > :nth-child(2)")
+    cy.get("[data-testid='nce-search-result']")
+      .first()
       .invoke("text")
       .should("eq", expectedValue);
   }
 
   validateLabNoSearchResult(labNo) {
-    cy.get(".orderLegendBody > :nth-child(2) > :nth-child(7) > :nth-child(2)")
+    cy.get("[data-testid='nce-search-result']")
       .invoke("text")
       .should("eq", labNo);
   }
 
   validateNCESearchResult(NCENo) {
-    cy.get('[style="margin-bottom: 10px; color: rgb(85, 85, 85);"]')
+    cy.get("[data-testid='nce-number-result']")
       .invoke("text")
       .should("eq", NCENo);
   }
 
-  validateLabNoSearchResultCorective(labNo) {
-    cy.get(".cds--subgrid > :nth-child(7) > :nth-child(2)")
-      .invoke("text")
-      .should("eq", labNo);
-  }
-
+  // Checkbox and navigation
   clickCheckbox() {
-    cy.get(".cds--checkbox-label").click();
+    cy.get("[data-testid='nce-sample-checkbox']")
+      .first()
+      .click({ force: true });
   }
 
   clickGoToNceFormButton() {
-    cy.get(":nth-child(2) > :nth-child(2) > .cds--btn").click();
+    cy.get("[data-testid='nce-goto-form-button']").click();
   }
 
+  // Form fields (preserve original IDs)
   enterStartDate(date) {
     cy.get(".cds--date-picker-input__wrapper > #startDate").type(date);
   }
@@ -71,6 +73,7 @@ class NonConform {
     cy.get("#text-area-3").type(correctiveaction);
   }
 
+  // Dropdowns
   enterNceCategory(nceCategory) {
     cy.get("#nceCategory").select(nceCategory);
   }
@@ -91,22 +94,21 @@ class NonConform {
     cy.get("#labComponent").select(labComponent);
   }
 
+  // Text areas
   enterDescriptionAndComments(testText) {
     cy.get("#text-area-10").type(testText);
     cy.get("#text-area-3").type(testText);
     cy.get("#text-area-2").type(testText);
   }
 
+  // Submission
   submitForm() {
-    cy.get(":nth-child(28) > .cds--btn").click();
+    cy.get("[data-testid='nce-submit-button']").click();
   }
 
-  submitFormNce() {
-    cy.get(":nth-child(14) > .cds--btn").click();
-  }
-
+  // Corrective actions
   enterDiscussionDate(date) {
-    cy.get(".cds--date-picker-input__wrapper > #tdiscussionDate").type(date);
+    cy.get("#tdiscussionDate").type(date);
   }
 
   enterProposedCorrectiveAction(action) {
@@ -114,27 +116,35 @@ class NonConform {
   }
 
   enterDateCompleted(date) {
-    cy.get(".cds--date-picker-input__wrapper > #dateCompleted").type(date);
+    cy.get("#dateCompleted").type(date);
   }
 
   selectActionType() {
-    cy.get(":nth-child(1) > .cds--checkbox-label").click();
+    cy.get("[data-testid='nce-action-checkbox']").click({ force: true });
   }
 
   selectResolution() {
     cy.get(":nth-child(1) > .cds--radio-button__label").click();
   }
 
+  clickRadioButtonNCE() {
+    cy.get("[data-testid='Radio-button']")
+      .eq(0) // 0 for first, 1 for second, 2 for third, etc.
+      .should("be.visible")
+      .click();
+  }
   enterDateCompleted0(date) {
     cy.get(".cds--date-picker-input__wrapper > #dateCompleted-0").type(date);
   }
 
   clickSubmitButton() {
-    cy.get(":nth-child(38) > .cds--btn").click();
+    cy.get("[data-testid='nce-submit-button']")
+      .should("not.be.disabled")
+      .click();
   }
-
+  // Data management
   getAndSaveNceNumber() {
-    cy.get(".orderLegendBody > :nth-child(2) > :nth-child(3) > :nth-child(2)")
+    cy.get("[data-testid='nce-number-result']")
       .invoke("text")
       .then((text) => {
         cy.readFile("cypress/fixtures/NonConform.json").then((existingData) => {
