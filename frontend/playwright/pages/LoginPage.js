@@ -1,5 +1,4 @@
 import TestProperties from "../common/TestProperties";
-import { expect } from "@playwright/test";
 class LoginPage {
   constructor(page) {
     this.page = page; // Store the page object
@@ -23,16 +22,16 @@ class LoginPage {
   }
 
   // Enter username into the username field
-  async enterUsername(value) {
+  async enterUsername(value = this.testProperties.getUsername()) {
     const field = this.getUsernameElement();
-    await field.fill(this.testProperties.getUsername());
+    await field.fill(value);
     return this;
   }
 
   // Enter password into the password field
-  async enterPassword(value) {
+  async enterPassword(value = this.testProperties.getPassword()) {
     const field = this.getPasswordElement();
-    await field.fill(this.testProperties.getPassword());
+    await field.fill(value);
     return this;
   }
 
@@ -40,7 +39,7 @@ class LoginPage {
   async signIn() {
     const button = this.page.locator("[type='submit']");
     await button.click();
-    await this.page.waitForNavigation();
+    return this;
   }
   // Navigate to the home page after login
   async goToHomePage() {
@@ -53,11 +52,12 @@ class LoginPage {
   // Perform the full login flow
   async login(username, password) {
     await this.visit(); // Navigate to the login page
-    await this.enterUsername(username); // Enter username
-    await this.enterPassword(password); // Enter password
+    await this.enterUsername(); // Enter username
+    await this.enterPassword(); // Enter password
     await this.signIn(); // Click the sign-in button
     return this.goToHomePage(); // Navigate to the home page and return the current instance
   }
+  // need to add return HomePage here
 }
 
 export default LoginPage;
