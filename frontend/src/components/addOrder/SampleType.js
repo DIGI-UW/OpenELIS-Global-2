@@ -454,6 +454,7 @@ const SampleType = (props) => {
         <Select
           className="selectSampleType"
           id={"sampleId_" + index}
+          data-cy={"sampleId_" + index}
           ref={sampleTypesRef}
           value={
             props.sample.sampleTypeId === "" ? "" : props.sample.sampleTypeId
@@ -613,6 +614,7 @@ const SampleType = (props) => {
                     labelText={panel.name}
                     id={`panel_` + index + "_" + panel.id}
                     key={index + panel.id}
+                    data-cy={`panel-checkbox-${panel.id}`}
                     checked={
                       selectedPanels.filter((item) => item.id === panel.id)
                         .length > 0
