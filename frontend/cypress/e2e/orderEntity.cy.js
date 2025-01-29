@@ -16,6 +16,23 @@ describe("Order Entity", function () {
     orderEntityPage = homePage.goToOrderPage();
   });
 
+  // simplified the test to just perform the search without any table checks since data can be empty as well. 
+
+  // it("Should search patient in the search box", function () {
+  //   patientEntryPage = orderEntityPage.getPatientPage();
+  //   // Wait longer for initial page load
+  //   cy.wait(8000);
+    
+  //   cy.fixture("Patient").then((patient) => {
+  //     patientEntryPage.searchPatientByFirstAndLastName(
+  //       patient.firstName,
+  //       patient.lastName
+  //     );
+      
+  //     patientEntryPage.clickSearchPatientButton();
+  //   });
+  // });
+
   it("Should search patient in the search box", function () {
     patientEntryPage = orderEntityPage.getPatientPage();
     cy.wait(1000);
@@ -80,10 +97,11 @@ describe("Order Entity", function () {
     cy.fixture("Order").then((order) => {
       orderEntityPage.enterRequesterLastAndFirstName(
         order.requester.firstName,
-        order.requester.lastName,
+        order.requester.lastName
       );
     });
   });
+
   it("should click submit order button", function () {
     orderEntityPage.clickSubmitOrderButton();
   });
