@@ -1,3 +1,4 @@
+import HomePage from "./HomePage";
 import TestProperties from "../common/TestProperties";
 class LoginPage {
   constructor(page) {
@@ -7,8 +8,7 @@ class LoginPage {
 
   // Navigate to the login page
   async visit() {
-    await this.page.goto("/login"); // Navigate to the login page (replace with your login page URL);
-    return this; // Return this for method chaining
+    await this.page.goto("/login");
   }
 
   // Locate the username field
@@ -25,39 +25,28 @@ class LoginPage {
   async enterUsername(value = this.testProperties.getUsername()) {
     const field = this.getUsernameElement();
     await field.fill(value);
-    return this;
   }
 
   // Enter password into the password field
   async enterPassword(value = this.testProperties.getPassword()) {
     const field = this.getPasswordElement();
     await field.fill(value);
-    return this;
   }
 
   // Click the sign-in button
   async signIn() {
     const button = this.page.locator("[type='submit']");
     await button.click();
-    return this;
   }
-  // Navigate to the home page after login
+  // Navigate to the home page
   async goToHomePage() {
     await this.page.waitForTimeout(1000);
-    const homePageUrl = "/";
-    await this.page.goto(homePageUrl);
-    return this;
+    await this.visit();
+    await this.enterUsername();
+    await this.enterPassword();
+    await this.signIn();
+    return new HomePage(this.page);
   }
-
-  // Perform the full login flow
-  async login(username, password) {
-    await this.visit(); // Navigate to the login page
-    await this.enterUsername(); // Enter username
-    await this.enterPassword(); // Enter password
-    await this.signIn(); // Click the sign-in button
-    return this.goToHomePage(); // Navigate to the home page and return the current instance
-  }
-  // need to add return HomePage here
 }
 
 export default LoginPage;
