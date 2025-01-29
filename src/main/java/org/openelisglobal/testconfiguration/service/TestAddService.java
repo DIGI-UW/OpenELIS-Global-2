@@ -8,4 +8,7 @@ public interface TestAddService {
 
     void addTests(List<TestSet> testSets, Localization nameLocalization, Localization reportingNameLocalization,
             String currentUserId);
+
+    void addTestsRest(List<org.openelisglobal.testconfiguration.controller.rest.TestAddRestController.TestSet> testSets,
+            Localization nameLocalization, Localization reportingNameLocalization, String currentUserId);
 }

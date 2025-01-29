@@ -213,4 +213,100 @@ public class TestModifyServiceImpl implements TestModifyService {
         DisplayListService.getInstance().getFreshList(DisplayListService.ListType.ALL_TESTS);
         DisplayListService.getInstance().getFreshList(DisplayListService.ListType.ORDERABLE_TESTS);
     }
+
+    @Override
+    public void updateTestSetsRest(
+            List<org.openelisglobal.testconfiguration.controller.rest.TestModifyEntryRestController.TestSet> testSets,
+            org.openelisglobal.testconfiguration.controller.rest.TestModifyEntryRestController.TestAddParams testAddParams,
+            Localization nameLocalization, Localization reportingNameLocalization, String currentUserId) {
+        List<TypeOfSampleTest> typeOfSampleTest = typeOfSampleTestService
+                .getTypeOfSampleTestsForTest(testAddParams.testId);
+        String[] typeOfSamplesTestIDs = new String[typeOfSampleTest.size()];
+        for (int i = 0; i < typeOfSampleTest.size(); i++) {
+            typeOfSamplesTestIDs[i] = typeOfSampleTest.get(i).getId();
+            typeOfSampleTestService.delete(typeOfSamplesTestIDs[i], currentUserId);
+        }
+
+        List<PanelItem> panelItems = panelItemService.getPanelItemByTestId(testAddParams.testId);
+        for (PanelItem item : panelItems) {
+            item.setSysUserId(currentUserId);
+        }
+        panelItemService.deleteAll(panelItems);
+
+        List<ResultLimit> resultLimitItems = resultLimitService.getAllResultLimitsForTest(testAddParams.testId);
+        for (ResultLimit item : resultLimitItems) {
+            item.setSysUserId(currentUserId);
+            resultLimitService.delete(item);
+        }
+        // resultLimitService.delete(resultLimitItems);
+
+        for (org.openelisglobal.testconfiguration.controller.rest.TestModifyEntryRestController.TestSet set : testSets) {
+            set.test.setSysUserId(currentUserId);
+            set.test.setLocalizedTestName(nameLocalization);
+            set.test.setLocalizedReportingName(reportingNameLocalization);
+
+            TestSection testSection = set.test.getTestSection();
+            if ("N".equals(testSection.getIsActive())) {
+                testSection.setIsActive("Y");
+                testSection.setSysUserId(currentUserId);
+                testSectionService.update(testSection);
+            }
+
+            // gnr: based on testAddUpdate,
+            // added existing testId to process in createTestSets using
+            // testAddParams.testId, delete then insert to modify for most elements
+
+            for (Test test : set.sortedTests) {
+                updateTestSortOrder(test.getId(), test.getSortOrder(), currentUserId);
+            }
+
+            updateTestNames(testAddParams.testId, nameLocalization, reportingNameLocalization, currentUserId);
+            updateTestEntities(testAddParams.testId, testAddParams.loinc, currentUserId, testAddParams.uomId,
+                    testAddParams.testSectionId, set.test.isNotifyResults(), set.test.isInLabOnly(),
+                    set.test.getAntimicrobialResistance(), set.test.getIsActive(), set.test.getOrderable());
+
+            set.sampleTypeTest.setSysUserId(currentUserId);
+            set.sampleTypeTest.setTestId(set.test.getId());
+            typeOfSampleTestService.insert(set.sampleTypeTest);
+
+            for (PanelItem item : set.panelItems) {
+                item.setSysUserId(currentUserId);
+                Test nonTransiantTest = testService.getTestById(set.test.getId());
+                item.setTest(nonTransiantTest);
+                panelItemService.insert(item);
+                if (item.getPanel() != null) {
+                    TypeOfSample sampleType = typeOfSampleService.get(set.sampleTypeTest.getTypeOfSampleId());
+                    if (typeOfSamplePanelService.getTypeOfSamplePanelsForSampleType(sampleType.getId()).isEmpty()) {
+                        TypeOfSamplePanel tosp = new TypeOfSamplePanel();
+                        tosp.setPanelId(item.getPanel().getId());
+                        tosp.setTypeOfSampleId(sampleType.getId());
+                        typeOfSamplePanelService.insert(tosp);
+                    }
+                    Panel panel = item.getPanel();
+                    if ("N".equals(panel.getIsActive())) {
+                        panel.setIsActive("Y");
+                        panel.setSysUserId(currentUserId);
+                        panelService.update(panel);
+                    }
+                }
+            }
+
+            for (TestResult testResult : set.testResults) {
+                testResult.setSysUserId(currentUserId);
+                Test nonTransiantTest = testService.getTestById(set.test.getId());
+                testResult.setTest(nonTransiantTest);
+                testResultService.insert(testResult);
+                if (testResult.getDefault()) {
+                    set.test.setDefaultTestResult(testResult);
+                    updateTestDefault(testAddParams.testId, testResult, currentUserId);
+                }
+            }
+
+            for (ResultLimit resultLimit : set.resultLimits) {
+                resultLimit.setSysUserId(currentUserId);
+                resultLimit.setTestId(set.test.getId());
+                resultLimitService.insert(resultLimit);
+            }
+        }
+    }
 }
