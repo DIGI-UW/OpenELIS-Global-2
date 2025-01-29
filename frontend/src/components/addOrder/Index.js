@@ -799,6 +799,7 @@ const Index = () => {
                 <Button
                   kind="primary"
                   className="forwardButton"
+                  data-cy="next-button"
                   onClick={() => navigateForward()}
                 >
                   <FormattedMessage id="next.action.button" />
@@ -809,6 +810,7 @@ const Index = () => {
                 <Button
                   kind="primary"
                   className="forwardButton"
+                  data-cy="submit-button"
                   disabled={
                     isSubmitting || errors?.errors?.length > 0 ? true : false
                   }
