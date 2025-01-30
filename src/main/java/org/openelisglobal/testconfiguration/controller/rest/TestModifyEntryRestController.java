@@ -1,4 +1,4 @@
-package org.openelisglobal.testconfiguration.controller;
+package org.openelisglobal.testconfiguration.controller.rest;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,6 +38,12 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testconfiguration.beans.ResultLimitBean;
 import org.openelisglobal.testconfiguration.beans.TestCatalogBean;
+import org.openelisglobal.testconfiguration.controller.TestModifyEntryController;
+import org.openelisglobal.testconfiguration.controller.TestModifyEntryController.DictionaryParams;
+import org.openelisglobal.testconfiguration.controller.TestModifyEntryController.ResultLimitParams;
+import org.openelisglobal.testconfiguration.controller.TestModifyEntryController.SampleTypeListAndTestOrder;
+import org.openelisglobal.testconfiguration.controller.TestModifyEntryController.TestAddParams;
+import org.openelisglobal.testconfiguration.controller.TestModifyEntryController.TestSet;
 import org.openelisglobal.testconfiguration.form.TestModifyEntryForm;
 import org.openelisglobal.testconfiguration.service.TestModifyService;
 import org.openelisglobal.testconfiguration.validator.TestModifyEntryFormValidator;
@@ -51,17 +57,18 @@ import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
-import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.bind.annotation.RestController;
 
-@Controller
-public class TestModifyEntryController extends BaseController {
+@RestController
+@RequestMapping("/rest")
+public class TestModifyEntryRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "jsonWad", "testId", "loinc" };
 
@@ -85,19 +92,22 @@ public class TestModifyEntryController extends BaseController {
     private LocalizationService localizationService;
     @Autowired
     private TestSectionService testSectionService;
+    @Autowired
+    private TestModifyEntryController testModifyEntryController;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
         binder.setAllowedFields(ALLOWED_FIELDS);
     }
 
-    @RequestMapping(value = "/TestModifyEntry", method = RequestMethod.GET)
-    public ModelAndView showTestModifyEntry(HttpServletRequest request) {
+    @GetMapping(value = "/TestModifyEntry")
+    public TestModifyEntryForm showTestModifyEntry(HttpServletRequest request) {
 
         TestModifyEntryForm form = new TestModifyEntryForm();
         setupDisplayItems(form);
 
-        return findForward(FWD_SUCCESS, form);
+        // return findForward(FWD_SUCCESS, form);
+        return form;
     }
 
     private void setupDisplayItems(TestModifyEntryForm form) {
@@ -356,7 +366,6 @@ public class TestModifyEntryController extends BaseController {
         return getGroupedDictionaryPairs(dictionaryIdGroups);
     }
 
-    @SuppressWarnings("unchecked")
     private List<TestResult> getSortedTestResults() {
         List<TestResult> testResults = testResultService.getAllTestResults();
 
@@ -425,14 +434,15 @@ public class TestModifyEntryController extends BaseController {
         return groups;
     }
 
-    @RequestMapping(value = "/TestModifyEntry", method = RequestMethod.POST)
-    public ModelAndView postTestModifyEntry(HttpServletRequest request,
-            @ModelAttribute("form") @Valid TestModifyEntryForm form, BindingResult result) {
+    @PostMapping(value = "/TestModifyEntry")
+    public TestModifyEntryForm postTestModifyEntry(HttpServletRequest request,
+            @RequestBody @Valid TestModifyEntryForm form, BindingResult result) {
         formValidator.validate(form, result);
         if (result.hasErrors()) {
-            saveErrors(result);
+            // saveErrors(result);
             setupDisplayItems(form);
-            return findForward(FWD_FAIL_INSERT, form);
+            // return findForward(FWD_FAIL_INSERT, form);
+            return form;
         }
         String currentUserId = getSysUserId(request);
         String changeList = form.getJsonWad();
@@ -459,18 +469,21 @@ public class TestModifyEntryController extends BaseController {
             LogEvent.logDebug(e);
             result.reject("error.hibernate.exception");
             setupDisplayItems(form);
-            return findForward(FWD_FAIL_INSERT, form);
+            // return findForward(FWD_FAIL_INSERT, form);
+            return form;
         } catch (Exception e) {
             LogEvent.logDebug(e);
             result.reject("error.exception");
             setupDisplayItems(form);
-            return findForward(FWD_FAIL_INSERT, form);
+            // return findForward(FWD_FAIL_INSERT, form);
+            return form;
         }
 
         testService.refreshTestNames();
         SpringContext.getBean(TypeOfSampleService.class).clearCache();
 
-        return findForward(FWD_SUCCESS_INSERT, form);
+        // return findForward(FWD_SUCCESS_INSERT, form);
+        return form;
     }
 
     private void createPanelItems(ArrayList<PanelItem> panelItems, TestAddParams testAddParams) {
@@ -554,7 +567,7 @@ public class TestModifyEntryController extends BaseController {
             if (typeOfSample == null) {
                 continue;
             }
-            TestSet testSet = new TestSet();
+            TestSet testSet = testModifyEntryController.new TestSet();
             Test test = new Test();
             test.setId(testAddParams.testId);
 
@@ -650,7 +663,7 @@ public class TestModifyEntryController extends BaseController {
     }
 
     private TestAddParams extractTestAddParms(JSONObject obj, JSONParser parser) {
-        TestAddParams testAddParams = new TestAddParams();
+        TestAddParams testAddParams = testModifyEntryController.new TestAddParams();
         try {
 
             testAddParams.testId = (String) obj.get("testId");
@@ -683,7 +696,7 @@ public class TestModifyEntryController extends BaseController {
                 String dictionary = (String) obj.get("dictionary");
                 JSONArray dictionaryArray = (JSONArray) parser.parse(dictionary);
                 for (int i = 0; i < dictionaryArray.size(); i++) {
-                    DictionaryParams params = new DictionaryParams();
+                    DictionaryParams params = testModifyEntryController.new DictionaryParams();
                     params.dictionaryId = (String) ((JSONObject) dictionaryArray.get(i)).get("value");
                     params.isQuantifiable = "Y".equals(((JSONObject) dictionaryArray.get(i)).get("qualified"));
                     params.isDefault = params.dictionaryId.equals(obj.get("defaultTestResult"));
@@ -704,7 +717,7 @@ public class TestModifyEntryController extends BaseController {
             String limits = (String) obj.get("resultLimits");
             JSONArray limitArray = (JSONArray) parser.parse(limits);
             for (int i = 0; i < limitArray.size(); i++) {
-                ResultLimitParams params = new ResultLimitParams();
+                ResultLimitParams params = testModifyEntryController.new ResultLimitParams();
                 Boolean gender = (Boolean) ((JSONObject) limitArray.get(i)).get("gender");
                 if (gender) {
                     params.gender = "M";
@@ -720,7 +733,7 @@ public class TestModifyEntryController extends BaseController {
                 testAddParams.limits.add(params);
 
                 if (gender) {
-                    params = new ResultLimitParams();
+                    params = testModifyEntryController.new ResultLimitParams();
                     params.gender = "F";
                     params.lowNormalLimit = (String) (((JSONObject) limitArray.get(i)).get("lowNormalFemale"));
                     params.highNormalLimit = (String) (((JSONObject) limitArray.get(i)).get("highNormalFemale"));
@@ -749,7 +762,7 @@ public class TestModifyEntryController extends BaseController {
         JSONArray sampleTypeArray = (JSONArray) parser.parse(sampleTypes);
 
         for (int i = 0; i < sampleTypeArray.size(); i++) {
-            SampleTypeListAndTestOrder sampleTypeTests = new SampleTypeListAndTestOrder();
+            SampleTypeListAndTestOrder sampleTypeTests = testModifyEntryController.new SampleTypeListAndTestOrder();
             sampleTypeTests.sampleTypeId = (String) (((JSONObject) sampleTypeArray.get(i)).get("typeId"));
 
             JSONArray testArray = (JSONArray) (((JSONObject) sampleTypeArray.get(i)).get("tests"));
@@ -783,63 +796,4 @@ public class TestModifyEntryController extends BaseController {
         return null;
     }
 
-    public class TestAddParams {
-        public String testId;
-        public String testNameEnglish;
-        public String testNameFrench;
-        public String testReportNameEnglish;
-        public String testReportNameFrench;
-        public String testSectionId;
-        public ArrayList<String> panelList = new ArrayList<>();
-        public String uomId;
-        public String loinc;
-        public String resultTypeId;
-        public ArrayList<SampleTypeListAndTestOrder> sampleList = new ArrayList<>();
-        public String active;
-        public String orderable;
-        public String notifyResults;
-        public String inLabOnly;
-        public String antimicrobialResistance;
-        public String lowValid;
-        public String highValid;
-        public String lowReportingRange;
-        public String highReportingRange;
-        public String lowCritical;
-        public String highCritical;
-        public String significantDigits;
-        public String dictionaryReferenceId;
-        public ArrayList<ResultLimitParams> limits = new ArrayList<>();
-        public ArrayList<DictionaryParams> dictionaryParamList = new ArrayList<>();
-    }
-
-    public class SampleTypeListAndTestOrder {
-        public String sampleTypeId;
-        public ArrayList<String> orderedTests = new ArrayList<>();
-    }
-
-    public class ResultLimitParams {
-        public String gender;
-        public String lowAge;
-        public String highAge;
-        public String lowNormalLimit;
-        public String highNormalLimit;
-        public String displayRange;
-        public String lowCritical;
-        public String highCritical;
-    }
-
-    public class TestSet {
-        public Test test;
-        public TypeOfSampleTest sampleTypeTest;
-        public ArrayList<Test> sortedTests = new ArrayList<>();
-        public ArrayList<PanelItem> panelItems = new ArrayList<>();
-        public ArrayList<TestResult> testResults = new ArrayList<>();
-        public ArrayList<ResultLimit> resultLimits = new ArrayList<>();
-    }
-
-    public class DictionaryParams {
-        public Boolean isDefault;
-        public String dictionaryId;
-        public boolean isQuantifiable = false;
-    }
 }

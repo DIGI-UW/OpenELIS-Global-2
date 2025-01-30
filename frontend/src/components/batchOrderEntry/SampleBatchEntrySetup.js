@@ -729,6 +729,7 @@ const SampleBatchEntrySetup = () => {
                         !orderFormValues.tests?.length > 0 ||
                         !orderFormValues.method
                       }
+                      data-testid="next-button-BatchOrderEntry"
                     >
                       <FormattedMessage id="next.action.button" />
                     </Button>

@@ -285,7 +285,11 @@ export const NCECorrectiveAction = () => {
                 <br />
               </Column>
               <Column lg={16}>
-                <Button type="button" data-testid='nce-search-button' onClick={handleSubmit}>
+                <Button
+                  type="button"
+                  data-testid="nce-search-button"
+                  onClick={handleSubmit}
+                >
                   <FormattedMessage id="label.button.search" />
                 </Button>
               </Column>
@@ -320,9 +324,12 @@ export const NCECorrectiveAction = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {tData.nceEventsSearchResults.map((row) => ( 
+                      {tData.nceEventsSearchResults.map((row) => (
                         <TableRow key={row.nceNumber}>
-                          <TableCell key={`${row}-checkbox`} data-testid='Radio-button'>
+                          <TableCell
+                            key={`${row}-checkbox`}
+                            data-testid="Radio-button"
+                          >
                             <RadioButton
                               name="radio-group"
                               onClick={() => setSelected(row.nceNumber)}
@@ -330,10 +337,10 @@ export const NCECorrectiveAction = () => {
                               id={row.id}
                             />
                           </TableCell>
-                          <TableCell  key={row.key + "date"}>
+                          <TableCell key={row.key + "date"}>
                             {new Date(row.reportDate).toDateString()}
                           </TableCell>
-                          <TableCell  key={row.key + "1"}>
+                          <TableCell key={row.key + "1"}>
                             {row.nceNumber}
                           </TableCell>
                           <TableCell key={row.key + "2"}>
@@ -357,13 +364,16 @@ export const NCECorrectiveAction = () => {
             <Grid fullWidth={true}>
               <Column lg={3}>
                 <div style={{ marginBottom: "10px" }}>
-                  <span style={{ color: "#3366B3", fontWeight: "bold" }} >
+                  <span style={{ color: "#3366B3", fontWeight: "bold" }}>
                     <b>
                       <FormattedMessage id="nonconform.nce.number" />
                     </b>
                   </span>
                 </div>
-                <div style={{ marginBottom: "10px", color: "#555" }} data-testid='nce-number-result'>
+                <div
+                  style={{ marginBottom: "10px", color: "#555" }}
+                  data-testid="nce-number-result"
+                >
                   {data.nceNumber}
                 </div>
               </Column>
@@ -422,7 +432,10 @@ export const NCECorrectiveAction = () => {
                     <FormattedMessage id="sample.label.labnumber" />
                   </span>
                 </div>
-                <div style={{ marginBottom: "10px" }} data-testid='nce-search-result'>
+                <div
+                  style={{ marginBottom: "10px" }}
+                  data-testid="nce-search-result"
+                >
                   {data.labOrderNumber}
                 </div>
               </Column>
@@ -677,7 +690,7 @@ export const NCECorrectiveAction = () => {
                   }
                   onClick={() => handleActionTypeChange("1")}
                   id="correctiveAction"
-                  data-testid="nce-action-checkbox" 
+                  data-testid="nce-action-checkbox"
                 />
 
                 <Checkbox
@@ -761,7 +774,6 @@ export const NCECorrectiveAction = () => {
                       }
                       disabled
                       id="correctiveAction"
-                     
                     />
 
                     <Checkbox
@@ -813,14 +825,13 @@ export const NCECorrectiveAction = () => {
                       alignItems: "flex-start",
                       marginTop: "10px",
                     }}
-                    data-testid="nce-resolution-radio" 
+                    data-testid="nce-resolution-radio"
                   >
                     <RadioButton
                       checked={submit === true}
                       labelText={<FormattedMessage id="yes.option" />}
                       id={`yes.option`}
                       onChange={() => setSubmit(true)}
-                     
                     ></RadioButton>
                     <RadioButton
                       labelText={<FormattedMessage id="no.option" />}
