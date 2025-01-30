@@ -130,5 +130,6 @@ describe("Search for Patient", function () {
       patientPage.patientLastName(patient.lastName);
     });
     patientPage.clickSearchBtn();
+    patientPage.selectPatient();
   });
 });

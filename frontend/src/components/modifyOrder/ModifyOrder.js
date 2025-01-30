@@ -340,6 +340,7 @@ const ModifyOrder = () => {
 
                 {page === orderPageNumber && (
                   <Button
+                    data-cy="submitOrderButton"
                     kind="primary"
                     className="forwardButton"
                     onClick={handleSubmitOrderForm}

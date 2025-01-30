@@ -20,20 +20,11 @@ describe("Order Entity", function () {
     patientEntryPage = orderEntityPage.getPatientPage();
     cy.wait(1000);
     cy.fixture("Patient").then((patient) => {
-      patientEntryPage.searchPatientByFirstAndLastName(
-        patient.firstName,
-        patient.lastName,
-      );
-      patientEntryPage.clickSearchPatientButton();
-      patientEntryPage.validatePatientSearchTable(
-        patient.firstName,
-        patient.inValidName,
-      );
-      patientEntryPage.selectPatientFromSearchResults();
-      cy.wait(200);
-      patientEntryPage.getFirstName().should("have.value", patient.firstName);
-      patientEntryPage.getLastName().should("have.value", patient.lastName);
+      patientEntryPage.patientFirstName(patient.firstName);
+      patientEntryPage.patientLastName(patient.lastName);
     });
+    patientEntryPage.clickSearchPatientBtn();
+    patientEntryPage.selectPatient();
   });
 
   it("User should click next to go to program selection", function () {

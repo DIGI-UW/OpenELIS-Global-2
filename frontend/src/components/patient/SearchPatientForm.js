@@ -315,6 +315,7 @@ function SearchPatientForm(props) {
                 <Field name="labNumber">
                   {({ field }) => (
                     <CustomLabNumberInput
+                      data-testid="prevLabNumber"
                       name={field.name}
                       placeholder={intl.formatMessage({
                         id: "input.placeholder.prevLabNumber",

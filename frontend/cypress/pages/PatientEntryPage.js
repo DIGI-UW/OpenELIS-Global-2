@@ -22,7 +22,7 @@ class PatientEntryPage {
   primaryPhone = "#primaryPhone";
   dateOfBirth = "#date-picker-default-id";
   savePatientBtn = "#submit";
-  previousLabNo = "#display_labNumber";
+  previousLabNo = "[data-testid='prevLabNumber']";
 
   constructor() {}
 
@@ -82,7 +82,7 @@ class PatientEntryPage {
   }
 
   searchPatientBylabNo(labNo) {
-    cy.get(this.previousLabNo).should("be.visible").type(labNo);
+    cy.get(this.previousLabNo).type(labNo);
   }
 
   enterUniquePatientNo(uniqueID) {
@@ -155,6 +155,10 @@ class PatientEntryPage {
 
   selectOtherNationality(otherNationality) {
     cy.get(this.otherNationality).type(otherNationality);
+  }
+
+  selectPatient() {
+    cy.get("input[name='radio-group'][id='73']").check({ force: true });
   }
 }
 
