@@ -55,11 +55,19 @@ test.describe("Global Menu Configuration", () => {
     await globalMenuConfigPage.submitButton();
   });
 
-  test("User relogs in to verify the menu changes", async () => {
-    // Initialize LoginPage object and navigate to the menu
-    loginPage = new LoginPage(page);
+  test("User relogs in to verify the menu changes", async ({ browser }) => {
+    // Launch a new browser context
+    const context = await browser.newContext();
+    const page = await context.newPage();
+  
+    // Login fresh
+    const loginPage = new LoginPage(page);
     await loginPage.visit();
-    homePage = await loginPage.goToHomePage();
-    globalMenuConfigPage = await homePage.openNavigationMenu();
+    const homePage = await loginPage.goToHomePage();
+    console.log('hi');
+    const globalMenuConfigPage = await homePage.openNavigationMenu();
+    
+    // Close the context to simulate logout
+    await context.close();
   });
 });
