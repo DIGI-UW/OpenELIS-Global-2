@@ -33,6 +33,8 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.testconfiguration.controller.TestAddController;
+import org.openelisglobal.testconfiguration.controller.TestAddController.TestSet;
 import org.openelisglobal.testconfiguration.form.TestAddForm;
 import org.openelisglobal.testconfiguration.service.TestAddService;
 import org.openelisglobal.testconfiguration.validator.TestAddFormValidator;
@@ -82,6 +84,8 @@ public class TestAddRestController extends BaseController {
     private TestSectionService testSectionService;
     @Autowired
     private TestService testService;
+    @Autowired
+    private TestAddController testAddController;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -146,7 +150,7 @@ public class TestAddRestController extends BaseController {
         Localization reportingNameLocalization = createReportingNameLocalization(testAddParams);
 
         try {
-            testAddService.addTestsRest(testSets, nameLocalization, reportingNameLocalization, currentUserId);
+            testAddService.addTests(testSets, nameLocalization, reportingNameLocalization, currentUserId);
         } catch (HibernateException e) {
             LogEvent.logDebug(e);
         }
@@ -221,7 +225,7 @@ public class TestAddRestController extends BaseController {
             } else {
                 typeOfSample.setActive("Y".equals(testAddParams.active));
             }
-            TestSet testSet = new TestSet();
+            TestSet testSet = testAddController.new TestSet();
             testSet.typeOfSample = typeOfSample;
             Test test = new Test();
             test.setUnitOfMeasure(uom);
@@ -577,16 +581,6 @@ public class TestAddRestController extends BaseController {
         String dictionaryReferenceId;
         ArrayList<ResultLimitParams> limits = new ArrayList<>();
         public ArrayList<DictionaryParams> dictionaryParamList = new ArrayList<>();
-    }
-
-    public class TestSet {
-        public Test test;
-        public TypeOfSampleTest sampleTypeTest;
-        public TypeOfSample typeOfSample;
-        public ArrayList<Test> sortedTests = new ArrayList<>();
-        public ArrayList<PanelItem> panelItems = new ArrayList<>();
-        public ArrayList<TestResult> testResults = new ArrayList<>();
-        public ArrayList<ResultLimit> resultLimits = new ArrayList<>();
     }
 
     public class SampleTypeListAndTestOrder {

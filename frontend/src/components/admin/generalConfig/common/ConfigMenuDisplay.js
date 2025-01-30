@@ -204,12 +204,6 @@ function ConfigMenuDisplay(props) {
                       <Button disabled={modifyButton} type="submit">
                         <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.modify" />
                       </Button>{" "}
-                      <Button kind="tertiary" disabled={true} type="submit">
-                        <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.deactivate" />
-                      </Button>{" "}
-                      <Button kind="tertiary" disabled={true} type="submit">
-                        <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.add" />
-                      </Button>
                     </Column>
                   </Form>
                 </Section>

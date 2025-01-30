@@ -38,6 +38,12 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testconfiguration.beans.ResultLimitBean;
 import org.openelisglobal.testconfiguration.beans.TestCatalogBean;
+import org.openelisglobal.testconfiguration.controller.TestModifyEntryController;
+import org.openelisglobal.testconfiguration.controller.TestModifyEntryController.DictionaryParams;
+import org.openelisglobal.testconfiguration.controller.TestModifyEntryController.ResultLimitParams;
+import org.openelisglobal.testconfiguration.controller.TestModifyEntryController.SampleTypeListAndTestOrder;
+import org.openelisglobal.testconfiguration.controller.TestModifyEntryController.TestAddParams;
+import org.openelisglobal.testconfiguration.controller.TestModifyEntryController.TestSet;
 import org.openelisglobal.testconfiguration.form.TestModifyEntryForm;
 import org.openelisglobal.testconfiguration.service.TestModifyService;
 import org.openelisglobal.testconfiguration.validator.TestModifyEntryFormValidator;
@@ -86,6 +92,8 @@ public class TestModifyEntryRestController extends BaseController {
     private LocalizationService localizationService;
     @Autowired
     private TestSectionService testSectionService;
+    @Autowired
+    private TestModifyEntryController testModifyEntryController;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -455,7 +463,7 @@ public class TestModifyEntryRestController extends BaseController {
         List<TestSet> testSets = createTestSets(testAddParams);
 
         try {
-            testModifyService.updateTestSetsRest(testSets, testAddParams, nameLocalization, reportingNameLocalization,
+            testModifyService.updateTestSets(testSets, testAddParams, nameLocalization, reportingNameLocalization,
                     currentUserId);
         } catch (HibernateException e) {
             LogEvent.logDebug(e);
@@ -559,7 +567,7 @@ public class TestModifyEntryRestController extends BaseController {
             if (typeOfSample == null) {
                 continue;
             }
-            TestSet testSet = new TestSet();
+            TestSet testSet = testModifyEntryController.new TestSet();
             Test test = new Test();
             test.setId(testAddParams.testId);
 
@@ -655,7 +663,7 @@ public class TestModifyEntryRestController extends BaseController {
     }
 
     private TestAddParams extractTestAddParms(JSONObject obj, JSONParser parser) {
-        TestAddParams testAddParams = new TestAddParams();
+        TestAddParams testAddParams = testModifyEntryController.new TestAddParams();
         try {
 
             testAddParams.testId = (String) obj.get("testId");
@@ -688,7 +696,7 @@ public class TestModifyEntryRestController extends BaseController {
                 String dictionary = (String) obj.get("dictionary");
                 JSONArray dictionaryArray = (JSONArray) parser.parse(dictionary);
                 for (int i = 0; i < dictionaryArray.size(); i++) {
-                    DictionaryParams params = new DictionaryParams();
+                    DictionaryParams params = testModifyEntryController.new DictionaryParams();
                     params.dictionaryId = (String) ((JSONObject) dictionaryArray.get(i)).get("value");
                     params.isQuantifiable = "Y".equals(((JSONObject) dictionaryArray.get(i)).get("qualified"));
                     params.isDefault = params.dictionaryId.equals(obj.get("defaultTestResult"));
@@ -709,7 +717,7 @@ public class TestModifyEntryRestController extends BaseController {
             String limits = (String) obj.get("resultLimits");
             JSONArray limitArray = (JSONArray) parser.parse(limits);
             for (int i = 0; i < limitArray.size(); i++) {
-                ResultLimitParams params = new ResultLimitParams();
+                ResultLimitParams params = testModifyEntryController.new ResultLimitParams();
                 Boolean gender = (Boolean) ((JSONObject) limitArray.get(i)).get("gender");
                 if (gender) {
                     params.gender = "M";
@@ -725,7 +733,7 @@ public class TestModifyEntryRestController extends BaseController {
                 testAddParams.limits.add(params);
 
                 if (gender) {
-                    params = new ResultLimitParams();
+                    params = testModifyEntryController.new ResultLimitParams();
                     params.gender = "F";
                     params.lowNormalLimit = (String) (((JSONObject) limitArray.get(i)).get("lowNormalFemale"));
                     params.highNormalLimit = (String) (((JSONObject) limitArray.get(i)).get("highNormalFemale"));
@@ -754,7 +762,7 @@ public class TestModifyEntryRestController extends BaseController {
         JSONArray sampleTypeArray = (JSONArray) parser.parse(sampleTypes);
 
         for (int i = 0; i < sampleTypeArray.size(); i++) {
-            SampleTypeListAndTestOrder sampleTypeTests = new SampleTypeListAndTestOrder();
+            SampleTypeListAndTestOrder sampleTypeTests = testModifyEntryController.new SampleTypeListAndTestOrder();
             sampleTypeTests.sampleTypeId = (String) (((JSONObject) sampleTypeArray.get(i)).get("typeId"));
 
             JSONArray testArray = (JSONArray) (((JSONObject) sampleTypeArray.get(i)).get("tests"));
@@ -788,63 +796,4 @@ public class TestModifyEntryRestController extends BaseController {
         return null;
     }
 
-    public class TestAddParams {
-        public String testId;
-        public String testNameEnglish;
-        public String testNameFrench;
-        public String testReportNameEnglish;
-        public String testReportNameFrench;
-        public String testSectionId;
-        ArrayList<String> panelList = new ArrayList<>();
-        public String uomId;
-        public String loinc;
-        String resultTypeId;
-        ArrayList<SampleTypeListAndTestOrder> sampleList = new ArrayList<>();
-        String active;
-        String orderable;
-        public String notifyResults;
-        public String inLabOnly;
-        public String antimicrobialResistance;
-        String lowValid;
-        String highValid;
-        String lowReportingRange;
-        String highReportingRange;
-        String lowCritical;
-        String highCritical;
-        public String significantDigits;
-        String dictionaryReferenceId;
-        ArrayList<ResultLimitParams> limits = new ArrayList<>();
-        public ArrayList<DictionaryParams> dictionaryParamList = new ArrayList<>();
-    }
-
-    public class SampleTypeListAndTestOrder {
-        String sampleTypeId;
-        ArrayList<String> orderedTests = new ArrayList<>();
-    }
-
-    public class ResultLimitParams {
-        String gender;
-        String lowAge;
-        String highAge;
-        String lowNormalLimit;
-        String highNormalLimit;
-        String displayRange;
-        String lowCritical;
-        String highCritical;
-    }
-
-    public class TestSet {
-        public Test test;
-        public TypeOfSampleTest sampleTypeTest;
-        public ArrayList<Test> sortedTests = new ArrayList<>();
-        public ArrayList<PanelItem> panelItems = new ArrayList<>();
-        public ArrayList<TestResult> testResults = new ArrayList<>();
-        public ArrayList<ResultLimit> resultLimits = new ArrayList<>();
-    }
-
-    public class DictionaryParams {
-        public Boolean isDefault;
-        public String dictionaryId;
-        public boolean isQuantifiable = false;
-    }
 }

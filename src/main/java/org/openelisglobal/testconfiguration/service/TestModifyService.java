@@ -9,9 +9,4 @@ public interface TestModifyService {
 
     void updateTestSets(List<TestSet> testSets, TestAddParams testAddParams, Localization nameLocalization,
             Localization reportingNameLocalization, String currentUserId);
-
-    void updateTestSetsRest(
-            List<org.openelisglobal.testconfiguration.controller.rest.TestModifyEntryRestController.TestSet> testSets,
-            org.openelisglobal.testconfiguration.controller.rest.TestModifyEntryRestController.TestAddParams testAddParams,
-            Localization nameLocalization, Localization reportingNameLocalization, String currentUserId);
 }
