@@ -1,5 +1,6 @@
 import { expect } from "@playwright/test";
 import LoginPage from "./LoginPage";
+import AdminPage from "./AdminPage";
 
 class HomePage {
   constructor(page) {
@@ -14,7 +15,18 @@ class HomePage {
     return new LoginPage(this.page); // Navigate to login page
   }
 
-  // Home page navigation
+  async openNavigationMenu() {
+    await this.page
+      .locator("header#mainHeader > button[title='Open menu']")
+      .click({ timeout: 30000 });
+  }
+
+  async goToAdminPage() {
+    await this.openNavigationMenu(); // Open the navigation menu
+    await this.page.locator("#menu_administration").click(); // Click on the administration menu
+    return new AdminPage(this.page);
+  }
+
   async afterAll() {
     await this.page.locator(".clickable-icon").click();
   }

@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import LoginPage from "../pages/LoginPage";
 
 let browser;
-let home;
+let homePage;
 let context;
 let page;
 let loginPage;
@@ -13,7 +13,7 @@ test.beforeAll(async ({ browser: browserInstance }) => {
   page = await context.newPage();
 
   loginPage = new LoginPage(page);
-  home = await loginPage.goToHomePage();
+  homePage = await loginPage.goToHomePage();
 });
 
 test.afterAll(async () => {
@@ -21,47 +21,47 @@ test.afterAll(async () => {
 });
 
 test.afterEach(async () => {
-  await home.afterAll();
+  await homePage.afterAll();
 });
 
 test.describe("User navigates to different tiles", () => {
   test("User navigates to the In Progress", async () => {
-    await home.selectInProgress();
+    await homePage.selectInProgress();
   });
 
   test("User navigates to Ready for Validation", async () => {
-    await home.selectReadyforValidation();
+    await homePage.selectReadyforValidation();
   });
 
   test("User navigates to Orders Completed Today", async () => {
-    await home.selectOrdersCompletedToday();
+    await homePage.selectOrdersCompletedToday();
   });
 
   test("User navigates to Partially Completed Today", async () => {
-    await home.selectPartiallyCompletedToday();
+    await homePage.selectPartiallyCompletedToday();
   });
 
   test("User navigates to Orders Entered By Users", async () => {
-    await home.selectOrdersEnteredByUsers();
+    await homePage.selectOrdersEnteredByUsers();
   });
 
   test("User navigates to Orders Rejected", async () => {
-    await home.selectOrdersRejected();
+    await homePage.selectOrdersRejected();
   });
 
   test("User navigates to UnPrinted Results", async () => {
-    await home.selectUnPrintedResults();
+    await homePage.selectUnPrintedResults();
   });
 
   test("User navigates to Electronic Orders", async () => {
-    await home.selectElectronicOrders();
+    await homePage.selectElectronicOrders();
   });
 
   test("User navigates to Average Turn Around time", async () => {
-    await home.selectAverageTurnAroundTime();
+    await homePage.selectAverageTurnAroundTime();
   });
 
   test("User navigates to Delayed Turn Around", async () => {
-    await home.selectDelayedTurnAround();
+    await homePage.selectDelayedTurnAround();
   });
 });
