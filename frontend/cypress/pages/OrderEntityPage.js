@@ -51,9 +51,7 @@ class OrderEntityPage {
     cy.enterText("input#requesterLastName", requesterLastName);
   }
   clickSubmitOrderButton() {
-    cy.getElement(
-      ".navigationButtonsLayout [type='button']:nth-of-type(2)",
-    ).click();
+    cy.get('[data-cy="submitOrderButton"]').should("be.visible").click();
   }
 }
 
