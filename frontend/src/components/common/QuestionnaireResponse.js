@@ -14,7 +14,14 @@ const QuestionnaireResponse = ({ questionnaireResponse }) => {
             :&nbsp;
             {item.answer &&
               item.answer.map((answer, index) => {
-                return <>{renderAnswer(answer)}</>;
+                return (
+                  <>
+                    {renderAnswer(answer)}{" "}
+                    {item.answer.length > 1 && index < item.answer.length - 1
+                      ? " ,"
+                      : ""}
+                  </>
+                );
               })}
           </div>
         </td>
@@ -29,7 +36,7 @@ const QuestionnaireResponse = ({ questionnaireResponse }) => {
     if ("valueString" in answer) {
       display = answer.valueString;
     } else if ("valueBoolean" in answer) {
-      display = answer.valueBoolean;
+      display = answer.valueBoolean ? "True" : "False";
     } else if ("valueCoding" in answer) {
       display = answer.valueCoding.display;
     } else if ("valueDate" in answer) {

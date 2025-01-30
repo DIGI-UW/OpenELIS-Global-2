@@ -790,42 +790,42 @@ public class TestModifyEntryController extends BaseController {
         public String testReportNameEnglish;
         public String testReportNameFrench;
         public String testSectionId;
-        ArrayList<String> panelList = new ArrayList<>();
+        public ArrayList<String> panelList = new ArrayList<>();
         public String uomId;
         public String loinc;
-        String resultTypeId;
-        ArrayList<SampleTypeListAndTestOrder> sampleList = new ArrayList<>();
-        String active;
-        String orderable;
+        public String resultTypeId;
+        public ArrayList<SampleTypeListAndTestOrder> sampleList = new ArrayList<>();
+        public String active;
+        public String orderable;
         public String notifyResults;
         public String inLabOnly;
         public String antimicrobialResistance;
-        String lowValid;
-        String highValid;
-        String lowReportingRange;
-        String highReportingRange;
-        String lowCritical;
-        String highCritical;
+        public String lowValid;
+        public String highValid;
+        public String lowReportingRange;
+        public String highReportingRange;
+        public String lowCritical;
+        public String highCritical;
         public String significantDigits;
-        String dictionaryReferenceId;
-        ArrayList<ResultLimitParams> limits = new ArrayList<>();
+        public String dictionaryReferenceId;
+        public ArrayList<ResultLimitParams> limits = new ArrayList<>();
         public ArrayList<DictionaryParams> dictionaryParamList = new ArrayList<>();
     }
 
     public class SampleTypeListAndTestOrder {
-        String sampleTypeId;
-        ArrayList<String> orderedTests = new ArrayList<>();
+        public String sampleTypeId;
+        public ArrayList<String> orderedTests = new ArrayList<>();
     }
 
     public class ResultLimitParams {
-        String gender;
-        String lowAge;
-        String highAge;
-        String lowNormalLimit;
-        String highNormalLimit;
-        String displayRange;
-        String lowCritical;
-        String highCritical;
+        public String gender;
+        public String lowAge;
+        public String highAge;
+        public String lowNormalLimit;
+        public String highNormalLimit;
+        public String displayRange;
+        public String lowCritical;
+        public String highCritical;
     }
 
     public class TestSet {
