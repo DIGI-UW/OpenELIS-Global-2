@@ -10,12 +10,5 @@
     "lastName": "Prime"
   },
   "labNo": "",
-  "invalidLabNo": "DEV0124000000000000",
-  "labNumb": "REG-00000123",
-  "myCases": "Grossing",
-  "myCases2": "Completed",
-  "myCases3": "Screening",
-  "itemsPerPage": "30",
-  "searchName": "Smith",
-  "engLang": "English"
+  "invalidLabNo": "DEV0124000000000000"
 }

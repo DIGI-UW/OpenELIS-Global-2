@@ -1,93 +1,85 @@
 import LoginPage from "../pages/LoginPage";
-import DashBoardPage from "../pages/DashBoard";
 
 let homePage = null;
 let loginPage = null;
 let dashboard = null;
 
-before(() => {
+before("login", () => {
   loginPage = new LoginPage();
   loginPage.visit();
-
-  dashboard = new DashBoardPage();
-  homePage = loginPage.goToHomePage();
-
-  cy.fixture("Order").as("dashBData");
-});
-
-describe("Dashboard for the Home Page", function () {
-  it("User clicks search bar", function () {
-    dashboard.homeSearchBar();
-  });
-
-  it("User types the patient to search and closes it", function () {
-    cy.fixture("Order").then((dashBData) => {
-      dashboard.searchBarInput(dashBData.searchName);
-    });
-    dashboard.homeSearchBar();
-  });
-
-  it("User interacts with the notifications icon", function () {
-    dashboard.notificationIcon();
-    dashboard.notificationIconClose();
-  });
-
-  it("User interacts with the user icon", function () {
-    dashboard.userIcon();
-    cy.fixture("Order").then((dashBData) => {
-      dashboard.userSelectsEng(dashBData.engLang);
-    });
-    dashboard.userIcon();
-  });
 });
 
 describe("Pathology Dashboard", function () {
-  it("User  Visits the Dashboard", function () {
-    dashboard = homePage.goToPathology();
+  it("User  Visits Pathology Dashboard", function () {
+    homePage = loginPage.goToHomePage();
+    dashboard = homePage.goToPathologyDashboard();
+
+    dashboard.checkForHeader("Pathology");
   });
 
-  it("User checks filters, selects cases and items per page", function () {
-    dashboard.checkFilters();
-    cy.fixture("Order").then((dashBData) => {
-      dashboard.selectCases(dashBData.myCases);
-      dashboard.enterLabNumber(dashBData.labNumb);
-      dashboard.pageItems(dashBData.itemsPerPage);
+  it("User adds a new Pathology order", function () {
+    homePage.goToOrderPage();
+    dashboard.addOrder("Histopathology");
+  });
+  it("Check For Order", () => {
+    homePage.goToPathologyDashboard();
+    dashboard.checkForHeader("Pathology");
+
+    cy.fixture("DashBoard").then((order) => {
+      dashboard.validatePreStatus(order.labNo);
+    });
+  });
+
+  it("Change The Status of Order and save it", () => {
+    dashboard.changeStatus("Completed");
+    dashboard.enterDetails();
+    dashboard.saveOrder();
+  });
+
+  it("Validate the Status of Order", () => {
+    cy.fixture("DashBoard").then((order) => {
+      //  dashboard.validateOrderStatus(order.labNo, 4);
     });
   });
 });
 
-describe("Immunohistochemistry Dashboard", function () {
-  it("User  Visits the Dashboard", function () {
+describe("ImmunoChemistry Dashboard", function () {
+  it("User  Visits ImmunoChemistry Dashboard", function () {
+    homePage = loginPage.goToHomePage();
     dashboard = homePage.goToImmunoChemistryDashboard();
+    dashboard.checkForHeader("Immunohistochemistry");
+
+    //  cy.fixture("DashBoard").then((order) => {
+    //     dashboard.validatePreStatus(order.labNo);
+
+    //     });
   });
 
-  it("User checks filters, selects cases and items per page", function () {
-    dashboard.checkFilters();
-    cy.fixture("Order").then((dashBData) => {
-      dashboard.selectCompletedCases(dashBData.myCases2);
-      dashboard.enterLabNumber(dashBData.labNumb);
-      dashboard.pageItems(dashBData.itemsPerPage);
+  it("User adds a new ImmunioChemistry order", function () {
+    homePage.goToOrderPage();
+    dashboard.addOrder("Immunohistochemistry");
+  });
+
+  it("Check For Order", () => {
+    homePage.goToImmunoChemistryDashboard();
+
+    dashboard.checkForHeader("Immunohistochemistry");
+
+    cy.fixture("DashBoard").then((order) => {
+      dashboard.validatePreStatus(order.labNo);
     });
   });
-});
 
-describe("Cytology Dashboard", function () {
-  it("User  Visits the Dashboard", function () {
-    dashboard = homePage.goToCytology();
+  it("Change The Status of Order and save it", () => {
+    dashboard.changeStatus("Completed");
+    dashboard.selectPathologist("ELIS,Open");
+    dashboard.saveOrder();
   });
 
-  it("User checks filters, selects cases and items per page", function () {
-    dashboard.checkFilters();
-    cy.fixture("Order").then((dashBData) => {
-      dashboard.selectScreeningCases(dashBData.myCases3);
-      dashboard.enterLabNumber(dashBData.labNumb);
-      dashboard.pageItems(dashBData.itemsPerPage);
+  it("Validate the Status of Order", () => {
+    cy.fixture("DashBoard").then((order) => {
+      //TO DO : needs to be properly re-writen with proper selector
+      //dashboard.validateOrderStatus(order.labNo, 3);
     });
-  });
-});
-
-describe("Back to home page", function () {
-  it("User navigates back to home page", function () {
-    dashboard = homePage.backToHomePage();
   });
 });

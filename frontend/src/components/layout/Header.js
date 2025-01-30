@@ -452,7 +452,6 @@ function OEHeader(props) {
                         <HeaderGlobalAction
                           aria-label="Search"
                           onClick={handleSearch}
-                          data-cy="header-global-action-search"
                         >
                           {!searchBar ? (
                             <Search size={20} />
@@ -463,7 +462,6 @@ function OEHeader(props) {
                         <HeaderGlobalAction
                           aria-label="Notifications"
                           onClick={toggleSlideOver}
-                          data-cy="header-global-action-notifications"
                         >
                           <div
                             style={{
@@ -504,7 +502,6 @@ function OEHeader(props) {
                       aria-label={panelSwitchLabel()}
                       onClick={clickPanelSwitch}
                       ref={userSwitchRef}
-                      data-cy="header-global-action-user"
                     >
                       {panelSwitchIcon()}
                     </HeaderGlobalAction>
