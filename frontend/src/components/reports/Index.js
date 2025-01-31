@@ -6,6 +6,7 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import { StudyReports } from "./study/index";
 import { RoutineReports } from "./routine/Index";
 import { Loading } from "@carbon/react";
+import { useNavigate } from "react-router-dom";
 
 const ReportIndex = () => {
   const intl = useIntl();
@@ -15,6 +16,7 @@ const ReportIndex = () => {
   const [type, setType] = useState("");
   const [report, setReport] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -26,7 +28,8 @@ const ReportIndex = () => {
     if (paramType && paramReport) {
       setIsLoading(false);
     } else {
-      window.location.href = "/";
+      // window.location.href = "/";
+      navigate("/");
     }
   }, []);
 

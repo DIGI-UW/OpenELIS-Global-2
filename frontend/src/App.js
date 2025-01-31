@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
+import { BrowserRouter as Router, Route, Switch, Routes } from "react-router-dom";
 import { IntlProvider } from "react-intl";
 import { confirmAlert } from "react-confirm-alert";
 import Layout from "./components/layout/Layout";
@@ -206,301 +206,62 @@ export default function App() {
         }}
       >
         <>
-          <Router>
-            <Layout onChangeLanguage={onChangeLanguage}>
-              <Switch>
-                <Route path="/login" exact component={() => <Login />} />
-                <Route
-                  path="/landing"
-                  exact
-                  component={() => <LandingPage />}
-                />
-                <SecureRoute
-                  path="/"
-                  exact
-                  component={() => <Home />}
-                  role=""
-                />
-                <SecureRoute
-                  path="/Dashboard"
-                  exact
-                  component={() => <Home />}
-                  role=""
-                />
-                <SecureRoute
-                  path="/admin"
-                  exact
-                  component={() => <Admin />}
-                  role="Global Administrator"
-                />
-                <SecureRoute
-                  path="/MasterListsPage"
-                  exact
-                  component={() => <Admin />}
-                  role="Global Administrator"
-                />
-                <SecureRoute
-                  path="/PathologyDashboard"
-                  exact
-                  component={() => <PathologyDashboard />}
-                  role=""
-                  labUnitRole={{ Pathology: ["Results"] }}
-                />
-                <SecureRoute
-                  path="/PathologyCaseView/:pathologySampleId"
-                  exact
-                  component={() => <PathologyCaseView />}
-                  role=""
-                  labUnitRole={{ Pathology: ["Results"] }}
-                />
-                <SecureRoute
-                  path="/ImmunohistochemistryDashboard"
-                  exact
-                  component={() => <ImmunohistochemistryDashboard />}
-                  role=""
-                  labUnitRole={{ Immunohistochemistry: ["Results"] }}
-                />
-                <SecureRoute
-                  path="/ImmunohistochemistryCaseView/:immunohistochemistrySampleId"
-                  exact
-                  component={() => <ImmunohistochemistryCaseView />}
-                  role=""
-                  labUnitRole={{ Immunohistochemistry: ["Results"] }}
-                />
-                <SecureRoute
-                  path="/CytologyDashboard"
-                  exact
-                  component={() => <CytologyDashboard />}
-                  role=""
-                  labUnitRole={{ Cytology: ["Results"] }}
-                />
-                <SecureRoute
-                  path="/CytologyCaseView/:cytologySampleId"
-                  exact
-                  component={() => <CytologyCaseView />}
-                  role=""
-                  labUnitRole={{ Cytology: ["Results"] }}
-                />
-                <SecureRoute
-                  path="/SamplePatientEntry"
-                  exact
-                  component={() => <AddOrder />}
-                  role={["Reception"]}
-                />
-                <SecureRoute
-                  path="/ModifyOrder"
-                  exact
-                  component={() => <ModifyOrder />}
-                  role="Reception"
-                />
-                <SecureRoute
-                  path="/SampleEdit"
-                  exact
-                  component={() => <FindOrder />}
-                  role="Reception"
-                />
-                <SecureRoute
-                  path="/ReportNonConformingEvent"
-                  exact
-                  component={() => (
-                    <NonConformIndex form="ReportNonConformingEvent" />
-                  )}
-                  role="Reception"
-                />
-                <SecureRoute
-                  path="/ViewNonConformingEvent"
-                  exact
-                  component={() => (
-                    <NonConformIndex form="ViewNonConformingEvent" />
-                  )}
-                  role="Reception"
-                />
+  <Router>
+    <Layout onChangeLanguage={onChangeLanguage}>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/landing" element={<LandingPage />} />
+        <Route path="/" element={<SecureRoute role=""><Home /></SecureRoute>} />
+        <Route path="/admin" element={<SecureRoute role="Global Administrator"><Admin /></SecureRoute>} />
+        <Route path="/MasterListsPage" element={<SecureRoute role="Global Administrator"><Admin /></SecureRoute>} />
+        <Route path="/PathologyDashboard" element={<SecureRoute role="" labUnitRole={{ Pathology: ["Results"] }}><PathologyDashboard /></SecureRoute>} />
+        <Route path="/PathologyCaseView/:pathologySampleId" element={<SecureRoute role="" labUnitRole={{ Pathology: ["Results"] }}><PathologyCaseView /></SecureRoute>} />
+        <Route path="/ImmunohistochemistryDashboard" element={<SecureRoute role="" labUnitRole={{ Immunohistochemistry: ["Results"] }}><ImmunohistochemistryDashboard /></SecureRoute>} />
+        <Route path="/ImmunohistochemistryCaseView/:immunohistochemistrySampleId" element={<SecureRoute role="" labUnitRole={{ Immunohistochemistry: ["Results"] }}><ImmunohistochemistryCaseView /></SecureRoute>} />
+        <Route path="/CytologyDashboard" element={<SecureRoute role="" labUnitRole={{ Cytology: ["Results"] }}><CytologyDashboard /></SecureRoute>} />
+        <Route path="/CytologyCaseView/:cytologySampleId" element={<SecureRoute role="" labUnitRole={{ Cytology: ["Results"] }}><CytologyCaseView /></SecureRoute>} />
+        <Route path="/SamplePatientEntry" element={<SecureRoute role={["Reception"]}><AddOrder /></SecureRoute>} />
+        <Route path="/ModifyOrder" element={<SecureRoute role="Reception"><ModifyOrder /></SecureRoute>} />
+        <Route path="/SampleEdit" element={<SecureRoute role="Reception"><FindOrder /></SecureRoute>} />
+        <Route path="/ReportNonConformingEvent" element={<SecureRoute role="Reception"><NonConformIndex form="ReportNonConformingEvent" /></SecureRoute>} />
+        <Route path="/ViewNonConformingEvent" element={<SecureRoute role="Reception"><NonConformIndex form="ViewNonConformingEvent" /></SecureRoute>} />
+        <Route path="/NCECorrectiveAction" element={<SecureRoute><NonConformIndex form="NCECorrectiveAction" /></SecureRoute>} />
+        <Route path="/SampleBatchEntrySetup" element={<SecureRoute role="Reception"><SampleBatchEntrySetup /></SecureRoute>} />
+        <Route path="/ElectronicOrders" element={<SecureRoute role="Reception"><EOrderPage /></SecureRoute>} />
+        <Route path="/PrintBarcode" element={<SecureRoute role="Reception"><PrintBarcode /></SecureRoute>} />
+        <Route path="/PatientManagement" element={<SecureRoute role="Reception"><PatientManagement /></SecureRoute>} />
+        <Route path="/PatientHistory" element={<SecureRoute role="Reception"><PatientHistory /></SecureRoute>} />
+        <Route path="/PatientResults/:patientId" element={<SecureRoute role="Reception"><RoutedResultsViewer /></SecureRoute>} />
+        <Route path="/WorkPlanByTestSection" element={<SecureRoute role="Results"><Workplan type="unit" /></SecureRoute>} />
+        <Route path="/WorkplanByTest" element={<SecureRoute role="Results"><Workplan type="test" /></SecureRoute>} />
+        <Route path="/WorkplanByPanel" element={<SecureRoute role="Results"><Workplan type="panel" /></SecureRoute>} />
+        <Route path="/WorkplanByPriority" element={<SecureRoute role="Results"><Workplan type="priority" /></SecureRoute>} />
+        <Route path="/result" element={<SecureRoute role="Results"><ResultSearch /></SecureRoute>} />
+        <Route path="/LogbookResults" element={<SecureRoute role="Results"><ResultSearch /></SecureRoute>} />
+        <Route path="/PatientResults" element={<SecureRoute role="Results"><ResultSearch /></SecureRoute>} />
+        <Route path="/AccessionResults" element={<SecureRoute role="Results"><ResultSearch /></SecureRoute>} />
+        <Route path="/StatusResults" element={<SecureRoute role="Results"><ResultSearch /></SecureRoute>} />
+        <Route path="/RangeResults" element={<SecureRoute role="Results"><ResultSearch /></SecureRoute>} />
+        <Route path="/ReferredOutTests" element={<SecureRoute role="Results"><ReferredOutTests /></SecureRoute>} />
+        <Route path="/RoutineReports" element={<SecureRoute role="Reports"><RoutineReports /></SecureRoute>} />
+        <Route path="/RoutineReport" element={<SecureRoute role="Reports"><RoutineIndex /></SecureRoute>} />
+        <Route path="/StudyReports" element={<SecureRoute role="Reports"><StudyReports /></SecureRoute>} />
+        <Route path="/StudyReport" element={<SecureRoute role="Reports"><StudyIndex /></SecureRoute>} />
+        <Route path="/Report" element={<SecureRoute role="Reports"><ReportIndex /></SecureRoute>} />
+        <Route path="/AuditTrailReport" element={<SecureRoute role="Reports"><AuditTrailReportIndex /></SecureRoute>} />
+        <Route path="/validation" element={<SecureRoute role="Validation"><StudyValidation /></SecureRoute>} />
+        <Route path="/ResultValidation" element={<SecureRoute role="Validation"><StudyValidation /></SecureRoute>} />
+        <Route path="/AccessionValidation" element={<SecureRoute role="Validation"><StudyValidation /></SecureRoute>} />
+        <Route path="/AccessionValidationRange" element={<SecureRoute role="Validation"><StudyValidation /></SecureRoute>} />
+        <Route path="/ResultValidationByTestDate" element={<SecureRoute role="Validation"><StudyValidation /></SecureRoute>} />
+        <Route path="*" element={<RedirectOldUI />} />
+      </Routes>
+    </Layout>
+  </Router>
+</>
 
-                <SecureRoute
-                  path="/NCECorrectiveAction"
-                  exact
-                  component={() => (
-                    <NonConformIndex form="NCECorrectiveAction" />
-                  )}
-                />
-
-                <SecureRoute
-                  path="/SampleBatchEntrySetup"
-                  exact
-                  component={() => <SampleBatchEntrySetup />}
-                  role="Reception"
-                />
-
-                <SecureRoute
-                  path="/ElectronicOrders"
-                  exact
-                  component={() => <EOrderPage />}
-                  role="Reception"
-                />
-                <SecureRoute
-                  path="/PrintBarcode"
-                  exact
-                  component={() => <PrintBarcode />}
-                  role="Reception"
-                />
-                <SecureRoute
-                  path="/PatientManagement"
-                  exact
-                  component={() => <PatientManagement />}
-                  role="Reception"
-                />
-                <SecureRoute
-                  path="/PatientHistory"
-                  exact
-                  component={() => <PatientHistory />}
-                  role="Reception"
-                />
-                <SecureRoute
-                  path="/PatientResults/:patientId"
-                  exact
-                  component={() => <RoutedResultsViewer />}
-                  role="Reception"
-                />
-
-                <SecureRoute
-                  path="/WorkPlanByTestSection"
-                  exact
-                  component={() => <Workplan type="unit" />}
-                  role="Results"
-                />
-                <SecureRoute
-                  path="/WorkplanByTest"
-                  exact
-                  component={() => <Workplan type="test" />}
-                  role="Results"
-                />
-                <SecureRoute
-                  path="/WorkplanByPanel"
-                  exact
-                  component={() => <Workplan type="panel" />}
-                  role="Results"
-                />
-                <SecureRoute
-                  path="/WorkplanByPriority"
-                  exact
-                  component={() => <Workplan type="priority" />}
-                  role="Results"
-                />
-                <SecureRoute
-                  path="/result"
-                  exact
-                  component={() => <ResultSearch />}
-                  role="Results"
-                />
-                <SecureRoute
-                  path="/LogbookResults"
-                  exact
-                  component={() => <ResultSearch />}
-                  role="Results"
-                />
-                <SecureRoute
-                  path="/PatientResults"
-                  exact
-                  component={() => <ResultSearch />}
-                  role="Results"
-                />
-                <SecureRoute
-                  path="/AccessionResults"
-                  exact
-                  component={() => <ResultSearch />}
-                  role="Results"
-                />
-                <SecureRoute
-                  path="/StatusResults"
-                  exact
-                  component={() => <ResultSearch />}
-                  role="Results"
-                />
-                <SecureRoute
-                  path="/RangeResults"
-                  exact
-                  component={() => <ResultSearch />}
-                  role="Results"
-                />
-                <SecureRoute
-                  path="/ReferredOutTests"
-                  exact
-                  component={() => <ReferredOutTests />}
-                  role="Results"
-                />
-                <SecureRoute
-                  path="/RoutineReports"
-                  exact
-                  component={() => <RoutineReports />}
-                  role="Reports"
-                />
-                <SecureRoute
-                  path="/RoutineReport"
-                  exact
-                  component={() => <RoutineIndex />}
-                  role="Reports"
-                />
-                <SecureRoute
-                  path="/StudyReports"
-                  exact
-                  component={() => <StudyReports />}
-                  role="Reports"
-                />
-                <SecureRoute
-                  path="/StudyReport"
-                  exact
-                  component={() => <StudyIndex />}
-                  role="Reports"
-                />
-                <SecureRoute
-                  path="/Report"
-                  exact
-                  component={() => <ReportIndex />}
-                  role="Reports"
-                />
-                <SecureRoute
-                  path="/AuditTrailReport"
-                  exact
-                  component={() => <AuditTrailReportIndex />}
-                  role="Reports"
-                />
-                <SecureRoute
-                  path="/validation"
-                  exact
-                  component={() => <StudyValidation />}
-                  role="Validation"
-                />
-                <SecureRoute
-                  path="/ResultValidation"
-                  exact
-                  component={() => <StudyValidation />}
-                  role="Validation"
-                />
-                <SecureRoute
-                  path="/AccessionValidation"
-                  exact
-                  component={() => <StudyValidation />}
-                  role="Validation"
-                />
-                <SecureRoute
-                  path="/AccessionValidationRange"
-                  exact
-                  component={() => <StudyValidation />}
-                  role="Validation"
-                />
-                <SecureRoute
-                  path="/ResultValidationByTestDate"
-                  exact
-                  component={() => <StudyValidation />}
-                  role="Validation"
-                />
-                <Route path="*" component={() => <RedirectOldUI />} />
-              </Switch>
-            </Layout>
-          </Router>
-        </>
       </UserSessionDetailsContext.Provider>
     </IntlProvider>
-    //hello world
+   
   );
 }

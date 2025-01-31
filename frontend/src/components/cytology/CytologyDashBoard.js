@@ -32,6 +32,7 @@ import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { useNavigate } from "react-router-dom";
 
 function CytologyDashboard() {
   const componentMounted = useRef(false);
@@ -46,6 +47,7 @@ function CytologyDashboard() {
     statuses: [{}],
   });
   const [inProgressStatuses, setInProgressStatuses] = useState([]);
+  const navigate = useNavigate();
 
   const [counts, setCounts] = useState({
     inProgress: 0,
@@ -211,7 +213,8 @@ function CytologyDashboard() {
   };
 
   const openCaseView = (id) => {
-    window.location.href = "/CytologyCaseView/" + id;
+    // window.location.href = "/CytologyCaseView/" + id;
+    navigate("/CytologyCaseView/" + id);
   };
 
   useEffect(() => {

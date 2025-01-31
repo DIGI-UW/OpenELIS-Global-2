@@ -19,7 +19,7 @@ import React, {
   useState,
 } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
-import { withRouter } from "react-router-dom";
+// import { withRouter } from "react-router-dom";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import "../Style.css";
 import { ConfigurationContext } from "../layout/Layout";
@@ -621,4 +621,4 @@ function OEHeader(props) {
   );
 }
 
-export default withRouter(injectIntl(OEHeader));
+export default injectIntl(OEHeader);

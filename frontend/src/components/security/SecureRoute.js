@@ -1,7 +1,7 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { ConfigurationContext } from "../layout/Layout";
-import { Route } from "react-router-dom";
+import { Route, Routes, useNavigate } from "react-router-dom";
 import { useIdleTimer } from "react-idle-timer";
 import { confirmAlert } from "react-confirm-alert";
 import "react-confirm-alert/src/react-confirm-alert.css"; // Import css
@@ -18,6 +18,7 @@ function SecureRoute(props) {
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [stillThereOpen, setStillThereOpen] = useState(false);
+  const navigate=useNavigate();
 
   const intl = useIntl();
 
@@ -41,7 +42,8 @@ function SecureRoute(props) {
           !userSessionDetails.loginLabUnit &&
           !userSessionDetails.roles.includes(Roles.GLOBAL_ADMIN)
         ) {
-          window.location.href = "/landing";
+          // window.location.href = "/landing";
+          navigate("/landing");
         }
       } else {
         const options = {
@@ -62,7 +64,8 @@ function SecureRoute(props) {
       }
       setPermissionGranted(hasPermission());
     } else if ("authenticated" in userSessionDetails) {
-      window.location.href = config.loginRedirect;
+      // window.location.href = config.loginRedirect;
+      navigate(config.loginRedirect);
     }
   }, [userSessionDetails, errorLoadingSessionDetails]);
 
@@ -136,11 +139,17 @@ function SecureRoute(props) {
         <FormattedMessage id="stillThere.message" />
       </Modal>
       {loading && <Loading />}
-      {!loading &&
-        !userSessionDetails.authenticated &&
-        intl.formatMessage({ id: "notAuthenticated" })}
+      {!loading && !userSessionDetails.authenticated && (
+        <>{intl.formatMessage({ id: "notAuthenticated" })}</>
+      )}
       {!loading && userSessionDetails.authenticated && permissionGranted && (
-        <>{!stillThereOpen && <Route {...props} />}</>
+        <>
+          {!stillThereOpen && (
+            <Routes>
+              <Route path={props.path} element={<props.element />} />
+            </Routes>
+          )}
+        </>
       )}
     </>
   );
