@@ -40,7 +40,7 @@ li.clickableUserDetails:hover {
 }
 
 .adminPageContent {
-  margin-left: 17%;
+  margin-left: 18%;
   margin-right: 1%;
 }
 
@@ -516,20 +516,24 @@ button {
     grid-template-columns: 1fr;
   }
 }
-@media screen and (max-width: 550px) {
+
+@media screen and (max-width: 1053px) {
+  .adminPageContent {
+    margin-left: 9%;
+    margin-right: 5%;
+  }
+}
+
+@media screen and (max-width: 500px) {
   .adminPageContent {
     margin-left: 15%;
+    margin-right: 5%;
   }
 }
 
 @media screen and (max-width: 460px) {
   .inlineDiv {
     flex-direction: column;
-  }
-}
-@media screen and (max-width: 500px) {
-  .adminPageContent {
-    margin-left: 17%;
   }
 }
 

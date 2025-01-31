@@ -285,7 +285,11 @@ export const NCECorrectiveAction = () => {
                 <br />
               </Column>
               <Column lg={16}>
-                <Button type="button" onClick={handleSubmit}>
+                <Button
+                  type="button"
+                  data-testid="nce-search-button"
+                  onClick={handleSubmit}
+                >
                   <FormattedMessage id="label.button.search" />
                 </Button>
               </Column>
@@ -322,7 +326,10 @@ export const NCECorrectiveAction = () => {
                     <TableBody>
                       {tData.nceEventsSearchResults.map((row) => (
                         <TableRow key={row.nceNumber}>
-                          <TableCell key={`${row}-checkbox`}>
+                          <TableCell
+                            key={`${row}-checkbox`}
+                            data-testid="Radio-button"
+                          >
                             <RadioButton
                               name="radio-group"
                               onClick={() => setSelected(row.nceNumber)}
@@ -363,7 +370,10 @@ export const NCECorrectiveAction = () => {
                     </b>
                   </span>
                 </div>
-                <div style={{ marginBottom: "10px", color: "#555" }}>
+                <div
+                  style={{ marginBottom: "10px", color: "#555" }}
+                  data-testid="nce-number-result"
+                >
                   {data.nceNumber}
                 </div>
               </Column>
@@ -422,7 +432,10 @@ export const NCECorrectiveAction = () => {
                     <FormattedMessage id="sample.label.labnumber" />
                   </span>
                 </div>
-                <div style={{ marginBottom: "10px" }}>
+                <div
+                  style={{ marginBottom: "10px" }}
+                  data-testid="nce-search-result"
+                >
                   {data.labOrderNumber}
                 </div>
               </Column>
@@ -485,7 +498,7 @@ export const NCECorrectiveAction = () => {
                 <div style={{ marginBottom: "10px" }}>
                   {data.labComponentList.find(
                     (obj) => obj.id === data.laboratoryComponent,
-                  ).value ?? ""}
+                  )?.value ?? ""}
                 </div>
               </Column>
 
@@ -497,7 +510,7 @@ export const NCECorrectiveAction = () => {
                 </div>
                 <div style={{ marginBottom: "10px" }}>
                   {data.nceCategories.find((obj) => obj.id === data.nceCategory)
-                    .name ?? ""}
+                    ?.name ?? ""}
                 </div>
               </Column>
 
@@ -508,7 +521,7 @@ export const NCECorrectiveAction = () => {
                   </span>
                 </div>
                 <div style={{ marginBottom: "10px" }}>
-                  {data.nceTypes.find((obj) => obj.id === data.nceType).name ??
+                  {data.nceTypes.find((obj) => obj.id === data.nceType)?.name ??
                     ""}
                 </div>
               </Column>
@@ -575,6 +588,7 @@ export const NCECorrectiveAction = () => {
                 <CustomDatePicker
                   key="tdiscussionDate"
                   id={"tdiscussionDate"}
+                  data-testid="start-date"
                   labelText={
                     <FormattedMessage id="nonconform.date.discussion.nce" />
                   }
@@ -676,6 +690,7 @@ export const NCECorrectiveAction = () => {
                   }
                   onClick={() => handleActionTypeChange("1")}
                   id="correctiveAction"
+                  data-testid="nce-action-checkbox"
                 />
 
                 <Checkbox
@@ -810,6 +825,7 @@ export const NCECorrectiveAction = () => {
                       alignItems: "flex-start",
                       marginTop: "10px",
                     }}
+                    data-testid="nce-resolution-radio"
                   >
                     <RadioButton
                       checked={submit === true}
@@ -829,7 +845,7 @@ export const NCECorrectiveAction = () => {
               <Column lg={8}>
                 <CustomDatePicker
                   key="dateCompleted-0"
-                  id={"dateCompleted-0"}
+                  id="dateCompleted-0"
                   labelText={
                     <FormattedMessage id="nonconform.date.completed" />
                   }
@@ -860,6 +876,7 @@ export const NCECorrectiveAction = () => {
                   type="button"
                   disabled={!submit}
                   onClick={handleNCEFormSubmit}
+                  data-testid="nce-submit-button"
                 >
                   <FormattedMessage id="label.button.submit" />
                 </Button>

@@ -43,13 +43,10 @@ function CytologyDashboard() {
   const [filters, setFilters] = useState({
     searchTerm: "",
     myCases: false,
-    statuses: [
-      {
-        id: "PREPARING_SLIDES",
-        value: "Preparing slides",
-      },
-    ],
+    statuses: [{}],
   });
+  const [inProgressStatuses, setInProgressStatuses] = useState([]);
+
   const [counts, setCounts] = useState({
     inProgress: 0,
     awaitingReview: 0,
@@ -59,10 +56,31 @@ function CytologyDashboard() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
   const intl = useIntl();
-
+  const [inProgressStatusObjects, setInProgressStatusObjects] = useState(
+    inProgressStatuses.map((statusId) => ({ id: statusId })),
+  );
   const setStatusList = (statusList) => {
     if (componentMounted.current) {
+      // Set all statuses
       setStatuses(statusList);
+
+      // Filter out COMPLETED statuses and update the in-progress statuses state
+      const filteredStatuses = statusList
+        .filter((status) => status.id !== "COMPLETED")
+        .map((status) => status.id);
+
+      setInProgressStatuses(filteredStatuses);
+
+      // Update the inProgressStatusObjects state
+      setInProgressStatusObjects(
+        filteredStatuses.map((statusId) => ({ id: statusId })),
+      );
+
+      // Set filters using the updated state
+      setFilters((prev) => ({
+        ...prev,
+        statuses: filteredStatuses.map((statusId) => ({ id: statusId })),
+      }));
     }
   };
 
@@ -149,11 +167,27 @@ function CytologyDashboard() {
   };
 
   const setStatusFilter = (event) => {
-    if (event.target.value === "All") {
+    const { value } = event.target;
+
+    if (value === "All") {
       setFilters({ ...filters, statuses: statuses });
+    } else if (value === "IN_PROGRESS") {
+      setFilters({ ...filters, statuses: inProgressStatusObjects });
     } else {
-      setFilters({ ...filters, statuses: [{ id: event.target.value }] });
+      setFilters({ ...filters, statuses: [{ id: value }] });
     }
+  };
+
+  const getSelectedValue = () => {
+    const selectedValue =
+      filters.statuses.length === inProgressStatuses.length &&
+      filters.statuses.every((status) => inProgressStatuses.includes(status.id))
+        ? "IN_PROGRESS"
+        : filters.statuses.length > 1
+          ? "All"
+          : filters.statuses[0].id;
+
+    return selectedValue;
   };
 
   const filtersToParameters = () => {
@@ -244,23 +278,6 @@ function CytologyDashboard() {
 
   useEffect(() => {
     componentMounted.current = true;
-    setFilters({
-      ...filters,
-      statuses: [
-        {
-          id: "PREPARING_SLIDES",
-          value: "Preparing slides",
-        },
-      ],
-    });
-
-    return () => {
-      componentMounted.current = false;
-    };
-  }, [statuses]);
-
-  useEffect(() => {
-    componentMounted.current = true;
     refreshItems();
     return () => {
       componentMounted.current = false;
@@ -329,30 +346,20 @@ function CytologyDashboard() {
                 id="statusFilter"
                 name="statusFilter"
                 labelText={intl.formatMessage({ id: "label.filters.status" })}
-                value={
-                  filters.statuses.length > 1 ? "All" : filters.statuses[0].id
-                }
+                value={getSelectedValue()}
                 onChange={setStatusFilter}
                 noLabel
               >
-                <SelectItem
-                  disabled
-                  value="placeholder"
-                  text={intl.formatMessage({ id: "label.filters.status" })}
-                />
-                <SelectItem
-                  text={intl.formatMessage({ id: "all.label" })}
-                  value="All"
-                />
-                {statuses.map((status, index) => {
-                  return (
-                    <SelectItem
-                      key={index}
-                      text={status.value}
-                      value={status.id}
-                    />
-                  );
-                })}
+                <SelectItem disabled value="placeholder" text="Status" />
+                <SelectItem text="All" value="All" />
+                <SelectItem text="In Progress" value="IN_PROGRESS" />
+                {statuses.map((status, index) => (
+                  <SelectItem
+                    key={index}
+                    text={status.value}
+                    value={status.id}
+                  />
+                ))}
               </Select>
             </div>
           </Column>

@@ -265,41 +265,43 @@ function TestNotificationConfigMenu() {
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <Grid fullWidth={true}>
-          <Column lg={16} md={8} sm={4}>
+          <Column lg={16}>
             <Section>
-              <Section>
-                <Heading>
-                  <FormattedMessage id="testnotificationconfig.browse.title" />
-                </Heading>
-              </Section>
+              <Heading>
+                <FormattedMessage id="testnotificationconfig.browse.title" />
+              </Heading>
+            </Section>
+            <br />
+            <Section>
+              <Column
+                lg={16}
+                md={8}
+                sm={4}
+                style={{ display: "flex", gap: "10px" }}
+              >
+                <Button
+                  disabled={saveButton}
+                  onClick={testNotificationConfigMenuSavePostCall}
+                  type="button"
+                >
+                  <FormattedMessage id="label.button.save" />
+                </Button>{" "}
+                <Button
+                  onClick={() =>
+                    window.location.assign(
+                      "/MasterListsPage#testNotificationConfigMenu",
+                    )
+                  }
+                  kind="tertiary"
+                  type="button"
+                >
+                  <FormattedMessage id="label.button.exit" />
+                </Button>
+              </Column>
             </Section>
           </Column>
         </Grid>
         <div className="orderLegendBody">
-          <br />
-          <Grid fullWidth={true}>
-            <Column lg={16} md={8} sm={4}>
-              <Button
-                disabled={saveButton}
-                onClick={testNotificationConfigMenuSavePostCall}
-                type="button"
-              >
-                <FormattedMessage id="label.button.save" />
-              </Button>{" "}
-              <Button
-                onClick={() =>
-                  window.location.assign(
-                    "/MasterListsPage#testNotificationConfigMenu",
-                  )
-                }
-                kind="tertiary"
-                type="button"
-              >
-                <FormattedMessage id="label.button.exit" />
-              </Button>
-            </Column>
-          </Grid>
-          <br />
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
               <br />

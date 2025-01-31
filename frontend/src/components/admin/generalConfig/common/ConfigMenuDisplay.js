@@ -35,7 +35,6 @@ import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../../common/PageBreadCrumb.js";
 import GenericConfigEdit from "../../generalConfig/common/GenericConfigEdit.js";
 
-let breadcrumbs = [{ label: "home.label", link: "/" }];
 function ConfigMenuDisplay(props) {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -53,6 +52,12 @@ function ConfigMenuDisplay(props) {
     useState([]);
 
   const [ConfigEdit, setConfigEdit] = useState(false);
+
+  let breadcrumbs = [
+    { label: "home.label", link: "/" },
+    { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+    { label: `${props.label}`, link: `/MasterListsPage#${props.menuType}` },
+  ];
 
   function handleModify(event) {
     event.preventDefault();
@@ -185,7 +190,7 @@ function ConfigMenuDisplay(props) {
           {notificationVisible === true ? <AlertDialog /> : ""}
           <div className="adminPageContent">
             <PageBreadCrumb breadcrumbs={breadcrumbs} />
-            <Grid>
+            <Grid fullWidth={true}>
               <Column lg={16} md={8} sm={4}>
                 <Section>
                   <Heading>
@@ -199,12 +204,6 @@ function ConfigMenuDisplay(props) {
                       <Button disabled={modifyButton} type="submit">
                         <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.modify" />
                       </Button>{" "}
-                      <Button kind="tertiary" disabled={true} type="submit">
-                        <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.deactivate" />
-                      </Button>{" "}
-                      <Button kind="tertiary" disabled={true} type="submit">
-                        <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.add" />
-                      </Button>
                     </Column>
                   </Form>
                 </Section>
@@ -264,12 +263,7 @@ function ConfigMenuDisplay(props) {
                           <TableBody>
                             <>
                               {rows.map((row) => (
-                                <TableRow
-                                  key={row.id}
-                                  onClick={() => {
-                                    setSelectedRowId(row.id);
-                                  }}
-                                >
+                                <TableRow key={row.id}>
                                   {row.cells.map((cell) =>
                                     renderCell(cell, row),
                                   )}

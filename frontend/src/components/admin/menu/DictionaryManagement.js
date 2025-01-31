@@ -402,7 +402,11 @@ function DictionaryManagement() {
       <PageBreadCrumb
         breadcrumbs={[
           { label: "home.label", link: "/" },
-          { label: "dictionary.label.modify", link: "/DictionaryManagement" },
+          { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+          {
+            label: "dictionary.label.modify",
+            link: "/MasterListsPage#DictionaryManagement",
+          },
         ]}
       />
       <Grid fullWidth={true}>
@@ -646,12 +650,7 @@ function DictionaryManagement() {
                       </TableHead>
                       <TableBody>
                         {rows.map((row) => (
-                          <TableRow
-                            key={row.id}
-                            onClick={() => {
-                              setSelectedRowId(row.id);
-                            }}
-                          >
+                          <TableRow key={row.id}>
                             {row.cells.map((cell) => renderCell(cell, row))}
                           </TableRow>
                         ))}

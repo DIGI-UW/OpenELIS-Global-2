@@ -29,6 +29,10 @@ import BarcodeConfigurationFormValues from "../../formModel/innitialValues/Barco
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+  {
+    label: "sidenav.label.admin.barcodeconfiguration",
+    link: "/MasterListsPage#barcodeConfiguration",
+  },
 ];
 function BarcodeConfiguration() {
   const { notificationVisible, setNotificationVisible, addNotification } =

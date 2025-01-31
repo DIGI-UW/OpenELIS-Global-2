@@ -72,6 +72,10 @@ public class ExportRoutineByDate extends CSVRoutineSampleExportReport
 
         lowDateStr = form.getLowerDateRange();
         highDateStr = form.getUpperDateRange();
+        if (form.getSelectList() != null && form.getSelectList().getSelection() != null) {
+            selectedLabUnit = form.getSelectList().getSelection();
+        }
+
         // projectStr = form.getProjectCode();
         dateRange = new DateRange(lowDateStr, highDateStr);
 
@@ -112,6 +116,9 @@ public class ExportRoutineByDate extends CSVRoutineSampleExportReport
     private void createReportItems() {
         try {
             csvRoutineColumnBuilder = getColumnBuilder();
+            if (selectedLabUnit != null) {
+                csvRoutineColumnBuilder.setSelectedLabUnit(selectedLabUnit);
+            }
             csvRoutineColumnBuilder.buildDataSource();
         } catch (SQLException e) {
             Log.error("Error in " + this.getClass().getSimpleName() + ".createReportItems: ", e);
