@@ -25,15 +25,9 @@ describe("Work plan by Test", function () {
       workplan.getPrintWorkPlanButton().should("be.visible");
     });
   });
-  it("All known orders are present", () => {
-    cy.fixture("Order").then((options) => {
-      workplan
-        .getWorkPlanResultsTable()
-        .find("tr")
-        .then((row) => {
-          expect(row.text()).contains(options.labNo);
-        });
-    });
+  it("Check orders to remove and print", () => {
+    workplan.checkAndPrint();
+    workplan.getPrintWorkPlanButton().click();
   });
 });
 
@@ -54,15 +48,9 @@ describe("Work plan by Panel", function () {
     });
   });
 
-  it("All known orders are present", () => {
-    cy.fixture("Order").then((options) => {
-      workplan
-        .getWorkPlanResultsTable()
-        .find("tr")
-        .then((row) => {
-          expect(row.text()).contains(options.labNo);
-        });
-    });
+  it("Check orders to remove and print", () => {
+    workplan.checkAndPrint();
+    workplan.getPrintWorkPlanButton().click();
   });
 });
 
@@ -83,15 +71,9 @@ describe("Work plan by Unit", function () {
     });
   });
 
-  it("All known orders are present", () => {
-    cy.fixture("Order").then((options) => {
-      workplan
-        .getWorkPlanResultsTable()
-        .find("tr")
-        .then((row) => {
-          expect(row.text()).contains(options.labNo);
-        });
-    });
+  it("Check orders to remove and print", () => {
+    workplan.checkAndPrint();
+    workplan.getPrintWorkPlanButton().click();
   });
 });
 
@@ -112,14 +94,8 @@ describe("Work plan by Priority", function () {
     });
   });
 
-  it("All known orders are present", () => {
-    cy.fixture("Order").then((options) => {
-      workplan
-        .getWorkPlanResultsTable()
-        .find("tr")
-        .then((row) => {
-          expect(row.text()).contains(options.labNo);
-        });
-    });
+  it("Check orders to remove and print", () => {
+    workplan.checkAndPrint();
+    workplan.getPrintWorkPlanButton().click();
   });
 });

@@ -124,7 +124,7 @@ describe("Search for Patient", function () {
     cy.wait(200).reload();
   });
 
-  it("Search Patient By First and Last Name", function () {
+  it("Search and select Patient By First and Last Name", function () {
     cy.fixture("Patient").then((patient) => {
       patientPage.patientFirstName(patient.firstName);
       patientPage.patientLastName(patient.lastName);
