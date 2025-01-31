@@ -12,14 +12,14 @@ class WorkPlan {
   }
 
   getTestTypeOrPanelSelector() {
-    return cy.get("select#select-1");
+    return cy.get("#select-1");
   }
 
   getPrintWorkPlanButton() {
-    return cy.get("button#print");
+    return cy.get("#print");
   }
-  getWorkPlanResultsTable() {
-    return cy.get(".cds--data-table.cds--data-table--sm");
+  checkAndPrint() {
+    cy.get("#includedCheck_0").check({ force: true });
   }
 }
 export default WorkPlan;
