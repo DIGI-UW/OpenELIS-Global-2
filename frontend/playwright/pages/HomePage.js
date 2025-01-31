@@ -1,7 +1,8 @@
 import { expect } from "@playwright/test";
 import LoginPage from "./LoginPage";
 import AdminPage from "./AdminPage";
-
+// import WorkPlan from "../../cypress/pages/WorkPlan";
+import PatientEntryPage from "./PatientEntryPage";
 class HomePage {
   constructor(page) {
     this.page = page;
@@ -18,8 +19,23 @@ class HomePage {
   async openNavigationMenu() {
     await this.page
       .locator("header#mainHeader > button[title='Open menu']")
-      .click({ timeout: 30000 });
+      .click({
+        timeout: 30000,
+      });
   }
+  async goToPatientEntry() {
+    await this.openNavigationMenu();
+    await this.page.locator("#menu_patient_dropdown").click();
+    await this.page.locator("#menu_patient_add_or_edit_nav").click();
+    return new PatientEntryPage(this.page);
+  }
+  // async goToWorkPlanPlanByTest() {
+  //   await this.openNavigationMenu();
+  //   await this.page.locator("#menu_workplan_dropdown").click();
+  //   await this.page.locator("#menu_workplan_test_nav").click();
+
+  //   return new WorkPlan(this.page);
+  // }
 
   async goToAdminPage() {
     await this.openNavigationMenu(); // Open the navigation menu

@@ -16,10 +16,9 @@ class AdminPage {
   async goToLabNumberManagementPage() {
     // Click on the element using the provided selector
     await this.page.locator("a.cds--side-nav__link[href='#labNumber']").click();
-    console.log("working");
     // Verify the URL and content
     await expect(this.page).toHaveURL(/#labNumber/i);
-    console.log("working.................");
+
     const heading = await this.page.getByRole("heading", {
       name: "Lab Number Management",
     });

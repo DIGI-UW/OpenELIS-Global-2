@@ -59,14 +59,13 @@ test.describe("Global Menu Configuration", () => {
     // Launch a new browser context
     const context = await browser.newContext();
     const page = await context.newPage();
-  
+
     // Login fresh
     const loginPage = new LoginPage(page);
     await loginPage.visit();
     const homePage = await loginPage.goToHomePage();
-    console.log('hi');
     const globalMenuConfigPage = await homePage.openNavigationMenu();
-    
+
     // Close the context to simulate logout
     await context.close();
   });
