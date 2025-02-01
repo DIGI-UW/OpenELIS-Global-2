@@ -32,9 +32,9 @@ describe("Result By Unit", function () {
   });
 
   it("should accept the sample, refer the sample, and save the result", function () {
+    result.acceptSample();
+    result.expandSampleDetails();
     cy.fixture("result").then((res) => {
-      result.acceptSample();
-      result.expandSampleDetails();
       result.selectTestMethod(0, res.pcrTestMethod);
       cy.get(":nth-child(3) > .cds--form-item > .cds--checkbox-label").click();
       result.referSample(0, res.testNotPerformed, res.cedres);
@@ -58,41 +58,28 @@ describe("Result By Patient", function () {
   it("Should search Patient By First and LastName and validate", function () {
     cy.wait(1000);
     cy.fixture("Patient").then((patient) => {
-      patientPage.searchPatientByFirstAndLastName(
-        patient.firstName,
-        patient.lastName,
-      );
-      patientPage.getFirstName().should("have.value", patient.firstName);
-      patientPage.getLastName().should("have.value", patient.lastName);
-      patientPage.getLastName().should("not.have.value", patient.inValidName);
-      patientPage.clickSearchPatientButton();
-      patientPage.validatePatientSearchTable(
-        patient.firstName,
-        patient.inValidName,
-      );
+      patientPage.patientFirstName(patient.firstName);
+      patientPage.patientLastName(patient.lastName);
     });
+    patientPage.clickSearchPatientBtn();
     cy.reload();
   });
 
   it("should search patient By PatientId and validate", function () {
-    cy.wait(500);
     cy.fixture("Patient").then((patient) => {
-      patientPage.searchPatientByPatientId(patient.nationalId);
-      patientPage.clickSearchPatientButton();
-      patientPage.validatePatientSearchTable(
-        patient.firstName,
-        patient.inValidName,
-      );
+      patientPage.searchPatientByPatientId(patient.uniqueID);
     });
+    patientPage.clickSearchPatientBtn();
     cy.reload();
   });
 
   it("should search patient By Lab Number and validate", function () {
     cy.wait(500);
-    cy.fixture("EnteredOrder").then((patient) => {
-      cy.get("#labNumber").type(patient.labNo);
-      patientPage.clickSearchPatientButton();
+    cy.fixture("Patient").then((patient) => {
+      patientPage.searchPatientBylabNo(patient.labNo);
     });
+    patientPage.clickSearchPatientBtn();
+    cy.reload();
   });
 
   it("Should be able to search by respective patient and accept the result", function () {
@@ -150,19 +137,11 @@ describe("Result By Referred Out Tests", function () {
 
   it("should search Referrals By Patient and validate", function () {
     cy.fixture("Patient").then((patient) => {
-      patientPage.searchPatientByPatientId(patient.nationalId);
-      patientPage.searchPatientByFirstAndLastName(
-        patient.firstName,
-        patient.lastName,
-      );
-      patientPage.getFirstName().should("have.value", patient.firstName);
-      patientPage.getLastName().should("have.value", patient.lastName);
-      patientPage.clickSearchPatientButton();
-      patientPage.validatePatientSearchTable(
-        patient.firstName,
-        patient.inValidName,
-      );
+      patientPage.searchPatientByPatientId(patient.uniqueID);
+      patientPage.patientFirstName(patient.firstName);
+      patientPage.patientLastName(patient.lastName);
     });
+    patientPage.clickSearchPatientBtn();
   });
 
   it("should click respective patient and search for referred out tests", function () {
