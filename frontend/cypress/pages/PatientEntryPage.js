@@ -158,8 +158,8 @@ class PatientEntryPage {
   }
 
   selectPatient() {
-    //cy.get("input[name='radio-group'][id='73']").check({ force: true });
-    cy.get("#73").should("be.visible").check({ force: true });
+    cy.get("input[name='radio-group'][id='73']").check({ force: true });
+    //cy.get("#73").should("be.visible").check({ force: true });
   }
 }
 

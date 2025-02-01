@@ -7,16 +7,16 @@ class Result {
     cy.get("#unitType").select(unitType);
   }
 
-  acceptSample(index = 0) {
-    cy.get(`.cds--checkbox-label`).eq(index).click();
+  clickExpanderBtn() {
+    cy.get('[data-testid="expander-button-0"]').click();
+  }
+  acceptSample() {
+//div.cds--form-item.cds--checkbox-wrapper > input[type="checkbox"]
+    cy.get('div.cds--form-item.cds--checkbox-wrapper > input[type="checkbox"]').check({force: true});
   }
 
   acceptResult() {
     cy.get("#cell-accept-0 > .cds--form-item > .cds--checkbox-label").click();
-  }
-
-  expandSampleDetails(index = 0) {
-    cy.get(`[data-testid="expander-button-${index}"]`).click();
   }
 
   selectTestMethod(index = 0, method) {
