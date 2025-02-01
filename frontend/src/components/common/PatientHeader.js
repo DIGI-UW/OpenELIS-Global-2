@@ -2,7 +2,6 @@ import React from "react";
 import { Grid, Column, Section, Tag } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import Avatar from "react-avatar";
-import GeoPattern from "geopattern";
 
 const PatientHeader = (props) => {
   const {
@@ -23,7 +22,6 @@ const PatientHeader = (props) => {
     isOrderPage = false,
     className = "patient-header",
   } = props;
-  const patternUrl = GeoPattern.generate(id).toDataUri();
   return (
     <Grid fullWidth={true}>
       <Column lg={16} md={8} sm={4}>
@@ -49,7 +47,7 @@ const PatientHeader = (props) => {
                         size={referringFacility ? "150" : "120"}
                         textSizeRatio={2}
                         style={{
-                          backgroundImage: `url(${patternUrl})`,
+                          backgroundImage: `url('/images/patient-background.svg')`,
                           backgroundRepeat: "round",
                         }}
                       />
@@ -146,7 +144,7 @@ const PatientHeader = (props) => {
                       size={referringFacility ? "150" : "120"}
                       textSizeRatio={2}
                       style={{
-                        backgroundImage: `url(${patternUrl})`,
+                        backgroundImage: `url('/images/patient-background.svg')`,
                         backgroundRepeat: "round",
                       }}
                     />
