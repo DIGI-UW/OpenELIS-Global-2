@@ -17,6 +17,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.login.bean.UserSession;
+import org.openelisglobal.login.bean.UserSession.LoginMethod;
 import org.openelisglobal.login.form.LoginForm;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.role.service.RoleService;
@@ -135,6 +136,7 @@ public class LoginPageController extends BaseController {
         session.setSessionId(request.getSession().getId());
         if (authenticated) {
             SystemUser user = systemUserService.get(getSysUserId(request));
+            setLoginMethod(request, session);
             session.setUserId(user.getId());
             session.setLoginName(user.getLoginName());
             session.setFirstName(user.getFirstName());
@@ -152,6 +154,16 @@ public class LoginPageController extends BaseController {
             setLabunitRolesForExistingUser(request, session);
         }
         return session;
+    }
+
+    private void setLoginMethod(HttpServletRequest request, UserSession session) {
+        if (Boolean.TRUE.equals(request.getSession().getAttribute("samlSession"))) {
+            session.setLoginMethod(LoginMethod.SAML);
+        } else if (Boolean.TRUE.equals(request.getSession().getAttribute("oauthSession"))) {
+            session.setLoginMethod(LoginMethod.OAUTH);
+        } else {
+            session.setLoginMethod(LoginMethod.FORM);
+        }
     }
 
     private void setLabunitRolesForExistingUser(HttpServletRequest request, UserSession session) {
