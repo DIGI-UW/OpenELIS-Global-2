@@ -47,7 +47,7 @@ class OrderEntityPage {
     cy.enterText("input#siteName", siteName);
   }
   searchRequester(requester) {
-    cy.enterText("input#requesterId").select(requester);
+    cy.enterText("input#requesterId", requester);
   }
   clickSubmitOrderButton() {
     cy.get('#submitOrderButton', {timeout: 10000}).should("be.visible").click();
