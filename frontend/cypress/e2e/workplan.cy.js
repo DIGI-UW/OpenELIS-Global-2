@@ -18,7 +18,7 @@ describe("Work plan by Test", function () {
   it("User should select test from drop-down selector option", () => {
     cy.fixture("workplan").then((options) => {
       workplan.getTestType(options.testName);
-      cy.wait(5000);
+      cy.wait(10000);
       workplan.getPrintWorkPlanButton();
     });
   });

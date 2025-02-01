@@ -158,7 +158,7 @@ class PatientEntryPage {
   }
 
   selectPatient() {
-    cy.get("#73").click({force: true});
+    cy.get("table tbody tr").first().find("td label span").click();
     }
 }
 
