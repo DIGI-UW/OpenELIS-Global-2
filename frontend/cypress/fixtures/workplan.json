@@ -1,6 +1,6 @@
 {
-  "testName": "Western blot HIV(Serum)",
+  "testName": "Albumin(Urines)",
   "panelType": "Serologie VIH",
   "unitType": "Serology-Immunology",
-  "Priority": "Routine"
+  "priority": "Routine"
 }

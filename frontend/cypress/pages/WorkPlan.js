@@ -11,12 +11,24 @@ class WorkPlan {
     return cy.get("h3");
   }
 
-  getTestTypeOrPanelSelector() {
-    return cy.get("#select-1");
+  getTestType(testName) {
+     cy.get("#select-1").select(testName);
+  }
+
+  getTestPanel(panelType) {
+     cy.get("#select-1").select(panelType);
+  }
+  
+  getTestTypeUnit(unitType) {
+     cy.get("#select-1").select(unitType);
+  }
+
+  getTestTypePriority(priority) {
+     cy.get("#select-1").select(priority);
   }
 
   getPrintWorkPlanButton() {
-    return cy.get("#print");
+     cy.get("#print").click();
   }
   checkAndPrint() {
     cy.get("#includedCheck_0").check({ force: true });
