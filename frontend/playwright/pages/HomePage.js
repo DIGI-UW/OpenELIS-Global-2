@@ -1,6 +1,7 @@
 import { expect } from "@playwright/test";
 import LoginPage from "./LoginPage";
 import AdminPage from "./AdminPage";
+import Result from "./ResultsPage";
 // import WorkPlan from "../../cypress/pages/WorkPlan";
 import PatientEntryPage from "./PatientEntryPage";
 class HomePage {
@@ -23,6 +24,21 @@ class HomePage {
         timeout: 30000,
       });
   }
+
+  async goToResultsByUnit() {
+    await this.openNavigationMenu();
+    await this.page.locator("#menu_results").click();
+    await this.page.locator("#menu_results_logbook").click();
+    return new Result(this.page);
+  }
+
+  async goToResultsByOrder() {
+    this.openNavigationMenu();
+    await this.page.locator("#menu_results").click();
+    await this.page.locator("#menu_results_accession").click();
+    return new Result(this.page);
+  }
+
   async goToPatientEntry() {
     await this.openNavigationMenu();
     await this.page.locator("#menu_patient_dropdown").click();
@@ -36,7 +52,32 @@ class HomePage {
 
   //   return new WorkPlan(this.page);
   // }
+  async goToResultsByPatient() {
+    await this.openNavigationMenu();
+    await this.page.locator("#menu_results").click();
+    await this.page.locator("#menu_results_patient").click();
+    return new Result(this.page);
+  }
 
+  async goToResultsForRefferedOut() {
+    this.openNavigationMenu();
+    await this.page.locator("#menu_results").click();
+    await this.page.locator("#menu_results_referred").click();
+    return new Result(this.page);
+  }
+
+  async goToResultsByRangeOrder() {
+    this.openNavigationMenu();
+    await this.page.locator("#menu_results").click();
+    await this.page.locator("#menu_results_range").click();
+    return new Result(this.page);
+  }
+  async goToResultsByTestAndStatus() {
+    this.openNavigationMenu();
+    await this.page.locator("#menu_results").click();
+    await this.page.locator("#menu_results_status").click();
+    return new Result(this.page);
+  }
   async goToAdminPage() {
     await this.openNavigationMenu(); // Open the navigation menu
     await this.page.locator("#menu_administration").click(); // Click on the administration menu

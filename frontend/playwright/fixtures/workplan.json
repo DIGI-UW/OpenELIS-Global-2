@@ -2,5 +2,7 @@
   "testName": "Western blot HIV(Serum)",
   "panelType": "Serologie VIH",
   "unitType": "Serology-Immunology",
-  "Priority": "Routine"
+  "Priority": "Routine",
+  "labNo": "DEV01240000000000001",
+  "accessionNumber": "DEV01250000000000007"
 }
