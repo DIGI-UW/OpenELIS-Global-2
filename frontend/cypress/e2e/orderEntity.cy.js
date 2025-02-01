@@ -16,7 +16,7 @@ describe("Order Entity", function () {
     orderEntityPage = homePage.goToOrderPage();
   });
 
-  it("Should search patient in the search box", function () {
+  it("User searches and checks patient by First and Last Names", function () {
     patientEntryPage = orderEntityPage.getPatientPage();
     cy.wait(1000);
     cy.fixture("Patient").then((patient) => {
