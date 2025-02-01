@@ -16,7 +16,7 @@ describe("Order Entity", function () {
     orderEntityPage = homePage.goToOrderPage();
   });
 
-  it("User searches and checks patient by First and Last Names", function () {
+  it("User searches patient by First and Last Names", function () {
     patientEntryPage = orderEntityPage.getPatientPage();
     cy.wait(1000);
     cy.fixture("Patient").then((patient) => {
@@ -24,10 +24,11 @@ describe("Order Entity", function () {
       patientEntryPage.patientLastName(patient.lastName);
     });
     patientEntryPage.clickSearchPatientBtn();
+  });
+  it("User checks patient from the table", function () {
     patientEntryPage.selectPatient();
   });
-
-  it("User should click next to go to program selection", function () {
+  it("User clicks next to go to program selection", function () {
     orderEntityPage.clickNextButton();
     cy.wait(1000);
     orderEntityPage.clickNextButton();
