@@ -158,7 +158,7 @@ class PatientEntryPage {
   }
 
   selectPatient() {
-    cy.get(".cds--radio-button__appearance").first().check();
+    cy.get("input#73").check();
     }
 }
 
