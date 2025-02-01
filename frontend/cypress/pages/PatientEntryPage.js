@@ -158,7 +158,7 @@ class PatientEntryPage {
   }
 
   selectPatient() {
-    cy.get("input#73").check();
+    cy.get("input#73").click({force: true});
     }
 }
 

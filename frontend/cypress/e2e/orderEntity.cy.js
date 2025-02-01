@@ -23,7 +23,7 @@ describe("Order Entity", function () {
       patientEntryPage.patientFirstName(patient.firstName);
       patientEntryPage.patientLastName(patient.lastName);
     });
-    patientEntryPage.clickSearchPatientBtn();
+    patientEntryPage.clickSearchBtn();
   });
   it("User checks patient from the table", function () {
     patientEntryPage.selectPatient();
@@ -71,12 +71,9 @@ describe("Order Entity", function () {
     });
   });
 
-  it("should enter requester first and last name's", function () {
+  it("should enter requester first and last names", function () {
     cy.fixture("Order").then((order) => {
-      orderEntityPage.enterRequesterLastAndFirstName(
-        order.requester.firstName,
-        order.requester.lastName,
-      );
+      orderEntityPage.searchRequester(order.requester);
     });
   });
   it("should click submit order button", function () {
