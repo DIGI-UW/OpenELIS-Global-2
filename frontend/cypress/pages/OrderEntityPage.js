@@ -26,9 +26,7 @@ class OrderEntityPage {
     ).check({ force: true });
   }
   generateLabOrderNumber() {
-    cy.getElement(
-      ":nth-child(2) > :nth-child(1) > :nth-child(2) > .cds--link",
-    ).click();
+    cy.contains("a.cds--link", "Generate").click();
   }
 
   validateAcessionNumber(order) {
@@ -46,9 +44,8 @@ class OrderEntityPage {
   enterSiteName(siteName) {
     cy.enterText("input#siteName", siteName);
   }
-  enterRequesterLastAndFirstName(requesterFirstName, requesterLastName) {
-    cy.enterText("input#requesterFirstName", requesterFirstName);
-    cy.enterText("input#requesterLastName", requesterLastName);
+  searchRequester(requester) {
+    cy.enterText("input#requesterId").select(requester);
   }
   clickSubmitOrderButton() {
     cy.get('#submitOrderButton', {timeout: 10000}).should("be.visible").click();

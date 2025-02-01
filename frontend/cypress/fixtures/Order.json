@@ -5,10 +5,7 @@
     }
   ],
   "siteName": "279 - CAMES MAN",
-  "requester": {
-    "firstName": "Optimus",
-    "lastName": "Prime"
-  },
+  "requester": "Prime, Optimus",
   "labNo": "",
   "invalidLabNo": "DEV0124000000000000"
 }
