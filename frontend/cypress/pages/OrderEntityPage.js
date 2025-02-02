@@ -1,4 +1,4 @@
-import { cy } from "date-fns/locale";
+//import { cy } from "date-fns/locale";
 import PatientEntryPage from "./PatientEntryPage";
 
 class OrderEntityPage {
