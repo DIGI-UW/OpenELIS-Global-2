@@ -1,3 +1,4 @@
+import { cy } from "date-fns/locale";
 import PatientEntryPage from "./PatientEntryPage";
 
 class OrderEntityPage {
@@ -17,14 +18,17 @@ class OrderEntityPage {
     cy.getElement(".cds--btn.cds--btn--primary.forwardButton").click();
   }
 
+  selectProgram() {
+    cy.get("#additionalQuestionsSelect").select("HIV");
+  }
+
   selectSampleTypeOption(sampleType) {
     cy.getElement("select#sampleId_0").select(sampleType);
   }
   checkPanelCheckBoxField() {
-    cy.get(
-      ".testPanels .cds--checkbox-wrapper:nth-child(5) .cds--checkbox",
-    ).check({ force: true });
+    cy.get("#panel_0_1").check();
   }
+
   generateLabOrderNumber() {
     cy.contains("a.cds--link", "Generate").click();
   }
@@ -50,8 +54,8 @@ class OrderEntityPage {
     cy.enterText("input#requesterId").select(requester);
   }
   clickSubmitOrderButton() {
-    cy.get('#submitOrderButton', {timeout: 10000}).should("be.visible").click();
-  }
+    cy.get("button.forwardButton.cds--btn--primary").click();
+    }
 }
 
 export default OrderEntityPage;
