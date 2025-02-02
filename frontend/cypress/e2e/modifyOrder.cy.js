@@ -94,6 +94,7 @@ describe("Modify Order search by patient ", function () {
   it("Result Reporting", function(){
     modifyOrderPage.checkPatientEmail();
     modifyOrderPage.checkRequesterSms();
+    modifyOrderPage.clickSubmitButton();
   });
 
   //TO DO needs fixing
