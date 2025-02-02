@@ -1,10 +1,14 @@
 const { defineConfig } = require("@playwright/test");
 
 module.exports = defineConfig({
-  timeout: 30000,
   retries: 1,
+  workers: 2, // increasing workers to more than 2 causes tests to fail
+  timeout: 20000,
+  // try one retry as some tests are flaky
+  // reporter: [["html", { outputFolder: "playwright-report", open: "never" }]],
   use: {
-    viewport: { width: 1280, height: 700 },
+    headless: true,
+    viewport: { width: 1280, height: 720 },
     // video: "only-on-failure",
     // screenshot: "only-on-failure",
     // trace: "retain-on-failure",
