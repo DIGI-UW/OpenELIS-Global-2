@@ -19,11 +19,15 @@ class ModifyOrderPage {
       .click();
   }
 
+  generateLabOrderNumber(){
+    cy.get("#generate").click();
+  }
+
   selectSerum(){
     cy.get("#sampleId_0").select("Serum");
   }
   clickRejectSample() {
-    cy.get("#reject_0").check();
+    cy.get("#reject_0").check({force: true} );
   }
 
   rejectReason() {
@@ -38,7 +42,7 @@ class ModifyOrderPage {
     cy.get("#patientEmail_0_1").check();
   }
 
-  checkReuesterSms(){
+  checkRequesterSms(){
     cy.get("#providerSMS_0_1").check();
   }
   assignValues() {
