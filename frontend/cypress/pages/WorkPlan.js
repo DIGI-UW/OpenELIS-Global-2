@@ -33,10 +33,12 @@ class WorkPlan {
   .should("be.visible")  // Ensure it's visible
   .click();
     }
-    
+
   checkAndPrint() {
-    cy.get("#includedCheck_0").check({ force: true });
->>>>>>> 9cd47466b (made modifications)
+    cy.get("#includedCheck_0")
+    .should("exist")
+    .should("be.visible")
+    .check({ force: true });
   }
 }
 export default WorkPlan;
