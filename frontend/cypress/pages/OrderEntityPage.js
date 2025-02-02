@@ -21,7 +21,6 @@ class OrderEntityPage {
   selectProgram(program) {
     cy.get("#additionalQuestionsSelect").select(program);
   }
-
   selectSampleTypeOption(sampleType) {
     cy.get("#sampleId_0").select(sampleType);
   }
