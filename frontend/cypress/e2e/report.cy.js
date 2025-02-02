@@ -299,7 +299,7 @@ describe("Study Reports", function () {
     reportPage.visitStudyReports();
     reportPage.visitAuditTrailReport();
     reportPage.verifyHeaderText("section > h3", "Audit Trail");
-    cy.fixture("EnteredOrder").then((order) => {
+    cy.fixture("Order").then((order) => {
       reportPage.typeInField("labNo", order.labNo);
     });
     //reportPage.validateAudit();
