@@ -15,10 +15,9 @@ describe("Work plan by Test", function () {
     workplan = homePage.goToWorkPlanPlanByTest();
   });
 
-  it("User should select test from drop-down selector option", () => {
+  it("User selects test from drop-down selector option", () => {
     cy.fixture("workplan").then((options) => {
       workplan.getTestType(options.testName);
-      workplan.getPrintWorkPlanButton();
     });
   });
   it("Check orders to remove and print", () => {
@@ -28,16 +27,15 @@ describe("Work plan by Test", function () {
 });
 
 describe("Work plan by Panel", function () {
-  it("User can select work plan by test from main menu drop-down. Workplan by panel page appears.", function () {
+  it("User selects work plan by test from main menu drop-down.", function () {
     homePage = loginPage.goToHomePage();
     workplan = homePage.goToWorkPlanPlanByPanel();
   });
 
-  it("User should select panel from drop-down selector option", () => {
+  it("User selects panel from drop-down selector option", () => {
     cy.fixture("workplan").then((options) => {
       workplan.getTestPanel(options.panelType);
       cy.wait(5000);
-      workplan.getPrintWorkPlanButton();
     });
   });
 
@@ -48,16 +46,15 @@ describe("Work plan by Panel", function () {
 });
 
 describe("Work plan by Unit", function () {
-  it("User can select work plan By Unit from main menu drop-down. Workplan By Unit page appears.", function () {
+  it("User selects work plan By Unit from main menu drop-down.", function () {
     homePage = loginPage.goToHomePage();
     workplan = homePage.goToWorkPlanPlanByUnit();
   });
 
-  it("User should select unit type from drop-down selector option", () => {
+  it("User selects unit type from drop-down selector option", () => {
     cy.fixture("workplan").then((options) => {
       workplan.getTestTypeUnit(options.unitType);
       cy.wait(5000);
-      workplan.getPrintWorkPlanButton();
     });
   });
 
@@ -68,21 +65,20 @@ describe("Work plan by Unit", function () {
 });
 
 describe("Work plan by Priority", function () {
-  it("User can select work plan By Priority from main menu drop-down. Workplan By Priority page appears.", function () {
+  it("User selects work plan By Priority from main menu drop-down.", function () {
     homePage = loginPage.goToHomePage();
     workplan = homePage.goToWorkPlanPlanByPriority();
   });
 
-  it("User should select Priority from drop-down selector option", () => {
+  it("User selects Priority from drop-down selector option", () => {
     cy.fixture("workplan").then((options) => {
       workplan.getTestTypePriority(options.priority);
       cy.wait(5000);
-      workplan.getPrintWorkPlanButton();
     });
   });
 
   it("Check orders to remove and print", () => {
     workplan.checkAndPrint();
-    workplan.getPrintWorkPlanButton().click();
+    workplan.getPrintWorkPlanButton();
   });
 });
