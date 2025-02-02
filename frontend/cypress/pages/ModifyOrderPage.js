@@ -20,7 +20,9 @@ class ModifyOrderPage {
   }
 
   generateLabOrderNumber(){
-    cy.get("#generate").click();
+    //cy.get("#generate").should("have.class", "cds--link").click();
+    cy.get("#generate", { timeout: 10000 }).should("be.visible").click();
+
   }
 
   selectSerum(){
@@ -39,7 +41,7 @@ class ModifyOrderPage {
   }
 
   checkPatientEmail(){
-    cy.get("#patientEmail_0_1").check();
+    cy.get("#patientEmail_0_1", {timeout:10000}).should("be.visible").check();
   }
 
   checkRequesterSms(){
