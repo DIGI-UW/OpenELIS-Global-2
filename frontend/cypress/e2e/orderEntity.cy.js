@@ -50,7 +50,7 @@ describe("Order Entity", function () {
       orderEntityPage.validateAcessionNumber(order.invalidLabNo);
     });
     orderEntityPage.generateLabOrderNumber();
-    cy.get("#labNo").then(($input) => {
+    cy.get("#display_labNo").then(($input) => {
       const generatedOrderNumber = $input.val();
       cy.fixture("Order").then((order) => {
         order.labNo = generatedOrderNumber;
@@ -72,7 +72,9 @@ describe("Order Entity", function () {
     cy.fixture("Order").then((order) => {
       orderEntityPage.searchRequester(order.requester);
     });
+    cy.wait(500);
   });
+  
   it("should click submit order button", function () {
     orderEntityPage.clickSubmitOrderButton();
   });
