@@ -66,22 +66,22 @@ describe("Modify Order search by patient ", function () {
       patientPage.patientFirstName(patient.firstName);
       patientPage.patientLastName(patient.lastName);
     });
-      patientPage.clickSearchBtn();
-      patientPage.selectPatient();
-      cy.wait(800);
-      modifyOrderPage.clickNextButton();
+    patientPage.clickSearchBtn();
+    patientPage.selectPatient();
+    cy.wait(800);
+    modifyOrderPage.clickNextButton();
   });
 
-  it("User adds sample", function(){
+  it("User adds sample", function () {
     cy.fixture("Order").then((order) => {
-      orderEntityPage.selectSampleTypeOption(order.sampleType);      
+      orderEntityPage.selectSampleTypeOption(order.sampleType);
     });
     orderEntityPage.checkPanelCheckBoxField();
     modifyOrderPage.clickRejectSample();
     modifyOrderPage.rejectReason();
     //modifyOrderPage.clickNextButton();
   });
-  
+
   it("Add Order", function () {
     orderEntityPage.generateLabOrderNumber();
     cy.fixture("Order").then((order) => {
@@ -91,7 +91,7 @@ describe("Modify Order search by patient ", function () {
     });
   });
 
-  it("Result Reporting", function(){
+  it("Result Reporting and Submit Order", function () {
     modifyOrderPage.checkPatientEmail();
     modifyOrderPage.checkRequesterSms();
     modifyOrderPage.clickSubmitButton();

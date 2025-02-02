@@ -10,24 +10,21 @@ class ModifyOrderPage {
   }
 
   clickSubmitButton() {
-    return cy
-      .getElement(
-        "div[class='cds--lg:col-span-2 cds--css-grid-column'] button[type='submit']",
-      )
+    cy.get("#submitOrderButton").should("be.visible").click();
+  }
+
+  clickNextButton() {
+    cy.get('button[type="button"].forwardButton.cds--btn.cds--btn--primary')
       .should("be.visible")
       .click();
   }
 
-  clickNextButton() {
-    cy.get('button[type="button"].forwardButton.cds--btn.cds--btn--primary').should("be.visible").click();
-  }
-
-  clickRejectSample(){
+  clickRejectSample() {
     cy.get("#reject_0").check();
   }
 
-  rejectReason(){
-    cy.get("#rejectedReasonId_0").select("Other.")
+  rejectReason() {
+    cy.get("#rejectedReasonId_0").select("Other.");
   }
 
   checkProgramButton() {
