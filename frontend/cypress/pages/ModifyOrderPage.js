@@ -19,6 +19,9 @@ class ModifyOrderPage {
       .click();
   }
 
+  selectSerum(){
+    cy.get("#sampleId_0").select("Serum");
+  }
   clickRejectSample() {
     cy.get("#reject_0").check();
   }
@@ -31,6 +34,13 @@ class ModifyOrderPage {
     return cy.get("#additionalQuestionsSelect").should("be.disabled");
   }
 
+  checkPatientEmail(){
+    cy.get("#patientEmail_0_1").check();
+  }
+
+  checkReuesterSms(){
+    cy.get("#providerSMS_0_1").check();
+  }
   assignValues() {
     cy.get(
       ":nth-child(1) > :nth-child(4) > .cds--form-item > .cds--checkbox-label",
