@@ -11,8 +11,10 @@ class Result {
     cy.get('[data-testid="expander-button-0"]').click();
   }
   acceptSample() {
-//div.cds--form-item.cds--checkbox-wrapper > input[type="checkbox"]
-    cy.get('div.cds--form-item.cds--checkbox-wrapper > input[type="checkbox"]').check({force: true});
+    //div.cds--form-item.cds--checkbox-wrapper > input[type="checkbox"]
+    cy.get(
+      'div.cds--form-item.cds--checkbox-wrapper > input[type="checkbox"]',
+    ).check({ force: true });
   }
 
   acceptResult() {
