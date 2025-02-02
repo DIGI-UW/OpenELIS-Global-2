@@ -12,23 +12,23 @@ class WorkPlan {
   }
 
   getTestType(testName) {
-     cy.get("#select-1").select(testName);
+    cy.get("#select-1").select(testName);
   }
 
   getTestPanel(panelType) {
-     cy.get("#select-1").select(panelType);
+    cy.get("#select-1").select(panelType);
   }
-  
+
   getTestTypeUnit(unitType) {
-     cy.get("#select-1").select(unitType);
+    cy.get("#select-1").select(unitType);
   }
 
   getTestTypePriority(priority) {
-     cy.get("#select-1").select(priority);
+    cy.get("#select-1").select(priority);
   }
 
   getPrintWorkPlanButton() {
-     cy.get("#print").click();
+    cy.get("#print").click();
   }
 <<<<<<< HEAD
   getWorkPlanResultsTable() {

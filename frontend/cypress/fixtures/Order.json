@@ -4,9 +4,9 @@
       "sampleType": "Serum"
     }
   ],
-  "program":"Routine Testing",
-  "specimen":"Conventional Smear",
-  "smear":"Cervix",
+  "program": "Routine Testing",
+  "specimen": "Conventional Smear",
+  "smear": "Cervix",
   "siteName": "279 - CAMES MAN",
   "requester": "Prime, Optimus",
   "labNo": "",

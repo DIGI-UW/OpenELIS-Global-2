@@ -159,7 +159,7 @@ class PatientEntryPage {
 
   selectPatient() {
     cy.get("table tbody tr").first().find("td label span").click();
-    }
+  }
 }
 
 export default PatientEntryPage;

@@ -55,7 +55,7 @@ class OrderEntityPage {
   }
   clickSubmitOrderButton() {
     cy.get("button.forwardButton.cds--btn--primary").click();
-    }
+  }
 }
 
 export default OrderEntityPage;

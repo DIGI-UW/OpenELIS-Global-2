@@ -1,4 +1,5 @@
 import LoginPage from "../pages/LoginPage";
+//import OrderEntityPage from "../pages/OrderEntityPage";
 
 let homePage = null;
 let loginPage = null;
@@ -31,8 +32,8 @@ describe("Order Entity", function () {
   it("User clicks next to go to program selection", function () {
     orderEntityPage.clickNextButton();
     cy.fixture("Order").then((order) => {
-    orderEntryPage.selectProgram(order.program);
-  });
+      orderEntityPage.selectProgram(order.program);
+    });
     orderEntityPage.clickNextButton();
   });
 
