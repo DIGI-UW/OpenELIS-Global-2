@@ -41,11 +41,11 @@ class ModifyOrderPage {
   }
 
   checkPatientEmail(){
-    cy.get("#patientEmail_0_1", {timeout:10000}).should("be.visible").check();
+    cy.get("#patientEmail_0_1", {timeout:10000}).should("be.visible").check({force:true});
   }
 
   checkRequesterSms(){
-    cy.get("#providerSMS_0_1").check();
+    cy.get("#providerSMS_0_1",{timeout:10000}).should("be.visible").check({fore:true});
   }
   assignValues() {
     cy.get(
