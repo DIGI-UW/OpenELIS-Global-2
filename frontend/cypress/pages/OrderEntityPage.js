@@ -26,7 +26,7 @@ class OrderEntityPage {
     cy.get("#sampleId_0").select(sampleType);
   }
   checkPanelCheckBoxField() {
-    cy.get("#panel_0_1").check();
+    cy.get("#panel_0_1").check({ force: true });
   }
 
   generateLabOrderNumber() {
@@ -37,7 +37,7 @@ class OrderEntityPage {
     cy.intercept("GET", `**/rest/SampleEntryAccessionNumberValidation**`).as(
       "accessionNoValidation",
     );
-    cy.get("#labNo").type(order, { delay: 300 });
+    cy.get("#display_labNo").type(order, { delay: 300 });
 
     cy.wait("@accessionNoValidation").then((interception) => {
       const responseBody = interception.response.body;

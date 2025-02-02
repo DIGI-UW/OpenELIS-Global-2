@@ -10,7 +10,7 @@ before("login", () => {
 });
 
 describe("Work plan by Test", function () {
-  it("User  selects work plan by test from main menu drop-down.And the page appears", function () {
+  it("User  selects work plan by test from main drop-down menu.", function () {
     homePage = loginPage.goToHomePage();
     workplan = homePage.goToWorkPlanPlanByTest();
   });
@@ -18,7 +18,6 @@ describe("Work plan by Test", function () {
   it("User should select test from drop-down selector option", () => {
     cy.fixture("workplan").then((options) => {
       workplan.getTestType(options.testName);
-      cy.wait(10000);
       workplan.getPrintWorkPlanButton();
     });
   });

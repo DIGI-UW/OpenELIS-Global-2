@@ -54,7 +54,7 @@ describe("Order Entity", function () {
     });
 
     orderEntityPage.generateLabOrderNumber();
-    cy.get("#labNo").then(($input) => {
+    cy.get("#displaylab_labNo").then(($input) => {
       const generatedOrderNumber = $input.val();
 
       cy.fixture("Order").then((order) => {
