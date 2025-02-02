@@ -11,8 +11,10 @@ let homePage;
 let result;
 let patientPage;
 let loginPage;
+let browser;
 
-test.beforeAll(async ({ browser }) => {
+test.beforeAll(async ({ browser: browserInstance }) => {
+  browser = browserInstance;
   context = await browser.newContext();
   page = await context.newPage();
 
@@ -32,39 +34,38 @@ test.describe("Result By Unit", () => {
   test.beforeEach(async () => {
     result = await homePage.goToResultsByUnit();
   });
+  // fixing needed
+  test("User visits Results Page", async () => {
+    await expect(await result.getResultTitle()).toContainText(res.pageTitle);
+  });
 
-    test("User visits Results Page", async () => {
-      await expect(await result.getResultTitle()).toContainText(res.pageTitle);
+  test("Should Search by Unit", async () => {
+    await result.selectUnitType(workPlan.unitType);
+  });
+
+  test("Should accept, refer, and save the result", async () => {
+    await page.getByLabel("Select Test Unit").selectOption("117");
+    await result.expandSampleDetails();
+    await result.selectTestMethod(0, res.pcrTestMethod);
+
+    // await result.enableAndCheckReferTestCheckbox();
+    await page.evaluate(() => {
+      document
+        .querySelectorAll("input[type='checkbox']")
+        .forEach((checkbox) => {
+          checkbox.removeAttribute("disabled");
+        });
     });
 
-    test("Should Search by Unit", async () => {
-      await result.selectUnitType(workPlan.unitType);
-    });
-
-    test("Should accept, refer, and save the result", async () => {
-      await page.getByLabel("Select Test Unit").selectOption("117");
-      await result.expandSampleDetails();
-      await result.selectTestMethod(0, res.pcrTestMethod);
-
-      // await result.enableAndCheckReferTestCheckbox();
-      await page.evaluate(() => {
-        document
-          .querySelectorAll("input[type='checkbox']")
-          .forEach((checkbox) => {
-            checkbox.removeAttribute("disabled");
-          });
-      });
-
-      // Now check the checkbox
-      await page
-        .locator(".cds--checkbox-label")
-        .filter({ hasText: "Refer test to a reference lab" })
-        .check();
-      await result.referSample(0, res.testNotPerformed, res.cedres);
-      await result.setResultValue(0, res.positiveResult);
-      await result.submitResults();
-    });
-  
+    // Now check the checkbox
+    await page
+      .locator(".cds--checkbox-label")
+      .filter({ hasText: "Refer test to a reference lab" })
+      .check();
+    await result.referSample(0, res.testNotPerformed, res.cedres);
+    await result.setResultValue(0, res.positiveResult);
+    await result.submitResults();
+  });
 
   test.describe("Result By Patient", () => {
     test.beforeEach(async () => {
@@ -85,7 +86,9 @@ test.describe("Result By Unit", () => {
         patient.firstName,
       );
 
-      await expect(await patientPage.getLastName()).toHaveValue(patient.lastName);
+      await expect(await patientPage.getLastName()).toHaveValue(
+        patient.lastName,
+      );
       await expect(await patientPage.getLastName()).not.toHaveValue(
         patient.inValidName,
       );
@@ -108,7 +111,7 @@ test.describe("Result By Unit", () => {
     });
 
     test("Should search Patient By Lab Number", async () => {
-      await page.locator("#labNumber").fill(patient.labNo);
+      await page.locator("#display_labNumber").fill(patient.labNo);
       await patientPage.clickSearchPatientButton();
     });
 
@@ -133,12 +136,16 @@ test.describe("Result By Unit", () => {
     });
 
     test("Should Search by Accession Number", async () => {
-      await page.locator("#accessionNumber").fill(workPlan.labNo);
+      await (
+        await page.locator("#display_accessionNumber")
+      ).fill(workPlan.labNo);
       await page.locator(":nth-child(4) > #submit").click();
     });
 
     test("Should accept and save result", async () => {
-      await page.locator("#accessionNumber").fill(workPlan.accessionNumber);
+      await page
+        .locator("#display_accessionNumber")
+        .fill(workPlan.accessionNumber);
       await page.locator(":nth-child(4) > #submit").click();
 
       await page
@@ -171,7 +178,9 @@ test.describe("Result By Unit", () => {
       await expect(await patientPage.getFirstName()).toHaveValue(
         patient.firstName,
       );
-      await expect(await patientPage.getLastName()).toHaveValue(patient.lastName);
+      await expect(await patientPage.getLastName()).toHaveValue(
+        patient.lastName,
+      );
       await patientPage.clickSearchPatientButton();
       await patientPage.validatePatientSearchTable(
         patient.firstName,
@@ -186,7 +195,7 @@ test.describe("Result By Unit", () => {
     });
 
     test("Should search Referrals By LabNumber", async () => {
-      await page.locator("#labNumberInput").type(workPlan.labNo);
+      await page.locator("#display_labNumberInput").type(workPlan.labNo);
       await page
         .locator(":nth-child(4) > .cds--lg\\:col-span-4 > .cds--btn")
         .click();
@@ -203,15 +212,14 @@ test.describe("Result By Unit", () => {
     });
 
     test("Should Enter Lab Number and perform Search", async () => {
-      await page.locator("#startLabNo").type(workPlan.labNo);
+      await page.locator("#display_startLabNo").fill(workPlan.labNo);
       await page.locator(":nth-child(5) > #submit").click();
     });
 
     test("Should Accept And Save the result", async () => {
-     
-      await page.locator("#startLabNo").fill(workPlan.accessionNumber);
-    
-      await page.locator("#endLabNo").fill(workPlan.accessionNumber);
+      await page.locator("#display_startLabNo").fill(workPlan.accessionNumber);
+
+      await page.locator("#display_endLabNo").fill(workPlan.accessionNumber);
 
       await page.locator("button#submit").first().click();
 
@@ -238,8 +246,11 @@ test.describe("Result By Unit", () => {
     });
 
     test("Should Validate And accept the result", async () => {
-      await page.getByLabel('Select Test Name').selectOption('39');
-      await page.getByRole('main').getByRole('button', { name: 'Search' }).click();
+      await page.getByLabel("Select Test Name").selectOption("39");
+      await page
+        .getByRole("main")
+        .getByRole("button", { name: "Search" })
+        .click();
 
       await expect(
         await page.locator("#cell-testName-0 .sampleInfo"),
