@@ -5,7 +5,7 @@ class DashBoardPage {
     cy.get("#filterMyCases").check({ force: true });
   }
 
-  selectSecreening() {
+  selectGrossing() {
     cy.get("#statusFilter").select("Grossing");
   }
 
@@ -19,7 +19,6 @@ class DashBoardPage {
   typeLabNo() {
     cy.get("#search-input-41").type("1234");
   }
-
 }
 
 export default DashBoardPage;
