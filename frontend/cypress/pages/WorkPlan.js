@@ -28,8 +28,12 @@ class WorkPlan {
   }
 
   getPrintWorkPlanButton() {
-    cy.get("#print").click();
-  }
+    cy.get("#print", { timeout: 10000 })
+  .should("exist")  // Ensure it exists in the DOM
+  .should("be.visible")  // Ensure it's visible
+  .click();
+    }
+    
   checkAndPrint() {
     cy.get("#includedCheck_0").check({ force: true });
   }
