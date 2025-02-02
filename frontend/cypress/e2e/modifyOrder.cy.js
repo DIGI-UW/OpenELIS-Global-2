@@ -39,15 +39,15 @@ describe("Modify Order search by patient ", function () {
     orderEntityPage.checkPanelCheckBoxField();
     modifyOrderPage.clickRejectSample();
     modifyOrderPage.rejectReason();
-    //modifyOrderPage.clickNextButton();
+    modifyOrderPage.clickNextButton();
   });
 
   it("Add Order", function () {
     modifyOrderPage.generateLabOrderNumber();
     cy.fixture("Order").then((order) => {
       orderEntityPage.searchRequester(order.requester);
-      cy.wait(500);
-      orderEntityPage.enterSiteName(siteName);
+      cy.wait(4000);
+      orderEntityPage.enterSiteName(order.siteName);
     });
   });
 
