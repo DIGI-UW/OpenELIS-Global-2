@@ -15,7 +15,7 @@ import {
   Pagination,
   Link,
 } from "@carbon/react";
-
+import { Grid, Column } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ChevronDown, Edit, TaskAdd } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../utils/Utils";
@@ -33,8 +33,83 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
   const [entering, setEntering] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
-  useEffect(() => {}, []);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const getHeaders = () => {
+    const allHeaders = [
+      {
+        key: "requestDateDisplay",
+        header: intl.formatMessage({ id: "eorder.requestDate" }),
+      },
+      {
+        key: "patientLastName",
+        header: intl.formatMessage({ id: "eorder.name.last" }),
+      },
+      {
+        key: "patientFirstName",
+        header: intl.formatMessage({ id: "eorder.name.first" }),
+      },
+      {
+        key: "patientNationalId",
+        header: intl.formatMessage({ id: "eorder.id.national" }),
+      },
+      {
+        key: "requestingFacility",
+        header: intl.formatMessage({ id: "eorder.facility.requesting" }),
+      },
+      {
+        key: "priority",
+        header: intl.formatMessage({ id: "eorder.priority" }),
+      },
+      {
+        key: "status",
+        header: intl.formatMessage({ id: "eorder.status" }),
+      },
+      {
+        key: "testName",
+        header: intl.formatMessage({ id: "eorder.test.name" }),
+      },
+      {
+        key: "referringLabNumber",
+        header: intl.formatMessage({ id: "eorder.labnumber.referring" }),
+      },
+      {
+        key: "passportNumber",
+        header: intl.formatMessage({ id: "eorder.passport.number" }),
+      },
+      {
+        key: "subjectNumber",
+        header: intl.formatMessage({ id: "eorder.id.subjectNumber" }),
+      },
+      {
+        key: "labNumber",
+        header: intl.formatMessage({ id: "eorder.labNumber" }),
+      },
+    ];
+
+    // Return fewer columns for mobile view
+    if (isMobile) {
+      return allHeaders.filter((header) =>
+        [
+          "requestDateDisplay",
+          "patientLastName",
+          "patientFirstName",
+          "status",
+        ].includes(header.key),
+      );
+    }
+
+    return allHeaders;
+  };
 
   function saveEntry(externalOrderId, labNumber) {
     window.open(
@@ -115,32 +190,23 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
 
   const renderExpandedRow = (row) => {
     const eOrderId = row.id;
-    const electronicOrderUUID = eOrders.find((item) => {
-      return item.id === eOrderId;
-    })?.externalOrderId;
-    if (!electronicOrderUUID) {
-      return <></>;
-    }
-    const index = eOrders.findIndex((item) => {
-      return item.id === eOrderId;
-    });
+    const electronicOrderUUID = eOrders.find(
+      (item) => item.id === eOrderId,
+    )?.externalOrderId;
+    if (!electronicOrderUUID) return <></>;
+
+    const index = eOrders.findIndex((item) => item.id === eOrderId);
 
     return (
-      <>
-        <div className="formInlineDiv">
+      <Grid narrow={isMobile}>
+        <Column sm={4} md={6} lg={8}>
           <div className="formInlineDiv">
             <CustomLabNumberInput
               name="labNo"
               value={eOrders[index].labNo || ""}
-              onBlur={(e) => {
-                handleLabNoValidation(e, index);
-              }}
-              onChange={(e, rawInput) => {
-                handleLabNo(e, rawInput, index);
-              }}
-              onKeyPress={(e) => {
-                handleKeyPress(e, index);
-              }}
+              onBlur={(e) => handleLabNoValidation(e, index)}
+              onChange={(e, rawInput) => handleLabNo(e, rawInput, index)}
+              onKeyPress={(e) => handleKeyPress(e, index)}
               labelText={intl.formatMessage({ id: "sample.label.labnumber" })}
               id="labNo"
               helperText={
@@ -148,9 +214,7 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
                   <FormattedMessage id="label.order.scan.text" />{" "}
                   <Link
                     href="#"
-                    onClick={(e) => {
-                      handleLabNoGeneration(e, index);
-                    }}
+                    onClick={(e) => handleLabNoGeneration(e, index)}
                   >
                     <FormattedMessage id="sample.label.labnumber.generate" />
                   </Link>
@@ -158,41 +222,47 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
               }
               className="inputText"
             />
-            <span className="middleAlignVertical">
-              <Button
-                type="button"
-                kind="tertiary"
-                label={intl.formatMessage({ id: "eorder.button.editOrder" })}
-                hasIconOnly={true}
-                renderIcon={Edit}
-                iconDescription={intl.formatMessage({
-                  id: "eorder.button.editOrder",
-                })}
-                onClick={() => {
-                  editOrder(electronicOrderUUID, eOrders[index].labNo);
-                }}
-              />
-              <Button
-                type="button"
-                kind="primary"
-                label={intl.formatMessage({ id: "eorder.button.enterOrder" })}
-                hasIconOnly={true}
-                renderIcon={TaskAdd}
-                iconDescription={intl.formatMessage({
-                  id: "eorder.button.enterOrder",
-                })}
-                onClick={() => {
-                  saveEntry(electronicOrderUUID, eOrders[index].labNo);
-                }}
-              />
-            </span>
           </div>
-          <div className="formInlineInput">
-            <div className="inputText"></div>
+        </Column>
+        <Column sm={4} md={2} lg={4}>
+          <div className="button-group">
+            <Button
+              type="button"
+              kind="tertiary"
+              label={intl.formatMessage({ id: "eorder.button.editOrder" })}
+              hasIconOnly={!isMobile}
+              renderIcon={Edit}
+              iconDescription={intl.formatMessage({
+                id: "eorder.button.editOrder",
+              })}
+              onClick={() =>
+                editOrder(electronicOrderUUID, eOrders[index].labNo)
+              }
+              className="responsive-button"
+            >
+              {isMobile &&
+                intl.formatMessage({ id: "eorder.button.editOrder" })}
+            </Button>
+            <Button
+              type="button"
+              kind="primary"
+              label={intl.formatMessage({ id: "eorder.button.enterOrder" })}
+              hasIconOnly={!isMobile}
+              renderIcon={TaskAdd}
+              iconDescription={intl.formatMessage({
+                id: "eorder.button.enterOrder",
+              })}
+              onClick={() =>
+                saveEntry(electronicOrderUUID, eOrders[index].labNo)
+              }
+              className="responsive-button"
+            >
+              {isMobile &&
+                intl.formatMessage({ id: "eorder.button.enterOrder" })}
+            </Button>
           </div>
-        </div>
-        <div></div>
-      </>
+        </Column>
+      </Grid>
     );
   };
 
@@ -381,17 +451,58 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
   };
 
   return (
-    <div ref={eOrderRef}>
+    <div ref={eOrderRef} className="eorder-container">
       {eOrders.length > 0 && (
         <div className="orderLegendBody">
-          <FormattedMessage id="eorder.instructions.enter1" /> <ChevronDown />{" "}
-          <FormattedMessage id="eorder.instructions.enter2" /> <TaskAdd />{" "}
-          <FormattedMessage id="eorder.instructions.enter3" /> <Edit />{" "}
-          <FormattedMessage id="eorder.instructions.enter4" />
-          <br></br>
+          <div className="instructions">
+            <FormattedMessage id="eorder.instructions.enter1" /> <ChevronDown />{" "}
+            <FormattedMessage id="eorder.instructions.enter2" /> <TaskAdd />{" "}
+            <FormattedMessage id="eorder.instructions.enter3" /> <Edit />{" "}
+            <FormattedMessage id="eorder.instructions.enter4" />
+          </div>
           {createDataTable(eOrders)}
         </div>
       )}
+
+      <style>
+        {`
+          .eorder-container {
+            max-width: 100%;
+            overflow-x: auto;
+          }
+          
+          .button-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+          }
+
+          .responsive-button {
+            min-width: ${isMobile ? "100%" : "auto"};
+            margin-bottom: ${isMobile ? "0.5rem" : "0"};
+          }
+
+          .instructions {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: #f4f4f4;
+            border-radius: 4px;
+            text-align: ${isMobile ? "left" : "center"};
+            line-height: 1.5;
+          }
+
+          @media (max-width: 768px) {
+            .formInlineDiv {
+              flex-direction: column;
+              gap: 1rem;
+            }
+
+            .inputText {
+              width: 100%;
+            }
+          }
+        `}
+      </style>
     </div>
   );
 };
