@@ -51,14 +51,14 @@ describe("Report Non-Conforming Event", function () {
       nonConform.selectSearchType("Patient Identification Code");
       nonConform.enterSearchField(patient.nationalId);
       nonConform.clickSearchButton();
-      cy.fixture("EnteredOrder").then((order) => {
+      cy.fixture("Order").then((order) => {
         nonConform.validateSearchResult(order.labNo);
       });
     });
   });
 
   it("Should Search by Lab Number ", function () {
-    cy.fixture("EnteredOrder").then((order) => {
+    cy.fixture("Order").then((order) => {
       nonConform.selectSearchType("Lab Number");
       nonConform.enterSearchField(order.labNo);
       nonConform.clickSearchButton();
@@ -99,7 +99,7 @@ describe("View New Non-Conforming Event", function () {
       .should("contain.text", "View New Non Conform Event");
   });
   it("Should Search by Lab Number and Validate the results", function () {
-    cy.fixture("EnteredOrder").then((order) => {
+    cy.fixture("Order").then((order) => {
       nonConform.selectSearchType("Lab Number");
       nonConform.enterSearchField(order.labNo);
       nonConform.clickSearchButton();
@@ -147,7 +147,7 @@ describe("Corrective Actions", function () {
       .should("contain.text", "Nonconforming Events Corrective Action");
   });
   it("Should Search by Lab Number and Validate the results", function () {
-    cy.fixture("EnteredOrder").then((order) => {
+    cy.fixture("Order").then((order) => {
       nonConform.selectSearchType("Lab Number");
       nonConform.enterSearchField(order.labNo);
       nonConform.clickSearchButton();
