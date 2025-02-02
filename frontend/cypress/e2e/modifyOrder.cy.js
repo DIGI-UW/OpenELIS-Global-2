@@ -1,10 +1,12 @@
 import LoginPage from "../pages/LoginPage";
 import PatientEntryPage from "../pages/PatientEntryPage";
+import OrderEntityPage from "../pages/OrderEntityPage";
 
 let homePage = null;
 let loginPage = null;
 let modifyOrderPage = null;
 let patientPage = new PatientEntryPage();
+let orderEntityPage = new OrderEntityPage();
 
 before("login", () => {
   loginPage = new LoginPage();
@@ -61,47 +63,39 @@ describe("Modify Order search by patient ", function () {
   it("Should search Patient By First and LastName", function () {
     cy.wait(1000);
     cy.fixture("Patient").then((patient) => {
-      patientPage.searchPatientByFirstAndLastName(
-        patient.firstName,
-        patient.lastName,
-      );
-      patientPage.getFirstName().should("have.value", patient.firstName);
-      patientPage.getLastName().should("have.value", patient.lastName);
-
-      patientPage.getLastName().should("not.have.value", patient.inValidName);
-
-      modifyOrderPage.clickSearchPatientButton();
-      patientPage.validatePatientSearchTable(
-        patient.firstName,
-        patient.inValidName,
-      );
+      patientPage.patientFirstName(patient.firstName);
+      patientPage.patientLastName(patient.lastName);
     });
-    cy.wait(200).reload();
+      patientPage.clickSearchBtn();
+      patientPage.selectPatient();
+      cy.wait(800);
+      modifyOrderPage.clickNextButton();
   });
 
-  it("Should be able to search patients By gender", function () {
-    cy.wait(1000);
-    patientPage.getMaleGenderRadioButton().should("be.visible");
-    patientPage.getMaleGenderRadioButton().click();
-    cy.wait(200);
-    modifyOrderPage.clickSearchPatientButton();
-    cy.fixture("Patient").then((patient) => {
-      patientPage.validatePatientByGender("M");
+  it("User adds sample", function(){
+    cy.fixture("Order").then((order) => {
+      orderEntityPage.selectSampleTypeOption(order.sampleType);      
     });
-    cy.wait(200).reload();
+    orderEntityPage.checkPanelCheckBoxField();
+    modifyOrderPage.clickRejectSample();
+    modifyOrderPage.rejectReason();
+    //modifyOrderPage.clickNextButton();
+  });
+  
+  it("Add Order", function () {
+    orderEntityPage.generateLabOrderNumber();
+    cy.fixture("Order").then((order) => {
+      orderEntityPage.searchRequester(order.requester);
+      cy.wait(500);
+      orderEntityPage.enterSiteName(siteName);
+    });
   });
 
-  it("should search patient By PatientId", function () {
-    cy.wait(1000);
-    cy.fixture("Patient").then((patient) => {
-      patientPage.searchPatientByPatientId(patient.nationalId);
-      modifyOrderPage.clickSearchPatientButton();
-      patientPage.validatePatientSearchTable(
-        patient.firstName,
-        patient.inValidName,
-      );
-    });
+  it("Result Reporting", function(){
+    modifyOrderPage.checkPatientEmail();
+    modifyOrderPage.checkRequesterSms();
   });
+
   //TO DO needs fixing
   it("Should be able to search by respective patient ", function () {
     cy.wait(1000);

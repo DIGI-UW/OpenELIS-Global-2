@@ -19,9 +19,23 @@ class ModifyOrderPage {
   }
 
   clickNextButton() {
-    return cy.get(".forwardButton").should("be.visible").click();
+    cy.get('button[type="button"].forwardButton.cds--btn.cds--btn--primary').should("be.visible").click();
   }
 
+  selectSerum(){
+    cy.get("#sampleId_0").select("Serum");
+  }
+  clickRejectSample(){
+    cy.get("#reject_0").check();
+  }
+
+  rejectReason(){
+    cy.get("#rejectedReasonId_0").select("Other.")
+  }
+
+  checkBilanOrderPanel(){
+    cy.get("#panel_0_1").check();
+  }
   checkProgramButton() {
     return cy.get("#additionalQuestionsSelect").should("be.disabled");
   }
