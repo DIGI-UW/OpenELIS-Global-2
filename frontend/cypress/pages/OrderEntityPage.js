@@ -15,15 +15,15 @@ class OrderEntityPage {
   }
 
   clickNextButton() {
-    cy.getElement(".cds--btn.cds--btn--primary.forwardButton").click();
+    cy.get(".cds--btn.cds--btn--primary.forwardButton").click();
   }
 
-  selectProgram() {
-    cy.get("#additionalQuestionsSelect").select("HIV");
+  selectProgram(program) {
+    cy.get("#additionalQuestionsSelect").select(program);
   }
 
   selectSampleTypeOption(sampleType) {
-    cy.getElement("select#sampleId_0").select(sampleType);
+    cy.get("#sampleId_0").select(sampleType);
   }
   checkPanelCheckBoxField() {
     cy.get("#panel_0_1").check();
