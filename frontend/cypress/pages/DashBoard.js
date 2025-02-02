@@ -6,15 +6,15 @@ class DashBoardPage {
   }
 
   selectSecreening() {
-    cy.get("#statusFilter").select("Screening");
+    cy.get("#statusFilter").select("Grossing");
   }
 
-  selectReadyForPathology() {
-    cy.get("#statusFilter").select("Ready for Pathology");
+  selectReadyForPathologist() {
+    cy.get("#statusFilter").select("Ready for Pathologist");
   }
 
   selectPreparingSlides() {
-    cy.get("#statusFilter").select("Preparing Slides");
+    cy.get("#statusFilter").select("Preparing slides");
   }
   typeLabNo() {
     cy.get("#search-input-41").type("1234");

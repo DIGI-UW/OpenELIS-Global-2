@@ -17,7 +17,7 @@ describe("Pathology Dashboard", function () {
 
   it("User interacts with the pathology dashboard", function () {
     dashboard.checkFilters();
-    dashboard.selectSecreening();
+    dashboard.selectGrossing();
     dashboard.typeLabNo();
   });
 });
@@ -30,7 +30,7 @@ describe("ImmunoChemistry Dashboard", function () {
 
   it("User interacts with the immunochemistry dashboard", function () {
     dashboard.checkFilters();
-    dashboard.selectReadyForPathology();
+    dashboard.selectReadyForPathologist();
     dashboard.typeLabNo();
   });
 });
