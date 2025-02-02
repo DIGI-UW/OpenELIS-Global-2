@@ -43,7 +43,7 @@ describe("Modify Order search by patient ", function () {
   });
 
   it("Add Order", function () {
-    orderEntityPage.generateLabOrderNumber();
+    modifyOrderPage.generateLabOrderNumber();
     cy.fixture("Order").then((order) => {
       orderEntityPage.searchRequester(order.requester);
       cy.wait(500);
