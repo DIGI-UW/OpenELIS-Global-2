@@ -19,7 +19,7 @@ describe("Modify Order search by accession Number", function () {
 
   it("User searches with accession number", () => {
     cy.wait(1000);
-    cy.fixture("EnteredOrder").then((order) => {
+    cy.fixture("Order").then((order) => {
       modifyOrderPage.enterAccessionNo(order.labNo);
       modifyOrderPage.clickSubmitButton();
     });
