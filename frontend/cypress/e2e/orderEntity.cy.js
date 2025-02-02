@@ -30,7 +30,9 @@ describe("Order Entity", function () {
   });
   it("User clicks next to go to program selection", function () {
     orderEntityPage.clickNextButton();
-    cy.wait(1000);
+    cy.fixture("Order").then((order) => {
+    orderEntryPage.selectProgram(order.program);
+  });
     orderEntityPage.clickNextButton();
   });
 
@@ -50,7 +52,7 @@ describe("Order Entity", function () {
       orderEntityPage.validateAcessionNumber(order.invalidLabNo);
     });
     orderEntityPage.generateLabOrderNumber();
-    cy.get("#display_labNo").then(($input) => {
+    cy.get("#labNo").then(($input) => {
       const generatedOrderNumber = $input.val();
       cy.fixture("Order").then((order) => {
         order.labNo = generatedOrderNumber;
@@ -74,7 +76,7 @@ describe("Order Entity", function () {
     });
     cy.wait(500);
   });
-  
+
   it("should click submit order button", function () {
     orderEntityPage.clickSubmitOrderButton();
   });
