@@ -35,13 +35,13 @@ describe("ImmunoChemistry Dashboard", function () {
   });
 });
 
-describe("ImmunoChemistry Dashboard", function () {
-  it("User  navigates to ImmunoChemistry Dashboard", function () {
+describe("Cytology Dashboard", function () {
+  it("User  navigates to Cytology Dashboard", function () {
     homePage = loginPage.goToHomePage();
-    dashboard = homePage.goToImmunoChemistryDashboard();
+    dashboard = homePage.goToCytologyDashboard();
   });
 
-  it("User interacts with the immunochemistry dashboard", function () {
+  it("User interacts with the cytology dashboard", function () {
     dashboard.checkFilters();
     dashboard.selectPreparingSlides();
     dashboard.typeLabNo();

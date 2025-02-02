@@ -42,7 +42,7 @@ class DashBoardPage {
   //Updates
 
   checkFilters() {
-    cy.get("#filterMyCases").check();
+    cy.get("#filterMyCases").check({ force: true });
   }
 
   selectSecreening() {

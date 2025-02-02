@@ -192,6 +192,12 @@ class HomePage {
     return new DashBoardPage();
   }
 
+  goToCytologyDashboard() {
+    this.openNavigationMenu();
+    cy.get("#menu_cytology").click(); // Changed from menu_cytology_dropdown
+    return new DashBoardPage();
+  }
+
   goToAdminPage() {
     this.openNavigationMenu();
     cy.get("#menu_administration").click();
