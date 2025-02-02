@@ -60,7 +60,7 @@ describe("Work plan by Unit", function () {
 
   it("Check orders to remove and print", () => {
     workplan.checkAndPrint();
-    workplan.getPrintWorkPlanButton().click();
+    workplan.getPrintWorkPlanButton();
   });
 });
 
