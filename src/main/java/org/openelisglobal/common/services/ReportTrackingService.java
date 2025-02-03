@@ -15,7 +15,7 @@ package org.openelisglobal.common.services;
 
 import java.sql.Timestamp;
 import java.util.List;
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;

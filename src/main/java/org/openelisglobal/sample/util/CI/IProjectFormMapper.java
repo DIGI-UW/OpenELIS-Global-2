@@ -18,7 +18,7 @@ package org.openelisglobal.sample.util.CI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.patient.valueholder.ObservationData;
 import org.openelisglobal.sample.form.ProjectData;

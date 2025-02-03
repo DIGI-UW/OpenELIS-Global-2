@@ -16,7 +16,7 @@ package org.openelisglobal.analyzerresults.action;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.form.IPagingForm;

@@ -19,7 +19,7 @@ import java.io.UnsupportedEncodingException;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.List;
-import javax.xml.ws.Response;
+import jakarta.xml.ws.Response;
 import net.sf.jasperreports.engine.JRException;
 import org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBuilder;
 

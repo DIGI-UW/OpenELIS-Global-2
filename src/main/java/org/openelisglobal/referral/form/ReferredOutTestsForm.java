@@ -1,7 +1,7 @@
 package org.openelisglobal.referral.form;
 
 import java.util.List;
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.patient.action.bean.PatientSearch;

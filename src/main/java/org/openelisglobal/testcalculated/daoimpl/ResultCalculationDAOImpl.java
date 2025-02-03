@@ -2,7 +2,7 @@ package org.openelisglobal.testcalculated.daoimpl;
 
 import java.util.Collections;
 import java.util.List;
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;

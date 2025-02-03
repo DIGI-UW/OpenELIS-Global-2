@@ -14,7 +14,7 @@
 package org.openelisglobal.scheduler.independentthreads;
 
 import java.util.List;
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportExternalExport;

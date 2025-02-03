@@ -2,8 +2,8 @@ package org.openelisglobal.patient.controller;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Date;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.patient.form.PatientEntryByProjectForm;
 import org.openelisglobal.patient.saving.Accessioner;

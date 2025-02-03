@@ -13,7 +13,7 @@
  */
 package org.openelisglobal.testmanagement.valueholder;
 
-import javax.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpSession;
 import org.openelisglobal.common.action.IActionConstants;
 
 /**

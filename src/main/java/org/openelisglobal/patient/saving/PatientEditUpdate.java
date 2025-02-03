@@ -18,7 +18,7 @@ cd /ucd u	* The contents of this file are subject to the Mozilla Public License
 package org.openelisglobal.patient.saving;
 
 import java.lang.reflect.InvocationTargetException;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.form.PatientEntryByProjectForm;

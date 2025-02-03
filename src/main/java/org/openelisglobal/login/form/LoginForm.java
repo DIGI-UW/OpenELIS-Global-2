@@ -1,7 +1,7 @@
 package org.openelisglobal.login.form;
 
 import java.util.Map;
-import javax.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotBlank;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.validation.annotations.ValidName;
 import org.openelisglobal.validation.constraintvalidator.NameValidator.NameType;

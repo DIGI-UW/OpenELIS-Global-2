@@ -3,7 +3,7 @@ package org.openelisglobal.sampleitem.service;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;

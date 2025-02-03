@@ -16,7 +16,7 @@ package org.openelisglobal.resultvalidation.bean;
 import java.io.Serializable;
 import java.sql.Timestamp;
 import java.util.List;
-import javax.validation.constraints.Pattern;
+import jakarta.validation.constraints.Pattern;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.resultvalidation.form.ResultValidationForm;

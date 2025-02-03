@@ -1,7 +1,7 @@
 package org.openelisglobal.audittrail.form;
 
 import java.util.List;
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import org.openelisglobal.audittrail.action.workers.AuditTrailItem;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;

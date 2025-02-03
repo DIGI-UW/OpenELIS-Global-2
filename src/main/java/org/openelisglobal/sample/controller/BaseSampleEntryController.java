@@ -2,7 +2,7 @@ package org.openelisglobal.sample.controller;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSException;

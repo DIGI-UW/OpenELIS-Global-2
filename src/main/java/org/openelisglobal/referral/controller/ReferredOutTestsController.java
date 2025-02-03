@@ -2,7 +2,7 @@ package org.openelisglobal.referral.controller;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;

@@ -17,7 +17,7 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.UUID;
-import javax.validation.constraints.Pattern;
+import jakarta.validation.constraints.Pattern;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.test.valueholder.TestSection;

@@ -3,7 +3,7 @@ package org.openelisglobal.reportconfiguration.controller;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.reportconfiguration.form.ReportConfigurationForm;

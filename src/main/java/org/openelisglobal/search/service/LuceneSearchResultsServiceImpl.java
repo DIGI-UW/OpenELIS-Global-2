@@ -1,7 +1,7 @@
 package org.openelisglobal.search.service;
 
 import java.util.List;
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
 import org.openelisglobal.sample.dao.SearchResultsDAO;
 import org.springframework.beans.factory.annotation.Autowired;

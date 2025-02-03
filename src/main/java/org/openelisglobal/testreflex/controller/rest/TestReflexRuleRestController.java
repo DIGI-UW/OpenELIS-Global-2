@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.util.LabelValuePair;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.testreflex.action.bean.ReflexRule;

@@ -3,7 +3,7 @@ package org.openelisglobal.common.hibernateConverter;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import javax.persistence.AttributeConverter;
+import jakarta.persistence.AttributeConverter;
 
 public class StringListConverter implements AttributeConverter<List<String>, String> {
     private static final String SPLIT_CHAR = ",";

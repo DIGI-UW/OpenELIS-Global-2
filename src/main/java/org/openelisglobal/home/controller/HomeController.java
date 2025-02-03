@@ -1,6 +1,6 @@
 package org.openelisglobal.home.controller;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.home.form.HomeForm;
 import org.springframework.stereotype.Controller;

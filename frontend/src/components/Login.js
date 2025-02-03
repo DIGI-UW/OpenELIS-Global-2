@@ -166,18 +166,19 @@ function Login(props) {
                   password: "",
                 }}
                 onSubmit={(values) => {
-                  fetch(config.serverBaseUrl + "/LoginPage", {
-                    //includes the browser sessionId in the Header for Authentication on the backend server
-                    credentials: "include",
-                    method: "GET",
-                  })
-                    .then((response) => response.status)
-                    .then(() => {
-                      doLogin(values);
-                    })
-                    .catch((error) => {
-                      console.error(error);
-                    });
+                  doLogin(values);
+                  // fetch(config.serverBaseUrl + "/LoginPage", {
+                  //   //includes the browser sessionId in the Header for Authentication on the backend server
+                  //   credentials: "include",
+                  //   method: "GET",
+                  // })
+                  //   .then((response) => response.status)
+                  //   .then(() => {
+                  //     doLogin(values);
+                  //   })
+                  //   .catch((error) => {
+                  //     console.error(error);
+                  //   });
                 }}
               >
                 {({ isValid, handleChange, handleSubmit }) => (

@@ -6,7 +6,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.program.bean.CytologyDashBoardCount;
 import org.openelisglobal.program.service.cytology.CytologyDisplayService;

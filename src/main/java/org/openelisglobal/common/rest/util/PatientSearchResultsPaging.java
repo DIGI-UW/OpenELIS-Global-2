@@ -3,7 +3,7 @@ package org.openelisglobal.common.rest.util;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.paging.*;
 import org.openelisglobal.common.provider.query.PatientSearchResults;

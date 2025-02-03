@@ -38,6 +38,9 @@ services:
             
     oe.openelis.org:
         container_name: openelisglobal-webapp 
+        build:
+            context: .
+            dockerfile: Dockerfile.dev
         image: itechuw/openelis-global-2-dev:develop 
         # platform: linux/amd64
         depends_on:
@@ -50,7 +53,6 @@ services:
         networks:
           default:
               ipv4_address: 172.20.1.121
-
         environment:
             - DEFAULT_PW=adminADMIN! 
             - TZ=Africa/Nairobi
@@ -60,7 +62,7 @@ services:
             -  key_trust-store-volume:/etc/openelis-global
             - ./volume/plugins/:/var/lib/openelis-global/plugins
             - ./volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
-            - ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war
+            # - ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war
             - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
             -  lucene_index-vol:/var/lib/lucene_index
         secrets:
