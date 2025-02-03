@@ -1,4 +1,3 @@
-//import { cy } from "date-fns/locale";
 import PatientEntryPage from "./PatientEntryPage";
 
 class OrderEntityPage {
@@ -15,19 +14,17 @@ class OrderEntityPage {
   }
 
   clickNextButton() {
-    cy.get(".cds--btn.cds--btn--primary.forwardButton").click();
+    cy.getElement(".cds--btn.cds--btn--primary.forwardButton").click();
   }
 
-  selectProgram(program) {
-    cy.get("#additionalQuestionsSelect").select(program);
-  }
   selectSampleTypeOption(sampleType) {
-    cy.get("#sampleId_0").select(sampleType);
+    cy.getElement("select#sampleId_0").select(sampleType);
   }
   checkPanelCheckBoxField() {
-    cy.get("#panel_0_1").check({ force: true });
+    cy.get(
+      ".testPanels .cds--checkbox-wrapper:nth-child(5) .cds--checkbox",
+    ).check({ force: true });
   }
-
   generateLabOrderNumber() {
     cy.contains("a.cds--link", "Generate").click();
   }
@@ -36,7 +33,7 @@ class OrderEntityPage {
     cy.intercept("GET", `**/rest/SampleEntryAccessionNumberValidation**`).as(
       "accessionNoValidation",
     );
-    cy.get("#display_labNo").type(order, { delay: 300 });
+    cy.get("#labNo").type(order, { delay: 300 });
 
     cy.wait("@accessionNoValidation").then((interception) => {
       const responseBody = interception.response.body;
@@ -53,7 +50,7 @@ class OrderEntityPage {
     cy.enterText("input#requesterId").select(requester);
   }
   clickSubmitOrderButton() {
-    cy.get("button.forwardButton.cds--btn--primary").click();
+    cy.get('#submitOrderButton', {timeout: 10000}).should("be.visible").click();
   }
 }
 
