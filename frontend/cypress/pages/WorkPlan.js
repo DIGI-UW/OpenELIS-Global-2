@@ -28,7 +28,7 @@ class WorkPlan {
   }
 
   getPrintWorkPlanButton() {
-    cy.get("#print", { timeout: 10000 })
+    cy.get("#print")
       .should("exist") 
       .should("be.visible")
       .click();
@@ -42,7 +42,7 @@ class WorkPlan {
   }
 
   checkToRemove() {
-    cy.get("input#includedCheck_0")
+    cy.get("input#includedCheck_0", {timeout:10000})
   .first()
   .should("exist")
   .should("be.visible")
