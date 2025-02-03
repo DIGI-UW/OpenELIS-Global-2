@@ -28,25 +28,22 @@ class WorkPlan {
   }
 
   getPrintWorkPlanButton() {
-    cy.get("#print")
-      .should("exist") 
-      .should("be.visible")
-      .click();
+    cy.get("#print").should("exist").should("be.visible").click();
   }
 
   getFinalPrintWorkPlanButton() {
     cy.get("#finalprint", { timeout: 10000 })
-      .should("exist") 
+      .should("exist")
       .should("be.visible")
       .click();
   }
 
   checkToRemove() {
-    cy.get("input#includedCheck_0", {timeout:10000})
-  .first()
-  .should("exist")
-  .should("be.visible")
-  .check();
-}
+    cy.get("input#includedCheck_0", { timeout: 10000 })
+      .first()
+      .should("exist")
+      .should("be.visible")
+      .check();
+  }
 }
 export default WorkPlan;

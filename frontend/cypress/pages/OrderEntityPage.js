@@ -30,7 +30,6 @@ class OrderEntityPage {
     cy.get("#panel_0_1").check({ force: true });
   }
 
-
   validateAcessionNumber(order) {
     cy.intercept("GET", `**/rest/SampleEntryAccessionNumberValidation**`).as(
       "accessionNoValidation",
@@ -45,15 +44,11 @@ class OrderEntityPage {
   }
   enterSiteName(siteName) {
     cy.get("input#siteName").type(siteName);
-    cy.get(".suggestions") 
-    .contains(siteName)
-    .click();
+    cy.get(".suggestions").contains(siteName).click();
   }
   searchRequester(requester) {
     cy.get("input#requesterId").type(requester);
-    cy.get(".suggestions")
-    .contains(requester)
-    .click();
+    cy.get(".suggestions").contains(requester).click();
   }
 
   requesterFName(requesterFName) {
@@ -75,10 +70,10 @@ class OrderEntityPage {
 
   printBarCode() {
     cy.get("[data-cy='print-barcode-button']", { timeout: 15000 })
-  .should("exist")
-  .should("be.visible")
-  .click();
-    }
+      .should("exist")
+      .should("be.visible")
+      .click();
+  }
 }
 
 export default OrderEntityPage;

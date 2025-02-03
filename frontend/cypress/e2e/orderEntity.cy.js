@@ -73,7 +73,7 @@ describe("Order Entity", function () {
     cy.wait(500);
   });
 
-  it("User prints barcode", function(){
+  it("User prints barcode", function () {
     orderEntityPage.printBarCode();
   });
 });
