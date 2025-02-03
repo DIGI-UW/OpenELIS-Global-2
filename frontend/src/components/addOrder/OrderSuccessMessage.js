@@ -67,9 +67,10 @@ const OrderSuccessMessage = (props) => {
           <FormattedMessage id="save.success" />
         </h4>
         <Row>
-          <Button className="" onClick={handlePrintBarCode}>
-            <FormattedMessage id="print.barcode" />
-          </Button>
+        <Button className="" onClick={handlePrintBarCode} data-cy="print-barcode-button">
+  <FormattedMessage id="print.barcode" />
+</Button>
+
         </Row>
         <Row>
           {orderFormValues.rememberSiteAndRequester && (
