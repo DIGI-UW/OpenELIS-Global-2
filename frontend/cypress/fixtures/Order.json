@@ -8,9 +8,7 @@
   "specimen": "Conventional Smear",
   "smear": "Cervix",
   "siteName": "279 - CAMES MAN",
-  "requester": "Prime Optimus",
-  "requesterFName": "Prime",
-  "requesterLName": "Optimus",
+  "requester": "Prime, Optimus",
   "labNo": "DEV012001",
   "invalidLabNo": "DEV0124000000000000"
 }

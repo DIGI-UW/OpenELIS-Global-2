@@ -21,22 +21,21 @@ class OrderEntityPage {
   selectProgram(program) {
     cy.get("#additionalQuestionsSelect").select(program);
   }
+
   selectSampleTypeOption(sampleType) {
     cy.get("#sampleId_0").select(sampleType);
   }
+
   checkPanelCheckBoxField() {
     cy.get("#panel_0_1").check({ force: true });
   }
 
-  generateLabOrderNumber() {
-    cy.contains("a.cds--link", "Generate").click();
-  }
 
   validateAcessionNumber(order) {
     cy.intercept("GET", `**/rest/SampleEntryAccessionNumberValidation**`).as(
       "accessionNoValidation",
     );
-    cy.get("#display_labNo").type(order, { delay: 300 });
+    cy.get("#display_labNo").type(order, { timeout: 10000 });
 
     cy.wait("@accessionNoValidation").then((interception) => {
       const responseBody = interception.response.body;
@@ -45,14 +44,24 @@ class OrderEntityPage {
     });
   }
   enterSiteName(siteName) {
-    cy.enterText("input#siteName", siteName);
+    cy.get("input#siteName").type(siteName);
+    cy.get(".suggestions") 
+    .contains(siteName)
+    .click();
   }
   searchRequester(requester) {
     cy.get("input#requesterId").type(requester);
+    cy.get(".suggestions")
+    .contains(requester)
+    .click();
   }
 
   requesterFName(requesterFName) {
     cy.get("input#requesterFirstName").type(requesterFName);
+  }
+
+  generateLabOrderNumber() {
+    cy.get("#generate", { timeout: 10000 }).should("be.visible").click();
   }
 
   requesterLName(requesterLName) {
@@ -63,6 +72,13 @@ class OrderEntityPage {
       .should("be.visible")
       .click();
   }
+
+  printBarCode() {
+    cy.get("[data-cy='print-barcode-button']", { timeout: 15000 })
+  .should("exist")
+  .should("be.visible")
+  .click();
+    }
 }
 
 export default OrderEntityPage;

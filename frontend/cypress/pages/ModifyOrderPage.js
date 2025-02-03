@@ -20,7 +20,6 @@ class ModifyOrderPage {
   }
 
   generateLabOrderNumber() {
-    //cy.get("#generate").should("have.class", "cds--link").click();
     cy.get("#generate", { timeout: 10000 }).should("be.visible").click();
   }
 
@@ -44,13 +43,6 @@ class ModifyOrderPage {
       .should("be.visible")
       .check({ force: true });
   }
-
-  printBarCode() {
-    cy.get("[data-cy='print-barcode-button']", { timeout: 15000 })
-  .should("exist")
-  .should("be.visible")
-  .click();
-    }
 
   assignValues() {
     cy.get(
