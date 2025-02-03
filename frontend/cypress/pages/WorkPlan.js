@@ -29,16 +29,24 @@ class WorkPlan {
 
   getPrintWorkPlanButton() {
     cy.get("#print", { timeout: 10000 })
-      .should("exist") // Ensure it exists in the DOM
-      .should("be.visible") // Ensure it's visible
+      .should("exist") 
+      .should("be.visible")
       .click();
   }
 
-  checkAndPrint() {
-    cy.get("#includedCheck_0")
-      .should("exist")
+  getFinalPrintWorkPlanButton() {
+    cy.get("#finalprint", { timeout: 10000 })
+      .should("exist") 
       .should("be.visible")
-      .check({ force: true });
+      .click();
   }
+
+  checkToRemove() {
+    cy.get("input#includedCheck_0")
+  .first()
+  .should("exist")
+  .should("be.visible")
+  .check();
+}
 }
 export default WorkPlan;
