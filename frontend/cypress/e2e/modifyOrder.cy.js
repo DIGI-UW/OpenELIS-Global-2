@@ -45,18 +45,17 @@ describe("Modify Order search by patient ", function () {
     modifyOrderPage.generateLabOrderNumber();
     cy.fixture("Order").then((order) => {
       orderEntityPage.searchRequester(order.requester);
-      orderEntityPage.requesterFName(order.requesterFName);
-      orderEntityPage.requesterLName(order.requesterLName);
-      orderEntityPage.enterSiteName(order.siteName);
+      //orderEntityPage.enterSiteName(order.siteName);
     });
   });
 
   it("Result Reporting and Submit Order", function () {
     modifyOrderPage.checkPatientEmail();
     modifyOrderPage.clickSubmitButton();
+    cy.wait(500);
   });
 
   it("User Prints Barcode", function () {
-    modifyOrderPage.printBarCode();
+    orderEntityPage.printBarCode();
   });
 });

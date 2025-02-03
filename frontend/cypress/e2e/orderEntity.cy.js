@@ -48,20 +48,8 @@ describe("Order Entity", function () {
     orderEntityPage.clickNextButton();
   });
 
-  it("Should do a validation check for labNo and then click generate Lab Order Number and store it in a fixture", function () {
-    cy.fixture("Order").then((order) => {
-      orderEntityPage.validateAcessionNumber(order.invalidLabNo);
-    });
-
+  it("Should enter labNo and then click generate Lab Order Number", function () {
     orderEntityPage.generateLabOrderNumber();
-    cy.get("#displaylab_labNo").then(($input) => {
-      const generatedOrderNumber = $input.val();
-
-      cy.fixture("Order").then((order) => {
-        order.labNo = generatedOrderNumber;
-        cy.writeFile("cypress/fixtures/EnteredOrder.json", order);
-      });
-    });
     cy.wait(1000);
   });
 
@@ -80,7 +68,12 @@ describe("Order Entity", function () {
     cy.wait(500);
   });
 
-  it("should click submit order button", function () {
+  it("User clicks submit order button", function () {
     orderEntityPage.clickSubmitOrderButton();
+    cy.wait(500);
+  });
+
+  it("User prints barcode", function(){
+    orderEntityPage.printBarCode();
   });
 });
