@@ -55,4 +55,8 @@ describe("Modify Order search by patient ", function () {
     modifyOrderPage.checkPatientEmail();
     modifyOrderPage.clickSubmitButton();
   });
+
+  it("User Prints Barcode", function(){
+    modifyOrderPage.printBarCode();
+  });
 });

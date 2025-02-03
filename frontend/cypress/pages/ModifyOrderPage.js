@@ -10,7 +10,7 @@ class ModifyOrderPage {
   }
 
   clickSubmitButton() {
-    cy.get("#submitOrderButton").should("be.visible").click();
+    cy.get("#submitOrderButton").should("be.visible").click({force:true});
   }
 
   clickNextButton() {
@@ -45,6 +45,10 @@ class ModifyOrderPage {
       .check({ force: true });
   }
 
+  printBarCode(){
+    cy.get("[data-cy='print-barcode-button']").should("be.visible").click();
+  }
+  
   assignValues() {
     // Wait for table to be visible first
     cy.get("table").should("be.visible");
