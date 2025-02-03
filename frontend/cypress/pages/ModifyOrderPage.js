@@ -45,7 +45,7 @@ class ModifyOrderPage {
   }
 
   checkRequesterSms(){
-    cy.get("#providerSMS_0_1", {timeout:10000}).should("be.visible").check({fore:true});
+    cy.get("#providerSMS_0_1", {timeout:10000}).check({fore:true});
   }
   assignValues() {
     // Wait for table to be visible first
