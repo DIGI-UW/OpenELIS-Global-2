@@ -48,10 +48,20 @@ class OrderEntityPage {
     cy.enterText("input#siteName", siteName);
   }
   searchRequester(requester) {
-    cy.enterText("input#requesterId", requester);
+    cy.get("input#requesterId").type(requester);
+  }
+
+  requesterFName(requesterFName) {
+    cy.get("input#requesterFirstName").type(requesterFName);
+  }
+
+  requesterLName(requesterLName) {
+    cy.get("input#requesterLastName").type(requesterLName);
   }
   clickSubmitOrderButton() {
-    cy.get("button.forwardButton.cds--btn--primary").click();
+    cy.get("button.forwardButton.cds--btn--primary")
+      .should("be.visible")
+      .click();
   }
 }
 

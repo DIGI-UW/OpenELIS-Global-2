@@ -15,7 +15,6 @@ before("login", () => {
 
 //"Modify Order search by accession Number", is a WIP.
 
-
 describe("Modify Order search by patient ", function () {
   it("User Visits Home Page and goes to Modify Order Page ", function () {
     homePage = loginPage.goToHomePage();
@@ -46,14 +45,14 @@ describe("Modify Order search by patient ", function () {
     modifyOrderPage.generateLabOrderNumber();
     cy.fixture("Order").then((order) => {
       orderEntityPage.searchRequester(order.requester);
-      cy.wait(4000);
+      orderEntityPage.requesterFName(order.requesterFName);
+      orderEntityPage.requesterLName(order.requesterLName);
       orderEntityPage.enterSiteName(order.siteName);
     });
   });
 
   it("Result Reporting and Submit Order", function () {
     modifyOrderPage.checkPatientEmail();
-    modifyOrderPage.checkRequesterSms();
     modifyOrderPage.clickSubmitButton();
   });
 });

@@ -19,17 +19,16 @@ class ModifyOrderPage {
       .click();
   }
 
-  generateLabOrderNumber(){
+  generateLabOrderNumber() {
     //cy.get("#generate").should("have.class", "cds--link").click();
     cy.get("#generate", { timeout: 10000 }).should("be.visible").click();
-
   }
 
-  selectSerum(){
+  selectSerum() {
     cy.get("#sampleId_0").select("Serum");
   }
   clickRejectSample() {
-    cy.get("#reject_0").check({force: true} );
+    cy.get("#reject_0").check({ force: true });
   }
 
   rejectReason() {
@@ -40,13 +39,12 @@ class ModifyOrderPage {
     return cy.get("#additionalQuestionsSelect").should("be.disabled");
   }
 
-  checkPatientEmail(){
-    cy.get("#patientEmail_0_1", {timeout:10000}).should("be.visible").check({force:true});
+  checkPatientEmail() {
+    cy.get("#patientEmail_0_1", { timeout: 10000 })
+      .should("be.visible")
+      .check({ force: true });
   }
 
-  checkRequesterSms(){
-    cy.get("#providerSMS_0_1", {timeout:10000}).check({fore:true});
-  }
   assignValues() {
     cy.get(
       ":nth-child(1) > :nth-child(4) > .cds--form-item > .cds--checkbox-label",
