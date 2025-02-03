@@ -3,39 +3,40 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class name="org.openelisglobal.provider.valueholder.Provider"
-        table="PROVIDER" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">provider_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class name="org.openelisglobal.provider.valueholder.Provider"
+		table="PROVIDER" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">provider_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <many-to-one name="person"
-            class="org.openelisglobal.person.valueholder.Person" fetch="select" lazy="false">
-            <column name="PERSON_ID" precision="10" scale="0" />
-        </many-to-one>
-        <property name="npi" type="java.lang.String">
-            <column name="NPI" length="10" />
-        </property>
-        <!-- <property name="selectedPersonId" type="java.lang.String"> <column
-            name="PERSON_ID" precision="10" scale="0" not-null="true" /> </property> -->
-        <property name="externalId" type="java.lang.String">
-            <column name="EXTERNAL_ID" length="10" />
-        </property>
-        <property name="providerType" type="java.lang.String">
-            <column name="PROVIDER_TYPE" length="1" />
-        </property>
-        <property name="fhirUuid"
-            column="fhir_uuid" type="java.util.UUID" />
-        <property name="active" column="active"
-            type="java.lang.Boolean" />
-        <property name="desynchronized" column="desynchronized"
-            type="java.lang.Boolean" />
-    </class>
+		<many-to-one name="person"
+			class="org.openelisglobal.person.valueholder.Person" fetch="select"
+			lazy="false">
+			<column name="PERSON_ID" precision="10" scale="0" />
+		</many-to-one>
+		<property name="npi" type="java.lang.String">
+			<column name="NPI" length="10" />
+		</property>
+		<!-- <property name="selectedPersonId" type="java.lang.String"> <column
+			name="PERSON_ID" precision="10" scale="0" not-null="true" /> </property> -->
+		<property name="externalId" type="java.lang.String">
+			<column name="EXTERNAL_ID" length="10" />
+		</property>
+		<property name="providerType" type="java.lang.String">
+			<column name="PROVIDER_TYPE" length="1" />
+		</property>
+		<property name="fhirUuid" column="fhir_uuid"
+			type="java.util.UUID" />
+		<property name="active" column="active"
+			type="java.lang.Boolean" />
+		<property name="desynchronized" column="desynchronized"
+			type="java.lang.Boolean" />
+	</class>
 </hibernate-mapping>

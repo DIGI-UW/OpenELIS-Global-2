@@ -3,69 +3,71 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class name="org.openelisglobal.person.valueholder.Person"
-        table="PERSON" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">person_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class name="org.openelisglobal.person.valueholder.Person"
+		table="PERSON" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">person_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="lastName" type="java.lang.String">
-            <column name="LAST_NAME" />
-        </property>
-        <property name="firstName" type="java.lang.String">
-            <column name="FIRST_NAME" />
-        </property>
-        <property name="middleName" type="java.lang.String">
-            <column name="MIDDLE_NAME" />
-        </property>
-        <property name="multipleUnit" type="java.lang.String">
-            <column name="MULTIPLE_UNIT" />
-        </property>
-        <property name="streetAddress" type="java.lang.String">
-            <column name="STREET_ADDRESS" />
-        </property>
-        <property name="city" type="java.lang.String">
-            <column name="CITY" />
-        </property>
-        <property name="state" type="java.lang.String">
-            <column name="STATE" />
-        </property>
-        <property name="zipCode" type="java.lang.String">
-            <column name="ZIP_CODE" />
-        </property>
-        <property name="country" type="java.lang.String">
-            <column name="COUNTRY" />
-        </property>
-        <property name="workPhone" type="java.lang.String">
-            <column name="WORK_PHONE" />
-        </property>
-        <property name="homePhone" type="java.lang.String">
-            <column name="HOME_PHONE" />
-        </property>
-        <property name="cellPhone" type="java.lang.String">
-            <column name="CELL_PHONE" />
-        </property>
-        <property name="primaryPhone" type="java.lang.String">
-            <column name="primary_phone" />
-        </property>
-        <property name="fax" type="java.lang.String">
-            <column name="FAX" />
-        </property>
-        <property name="email" type="java.lang.String">
-            <column name="EMAIL" />
-        </property>
-        <set name="patients" table="PATIENT" fetch="select" lazy="true">
-            <key>
-                <column name="PERSON_ID" precision="10" scale="0" not-null="true"/>
-            </key>
-            <one-to-many class="org.openelisglobal.patient.valueholder.Patient"/>
-        </set>
-    </class>
+		<property name="lastName" type="java.lang.String">
+			<column name="LAST_NAME" />
+		</property>
+		<property name="firstName" type="java.lang.String">
+			<column name="FIRST_NAME" />
+		</property>
+		<property name="middleName" type="java.lang.String">
+			<column name="MIDDLE_NAME" />
+		</property>
+		<property name="multipleUnit" type="java.lang.String">
+			<column name="MULTIPLE_UNIT" />
+		</property>
+		<property name="streetAddress" type="java.lang.String">
+			<column name="STREET_ADDRESS" />
+		</property>
+		<property name="city" type="java.lang.String">
+			<column name="CITY" />
+		</property>
+		<property name="state" type="java.lang.String">
+			<column name="STATE" />
+		</property>
+		<property name="zipCode" type="java.lang.String">
+			<column name="ZIP_CODE" />
+		</property>
+		<property name="country" type="java.lang.String">
+			<column name="COUNTRY" />
+		</property>
+		<property name="workPhone" type="java.lang.String">
+			<column name="WORK_PHONE" />
+		</property>
+		<property name="homePhone" type="java.lang.String">
+			<column name="HOME_PHONE" />
+		</property>
+		<property name="cellPhone" type="java.lang.String">
+			<column name="CELL_PHONE" />
+		</property>
+		<property name="primaryPhone" type="java.lang.String">
+			<column name="primary_phone" />
+		</property>
+		<property name="fax" type="java.lang.String">
+			<column name="FAX" />
+		</property>
+		<property name="email" type="java.lang.String">
+			<column name="EMAIL" />
+		</property>
+		<set name="patients" table="PATIENT" fetch="select" lazy="true">
+			<key>
+				<column name="PERSON_ID" precision="10" scale="0"
+					not-null="true" />
+			</key>
+			<one-to-many
+				class="org.openelisglobal.patient.valueholder.Patient" />
+		</set>
+	</class>
 </hibernate-mapping>

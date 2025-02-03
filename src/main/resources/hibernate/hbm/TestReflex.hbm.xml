@@ -2,72 +2,72 @@
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.testreflex.valueholder.TestReflex"
-        table="TEST_REFLEX" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">test_reflex_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
-        <many-to-one name="test"
-            class="org.openelisglobal.test.valueholder.Test" fetch="select">
-            <column name="TEST_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="addedTest"
-            class="org.openelisglobal.test.valueholder.Test" fetch="select">
-            <column name="ADD_TEST_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="actionScriptlet"
-            class="org.openelisglobal.scriptlet.valueholder.Scriptlet"
-            fetch="select">
-            <column name="SCRIPTLET_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="testAnalyte"
-            class="org.openelisglobal.testanalyte.valueholder.TestAnalyte"
-            fetch="select">
-            <column name="TEST_ANALYTE_ID" precision="10" scale="0" />
-        </many-to-one>
-        <!--bugzilla 1399 this was missing - removed mapping to testResultId -->
-        <many-to-one name="testResult"
-            class="org.openelisglobal.testresult.valueholder.TestResult"
-            fetch="select">
-            <column name="TST_RSLT_ID" precision="10" scale="0" />
-        </many-to-one>
-        <property name="flags" type="java.lang.String">
-            <column name="FLAGS" length="10" />
-        </property>
-        <property name="siblingReflexId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="sibling_reflex" precision="10" />
-        </property>
-        <property name="nonDictionaryValue" type="java.lang.String">
-            <column name="NON_DICTIONARY_VALUE" length="50" />
-        </property>
-        <property name="relation" column="RELATION">
-            <type name="org.hibernate.type.EnumType">
-                <param name="enumClass">org.openelisglobal.testreflex.action.bean.ReflexRuleOptions$NumericRelationOptions</param>
-                <param name="useNamed">true</param>
-            </type>
-        </property>
-        <property name="internalNote" type="java.lang.String">
-            <column name="internal_note" length="50" />
-        </property>
-        <property name="externalNote" type="java.lang.String">
-            <column name="external_note" length="50" />
-        </property>
-    </class>
-    <!-- 	<query name="testreflex.getNext"> -->
-    <!-- 		from TestReflex tr order by tr.test.testName, -->
-    <!-- 		tr.testAnalyte.analyte.analyteName -->
-    <!-- 	</query> -->
-    <!-- 	<query name="testreflex.getPrevious"> -->
-    <!-- 		from TestReflex tr order by tr.test.testName desc, -->
-    <!-- 		tr.testAnalyte.analyte.analyteName desc -->
-    <!-- 	</query> -->
+	<class
+		name="org.openelisglobal.testreflex.valueholder.TestReflex"
+		table="TEST_REFLEX" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">test_reflex_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
+		<many-to-one name="test"
+			class="org.openelisglobal.test.valueholder.Test" fetch="select">
+			<column name="TEST_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="addedTest"
+			class="org.openelisglobal.test.valueholder.Test" fetch="select">
+			<column name="ADD_TEST_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="actionScriptlet"
+			class="org.openelisglobal.scriptlet.valueholder.Scriptlet"
+			fetch="select">
+			<column name="SCRIPTLET_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="testAnalyte"
+			class="org.openelisglobal.testanalyte.valueholder.TestAnalyte"
+			fetch="select">
+			<column name="TEST_ANALYTE_ID" precision="10" scale="0" />
+		</many-to-one>
+		<!--bugzilla 1399 this was missing - removed mapping to testResultId -->
+		<many-to-one name="testResult"
+			class="org.openelisglobal.testresult.valueholder.TestResult"
+			fetch="select">
+			<column name="TST_RSLT_ID" precision="10" scale="0" />
+		</many-to-one>
+		<property name="flags" type="java.lang.String">
+			<column name="FLAGS" length="10" />
+		</property>
+		<property name="siblingReflexId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="sibling_reflex" precision="10" />
+		</property>
+		<property name="nonDictionaryValue" type="java.lang.String">
+			<column name="NON_DICTIONARY_VALUE" length="50" />
+		</property>
+		<property name="relation" column="RELATION">
+			<type name="org.hibernate.type.EnumType">
+				<param name="enumClass">org.openelisglobal.testreflex.action.bean.ReflexRuleOptions$NumericRelationOptions</param>
+				<param name="useNamed">true</param>
+			</type>
+		</property>
+		<property name="internalNote" type="java.lang.String">
+			<column name="internal_note" length="50" />
+		</property>
+		<property name="externalNote" type="java.lang.String">
+			<column name="external_note" length="50" />
+		</property>
+	</class>
+	<!-- <query name="testreflex.getNext"> -->
+	<!-- from TestReflex tr order by tr.test.testName, -->
+	<!-- tr.testAnalyte.analyte.analyteName -->
+	<!-- </query> -->
+	<!-- <query name="testreflex.getPrevious"> -->
+	<!-- from TestReflex tr order by tr.test.testName desc, -->
+	<!-- tr.testAnalyte.analyte.analyteName desc -->
+	<!-- </query> -->
 </hibernate-mapping>

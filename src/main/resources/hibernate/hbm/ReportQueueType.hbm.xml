@@ -1,21 +1,21 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-                                   "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+								"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping>
-    <class dynamic-update="true"
-        name="org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportQueueType"
-        table="report_queue_type">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">report_queue_type_seq</param>
-            </generator>
-        </id>
-        <property column="name" generated="never" lazy="false"
-            name="name" type="string" />
-        <property column="description" generated="never" lazy="false"
-            name="description" type="string" />
-    </class>
+	<class dynamic-update="true"
+		name="org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportQueueType"
+		table="report_queue_type">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">report_queue_type_seq</param>
+			</generator>
+		</id>
+		<property column="name" generated="never" lazy="false"
+			name="name" type="string" />
+		<property column="description" generated="never" lazy="false"
+			name="description" type="string" />
+	</class>
 </hibernate-mapping>

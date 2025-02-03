@@ -3,30 +3,30 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.scheduler.valueholder.CronScheduler"
-        table="quartz_cron_scheduler" optimistic-lock="version"
-        dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">quartz_cron_scheduler_seq</param>
-            </generator>
-        </id>
+	<class
+		name="org.openelisglobal.scheduler.valueholder.CronScheduler"
+		table="quartz_cron_scheduler" optimistic-lock="version"
+		dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">quartz_cron_scheduler_seq</param>
+			</generator>
+		</id>
 
-        <property name="cronStatement" column="cron_statement"
-            type="string" />
-        <property name="lastRun" column="last_run" type="timestamp" />
-        <property name="active" column="active" type="boolean" />
-        <property name="runIfPast" column="run_if_past"
-            type="boolean" />
-        <property name="name" column="name" type="string" />
-        <property name="jobName" column="job_name" type="string" />
-        <property name="displayKey" column="display_key"
-            type="string" />
-        <property name="descriptionKey" column="description_key"
-            type="string" />
-    </class>
+		<property name="cronStatement" column="cron_statement"
+			type="string" />
+		<property name="lastRun" column="last_run" type="timestamp" />
+		<property name="active" column="active" type="boolean" />
+		<property name="runIfPast" column="run_if_past"
+			type="boolean" />
+		<property name="name" column="name" type="string" />
+		<property name="jobName" column="job_name" type="string" />
+		<property name="displayKey" column="display_key"
+			type="string" />
+		<property name="descriptionKey" column="description_key"
+			type="string" />
+	</class>
 </hibernate-mapping>

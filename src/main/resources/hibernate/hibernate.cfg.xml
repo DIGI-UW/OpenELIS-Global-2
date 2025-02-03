@@ -1,165 +1,165 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE hibernate-configuration PUBLIC
-          "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
-          "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+		"-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+		"http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
 
 <!--suppress HibernateConfigDomInspection -->
 <hibernate-configuration>
 
-    <session-factory>
-        <!-- ENABLE FOR DATASOURCE -->
-        <!--bugzilla 1908 modified for Vietnam: added prefix java:comp/env/ -->
-        <property name="hibernate.default_schema">clinlims</property>
-        <!-- <property name="dialect">org.hibernate.dialect.Oracle9Dialect</property> -->
-        <!-- use in Vietnam -->
-        <property name="dialect">org.hibernate.dialect.PostgreSQLDialect</property>
-        <property name="show_sql">false</property>
-        <property name="hibernate.format_sql">true</property>
-        <property name="hibernate.jdbc.batch_size">50</property>
-        <property name="hibernate.jdbc.batch_versioned_data">true</property>
-        <!-- <property name="transaction.factory_class">org.hibernate.transaction.JDBCTransactionFactory</property>
-            <property name="current_session_context_class">thread</property> -->
-        <property name="hibernate.query.factory_class">org.hibernate.hql.internal.classic.ClassicQueryTranslatorFactory</property>
-        <property name="hibernate.cache.provider_class">org.hibernate.cache.NoCacheProvider</property>
-        <property name="hibernate.cache.use_second_level_cache">false</property>
-        <property name="hibernate.cache.use_query_cache">false</property>
-        <property name="hibernate.current_session_context_class">thread</property>
+	<session-factory>
+		<!-- ENABLE FOR DATASOURCE -->
+		<!--bugzilla 1908 modified for Vietnam: added prefix java:comp/env/ -->
+		<property name="hibernate.default_schema">clinlims</property>
+		<!-- <property name="dialect">org.hibernate.dialect.Oracle9Dialect</property> -->
+		<!-- use in Vietnam -->
+		<property name="dialect">org.hibernate.dialect.PostgreSQLDialect</property>
+		<property name="show_sql">false</property>
+		<property name="hibernate.format_sql">true</property>
+		<property name="hibernate.jdbc.batch_size">50</property>
+		<property name="hibernate.jdbc.batch_versioned_data">true</property>
+		<!-- <property name="transaction.factory_class">org.hibernate.transaction.JDBCTransactionFactory</property>
+			<property name="current_session_context_class">thread</property> -->
+		<property name="hibernate.query.factory_class">org.hibernate.hql.internal.classic.ClassicQueryTranslatorFactory</property>
+		<property name="hibernate.cache.provider_class">org.hibernate.cache.NoCacheProvider</property>
+		<property name="hibernate.cache.use_second_level_cache">false</property>
+		<property name="hibernate.cache.use_query_cache">false</property>
+		<property name="hibernate.current_session_context_class">thread</property>
 
 
-        <mapping resource="hibernate/hbm/Action.hbm.xml" />
-        <mapping resource="hibernate/hbm/Analysis.hbm.xml" />
-        <mapping resource="hibernate/hbm/AnalysisQaEvent.hbm.xml" />
-        <mapping
-            resource="hibernate/hbm/AnalysisQaEventAction.hbm.xml" />
-        <mapping resource="hibernate/hbm/Analyte.hbm.xml" />
-        <mapping resource="hibernate/hbm/History.hbm.xml" />
-        <mapping resource="hibernate/hbm/CityStateZip.hbm.xml" />
-        <mapping resource="hibernate/hbm/CityView.hbm.xml" />
-        <mapping resource="hibernate/hbm/StateView.hbm.xml" />
-        <mapping resource="hibernate/hbm/County.hbm.xml" />
-        <mapping resource="hibernate/hbm/Dictionary.hbm.xml" />
-        <mapping resource="hibernate/hbm/DictionaryCategory.hbm.xml" />
-        <mapping resource="hibernate/hbm/Label.hbm.xml" />
-        <mapping resource="hibernate/hbm/Method.hbm.xml" />
-        <mapping resource="hibernate/hbm/Note.hbm.xml" />
-        <mapping resource="hibernate/hbm/Organization.hbm.xml" />
-        <mapping resource="hibernate/hbm/Panel.hbm.xml" />
-        <mapping resource="hibernate/hbm/PanelItem.hbm.xml" />
-        <mapping resource="hibernate/hbm/Patient.hbm.xml" />
-        <mapping resource="hibernate/hbm/PatientType.hbm.xml" />
-        <mapping resource="hibernate/hbm/Person.hbm.xml" />
-        <mapping resource="hibernate/hbm/Program.hbm.xml" />
-        <mapping resource="hibernate/hbm/Project.hbm.xml" />
-        <mapping resource="hibernate/hbm/Provider.hbm.xml" />
-        <mapping resource="hibernate/hbm/QaEvent.hbm.xml" />
-        <mapping resource="hibernate/hbm/ReferenceTables.hbm.xml" />
-        <mapping resource="hibernate/hbm/Region.hbm.xml" />
-        <mapping
-            resource="hibernate/hbm/SampleTransmissionSequence.hbm.xml" />
-        <mapping resource="hibernate/hbm/Result.hbm.xml" />
-        <mapping resource="hibernate/hbm/ResultSignature.hbm.xml" />
-        <mapping resource="hibernate/hbm/ResultInventory.hbm.xml" />
-        <mapping resource="hibernate/hbm/ResultLimit.hbm.xml" />
-        <mapping resource="hibernate/hbm/Sample.hbm.xml" />
-        <mapping resource="hibernate/hbm/SampleDomain.hbm.xml" />
-        <mapping resource="hibernate/hbm/SampleHuman.hbm.xml" />
-        <mapping resource="hibernate/hbm/SampleItem.hbm.xml" />
-        <mapping resource="hibernate/hbm/SampleOrganization.hbm.xml" />
-        <mapping resource="hibernate/hbm/SampleProject.hbm.xml" />
-        <mapping resource="hibernate/hbm/SampleQaEvent.hbm.xml" />
-        <mapping resource="hibernate/hbm/SampleQaEventAction.hbm.xml" />
-        <mapping resource="hibernate/hbm/SampleTracking.hbm.xml" />
-        <mapping resource="hibernate/hbm/Scriptlet.hbm.xml" />
-        <mapping resource="hibernate/hbm/SourceOfSample.hbm.xml" />
-        <mapping resource="hibernate/hbm/StatusOfSample.hbm.xml" />
-        <mapping resource="hibernate/hbm/SystemUser.hbm.xml" />
-        <mapping resource="hibernate/hbm/Test.hbm.xml" />
-        <mapping resource="hibernate/hbm/TestSection.hbm.xml" />
-        <mapping resource="hibernate/hbm/RenameTestSection.hbm.xml" />
-        <mapping resource="hibernate/hbm/RenameMethod.hbm.xml" />
-        <mapping resource="hibernate/hbm/TestAnalyte.hbm.xml" />
-        <mapping
-            resource="hibernate/hbm/TestAnalyteTestResult.hbm.xml" />
-        <mapping resource="hibernate/hbm/TestReflex.hbm.xml" />
-        <mapping resource="hibernate/hbm/TestResult.hbm.xml" />
-        <mapping resource="hibernate/hbm/TestTrailer.hbm.xml" />
-        <mapping resource="hibernate/hbm/TypeOfSample.hbm.xml" />
-        <mapping resource="hibernate/hbm/TypeOfTestResult.hbm.xml" />
-        <mapping resource="hibernate/hbm/UnitOfMeasure.hbm.xml" />
-        <mapping resource="hibernate/hbm/SystemModule.hbm.xml" />
-        <mapping resource="hibernate/hbm/SystemUserModule.hbm.xml" />
-        <mapping resource="hibernate/hbm/SystemUserSection.hbm.xml" />
-        <mapping resource="hibernate/hbm/SamplePdf.hbm.xml" />
-        <mapping resource="hibernate/hbm/SampleNewborn.hbm.xml" />
-        <mapping resource="hibernate/hbm/PatientRelation.hbm.xml" />
-        <mapping resource="hibernate/hbm/PatientIdentity.hbm.xml" />
-        <mapping resource="hibernate/hbm/PatientIdentityType.hbm.xml" />
-        <mapping resource="hibernate/hbm/PatientPatientType.hbm.xml" />
-        <mapping resource="hibernate/hbm/TypeOfSamplePanel.hbm.xml" />
-        <mapping resource="hibernate/hbm/TypeOfSampleTest.hbm.xml" />
-        <mapping resource="hibernate/hbm/InventoryItem.hbm.xml" />
-        <mapping resource="hibernate/hbm/InventoryLocation.hbm.xml" />
-        <mapping resource="hibernate/hbm/InventoryReceipt.hbm.xml" />
-        <mapping resource="hibernate/hbm/Role.hbm.xml" />
-        <mapping resource="hibernate/hbm/UserRole.hbm.xml" />
-        <mapping resource="hibernate/hbm/SystemRoleModule.hbm.xml" />
-        <mapping resource="hibernate/hbm/Analyzer.hbm.xml" />
-        <mapping resource="hibernate/hbm/AnalyzerResults.hbm.xml" />
-        <mapping resource="hibernate/hbm/OrganizationType.hbm.xml" />
-        <mapping resource="hibernate/hbm/SampleRequester.hbm.xml" />
-        <mapping resource="hibernate/hbm/DatabaseChangeLog.hbm.xml" />
-        <mapping resource="hibernate/hbm/SiteInformation.hbm.xml" />
-        <mapping
-            resource="hibernate/hbm/SiteInformationDomain.hbm.xml" />
-        <mapping resource="hibernate/hbm/ObservationHistory.hbm.xml" />
-        <mapping
-            resource="hibernate/hbm/ObservationHistoryType.hbm.xml" />
-        <mapping resource="hibernate/hbm/AnalyzerTestMapping.hbm.xml" />
-        <mapping resource="hibernate/hbm/ReferralReason.hbm.xml" />
-        <mapping resource="hibernate/hbm/ReferralType.hbm.xml" />
-        <mapping resource="hibernate/hbm/Referral.hbm.xml" />
-        <mapping resource="hibernate/hbm/ReferralResult.hbm.xml" />
-        <mapping resource="hibernate/hbm/TestCodeType.hbm.xml" />
-        <mapping
-            resource="hibernate/hbm/OrganizationHL7Schema.hbm.xml" />
-        <mapping resource="hibernate/hbm/TestCode.hbm.xml" />
-        <mapping resource="hibernate/hbm/RequesterType.hbm.xml" />
-        <mapping resource="hibernate/hbm/AddressPart.hbm.xml" />
-        <mapping resource="hibernate/hbm/OrganizationAddress.hbm.xml" />
-        <mapping resource="hibernate/hbm/PersonAddress.hbm.xml" />
-        <mapping resource="hibernate/hbm/OrganizationContact.hbm.xml" />
-        <mapping resource="hibernate/hbm/Menu.hbm.xml" />
-        <mapping resource="hibernate/hbm/CronScheduler.hbm.xml" />
-        <mapping resource="hibernate/hbm/ReportExternalExport.hbm.xml" />
-        <mapping resource="hibernate/hbm/ReportQueueType.hbm.xml" />
-        <mapping resource="hibernate/hbm/ReportExternalImport.hbm.xml" />
-        <mapping resource="hibernate/hbm/DocumentTrack.hbm.xml" />
-        <mapping resource="hibernate/hbm/DocumentType.hbm.xml" />
-        <mapping resource="hibernate/hbm/QaObservationType.hbm.xml" />
-        <mapping resource="hibernate/hbm/QaObservation.hbm.xml" />
-        <mapping resource="hibernate/hbm/ElectronicOrder.hbm.xml" />
-        <mapping resource="hibernate/hbm/TestDictionary.hbm.xml" />
-        <mapping resource="hibernate/hbm/Localization.hbm.xml" />
-        <mapping resource="hibernate/hbm/Image.hbm.xml" />
-        <mapping resource="hibernate/hbm/ReferringTestResult.hbm.xml" />
-        <mapping resource="hibernate/hbm/BarcodeLabelInfo.hbm.xml" />
-        <mapping resource="hibernate/hbm/HL7MessageOut.hbm.xml" />
-        <mapping resource="hibernate/hbm/DataIndicator.hbm.xml" />
-        <mapping resource="hibernate/hbm/DataResource.hbm.xml" />
-        <mapping resource="hibernate/hbm/DataValue.hbm.xml" />
-        <mapping resource="hibernate/hbm/TypeOfDataIndicator.hbm.xml" />
-        <mapping resource="hibernate/hbm/SystemModuleUrl.hbm.xml" />
-        <mapping resource="hibernate/hbm/SystemModuleParam.hbm.xml" />
-        <mapping resource="hibernate/hbm/NceCategory.hbm.xml" />
-        <mapping resource="hibernate/hbm/NcEvent.hbm.xml" />
-        <mapping resource="hibernate/hbm/NceActionLog.hbm.xml" />
-        <mapping resource="hibernate/hbm/NceSpecimen.hbm.xml" />
-        <mapping resource="hibernate/hbm/NceType.hbm.xml" />
-        <mapping resource="hibernate/hbm/NceSpecimen.hbm.xml" />
-        <mapping resource="hibernate/hbm/LabComponent.hbm.xml" />
-        <mapping resource="hibernate/hbm/NcEvent.hbm.xml" />
-        <mapping resource="hibernate/hbm/Report.hbm.xml" />
-        <mapping resource="hibernate/hbm/PatientContact.hbm.xml"/>
-    </session-factory>
+		<mapping resource="hibernate/hbm/Action.hbm.xml" />
+		<mapping resource="hibernate/hbm/Analysis.hbm.xml" />
+		<mapping resource="hibernate/hbm/AnalysisQaEvent.hbm.xml" />
+		<mapping
+			resource="hibernate/hbm/AnalysisQaEventAction.hbm.xml" />
+		<mapping resource="hibernate/hbm/Analyte.hbm.xml" />
+		<mapping resource="hibernate/hbm/History.hbm.xml" />
+		<mapping resource="hibernate/hbm/CityStateZip.hbm.xml" />
+		<mapping resource="hibernate/hbm/CityView.hbm.xml" />
+		<mapping resource="hibernate/hbm/StateView.hbm.xml" />
+		<mapping resource="hibernate/hbm/County.hbm.xml" />
+		<mapping resource="hibernate/hbm/Dictionary.hbm.xml" />
+		<mapping resource="hibernate/hbm/DictionaryCategory.hbm.xml" />
+		<mapping resource="hibernate/hbm/Label.hbm.xml" />
+		<mapping resource="hibernate/hbm/Method.hbm.xml" />
+		<mapping resource="hibernate/hbm/Note.hbm.xml" />
+		<mapping resource="hibernate/hbm/Organization.hbm.xml" />
+		<mapping resource="hibernate/hbm/Panel.hbm.xml" />
+		<mapping resource="hibernate/hbm/PanelItem.hbm.xml" />
+		<mapping resource="hibernate/hbm/Patient.hbm.xml" />
+		<mapping resource="hibernate/hbm/PatientType.hbm.xml" />
+		<mapping resource="hibernate/hbm/Person.hbm.xml" />
+		<mapping resource="hibernate/hbm/Program.hbm.xml" />
+		<mapping resource="hibernate/hbm/Project.hbm.xml" />
+		<mapping resource="hibernate/hbm/Provider.hbm.xml" />
+		<mapping resource="hibernate/hbm/QaEvent.hbm.xml" />
+		<mapping resource="hibernate/hbm/ReferenceTables.hbm.xml" />
+		<mapping resource="hibernate/hbm/Region.hbm.xml" />
+		<mapping
+			resource="hibernate/hbm/SampleTransmissionSequence.hbm.xml" />
+		<mapping resource="hibernate/hbm/Result.hbm.xml" />
+		<mapping resource="hibernate/hbm/ResultSignature.hbm.xml" />
+		<mapping resource="hibernate/hbm/ResultInventory.hbm.xml" />
+		<mapping resource="hibernate/hbm/ResultLimit.hbm.xml" />
+		<mapping resource="hibernate/hbm/Sample.hbm.xml" />
+		<mapping resource="hibernate/hbm/SampleDomain.hbm.xml" />
+		<mapping resource="hibernate/hbm/SampleHuman.hbm.xml" />
+		<mapping resource="hibernate/hbm/SampleItem.hbm.xml" />
+		<mapping resource="hibernate/hbm/SampleOrganization.hbm.xml" />
+		<mapping resource="hibernate/hbm/SampleProject.hbm.xml" />
+		<mapping resource="hibernate/hbm/SampleQaEvent.hbm.xml" />
+		<mapping resource="hibernate/hbm/SampleQaEventAction.hbm.xml" />
+		<mapping resource="hibernate/hbm/SampleTracking.hbm.xml" />
+		<mapping resource="hibernate/hbm/Scriptlet.hbm.xml" />
+		<mapping resource="hibernate/hbm/SourceOfSample.hbm.xml" />
+		<mapping resource="hibernate/hbm/StatusOfSample.hbm.xml" />
+		<mapping resource="hibernate/hbm/SystemUser.hbm.xml" />
+		<mapping resource="hibernate/hbm/Test.hbm.xml" />
+		<mapping resource="hibernate/hbm/TestSection.hbm.xml" />
+		<mapping resource="hibernate/hbm/RenameTestSection.hbm.xml" />
+		<mapping resource="hibernate/hbm/RenameMethod.hbm.xml" />
+		<mapping resource="hibernate/hbm/TestAnalyte.hbm.xml" />
+		<mapping
+			resource="hibernate/hbm/TestAnalyteTestResult.hbm.xml" />
+		<mapping resource="hibernate/hbm/TestReflex.hbm.xml" />
+		<mapping resource="hibernate/hbm/TestResult.hbm.xml" />
+		<mapping resource="hibernate/hbm/TestTrailer.hbm.xml" />
+		<mapping resource="hibernate/hbm/TypeOfSample.hbm.xml" />
+		<mapping resource="hibernate/hbm/TypeOfTestResult.hbm.xml" />
+		<mapping resource="hibernate/hbm/UnitOfMeasure.hbm.xml" />
+		<mapping resource="hibernate/hbm/SystemModule.hbm.xml" />
+		<mapping resource="hibernate/hbm/SystemUserModule.hbm.xml" />
+		<mapping resource="hibernate/hbm/SystemUserSection.hbm.xml" />
+		<mapping resource="hibernate/hbm/SamplePdf.hbm.xml" />
+		<mapping resource="hibernate/hbm/SampleNewborn.hbm.xml" />
+		<mapping resource="hibernate/hbm/PatientRelation.hbm.xml" />
+		<mapping resource="hibernate/hbm/PatientIdentity.hbm.xml" />
+		<mapping resource="hibernate/hbm/PatientIdentityType.hbm.xml" />
+		<mapping resource="hibernate/hbm/PatientPatientType.hbm.xml" />
+		<mapping resource="hibernate/hbm/TypeOfSamplePanel.hbm.xml" />
+		<mapping resource="hibernate/hbm/TypeOfSampleTest.hbm.xml" />
+		<mapping resource="hibernate/hbm/InventoryItem.hbm.xml" />
+		<mapping resource="hibernate/hbm/InventoryLocation.hbm.xml" />
+		<mapping resource="hibernate/hbm/InventoryReceipt.hbm.xml" />
+		<mapping resource="hibernate/hbm/Role.hbm.xml" />
+		<mapping resource="hibernate/hbm/UserRole.hbm.xml" />
+		<mapping resource="hibernate/hbm/SystemRoleModule.hbm.xml" />
+		<mapping resource="hibernate/hbm/Analyzer.hbm.xml" />
+		<mapping resource="hibernate/hbm/AnalyzerResults.hbm.xml" />
+		<mapping resource="hibernate/hbm/OrganizationType.hbm.xml" />
+		<mapping resource="hibernate/hbm/SampleRequester.hbm.xml" />
+		<mapping resource="hibernate/hbm/DatabaseChangeLog.hbm.xml" />
+		<mapping resource="hibernate/hbm/SiteInformation.hbm.xml" />
+		<mapping
+			resource="hibernate/hbm/SiteInformationDomain.hbm.xml" />
+		<mapping resource="hibernate/hbm/ObservationHistory.hbm.xml" />
+		<mapping
+			resource="hibernate/hbm/ObservationHistoryType.hbm.xml" />
+		<mapping resource="hibernate/hbm/AnalyzerTestMapping.hbm.xml" />
+		<mapping resource="hibernate/hbm/ReferralReason.hbm.xml" />
+		<mapping resource="hibernate/hbm/ReferralType.hbm.xml" />
+		<mapping resource="hibernate/hbm/Referral.hbm.xml" />
+		<mapping resource="hibernate/hbm/ReferralResult.hbm.xml" />
+		<mapping resource="hibernate/hbm/TestCodeType.hbm.xml" />
+		<mapping
+			resource="hibernate/hbm/OrganizationHL7Schema.hbm.xml" />
+		<mapping resource="hibernate/hbm/TestCode.hbm.xml" />
+		<mapping resource="hibernate/hbm/RequesterType.hbm.xml" />
+		<mapping resource="hibernate/hbm/AddressPart.hbm.xml" />
+		<mapping resource="hibernate/hbm/OrganizationAddress.hbm.xml" />
+		<mapping resource="hibernate/hbm/PersonAddress.hbm.xml" />
+		<mapping resource="hibernate/hbm/OrganizationContact.hbm.xml" />
+		<mapping resource="hibernate/hbm/Menu.hbm.xml" />
+		<mapping resource="hibernate/hbm/CronScheduler.hbm.xml" />
+		<mapping resource="hibernate/hbm/ReportExternalExport.hbm.xml" />
+		<mapping resource="hibernate/hbm/ReportQueueType.hbm.xml" />
+		<mapping resource="hibernate/hbm/ReportExternalImport.hbm.xml" />
+		<mapping resource="hibernate/hbm/DocumentTrack.hbm.xml" />
+		<mapping resource="hibernate/hbm/DocumentType.hbm.xml" />
+		<mapping resource="hibernate/hbm/QaObservationType.hbm.xml" />
+		<mapping resource="hibernate/hbm/QaObservation.hbm.xml" />
+		<mapping resource="hibernate/hbm/ElectronicOrder.hbm.xml" />
+		<mapping resource="hibernate/hbm/TestDictionary.hbm.xml" />
+		<mapping resource="hibernate/hbm/Localization.hbm.xml" />
+		<mapping resource="hibernate/hbm/Image.hbm.xml" />
+		<mapping resource="hibernate/hbm/ReferringTestResult.hbm.xml" />
+		<mapping resource="hibernate/hbm/BarcodeLabelInfo.hbm.xml" />
+		<mapping resource="hibernate/hbm/HL7MessageOut.hbm.xml" />
+		<mapping resource="hibernate/hbm/DataIndicator.hbm.xml" />
+		<mapping resource="hibernate/hbm/DataResource.hbm.xml" />
+		<mapping resource="hibernate/hbm/DataValue.hbm.xml" />
+		<mapping resource="hibernate/hbm/TypeOfDataIndicator.hbm.xml" />
+		<mapping resource="hibernate/hbm/SystemModuleUrl.hbm.xml" />
+		<mapping resource="hibernate/hbm/SystemModuleParam.hbm.xml" />
+		<mapping resource="hibernate/hbm/NceCategory.hbm.xml" />
+		<mapping resource="hibernate/hbm/NcEvent.hbm.xml" />
+		<mapping resource="hibernate/hbm/NceActionLog.hbm.xml" />
+		<mapping resource="hibernate/hbm/NceSpecimen.hbm.xml" />
+		<mapping resource="hibernate/hbm/NceType.hbm.xml" />
+		<mapping resource="hibernate/hbm/NceSpecimen.hbm.xml" />
+		<mapping resource="hibernate/hbm/LabComponent.hbm.xml" />
+		<mapping resource="hibernate/hbm/NcEvent.hbm.xml" />
+		<mapping resource="hibernate/hbm/Report.hbm.xml" />
+		<mapping resource="hibernate/hbm/PatientContact.hbm.xml" />
+	</session-factory>
 
 </hibernate-configuration>

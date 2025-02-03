@@ -3,52 +3,52 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class name="org.openelisglobal.panelitem.valueholder.PanelItem"
-        table="PANEL_ITEM" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">panel_item_seq</param>
-            </generator>
-        </id>
+	<class name="org.openelisglobal.panelitem.valueholder.PanelItem"
+		table="PANEL_ITEM" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">panel_item_seq</param>
+			</generator>
+		</id>
 
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <many-to-one name="panel"
-            class="org.openelisglobal.panel.valueholder.Panel" fetch="select"
-            lazy="false">
-            <column name="PANEL_ID" precision="10" scale="0"
-                not-null="true" />
-        </many-to-one>
+		<many-to-one name="panel"
+			class="org.openelisglobal.panel.valueholder.Panel" fetch="select"
+			lazy="false">
+			<column name="PANEL_ID" precision="10" scale="0"
+				not-null="true" />
+		</many-to-one>
 
-        <many-to-one name="test"
-            class="org.openelisglobal.test.valueholder.Test" fetch="select"
-            lazy="false">
-            <column name="TEST_ID" precision="10" scale="0"
-                not-null="true" />
-        </many-to-one>
+		<many-to-one name="test"
+			class="org.openelisglobal.test.valueholder.Test" fetch="select"
+			lazy="false">
+			<column name="TEST_ID" precision="10" scale="0"
+				not-null="true" />
+		</many-to-one>
 
-        <property name="sortOrder"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="SORT_ORDER" precision="22" scale="0" />
-        </property>
-        <!--bugzilla 2559 -->
-        <property name="testName" type="java.lang.String">
-            <column name="TEST_LOCAL_ABBREV" length="10" unique="true" />
-        </property>
-        <property name="methodName" type="java.lang.String">
-            <column name="METHOD_NAME" length="20" />
-        </property>
+		<property name="sortOrder"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="SORT_ORDER" precision="22" scale="0" />
+		</property>
+		<!--bugzilla 2559 -->
+		<property name="testName" type="java.lang.String">
+			<column name="TEST_LOCAL_ABBREV" length="10" unique="true" />
+		</property>
+		<property name="methodName" type="java.lang.String">
+			<column name="METHOD_NAME" length="20" />
+		</property>
 
 
-    </class>
-<!-- 	<query name="panelitem.getNext"> -->
-<!-- 		from PanelItem pi order by pi.panel.panelName, pi.testName -->
-<!-- 	</query> -->
-<!-- 	<query name="panelitem.getPrevious"> -->
-<!-- 		from PanelItem pi order by pi.panel.panelName desc, pi.testName desc -->
-<!-- 	</query> -->
+	</class>
+	<!-- <query name="panelitem.getNext"> -->
+	<!-- from PanelItem pi order by pi.panel.panelName, pi.testName -->
+	<!-- </query> -->
+	<!-- <query name="panelitem.getPrevious"> -->
+	<!-- from PanelItem pi order by pi.panel.panelName desc, pi.testName desc -->
+	<!-- </query> -->
 </hibernate-mapping>

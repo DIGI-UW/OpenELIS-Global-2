@@ -3,35 +3,35 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.result.valueholder.ResultSignature"
-        table="RESULT_SIGNATURE" optimistic-lock="version"
-        dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">result_signature_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class
+		name="org.openelisglobal.result.valueholder.ResultSignature"
+		table="RESULT_SIGNATURE" optimistic-lock="version"
+		dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">result_signature_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="systemUserId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="SYSTEM_USER_ID" precision="10" scale="0" />
-        </property>
-        <property name="resultId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="result_id" precision="10" scale="0" />
-        </property>
-        <property name="isSupervisor" type="boolean">
-            <column name="is_supervisor" />
-        </property>
+		<property name="systemUserId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="SYSTEM_USER_ID" precision="10" scale="0" />
+		</property>
+		<property name="resultId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="result_id" precision="10" scale="0" />
+		</property>
+		<property name="isSupervisor" type="boolean">
+			<column name="is_supervisor" />
+		</property>
 
-        <property name="nonUserName" type="java.lang.String">
-            <column name="non_user_name" />
-        </property>
-    </class>
+		<property name="nonUserName" type="java.lang.String">
+			<column name="non_user_name" />
+		</property>
+	</class>
 </hibernate-mapping>

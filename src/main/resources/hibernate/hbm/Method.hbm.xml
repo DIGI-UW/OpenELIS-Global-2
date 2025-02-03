@@ -2,54 +2,51 @@
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class name="org.openelisglobal.method.valueholder.Method"
-        table="METHOD" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">method_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class name="org.openelisglobal.method.valueholder.Method"
+		table="METHOD" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">method_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="methodName" type="java.lang.String">
-            <column name="NAME" length="20" not-null="true" />
-        </property>
-        <property name="description" type="java.lang.String">
-            <column name="DESCRIPTION" length="60" not-null="true" />
-        </property>
-        <property name="reportingDescription" type="java.lang.String">
-            <column name="REPORTING_DESCRIPTION" length="60" />
-        </property>
-        <property name="isActive" type="java.lang.String">
-            <column name="IS_ACTIVE" length="1" />
-        </property>
-        <property name="activeBeginDate" type="java.sql.Date">
-            <column name="ACTIVE_BEGIN" length="7" />
-        </property>
-        <property name="activeEndDate" type="java.sql.Date">
-            <column name="ACTIVE_END" length="7" />
-        </property>
-        <many-to-one name="localization"
-            class="org.openelisglobal.localization.valueholder.Localization"
-            fetch="select" lazy="false">
-            <column name="name_localization_id" precision="10" scale="0" />
-        </many-to-one>
+		<property name="methodName" type="java.lang.String">
+			<column name="NAME" length="20" not-null="true" />
+		</property>
+		<property name="description" type="java.lang.String">
+			<column name="DESCRIPTION" length="60" not-null="true" />
+		</property>
+		<property name="reportingDescription" type="java.lang.String">
+			<column name="REPORTING_DESCRIPTION" length="60" />
+		</property>
+		<property name="isActive" type="java.lang.String">
+			<column name="IS_ACTIVE" length="1" />
+		</property>
+		<property name="activeBeginDate" type="java.sql.Date">
+			<column name="ACTIVE_BEGIN" length="7" />
+		</property>
+		<property name="activeEndDate" type="java.sql.Date">
+			<column name="ACTIVE_END" length="7" />
+		</property>
+		<many-to-one name="localization"
+			class="org.openelisglobal.localization.valueholder.Localization"
+			fetch="select" lazy="false">
+			<column name="name_localization_id" precision="10" scale="0" />
+		</many-to-one>
 
-        <!-- <set name="instrumentAnalytes" inverse="true"> <key> <column name="METHOD_ID"
-            precision="10" scale="0" /> </key> <one-to-many
-        class="org.openelisglobal.instrumentanalyte.valueholder.InstrumentAnalyte"
-            /> </set> <set name="methodResults" inverse="true"> <key> <column name="METHOD_ID"
-            precision="10" scale="0" /> </key> <one-to-many
-        class="org.openelisglobal.methodresult.valueholder.MethodResult"
-            /> </set> <set name="methodAnalytes" inverse="true"> <key> <column name="METHOD_ID"
-            precision="10" scale="0" /> </key> <one-to-many
-        class="org.openelisglobal.methodanalyte.valueholder.MethodAnalyte"
-            /> </set> <set name="tests" inverse="true"> <key> <column name="METHOD_ID"
-            precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.test.valueholder.Test"
-            /> </set> -->
-    </class>
+		<!-- <set name="instrumentAnalytes" inverse="true"> <key> <column name="METHOD_ID"
+			precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.instrumentanalyte.valueholder.InstrumentAnalyte"
+			/> </set> <set name="methodResults" inverse="true"> <key> <column name="METHOD_ID"
+			precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.methodresult.valueholder.MethodResult"
+			/> </set> <set name="methodAnalytes" inverse="true"> <key> <column name="METHOD_ID"
+			precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.methodanalyte.valueholder.MethodAnalyte"
+			/> </set> <set name="tests" inverse="true"> <key> <column name="METHOD_ID"
+			precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.test.valueholder.Test"
+			/> </set> -->
+	</class>
 </hibernate-mapping>

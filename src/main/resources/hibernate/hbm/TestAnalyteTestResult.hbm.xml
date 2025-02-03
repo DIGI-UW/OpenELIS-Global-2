@@ -3,45 +3,45 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.testanalyte.valueholder.TestAnalyteTestResult"
-        table="TEST_ANALYTE_TEST_RESULT">
-        <id name="testAnalyteTestResultId" type="java.lang.String">
-            <column name="testAnalyteTestResultId" length="81" />
-            <generator class="assigned" />
-        </id>
-        <property name="analyteName" type="java.lang.String">
-            <column name="ANALYTENAME" length="60" />
-        </property>
-        <property name="externalId" type="java.lang.String">
-            <column name="EXTERNALID" length="20" />
-        </property>
-        <property name="testId" type="java.lang.String">
-            <column name="TESTID" precision="10" scale="0" />
-        </property>
-        <property name="testAnalyteId" type="java.lang.String">
-            <column name="TESTANALYTEID" precision="10" scale="0" />
-        </property>
-        <property name="testResultId" type="java.lang.String">
-            <column name="TESTRESULTID" precision="22" scale="0" />
-        </property>
-        <property name="resultGroup" type="java.lang.String">
-            <column name="RESULTGROUP" precision="22" scale="0" />
-        </property>
-        <property name="resultValue" type="java.lang.String">
-            <column name="RESULTVALUE" length="4000" />
-        </property>
-        <property name="resultType" type="java.lang.String">
-            <column name="RESULTTYPE" length="1" />
-        </property>
-        <property name="testAnalyteType" type="java.lang.String">
-            <column name="TESTANALYTETYPE" length="1" />
-        </property>
-        <property name="sortOrder" type="java.lang.String">
-            <column name="SORTORDER" precision="22" scale="0" />
-        </property>
-        <property name="isActive" type="java.lang.String">
-            <column name="ISACTIVE" length="1" />
-        </property>
-    </class>
+	<class
+		name="org.openelisglobal.testanalyte.valueholder.TestAnalyteTestResult"
+		table="TEST_ANALYTE_TEST_RESULT">
+		<id name="testAnalyteTestResultId" type="java.lang.String">
+			<column name="testAnalyteTestResultId" length="81" />
+			<generator class="assigned" />
+		</id>
+		<property name="analyteName" type="java.lang.String">
+			<column name="ANALYTENAME" length="60" />
+		</property>
+		<property name="externalId" type="java.lang.String">
+			<column name="EXTERNALID" length="20" />
+		</property>
+		<property name="testId" type="java.lang.String">
+			<column name="TESTID" precision="10" scale="0" />
+		</property>
+		<property name="testAnalyteId" type="java.lang.String">
+			<column name="TESTANALYTEID" precision="10" scale="0" />
+		</property>
+		<property name="testResultId" type="java.lang.String">
+			<column name="TESTRESULTID" precision="22" scale="0" />
+		</property>
+		<property name="resultGroup" type="java.lang.String">
+			<column name="RESULTGROUP" precision="22" scale="0" />
+		</property>
+		<property name="resultValue" type="java.lang.String">
+			<column name="RESULTVALUE" length="4000" />
+		</property>
+		<property name="resultType" type="java.lang.String">
+			<column name="RESULTTYPE" length="1" />
+		</property>
+		<property name="testAnalyteType" type="java.lang.String">
+			<column name="TESTANALYTETYPE" length="1" />
+		</property>
+		<property name="sortOrder" type="java.lang.String">
+			<column name="SORTORDER" precision="22" scale="0" />
+		</property>
+		<property name="isActive" type="java.lang.String">
+			<column name="ISACTIVE" length="1" />
+		</property>
+	</class>
 </hibernate-mapping>
