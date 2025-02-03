@@ -416,7 +416,7 @@ export default function Workplan(props) {
                   size="md"
                   type="button"
                   name="print"
-                  id="print"
+                  id="finalprint"
                   onClick={printWorkplan}
                 >
                   <FormattedMessage id="workplan.print" />

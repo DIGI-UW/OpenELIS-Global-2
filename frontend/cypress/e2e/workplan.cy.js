@@ -19,10 +19,12 @@ describe("Work plan by Test", function () {
     cy.fixture("workplan").then((options) => {
       workplan.getTestType(options.testName);
     });
+    cy.wait(5000);
+    workplan.getPrintWorkPlanButton();
   });
   it("Check orders to remove and print", () => {
-    workplan.checkAndPrint();
-    workplan.getPrintWorkPlanButton();
+    workplan.checkToRemove();
+    workplan.getFinalPrintWorkPlanButton();
   });
 });
 
@@ -35,13 +37,14 @@ describe("Work plan by Panel", function () {
   it("User selects panel from drop-down selector option", () => {
     cy.fixture("workplan").then((options) => {
       workplan.getTestPanel(options.panelType);
-      cy.wait(5000);
     });
+    cy.wait(5000);
+    workplan.getPrintWorkPlanButton();
   });
 
   it("Check orders to remove and print", () => {
-    workplan.checkAndPrint();
-    workplan.getPrintWorkPlanButton();
+    workplan.checkToRemove();
+    workplan.getFinalPrintWorkPlanButton();
   });
 });
 
@@ -54,13 +57,14 @@ describe("Work plan by Unit", function () {
   it("User selects unit type from drop-down selector option", () => {
     cy.fixture("workplan").then((options) => {
       workplan.getTestTypeUnit(options.unitType);
-      cy.wait(5000);
     });
+    cy.wait(5000);
+    workplan.getPrintWorkPlanButton();
   });
 
   it("Check orders to remove and print", () => {
-    workplan.checkAndPrint();
-    workplan.getPrintWorkPlanButton();
+    workplan.checkToRemove();
+    workplan.getFinalPrintWorkPlanButton();
   });
 });
 
@@ -73,12 +77,13 @@ describe("Work plan by Priority", function () {
   it("User selects Priority from drop-down selector option", () => {
     cy.fixture("workplan").then((options) => {
       workplan.getTestTypePriority(options.priority);
-      cy.wait(5000);
     });
+    cy.wait(5000);
+    workplan.getPrintWorkPlanButton();
   });
 
   it("Check orders to remove and print", () => {
-    workplan.checkAndPrint();
-    workplan.getPrintWorkPlanButton();
+    workplan.checkToRemove();
+    workplan.getFinalPrintWorkPlanButton();
   });
 });

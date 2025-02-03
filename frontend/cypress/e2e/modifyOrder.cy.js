@@ -56,7 +56,7 @@ describe("Modify Order search by patient ", function () {
     modifyOrderPage.clickSubmitButton();
   });
 
-  it("User Prints Barcode", function(){
+  it("User Prints Barcode", function () {
     modifyOrderPage.printBarCode();
   });
 });
