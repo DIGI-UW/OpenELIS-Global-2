@@ -3,11 +3,11 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.citystatezip.valueholder.CityView"
-        table="CITY_VIEW">
-        <id name="city" type="java.lang.String">
-            <column name="CITY" length="30" />
-        </id>
-    </class>
+	<class
+		name="org.openelisglobal.citystatezip.valueholder.CityView"
+		table="CITY_VIEW">
+		<id name="city" type="java.lang.String">
+			<column name="CITY" length="30" />
+		</id>
+	</class>
 </hibernate-mapping>

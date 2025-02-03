@@ -2,37 +2,37 @@
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class name="org.openelisglobal.panel.valueholder.Panel"
-        table="PANEL" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">panel_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class name="org.openelisglobal.panel.valueholder.Panel"
+		table="PANEL" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">panel_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="panelName" type="java.lang.String">
-            <column name="NAME" length="20" />
-        </property>
-        <property name="description" type="java.lang.String">
-            <column name="DESCRIPTION" length="60" not-null="true" />
-        </property>
-        <property name="loinc" type="java.lang.String">
-            <column name="LOINC" length="10" />
-        </property>
-        <many-to-one name="localization"
-            class="org.openelisglobal.localization.valueholder.Localization"
-            fetch="select" lazy="false">
-            <column name="name_localization_id" precision="10" scale="0" />
-        </many-to-one>
-        <property name="sortOrderInt" column="sort_order"
-            type="integer" />
-        <property name="isActive" column="is_active"
-            type="java.lang.String" />
+		<property name="panelName" type="java.lang.String">
+			<column name="NAME" length="20" />
+		</property>
+		<property name="description" type="java.lang.String">
+			<column name="DESCRIPTION" length="60" not-null="true" />
+		</property>
+		<property name="loinc" type="java.lang.String">
+			<column name="LOINC" length="10" />
+		</property>
+		<many-to-one name="localization"
+			class="org.openelisglobal.localization.valueholder.Localization"
+			fetch="select" lazy="false">
+			<column name="name_localization_id" precision="10" scale="0" />
+		</many-to-one>
+		<property name="sortOrderInt" column="sort_order"
+			type="integer" />
+		<property name="isActive" column="is_active"
+			type="java.lang.String" />
 
-    </class>
+	</class>
 </hibernate-mapping>

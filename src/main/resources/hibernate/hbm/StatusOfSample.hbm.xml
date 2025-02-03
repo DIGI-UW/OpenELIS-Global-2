@@ -3,49 +3,49 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.statusofsample.valueholder.StatusOfSample"
-        table="STATUS_OF_SAMPLE" optimistic-lock="version"
-        dynamic-update="true">
+	<class
+		name="org.openelisglobal.statusofsample.valueholder.StatusOfSample"
+		table="STATUS_OF_SAMPLE" optimistic-lock="version"
+		dynamic-update="true">
 
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">status_of_sample_seq</param>
-            </generator>
-        </id>
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">status_of_sample_seq</param>
+			</generator>
+		</id>
 
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
-        <property name="statusOfSampleName" type="java.lang.String">
-            <column name="NAME" length="30" not-null="true" />
-        </property>
-        <property name="description" type="java.lang.String">
-            <column name="DESCRIPTION" length="240" />
-        </property>
-        <property name="code"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="CODE" length="3" />
-        </property>
-        <property name="statusType" type="java.lang.String">
-            <column name="STATUS_TYPE" length="10" />
-        </property>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
+		<property name="statusOfSampleName" type="java.lang.String">
+			<column name="NAME" length="30" not-null="true" />
+		</property>
+		<property name="description" type="java.lang.String">
+			<column name="DESCRIPTION" length="240" />
+		</property>
+		<property name="code"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="CODE" length="3" />
+		</property>
+		<property name="statusType" type="java.lang.String">
+			<column name="STATUS_TYPE" length="10" />
+		</property>
 
-        <property name="nameKey" column="display_key"
-            type="java.lang.String" />
+		<property name="nameKey" column="display_key"
+			type="java.lang.String" />
 
-        <property name="isActive" column="is_active"
-            type="java.lang.String" />
-    </class>
+		<property name="isActive" column="is_active"
+			type="java.lang.String" />
+	</class>
 
-<!-- 	<query name="statusofsample.getNext"> -->
-<!-- 		from StatusOfSample sos order by sos.statusType, sos.code, sos.description -->
-<!-- 	</query> -->
-<!-- 	<query name="statusofsample.getPrevious"> -->
-<!-- 		from StatusOfSample sos order by sos.statusType desc, sos.code desc, -->
-<!-- 		sos.description desc -->
-<!-- 	</query> -->
+	<!-- <query name="statusofsample.getNext"> -->
+	<!-- from StatusOfSample sos order by sos.statusType, sos.code, sos.description -->
+	<!-- </query> -->
+	<!-- <query name="statusofsample.getPrevious"> -->
+	<!-- from StatusOfSample sos order by sos.statusType desc, sos.code desc, -->
+	<!-- sos.description desc -->
+	<!-- </query> -->
 
 </hibernate-mapping>

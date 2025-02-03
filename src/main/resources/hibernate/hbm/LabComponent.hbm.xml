@@ -1,23 +1,23 @@
 <?xml version='1.0' encoding='utf-8'?>
 <!DOCTYPE hibernate-mapping PUBLIC
-    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+	"-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+	"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping>
 
-    <class name="org.openelisglobal.qaevent.valueholder.LabComponent" table="lab_component" schema="clinlims"
-           catalog="ci_general_9.6">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                    class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">lab_component_id_seq</param>
-            </generator>
-        </id>
-        <property name="name" column="name"/>
-        <property name="NameKey" type="java.lang.String">
-            <column name="display_key" length="60" />
-        </property>
-        <property name="lastmodified" column="lastmodified"/>
-    </class>
+	<class name="org.openelisglobal.qaevent.valueholder.LabComponent"
+		table="lab_component" schema="clinlims" catalog="ci_general_9.6">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">lab_component_id_seq</param>
+			</generator>
+		</id>
+		<property name="name" column="name" />
+		<property name="NameKey" type="java.lang.String">
+			<column name="display_key" length="60" />
+		</property>
+		<property name="lastmodified" column="lastmodified" />
+	</class>
 </hibernate-mapping>

@@ -3,57 +3,59 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.citystatezip.valueholder.CityStateZip"
-        table="CITY_STATE_ZIP" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <!--generator class="sequence"> <param name="sequence_name">city_state_zip_seq</param>
-                </generator -->
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
-        <property name="city" type="java.lang.String">
-            <column name="CITY" length="30" />
-        </property>
-        <property name="state" type="java.lang.String">
-            <column name="STATE" length="2" />
-        </property>
-        <property name="zipCode" type="java.lang.String">
-            <column name="ZIP_CODE" length="10" />
-        </property>
-        <property name="countyFips"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="COUNTY_FIPS" length="3" />
-        </property>
-        <property name="county" type="java.lang.String">
-            <column name="COUNTY" length="25" />
-        </property>
-        <property name="regionId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="REGION_ID" length="3" />
-        </property>
-        <property name="region" type="java.lang.String">
-            <column name="REGION" length="30" />
-        </property>
-        <property name="stateFips"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="STATE_FIPS" length="3" />
-        </property>
-        <property name="stateName" type="java.lang.String">
-            <column name="STATE_NAME" length="30" />
-        </property>
+	<class
+		name="org.openelisglobal.citystatezip.valueholder.CityStateZip"
+		table="CITY_STATE_ZIP" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<!--generator class="sequence"> <param name="sequence_name">city_state_zip_seq</param>
+				</generator -->
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
+		<property name="city" type="java.lang.String">
+			<column name="CITY" length="30" />
+		</property>
+		<property name="state" type="java.lang.String">
+			<column name="STATE" length="2" />
+		</property>
+		<property name="zipCode" type="java.lang.String">
+			<column name="ZIP_CODE" length="10" />
+		</property>
+		<property name="countyFips"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="COUNTY_FIPS" length="3" />
+		</property>
+		<property name="county" type="java.lang.String">
+			<column name="COUNTY" length="25" />
+		</property>
+		<property name="regionId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="REGION_ID" length="3" />
+		</property>
+		<property name="region" type="java.lang.String">
+			<column name="REGION" length="30" />
+		</property>
+		<property name="stateFips"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="STATE_FIPS" length="3" />
+		</property>
+		<property name="stateName" type="java.lang.String">
+			<column name="STATE_NAME" length="30" />
+		</property>
 
-    </class>
-<!-- 	<sql-query name="cityStateZip.getCountyCodeByStateAndZipCode"> -->
-<!-- 		<return-scalar column="countyCode" -->
-<!-- 			type="java.lang.String" />  -->
-<!--       <![CDATA[select distinct (trim(csz.state_fips) ||  -->
-<!--                                case when length(trim(csz.county_fips)) = 3 then null else '0' end ||  -->
-<!--                                trim(csz.county_fips)) -->
-<!--                as countyCode -->
-<!-- 		       from CITY_STATE_ZIP csz where upper(csz.state) = (:param) and trim(csz.zip_code) = (:param2) -->
-<!--  ]]> -->
-<!-- 	</sql-query> -->
+	</class>
+	<!-- <sql-query name="cityStateZip.getCountyCodeByStateAndZipCode"> -->
+	<!-- <return-scalar column="countyCode" -->
+	<!-- type="java.lang.String" /> -->
+	<!-- <![CDATA[select distinct (trim(csz.state_fips) || -->
+	<!-- case when length(trim(csz.county_fips)) = 3 then null else '0' end
+		|| -->
+	<!-- trim(csz.county_fips)) -->
+	<!-- as countyCode -->
+	<!-- from CITY_STATE_ZIP csz where upper(csz.state) = (:param) and trim(csz.zip_code)
+		= (:param2) -->
+	<!-- ]]> -->
+	<!-- </sql-query> -->
 </hibernate-mapping>

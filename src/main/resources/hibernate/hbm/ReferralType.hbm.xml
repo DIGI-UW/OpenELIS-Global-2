@@ -4,24 +4,24 @@
 
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.referral.valueholder.ReferralType"
-        table="referral_type" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">referral_type_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
-        <property name="name" column="name" type="java.lang.String"
-            length="30" not-null="true" />
-        <property name="description" column="description"
-            type="java.lang.String" length="60" not-null="false" />
-        <property name="displayKey" column="display_key"
-            type="java.lang.String" length="60" not-null="false" />
-    </class>
+	<class
+		name="org.openelisglobal.referral.valueholder.ReferralType"
+		table="referral_type" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">referral_type_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
+		<property name="name" column="name" type="java.lang.String"
+			length="30" not-null="true" />
+		<property name="description" column="description"
+			type="java.lang.String" length="60" not-null="false" />
+		<property name="displayKey" column="display_key"
+			type="java.lang.String" length="60" not-null="false" />
+	</class>
 </hibernate-mapping>
