@@ -1,51 +1,51 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-                                   "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+								"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping
-    package="org.openelisglobal.siteinformation.valueholder">
-    <class name="SiteInformation" table="site_information"
-        optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">site_information_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	package="org.openelisglobal.siteinformation.valueholder">
+	<class name="SiteInformation" table="site_information"
+		optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">site_information_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="name" type="java.lang.String" column="name"
-            not-null="true" />
-        <property name="description" type="java.lang.String"
-            column="description" not-null="false" />
-        <property name="value" type="java.lang.String" column="value"
-            not-null="false" />
-        <property name="encrypted" type="boolean" column="encrypted" />
-        <property name="valueType" type="java.lang.String"
-            column="value_type" not-null="true" />
-        <property name="instructionKey" type="java.lang.String"
-            column="instruction_key" not-null="false" />
-        <property name="tag" type="java.lang.String" column="tag" />
-        <property name="group" type="java.lang.Integer"
-            column="`group`" />
-        <property name="dictionaryCategoryId"
-            column="dictionary_category_id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
-        <many-to-one name="domain"
-            class="org.openelisglobal.siteinformation.valueholder.SiteInformationDomain"
-            fetch="select" lazy="false">
-            <column name="domain_id" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="schedule"
-            class="org.openelisglobal.scheduler.valueholder.CronScheduler"
-            fetch="select" lazy="false">
-            <column name="schedule_id" precision="10" scale="0" />
-        </many-to-one>
-        <property name="descriptionKey" type="java.lang.String"
-            column="description_key" />
-        <property name="nameKey" type="java.lang.String"
-            column="name_key" />
-    </class>
+		<property name="name" type="java.lang.String" column="name"
+			not-null="true" />
+		<property name="description" type="java.lang.String"
+			column="description" not-null="false" />
+		<property name="value" type="java.lang.String" column="value"
+			not-null="false" />
+		<property name="encrypted" type="boolean" column="encrypted" />
+		<property name="valueType" type="java.lang.String"
+			column="value_type" not-null="true" />
+		<property name="instructionKey" type="java.lang.String"
+			column="instruction_key" not-null="false" />
+		<property name="tag" type="java.lang.String" column="tag" />
+		<property name="group" type="java.lang.Integer"
+			column="`group`" />
+		<property name="dictionaryCategoryId"
+			column="dictionary_category_id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+		<many-to-one name="domain"
+			class="org.openelisglobal.siteinformation.valueholder.SiteInformationDomain"
+			fetch="select" lazy="false">
+			<column name="domain_id" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="schedule"
+			class="org.openelisglobal.scheduler.valueholder.CronScheduler"
+			fetch="select" lazy="false">
+			<column name="schedule_id" precision="10" scale="0" />
+		</many-to-one>
+		<property name="descriptionKey" type="java.lang.String"
+			column="description_key" />
+		<property name="nameKey" type="java.lang.String"
+			column="name_key" />
+	</class>
 </hibernate-mapping>

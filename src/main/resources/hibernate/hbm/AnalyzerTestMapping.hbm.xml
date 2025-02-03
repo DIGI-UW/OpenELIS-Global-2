@@ -1,22 +1,22 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-                                   "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+								"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping
-    package="org.openelisglobal.analyzerimport.valueholder">
-    <class name="AnalyzerTestMapping" table="analyzer_test_map"
-        optimistic-lock="version" dynamic-update="true">
-        <composite-id name="compoundId"
-            class="org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMappingPK">
-            <key-property name="analyzerId" column="analyzer_id"
-                type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
-            <key-property name="analyzerTestName"
-                column="analyzer_test_name" type="java.lang.String" />
-        </composite-id>
+	package="org.openelisglobal.analyzerimport.valueholder">
+	<class name="AnalyzerTestMapping" table="analyzer_test_map"
+		optimistic-lock="version" dynamic-update="true">
+		<composite-id name="compoundId"
+			class="org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMappingPK">
+			<key-property name="analyzerId" column="analyzer_id"
+				type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+			<key-property name="analyzerTestName"
+				column="analyzer_test_name" type="java.lang.String" />
+		</composite-id>
 
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="testId" column="test_id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
-    </class>
+		<property name="testId" column="test_id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+	</class>
 </hibernate-mapping>

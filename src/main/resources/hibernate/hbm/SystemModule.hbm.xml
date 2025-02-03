@@ -3,41 +3,41 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping
-    package="org.openelisglobal.systemmodule.valueholder">
-    <class name="SystemModule" table="SYSTEM_MODULE"
-        optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">system_module_seq</param>
-            </generator>
-        </id>
+	package="org.openelisglobal.systemmodule.valueholder">
+	<class name="SystemModule" table="SYSTEM_MODULE"
+		optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">system_module_seq</param>
+			</generator>
+		</id>
 
-        <property name="systemModuleName" type="java.lang.String">
-            <column name="NAME" length="32" />
-        </property>
-        <property name="description" type="java.lang.String">
-            <column name="DESCRIPTION" length="80" />
-        </property>
-        <property name="hasSelectFlag" type="java.lang.String">
-            <column name="HAS_SELECT_FLAG" length="1" />
-        </property>
-        <property name="hasAddFlag" type="java.lang.String">
-            <column name="HAS_ADD_FLAG" length="1" />
-        </property>
-        <property name="hasUpdateFlag" type="java.lang.String">
-            <column name="HAS_UPDATE_FLAG" length="1" />
-        </property>
-        <property name="hasDeleteFlag" type="java.lang.String">
-            <column name="HAS_DELETE_FLAG" length="1" />
-        </property>
-    </class>
-<!-- 	<query name="systemmodule.getNext"> -->
-<!-- 		from SystemModule s order by s.systemModuleName -->
-<!-- 	</query> -->
-<!-- 	<query name="systemmodule.getPrevious"> -->
-<!-- 		from SystemModule s order by s.systemModuleName -->
-<!-- 	</query> -->
+		<property name="systemModuleName" type="java.lang.String">
+			<column name="NAME" length="32" />
+		</property>
+		<property name="description" type="java.lang.String">
+			<column name="DESCRIPTION" length="80" />
+		</property>
+		<property name="hasSelectFlag" type="java.lang.String">
+			<column name="HAS_SELECT_FLAG" length="1" />
+		</property>
+		<property name="hasAddFlag" type="java.lang.String">
+			<column name="HAS_ADD_FLAG" length="1" />
+		</property>
+		<property name="hasUpdateFlag" type="java.lang.String">
+			<column name="HAS_UPDATE_FLAG" length="1" />
+		</property>
+		<property name="hasDeleteFlag" type="java.lang.String">
+			<column name="HAS_DELETE_FLAG" length="1" />
+		</property>
+	</class>
+	<!-- <query name="systemmodule.getNext"> -->
+	<!-- from SystemModule s order by s.systemModuleName -->
+	<!-- </query> -->
+	<!-- <query name="systemmodule.getPrevious"> -->
+	<!-- from SystemModule s order by s.systemModuleName -->
+	<!-- </query> -->
 </hibernate-mapping>

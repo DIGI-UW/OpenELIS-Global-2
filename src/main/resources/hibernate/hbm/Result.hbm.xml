@@ -3,61 +3,61 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class name="org.openelisglobal.result.valueholder.Result"
-        table="RESULT" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">result_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class name="org.openelisglobal.result.valueholder.Result"
+		table="RESULT" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">result_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <many-to-one name="analysis"
-            class="org.openelisglobal.analysis.valueholder.Analysis"
-            fetch="select" lazy="false">
-            <column name="ANALYSIS_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="analyte"
-            class="org.openelisglobal.analyte.valueholder.Analyte" fetch="select"
-            lazy="false">
-            <column name="ANALYTE_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="testResult"
-            class="org.openelisglobal.testresult.valueholder.TestResult"
-            fetch="select" lazy="false">
-            <column name="TEST_RESULT_ID" precision="10" scale="0" />
-        </many-to-one>
-        <property name="sortOrder"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="SORT_ORDER" precision="22" scale="0" />
-        </property>
-        <property name="isReportable" type="java.lang.String">
-            <column name="IS_REPORTABLE" length="1" />
-        </property>
-        <property name="resultType" type="java.lang.String"
-            lazy="false">
-            <column name="RESULT_TYPE" length="1" />
-        </property>
-        <property name="value" type="java.lang.String">
-            <column name="VALUE" length="200" />
-        </property>
-        <property name="minNormal" type="java.lang.Double"
-            column="min_normal" />
-        <property name="maxNormal" type="java.lang.Double"
-            column="max_normal" />
-        <property name="significantDigits" type="java.lang.Integer"
-            column="significant_digits" />
-        <property name="grouping" type="java.lang.Integer"
-            column="grouping" />
-        <property name="fhirUuid"
-            column="fhir_uuid" type="java.util.UUID" />
-        <many-to-one name="parentResult"
-            class="org.openelisglobal.result.valueholder.Result" fetch="select">
-            <column name="parent_id" precision="10" scale="0" />
-        </many-to-one>
-    </class>
+		<many-to-one name="analysis"
+			class="org.openelisglobal.analysis.valueholder.Analysis"
+			fetch="select" lazy="false">
+			<column name="ANALYSIS_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="analyte"
+			class="org.openelisglobal.analyte.valueholder.Analyte" fetch="select"
+			lazy="false">
+			<column name="ANALYTE_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="testResult"
+			class="org.openelisglobal.testresult.valueholder.TestResult"
+			fetch="select" lazy="false">
+			<column name="TEST_RESULT_ID" precision="10" scale="0" />
+		</many-to-one>
+		<property name="sortOrder"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="SORT_ORDER" precision="22" scale="0" />
+		</property>
+		<property name="isReportable" type="java.lang.String">
+			<column name="IS_REPORTABLE" length="1" />
+		</property>
+		<property name="resultType" type="java.lang.String"
+			lazy="false">
+			<column name="RESULT_TYPE" length="1" />
+		</property>
+		<property name="value" type="java.lang.String">
+			<column name="VALUE" length="200" />
+		</property>
+		<property name="minNormal" type="java.lang.Double"
+			column="min_normal" />
+		<property name="maxNormal" type="java.lang.Double"
+			column="max_normal" />
+		<property name="significantDigits" type="java.lang.Integer"
+			column="significant_digits" />
+		<property name="grouping" type="java.lang.Integer"
+			column="grouping" />
+		<property name="fhirUuid" column="fhir_uuid"
+			type="java.util.UUID" />
+		<many-to-one name="parentResult"
+			class="org.openelisglobal.result.valueholder.Result" fetch="select">
+			<column name="parent_id" precision="10" scale="0" />
+		</many-to-one>
+	</class>
 </hibernate-mapping>
