@@ -31,12 +31,6 @@ class OrderEntityPage {
       ".testPanels .cds--checkbox-wrapper:nth-child(5) .cds--checkbox",
     ).check({ force: true });
   }
-  generateLabOrderNumber() {
-    cy.contains("a.cds--link", "Generate").click();
-  }
-=======
-
->>>>>>> 444befa12 (made updates)
 
   validateAcessionNumber(order) {
     cy.intercept("GET", `**/rest/SampleEntryAccessionNumberValidation**`).as(
@@ -54,15 +48,35 @@ class OrderEntityPage {
   }
   enterSiteName(siteName) {
     cy.get("input#siteName").type(siteName);
-    cy.get(".suggestions") 
-    .contains(siteName)
-    .click();
+    cy.get(".suggestions").contains(siteName).click();
   }
   searchRequester(requester) {
-    cy.enterText("input#requesterId").select(requester);
+    cy.get("input#requesterId").type(requester);
+    cy.get(".suggestions").contains(requester).click();
+  }
+
+  requesterFName(requesterFName) {
+    cy.get("input#requesterFirstName").type(requesterFName);
+  }
+
+  generateLabOrderNumber() {
+    cy.get("#generate", { timeout: 10000 }).should("be.visible").click();
+  }
+
+  requesterLName(requesterLName) {
+    cy.get("input#requesterLastName").type(requesterLName);
   }
   clickSubmitOrderButton() {
-    cy.get('#submitOrderButton', {timeout: 10000}).should("be.visible").click();
+    cy.get("button.forwardButton.cds--btn--primary")
+      .should("be.visible")
+      .click();
+  }
+
+  printBarCode() {
+    cy.get("[data-cy='print-barcode-button']", { timeout: 15000 })
+      .should("exist")
+      .should("be.visible")
+      .click();
   }
 }
 
