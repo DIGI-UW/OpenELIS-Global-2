@@ -31,13 +31,16 @@ test.describe("Failing or Succeeding to Login", () => {
   });
 
   test("Should validate user authentication", async ({ page }) => {
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
 
     for (const user of users.filter((user) => user.correctPass === "true")) {
       await loginPage.enterUsername(user.username);
       await loginPage.enterPassword(user.password);
       await loginPage.signIn();
-
+      await page.waitForSelector(
+        "header#mainHeader > button[title='Open menu']",
+        { state: "visible", timeout: 20000 },
+      );
       await expect(
         page.locator("header#mainHeader > button[title='Open menu']"),
       ).toBeVisible();

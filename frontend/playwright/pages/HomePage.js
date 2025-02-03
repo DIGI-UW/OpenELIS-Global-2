@@ -18,11 +18,19 @@ class HomePage {
   }
 
   async openNavigationMenu() {
-    await this.page
-      .locator("header#mainHeader > button[title='Open menu']")
-      .click({
-        timeout: 30000,
-      });
+    // Wait for the button to be visible and enabled
+    const menuButton = this.page.locator(
+      "header#mainHeader > button[title='Open menu']",
+    );
+
+    await menuButton.waitFor({
+      state: "visible",
+      timeout: 20000,
+    });
+
+    await menuButton.click({
+      timeout: 20000,
+    });
   }
 
   async goToResultsByUnit() {
