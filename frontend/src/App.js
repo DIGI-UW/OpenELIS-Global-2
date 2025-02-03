@@ -129,22 +129,53 @@ export default function App() {
   }
 
   const logout = () => {
-    fetch(config.serverBaseUrl + "/Logout", {
-      //includes the browser sessionId in the Header for Authentication on the backend server
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
-      },
-    })
-      .then((response) => response.status)
-      .then(() => {
-        getUserSessionDetails();
-        window.location.href = config.loginRedirect;
+    if (userSessionDetails.loginMethod === "SAML") {
+      fetch(config.serverBaseUrl + "/Logout?useSAML=true", {
+        //includes the browser sessionId in the Header for Authentication on the backend server
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": localStorage.getItem("CSRF"),
+        },
       })
-      .catch((error) => {
-        console.error(error);
-      });
+        .then((response) => response.text())
+        .then((html) => {
+          const POPUP_HEIGHT = 700;
+          const POPUP_WIDTH = 600;
+          const top =
+            window.outerHeight / 2 + window.screenY - POPUP_HEIGHT / 2;
+          const left = window.outerWidth / 2 + window.screenX - POPUP_WIDTH / 2;
+          const newWindow = window.open(
+            "",
+            "SAML Popup",
+            `height=${POPUP_HEIGHT},width=${POPUP_WIDTH},top=${top},left=${left}`,
+          );
+          newWindow.document.write(html);
+          newWindow.document.close();
+          getUserSessionDetails();
+          window.location.href = config.loginRedirect;
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    } else {
+      fetch(config.serverBaseUrl + "/Logout", {
+        //includes the browser sessionId in the Header for Authentication on the backend server
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": localStorage.getItem("CSRF"),
+        },
+      })
+        .then((response) => response.status)
+        .then(() => {
+          getUserSessionDetails();
+          window.location.href = config.loginRedirect;
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    }
   };
 
   const changeLanguageReact = (lang) => {
