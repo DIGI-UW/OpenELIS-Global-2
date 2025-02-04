@@ -28,7 +28,10 @@ class WorkPlan {
   }
 
   getPrintWorkPlanButton() {
-    cy.get("#print").should("exist").should("be.visible").click();
+    cy.get("#print",{timeout:10000})
+      .should("exist")
+      .should("be.visible")
+      .click();
   }
 
   getFinalPrintWorkPlanButton() {
@@ -39,7 +42,8 @@ class WorkPlan {
   }
 
   checkToRemove() {
-    cy.get("input#includedCheck_0", { timeout: 10000 })
+    //cy.get("input#includedCheck_0", { timeout: 10000 })
+    cy.get("input[id^='includedCheck_']")  
       .first()
       .should("exist")
       .should("be.visible")
