@@ -48,10 +48,12 @@ class OrderEntityPage {
   }
   enterSiteName(siteName) {
     cy.get("input#siteName").type(siteName);
+    cy.wait(500);
     cy.get(".suggestions").contains(siteName).click();
   }
   searchRequester(requester) {
     cy.get("input#requesterId").type(requester);
+    cy.wait(500);
     cy.get(".suggestions").contains(requester).click();
   }
 
