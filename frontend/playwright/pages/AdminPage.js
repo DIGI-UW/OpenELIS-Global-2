@@ -29,7 +29,9 @@ class AdminPage {
   // Global menu configuration
   async goToGlobalMenuConfigPage() {
     // Click the "Menu Configuration" span to expand the dropdown
-    await this.page.getByRole("button", { name: "Menu Configuration" }).click();
+    await this.page
+      .locator(".cds--side-nav__submenu", { hasText: "Menu Configuration" })
+      .click();
 
     // Click the "Global Menu Configuration" link
     await this.page

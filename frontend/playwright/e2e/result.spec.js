@@ -35,7 +35,9 @@ async function fillAccessionNumber(accessionNumber) {
     "#display_accessionNumber",
   );
   const accessionNumberLocator = page.locator("#accessionNumber");
-
+  const textboxLocator = await page.getByRole("textbox", {
+    name: "Enter Accession Number",
+  });
   // Wait for either #display_accessionNumber or #accessionNumber to be visible
   const visibleLocator = await Promise.race([
     displayAccessionNumberLocator
@@ -44,6 +46,9 @@ async function fillAccessionNumber(accessionNumber) {
     accessionNumberLocator
       .waitFor({ state: "visible", timeout: 5000 })
       .then(() => accessionNumberLocator),
+    textboxLocator
+      .waitFor({ state: "visible", timeout: 5000 })
+      .then(() => textboxLocator),
   ]);
 
   // Fill the first visible locator with the accessionNumber
@@ -118,12 +123,12 @@ test.describe("Result By Patient", () => {
   });
   // *BUG* - passes most of the times but fails sometimes
   // test("Should search Patient By Lab Number", async () => {
-    //   await fillLabNumber(patient.labNo);
-    //   await page.locator("#local_search").click();
-    //   let res;
-    
-    //   if (await page.locator("#display_labNumber").isVisible()) {
-      //     res = page.locator("#display_labNumber");
+  //   await fillLabNumber(patient.labNo);
+  //   await page.locator("#local_search").click();
+  //   let res;
+
+  //   if (await page.locator("#display_labNumber").isVisible()) {
+  //     res = page.locator("#display_labNumber");
   //   } else if (await page.locator("#labNumber").isVisible()) {
   //     res = page.locator("#labNumber");
   //   }
@@ -141,7 +146,7 @@ test.describe("Result By Patient", () => {
       patient.firstName,
       patient.lastName,
     );
-    
+
     await expect(await patientPage.getFirstName()).toHaveValue(
       patient.firstName,
     );
@@ -162,7 +167,7 @@ test.describe("Result By Patient", () => {
     result = await homePage.goToResultsByPatient();
     await patientPage.searchPatientByPatientId(patient.nationalId);
     await patientPage.clickSearchPatientButton();
-    
+
     await patientPage.validatePatientSearchTable(
       patient.firstName,
       patient.inValidName,
@@ -184,12 +189,14 @@ test.describe("Result By Order", () => {
     result = await homePage.goToResultsByOrder();
     await expect(await result.getResultTitle()).toContainText(res.pageTitle);
   });
-
+  // Needs fixing works most of them time but fails sometimes
   test("Should Search by Accession Number", async () => {
+    result = await homePage.goToResultsByOrder();
     await fillAccessionNumber(workPlan.accessionNumber);
+
     await page.locator(":nth-child(4) > #submit").click();
   });
-  // fixxinggg
+
   test("Should accept and save result", async () => {
     await page
       .getByRole("row", { name: "Expand Row Copy Lab Number" })
@@ -204,6 +211,7 @@ test.describe("Result By Order", () => {
 test.describe("Result By Referred Out", () => {
   test("User visits Referred Out Page", async () => {
     result = await homePage.goToResultsForRefferedOut();
+
     await expect(await result.getResultTitle()).toContainText(
       res.referralPageTitle,
     );
@@ -232,16 +240,16 @@ test.describe("Result By Referred Out", () => {
     await page.locator("#testnames-input").fill(workPlan.testName);
     await page.locator("#testnames-item-0-item").click();
     await page
-    .getByRole("button", { name: "Close" })
-    .click({ waitForTimeout: 2000 });
+      .getByRole("button", { name: "Close" })
+      .click({ waitForTimeout: 2000 });
     await page
-    
-    .getByRole("button", { name: "Search Referrals By Unit(s" })
-    .click({
-      Force: true,
-    });
+
+      .getByRole("button", { name: "Search Referrals By Unit(s" })
+      .click({
+        Force: true,
+      });
   });
-  
+
   test("Should search Referrals By LabNumber", async () => {
     result = await homePage.goToResultsForRefferedOut();
     await page
@@ -286,6 +294,7 @@ test.describe("Result By Test And Status", () => {
   });
 
   test("Should select testName, analysis status, and perform Search", async () => {
+    result = await homePage.goToResultsByTestAndStatus();
     await result.selectTestName(workPlan.testName);
     await result.selectAnalysisStatus(res.acceptedStatus);
     await result.searchByTest();

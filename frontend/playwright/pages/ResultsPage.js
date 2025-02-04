@@ -6,7 +6,9 @@ class Result {
   }
 
   async getResultTitle() {
-    return this.page.locator("section > h3");
+    const resultTitleLocator = this.page.locator("section h3");
+    await resultTitleLocator.waitFor({ state: "visible", timeout: 5000 });
+    return resultTitleLocator;
   }
 
   async selectUnitType(unitType) {
@@ -14,8 +16,6 @@ class Result {
   }
 
   async acceptSample(index = 0) {
-    
-
     await this.page.locator(".cds--checkbox-label").nth(index).click();
   }
 

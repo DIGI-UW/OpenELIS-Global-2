@@ -18,31 +18,61 @@ class HomePage {
   }
 
   async openNavigationMenu() {
-    // Wait for the button to be visible and enabled
-    const menuButton = this.page.locator(
-      "header#mainHeader > button[title='Open menu']",
-    );
-
-    await menuButton.waitFor({
-      state: "visible",
+    const menuButtonSelector1 = "header#mainHeader > button[title='Open menu']";
+    const menuButtonSelector2 = "button:has-text('Open menu')";  // Use Playwright's :has-text() to locate button by text
+    
+    // Wait for the first visible button among the selectors
+    const firstAvailableSelector = await Promise.any([
+      this.page.waitForSelector(menuButtonSelector1, { state: "visible", timeout: 20000 })
+        .then(() => menuButtonSelector1),  // Return the first selector if it's visible
+      this.page.waitForSelector(menuButtonSelector2, { state: "visible", timeout: 20000 })
+        .then(() => menuButtonSelector2)   // Return the second selector if it's visible
+    ]);
+    
+    // Now that we have the first available selector, click it
+    await this.page.locator(firstAvailableSelector).click({
       timeout: 20000,
     });
-
-    await menuButton.click({
-      timeout: 20000,
-    });
+  
+    
+    
   }
 
   async goToResultsByUnit() {
     await this.openNavigationMenu();
-    await this.page.locator("#menu_results").click();
+    const firstAvailable = await Promise.any([
+      this.page
+        .waitForSelector("#menu_results", { state: "visible", timeout: 5000 })
+        .then(() => "#menu_results"),
+      this.page
+        .waitForSelector('button:has-text("Results")', {
+          state: "visible",
+          timeout: 5000,
+        })
+        .then(() => 'button:has-text("Results")'),
+    ]);
+
+    await this.page.click(firstAvailable);
+
     await this.page.locator("#menu_results_logbook").click();
     return new Result(this.page);
   }
 
   async goToResultsByOrder() {
     this.openNavigationMenu();
-    await this.page.locator("#menu_results").click();
+    const firstAvailable = await Promise.any([
+      this.page
+        .waitForSelector("#menu_results", { state: "visible", timeout: 3000 })
+        .then(() => "#menu_results"),
+      this.page
+        .waitForSelector('button:has-text("Results")', {
+          state: "visible",
+          timeout: 3000,
+        })
+        .then(() => 'button:has-text("Results")'),
+    ]);
+
+    await this.page.click(firstAvailable);
     await this.page.locator("#menu_results_accession").click();
     return new Result(this.page);
   }
@@ -62,27 +92,75 @@ class HomePage {
   // }
   async goToResultsByPatient() {
     await this.openNavigationMenu();
-    await this.page.locator("#menu_results").click();
+    const firstAvailable = await Promise.any([
+      this.page
+        .waitForSelector("#menu_results", { state: "visible", timeout: 3000 })
+        .then(() => "#menu_results"),
+      this.page
+        .waitForSelector('button:has-text("Results")', {
+          state: "visible",
+          timeout: 3000,
+        })
+        .then(() => 'button:has-text("Results")'),
+    ]);
+
+    await this.page.click(firstAvailable);
     await this.page.locator("#menu_results_patient").click();
     return new Result(this.page);
   }
 
   async goToResultsForRefferedOut() {
     this.openNavigationMenu();
-    await this.page.locator("#menu_results").click();
+    const firstAvailable = await Promise.any([
+      this.page
+        .waitForSelector("#menu_results", { state: "visible", timeout: 3000 })
+        .then(() => "#menu_results"),
+      this.page
+        .waitForSelector('button:has-text("Results")', {
+          state: "visible",
+          timeout: 3000,
+        })
+        .then(() => 'button:has-text("Results")'),
+    ]);
+
+    await this.page.click(firstAvailable);
     await this.page.locator("#menu_results_referred").click();
     return new Result(this.page);
   }
 
   async goToResultsByRangeOrder() {
     this.openNavigationMenu();
-    await this.page.locator("#menu_results").click();
+    const firstAvailable = await Promise.any([
+      this.page
+        .waitForSelector("#menu_results", { state: "visible", timeout: 3000 })
+        .then(() => "#menu_results"),
+      this.page
+        .waitForSelector('button:has-text("Results")', {
+          state: "visible",
+          timeout: 3000,
+        })
+        .then(() => 'button:has-text("Results")'),
+    ]);
+
+    await this.page.click(firstAvailable);
     await this.page.locator("#menu_results_range").click();
     return new Result(this.page);
   }
   async goToResultsByTestAndStatus() {
     this.openNavigationMenu();
-    await this.page.locator("#menu_results").click();
+    const firstAvailable = await Promise.any([
+      this.page
+        .waitForSelector("#menu_results", { state: "visible", timeout: 3000 })
+        .then(() => "#menu_results"),
+      this.page
+        .waitForSelector('button:has-text("Results")', {
+          state: "visible",
+          timeout: 3000,
+        })
+        .then(() => 'button:has-text("Results")'),
+    ]);
+
+    await this.page.click(firstAvailable);
     await this.page.locator("#menu_results_status").click();
     return new Result(this.page);
   }

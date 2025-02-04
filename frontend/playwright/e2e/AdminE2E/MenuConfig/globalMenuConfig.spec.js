@@ -36,6 +36,8 @@ test.describe("Global Menu Configuration", () => {
     await globalMenuConfigPage.turnOnToggleSwitch();
   });
   test("User checks the menu items and submits", async () => {
+    adminPage = await homePage.goToAdminPage();
+    globalMenuConfigPage = await adminPage.goToGlobalMenuConfigPage();
     await globalMenuConfigPage.checkMenuItem("home");
     await globalMenuConfigPage.checkMenuItem("order");
     await globalMenuConfigPage.checkMenuItem("billing");
