@@ -3,56 +3,56 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class name="org.openelisglobal.qaevent.valueholder.QaEvent"
-        table="QA_EVENT" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">qa_event_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class name="org.openelisglobal.qaevent.valueholder.QaEvent"
+		table="QA_EVENT" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">qa_event_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="qaEventName" type="java.lang.String">
-            <column name="NAME" length="20" not-null="true" />
-        </property>
-        <property name="description" type="java.lang.String">
-            <column name="DESCRIPTION" length="60" not-null="true" />
-        </property>
+		<property name="qaEventName" type="java.lang.String">
+			<column name="NAME" length="20" not-null="true" />
+		</property>
+		<property name="description" type="java.lang.String">
+			<column name="DESCRIPTION" length="60" not-null="true" />
+		</property>
 
-        <property name="nameKey" type="java.lang.String"
-            column="display_key" />
+		<property name="nameKey" type="java.lang.String"
+			column="display_key" />
 
-        <many-to-one name="type"
-            class="org.openelisglobal.dictionary.valueholder.Dictionary"
-            fetch="select">
-            <column name="TYPE" precision="10" scale="0" />
-        </many-to-one>
-        <property name="isBillable" type="java.lang.String">
-            <column name="IS_BILLABLE" length="1" />
-        </property>
-        <property name="isHoldable" type="java.lang.String">
-            <column name="IS_HOLDABLE" length="1" />
-        </property>
-        <property name="reportingSequence"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="REPORTING_SEQUENCE" length="22" />
-        </property>
-        <property name="reportingText" type="java.lang.String">
-            <column name="REPORTING_TEXT" length="4000" />
-        </property>
-        <many-to-one name="test"
-            class="org.openelisglobal.test.valueholder.Test" fetch="select">
-            <column name="TEST_ID" precision="10" scale="0" />
-        </many-to-one>
-        <!--bugzilla 2506 -->
-        <many-to-one name="category"
-            class="org.openelisglobal.dictionary.valueholder.Dictionary"
-            fetch="select">
-            <column name="CATEGORY" precision="10" scale="0" />
-        </many-to-one>
-    </class>
+		<many-to-one name="type"
+			class="org.openelisglobal.dictionary.valueholder.Dictionary"
+			fetch="select">
+			<column name="TYPE" precision="10" scale="0" />
+		</many-to-one>
+		<property name="isBillable" type="java.lang.String">
+			<column name="IS_BILLABLE" length="1" />
+		</property>
+		<property name="isHoldable" type="java.lang.String">
+			<column name="IS_HOLDABLE" length="1" />
+		</property>
+		<property name="reportingSequence"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="REPORTING_SEQUENCE" length="22" />
+		</property>
+		<property name="reportingText" type="java.lang.String">
+			<column name="REPORTING_TEXT" length="4000" />
+		</property>
+		<many-to-one name="test"
+			class="org.openelisglobal.test.valueholder.Test" fetch="select">
+			<column name="TEST_ID" precision="10" scale="0" />
+		</many-to-one>
+		<!--bugzilla 2506 -->
+		<many-to-one name="category"
+			class="org.openelisglobal.dictionary.valueholder.Dictionary"
+			fetch="select">
+			<column name="CATEGORY" precision="10" scale="0" />
+		</many-to-one>
+	</class>
 </hibernate-mapping>

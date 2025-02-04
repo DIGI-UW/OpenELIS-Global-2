@@ -3,37 +3,37 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.sampleproject.valueholder.SampleProject"
-        table="SAMPLE_PROJECTS" optimistic-lock="version"
-        dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">sample_proj_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
-        <!--bugzilla 2626 added not-null -->
-        <many-to-one name="project"
-            class="org.openelisglobal.project.valueholder.Project" fetch="select">
-            <column name="PROJ_ID" precision="10" scale="0"
-                not-null="true" />
-        </many-to-one>
-        <many-to-one name="sample"
-            class="org.openelisglobal.sample.valueholder.Sample" fetch="select">
-            <column name="SAMP_ID" precision="10" scale="0"
-                not-null="true" />
-        </many-to-one>
-        <!-- <property name="sampleId" type="java.lang.String"> <column name="SAMP_ID"
-            precision="10" scale="0" not-null="true" /> </property> <property name="projectId"
-            type="java.lang.String"> <column name="PROJ_ID" precision="10" scale="0"
-            /> </property> -->
-        <property name="isPermanent" type="java.lang.String">
-            <column name="IS_PERMANENT" length="1" />
-        </property>
-    </class>
+	<class
+		name="org.openelisglobal.sampleproject.valueholder.SampleProject"
+		table="SAMPLE_PROJECTS" optimistic-lock="version"
+		dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">sample_proj_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
+		<!--bugzilla 2626 added not-null -->
+		<many-to-one name="project"
+			class="org.openelisglobal.project.valueholder.Project" fetch="select">
+			<column name="PROJ_ID" precision="10" scale="0"
+				not-null="true" />
+		</many-to-one>
+		<many-to-one name="sample"
+			class="org.openelisglobal.sample.valueholder.Sample" fetch="select">
+			<column name="SAMP_ID" precision="10" scale="0"
+				not-null="true" />
+		</many-to-one>
+		<!-- <property name="sampleId" type="java.lang.String"> <column name="SAMP_ID"
+			precision="10" scale="0" not-null="true" /> </property> <property name="projectId"
+			type="java.lang.String"> <column name="PROJ_ID" precision="10" scale="0"
+			/> </property> -->
+		<property name="isPermanent" type="java.lang.String">
+			<column name="IS_PERMANENT" length="1" />
+		</property>
+	</class>
 </hibernate-mapping>

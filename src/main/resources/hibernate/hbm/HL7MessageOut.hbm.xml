@@ -3,24 +3,24 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping
-    package="org.openelisglobal.dataexchange.orderresult.valueholder">
-    <class name="HL7MessageOut" table="HL7_MESSAGE_OUT"
-        optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">hl7_message_out_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
-        <property name="data" type="java.lang.String">
-            <column name="data" not-null="true" />
-        </property>
-        <property name="status" type="java.lang.String">
-            <column name="status" not-null="true" />
-        </property>
-    </class>
+	package="org.openelisglobal.dataexchange.orderresult.valueholder">
+	<class name="HL7MessageOut" table="HL7_MESSAGE_OUT"
+		optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">hl7_message_out_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
+		<property name="data" type="java.lang.String">
+			<column name="data" not-null="true" />
+		</property>
+		<property name="status" type="java.lang.String">
+			<column name="status" not-null="true" />
+		</property>
+	</class>
 </hibernate-mapping>

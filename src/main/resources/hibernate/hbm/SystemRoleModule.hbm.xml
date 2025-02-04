@@ -3,44 +3,44 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping
-    package="org.openelisglobal.systemusermodule.valueholder">
-    <class name="RoleModule" table="SYSTEM_ROLE_MODULE"
-        optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">system_role_module_seq</param>
-            </generator>
-        </id>
+	package="org.openelisglobal.systemusermodule.valueholder">
+	<class name="RoleModule" table="SYSTEM_ROLE_MODULE"
+		optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">system_role_module_seq</param>
+			</generator>
+		</id>
 
-        <property name="hasSelect" type="java.lang.String">
-            <column name="HAS_SELECT" length="1" />
-        </property>
-        <property name="hasAdd" type="java.lang.String">
-            <column name="HAS_ADD" length="1" />
-        </property>
-        <property name="hasUpdate" type="java.lang.String">
-            <column name="HAS_UPDATE" length="1" />
-        </property>
-        <property name="hasDelete" type="java.lang.String">
-            <column name="HAS_DELETE" length="1" />
-        </property>
-        <many-to-one name="role"
-            class="org.openelisglobal.role.valueholder.Role" fetch="select">
-            <column name="SYSTEM_ROLE_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="systemModule"
-            class="org.openelisglobal.systemmodule.valueholder.SystemModule"
-            fetch="select">
-            <column name="SYSTEM_MODULE_ID" precision="10" scale="0" />
-        </many-to-one>
-    </class>
-<!-- 	<query name="rolemodule.getNext"> -->
-<!-- 		from RoleModule s -->
-<!-- 	</query> -->
-<!-- 	<query name="rolemodule.getPrevious"> -->
-<!-- 		from RoleModule s -->
-<!-- 	</query> -->
+		<property name="hasSelect" type="java.lang.String">
+			<column name="HAS_SELECT" length="1" />
+		</property>
+		<property name="hasAdd" type="java.lang.String">
+			<column name="HAS_ADD" length="1" />
+		</property>
+		<property name="hasUpdate" type="java.lang.String">
+			<column name="HAS_UPDATE" length="1" />
+		</property>
+		<property name="hasDelete" type="java.lang.String">
+			<column name="HAS_DELETE" length="1" />
+		</property>
+		<many-to-one name="role"
+			class="org.openelisglobal.role.valueholder.Role" fetch="select">
+			<column name="SYSTEM_ROLE_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="systemModule"
+			class="org.openelisglobal.systemmodule.valueholder.SystemModule"
+			fetch="select">
+			<column name="SYSTEM_MODULE_ID" precision="10" scale="0" />
+		</many-to-one>
+	</class>
+	<!-- <query name="rolemodule.getNext"> -->
+	<!-- from RoleModule s -->
+	<!-- </query> -->
+	<!-- <query name="rolemodule.getPrevious"> -->
+	<!-- from RoleModule s -->
+	<!-- </query> -->
 </hibernate-mapping>

@@ -31,3 +31,4 @@ src/main/resources/adminPassword.txt
 */plugins/*.jar
 Patient/*
 volume/*
+tools/Liquibase-Outdated
