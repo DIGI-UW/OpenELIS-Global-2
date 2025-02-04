@@ -3,6 +3,7 @@ import LoginPage from "../pages/LoginPage";
 let homePage = null;
 let loginPage = null;
 let nonConform = null;
+//let patientEntryPage=null;
 let skipBeforeEach = false;
 
 before("login", () => {
@@ -29,7 +30,7 @@ describe("Report Non-Conforming Event", function () {
       nonConform.selectSearchType("Last Name");
       nonConform.enterSearchField(patient.lastName);
       nonConform.clickSearchButton();
-      cy.fixture("EnteredOrder").then((order) => {
+      cy.fixture("Order").then((order) => {
         nonConform.validateSearchResult(order.labNo);
       });
     });
@@ -40,7 +41,7 @@ describe("Report Non-Conforming Event", function () {
       nonConform.selectSearchType("First Name");
       nonConform.enterSearchField(patient.firstName);
       nonConform.clickSearchButton();
-      cy.fixture("EnteredOrder").then((order) => {
+      cy.fixture("Order").then((order) => {
         nonConform.validateSearchResult(order.labNo);
       });
     });
