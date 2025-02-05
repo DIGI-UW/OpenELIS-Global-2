@@ -1,12 +1,10 @@
 package org.openelisglobal.address;
 
 import java.util.List;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.service.PersonAddressService;
 import org.openelisglobal.address.valueholder.AddressPK;
 import org.openelisglobal.address.valueholder.PersonAddress;
@@ -20,19 +18,11 @@ public class PersonAddressServiceTest extends BaseWebContextSensitiveTest {
     PersonAddressService pAddressService;
 
     @Autowired
-    AddressPartService partService;
-
-    @Autowired
     PersonService personService;
 
     @Before
     public void init() throws Exception {
         executeDataSetWithStateManagement("testdata/personaddress.xml");
-    }
-
-    @After
-    public void tearDown() {
-        pAddressService.deleteAll(pAddressService.getAll());
     }
 
     @Test

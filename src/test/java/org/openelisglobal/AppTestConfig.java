@@ -30,7 +30,6 @@ import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeS
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.program.service.ImmunohistochemistrySampleService;
-import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.referral.service.ReferralResultService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.service.ReferralSetService;
@@ -260,12 +259,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public AnalysisNotificationConfigService analysisNotificationConfigService() {
         return mock(AnalysisNotificationConfigService.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public PathologySampleService pathologySampleService() {
-        return mock(PathologySampleService.class);
     }
 
     @Bean()
