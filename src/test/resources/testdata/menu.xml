@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- * The contents of this file are subject to the Mozilla Public License
+	* Version 1.1 (the "License"); you may not use this file except in * compliance
+	with the License. You may obtain a copy of the License at * http://www.mozilla.org/MPL/
+	* * Software distributed under the License is distributed on an "AS IS" *
+	basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the *
+	License for the specific language governing rights and limitations under
+	* the License. * * The Original Code is OpenELIS code. * * Copyright (C)
+	ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+<dataset>
+
+	<!-- Existing menus -->
+	<menu id="1" element_id="testElement1" is_active="1"
+		presentation_order="1" />
+	<menu id="2" element_id="testElement2" is_active="0"
+		presentation_order="2" />
+	<menu id="3" element_id="testElement3" is_active="1"
+		presentation_order="3" />
+
+	<!-- New menus for testing active/inactive, messageKey, and order -->
+	<menu id="4" element_id="testElement4" is_active="1"
+		presentation_order="4" messageKey="zMenu" />
+	<menu id="5" element_id="testElement5" is_active="1"
+		presentation_order="5" messageKey="aMenu" />
+	<menu id="6" element_id="testElement6" is_active="0"
+		presentation_order="6" messageKey="xMenu" />
+	<menu id="7" element_id="testElement7" is_active="1"
+		presentation_order="7" messageKey="mMenu" />
+	<menu id="8" element_id="testElement8" is_active="1"
+		presentation_order="8" messageKey="fMenu" />
+</dataset>
