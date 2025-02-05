@@ -27,6 +27,16 @@
 
 		<class>org.ozeki.sms.valueholder.OzekiMessageOut</class>
 
+		<class>org.openelisglobal.program.valueholder.ProgramSample</class>
+
+		<class>org.openelisglobal.program.valueholder.pathology.PathologySample</class>
+		<class>org.openelisglobal.program.valueholder.pathology.PathologyTechnique</class>
+		<class>org.openelisglobal.program.valueholder.pathology.PathologySlide</class>
+		<class>org.openelisglobal.program.valueholder.pathology.PathologyRequest</class>
+		<class>org.openelisglobal.program.valueholder.pathology.PathologyReport</class>
+		<class>org.openelisglobal.program.valueholder.pathology.PathologyConclusion</class>
+		<class>org.openelisglobal.program.valueholder.pathology.PathologyBlock</class>
+
 		<properties>
 			<property name="hibernate.ejb.cfgfile"
 				value="hibernate/test-hibernate.cfg.xml" />

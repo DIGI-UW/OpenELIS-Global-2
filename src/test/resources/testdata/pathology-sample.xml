@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- * The contents of this file are subject to the Mozilla Public License
+	* Version 1.1 (the "License"); you may not use this file except in * compliance
+	with the License. You may obtain a copy of the License at * http://www.mozilla.org/MPL/
+	* * Software distributed under the License is distributed on an "AS IS" *
+	basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the *
+	License for the specific language governing rights and limitations under
+	* the License. * * The Original Code is OpenELIS code. * * Copyright (C)
+	ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+<dataset>
+	<system_user id="1001" lastupdated="2024-06-08 14:00:00.0"
+		external_id="EXT001" login_name="technician1" first_name="John"
+		last_name="Doe" initials="JD" is_active="Y" is_employee="Y" />
+	<system_user id="1002" lastupdated="2024-06-08 14:05:00.0"
+		external_id="EXT002" login_name="pathologist1" first_name="Sarah"
+		last_name="Smith" initials="SS" is_active="Y" is_employee="Y" />
+	<system_user id="1003" lastupdated="2024-06-08 14:05:00.0"
+		external_id="EXT003" login_name="pathologist2" first_name="Mariam"
+		last_name="Smith" initials="MS" is_active="Y" is_employee="Y" />
+	<system_user id="1004" lastupdated="2024-06-08 14:00:00.0"
+		external_id="EXT004" login_name="technician2" first_name="Kunta"
+		last_name="Kinte" initials="KK" is_active="Y" is_employee="Y" />
+
+	<program id="1" lastupdated="2024-06-10 12:00:00.0"
+		code="PROG001" name="Blood Test Program" manually_changed="false" />
+	<program id="2" lastupdated="2024-06-10 12:00:00.0"
+		code="PROG002" name="Blood Test2 Program" manually_changed="false" />
+
+	<sample id="1" accession_number="12345"
+		received_date="2024-06-03 00:00:00.0"
+		entered_date="2024-06-03 00:00:00.0"
+		collection_date="2024-06-03 00:00:00.0"
+		lastupdated="2023-11-01 12:00:00" />
+	<sample id="2" accession_number="12346"
+		received_date="2024-06-03 00:00:00.0"
+		entered_date="2024-06-03 00:00:00.0"
+		collection_date="2024-06-03 00:00:00.0"
+		lastupdated="2023-11-01 12:00:00" />
+	<program_sample id="1" program_id="1" sample_id="1"
+		last_updated="2024-06-10 12:00:00.0" />
+
+	<pathology_sample id="1"
+		last_updated="2024-06-10 12:00:00.0" program_id="1" sample_id="1"
+		technician_id="1001" pathologist_id="1002" status="GROSSING"
+		gross_exam="Normal tissues observed"
+		microscopy_exam="Microscopic details of sample" />
+	<pathology_sample id="2"
+		last_updated="2024-07-10 12:00:00.0" program_id="2" sample_id="2"
+		pathologist_id="1003" status="GROSSING"
+		gross_exam="Abnormal tissues observed"
+		microscopy_exam="Microscopic details of sample" />
+
+	<pathology_block id="101" pathology_sample_id="1"
+		block_number="11" location="Lab 1" />
+	<pathology_slide id="201" pathology_sample_id="1"
+		file_type="JPEG" location="Slide Storage 1" />
+	<pathology_request id="301" pathology_sample_id="1"
+		status="PENDING" type="DICTIONARY" value="HISTOLOGY" />
+
+	<pathology_technique id="401"
+		pathology_sample_id="1" type="MANUAL" value="Frozen Section" />
+	<pathology_conclusion id="501"
+		pathology_sample_id="1" type="DICTIONARY" value="Benign Tumor" />
+	<pathology_report id="601" pathology_sample_id="1"
+		file_type="PDF" report_type="FINAL" />
+</dataset>

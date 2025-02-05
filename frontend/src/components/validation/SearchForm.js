@@ -330,6 +330,7 @@ const SearchForm = (props) => {
                       type="submit"
                       id="submit"
                       style={{ marginTop: "16px" }}
+                      data-testid="Search-btn"
                     >
                       <FormattedMessage id="label.button.search" />
                     </Button>
