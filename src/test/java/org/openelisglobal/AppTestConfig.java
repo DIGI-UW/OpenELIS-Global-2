@@ -31,7 +31,6 @@ import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.program.service.ImmunohistochemistrySampleService;
 import org.openelisglobal.program.service.PathologySampleService;
-import org.openelisglobal.program.service.ProgramSampleService;
 import org.openelisglobal.referral.service.ReferralResultService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.service.ReferralSetService;
@@ -87,7 +86,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.result.daoimpl", "org.openelisglobal.resultlimit", "org.openelisglobal.resultlimits",
         "org.openelisglobal.typeoftestresult", "org.openelisglobal.samplehuman", "org.openelisglobal.provider",
         "org.openelisglobal.role", "org.openelisglobal.organization", "org.openelisglobal.region.service",
-        "org.openelisglobal.region.dao" }, excludeFilters = {
+        "org.openelisglobal.region.dao", "org.openelisglobal.program.service", "org.openelisglobal.program.dao",
+        "org.openelisglobal.systemuser.service", "org.openelisglobal.systemuser.daoimpl" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.provider.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
@@ -272,12 +272,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public ImmunohistochemistrySampleService immunohistochemistrySampleService() {
         return mock(ImmunohistochemistrySampleService.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public ProgramSampleService programSampleService() {
-        return mock(ProgramSampleService.class);
     }
 
     @Bean()

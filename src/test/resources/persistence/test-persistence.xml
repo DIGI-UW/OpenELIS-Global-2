@@ -27,6 +27,8 @@
 
 		<class>org.ozeki.sms.valueholder.OzekiMessageOut</class>
 
+		<class>org.openelisglobal.program.valueholder.ProgramSample</class>
+
 		<properties>
 			<property name="hibernate.ejb.cfgfile"
 				value="hibernate/test-hibernate.cfg.xml" />
