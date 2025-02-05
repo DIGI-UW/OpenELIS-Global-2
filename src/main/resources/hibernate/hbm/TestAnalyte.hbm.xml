@@ -3,41 +3,42 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.testanalyte.valueholder.TestAnalyte"
-        table="TEST_ANALYTE" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">test_analyte_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class
+		name="org.openelisglobal.testanalyte.valueholder.TestAnalyte"
+		table="TEST_ANALYTE" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">test_analyte_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <many-to-one name="analyte"
-            class="org.openelisglobal.analyte.valueholder.Analyte" fetch="select" lazy="false">
-            <column name="ANALYTE_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="test"
-            class="org.openelisglobal.test.valueholder.Test" fetch="select">
-            <column name="TEST_ID" precision="10" scale="0" />
-        </many-to-one>
-        <property name="resultGroup"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="RESULT_GROUP" precision="22" scale="0" />
-        </property>
-        <property name="sortOrder"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="SORT_ORDER" precision="22" scale="0" />
-        </property>
-        <property name="testAnalyteType" type="java.lang.String">
-            <column name="TESTALYT_TYPE" length="1" />
-        </property>
-        <property name="isReportable" type="java.lang.String">
-            <column name="IS_REPORTABLE" length="1" />
-        </property>
-    </class>
+		<many-to-one name="analyte"
+			class="org.openelisglobal.analyte.valueholder.Analyte" fetch="select"
+			lazy="false">
+			<column name="ANALYTE_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="test"
+			class="org.openelisglobal.test.valueholder.Test" fetch="select">
+			<column name="TEST_ID" precision="10" scale="0" />
+		</many-to-one>
+		<property name="resultGroup"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="RESULT_GROUP" precision="22" scale="0" />
+		</property>
+		<property name="sortOrder"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="SORT_ORDER" precision="22" scale="0" />
+		</property>
+		<property name="testAnalyteType" type="java.lang.String">
+			<column name="TESTALYT_TYPE" length="1" />
+		</property>
+		<property name="isReportable" type="java.lang.String">
+			<column name="IS_REPORTABLE" length="1" />
+		</property>
+	</class>
 </hibernate-mapping>

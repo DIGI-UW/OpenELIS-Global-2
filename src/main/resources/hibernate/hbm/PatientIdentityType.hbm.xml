@@ -3,26 +3,26 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.patientidentitytype.valueholder.PatientIdentityType"
-        table="PATIENT_IDENTITY_TYPE" optimistic-lock="version"
-        dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">patient_identity_type_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class
+		name="org.openelisglobal.patientidentitytype.valueholder.PatientIdentityType"
+		table="PATIENT_IDENTITY_TYPE" optimistic-lock="version"
+		dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">patient_identity_type_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="identityType" type="java.lang.String">
-            <column name="IDENTITY_TYPE" length="30" />
-        </property>
-        <property name="description" type="java.lang.String">
-            <column name="DESCRIPTION" length="400" />
-        </property>
-    </class>
+		<property name="identityType" type="java.lang.String">
+			<column name="IDENTITY_TYPE" length="30" />
+		</property>
+		<property name="description" type="java.lang.String">
+			<column name="DESCRIPTION" length="400" />
+		</property>
+	</class>
 </hibernate-mapping>

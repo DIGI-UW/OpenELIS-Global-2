@@ -3,42 +3,42 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.datasubmission.valueholder.DataIndicator"
-        table="DATA_INDICATOR" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">data_indicator_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
-        <bag name="resources" cascade="all" lazy="false">
-            <key column="indicator_id" />
-            <one-to-many
-                class="org.openelisglobal.datasubmission.valueholder.DataResource" />
-        </bag>
-        <many-to-one name="dataValue"
-            class="org.openelisglobal.datasubmission.valueholder.DataValue"
-            lazy="false" cascade="all">
-            <column name="data_value_id" precision="10" scale="0" />
-        </many-to-one>
-        <property name="year" type="java.lang.Integer">
-            <column name="year" />
-        </property>
-        <property name="month" type="java.lang.Integer">
-            <column name="month" />
-        </property>
-        <many-to-one name="typeOfIndicator"
-            class="org.openelisglobal.datasubmission.valueholder.TypeOfDataIndicator"
-            fetch="select" lazy="false">
-            <column name="type_of_indicator_id" precision="10" scale="0" />
-        </many-to-one>
-        <property name="status" type="java.lang.String">
-            <column name="status" />
-        </property>
-    </class>
+	<class
+		name="org.openelisglobal.datasubmission.valueholder.DataIndicator"
+		table="DATA_INDICATOR" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">data_indicator_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
+		<bag name="resources" cascade="all" lazy="false">
+			<key column="indicator_id" />
+			<one-to-many
+				class="org.openelisglobal.datasubmission.valueholder.DataResource" />
+		</bag>
+		<many-to-one name="dataValue"
+			class="org.openelisglobal.datasubmission.valueholder.DataValue"
+			lazy="false" cascade="all">
+			<column name="data_value_id" precision="10" scale="0" />
+		</many-to-one>
+		<property name="year" type="java.lang.Integer">
+			<column name="year" />
+		</property>
+		<property name="month" type="java.lang.Integer">
+			<column name="month" />
+		</property>
+		<many-to-one name="typeOfIndicator"
+			class="org.openelisglobal.datasubmission.valueholder.TypeOfDataIndicator"
+			fetch="select" lazy="false">
+			<column name="type_of_indicator_id" precision="10" scale="0" />
+		</many-to-one>
+		<property name="status" type="java.lang.String">
+			<column name="status" />
+		</property>
+	</class>
 </hibernate-mapping>

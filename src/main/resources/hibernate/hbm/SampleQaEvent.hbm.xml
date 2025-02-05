@@ -3,38 +3,39 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent"
-        table="SAMPLE_QAEVENT" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">sample_qaevent_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class
+		name="org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent"
+		table="SAMPLE_QAEVENT" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">sample_qaevent_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <many-to-one name="sample"
-            class="org.openelisglobal.sample.valueholder.Sample" fetch="select">
-            <column name="SAMPLE_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="qaEvent"
-            class="org.openelisglobal.qaevent.valueholder.QaEvent" fetch="select" lazy="false">
-            <column name="QA_EVENT_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="sampleItem"
-            class="org.openelisglobal.sampleitem.valueholder.SampleItem"
-            fetch="select" lazy="false">
-            <column name="sampleitem_id" precision="10" scale="0" />
-        </many-to-one>
-        <property name="completedDate" type="java.sql.Date">
-            <column name="COMPLETED_DATE" length="7" />
-        </property>
-        <property name="enteredDate" type="java.sql.Timestamp">
-            <column name="entered_date" length="7" />
-        </property>
-    </class>
+		<many-to-one name="sample"
+			class="org.openelisglobal.sample.valueholder.Sample" fetch="select">
+			<column name="SAMPLE_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="qaEvent"
+			class="org.openelisglobal.qaevent.valueholder.QaEvent" fetch="select"
+			lazy="false">
+			<column name="QA_EVENT_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="sampleItem"
+			class="org.openelisglobal.sampleitem.valueholder.SampleItem"
+			fetch="select" lazy="false">
+			<column name="sampleitem_id" precision="10" scale="0" />
+		</many-to-one>
+		<property name="completedDate" type="java.sql.Date">
+			<column name="COMPLETED_DATE" length="7" />
+		</property>
+		<property name="enteredDate" type="java.sql.Timestamp">
+			<column name="entered_date" length="7" />
+		</property>
+	</class>
 </hibernate-mapping>

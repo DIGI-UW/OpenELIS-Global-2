@@ -1,34 +1,34 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-                                   "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+								"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping>
-    <class dynamic-update="true"
-        name="org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportExternalExport"
-        table="report_external_export">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">report_queue_seq</param>
-            </generator>
-        </id>
-        <version access="field" column="lastupdated" generated="never"
-            name="lastupdated" type="timestamp" />
-        <property column="event_date" generated="never" lazy="false"
-            name="eventDate" type="timestamp" />
-        <property column="sent_date" generated="never" lazy="false"
-            name="sentDate" type="timestamp" />
-        <property column="collection_date" generated="never"
-            lazy="false" name="collectionDate" type="timestamp" />
-        <property column="type" generated="never" lazy="false"
-            name="typeId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
-        <property column="send_flag" generated="never" lazy="false"
-            name="send" type="boolean" />
-        <property column="data" generated="never" lazy="false"
-            name="data" type="string" />
-        <property column="bookkeeping" generated="never" lazy="false"
-            name="bookkeepingData" type="string" />
-    </class>
+	<class dynamic-update="true"
+		name="org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportExternalExport"
+		table="report_external_export">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">report_queue_seq</param>
+			</generator>
+		</id>
+		<version access="field" column="lastupdated" generated="never"
+			name="lastupdated" type="timestamp" />
+		<property column="event_date" generated="never" lazy="false"
+			name="eventDate" type="timestamp" />
+		<property column="sent_date" generated="never" lazy="false"
+			name="sentDate" type="timestamp" />
+		<property column="collection_date" generated="never"
+			lazy="false" name="collectionDate" type="timestamp" />
+		<property column="type" generated="never" lazy="false"
+			name="typeId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+		<property column="send_flag" generated="never" lazy="false"
+			name="send" type="boolean" />
+		<property column="data" generated="never" lazy="false"
+			name="data" type="string" />
+		<property column="bookkeeping" generated="never" lazy="false"
+			name="bookkeepingData" type="string" />
+	</class>
 </hibernate-mapping>

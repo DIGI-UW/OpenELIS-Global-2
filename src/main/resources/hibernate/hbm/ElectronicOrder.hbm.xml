@@ -3,56 +3,57 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder"
-        table="ELECTRONIC_ORDER" optimistic-lock="version"
-        dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">electronic_order_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
-        <property name="orderTimestamp" type="java.sql.Timestamp">
-            <column name="ORDER_TIMESTAMP" length="7" not-null="true" />
-        </property>
-        <property name="externalId" type="java.lang.String">
-            <column name="EXTERNAL_ID" length="60" not-null="true" />
-        </property>
-        <many-to-one name="patient"
-            class="org.openelisglobal.patient.valueholder.Patient" fetch="select" lazy="false">
-            <column name="patient_id" precision="10" scale="0" />
-        </many-to-one>
-        <property name="statusId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
-            column="status_id" precision="10" not-null="true" />
-        <property name="data" type="java.lang.String">
-            <column name="data" not-null="true" />
-        </property>
-        <property name="type">
-            <type name="org.hibernate.type.EnumType">
-                <param name="enumClass">org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderType</param>
-                <param name="useNamed">true</param>
-            </type>
-        </property>
-        <property name="priority" column="ORDER_PRIORITY">
-            <type name="org.hibernate.type.EnumType">
-                <param name="enumClass">org.openelisglobal.sample.valueholder.OrderPriority</param>
-                <param name="useNamed">true</param>
-            </type>
-        </property>
-        <property name="rejectReasonId" type="java.lang.String">
-            <column name="reject_reason_id" length="10" not-null="false" />
-        </property>
-        <property name="qaAuthorizer" type="java.lang.String">
-            <column name="reject_reason" length="200" not-null="false" />
-        </property>
-        <property name="rejectComment" type="java.lang.String">
-            <column name="reject_comment" length="60" not-null="false" />
-        </property>
-    </class>
+	<class
+		name="org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder"
+		table="ELECTRONIC_ORDER" optimistic-lock="version"
+		dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">electronic_order_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
+		<property name="orderTimestamp" type="java.sql.Timestamp">
+			<column name="ORDER_TIMESTAMP" length="7" not-null="true" />
+		</property>
+		<property name="externalId" type="java.lang.String">
+			<column name="EXTERNAL_ID" length="60" not-null="true" />
+		</property>
+		<many-to-one name="patient"
+			class="org.openelisglobal.patient.valueholder.Patient" fetch="select"
+			lazy="false">
+			<column name="patient_id" precision="10" scale="0" />
+		</many-to-one>
+		<property name="statusId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+			column="status_id" precision="10" not-null="true" />
+		<property name="data" type="java.lang.String">
+			<column name="data" not-null="true" />
+		</property>
+		<property name="type">
+			<type name="org.hibernate.type.EnumType">
+				<param name="enumClass">org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderType</param>
+				<param name="useNamed">true</param>
+			</type>
+		</property>
+		<property name="priority" column="ORDER_PRIORITY">
+			<type name="org.hibernate.type.EnumType">
+				<param name="enumClass">org.openelisglobal.sample.valueholder.OrderPriority</param>
+				<param name="useNamed">true</param>
+			</type>
+		</property>
+		<property name="rejectReasonId" type="java.lang.String">
+			<column name="reject_reason_id" length="10" not-null="false" />
+		</property>
+		<property name="qaAuthorizer" type="java.lang.String">
+			<column name="reject_reason" length="200" not-null="false" />
+		</property>
+		<property name="rejectComment" type="java.lang.String">
+			<column name="reject_comment" length="60" not-null="false" />
+		</property>
+	</class>
 </hibernate-mapping>
