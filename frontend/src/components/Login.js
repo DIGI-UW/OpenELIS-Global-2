@@ -20,6 +20,7 @@ import { Formik } from "formik";
 import { AlertDialog, NotificationKinds } from "./common/CustomNotification";
 import UserSessionDetailsContext from "../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./layout/Layout";
+import { useNavigate } from "react-router-dom";
 
 function Login(props) {
   const { notificationVisible, addNotification, setNotificationVisible } =
@@ -29,6 +30,7 @@ function Login(props) {
   const { userSessionDetails, refresh } = useContext(UserSessionDetailsContext);
   const [submitting, setSubmitting] = useState(false);
   const firstInput = createRef();
+  const navigate=useNavigate();
 
   useEffect(() => {
     firstInput?.current?.focus();
@@ -42,7 +44,8 @@ function Login(props) {
 
   useEffect(() => {
     if (userSessionDetails.authenticated) {
-      window.location.href = "/";
+      // window.location.href = "/";
+      navigate("/");
     }
   }, [userSessionDetails]);
 
@@ -87,7 +90,8 @@ function Login(props) {
         // get json response here
         let data = await response.json();
         if (response.status === 200) {
-          window.location.href = "/";
+          // window.location.href = "/";
+          navigate("/");
         } else {
           addNotification({
             title: props.intl.formatMessage({

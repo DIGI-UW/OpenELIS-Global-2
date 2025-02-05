@@ -23,6 +23,8 @@ import { getFromOpenElisServer } from "../utils/Utils";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import config from "../../config.json";
+import { use } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Validation = (props) => {
   const componentMounted = useRef(false);
@@ -32,6 +34,7 @@ const Validation = (props) => {
   const { configurationProperties } = useContext(ConfigurationContext);
 
   const intl = useIntl();
+  const navigate =useNavigate();
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
@@ -132,7 +135,8 @@ const Validation = (props) => {
     if (status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      window.location.href = "/validation" + props.params;
+      // window.location.href = "/validation" + props.params;
+      navigate("/validation" + props.params);
     }
     addNotification({
       kind: kind,

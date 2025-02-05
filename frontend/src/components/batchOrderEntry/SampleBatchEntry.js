@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import {
   Button,
@@ -36,7 +36,7 @@ const SampleBatchEntry = (props) => {
   const { configurationProperties } = useContext(ConfigurationContext);
   const intl = useIntl();
   const componentMounted = useRef(false);
-  const history = useHistory();
+  // const history = useHistory();
   const [siteNames, setSiteNames] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -49,6 +49,7 @@ const SampleBatchEntry = (props) => {
     useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(true);
   const [labNoGenerated, setLabNoGenerated] = useState(false);
+  const navigate= useNavigate();
 
   let breadcrumbs = [{ label: "home.label", link: "/" }];
 
@@ -494,7 +495,8 @@ const SampleBatchEntry = (props) => {
               <Grid>
                 <Button
                   onClick={() =>
-                    (window.location.href = "/SampleBatchEntrySetup")
+                    // (window.location.href = "/SampleBatchEntrySetup")
+                    (navigate("/SampleBatchEntrySetup"))
                   }
                 >
                   <FormattedMessage id="label.button.finish" />

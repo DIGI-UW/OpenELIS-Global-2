@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { Button, Grid, Column, Section } from "@carbon/react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
+import { useNavigate } from "react-router-dom";
 
 const ActionPaginationButtonType = ({
   selectedRowIds,
@@ -23,6 +24,7 @@ const ActionPaginationButtonType = ({
   type,
 }) => {
   const intl = useIntl();
+  const navigate=useNavigate();
 
   return (
     <Grid fullWidth={true}>

@@ -20,6 +20,7 @@ import PageBreadCrumb from "../../common/PageBreadCrumb";
 import AuditTrailReport from "../auditTrailReport/AuditTrailReport";
 import ReportByDateCSV from "../common/ReportByDateCSV";
 import IntermediateByService from "./IntermediateByService";
+import { useNavigate } from "react-router-dom";
 
 export const StudyReports = (props) => {
   const { type, report } = props;
@@ -169,6 +170,7 @@ const StudyIndex = () => {
   const [source, setSource] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [breadcrumbs, setBreadcrumbs] = useState([]);
+  const navigate = useNavigate();
   const breadcrumbMap = {
     patient_patientCollection: "patient.report.collection.name",
     patient_patientAssociated: "patient.report.associated.name",
@@ -224,7 +226,8 @@ const StudyIndex = () => {
       }
       setIsLoading(false);
     } else {
-      window.location.href = "/StudyReports";
+      // window.location.href = "/StudyReports";
+      navigate("/StudyReports");
     }
   }, [type, report]);
 
