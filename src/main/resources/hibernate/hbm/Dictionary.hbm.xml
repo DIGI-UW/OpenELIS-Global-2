@@ -3,49 +3,49 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.dictionary.valueholder.Dictionary"
-        table="DICTIONARY" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">dictionary_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
-        <many-to-one name="dictionaryCategory"
-            class="org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory"
-            fetch="select" lazy="false">
-            <column name="DICTIONARY_CATEGORY_ID" precision="10" scale="0" />
-        </many-to-one>
-        <property name="isActive" type="java.lang.String">
-            <column name="IS_ACTIVE" length="1" />
-        </property>
-        <property name="dictEntry" type="java.lang.String">
-            <column name="DICT_ENTRY" length="4000" />
-        </property>
-        <property name="localAbbreviation" type="java.lang.String">
-            <column name="LOCAL_ABBREV" length="10" unique="true" />
-        </property>
-        <property name="nameKey" type="java.lang.String">
-            <column name="display_key" length="60" not-null="false" />
-        </property>
-        <property name="sortOrder" column="sort_order"
-            type="java.lang.Integer" />
-        <many-to-one name="localizedDictionaryName"
-                     class="org.openelisglobal.localization.valueholder.Localization"
-                     fetch="select" lazy="false">
-            <column name="name_localization_id" precision="10" scale="0" />
-        </many-to-one>
-    </class>
-<!-- 	<query name="dictionary.getNext"> -->
-<!-- 		from Dictionary d order by d.dictionaryCategory.categoryName, d.dictEntry -->
-<!-- 	</query> -->
-<!-- 	<query name="dictionary.getPrevious"> -->
-<!-- 		from Dictionary d order by d.dictionaryCategory.categoryName desc, -->
-<!-- 		d.dictEntry desc -->
-<!-- 	</query> -->
+	<class
+		name="org.openelisglobal.dictionary.valueholder.Dictionary"
+		table="DICTIONARY" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">dictionary_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
+		<many-to-one name="dictionaryCategory"
+			class="org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory"
+			fetch="select" lazy="false">
+			<column name="DICTIONARY_CATEGORY_ID" precision="10" scale="0" />
+		</many-to-one>
+		<property name="isActive" type="java.lang.String">
+			<column name="IS_ACTIVE" length="1" />
+		</property>
+		<property name="dictEntry" type="java.lang.String">
+			<column name="DICT_ENTRY" length="4000" />
+		</property>
+		<property name="localAbbreviation" type="java.lang.String">
+			<column name="LOCAL_ABBREV" length="10" unique="true" />
+		</property>
+		<property name="nameKey" type="java.lang.String">
+			<column name="display_key" length="60" not-null="false" />
+		</property>
+		<property name="sortOrder" column="sort_order"
+			type="java.lang.Integer" />
+		<many-to-one name="localizedDictionaryName"
+			class="org.openelisglobal.localization.valueholder.Localization"
+			fetch="select" lazy="false">
+			<column name="name_localization_id" precision="10" scale="0" />
+		</many-to-one>
+	</class>
+	<!-- <query name="dictionary.getNext"> -->
+	<!-- from Dictionary d order by d.dictionaryCategory.categoryName, d.dictEntry -->
+	<!-- </query> -->
+	<!-- <query name="dictionary.getPrevious"> -->
+	<!-- from Dictionary d order by d.dictionaryCategory.categoryName desc, -->
+	<!-- d.dictEntry desc -->
+	<!-- </query> -->
 </hibernate-mapping>

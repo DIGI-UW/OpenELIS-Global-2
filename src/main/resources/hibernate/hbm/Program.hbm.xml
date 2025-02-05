@@ -3,35 +3,35 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class name="org.openelisglobal.program.valueholder.Program"
-        table="PROGRAM" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">program_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class name="org.openelisglobal.program.valueholder.Program"
+		table="PROGRAM" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">program_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="code" type="java.lang.String">
-            <column name="CODE" length="10" not-null="true" />
-        </property>
-        <property name="programName" type="java.lang.String">
-            <column name="NAME" length="50" not-null="true" />
-        </property>
-        <property name="manuallyChanged" type="java.lang.Boolean">
-            <column name="manually_changed" length="1" not-null="true" />
-        </property>
-        <property name="questionnaireUUID" type="java.util.UUID">
-            <column name="questionnaire_fhir_uuid"/>
-        </property>
-        <many-to-one name="testSection"
-            class="org.openelisglobal.test.valueholder.TestSection"
-            fetch="select" lazy="false">
-            <column name="test_section_id" precision="10" scale="0" />
-        </many-to-one>
-    </class>
+		<property name="code" type="java.lang.String">
+			<column name="CODE" length="10" not-null="true" />
+		</property>
+		<property name="programName" type="java.lang.String">
+			<column name="NAME" length="50" not-null="true" />
+		</property>
+		<property name="manuallyChanged" type="java.lang.Boolean">
+			<column name="manually_changed" length="1" not-null="true" />
+		</property>
+		<property name="questionnaireUUID" type="java.util.UUID">
+			<column name="questionnaire_fhir_uuid" />
+		</property>
+		<many-to-one name="testSection"
+			class="org.openelisglobal.test.valueholder.TestSection"
+			fetch="select" lazy="false">
+			<column name="test_section_id" precision="10" scale="0" />
+		</many-to-one>
+	</class>
 </hibernate-mapping>

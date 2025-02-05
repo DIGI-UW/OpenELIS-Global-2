@@ -3,36 +3,36 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.referencetables.valueholder.ReferenceTables"
-        table="REFERENCE_TABLES" optimistic-lock="version"
-        dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">reference_tables_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class
+		name="org.openelisglobal.referencetables.valueholder.ReferenceTables"
+		table="REFERENCE_TABLES" optimistic-lock="version"
+		dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">reference_tables_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="tableName" type="java.lang.String">
-            <column name="NAME" length="40" />
-        </property>
-        <property name="keepHistory" type="java.lang.String">
-            <column name="KEEP_HISTORY" length="1" />
-        </property>
-        <property name="isHl7Encoded" type="java.lang.String">
-            <column name="IS_HL7_ENCODED" length="1" />
-        </property>
+		<property name="tableName" type="java.lang.String">
+			<column name="NAME" length="40" />
+		</property>
+		<property name="keepHistory" type="java.lang.String">
+			<column name="KEEP_HISTORY" length="1" />
+		</property>
+		<property name="isHl7Encoded" type="java.lang.String">
+			<column name="IS_HL7_ENCODED" length="1" />
+		</property>
 
-    </class>
-<!-- 	<query name="referencetables.getNext"> -->
-<!-- 		from ReferenceTables r order by r.tableName -->
-<!-- 	</query> -->
-<!-- 	<query name="referencetables.getPrevious"> -->
-<!-- 		from ReferenceTables r order by r.tableName -->
-<!-- 	</query> -->
+	</class>
+	<!-- <query name="referencetables.getNext"> -->
+	<!-- from ReferenceTables r order by r.tableName -->
+	<!-- </query> -->
+	<!-- <query name="referencetables.getPrevious"> -->
+	<!-- from ReferenceTables r order by r.tableName -->
+	<!-- </query> -->
 </hibernate-mapping>

@@ -3,97 +3,97 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class name="org.openelisglobal.sample.valueholder.Sample"
-        table="SAMPLE" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">sample_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class name="org.openelisglobal.sample.valueholder.Sample"
+		table="SAMPLE" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">sample_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="accessionNumber" type="java.lang.String">
-            <column name="ACCESSION_NUMBER" precision="20" not-null="true"
-                unique="true" />
-        </property>
-        <property name="priority" column="ORDER_PRIORITY">
-            <type name="org.hibernate.type.EnumType">
-                <param name="enumClass">org.openelisglobal.sample.valueholder.OrderPriority</param>
-                <param name="useNamed">true</param>
-            </type>
-        </property>
-        <property name="packageId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="PACKAGE_ID" precision="10" scale="0" />
-        </property>
-        <property name="domain" type="java.lang.String">
-            <column name="DOMAIN" length="1" />
-        </property>
-        <property name="nextItemSequence"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="NEXT_ITEM_SEQUENCE" precision="10" scale="0" />
-        </property>
-        <property name="revision"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="REVISION" precision="22" scale="0" />
-        </property>
-        <property name="enteredDate" type="java.sql.Date">
-            <column name="ENTERED_DATE" length="7" not-null="true" />
-        </property>
-        <property name="receivedTimestamp" type="java.sql.Timestamp">
-            <column name="RECEIVED_DATE" length="7" not-null="true" />
-        </property>
-        <property name="collectionDate" type="java.sql.Timestamp">
-            <column name="COLLECTION_DATE" length="7" />
-        </property>
-        <property name="clientReference" type="java.lang.String">
-            <column name="CLIENT_REFERENCE" length="20" />
-        </property>
-        <property name="status"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="STATUS" length="3" />
-        </property>
-        <property name="releasedDate" type="java.sql.Date">
-            <column name="RELEASED_DATE" length="7" />
-        </property>
-        <property name="stickerReceivedFlag" type="java.lang.String">
-            <column name="STICKER_RCVD_FLAG" length="1" />
-        </property>
-        <property name="sysUserId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="SYS_USER_ID" precision="10" scale="0" />
-        </property>
-        <property name="barCode" type="java.lang.String">
-            <column name="BARCODE" length="20" />
-        </property>
-        <property name="transmissionDate" type="java.sql.Date">
-            <column name="TRANSMISSION_DATE" length="7" />
-        </property>
-        <property name="referredCultureFlag" type="java.lang.String"
-            column="SPEC_OR_ISOLATE" length="1" />
-        <property name="referringId" type="java.lang.String"
-            column="referring_id" />
-        <property name="statusId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
-            column="status_id" precision="10" />
-        <property name="clinicalOrderId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
-            column="clinical_order_id" />
-        <property name="isConfirmation" column="is_confirmation"
-            type="java.lang.Boolean" />
-        <property name="fhirUuid"
-            column="fhir_uuid" type="java.util.UUID" />
-        <!-- <set name="sampleOrganizations" inverse="true"> <key> <column name="SAMP_ID"
-            precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.sampleorganization.valueholder.SampleOrganization"
-            /> </set> <set name="sampleEnvironmentals" inverse="true"> <key> <column
-            name="SAMP_ID" precision="10" scale="0" not-null="true" /> </key> <one-to-many
-            class="org.openelisglobal.sampleenvironmental.valueholder.SampleEnvironmental"
-            /> </set> <set name="sampleAnimals" inverse="true"> <key> <column name="SAMP_ID"
-            precision="10" scale="0" not-null="true" /> </key> <one-to-many class="org.openelisglobal.sampleanimal.valueholder.SampleAnimal"
-            /> </set> -->
-    </class>
+		<property name="accessionNumber" type="java.lang.String">
+			<column name="ACCESSION_NUMBER" precision="20" not-null="true"
+				unique="true" />
+		</property>
+		<property name="priority" column="ORDER_PRIORITY">
+			<type name="org.hibernate.type.EnumType">
+				<param name="enumClass">org.openelisglobal.sample.valueholder.OrderPriority</param>
+				<param name="useNamed">true</param>
+			</type>
+		</property>
+		<property name="packageId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="PACKAGE_ID" precision="10" scale="0" />
+		</property>
+		<property name="domain" type="java.lang.String">
+			<column name="DOMAIN" length="1" />
+		</property>
+		<property name="nextItemSequence"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="NEXT_ITEM_SEQUENCE" precision="10" scale="0" />
+		</property>
+		<property name="revision"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="REVISION" precision="22" scale="0" />
+		</property>
+		<property name="enteredDate" type="java.sql.Date">
+			<column name="ENTERED_DATE" length="7" not-null="true" />
+		</property>
+		<property name="receivedTimestamp" type="java.sql.Timestamp">
+			<column name="RECEIVED_DATE" length="7" not-null="true" />
+		</property>
+		<property name="collectionDate" type="java.sql.Timestamp">
+			<column name="COLLECTION_DATE" length="7" />
+		</property>
+		<property name="clientReference" type="java.lang.String">
+			<column name="CLIENT_REFERENCE" length="20" />
+		</property>
+		<property name="status"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="STATUS" length="3" />
+		</property>
+		<property name="releasedDate" type="java.sql.Date">
+			<column name="RELEASED_DATE" length="7" />
+		</property>
+		<property name="stickerReceivedFlag" type="java.lang.String">
+			<column name="STICKER_RCVD_FLAG" length="1" />
+		</property>
+		<property name="sysUserId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="SYS_USER_ID" precision="10" scale="0" />
+		</property>
+		<property name="barCode" type="java.lang.String">
+			<column name="BARCODE" length="20" />
+		</property>
+		<property name="transmissionDate" type="java.sql.Date">
+			<column name="TRANSMISSION_DATE" length="7" />
+		</property>
+		<property name="referredCultureFlag" type="java.lang.String"
+			column="SPEC_OR_ISOLATE" length="1" />
+		<property name="referringId" type="java.lang.String"
+			column="referring_id" />
+		<property name="statusId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+			column="status_id" precision="10" />
+		<property name="clinicalOrderId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+			column="clinical_order_id" />
+		<property name="isConfirmation" column="is_confirmation"
+			type="java.lang.Boolean" />
+		<property name="fhirUuid" column="fhir_uuid"
+			type="java.util.UUID" />
+		<!-- <set name="sampleOrganizations" inverse="true"> <key> <column name="SAMP_ID"
+			precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.sampleorganization.valueholder.SampleOrganization"
+			/> </set> <set name="sampleEnvironmentals" inverse="true"> <key> <column
+			name="SAMP_ID" precision="10" scale="0" not-null="true" /> </key> <one-to-many
+			class="org.openelisglobal.sampleenvironmental.valueholder.SampleEnvironmental"
+			/> </set> <set name="sampleAnimals" inverse="true"> <key> <column name="SAMP_ID"
+			precision="10" scale="0" not-null="true" /> </key> <one-to-many class="org.openelisglobal.sampleanimal.valueholder.SampleAnimal"
+			/> </set> -->
+	</class>
 </hibernate-mapping>

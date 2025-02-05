@@ -4,29 +4,29 @@
 
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.referral.valueholder.ReferralResult"
-        table="referral_result" optimistic-lock="version"
-        dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">referral_result_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
-        <property name="referralId" column="referral_id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
-        <property name="testId" column="test_id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
-        <many-to-one name="result"
-            class="org.openelisglobal.result.valueholder.Result" lazy="false">
-            <column name="result_id" />
-        </many-to-one>
-        <property name="referralReportDate"
-            column="referral_report_date" type="timestamp" />
-    </class>
+	<class
+		name="org.openelisglobal.referral.valueholder.ReferralResult"
+		table="referral_result" optimistic-lock="version"
+		dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">referral_result_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
+		<property name="referralId" column="referral_id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+		<property name="testId" column="test_id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+		<many-to-one name="result"
+			class="org.openelisglobal.result.valueholder.Result" lazy="false">
+			<column name="result_id" />
+		</many-to-one>
+		<property name="referralReportDate"
+			column="referral_report_date" type="timestamp" />
+	</class>
 </hibernate-mapping>

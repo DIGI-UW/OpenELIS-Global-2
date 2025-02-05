@@ -3,62 +3,62 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.testresult.valueholder.TestResult"
-        table="TEST_RESULT" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="22" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">test_result_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class
+		name="org.openelisglobal.testresult.valueholder.TestResult"
+		table="TEST_RESULT" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="22" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">test_result_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <many-to-one name="scriptlet"
-            class="org.openelisglobal.scriptlet.valueholder.Scriptlet"
-            fetch="select">
-            <column name="SCRIPTLET_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="test"
-            class="org.openelisglobal.test.valueholder.Test" fetch="select">
-            <column name="TEST_ID" precision="10" scale="0" />
-        </many-to-one>
-        <property name="resultGroup"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="RESULT_GROUP" precision="22" scale="0" />
-        </property>
-        <property name="flags" type="java.lang.String">
-            <column name="FLAGS" length="10" />
-        </property>
-        <property name="sortOrder"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="SORT_ORDER" precision="22" scale="0" />
-        </property>
-        <property name="testResultType" type="java.lang.String">
-            <column name="TST_RSLT_TYPE" length="1" />
-        </property>
-        <property name="value" type="java.lang.String">
-            <column name="VALUE" length="80" />
-        </property>
-        <property name="significantDigits"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="SIGNIFICANT_DIGITS" precision="22" scale="0" />
-        </property>
-        <property name="quantLimit" type="java.lang.String">
-            <column name="QUANT_LIMIT" length="30" />
-        </property>
-        <property name="contLevel" type="java.lang.String">
-            <column name="CONT_LEVEL" length="30" />
-        </property>
-        <property name="isQuantifiable" type="java.lang.Boolean"
-            column="is_quantifiable" />
-        <property name="isActive" type="java.lang.Boolean"
-            column="is_active" />
-        <property name="isNormal" type="java.lang.Boolean"
-                  column="is_normal" />
+		<many-to-one name="scriptlet"
+			class="org.openelisglobal.scriptlet.valueholder.Scriptlet"
+			fetch="select">
+			<column name="SCRIPTLET_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="test"
+			class="org.openelisglobal.test.valueholder.Test" fetch="select">
+			<column name="TEST_ID" precision="10" scale="0" />
+		</many-to-one>
+		<property name="resultGroup"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="RESULT_GROUP" precision="22" scale="0" />
+		</property>
+		<property name="flags" type="java.lang.String">
+			<column name="FLAGS" length="10" />
+		</property>
+		<property name="sortOrder"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="SORT_ORDER" precision="22" scale="0" />
+		</property>
+		<property name="testResultType" type="java.lang.String">
+			<column name="TST_RSLT_TYPE" length="1" />
+		</property>
+		<property name="value" type="java.lang.String">
+			<column name="VALUE" length="80" />
+		</property>
+		<property name="significantDigits"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="SIGNIFICANT_DIGITS" precision="22" scale="0" />
+		</property>
+		<property name="quantLimit" type="java.lang.String">
+			<column name="QUANT_LIMIT" length="30" />
+		</property>
+		<property name="contLevel" type="java.lang.String">
+			<column name="CONT_LEVEL" length="30" />
+		</property>
+		<property name="isQuantifiable" type="java.lang.Boolean"
+			column="is_quantifiable" />
+		<property name="isActive" type="java.lang.Boolean"
+			column="is_active" />
+		<property name="isNormal" type="java.lang.Boolean"
+			column="is_normal" />
 
-    </class>
+	</class>
 </hibernate-mapping>

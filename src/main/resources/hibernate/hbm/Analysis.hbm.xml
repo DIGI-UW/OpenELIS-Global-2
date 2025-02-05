@@ -2,369 +2,380 @@
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class name="org.openelisglobal.analysis.valueholder.Analysis"
-        table="ANALYSIS" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">analysis_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class name="org.openelisglobal.analysis.valueholder.Analysis"
+		table="ANALYSIS" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">analysis_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <many-to-one name="parentResult"
-            class="org.openelisglobal.result.valueholder.Result" fetch="select"
-            lazy="false">
-            <column name="PARENT_RESULT_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="parentAnalysis"
-            class="org.openelisglobal.analysis.valueholder.Analysis"
-            fetch="select"
-            lazy="false">
-            <column name="PARENT_ANALYSIS_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="test"
-            class="org.openelisglobal.test.valueholder.Test" fetch="select"
-            lazy="false">
-            <column name="TEST_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="sampleItem"
-            class="org.openelisglobal.sampleitem.valueholder.SampleItem"
-            fetch="select" lazy="false">
-            <column name="SAMPITEM_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="testSection"
-            class="org.openelisglobal.test.valueholder.TestSection"
-            fetch="select" lazy="false">
-            <column name="TEST_SECT_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="panel"
-            class="org.openelisglobal.panel.valueholder.Panel" fetch="select"
-            lazy="false">
-            <column name="panel_id" precision="10" scale="0" />
-        </many-to-one>
-        <property name="revision"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="REVISION" precision="22" scale="0" />
-        </property>
-        <property name="status"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="STATUS" length="3" />
-        </property>
-        <property name="startedDate" type="java.sql.Date">
-            <column name="STARTED_DATE" length="7" />
-        </property>
-        <property name="completedDate" type="java.sql.Date">
-            <column name="COMPLETED_DATE" length="7" />
-        </property>
-        <property name="releasedDate" type="java.sql.Date">
-            <column name="RELEASED_DATE" length="7" />
-        </property>
-        <property name="enteredDate" type="java.sql.Timestamp">
-            <column name="ENTRY_DATE" length="7" />
-        </property>
-        <property name="printedDate" type="java.sql.Date">
-            <column name="PRINTED_DATE" length="7" />
-        </property>
-        <property name="isReportable" type="java.lang.String">
-            <column name="IS_REPORTABLE" length="1" />
-        </property>
-        <property name="soSendReadyDate" type="java.sql.Date">
-            <column name="SO_SEND_READY_DATE" length="7" />
-        </property>
-        <property name="soClientReference" type="java.lang.String">
-            <column name="SO_CLIENT_REFERENCE" length="240" />
-        </property>
-        <property name="soNotifyReceivedDate" type="java.sql.Date">
-            <column name="SO_NOTIFY_RECEIVED_DATE" length="7" />
-        </property>
-        <property name="soNotifySendDate" type="java.sql.Date">
-            <column name="SO_NOTIFY_SEND_DATE" length="7" />
-        </property>
-        <property name="soSendDate" type="java.sql.Date">
-            <column name="SO_SEND_DATE" length="7" />
-        </property>
-        <property name="soSendEntryBy" type="java.lang.String">
-            <column name="SO_SEND_ENTRY_BY" length="240" />
-        </property>
-        <property name="soSendEntryDate" type="java.sql.Date">
-            <column name="SO_SEND_ENTRY_DATE" length="7" />
-        </property>
-        <property name="analysisType" type="java.lang.String">
-            <column name="ANALYSIS_TYPE" length="10" not-null="true" />
-        </property>
-        <property name="triggeredReflex" type="boolean"
-            column="reflex_trigger" />
-        <property name="resultCalculated" type="boolean"
-            column="result_calculated" />
-        <property name="statusId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
-            column="status_id" precision="10" />
-        <property name="referredOut" column="referred_out"
-            type="java.lang.Boolean" />
-        <property name="sampleTypeName" column="type_of_sample_name"
-            type="java.lang.String" />
-        <property name="correctedSincePatientReport"
-            column="corrected" type="java.lang.Boolean" />
-        <property name="fhirUuid"
-            column="fhir_uuid" type="java.util.UUID" />
-        <many-to-one name="method"
-            class="org.openelisglobal.method.valueholder.Method"
-            fetch="select" lazy="false">
-            <column name="method_id" precision="10" scale="0" />
-        </many-to-one>
-    </class>
+		<many-to-one name="parentResult"
+			class="org.openelisglobal.result.valueholder.Result" fetch="select"
+			lazy="false">
+			<column name="PARENT_RESULT_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="parentAnalysis"
+			class="org.openelisglobal.analysis.valueholder.Analysis"
+			fetch="select" lazy="false">
+			<column name="PARENT_ANALYSIS_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="test"
+			class="org.openelisglobal.test.valueholder.Test" fetch="select"
+			lazy="false">
+			<column name="TEST_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="sampleItem"
+			class="org.openelisglobal.sampleitem.valueholder.SampleItem"
+			fetch="select" lazy="false">
+			<column name="SAMPITEM_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="testSection"
+			class="org.openelisglobal.test.valueholder.TestSection"
+			fetch="select" lazy="false">
+			<column name="TEST_SECT_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="panel"
+			class="org.openelisglobal.panel.valueholder.Panel" fetch="select"
+			lazy="false">
+			<column name="panel_id" precision="10" scale="0" />
+		</many-to-one>
+		<property name="revision"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="REVISION" precision="22" scale="0" />
+		</property>
+		<property name="status"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="STATUS" length="3" />
+		</property>
+		<property name="startedDate" type="java.sql.Date">
+			<column name="STARTED_DATE" length="7" />
+		</property>
+		<property name="completedDate" type="java.sql.Date">
+			<column name="COMPLETED_DATE" length="7" />
+		</property>
+		<property name="releasedDate" type="java.sql.Date">
+			<column name="RELEASED_DATE" length="7" />
+		</property>
+		<property name="enteredDate" type="java.sql.Timestamp">
+			<column name="ENTRY_DATE" length="7" />
+		</property>
+		<property name="printedDate" type="java.sql.Date">
+			<column name="PRINTED_DATE" length="7" />
+		</property>
+		<property name="isReportable" type="java.lang.String">
+			<column name="IS_REPORTABLE" length="1" />
+		</property>
+		<property name="soSendReadyDate" type="java.sql.Date">
+			<column name="SO_SEND_READY_DATE" length="7" />
+		</property>
+		<property name="soClientReference" type="java.lang.String">
+			<column name="SO_CLIENT_REFERENCE" length="240" />
+		</property>
+		<property name="soNotifyReceivedDate" type="java.sql.Date">
+			<column name="SO_NOTIFY_RECEIVED_DATE" length="7" />
+		</property>
+		<property name="soNotifySendDate" type="java.sql.Date">
+			<column name="SO_NOTIFY_SEND_DATE" length="7" />
+		</property>
+		<property name="soSendDate" type="java.sql.Date">
+			<column name="SO_SEND_DATE" length="7" />
+		</property>
+		<property name="soSendEntryBy" type="java.lang.String">
+			<column name="SO_SEND_ENTRY_BY" length="240" />
+		</property>
+		<property name="soSendEntryDate" type="java.sql.Date">
+			<column name="SO_SEND_ENTRY_DATE" length="7" />
+		</property>
+		<property name="analysisType" type="java.lang.String">
+			<column name="ANALYSIS_TYPE" length="10" not-null="true" />
+		</property>
+		<property name="triggeredReflex" type="boolean"
+			column="reflex_trigger" />
+		<property name="resultCalculated" type="boolean"
+			column="result_calculated" />
+		<property name="statusId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+			column="status_id" precision="10" />
+		<property name="referredOut" column="referred_out"
+			type="java.lang.Boolean" />
+		<property name="sampleTypeName" column="type_of_sample_name"
+			type="java.lang.String" />
+		<property name="correctedSincePatientReport"
+			column="corrected" type="java.lang.Boolean" />
+		<property name="fhirUuid" column="fhir_uuid"
+			type="java.util.UUID" />
+		<many-to-one name="method"
+			class="org.openelisglobal.method.valueholder.Method" fetch="select"
+			lazy="false">
+			<column name="method_id" precision="10" scale="0" />
+		</many-to-one>
+	</class>
 
-    <!-- 	<!- bugzilla 1993 get sample analyses as reported on in results report  -->
-    <!-- 		see main_report.jrxml for printed date update -> -->
-    <!-- 	<!-NOTE: if this query changes check analysis_status.jrxml, main_report.jrxml,  -->
-    <!-- 		test_results.jrxml, result_value.jrxml also -> -->
-    <!-- 	<sql-query name="analysis.getAnalysesReadyToBeReported"> -->
-    <!-- 		<return-scalar column="id" type="java.lang.String" /> -->
-    <!--       <![CDATA[select distinct anal.id -->
-    <!--         from -->
-    <!--             sample samp, -->
-    <!--             test_analyte ta, -->
-    <!--             analysis anal, -->
-    <!--             sample_item sampitem, -->
-    <!--             test test, -->
-    <!--             result res -->
+	<!-- <!- bugzilla 1993 get sample analyses as reported on in results report -->
+	<!-- see main_report.jrxml for printed date update -> -->
+	<!-- <!-NOTE: if this query changes check analysis_status.jrxml, main_report.jrxml, -->
+	<!-- test_results.jrxml, result_value.jrxml also -> -->
+	<!-- <sql-query name="analysis.getAnalysesReadyToBeReported"> -->
+	<!-- <return-scalar column="id" type="java.lang.String" /> -->
+	<!-- <![CDATA[select distinct anal.id -->
+	<!-- from -->
+	<!-- sample samp, -->
+	<!-- test_analyte ta, -->
+	<!-- analysis anal, -->
+	<!-- sample_item sampitem, -->
+	<!-- test test, -->
+	<!-- result res -->
 
-    <!--         where -->
-    <!--             ta.test_id = test.id and -->
-    <!--             ta.analyte_id=res.analyte_id and -->
-    <!--             anal.id = res.analysis_id and -->
-    <!--             anal.test_id = test.id and -->
-    <!--             anal.sampitem_id = sampitem. id and -->
-    <!--             sampitem.samp_id = samp.id -->
-    <!--             and  res.is_reportable = 'Y' -->
-    <!--             and anal.is_reportable = 'Y' -->
-    <!--             and anal.printed_date is null -->
-    <!--             and anal.status in (:analysisStatusesToInclude) -->
-    <!--             and samp.status in(:sampleStatusesToInclude) -->
-    <!--             -bugzilla 2028 - there is corresponding sql in main_report.jrxml and test_results.jrxml to
-    make sure we exclude the samples for which tests qa events are not completed -->
-    <!--             -isQaEventsCompleted is 'Y' or 'N' -->
-    <!--             -if there are no qa events for this test then isQaEventsCompleted = 'Y' -->
-    <!--             and 'Y' = case when (select count(*) from analysis_qaevent aq where aq.analysis_id =
-    anal.id)= 0 then 'Y' -->
-    <!--                         -if there are no holdable qa events for this test then  isQaEventsCompleted = 'Y' -->
-    <!--                            when (select count(*) from analysis_qaevent aq, qa_event q where aq.analysis_id = anal.id
-    and q.id = aq.qa_event_id and q.is_holdable = 'Y') = 0 then 'Y' -->
-    <!--                         -if there the holdable qa events for this test are completed (completed date is not null)
-    then isQaEventsCompleted = 'Y' -->
-    <!--                            when (select count(*) from analysis_qaevent aq, qa_event q where aq.analysis_id = anal.id
-    and q.id = aq.qa_event_id and aq.completed_date is null and q.is_holdable = 'Y') = 0 then 'Y' -->
-    <!--                         -else isQaEventsCompleted = 'N' -->
-    <!--                            else 'N' -->
-    <!--                       end -->
-    <!--    ]]> -->
+	<!-- where -->
+	<!-- ta.test_id = test.id and -->
+	<!-- ta.analyte_id=res.analyte_id and -->
+	<!-- anal.id = res.analysis_id and -->
+	<!-- anal.test_id = test.id and -->
+	<!-- anal.sampitem_id = sampitem. id and -->
+	<!-- sampitem.samp_id = samp.id -->
+	<!-- and res.is_reportable = 'Y' -->
+	<!-- and anal.is_reportable = 'Y' -->
+	<!-- and anal.printed_date is null -->
+	<!-- and anal.status in (:analysisStatusesToInclude) -->
+	<!-- and samp.status in(:sampleStatusesToInclude) -->
+	<!-- -bugzilla 2028 - there is corresponding sql in main_report.jrxml and
+		test_results.jrxml to make sure we exclude the samples for which tests qa
+		events are not completed -->
+	<!-- -isQaEventsCompleted is 'Y' or 'N' -->
+	<!-- -if there are no qa events for this test then isQaEventsCompleted =
+		'Y' -->
+	<!-- and 'Y' = case when (select count(*) from analysis_qaevent aq where
+		aq.analysis_id = anal.id)= 0 then 'Y' -->
+	<!-- -if there are no holdable qa events for this test then isQaEventsCompleted
+		= 'Y' -->
+	<!-- when (select count(*) from analysis_qaevent aq, qa_event q where aq.analysis_id
+		= anal.id and q.id = aq.qa_event_id and q.is_holdable = 'Y') = 0 then 'Y' -->
+	<!-- -if there the holdable qa events for this test are completed (completed
+		date is not null) then isQaEventsCompleted = 'Y' -->
+	<!-- when (select count(*) from analysis_qaevent aq, qa_event q where aq.analysis_id
+		= anal.id and q.id = aq.qa_event_id and aq.completed_date is null and q.is_holdable
+		= 'Y') = 0 then 'Y' -->
+	<!-- -else isQaEventsCompleted = 'N' -->
+	<!-- else 'N' -->
+	<!-- end -->
+	<!-- ]]> -->
 
-    <!-- 	</sql-query> -->
-    <!-- 	<!-bugzilla 2258 -> -->
-    <!-- 	<sql-query -->
-    <!-- 		name="analysis.getMaxRevisionAnalysesReadyToBeReported"> -->
-    <!-- 		<return-scalar column="id" type="java.lang.String" /> -->
-    <!--       <![CDATA[select distinct anal.id -->
-    <!--         from -->
-    <!--             sample samp, -->
-    <!--             test_analyte ta, -->
-    <!--             analysis anal, -->
-    <!--             sample_item sampitem, -->
-    <!--             test test, -->
-    <!--             result res -->
+	<!-- </sql-query> -->
+	<!-- <!-bugzilla 2258 -> -->
+	<!-- <sql-query -->
+	<!-- name="analysis.getMaxRevisionAnalysesReadyToBeReported"> -->
+	<!-- <return-scalar column="id" type="java.lang.String" /> -->
+	<!-- <![CDATA[select distinct anal.id -->
+	<!-- from -->
+	<!-- sample samp, -->
+	<!-- test_analyte ta, -->
+	<!-- analysis anal, -->
+	<!-- sample_item sampitem, -->
+	<!-- test test, -->
+	<!-- result res -->
 
-    <!--         where -->
-    <!--           ( -->
-    <!--             ( -->
-    <!--              anal.SAMPITEM_ID , anal.TEST_ID , anal.REVISION -->
-    <!--             )IN( -->
-    <!--                 select anal2.SAMPITEM_ID, anal2.TEST_ID, max(anal2.REVISION) -->
-    <!--                 from -->
-    <!--                   analysis anal2 -->
-    <!--                 group by -->
-    <!--                     anal2.SAMPITEM_ID , -->
-    <!--                     anal2.TEST_ID -->
-    <!--                 ) -->
-    <!--             ) and -->
-    <!--             ta.test_id = test.id and -->
-    <!--             ta.analyte_id=res.analyte_id and -->
-    <!--             anal.id = res.analysis_id and -->
-    <!--             anal.test_id = test.id and -->
-    <!--             anal.sampitem_id = sampitem. id and -->
-    <!--             sampitem.samp_id = samp.id -->
-    <!--             and  res.is_reportable = 'Y' -->
-    <!--             and anal.is_reportable = 'Y' -->
-    <!--             and anal.printed_date is null -->
-    <!--             and anal.status in (:analysisStatusesToInclude) -->
-    <!--             and samp.status in(:sampleStatusesToInclude) -->
-    <!--             -bugzilla 2028 make sure we exclude the samples for which tests qa events are not completed -->
-    <!--             -isQaEventsCompleted is 'Y' or 'N' -->
-    <!--             -if there are no qa events for this test then isQaEventsCompleted = 'Y' -->
-    <!--             and 'Y' = case when (select count(*) from analysis_qaevent aq where aq.analysis_id =
-    anal.id)= 0 then 'Y' -->
-    <!--                         -if there are no holdable qa events for this test then  isQaEventsCompleted = 'Y' -->
-    <!--                            when (select count(*) from analysis_qaevent aq, qa_event q where aq.analysis_id = anal.id
-    and q.id = aq.qa_event_id and q.is_holdable = 'Y') = 0 then 'Y' -->
-    <!--                         -if there the holdable qa events for this test are completed (completed date is not null)
-    then isQaEventsCompleted = 'Y' -->
-    <!--                            when (select count(*) from analysis_qaevent aq, qa_event q where aq.analysis_id = anal.id
-    and q.id = aq.qa_event_id and aq.completed_date is null and q.is_holdable = 'Y') = 0 then 'Y' -->
-    <!--                         -else isQaEventsCompleted = 'N' -->
-    <!--                            else 'N' -->
-    <!--                       end -->
-    <!--     ]]> -->
+	<!-- where -->
+	<!-- ( -->
+	<!-- ( -->
+	<!-- anal.SAMPITEM_ID , anal.TEST_ID , anal.REVISION -->
+	<!-- )IN( -->
+	<!-- select anal2.SAMPITEM_ID, anal2.TEST_ID, max(anal2.REVISION) -->
+	<!-- from -->
+	<!-- analysis anal2 -->
+	<!-- group by -->
+	<!-- anal2.SAMPITEM_ID , -->
+	<!-- anal2.TEST_ID -->
+	<!-- ) -->
+	<!-- ) and -->
+	<!-- ta.test_id = test.id and -->
+	<!-- ta.analyte_id=res.analyte_id and -->
+	<!-- anal.id = res.analysis_id and -->
+	<!-- anal.test_id = test.id and -->
+	<!-- anal.sampitem_id = sampitem. id and -->
+	<!-- sampitem.samp_id = samp.id -->
+	<!-- and res.is_reportable = 'Y' -->
+	<!-- and anal.is_reportable = 'Y' -->
+	<!-- and anal.printed_date is null -->
+	<!-- and anal.status in (:analysisStatusesToInclude) -->
+	<!-- and samp.status in(:sampleStatusesToInclude) -->
+	<!-- -bugzilla 2028 make sure we exclude the samples for which tests qa
+		events are not completed -->
+	<!-- -isQaEventsCompleted is 'Y' or 'N' -->
+	<!-- -if there are no qa events for this test then isQaEventsCompleted =
+		'Y' -->
+	<!-- and 'Y' = case when (select count(*) from analysis_qaevent aq where
+		aq.analysis_id = anal.id)= 0 then 'Y' -->
+	<!-- -if there are no holdable qa events for this test then isQaEventsCompleted
+		= 'Y' -->
+	<!-- when (select count(*) from analysis_qaevent aq, qa_event q where aq.analysis_id
+		= anal.id and q.id = aq.qa_event_id and q.is_holdable = 'Y') = 0 then 'Y' -->
+	<!-- -if there the holdable qa events for this test are completed (completed
+		date is not null) then isQaEventsCompleted = 'Y' -->
+	<!-- when (select count(*) from analysis_qaevent aq, qa_event q where aq.analysis_id
+		= anal.id and q.id = aq.qa_event_id and aq.completed_date is null and q.is_holdable
+		= 'Y') = 0 then 'Y' -->
+	<!-- -else isQaEventsCompleted = 'N' -->
+	<!-- else 'N' -->
+	<!-- end -->
+	<!-- ]]> -->
 
-    <!-- 	</sql-query> -->
-    <!-- 	<!-bugzilla 1900 -> -->
-    <!-- 	<sql-query -->
-    <!-- 		name="analysis.getMaxRevisionAnalysesReadyForPreviewBySample"> -->
-    <!-- 		<return-scalar column="id" type="java.lang.String" /> -->
-    <!--       <![CDATA[select distinct anal.id -->
-    <!--         from -->
-    <!--             sample samp, -->
-    <!--             test_analyte ta, -->
-    <!--             analysis anal, -->
-    <!--             sample_item sampitem, -->
-    <!--             test test, -->
-    <!--             result res -->
+	<!-- </sql-query> -->
+	<!-- <!-bugzilla 1900 -> -->
+	<!-- <sql-query -->
+	<!-- name="analysis.getMaxRevisionAnalysesReadyForPreviewBySample"> -->
+	<!-- <return-scalar column="id" type="java.lang.String" /> -->
+	<!-- <![CDATA[select distinct anal.id -->
+	<!-- from -->
+	<!-- sample samp, -->
+	<!-- test_analyte ta, -->
+	<!-- analysis anal, -->
+	<!-- sample_item sampitem, -->
+	<!-- test test, -->
+	<!-- result res -->
 
-    <!--         where -->
-    <!--           ( -->
-    <!--             ( -->
-    <!--              anal.SAMPITEM_ID , anal.TEST_ID , anal.REVISION -->
-    <!--             )IN( -->
-    <!--                 select anal2.SAMPITEM_ID, anal2.TEST_ID, max(anal2.REVISION) -->
-    <!--                 from -->
-    <!--                   analysis anal2 -->
-    <!--                 group by -->
-    <!--                     anal2.SAMPITEM_ID , -->
-    <!--                     anal2.TEST_ID -->
-    <!--                 ) -->
-    <!--             ) and -->
-    <!--             ta.test_id = test.id and -->
-    <!--             ta.analyte_id=res.analyte_id and -->
-    <!--             anal.id = res.analysis_id and -->
-    <!--             anal.test_id = test.id and -->
-    <!--             anal.sampitem_id = sampitem. id and -->
-    <!--             sampitem.samp_id = samp.id -->
-    <!--             and  res.is_reportable = 'Y' -->
-    <!--             and anal.is_reportable = 'Y' -->
-    <!--             and anal.printed_date is null -->
-    <!--             and anal.status in (:analysisStatusesToInclude) -->
-    <!--             and samp.status in(:sampleStatusesToInclude) -->
-    <!--             and samp.accession_number in(:samplesToInclude) -->
-    <!--             -bugzilla 2509 removed exclusion of holdable not completed qa events -->
-    <!--             -bugzilla 2028 make sure we exclude the samples for which tests qa events are not completed -->
-    <!--             -isQaEventsCompleted is 'Y' or 'N' -->
-    <!--             -if there are no qa events for this test then isQaEventsCompleted = 'Y' -->
-    <!--             -and 'Y' = case when (select count(*) from analysis_qaevent aq where aq.analysis_id =
-    anal.id)= 0 then 'Y' -->
-    <!--                         -if there are no holdable qa events for this test then  isQaEventsCompleted = 'Y' -->
-    <!--                            -when (select count(*) from analysis_qaevent aq, qa_event q where aq.analysis_id = anal.id
-    and q.id = aq.qa_event_id and q.is_holdable = 'Y') = 0 then 'Y' -->
-    <!--                         -if there the holdable qa events for this test are completed (completed date is not null)
-    then isQaEventsCompleted = 'Y' -->
-    <!--                            -when (select count(*) from analysis_qaevent aq, qa_event q where aq.analysis_id = anal.id
-    and q.id = aq.qa_event_id and aq.completed_date is null and q.is_holdable = 'Y') = 0 then 'Y' -->
-    <!--                         -else isQaEventsCompleted = 'N' -->
-    <!--                            -else 'N' -->
-    <!--                       -end -->
-    <!--     ]]> -->
+	<!-- where -->
+	<!-- ( -->
+	<!-- ( -->
+	<!-- anal.SAMPITEM_ID , anal.TEST_ID , anal.REVISION -->
+	<!-- )IN( -->
+	<!-- select anal2.SAMPITEM_ID, anal2.TEST_ID, max(anal2.REVISION) -->
+	<!-- from -->
+	<!-- analysis anal2 -->
+	<!-- group by -->
+	<!-- anal2.SAMPITEM_ID , -->
+	<!-- anal2.TEST_ID -->
+	<!-- ) -->
+	<!-- ) and -->
+	<!-- ta.test_id = test.id and -->
+	<!-- ta.analyte_id=res.analyte_id and -->
+	<!-- anal.id = res.analysis_id and -->
+	<!-- anal.test_id = test.id and -->
+	<!-- anal.sampitem_id = sampitem. id and -->
+	<!-- sampitem.samp_id = samp.id -->
+	<!-- and res.is_reportable = 'Y' -->
+	<!-- and anal.is_reportable = 'Y' -->
+	<!-- and anal.printed_date is null -->
+	<!-- and anal.status in (:analysisStatusesToInclude) -->
+	<!-- and samp.status in(:sampleStatusesToInclude) -->
+	<!-- and samp.accession_number in(:samplesToInclude) -->
+	<!-- -bugzilla 2509 removed exclusion of holdable not completed qa events -->
+	<!-- -bugzilla 2028 make sure we exclude the samples for which tests qa
+		events are not completed -->
+	<!-- -isQaEventsCompleted is 'Y' or 'N' -->
+	<!-- -if there are no qa events for this test then isQaEventsCompleted =
+		'Y' -->
+	<!-- -and 'Y' = case when (select count(*) from analysis_qaevent aq where
+		aq.analysis_id = anal.id)= 0 then 'Y' -->
+	<!-- -if there are no holdable qa events for this test then isQaEventsCompleted
+		= 'Y' -->
+	<!-- -when (select count(*) from analysis_qaevent aq, qa_event q where aq.analysis_id
+		= anal.id and q.id = aq.qa_event_id and q.is_holdable = 'Y') = 0 then 'Y' -->
+	<!-- -if there the holdable qa events for this test are completed (completed
+		date is not null) then isQaEventsCompleted = 'Y' -->
+	<!-- -when (select count(*) from analysis_qaevent aq, qa_event q where aq.analysis_id
+		= anal.id and q.id = aq.qa_event_id and aq.completed_date is null and q.is_holdable
+		= 'Y') = 0 then 'Y' -->
+	<!-- -else isQaEventsCompleted = 'N' -->
+	<!-- -else 'N' -->
+	<!-- -end -->
+	<!-- ]]> -->
 
-    <!-- 	</sql-query> -->
-    <!-- 	<!-bugzilla 1856 -> -->
-    <!-- 	<sql-query name="analysis.getAnalysesAlreadyReportedBySample"> -->
-    <!-- 		<return-scalar column="id" type="java.lang.String" /> -->
-    <!--       <![CDATA[select distinct anal.id -->
-    <!--         from -->
-    <!--             sample samp, -->
-    <!--             test_analyte ta, -->
-    <!--             analysis anal, -->
-    <!--             sample_item sampitem, -->
-    <!--             test test, -->
-    <!--             result res -->
+	<!-- </sql-query> -->
+	<!-- <!-bugzilla 1856 -> -->
+	<!-- <sql-query name="analysis.getAnalysesAlreadyReportedBySample"> -->
+	<!-- <return-scalar column="id" type="java.lang.String" /> -->
+	<!-- <![CDATA[select distinct anal.id -->
+	<!-- from -->
+	<!-- sample samp, -->
+	<!-- test_analyte ta, -->
+	<!-- analysis anal, -->
+	<!-- sample_item sampitem, -->
+	<!-- test test, -->
+	<!-- result res -->
 
-    <!--         where -->
-    <!--            ( -->
-    <!--             ( -->
-    <!--              anal.SAMPITEM_ID , anal.TEST_ID , anal.REVISION -->
-    <!--             )IN( -->
-    <!--                 select anal2.SAMPITEM_ID, anal2.TEST_ID, max(anal2.REVISION) -->
-    <!--                 from -->
-    <!--                   analysis anal2 -->
-    <!--                 group by -->
-    <!--                     anal2.SAMPITEM_ID , -->
-    <!--                     anal2.TEST_ID -->
-    <!--                 ) -->
-    <!--           ) and -->
-    <!--         samp.id = :sampleId and -->
-    <!--         ta.test_id = test.id and -->
-    <!--         ta.analyte_id=res.analyte_id and -->
-    <!--         anal.id = res.analysis_id and -->
-    <!--         anal.test_id = test.id and -->
-    <!--         anal.sampitem_id = sampitem. id and -->
-    <!--         sampitem.samp_id = samp.id -->
-    <!--         and anal.printed_date is not null -->
-    <!--     ]]> -->
-    <!-- 	</sql-query> -->
-    <!-- 	<sql-query -->
-    <!-- 		name="analysis.getMaxRevisionPendingAnalysesReadyToBeReportedBySample"> -->
-    <!-- 		<return-scalar column="id" type="java.lang.String" /> -->
-    <!--       <![CDATA[select -->
-    <!--     distinct anal.id -->
-    <!--     from -->
-    <!--     sample_item sampitem, -->
-    <!--     sample samp, -->
-    <!--     analysis anal, -->
-    <!--     test test -->
+	<!-- where -->
+	<!-- ( -->
+	<!-- ( -->
+	<!-- anal.SAMPITEM_ID , anal.TEST_ID , anal.REVISION -->
+	<!-- )IN( -->
+	<!-- select anal2.SAMPITEM_ID, anal2.TEST_ID, max(anal2.REVISION) -->
+	<!-- from -->
+	<!-- analysis anal2 -->
+	<!-- group by -->
+	<!-- anal2.SAMPITEM_ID , -->
+	<!-- anal2.TEST_ID -->
+	<!-- ) -->
+	<!-- ) and -->
+	<!-- samp.id = :sampleId and -->
+	<!-- ta.test_id = test.id and -->
+	<!-- ta.analyte_id=res.analyte_id and -->
+	<!-- anal.id = res.analysis_id and -->
+	<!-- anal.test_id = test.id and -->
+	<!-- anal.sampitem_id = sampitem. id and -->
+	<!-- sampitem.samp_id = samp.id -->
+	<!-- and anal.printed_date is not null -->
+	<!-- ]]> -->
+	<!-- </sql-query> -->
+	<!-- <sql-query -->
+	<!-- name="analysis.getMaxRevisionPendingAnalysesReadyToBeReportedBySample"> -->
+	<!-- <return-scalar column="id" type="java.lang.String" /> -->
+	<!-- <![CDATA[select -->
+	<!-- distinct anal.id -->
+	<!-- from -->
+	<!-- sample_item sampitem, -->
+	<!-- sample samp, -->
+	<!-- analysis anal, -->
+	<!-- test test -->
 
-    <!--    where -->
-    <!--      ( -->
-    <!--        ( -->
-    <!--          anal.SAMPITEM_ID , anal.TEST_ID , anal.REVISION -->
-    <!--         )IN( -->
-    <!--          select anal2.SAMPITEM_ID, anal2.TEST_ID, max(anal2.REVISION) -->
-    <!--          from -->
-    <!--          analysis anal2 -->
-    <!--          group by -->
-    <!--          anal2.SAMPITEM_ID , -->
-    <!--          anal2.TEST_ID -->
-    <!--        ) -->
-    <!--     ) and -->
-    <!--     samp.id = :sampleId -->
-    <!--     and  sampitem.samp_id = samp.id -->
-    <!--     and anal.sampitem_id = sampitem. id -->
-    <!--     and anal.test_id = test.id -->
-    <!--     and -->
+	<!-- where -->
+	<!-- ( -->
+	<!-- ( -->
+	<!-- anal.SAMPITEM_ID , anal.TEST_ID , anal.REVISION -->
+	<!-- )IN( -->
+	<!-- select anal2.SAMPITEM_ID, anal2.TEST_ID, max(anal2.REVISION) -->
+	<!-- from -->
+	<!-- analysis anal2 -->
+	<!-- group by -->
+	<!-- anal2.SAMPITEM_ID , -->
+	<!-- anal2.TEST_ID -->
+	<!-- ) -->
+	<!-- ) and -->
+	<!-- samp.id = :sampleId -->
+	<!-- and sampitem.samp_id = samp.id -->
+	<!-- and anal.sampitem_id = sampitem. id -->
+	<!-- and anal.test_id = test.id -->
+	<!-- and -->
 
-    <!--     (select count(*) -->
-    <!--        from test_analyte   t_a -->
-    <!--        where t_a.test_id = test.id and -->
-    <!--              (t_a.id)  in ( -->
-    <!--                            select ta.id -->
-    <!--                            from test_analyte ta, -->
-    <!--                                 analysis anal2, -->
-    <!--                                 sample_item sampitem, -->
-    <!--                                 sample samp, -->
-    <!--                                 test test -->
-    <!--                            where -->
-    <!--                                 samp.id = :sampleId and -->
-    <!--                                 sampitem.samp_id = samp.id and -->
-    <!--                                 anal2.sampitem_id = sampitem. id and -->
-    <!--                                 anal2.test_id = test.id and -->
-    <!-- 					            ta.test_id = test.id and -->
-    <!-- 								ta.is_reportable = 'Y' and -->
-    <!-- 								anal2.is_reportable = 'Y' and -->
-    <!-- 								anal2.printed_date is null and -->
-    <!-- 								anal.id = anal2.id and -->
-    <!-- 								anal2.status in (:analysisStatusesToInclude) -->
-    <!--            			       ) -->
-    <!--    ) > 0 -->
-    <!--  ]]> -->
-    <!-- 	</sql-query> -->
+	<!-- (select count(*) -->
+	<!-- from test_analyte t_a -->
+	<!-- where t_a.test_id = test.id and -->
+	<!-- (t_a.id) in ( -->
+	<!-- select ta.id -->
+	<!-- from test_analyte ta, -->
+	<!-- analysis anal2, -->
+	<!-- sample_item sampitem, -->
+	<!-- sample samp, -->
+	<!-- test test -->
+	<!-- where -->
+	<!-- samp.id = :sampleId and -->
+	<!-- sampitem.samp_id = samp.id and -->
+	<!-- anal2.sampitem_id = sampitem. id and -->
+	<!-- anal2.test_id = test.id and -->
+	<!-- ta.test_id = test.id and -->
+	<!-- ta.is_reportable = 'Y' and -->
+	<!-- anal2.is_reportable = 'Y' and -->
+	<!-- anal2.printed_date is null and -->
+	<!-- anal.id = anal2.id and -->
+	<!-- anal2.status in (:analysisStatusesToInclude) -->
+	<!-- ) -->
+	<!-- ) > 0 -->
+	<!-- ]]> -->
+	<!-- </sql-query> -->
 
 </hibernate-mapping>

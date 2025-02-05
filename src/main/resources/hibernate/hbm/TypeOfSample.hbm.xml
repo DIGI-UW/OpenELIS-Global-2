@@ -3,52 +3,52 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping
-    package="org.openelisglobal.typeofsample.valueholder">
-    <class name="TypeOfSample" table="TYPE_OF_SAMPLE"
-        optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">type_of_sample_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	package="org.openelisglobal.typeofsample.valueholder">
+	<class name="TypeOfSample" table="TYPE_OF_SAMPLE"
+		optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">type_of_sample_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="description" type="java.lang.String">
-            <column name="DESCRIPTION" length="20" not-null="true" />
-        </property>
+		<property name="description" type="java.lang.String">
+			<column name="DESCRIPTION" length="20" not-null="true" />
+		</property>
 
-        <property name="domain" type="java.lang.String">
-            <column name="DOMAIN" length="1" />
-        </property>
+		<property name="domain" type="java.lang.String">
+			<column name="DOMAIN" length="1" />
+		</property>
 
-        <property name="localAbbreviation" type="java.lang.String">
-            <column name="LOCAL_ABBREV" length="10" unique="true" />
-        </property>
+		<property name="localAbbreviation" type="java.lang.String">
+			<column name="LOCAL_ABBREV" length="10" unique="true" />
+		</property>
 
-        <property name="active" type="java.lang.Boolean">
-            <column name="is_active" length="1" />
-        </property>
-        <property name="sortOrder" column="sort_order" type="integer" />
-        <many-to-one name="localization"
-            class="org.openelisglobal.localization.valueholder.Localization"
-            fetch="select" lazy="false">
-            <column name="name_localization_id" precision="10" scale="0" />
-        </many-to-one>
+		<property name="active" type="java.lang.Boolean">
+			<column name="is_active" length="1" />
+		</property>
+		<property name="sortOrder" column="sort_order" type="integer" />
+		<many-to-one name="localization"
+			class="org.openelisglobal.localization.valueholder.Localization"
+			fetch="select" lazy="false">
+			<column name="name_localization_id" precision="10" scale="0" />
+		</many-to-one>
 
-        <property name="NameKey" type="java.lang.String">
-            <column name="display_key" length="60" />
-        </property>
+		<property name="NameKey" type="java.lang.String">
+			<column name="display_key" length="60" />
+		</property>
 
 
-    </class>
-<!-- 	<query name="typeofsample.getNext"> -->
-<!-- 		from TypeOfSample tos order by tos.domain, tos.description -->
-<!-- 	</query> -->
-<!-- 	<query name="typeofsample.getPrevious"> -->
-<!-- 		from TypeOfSample tos order by tos.domain desc, tos.description desc -->
-<!-- 	</query> -->
+	</class>
+	<!-- <query name="typeofsample.getNext"> -->
+	<!-- from TypeOfSample tos order by tos.domain, tos.description -->
+	<!-- </query> -->
+	<!-- <query name="typeofsample.getPrevious"> -->
+	<!-- from TypeOfSample tos order by tos.domain desc, tos.description desc -->
+	<!-- </query> -->
 </hibernate-mapping>

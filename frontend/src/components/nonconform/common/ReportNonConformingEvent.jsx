@@ -312,8 +312,11 @@ export const ReportNonConformingEvent = () => {
                 <br></br>
               </Column>
               <Column lg={16} md={8} sm={4}>
-                <Button type="button" data-testid='nce-search-button'
-                 onClick={handleSubmit}>
+                <Button
+                  type="button"
+                  data-testid="nce-search-button"
+                  onClick={handleSubmit}
+                >
                   <FormattedMessage id="label.button.search" />
                 </Button>
               </Column>
@@ -352,7 +355,10 @@ export const ReportNonConformingEvent = () => {
                   <TableRow key={row.id}>
                     <TableCell key={`${row.id}-checkbox`}></TableCell>
                     {headers.map((header) => (
-                      <TableCell key={header.key} data-testid='nce-search-result' >
+                      <TableCell
+                        key={header.key}
+                        data-testid="nce-search-result"
+                      >
                         <UnorderedList>
                           {header.key === "type"
                             ? row.sampleItems.map((item) => (
@@ -460,7 +466,12 @@ export const ReportNonConformingEvent = () => {
                 <FormattedMessage id="nonconform.nce.number" />
               </span>
             </div>
-            <div style={{ marginBottom: "10px" }} data-testid='nce-number-result'>{nceForm.data.nceNumber}</div>
+            <div
+              style={{ marginBottom: "10px" }}
+              data-testid="nce-number-result"
+            >
+              {nceForm.data.nceNumber}
+            </div>
           </Column>
 
           <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
@@ -648,7 +659,11 @@ export const ReportNonConformingEvent = () => {
             {!!nceForm.error && (
               <div style={{ color: "#c62828", margin: 4 }}>{nceForm.error}</div>
             )}
-            <Button type="button" data-testid="nce-submit-button" onClick={() => handleNCEFormSubmit()}>
+            <Button
+              type="button"
+              data-testid="nce-submit-button"
+              onClick={() => handleNCEFormSubmit()}
+            >
               <FormattedMessage id="label.button.submit" />
             </Button>
           </Column>

@@ -1,20 +1,20 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-                                   "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+								"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping
-    package="org.openelisglobal.testcodes.valueholder">
-    <class name="TestCode" table="test_code"
-        optimistic-lock="version" dynamic-update="true">
-        <composite-id name="compoundId"
-            class="org.openelisglobal.testcodes.valueholder.TestSchemaPK">
-            <key-property name="testId" column="test_id"
-                type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
-            <key-property name="codeTypeId" column="code_type_id"
-                type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
-        </composite-id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
-        <property name="value" column="value" type="java.lang.String"
-            length="20" />
-    </class>
+	package="org.openelisglobal.testcodes.valueholder">
+	<class name="TestCode" table="test_code"
+		optimistic-lock="version" dynamic-update="true">
+		<composite-id name="compoundId"
+			class="org.openelisglobal.testcodes.valueholder.TestSchemaPK">
+			<key-property name="testId" column="test_id"
+				type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+			<key-property name="codeTypeId" column="code_type_id"
+				type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+		</composite-id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
+		<property name="value" column="value" type="java.lang.String"
+			length="20" />
+	</class>
 </hibernate-mapping>
