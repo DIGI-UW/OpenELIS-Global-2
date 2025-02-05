@@ -1,7 +1,9 @@
 import { expect } from "@playwright/test";
 import LoginPage from "./LoginPage";
 import AdminPage from "./AdminPage";
-import Result from "./ResultsPage";
+import StudyReportPage from "./StudyReportPage";
+import RoutineReportPage from "./RoutineReportPage";
+// import Result 3 "../../../../Files-IMP/ResultsPage";
 // import WorkPlan from "../../cypress/pages/WorkPlan";
 import PatientEntryPage from "./PatientEntryPage";
 class HomePage {
@@ -17,25 +19,30 @@ class HomePage {
     return new LoginPage(this.page); // Navigate to login page
   }
 
+  // Will fix this ( main cause of flaky tests (Note for self))
   async openNavigationMenu() {
     const menuButtonSelector1 = "header#mainHeader > button[title='Open menu']";
-    const menuButtonSelector2 = "button:has-text('Open menu')";  // Use Playwright's :has-text() to locate button by text
-    
+    const menuButtonSelector2 = "button:has-text('Open menu')";
+
     // Wait for the first visible button among the selectors
     const firstAvailableSelector = await Promise.any([
-      this.page.waitForSelector(menuButtonSelector1, { state: "visible", timeout: 20000 })
-        .then(() => menuButtonSelector1),  // Return the first selector if it's visible
-      this.page.waitForSelector(menuButtonSelector2, { state: "visible", timeout: 20000 })
-        .then(() => menuButtonSelector2)   // Return the second selector if it's visible
+      this.page
+        .waitForSelector(menuButtonSelector1, {
+          state: "visible",
+          timeout: 20000,
+        })
+        .then(() => menuButtonSelector1), // Return the first selector if it's visible
+      this.page
+        .waitForSelector(menuButtonSelector2, {
+          state: "visible",
+          timeout: 20000,
+        })
+        .then(() => menuButtonSelector2), // Return the second selector if it's visible
     ]);
-    
     // Now that we have the first available selector, click it
     await this.page.locator(firstAvailableSelector).click({
       timeout: 20000,
     });
-  
-    
-    
   }
 
   async goToResultsByUnit() {
@@ -168,6 +175,19 @@ class HomePage {
     await this.openNavigationMenu(); // Open the navigation menu
     await this.page.locator("#menu_administration").click(); // Click on the administration menu
     return new AdminPage(this.page);
+  }
+  async goToRoutineReports() {
+    await this.openNavigationMenu();
+    await this.page.locator("#menu_reports").click();
+    await this.page.locator("#menu_reports_routine_nav").click();
+    return new RoutineReportPage(this.page);
+  }
+
+  async goToStudyReports() {
+    this.openNavigationMenu();
+    await this.page.locator("#menu_reports").click();
+    await this.page.locator("#menu_reports_study_nav").click();
+    return new StudyReportPage(this.page);
   }
 
   async afterAll() {
