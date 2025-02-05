@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- * The contents of this file are subject to the Mozilla Public License
+	* Version 1.1 (the "License"); you may not use this file except in * compliance
+	with the License. You may obtain a copy of the License at * http://www.mozilla.org/MPL/
+	* * Software distributed under the License is distributed on an "AS IS" *
+	basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the *
+	License for the specific language governing rights and limitations under
+	* the License. * * The Original Code is OpenELIS code. * * Copyright (C)
+	ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+<dataset>
+	<address_part id="3" part_name="Village" display_order="1"
+		display_key="village_key" />
+	<address_part id="5" part_name="Postal" display_order="2"
+		display_key="postal_key" />
+	<address_part id="6" part_name="Street" display_order="3"
+		display_key="street_key" />
+
+	<organization id="3" lastupdated="2024-06-03 12:00:00.0"
+		name="Global Health Org" city="New York" zip_code="10001"
+		mls_sentinel_lab_flag="Y" short_name="GHG" multiple_unit="NYC Unit"
+		street_address="123 Health St" state="NY"
+		internet_address="www.globalhealth.org" clia_num="CLIA12345"
+		pws_id="PWS123" mls_lab_flag="Y" is_active="Y" local_abbrev="1"
+		code="GHG001" />
+	<organization id="4" lastupdated="2024-06-04 12:00:00.0"
+		name="Health Services Ltd" city="Los Angeles" zip_code="90001"
+		mls_sentinel_lab_flag="N" short_name="HSL" multiple_unit="LA Unit"
+		street_address="456 Medical Rd" state="CA"
+		internet_address="www.healthservices.com" clia_num="CLIA54321"
+		pws_d="PWS456" mls_lab_flag="N" is_active="Y" local_abbrev="2"
+		code="HSL002" />
+	<organization id="7" lastupdated="2024-06-05 12:00:00.0"
+		name="Community Health Initiative" city="Chicago" zip_code="60601"
+		mls_sentinel_lab_flag="Y" short_name="CHI" multiple_unit="CHI Unit"
+		street_address="789 Community Blvd" state="IL"
+		internet_address="www.communityhealth.org" clia_num="CLIA67890"
+		pws_d="PWS789" mls_lab_flag="Y" is_active="N" local_abbrev="3"
+		code="CHI003" />
+
+	<organization_address organization_id="3"
+		address_part_id="5" type="P" value="12345678" />
+	<organization_address organization_id="7"
+		address_part_id="6" type="S" value="5th Street" />
+	<organization_address organization_id="3"
+		address_part_id="3" type="V" value="Amore" />
+</dataset>

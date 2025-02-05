@@ -2,7 +2,6 @@
 package org.openelisglobal.address;
 
 import java.util.List;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  * check; schema:Clinlims User:Clinlims Password: Clinlims table:organisation
  */
 public class OrganizationAddressServiceTest extends BaseWebContextSensitiveTest {
+
     @Autowired
     OrganizationAddressService addressService;
 
@@ -27,12 +27,7 @@ public class OrganizationAddressServiceTest extends BaseWebContextSensitiveTest 
 
     @Before
     public void init() throws Exception {
-        executeDataSetWithStateManagement("testdata/personaddress.xml");
-    }
-
-    @After
-    public void tearDown() {
-        orgService.deleteAll(orgService.getAll());
+        executeDataSetWithStateManagement("testdata/organization-address.xml");
     }
 
     @Test

@@ -8,7 +8,6 @@
 	* the License. * * The Original Code is OpenELIS code. * * Copyright (C)
 	ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
 <dataset>
-	<!-- Address Part Entries -->
 	<address_part id="3" part_name="Village" display_order="1"
 		display_key="village_key" />
 	<address_part id="5" part_name="Postal" display_order="2"
@@ -16,7 +15,6 @@
 	<address_part id="6" part_name="Street" display_order="3"
 		display_key="street_key" />
 
-	<!-- Person Entries -->
 	<person id="1" last_name="Doe" first_name="John"
 		middle_name="joddy" city="Kampala" state="Kampala metropolitan"
 		zip_code="256" country="Uganda" work_phone="12345678"
@@ -33,19 +31,10 @@
 		cell_phone="0000001" primary_phone="10000002" fax="0002"
 		email="siannah@gmail.com" lastUpdated="2023-11-01 12:00:00" />
 
-	<!-- Person Address Entries -->
 	<person_address person_id="1" address_part_id="5"
 		type="P" value="12345678" />
 	<person_address person_id="2" address_part_id="6"
 		type="S" value="Luwumu Street" />
 	<person_address person_id="1" address_part_id="3"
 		type="V" value="Tulla" />
-
-	<!-- Organization Address Entries -->
-	<organization_address organization_id="3"
-		address_part_id="5" type="P" value="12345678" />
-	<organization_address organization_id="7"
-		address_part_id="6" type="S" value="5th Street" />
-	<organization_address organization_id="3"
-		address_part_id="3" type="V" value="Amore" />
 </dataset>
