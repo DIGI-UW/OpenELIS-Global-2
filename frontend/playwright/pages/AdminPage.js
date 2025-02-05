@@ -29,9 +29,11 @@ class AdminPage {
   // Global menu configuration
   async goToGlobalMenuConfigPage() {
     // Click the "Menu Configuration" span to expand the dropdown
+    await this.page.waitForLoadState("networkidle");
     await this.page
-      .locator(".cds--side-nav__submenu", { hasText: "Menu Configuration" })
-      .click();
+      .getByRole("button", { name: "Menu Configuration" })
+      // .waitFor({});
+    await this.page.getByRole("button", { name: "Menu Configuration" }).click();
 
     // Click the "Global Menu Configuration" link
     await this.page

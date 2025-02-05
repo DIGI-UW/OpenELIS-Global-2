@@ -1,0 +1,14 @@
+{
+  "samples": [
+    {
+      "sampleType": "Serum"
+    }
+  ],
+  "siteName": "279 - CAMES MAN",
+  "requester": {
+    "firstName": "Optimus",
+    "lastName": "Prime"
+  },
+  "labNo": "DEV0124000000000000",
+  "invalidLabNo": "DEV0124000000000000"
+}
