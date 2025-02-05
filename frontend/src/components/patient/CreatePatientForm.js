@@ -87,77 +87,61 @@ function CreatePatientForm(props) {
   };
 
   function getYearsMonthsDaysFromDOB(date) {
-    if (!date || date === "") {
-      console.warn("trying to parse empty date");
+    if (!date || date.trim() === "") {
+      console.warn("Error: Date input is empty. Please enter a valid date.");
       return;
     }
+  
     const selectedDate = date.split("/");
-    let yy;
-    let mm;
-    let dd;
-    if (configurationProperties.DEFAULT_DATE_LOCALE == "fr-FR") {
-      yy = parseInt(selectedDate[2]);
-      mm = parseInt(selectedDate[1]);
-      dd = parseInt(selectedDate[0]);
-    } else {
-      yy = parseInt(selectedDate[2]);
-      mm = parseInt(selectedDate[0]);
-      dd = parseInt(selectedDate[1]);
+    if (selectedDate.length !== 3) {
+      console.error("Error: Invalid date format. Expected format: dd/mm/yyyy or mm/dd/yyyy.");
+      return;
     }
-    let formatDate = mm + "/" + dd + "/" + yy;
-
-    const birthDate = new Date(formatDate);
+  
+    // Ensure all parts of the date are strictly numeric
+    if (!/^\d+$/.test(selectedDate[0]) || !/^\d+$/.test(selectedDate[1]) || !/^\d+$/.test(selectedDate[2])) {
+      console.error("Error: Date must contain only numeric values (e.g., 12/08/1995 or 08/12/1995).");
+      return;
+    }
+  
+    let [day, month, year] =
+      configurationProperties.DEFAULT_DATE_LOCALE === "fr-FR"
+        ? [parseInt(selectedDate[0], 10), parseInt(selectedDate[1], 10), parseInt(selectedDate[2], 10)]
+        : [parseInt(selectedDate[1], 10), parseInt(selectedDate[0], 10), parseInt(selectedDate[2], 10)];
+  
+    // Validate day, month, year ranges
+    if (month < 1 || month > 12) {
+      console.error("Error: Month must be between 1 and 12.");
+      return;
+    }
+  
+    if (day < 1 || day > 31) {
+      console.error("Error: Day must be between 1 and 31.");
+      return;
+    }
+  
+    if (year < 1900 || year > new Date().getFullYear()) {
+      console.error("Error: Year must be realistic (between 1900 and the current year).");
+      return;
+    }
+  
+    const birthDate = new Date(year, month - 1, day); // JS months are 0-indexed
+    if (isNaN(birthDate.getTime())) {
+      console.error("Error: Invalid birth date. Please enter a valid date.");
+      return;
+    }
+  
     const now = new Date();
     const years = differenceInYears(now, birthDate);
     const months = differenceInMonths(now, addYears(birthDate, years));
-    const days = differenceInDays(
-      now,
-      addMonths(addYears(birthDate, years), months),
-    );
-
-    setDateOfBirthFormatter({
-      ...dateOfBirthFormatter,
-      years: years,
-      months: months,
-      days: days,
-    });
-  }
-
-  const getDOBByYearMonthsDays = (dobFormatter) => {
-    const currentDate = new Date();
-    const pastDate = new Date();
-
-    pastDate.setFullYear(currentDate.getFullYear() - dobFormatter.years);
-    pastDate.setMonth(currentDate.getMonth() - dobFormatter.months);
-    pastDate.setDate(currentDate.getDate() - dobFormatter.days);
-    const dob = format(
-      new Date(pastDate),
-      configurationProperties.DEFAULT_DATE_LOCALE == "fr-FR"
-        ? "dd/MM/yyyy"
-        : "MM/dd/yyyy",
-    );
-    setPatientDetails((prevState) => ({
-      ...prevState,
-      birthDateForDisplay: dob,
+    const days = differenceInDays(now, addMonths(addYears(birthDate, years), months));
+  
+    setDateOfBirthFormatter((prev) => ({
+      ...prev,
+      years,
+      months,
+      days,
     }));
-  };
-
-  function handleYearsChange(e, values) {
-    // Ensure years is not negative
-    const years = Math.max(0, Number(e.target.value));
-
-    // Update form values with the validated years
-    setPatientDetails({
-      ...values,
-      // Update the specific field that contains years to ensure the form shows the corrected value
-      [e.target.name]: years,
-    });
-
-    let dobFormatter = {
-      ...dateOfBirthFormatter,
-      years: years,
-    };
-    getDOBByYearMonthsDays(dobFormatter);
   }
 
   function handleMonthsChange(e, values) {
