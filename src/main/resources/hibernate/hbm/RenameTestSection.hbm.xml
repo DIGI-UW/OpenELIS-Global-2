@@ -3,58 +3,58 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.renametestsection.valueholder.RenameTestSection"
-        table="TEST_SECTION" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">test_section_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class
+		name="org.openelisglobal.renametestsection.valueholder.RenameTestSection"
+		table="TEST_SECTION" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">test_section_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <many-to-one name="organization"
-            class="org.openelisglobal.organization.valueholder.Organization"
-            fetch="select">
-            <column name="ORG_ID" precision="10" scale="0" />
-        </many-to-one>
-        <property name="testSectionName" type="java.lang.String">
-            <column name="NAME" length="20" />
-        </property>
-        <property name="description" type="java.lang.String">
-            <column name="DESCRIPTION" length="60" not-null="true" />
-        </property>
-        <property name="isExternal" type="java.lang.String">
-            <column name="IS_EXTERNAL" length="1" />
-        </property>
+		<many-to-one name="organization"
+			class="org.openelisglobal.organization.valueholder.Organization"
+			fetch="select">
+			<column name="ORG_ID" precision="10" scale="0" />
+		</many-to-one>
+		<property name="testSectionName" type="java.lang.String">
+			<column name="NAME" length="20" />
+		</property>
+		<property name="description" type="java.lang.String">
+			<column name="DESCRIPTION" length="60" not-null="true" />
+		</property>
+		<property name="isExternal" type="java.lang.String">
+			<column name="IS_EXTERNAL" length="1" />
+		</property>
 
-        <property name="isActive" column="is_active"
-            type="java.lang.String" />
-        <many-to-one name="localization"
-            class="org.openelisglobal.localization.valueholder.Localization"
-            fetch="select">
-            <column name="name_localization_id" precision="10" scale="0" />
-        </many-to-one>
+		<property name="isActive" column="is_active"
+			type="java.lang.String" />
+		<many-to-one name="localization"
+			class="org.openelisglobal.localization.valueholder.Localization"
+			fetch="select">
+			<column name="name_localization_id" precision="10" scale="0" />
+		</many-to-one>
 
-        <many-to-one name="parentTestSection"
-            class="org.openelisglobal.test.valueholder.TestSection"
-            fetch="select">
-            <column name="PARENT_TEST_SECTION" precision="10" scale="0" />
-        </many-to-one>
+		<many-to-one name="parentTestSection"
+			class="org.openelisglobal.test.valueholder.TestSection"
+			fetch="select">
+			<column name="PARENT_TEST_SECTION" precision="10" scale="0" />
+		</many-to-one>
 
-        <property name="sortOrderInt" column="sort_order"
-            type="integer" />
-    </class>
-<!-- 	<query name="renametestsection.getNext"> -->
-<!-- 		from TestSection ts order by ts.organization.organizationName, -->
-<!-- 		ts.testSectionName -->
-<!-- 	</query> -->
-<!-- 	<query name="renametestsection.getPrevious"> -->
-<!-- 		from TestSection ts order by ts.organization.organizationName desc, -->
-<!-- 		ts.testSectionName desc -->
-<!-- 	</query> -->
+		<property name="sortOrderInt" column="sort_order"
+			type="integer" />
+	</class>
+	<!-- <query name="renametestsection.getNext"> -->
+	<!-- from TestSection ts order by ts.organization.organizationName, -->
+	<!-- ts.testSectionName -->
+	<!-- </query> -->
+	<!-- <query name="renametestsection.getPrevious"> -->
+	<!-- from TestSection ts order by ts.organization.organizationName desc, -->
+	<!-- ts.testSectionName desc -->
+	<!-- </query> -->
 </hibernate-mapping>

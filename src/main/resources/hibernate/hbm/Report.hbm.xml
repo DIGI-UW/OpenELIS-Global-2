@@ -1,36 +1,41 @@
 <?xml version='1.0' encoding='utf-8'?>
 <!DOCTYPE hibernate-mapping PUBLIC
-    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+	"-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+	"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping>
 
-    <class name="org.openelisglobal.reportconfiguration.valueholder.Report" table="report" schema="clinlims"
-           catalog="ci_general_9.6">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                    class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">report_id_seq</param>
-            </generator>
-        </id>
-        <property name="name">
-            <column name="name" sql-type="varchar(200)" length="200" not-null="true"/>
-        </property>
-        <property name="category">
-            <column name="category" sql-type="varchar(200)" length="200" not-null="true"/>
-        </property>
-        <property name="sortOrder">
-            <column name="sort_order" sql-type="integer" not-null="true"/>
-        </property>
-        <property name="isVisible">
-            <column name="is_visible" sql-type="boolean" not-null="true"/>
-        </property>
-        <property name="menuElementId">
-            <column name="menu_element_id" sql-type="varchar(100)" length="100" not-null="true"/>
-        </property>
-        <property name="displayKey">
-            <column name="display_key" sql-type="varchar(200)" length="200" not-null="true"/>
-        </property>
-    </class>
+	<class
+		name="org.openelisglobal.reportconfiguration.valueholder.Report"
+		table="report" schema="clinlims" catalog="ci_general_9.6">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">report_id_seq</param>
+			</generator>
+		</id>
+		<property name="name">
+			<column name="name" sql-type="varchar(200)" length="200"
+				not-null="true" />
+		</property>
+		<property name="category">
+			<column name="category" sql-type="varchar(200)" length="200"
+				not-null="true" />
+		</property>
+		<property name="sortOrder">
+			<column name="sort_order" sql-type="integer" not-null="true" />
+		</property>
+		<property name="isVisible">
+			<column name="is_visible" sql-type="boolean" not-null="true" />
+		</property>
+		<property name="menuElementId">
+			<column name="menu_element_id" sql-type="varchar(100)"
+				length="100" not-null="true" />
+		</property>
+		<property name="displayKey">
+			<column name="display_key" sql-type="varchar(200)"
+				length="200" not-null="true" />
+		</property>
+	</class>
 </hibernate-mapping>

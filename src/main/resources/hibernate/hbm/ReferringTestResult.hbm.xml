@@ -1,35 +1,35 @@
 <?xml version="1.0"?>
 <!-- ~ The contents of this file are subject to the Mozilla Public License
-    ~ Version 1.1 (the "License"); you may not use this file except in ~ compliance
-    with the License. You may obtain a copy of the License at ~ http://www.mozilla.org/MPL/
-    ~ ~ Software distributed under the License is distributed on an "AS IS" ~
-    basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the ~
-    License for the specific language governing rights and limitations under
-    ~ the License. ~ ~ The Original Code is OpenELIS code. ~ ~ Copyright (C)
-    ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+	~ Version 1.1 (the "License"); you may not use this file except in ~ compliance
+	with the License. You may obtain a copy of the License at ~ http://www.mozilla.org/MPL/
+	~ ~ Software distributed under the License is distributed on an "AS IS" ~
+	basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the ~
+	License for the specific language governing rights and limitations under
+	~ the License. ~ ~ The Original Code is OpenELIS code. ~ ~ Copyright (C)
+	ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
 
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping auto-import="true">
-    <class
-        name="org.openelisglobal.referral.valueholder.ReferringTestResult"
-        table="referring_test_result" optimistic-lock="version"
-        dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">referring_test_result_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
-        <property name="sampleItemId" column="sample_item_id"
-            access="field"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
-        <property name="testName" column="test_name" access="field" />
-        <property name="resultValue" column="result_value"
-            access="field" />
-    </class>
+	<class
+		name="org.openelisglobal.referral.valueholder.ReferringTestResult"
+		table="referring_test_result" optimistic-lock="version"
+		dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">referring_test_result_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
+		<property name="sampleItemId" column="sample_item_id"
+			access="field"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+		<property name="testName" column="test_name" access="field" />
+		<property name="resultValue" column="result_value"
+			access="field" />
+	</class>
 </hibernate-mapping>

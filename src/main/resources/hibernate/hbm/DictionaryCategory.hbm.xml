@@ -3,38 +3,39 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory"
-        table="DICTIONARY_CATEGORY" optimistic-lock="version"
-        dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">dictionary_category_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class
+		name="org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory"
+		table="DICTIONARY_CATEGORY" optimistic-lock="version"
+		dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">dictionary_category_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="categoryName" type="java.lang.String">
-            <!--bugzilla 2061 renamed column and increased size -->
-            <column name="NAME" length="50" />
-        </property>
-        <property name="localAbbreviation" type="java.lang.String">
-            <!--bugzilla 2061 new column -->
-            <column name="LOCAL_ABBREV" length="10" />
-        </property>
-        <property name="description" type="java.lang.String">
-            <!--bugzilla 2061 increased size -->
-            <column name="DESCRIPTION" length="60" />
-        </property>
-    </class>
-<!-- 	<query name="dictionarycategory.getNext"> -->
-<!-- 		from DictionaryCategory d order by d.description, d.categoryName -->
-<!-- 	</query> -->
-<!-- 	<query name="dictionarycategory.getPrevious"> -->
-<!-- 		from DictionaryCategory d order by d.description desc, d.categoryName desc -->
-<!-- 	</query> -->
+		<property name="categoryName" type="java.lang.String">
+			<!--bugzilla 2061 renamed column and increased size -->
+			<column name="NAME" length="50" />
+		</property>
+		<property name="localAbbreviation" type="java.lang.String">
+			<!--bugzilla 2061 new column -->
+			<column name="LOCAL_ABBREV" length="10" />
+		</property>
+		<property name="description" type="java.lang.String">
+			<!--bugzilla 2061 increased size -->
+			<column name="DESCRIPTION" length="60" />
+		</property>
+	</class>
+	<!-- <query name="dictionarycategory.getNext"> -->
+	<!-- from DictionaryCategory d order by d.description, d.categoryName -->
+	<!-- </query> -->
+	<!-- <query name="dictionarycategory.getPrevious"> -->
+	<!-- from DictionaryCategory d order by d.description desc, d.categoryName
+		desc -->
+	<!-- </query> -->
 </hibernate-mapping>

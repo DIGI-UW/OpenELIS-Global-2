@@ -3,38 +3,39 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class name="org.openelisglobal.menu.valueholder.Menu"
-        table="MENU" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">menu_seq</param>
-            </generator>
-        </id>
+	<class name="org.openelisglobal.menu.valueholder.Menu"
+		table="MENU" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">menu_seq</param>
+			</generator>
+		</id>
 
-        <many-to-one name="parent"
-            class="org.openelisglobal.menu.valueholder.Menu" fetch="select">
-            <column name="PARENT_ID" precision="10" scale="0"
-                not-null="false" />
-        </many-to-one>
+		<many-to-one name="parent"
+			class="org.openelisglobal.menu.valueholder.Menu" fetch="select">
+			<column name="PARENT_ID" precision="10" scale="0"
+				not-null="false" />
+		</many-to-one>
 
-        <property name="presentationOrder"
-            column="presentation_order" type="java.lang.Integer" />
-        <property name="elementId" column="element_id"
-            type="java.lang.String" />
-        <property name="actionURL" column="action_url"
-            type="java.lang.String" />
-        <property name="clickAction" column="click_action"
-            type="java.lang.String" />
-        <property name="displayKey" column="display_key"
-            type="java.lang.String" />
-        <property name="toolTipKey" column="tool_tip_key"
-            type="java.lang.String" />
-        <property name="openInNewWindow" column="new_window"
-            type="boolean" />
-        <property name="isActive" column="is_active" type="boolean" />
-        <property name="hideInOldUI" column="hide_in_old_ui" type="boolean" />
-    </class>
+		<property name="presentationOrder"
+			column="presentation_order" type="java.lang.Integer" />
+		<property name="elementId" column="element_id"
+			type="java.lang.String" />
+		<property name="actionURL" column="action_url"
+			type="java.lang.String" />
+		<property name="clickAction" column="click_action"
+			type="java.lang.String" />
+		<property name="displayKey" column="display_key"
+			type="java.lang.String" />
+		<property name="toolTipKey" column="tool_tip_key"
+			type="java.lang.String" />
+		<property name="openInNewWindow" column="new_window"
+			type="boolean" />
+		<property name="isActive" column="is_active" type="boolean" />
+		<property name="hideInOldUI" column="hide_in_old_ui"
+			type="boolean" />
+	</class>
 </hibernate-mapping>

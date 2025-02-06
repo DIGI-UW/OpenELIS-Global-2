@@ -3,46 +3,46 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.systemuser.valueholder.SystemUser"
-        table="SYSTEM_USER" optimistic-lock="version" dynamic-update="false">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">system_user_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class
+		name="org.openelisglobal.systemuser.valueholder.SystemUser"
+		table="SYSTEM_USER" optimistic-lock="version" dynamic-update="false">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">system_user_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="externalId" type="java.lang.String">
-            <column name="EXTERNAL_ID" length="80" />
-        </property>
-        <property name="loginName" type="java.lang.String">
-            <column name="LOGIN_NAME" length="20" not-null="true" />
-        </property>
-        <property name="lastName" type="java.lang.String">
-            <column name="LAST_NAME" length="30" not-null="true" />
-        </property>
-        <property name="firstName" type="java.lang.String">
-            <column name="FIRST_NAME" length="20" not-null="true" />
-        </property>
-        <property name="initials" type="java.lang.String">
-            <column name="INITIALS" length="3" />
-        </property>
-        <property name="isActive" type="java.lang.String">
-            <column name="IS_ACTIVE" length="1" not-null="true" />
-        </property>
-        <property name="isEmployee" type="java.lang.String">
-            <column name="IS_EMPLOYEE" length="1" not-null="true" />
-        </property>
-    </class>
-<!-- 	<query name="systemuser.getNext"> -->
-<!-- 		from SystemUser su order by su.lastName, su.firstName -->
-<!-- 	</query> -->
-<!-- 	<query name="systemuser.getPrevious"> -->
-<!-- 		from SystemUser su order by su.lastName desc, su.firstName desc -->
-<!-- 	</query> -->
+		<property name="externalId" type="java.lang.String">
+			<column name="EXTERNAL_ID" length="80" />
+		</property>
+		<property name="loginName" type="java.lang.String">
+			<column name="LOGIN_NAME" length="20" not-null="true" />
+		</property>
+		<property name="lastName" type="java.lang.String">
+			<column name="LAST_NAME" length="30" not-null="true" />
+		</property>
+		<property name="firstName" type="java.lang.String">
+			<column name="FIRST_NAME" length="20" not-null="true" />
+		</property>
+		<property name="initials" type="java.lang.String">
+			<column name="INITIALS" length="3" />
+		</property>
+		<property name="isActive" type="java.lang.String">
+			<column name="IS_ACTIVE" length="1" not-null="true" />
+		</property>
+		<property name="isEmployee" type="java.lang.String">
+			<column name="IS_EMPLOYEE" length="1" not-null="true" />
+		</property>
+	</class>
+	<!-- <query name="systemuser.getNext"> -->
+	<!-- from SystemUser su order by su.lastName, su.firstName -->
+	<!-- </query> -->
+	<!-- <query name="systemuser.getPrevious"> -->
+	<!-- from SystemUser su order by su.lastName desc, su.firstName desc -->
+	<!-- </query> -->
 </hibernate-mapping>

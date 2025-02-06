@@ -3,67 +3,67 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.sampleitem.valueholder.SampleItem"
-        table="SAMPLE_ITEM" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">sample_item_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class
+		name="org.openelisglobal.sampleitem.valueholder.SampleItem"
+		table="SAMPLE_ITEM" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">sample_item_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="sortOrder"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="SORT_ORDER" precision="22" scale="0"
-                not-null="true" />
-        </property>
-        <property name="sampleItemId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="SAMPITEM_ID" precision="10" scale="0" />
-        </property>
+		<property name="sortOrder"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="SORT_ORDER" precision="22" scale="0"
+				not-null="true" />
+		</property>
+		<property name="sampleItemId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="SAMPITEM_ID" precision="10" scale="0" />
+		</property>
 
-        <many-to-one name="sample"
-            class="org.openelisglobal.sample.valueholder.Sample" fetch="select"
-            lazy="false">
-            <column name="SAMP_ID" precision="10" scale="0" />
-        </many-to-one>
-        <property name="sourceOfSampleId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="SOURCE_ID" precision="10" scale="0" />
-        </property>
+		<many-to-one name="sample"
+			class="org.openelisglobal.sample.valueholder.Sample" fetch="select"
+			lazy="false">
+			<column name="SAMP_ID" precision="10" scale="0" />
+		</many-to-one>
+		<property name="sourceOfSampleId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="SOURCE_ID" precision="10" scale="0" />
+		</property>
 
-        <many-to-one name="typeOfSample"
-            class="org.openelisglobal.typeofsample.valueholder.TypeOfSample"
-            fetch="select" lazy="false">
-            <column name="TYPEOSAMP_ID" precision="10" scale="0" />
-        </many-to-one>
+		<many-to-one name="typeOfSample"
+			class="org.openelisglobal.typeofsample.valueholder.TypeOfSample"
+			fetch="select" lazy="false">
+			<column name="TYPEOSAMP_ID" precision="10" scale="0" />
+		</many-to-one>
 
-        <property name="sourceOther" type="java.lang.String">
-            <column name="SOURCE_OTHER" length="40" />
-        </property>
-        <property name="quantity"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="QUANTITY" precision="22" scale="0" />
-        </property>
+		<property name="sourceOther" type="java.lang.String">
+			<column name="SOURCE_OTHER" length="40" />
+		</property>
+		<property name="quantity"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="QUANTITY" precision="22" scale="0" />
+		</property>
 
-        <property name="externalId" type="java.lang.String"
-            column="external_id" />
-        <property name="collectionDate" type="java.sql.Timestamp"
-            column="collection_date" />
-        <property name="statusId" column="status_id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
-        <property name="collector" column="collector"
-            type="java.lang.String" />
-        <property name="fhirUuid"
-            column="fhir_uuid" type="java.util.UUID" />
-        <property name="rejected" column="rejected"
-            type="java.lang.Boolean" />
-        <property name="rejectReasonId" column="reject_reason_id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
-    </class>
+		<property name="externalId" type="java.lang.String"
+			column="external_id" />
+		<property name="collectionDate" type="java.sql.Timestamp"
+			column="collection_date" />
+		<property name="statusId" column="status_id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+		<property name="collector" column="collector"
+			type="java.lang.String" />
+		<property name="fhirUuid" column="fhir_uuid"
+			type="java.util.UUID" />
+		<property name="rejected" column="rejected"
+			type="java.lang.Boolean" />
+		<property name="rejectReasonId" column="reject_reason_id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+	</class>
 </hibernate-mapping>

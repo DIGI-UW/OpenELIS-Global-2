@@ -3,131 +3,135 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class name="org.openelisglobal.test.valueholder.Test"
-        table="TEST" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">test_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
-        <many-to-one name="testSection"
-            class="org.openelisglobal.test.valueholder.TestSection"
-            fetch="select" lazy="false">
-            <column name="TEST_SECTION_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="label"
-            class="org.openelisglobal.label.valueholder.Label" fetch="select" lazy="false">
-            <column name="LABEL_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="localizedTestName"
-            class="org.openelisglobal.localization.valueholder.Localization"
-            fetch="select" lazy="false">
-            <column name="name_localization_id" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="localizedReportingName"
-            class="org.openelisglobal.localization.valueholder.Localization"
-            fetch="select" lazy="false">
-            <column name="reporting_name_localization_id" precision="10"
-                scale="0" />
-        </many-to-one>
-        <many-to-one name="unitOfMeasure"
-            class="org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure"
-            fetch="select" lazy="false">
-            <column name="UOM_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="scriptlet"
-            class="org.openelisglobal.scriptlet.valueholder.Scriptlet"
-            fetch="select" lazy="false">
-            <column name="SCRIPTLET_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="method"
-            class="org.openelisglobal.method.valueholder.Method" fetch="select" lazy="false">
-            <column name="METHOD_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="testTrailer"
-            class="org.openelisglobal.testtrailer.valueholder.TestTrailer"
-            fetch="select" lazy="false">
-            <column name="TEST_TRAILER_ID" precision="10" scale="0" />
-        </many-to-one>
-        <property name="localCode" type="java.lang.String">
-            <column name="LOCAL_CODE" length="10" unique="true" />
-        </property>
-        <property name="description" type="java.lang.String">
-            <column name="DESCRIPTION" length="60" not-null="true"
-                unique="true" />
-        </property>
-        <property name="loinc" type="java.lang.String">
-            <column name="LOINC" length="240" />
-        </property>
-        <property name="stickerRequiredFlag" type="java.lang.String">
-            <column name="STICKER_REQ_FLAG" length="1" />
-        </property>
-        <property name="isActive" type="java.lang.String">
-            <column name="IS_ACTIVE" length="1" />
-        </property>
-        <property name="activeBeginDate" type="java.sql.Date">
-            <column name="ACTIVE_BEGIN" length="7" />
-        </property>
-        <property name="activeEndDate" type="java.sql.Date">
-            <column name="ACTIVE_END" length="7" />
-        </property>
-        <property name="isReportable" type="java.lang.String">
-            <column name="IS_REPORTABLE" length="1" />
-        </property>
-        <property name="timeHolding"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="TIME_HOLDING" precision="22" scale="0" />
-        </property>
-        <property name="timeWait"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="TIME_WAIT" precision="22" scale="0" />
-        </property>
-        <property name="timeAverage"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="TIME_TA_AVERAGE" precision="22" scale="0" />
-        </property>
-        <property name="timeWarning"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="TIME_TA_WARNING" precision="22" scale="0" />
-        </property>
-        <property name="timeMax"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="TIME_TA_MAX" precision="22" scale="0" />
-        </property>
-        <property name="labelQuantity"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="LABEL_QTY" precision="22" scale="0" />
-        </property>
-        <property name="sortOrder"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="SORT_ORDER" precision="22" scale="0" />
-        </property>
+	<class name="org.openelisglobal.test.valueholder.Test"
+		table="TEST" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">test_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
+		<many-to-one name="testSection"
+			class="org.openelisglobal.test.valueholder.TestSection"
+			fetch="select" lazy="false">
+			<column name="TEST_SECTION_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="label"
+			class="org.openelisglobal.label.valueholder.Label" fetch="select"
+			lazy="false">
+			<column name="LABEL_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="localizedTestName"
+			class="org.openelisglobal.localization.valueholder.Localization"
+			fetch="select" lazy="false">
+			<column name="name_localization_id" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="localizedReportingName"
+			class="org.openelisglobal.localization.valueholder.Localization"
+			fetch="select" lazy="false">
+			<column name="reporting_name_localization_id" precision="10"
+				scale="0" />
+		</many-to-one>
+		<many-to-one name="unitOfMeasure"
+			class="org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure"
+			fetch="select" lazy="false">
+			<column name="UOM_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="scriptlet"
+			class="org.openelisglobal.scriptlet.valueholder.Scriptlet"
+			fetch="select" lazy="false">
+			<column name="SCRIPTLET_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="method"
+			class="org.openelisglobal.method.valueholder.Method" fetch="select"
+			lazy="false">
+			<column name="METHOD_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="testTrailer"
+			class="org.openelisglobal.testtrailer.valueholder.TestTrailer"
+			fetch="select" lazy="false">
+			<column name="TEST_TRAILER_ID" precision="10" scale="0" />
+		</many-to-one>
+		<property name="localCode" type="java.lang.String">
+			<column name="LOCAL_CODE" length="10" unique="true" />
+		</property>
+		<property name="description" type="java.lang.String">
+			<column name="DESCRIPTION" length="60" not-null="true"
+				unique="true" />
+		</property>
+		<property name="loinc" type="java.lang.String">
+			<column name="LOINC" length="240" />
+		</property>
+		<property name="stickerRequiredFlag" type="java.lang.String">
+			<column name="STICKER_REQ_FLAG" length="1" />
+		</property>
+		<property name="isActive" type="java.lang.String">
+			<column name="IS_ACTIVE" length="1" />
+		</property>
+		<property name="activeBeginDate" type="java.sql.Date">
+			<column name="ACTIVE_BEGIN" length="7" />
+		</property>
+		<property name="activeEndDate" type="java.sql.Date">
+			<column name="ACTIVE_END" length="7" />
+		</property>
+		<property name="isReportable" type="java.lang.String">
+			<column name="IS_REPORTABLE" length="1" />
+		</property>
+		<property name="timeHolding"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="TIME_HOLDING" precision="22" scale="0" />
+		</property>
+		<property name="timeWait"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="TIME_WAIT" precision="22" scale="0" />
+		</property>
+		<property name="timeAverage"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="TIME_TA_AVERAGE" precision="22" scale="0" />
+		</property>
+		<property name="timeWarning"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="TIME_TA_WARNING" precision="22" scale="0" />
+		</property>
+		<property name="timeMax"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="TIME_TA_MAX" precision="22" scale="0" />
+		</property>
+		<property name="labelQuantity"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="LABEL_QTY" precision="22" scale="0" />
+		</property>
+		<property name="sortOrder"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="SORT_ORDER" precision="22" scale="0" />
+		</property>
 
-        <property name="orderable" type="java.lang.Boolean"
-            column="orderable" />
-        <property name="notifyResults" type="java.lang.Boolean"
-            column="notify_results" />
-        <property name="guid" type="java.lang.String" column="guid" />
-        <property name="name" type="java.lang.String" column="name" />
-        <many-to-one name="defaultTestResult"
-            class="org.openelisglobal.testresult.valueholder.TestResult" fetch="select" lazy="false">
-            <column name="default_test_result_id" precision="10" scale="0" />
-        </many-to-one>
-        <property name="inLabOnly" type="java.lang.Boolean"
-            column="in_lab_only" />
+		<property name="orderable" type="java.lang.Boolean"
+			column="orderable" />
+		<property name="notifyResults" type="java.lang.Boolean"
+			column="notify_results" />
+		<property name="guid" type="java.lang.String" column="guid" />
+		<property name="name" type="java.lang.String" column="name" />
+		<many-to-one name="defaultTestResult"
+			class="org.openelisglobal.testresult.valueholder.TestResult"
+			fetch="select" lazy="false">
+			<column name="default_test_result_id" precision="10" scale="0" />
+		</many-to-one>
+		<property name="inLabOnly" type="java.lang.Boolean"
+			column="in_lab_only" />
 
-        <property name="antimicrobialResistance" type="java.lang.Boolean"
-            column="antimicrobial_resistance" />
-    </class>
-<!-- 	<query name="test.getNext"> -->
-<!-- 		from Test t order by t.testSection.testSectionName, t.testName -->
-<!-- 	</query> -->
-<!-- 	<query name="test.getPrevious"> -->
-<!-- 		from Test t order by t.testSection.testSectionName desc, t.testName desc -->
-<!-- 	</query> -->
+		<property name="antimicrobialResistance"
+			type="java.lang.Boolean" column="antimicrobial_resistance" />
+	</class>
+	<!-- <query name="test.getNext"> -->
+	<!-- from Test t order by t.testSection.testSectionName, t.testName -->
+	<!-- </query> -->
+	<!-- <query name="test.getPrevious"> -->
+	<!-- from Test t order by t.testSection.testSectionName desc, t.testName
+		desc -->
+	<!-- </query> -->
 </hibernate-mapping>

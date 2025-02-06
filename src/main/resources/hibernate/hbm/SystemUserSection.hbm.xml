@@ -3,48 +3,48 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping
-    package="org.openelisglobal.systemusersection.valueholder">
-    <class name="SystemUserSection" table="SYSTEM_USER_SECTION"
-        optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">system_user_section_seq</param>
-            </generator>
-        </id>
+	package="org.openelisglobal.systemusersection.valueholder">
+	<class name="SystemUserSection" table="SYSTEM_USER_SECTION"
+		optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">system_user_section_seq</param>
+			</generator>
+		</id>
 
-        <property name="hasView" type="java.lang.String">
-            <column name="HAS_VIEW" length="1" />
-        </property>
-        <property name="hasAssign" type="java.lang.String">
-            <column name="HAS_ASSIGN" length="1" />
-        </property>
-        <property name="hasComplete" type="java.lang.String">
-            <column name="HAS_COMPLETE" length="1" />
-        </property>
-        <property name="hasRelease" type="java.lang.String">
-            <column name="HAS_RELEASE" length="1" />
-        </property>
-        <property name="hasCancel" type="java.lang.String">
-            <column name="HAS_CANCEL" length="1" />
-        </property>
-        <many-to-one name="systemUser"
-            class="org.openelisglobal.systemuser.valueholder.SystemUser"
-            fetch="select">
-            <column name="SYSTEM_USER_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="testSection"
-            class="org.openelisglobal.test.valueholder.TestSection"
-            fetch="select">
-            <column name="TEST_SECTION_ID" precision="10" scale="0" />
-        </many-to-one>
-    </class>
-<!-- 	<query name="systemusersection.getNext"> -->
-<!-- 		from SystemUserSection s -->
-<!-- 	</query> -->
-<!-- 	<query name="systemusersection.getPrevious"> -->
-<!-- 		from SystemUserSection s -->
-<!-- 	</query> -->
+		<property name="hasView" type="java.lang.String">
+			<column name="HAS_VIEW" length="1" />
+		</property>
+		<property name="hasAssign" type="java.lang.String">
+			<column name="HAS_ASSIGN" length="1" />
+		</property>
+		<property name="hasComplete" type="java.lang.String">
+			<column name="HAS_COMPLETE" length="1" />
+		</property>
+		<property name="hasRelease" type="java.lang.String">
+			<column name="HAS_RELEASE" length="1" />
+		</property>
+		<property name="hasCancel" type="java.lang.String">
+			<column name="HAS_CANCEL" length="1" />
+		</property>
+		<many-to-one name="systemUser"
+			class="org.openelisglobal.systemuser.valueholder.SystemUser"
+			fetch="select">
+			<column name="SYSTEM_USER_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="testSection"
+			class="org.openelisglobal.test.valueholder.TestSection"
+			fetch="select">
+			<column name="TEST_SECTION_ID" precision="10" scale="0" />
+		</many-to-one>
+	</class>
+	<!-- <query name="systemusersection.getNext"> -->
+	<!-- from SystemUserSection s -->
+	<!-- </query> -->
+	<!-- <query name="systemusersection.getPrevious"> -->
+	<!-- from SystemUserSection s -->
+	<!-- </query> -->
 </hibernate-mapping>
