@@ -16,6 +16,7 @@ import CustomDatePicker from "../common/CustomDatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import "./EOrderSearch.css"
 
 let breadcrumbs = [{ label: "home.label", link: "/" }];
 
@@ -240,95 +241,6 @@ const EOrderSearch = ({
           )}
         </Grid>
       </div>
-
-      <style>
-        {`
-          .eorder-search-container {
-            max-width: 100%;
-            padding: 1rem;
-          }
-
-          .header-grid {
-            margin-bottom: 2rem;
-          }
-
-          .search-section {
-            margin-bottom: ${isMobile ? "2rem" : "1.5rem"};
-          }
-
-          .search-row,
-          .date-status-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1rem;
-            width: 100%;
-          }
-
-          .search-input {
-            flex: 1 1 300px;
-          }
-
-          .checkbox-column {
-            flex: 0 1 auto;
-            display: flex;
-            align-items: flex-end;
-            margin-bottom: ${isMobile ? "1rem" : "0"};
-          }
-
-          .button-column {
-            flex: 0 1 auto;
-            display: flex;
-            align-items: flex-end;
-          }
-
-          .search-button {
-            width: ${isMobile ? "100%" : "auto"};
-          }
-
-          .date-picker {
-            flex: 1 1 200px;
-          }
-
-          .status-select {
-            flex: 1 1 250px;
-          }
-
-          .section-divider {
-            margin: 2rem 0;
-            border: none;
-            border-top: 1px solid #e0e0e0;
-          }
-
-          .no-results {
-            margin-top: 2rem;
-            padding: 1rem;
-            background-color: #f4f4f4;
-            border-radius: 4px;
-          }
-
-          @media (max-width: 768px) {
-            .date-status-row {
-              flex-direction: column;
-            }
-
-            .checkbox-column,
-            .button-column {
-              width: 100%;
-              justify-content: flex-start;
-            }
-
-            .inputDate {
-              width: 100%;
-            }
-          }
-
-          @media (max-width: 480px) {
-            .eorder-search-container {
-              padding: 0.5rem;
-            }
-          }
-        `}
-      </style>
     </div>
   );
 };

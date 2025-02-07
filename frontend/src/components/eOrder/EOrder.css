@@ -1,0 +1,57 @@
+/* Container styles */
+.eorder-container {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  
+  /* Button styles */
+  .button-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  
+  .responsive-button {
+    min-width: auto;
+  }
+  
+  /* Instructions section */
+  .instructions {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background: #f4f4f4;
+    border-radius: 4px;
+    text-align: center;
+    line-height: 1.5;
+  }
+  
+  /* Form styles */
+  .formInlineDiv {
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .inputText {
+    width: auto;
+  }
+  
+  /* Mobile styles */
+  @media (max-width: 768px) {
+    .responsive-button {
+      min-width: 100%;
+      margin-bottom: 0.5rem;
+    }
+  
+    .instructions {
+      text-align: left;
+    }
+  
+    .formInlineDiv {
+      flex-direction: column;
+      gap: 1rem;
+    }
+  
+    .inputText {
+      width: 100%;
+    }
+  }

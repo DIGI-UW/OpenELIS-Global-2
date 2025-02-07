@@ -22,6 +22,7 @@ import { getFromOpenElisServer } from "../utils/Utils";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
+import "./EOrder.css"
 
 const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
   const { setNotificationVisible, addNotification } =
@@ -463,46 +464,6 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
           {createDataTable(eOrders)}
         </div>
       )}
-
-      <style>
-        {`
-          .eorder-container {
-            max-width: 100%;
-            overflow-x: auto;
-          }
-          
-          .button-group {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-          }
-
-          .responsive-button {
-            min-width: ${isMobile ? "100%" : "auto"};
-            margin-bottom: ${isMobile ? "0.5rem" : "0"};
-          }
-
-          .instructions {
-            padding: 1rem;
-            margin-bottom: 1rem;
-            background: #f4f4f4;
-            border-radius: 4px;
-            text-align: ${isMobile ? "left" : "center"};
-            line-height: 1.5;
-          }
-
-          @media (max-width: 768px) {
-            .formInlineDiv {
-              flex-direction: column;
-              gap: 1rem;
-            }
-
-            .inputText {
-              width: 100%;
-            }
-          }
-        `}
-      </style>
     </div>
   );
 };
