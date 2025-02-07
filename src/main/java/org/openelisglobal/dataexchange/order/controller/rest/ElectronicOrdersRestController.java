@@ -39,7 +39,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
-
 @RestController
 public class ElectronicOrdersRestController extends BaseController {
 
@@ -74,7 +73,7 @@ public class ElectronicOrdersRestController extends BaseController {
     public ElectronicOrderViewForm showElectronicOrders(HttpServletRequest request,
             @ModelAttribute("form") @Valid ElectronicOrderViewForm form, BindingResult result) {
         initializeFormLists(form);
-        
+
         if (form.getSearchType() != null) {
             processSearch(form);
         }
@@ -98,9 +97,7 @@ public class ElectronicOrdersRestController extends BaseController {
 
     private List<ElectronicOrderDisplayItem> convertToDisplayItem(List<ElectronicOrder> electronicOrders,
             boolean useAllInfo) {
-        return electronicOrders.stream()
-                .map(e -> convertToDisplayItem(e, useAllInfo))
-                .collect(Collectors.toList());
+        return electronicOrders.stream().map(e -> convertToDisplayItem(e, useAllInfo)).collect(Collectors.toList());
     }
 
     private ElectronicOrderDisplayItem convertToDisplayItem(ElectronicOrder electronicOrder, boolean useAllInfo) {
@@ -159,7 +156,7 @@ public class ElectronicOrdersRestController extends BaseController {
     private Organization getOrganizationFromTask(Task task) {
         String orgId = task.getRestriction().getRecipientFirstRep().getReferenceElement().getIdPart();
         Organization org = organizationService.getOrganizationByFhirId(orgId);
-        
+
         if (org == null && !task.getLocation().isEmpty()) {
             orgId = task.getLocation().getReferenceElement().getIdPart();
             org = organizationService.getOrganizationByFhirId(orgId);
@@ -176,9 +173,9 @@ public class ElectronicOrdersRestController extends BaseController {
 
     private void populateExtendedInfo(ElectronicOrderDisplayItem displayItem, ElectronicOrder order) {
         IGenericClient fhirClient = fhirUtil.getFhirClient(fhirConfig.getLocalFhirStorePath());
-        ServiceRequest serviceRequest = fhirClient.read().resource(ServiceRequest.class)
-                .withId(order.getExternalId()).execute();
-        
+        ServiceRequest serviceRequest = fhirClient.read().resource(ServiceRequest.class).withId(order.getExternalId())
+                .execute();
+
         populateRequisitionInfo(displayItem, serviceRequest);
         populateTestInfo(displayItem, serviceRequest);
         populatePatientExtendedInfo(displayItem, serviceRequest, fhirClient);
@@ -192,10 +189,8 @@ public class ElectronicOrdersRestController extends BaseController {
 
     private void populateTestInfo(ElectronicOrderDisplayItem displayItem, ServiceRequest serviceRequest) {
         serviceRequest.getCode().getCoding().stream()
-                .filter(coding -> coding.hasSystem() && 
-                        coding.getSystem().equalsIgnoreCase("http://loinc.org"))
-                .findFirst()
-                .ifPresent(coding -> {
+                .filter(coding -> coding.hasSystem() && coding.getSystem().equalsIgnoreCase("http://loinc.org"))
+                .findFirst().ifPresent(coding -> {
                     List<Test> tests = testService.getActiveTestsByLoinc(coding.getCode());
                     if (!tests.isEmpty()) {
                         displayItem.setTestName(tests.get(0).getLocalizedTestName().getLocalizedValue());
@@ -203,13 +198,11 @@ public class ElectronicOrdersRestController extends BaseController {
                 });
     }
 
-    private void populatePatientExtendedInfo(ElectronicOrderDisplayItem displayItem, 
-            ServiceRequest serviceRequest, IGenericClient fhirClient) {
+    private void populatePatientExtendedInfo(ElectronicOrderDisplayItem displayItem, ServiceRequest serviceRequest,
+            IGenericClient fhirClient) {
         String patientUuid = serviceRequest.getSubject().getReferenceElement().getIdPart();
-        org.hl7.fhir.r4.model.Patient fhirPatient = fhirClient.read()
-                .resource(org.hl7.fhir.r4.model.Patient.class)
-                .withId(patientUuid)
-                .execute();
+        org.hl7.fhir.r4.model.Patient fhirPatient = fhirClient.read().resource(org.hl7.fhir.r4.model.Patient.class)
+                .withId(patientUuid).execute();
 
         fhirPatient.getIdentifier().forEach(identifier -> {
             if ("passport".equals(identifier.getSystem())) {
