@@ -21,6 +21,7 @@ import PatientManagement from "./components/patient/PatientManagement";
 import PatientHistory from "./components/patient/PatientHistory";
 import Workplan from "./components/workplan/Workplan";
 import AddOrder from "./components/addOrder/Index";
+import InitialEntry from './components/study/Index'
 import FindOrder from "./components/modifyOrder/Index";
 import ModifyOrder from "./components/modifyOrder/ModifyOrder";
 import RoutineReports from "./components/reports/Routine";
@@ -317,6 +318,12 @@ export default function App() {
                   exact
                   component={() => <AddOrder />}
                   role={["Reception"]}
+                />
+                <SecureRoute
+                  path="/SampleEntryByProject"
+                  exact
+                  component={() => <InitialEntry />}
+                  role="Reception"
                 />
                 <SecureRoute
                   path="/ModifyOrder"
