@@ -16,7 +16,7 @@ import CustomDatePicker from "../common/CustomDatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import "./EOrderSearch.css"
+import "./EOrderSearch.css";
 
 let breadcrumbs = [{ label: "home.label", link: "/" }];
 
@@ -49,7 +49,10 @@ const EOrderSearch = ({
   }, []);
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/ElectronicOrders", handleElectronicOrders);
+    getFromOpenElisServer(
+      "/rest/ElectronicOrders/getOrders",
+      handleElectronicOrders,
+    );
     getFromOpenElisServer(
       "/rest/displayList/ELECTRONIC_ORDER_STATUSES",
       handleOrderStatus,

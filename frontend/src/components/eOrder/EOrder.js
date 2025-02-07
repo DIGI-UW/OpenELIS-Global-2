@@ -22,7 +22,7 @@ import { getFromOpenElisServer } from "../utils/Utils";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
-import "./EOrder.css"
+import "./EOrder.css";
 
 const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
   const { setNotificationVisible, addNotification } =
