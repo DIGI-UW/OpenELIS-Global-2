@@ -59,7 +59,7 @@ see [OpenELIS-Docker setup](https://github.com/I-TECH-UW/openelis-docker)
 
 1.  Build the War file
 
-          mvn clean install -DskipTests
+        mvn clean install -DskipTests
 
 1.  Start the containers to mount the locally compiled artifacts
 
