@@ -56,7 +56,7 @@ public abstract class BaseMenuController<T> extends BaseController {
 
         if (!isPaginationMode) {
             form.setAdminMenuItems(SpringContext.getBean(AdminMenuItemService.class).getActiveItemsSorted());
-        }else{
+        } else {
             form.setAdminMenuItems(new ArrayList<>());
         }
         
