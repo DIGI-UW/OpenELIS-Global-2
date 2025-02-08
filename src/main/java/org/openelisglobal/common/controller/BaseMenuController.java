@@ -52,7 +52,14 @@ public abstract class BaseMenuController<T> extends BaseController {
         }
 
         form.setMenuList(menuList);
-        form.setAdminMenuItems(SpringContext.getBean(AdminMenuItemService.class).getActiveItemsSorted());
+        boolean isPaginationMode = request.getParameter("paging") != null;
+
+        if (!isPaginationMode) {
+            form.setAdminMenuItems(SpringContext.getBean(AdminMenuItemService.class).getActiveItemsSorted());
+        }else{
+            form.setAdminMenuItems(new ArrayList<>());
+        }
+        
 
         request.setAttribute(DEACTIVATE_DISABLED, getDeactivateDisabled());
         request.setAttribute(ADD_DISABLED, getAddDisabled());
