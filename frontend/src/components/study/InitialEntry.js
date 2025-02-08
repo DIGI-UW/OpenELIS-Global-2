@@ -1123,7 +1123,7 @@ const InitialEntry = () => {
                                     {/* Gender options dynamically populated */}
                                 </Select>
                             </Column>
-                            
+
                             <Column lg={16} md={8} sm={4}>
                                 {" "}
                                 <br />{" "}
@@ -1216,6 +1216,284 @@ const InitialEntry = () => {
                             </Column>
 
                             <Column lg={8} md={4} sm={4}><TextInput id="underInvestigationComment" labelText="Investigation Comment" maxLength={1000} /></Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <Button type="submit">Submit</Button>
+                            </Column>
+                        </Grid>
+                    </form>
+                </div>
+
+                <div style={{ display: form === "sample.entry.project.RT.title" ? "block" : "none" }} id="RT_Id">
+                    <h3>
+                        <FormattedMessage id="sample.entry.project.RT.title" />
+                    </h3>
+                    <form>
+                        <Grid>
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <h5>Facility</h5>
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <Select id="centerCode" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Center Code</div>} required >
+                                    <SelectItem value="" text="Select" />
+                                    {/* Options dynamically populated */}
+                                </Select>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <h5>Patient Informations</h5>
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <TextInput id="labNoForDisplay" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Lab Number (RTRI)</div>} required maxLength={5} />
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <TextInput id="siteSubjectNumber" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Recency ID No</div>} required maxLength={18} />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}><TextInput id="birthDate" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Date of Birth (dd/mm/yyyy)</div>} required maxLength={10} /></Column>
+                            <Column lg={8} md={4} sm={4}><TextInput id="age" labelText="Age (year)" maxLength={2} /></Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={5} md={3} sm={2}>
+                                <Select id="gender" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Gender</div>} required >
+                                    <SelectItem value="" text="Select" />
+                                    {/* Gender options dynamically populated */}
+                                </Select>
+                            </Column>
+
+                            <Column lg={5} md={3} sm={2}>
+                                <Select id="vlPregnancy" labelText="Pregnant" >
+                                    <SelectItem value="" text="Select" />
+                                    {/* Gender options dynamically populated */}
+                                </Select>
+                            </Column>
+
+                            <Column lg={5} md={3} sm={2}>
+                                <Select id="vlSuckle" labelText="Breastfeeding" >
+                                    <SelectItem value="" text="Select" />
+                                    {/* Gender options dynamically populated */}
+                                </Select>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <h5>Sample information</h5>
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}><TextInput id="nameOfDoctor" labelText="Name of clinician" /></Column>
+                            <Column lg={8} md={4} sm={4}><TextInput id="nameOfSampler" labelText="Name of Sampler" /></Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}><TextInput id="receivedDateForDisplay" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Received Date (dd/mm/yyyy)</div>} required maxLength={10} /></Column>
+                            <Column lg={8} md={4} sm={4}><TextInput id="receivedTimeForDisplay" labelText="Received Time (HH:mm)" maxLength={5} /></Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}><TextInput id="interviewDate" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Date Taken (dd/mm/yyyy)</div>} required maxLength={10} /></Column>
+                            <Column lg={8} md={4} sm={4}><TextInput id="interviewTime" labelText="Time Taken (HH:mm)" maxLength={5} /></Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <h5>Sample Type</h5>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <Checkbox defaultChecked id="plasmataken" labelText="Plasma" />
+                                <Checkbox id="serumTaken" labelText="Serum" />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <h5>Tests</h5>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <Checkbox defaultChecked id="asanteTest" labelText="Asante HIV-1 Rapid Recency" />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <Button type="submit">Submit</Button>
+                            </Column>
+                        </Grid>
+                    </form>
+                </div>
+
+                <div style={{ display: form === "sample.entry.project.HPV.title" ? "block" : "none" }} id="HPV_Id">
+                    <h3>
+                        <FormattedMessage id="sample.entry.project.HPV.title" />
+                    </h3>
+                    <form>
+                        <Grid>
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <h5>Facility</h5>
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <Select id="centerCode" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Center Code</div>} required >
+                                    <SelectItem value="" text="Select" />
+                                    {/* Options dynamically populated */}
+                                </Select>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <h5>Patient Informations</h5>
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <TextInput id="labNoForDisplay" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Lab Number (RTRI)</div>} required maxLength={5} />
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <TextInput id="siteSubjectNumber" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Patient identification</div>} required maxLength={18} />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={5} md={3} sm={2}>
+                                <Select id="hivStatus" labelText="HIV Status" >
+                                    <SelectItem value="" text="Select" />
+                                    
+                                </Select>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}><TextInput id="birthDate" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Date of Birth (dd/mm/yyyy)</div>} required maxLength={10} /></Column>
+                            <Column lg={8} md={4} sm={4}><TextInput id="age" labelText="Age (year)" maxLength={2} /></Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <h5>Sample information</h5>
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}><TextInput id="nameOfDoctor" labelText="Name of clinician" /></Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}><TextInput id="receivedDateForDisplay" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Received Date (dd/mm/yyyy)</div>} required maxLength={10} /></Column>
+                            <Column lg={8} md={4} sm={4}><TextInput id="receivedTimeForDisplay" labelText="Received Time (HH:mm)" maxLength={5} /></Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}><TextInput id="interviewDate" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Date Taken (dd/mm/yyyy)</div>} required maxLength={10} /></Column>
+                            <Column lg={8} md={4} sm={4}><TextInput id="interviewTime" labelText="Time Taken (HH:mm)" maxLength={5} /></Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={5} md={3} sm={2}>
+                                <Select id="hpvSamplingMethod" labelText="Sample Type" >
+                                    <SelectItem value="" text="Select" />
+                                    
+                                </Select>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <h5>Specimens Collected</h5>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <Checkbox defaultChecked id="preservCytTaken" labelText="PreservCyt (Cervico-vaginal sample)" />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <h5>Tests</h5>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <Checkbox defaultChecked id="hpvTest" labelText="test HPV HR" />
+                                <Checkbox defaultChecked id="abbottOrRocheAnalysis" labelText="Analysis on Abbott or Roche equipment" />
+                                <Checkbox id="geneXpertAnalysis" labelText="Analysis on GeneXpert" />
+                            </Column>
 
                             <Column lg={16} md={8} sm={4}>
                                 {" "}
