@@ -1379,5 +1379,7 @@
   "sample.entry.project.specialRequest.title": "Special Request",
   "sample.entry.project.VL.title": "ARV - Viral Load",
   "sample.entry.project.RT.title": "Regency Testing",
-  "sample.entry.project.HPV.title": "HPV Testing"
+  "sample.entry.project.HPV.title": "HPV Testing",
+  "sample.entry.project.title.infantInformation": "Infant Information",
+  "sample.entry.project.title.mothersInformation": "Mothers Information"
 }
