@@ -1,7 +1,7 @@
 # OpenELIS Global 2
 
 This is the OpenELIS rewrite onto Java Spring, and with all new technology and
-features. Please vist our [website](http://www.openelis-global.org/) for more
+features. Please visit our [website](http://www.openelis-global.org/) for more
 information.
 
 You can find more information on how to set up OpenELIS at our
@@ -24,7 +24,7 @@ Download the OpenELIS Global Installer for each Release from the
 [Release Assets](https://github.com/I-TECH-UW/OpenELIS-Global-2/releases)
 
 see full
-[installtion instructions](https://docs.openelis-global.org/en/latest/install/)
+[installation instructions](https://docs.openelis-global.org/en/latest/install/)
 for Offline Installation
 
 ### For running OpenELIS Global2 in Docker with default Settings out of the Box
@@ -41,7 +41,7 @@ see [OpenELIS-Docker setup](https://github.com/I-TECH-UW/openelis-docker)
 
     docker-compose -f build.docker-compose.yml up -d --build
 
-#### Running OpenELIS Global2 using docker compose With locally compiled/built Artifacts (ie the War file and React code)
+#### Running OpenELIS Global2 using docker compose with locally compiled/built Artifacts (ie the War file and React code)
 
 1.  Fork the
     [OpenELIS-Global Repository](https://github.com/I-TECH-UW/OpenELIS-Global-2.git)
@@ -50,7 +50,7 @@ see [OpenELIS-Docker setup](https://github.com/I-TECH-UW/openelis-docker)
 
         git clone https://github.com/username/OpenELIS-Global-2.git
 
-1.  innitialize and build sub modules
+1.  initialize and build sub modules
 
         cd OpenELIS-Global-2
         git submodule update --init --recursive
@@ -96,7 +96,7 @@ accessing any of these links, simply follow these steps:
 
 #### Formating the Source code after making changes
 
-1.  After making UI changes to the [frontend](./frontend/) directory , run the
+1.  After making UI changes to the [frontend](./frontend/) directory, run the
     formatter to properly format the Frontend code
 
         cd frontend
