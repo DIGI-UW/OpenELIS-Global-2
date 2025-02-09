@@ -48,7 +48,7 @@ see [OpenELIS-Docker setup](https://github.com/I-TECH-UW/openelis-docker)
     and clone the forked repo. The `username` below is the `username` of your
     Github profile.
 
-         git clone https://github.com/username/OpenELIS-Global-2.git
+        git clone https://github.com/username/OpenELIS-Global-2.git
 
 1.  innitialize and build sub modules
 
@@ -73,7 +73,7 @@ see [OpenELIS-Docker setup](https://github.com/I-TECH-UW/openelis-docker)
 
   - Run the maven build again to re-build the War file
 
-         mvn clean install -DskipTests
+        mvn clean install -DskipTests
 
   - Recreate the Openelis webapp container
 
