@@ -1229,6 +1229,392 @@ const InitialEntry = () => {
                     </form>
                 </div>
 
+                <div style={{ display: form === "sample.entry.project.VL.title" ? "block" : "none" }} id="VL_Id">
+                    <h3>
+                        <FormattedMessage id="sample.entry.project.VL.title" />
+                    </h3>
+                    <form>
+                        <Grid>
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <Select id="centerName" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Center Name</div>} required >
+                                    <SelectItem value="" text="Select" />
+                                    {/* Options dynamically populated */}
+                                </Select>
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <Select id="centerCode" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Center Code</div>} required >
+                                    <SelectItem value="" text="Select" />
+                                    {/* Options dynamically populated */}
+                                </Select>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}><TextInput id="nameOfDoctor" labelText="Name of clinician" /></Column>
+                            <Column lg={8} md={4} sm={4}><TextInput id="nameOfSampler" labelText="Name of Sampler" /></Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}><TextInput id="receivedDateForDisplay" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Received Date (dd/mm/yyyy)</div>} required maxLength={10} /></Column>
+                            <Column lg={8} md={4} sm={4}><TextInput id="receivedTimeForDisplay" labelText="Received Time (HH:mm)" maxLength={5} /></Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}><TextInput id="interviewDate" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Date Taken (dd/mm/yyyy)</div>} required maxLength={10} /></Column>
+                            <Column lg={8} md={4} sm={4}><TextInput id="interviewTime" labelText="Time Taken (HH:mm)" maxLength={5} /></Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <TextInput id="subjectNumber" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Unique Health ID number</div>} required maxLength={7} />
+                            </Column>
+
+
+                            <Column lg={8} md={4} sm={4}>
+                                <TextInput id="siteSubjectNumber" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Site Unique Health ID number</div>} required maxLength={18} />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <TextInput id="labNoForDisplay" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Lab Number (AARC)</div>} required maxLength={5} />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}><TextInput id="birthDate" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Date of Birth (dd/mm/yyyy)</div>} required maxLength={10} /></Column>
+                            <Column lg={8} md={4} sm={4}><TextInput id="age" labelText="Age (year)" maxLength={2} /></Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={5} md={3} sm={2}>
+                                <Select id="gender" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>Gender</div>} required >
+                                    <SelectItem value="" text="Select" />
+                                    {/* Gender options dynamically populated */}
+                                </Select>
+                            </Column>
+
+                            <Column lg={5} md={3} sm={2}>
+                                <Select id="vlPregnancy" labelText="Pregnant" >
+                                    <SelectItem value="" text="Select" />
+                                    {/* Options dynamically populated */}
+                                </Select>
+                            </Column>
+
+                            <Column lg={5} md={3} sm={2}>
+                                <Select id="vlSuckle" labelText="Breastfeeding" >
+                                    <SelectItem value="" text="Select" />
+                                    {/* Options dynamically populated */}
+                                </Select>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={5} md={3} sm={2}>
+                                <Select id="hivStatus" labelText={<div><span style={{ color: "red", fontSize: 18 }}>*</span>HIV Type</div>} required >
+                                    <SelectItem value="" text="Select" />
+                                    {/* Options dynamically populated */}
+                                </Select>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <hr />{" "}
+                            </Column>
+
+                            <Column lg={5} md={3} sm={2}>
+                                <Select id="currentARVTreatment" labelText="Is the patient currently receiving ARV treatment ?" >
+                                    <SelectItem value="" text="Select" />
+                                    {/* Options dynamically populated */}
+                                </Select>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <TextInput id="arvTreatmentInitDate" labelText="If yes, Date ARV treatment initiation" required maxLength={10} />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={3} sm={2}>
+                                <Select id="arvTreatmentRegime" labelText="Therapeutic line" >
+                                    <SelectItem value="" text="Select" />
+                                    {/* Options dynamically populated */}
+                                </Select>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <hr />{" "}
+                            </Column>
+
+                            <Column lg={5} md={3} sm={2}>
+                                <Select id="vlReasonForRequest" labelText="Reason of viral load request" >
+                                    <SelectItem value="" text="Select" />
+                                    {/* Options dynamically populated */}
+                                </Select>
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <TextInput id="vlOtherReasonForRequest" labelText="	Specify" maxLength={50} />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <hr />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <h5>At treatment initiation</h5>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <TextInput id="initcd4Count" labelText="CD4 Count" maxLength={4} />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <TextInput id="initcd4Percent" labelText="CD4 Percentage Count" maxLength={10} />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <TextInput id="initcd4Date" labelText="Date" maxLength={10} />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <hr />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <h5>Viral Load request</h5>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <TextInput id="demandcd4Count" labelText="CD4 Count" maxLength={4} />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <TextInput id="demandcd4Percent" labelText="CD4 Percentage Count" maxLength={10} />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <TextInput id="demandcd4Date" labelText="Date" maxLength={10} />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <hr />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={2}>
+                                <Select id="vlBenefit" labelText="Prior Viral Load Request made ?" >
+                                    <SelectItem value="" text="Select" />
+                                    {/* options dynamically populated */}
+                                </Select>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <TextInput id="priorVLLab" labelText="If yes, specify the laboratory" maxLength={10} />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <TextInput id="priorVLValue" labelText="Value" maxLength={10} />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <TextInput id="priorVLDate" labelText="Date" maxLength={10} />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <hr />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            {/* Patient record status TO BE implemented. */}
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <hr />{" "}
+                            </Column>
+                            
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}>
+                                <Select id="underInvestigation" labelText="Under Investigation">
+                                    <SelectItem value="" text="Select" />
+                                    {/* Options dynamically populated */}
+                                </Select>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={8} md={4} sm={4}><TextInput id="underInvestigationComment" labelText="Investigation Comment" maxLength={1000} /></Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <h5>Specimens Collected</h5>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <Checkbox id="edtaTubeTaken" labelText="EDTA tube" />
+                                <Checkbox id="dbsvlTaken" labelText="Dry Blood Spot" />
+                                <Checkbox id="pscvlTaken" labelText="PSC (?)" />
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <h5>Tests</h5>
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <Checkbox defaultChecked id="viralLoadTest" labelText="Viral Load Test" />
+                                
+                            </Column>
+                            
+                            <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br />{" "}
+                            </Column>
+
+                            <Column lg={16} md={8} sm={4}>
+                                <Button type="submit">Submit</Button>
+                            </Column>
+                        </Grid>
+                    </form>
+                </div>
+
                 <div style={{ display: form === "sample.entry.project.RT.title" ? "block" : "none" }} id="RT_Id">
                     <h3>
                         <FormattedMessage id="sample.entry.project.RT.title" />
@@ -1416,7 +1802,7 @@ const InitialEntry = () => {
                             <Column lg={5} md={3} sm={2}>
                                 <Select id="hivStatus" labelText="HIV Status" >
                                     <SelectItem value="" text="Select" />
-                                    
+
                                 </Select>
                             </Column>
 
@@ -1463,7 +1849,7 @@ const InitialEntry = () => {
                             <Column lg={5} md={3} sm={2}>
                                 <Select id="hpvSamplingMethod" labelText="Sample Type" >
                                     <SelectItem value="" text="Select" />
-                                    
+
                                 </Select>
                             </Column>
 
