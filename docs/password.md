@@ -1,45 +1,54 @@
 # Password Migration
 
-# Notes:
+## Overview
 
-This procedure is to be done for old instances of OpenELIS that are using an
-outdated method of storing passwords. To check if the old method is used, follow
-these steps:
+This procedure is required for legacy OpenELIS instances using outdated password storage methods. Before proceeding, verify if migration is necessary:
 
-1. Connect to running database
-1. Query login_user table
-   1. `SELECT * FROM clinlims.login_user;`
-1. Check the password column values
+1. Connect to your running database
+2. Query the login_user table:
+```sql
+SELECT * FROM clinlims.login_user;
+```
+3. Check the password column values:
+   - If passwords start with `$2a$12$`: Migration already completed
+   - If not: Migration required for OE2 functionality
 
-If all passwords start with something similar to $2a$12$ then the passwords have
-been migrated, if not, then this procedure must be completed for OE2 to
-function.
+**Security Notice:** Due to the previous insecure password storage method, all users should change their passwords after running this migration tool.
 
-It is recommended for all users to **change their password **after this tool is
-run. This is because the old method of storing passwords was insecure so it is
-possible that an attacker compromised their old password.
+## Migration Steps
 
-# Migrating Passwords
+### 1. Install Required Python Tools
 
-## Install Python tools on computer with connection to DB
+Run these commands on a computer with database access:
+```bash
+sudo apt update
+wget https://bootstrap.pypa.io/pip/2.7/get-pip.py
+python2 get-pip.py
+sudo apt install libpq-dev python-dev
+python2 -m pip install pycrypto
+python2 -m pip install psycopg2
+python2 -m pip install bcrypt
+```
 
-1. Run the following commands
-   1. `sudo apt update`
-   1. `wget https://bootstrap.pypa.io/pip/2.7/get-pip.py`
-   1. `python2 get-pip.py`
-   1. `sudo apt install libpq-dev python-dev`
-   1. `python2 -m pip install pycrypto`
-   1. `python2 -m pip install psycopg2`
-   1. `python2 -m pip install bcrypt`
+### 2. Download and Run Migration Tool
 
-## Run the Password Migration tool
+1. Download and extract the Password Migration tool:
+```bash
+wget https://github.com/I-TECH-UW/Password-Migrator/archive/master.tar.gz
+tar -xvzf master.tar.gz
+```
 
-1. Download the
-   [Password Migration](https://github.com/I-TECH-UW/Password-Migrator) tool and
-   unpack it
-   1. `wget https://github.com/I-TECH-UW/Password-Migrator/archive/master.tar.gz`
-   1. `tar -xvzf master.tar.gz`
-1. Run the tool and follow instructions
-   1. `python2 Password-Migrator-master/migrator/migrate.py`
-   1. Provide DB connection info
-1. Confirm that no errors occurred
+2. Run the migration script:
+```bash
+python2 Password-Migrator-master/migrator/migrate.py
+```
+
+3. Follow the prompts to provide database connection information
+
+4. Verify that no errors occurred during migration
+
+### Post-Migration Steps
+
+1. Verify all passwords in the database now start with `$2a$12$`
+2. Notify all users to change their passwords at next login
+3. Document the migration completion in your system records
