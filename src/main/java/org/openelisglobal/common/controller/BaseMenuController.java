@@ -59,7 +59,6 @@ public abstract class BaseMenuController<T> extends BaseController {
         } else {
             form.setAdminMenuItems(new ArrayList<>());
         }
-        
 
         request.setAttribute(DEACTIVATE_DISABLED, getDeactivateDisabled());
         request.setAttribute(ADD_DISABLED, getAddDisabled());
