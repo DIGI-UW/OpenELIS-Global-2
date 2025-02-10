@@ -86,10 +86,10 @@ This Option can be used where there is fast internet connectivity.
 
 ###### The instances can be accessed at:
 
-| Instance     |                   URL                   | credentials (user : password) |
-| ------------ | :-------------------------------------: | ----------------------------: |
-| Legacy UI    | https://localhost/api/OpenELIS-Global/  |            admin: adminADMIN! |
-| New React UI |           https://localhost/            |            admin: adminADMIN! |
+| Instance     |                  URL                   | credentials (user : password) |
+| ------------ | :------------------------------------: | ----------------------------: |
+| Legacy UI    | https://localhost/api/OpenELIS-Global/ |            admin: adminADMIN! |
+| New React UI |           https://localhost/           |            admin: adminADMIN! |
 
 ##### Running OpenELIS Global 2.x in Docker
 
@@ -97,9 +97,9 @@ This Option can be used where there is fast internet connectivity.
 
 ###### The instances can be accessed at:
 
-| Instance |                   URL                    | credentials (user : password) |
-| -------- | :--------------------------------------: | ----------------------------: |
-| OpenElis | https://localhost:8443/OpenELIS-Global/  |            admin: adminADMIN! |
+| Instance |                   URL                   | credentials (user : password) |
+| -------- | :-------------------------------------: | ----------------------------: |
+| OpenElis | https://localhost:8443/OpenELIS-Global/ |            admin: adminADMIN! |
 
 ##### Running OpenELIS-Global2 from source code in docker
 
@@ -124,10 +124,10 @@ OpenELIS uses SSL certificates to securely communicate with other software or
 consolidated lab data servers. For a test or temporary instance, use a
 self-signed certificate, and for a production instance create a proper signed
 certificate. **You must have a cert and key created and in the keystore and
-truststore for the installer to run.** I will include 2 paths, one for generating your own self-signed cert, this is
-good for just starting out or experimenting, and for using your real certs,
-which is appropriate for production servers. If you have real certificates skip
-down to
+truststore for the installer to run.** I will include 2 paths, one for
+generating your own self-signed cert, this is good for just starting out or
+experimenting, and for using your real certs, which is appropriate for
+production servers. If you have real certificates skip down to
 [Use a real certificate, best for production uses](#Use-a-real-certificate-best-for-production-uses).
 
 ##### Use a self-signed certificate.
@@ -251,8 +251,8 @@ Ensure all keystores have global read permission:
 
 3.  Optionally configure your install by editing `setup.ini`.
 
-    Find the section `[DOCKER_VALUES]` and set `provide_database=True` if you would
-    like to use a Docker database.
+    Find the section `[DOCKER_VALUES]` and set `provide_database=True` if you
+    would like to use a Docker database.
 
 4.  Run the install script in Terminal or Putty:
 
@@ -264,14 +264,12 @@ Ensure all keystores have global read permission:
 server address. It is not overwritten by the installer:
 /var/lib/openelisglobal/secrets/extra.properties**
 
-1. Set the site identification number for this instance.
-   a. The site number is used to set the default test order prefix, and to identify the system to the
+1. Set the site identification number for this instance. a. The site number is
+   used to set the default test order prefix, and to identify the system to the
    consolidated server and other data systems.
 
-2. Set the time zone for OpenELIS Application.
-   a. Select the region that your country is in.
-   b. Select the country.
-   c. Verify the time zone.
+2. Set the time zone for OpenELIS Application. a. Select the region that your
+   country is in. b. Select the country. c. Verify the time zone.
 3. Enter in the keystore password we set earlier.
 4. Same with the truststore.
 5. Enter an encryption key. This will help secure your data by encrypting your
@@ -295,15 +293,14 @@ Please be sure to use Chrome for OpenELIS.
 9. Check if OpenELIS is running at
    `https://{server_ip_address}:8443/OpenELIS-Global/`
 
-Default user: admin
-Default password: adminADMIN!
+Default user: admin Default password: adminADMIN!
 
 Configure the backup:
 
 Follow the SOP at: [Backup Configuration](../backups)
 
 To set the identifier for this particular instance, use the
-`/var/lib/openelisglobal/secrets/extra.properties` file, and set the organization
-value to the same identifier as is set in the consolidated server FHIR location
-object. EG:
+`/var/lib/openelisglobal/secrets/extra.properties` file, and set the
+organization value to the same identifier as is set in the consolidated server
+FHIR location object. EG:
 `org.openelisglobal.remote.source.identifier=Organization/8136bd30-901c-4d47-b133-72de813404ee`
