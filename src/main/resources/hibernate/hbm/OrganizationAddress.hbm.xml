@@ -1,19 +1,19 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-                                   "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+								"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping
-    package="org.openelisglobal.address.valueholder">
-    <class name="OrganizationAddress" table="organization_address"
-        optimistic-lock="version" dynamic-update="true">
-        <composite-id name="compoundId"
-            class="org.openelisglobal.address.valueholder.AddressPK">
-            <key-property name="targetId" column="organization_id"
-                type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
-            <key-property name="addressPartId"
-                column="address_part_id"
-                type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
-        </composite-id>
-        <property name="type" column="type" type="java.lang.String" />
-        <property name="value" column="value" type="java.lang.String" />
-    </class>
+	package="org.openelisglobal.address.valueholder">
+	<class name="OrganizationAddress" table="organization_address"
+		optimistic-lock="version" dynamic-update="true">
+		<composite-id name="compoundId"
+			class="org.openelisglobal.address.valueholder.AddressPK">
+			<key-property name="targetId" column="organization_id"
+				type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+			<key-property name="addressPartId"
+				column="address_part_id"
+				type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+		</composite-id>
+		<property name="type" column="type" type="java.lang.String" />
+		<property name="value" column="value" type="java.lang.String" />
+	</class>
 </hibernate-mapping>

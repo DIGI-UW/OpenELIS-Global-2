@@ -1,29 +1,29 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-                                   "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+								"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping>
-    <class dynamic-update="true"
-        name="org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportExternalImport"
-        table="report_external_import">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">report_external_import_seq</param>
-            </generator>
-        </id>
-        <version access="field" column="lastupdated" generated="never"
-            name="lastupdated" type="timestamp" />
-        <property column="event_date" generated="never" lazy="false"
-            name="eventDate" type="timestamp" />
-        <property column="sending_site" generated="never"
-            lazy="false" name="sendingSite" type="string" />
-        <property column="recieved_date" generated="never"
-            lazy="false" name="recievedDate" type="timestamp" />
-        <property column="type" generated="never" lazy="false"
-            name="reportType" type="string" />
-        <property column="data" generated="never" lazy="false"
-            name="data" type="string" />
-    </class>
+	<class dynamic-update="true"
+		name="org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportExternalImport"
+		table="report_external_import">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">report_external_import_seq</param>
+			</generator>
+		</id>
+		<version access="field" column="lastupdated" generated="never"
+			name="lastupdated" type="timestamp" />
+		<property column="event_date" generated="never" lazy="false"
+			name="eventDate" type="timestamp" />
+		<property column="sending_site" generated="never"
+			lazy="false" name="sendingSite" type="string" />
+		<property column="recieved_date" generated="never"
+			lazy="false" name="recievedDate" type="timestamp" />
+		<property column="type" generated="never" lazy="false"
+			name="reportType" type="string" />
+		<property column="data" generated="never" lazy="false"
+			name="data" type="string" />
+	</class>
 </hibernate-mapping>

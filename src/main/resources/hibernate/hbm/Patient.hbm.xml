@@ -3,81 +3,81 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class name="org.openelisglobal.patient.valueholder.Patient"
-        table="PATIENT" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">patient_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class name="org.openelisglobal.patient.valueholder.Patient"
+		table="PATIENT" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">patient_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <many-to-one name="person"
-            class="org.openelisglobal.person.valueholder.Person" fetch="select"
-            lazy="false">
-            <column name="PERSON_ID" precision="10" scale="0"
-                not-null="true" />
-        </many-to-one>
-        <property name="race" type="java.lang.String">
-            <column name="RACE" length="5" />
-        </property>
-        <property name="gender" type="java.lang.String">
-            <column name="GENDER" length="1" />
-        </property>
+		<many-to-one name="person"
+			class="org.openelisglobal.person.valueholder.Person" fetch="select"
+			lazy="false">
+			<column name="PERSON_ID" precision="10" scale="0"
+				not-null="true" />
+		</many-to-one>
+		<property name="race" type="java.lang.String">
+			<column name="RACE" length="5" />
+		</property>
+		<property name="gender" type="java.lang.String">
+			<column name="GENDER" length="1" />
+		</property>
 
-        <property name="birthDate" type="java.sql.Timestamp">
-            <column name="BIRTH_DATE" length="7" />
-        </property>
-        <property name="epiFirstName" type="java.lang.String">
-            <column name="EPI_FIRST_NAME" length="25" />
-        </property>
-        <property name="epiMiddleName" type="java.lang.String">
-            <column name="EPI_MIDDLE_NAME" length="25" />
-        </property>
-        <property name="epiLastName" type="java.lang.String">
-            <column name="EPI_LAST_NAME" length="240" />
-        </property>
-        <property name="birthTime" type="java.sql.Date">
-            <column name="BIRTH_TIME" length="7" />
-        </property>
-        <property name="deathDate" type="java.sql.Date">
-            <column name="DEATH_DATE" length="7" />
-        </property>
-        <property name="nationalId" type="java.lang.String">
-            <column name="NATIONAL_ID" />
-        </property>
-        <property name="ethnicity" type="java.lang.String">
-            <column name="ETHNICITY" length="1" />
-        </property>
-        <property name="schoolAttend" type="java.lang.String">
-            <column name="SCHOOL_ATTEND" length="240" />
-        </property>
-        <property name="medicareId" type="java.lang.String">
-            <column name="MEDICARE_ID" length="240" />
-        </property>
-        <property name="medicaidId" type="java.lang.String">
-            <column name="MEDICAID_ID" length="240" />
-        </property>
-        <property name="birthPlace" type="java.lang.String">
-            <column name="BIRTH_PLACE" />
-        </property>
-        <property name="externalId" type="java.lang.String">
-            <column name="EXTERNAL_ID" />
-        </property>
-        <property name="chartNumber" type="java.lang.String">
-            <column name="CHART_NUMBER" length="20" />
-        </property>
-        <property name="birthDateForDisplay" type="java.lang.String">
-            <column name="entered_birth_date" length="10" />
-        </property>
-        <property name="fhirUuid"
-            column="fhir_uuid" type="java.util.UUID" />
-        <property name="upidCode"
-            column="upid_code" type="java.lang.String" />
+		<property name="birthDate" type="java.sql.Timestamp">
+			<column name="BIRTH_DATE" length="7" />
+		</property>
+		<property name="epiFirstName" type="java.lang.String">
+			<column name="EPI_FIRST_NAME" length="25" />
+		</property>
+		<property name="epiMiddleName" type="java.lang.String">
+			<column name="EPI_MIDDLE_NAME" length="25" />
+		</property>
+		<property name="epiLastName" type="java.lang.String">
+			<column name="EPI_LAST_NAME" length="240" />
+		</property>
+		<property name="birthTime" type="java.sql.Date">
+			<column name="BIRTH_TIME" length="7" />
+		</property>
+		<property name="deathDate" type="java.sql.Date">
+			<column name="DEATH_DATE" length="7" />
+		</property>
+		<property name="nationalId" type="java.lang.String">
+			<column name="NATIONAL_ID" />
+		</property>
+		<property name="ethnicity" type="java.lang.String">
+			<column name="ETHNICITY" length="1" />
+		</property>
+		<property name="schoolAttend" type="java.lang.String">
+			<column name="SCHOOL_ATTEND" length="240" />
+		</property>
+		<property name="medicareId" type="java.lang.String">
+			<column name="MEDICARE_ID" length="240" />
+		</property>
+		<property name="medicaidId" type="java.lang.String">
+			<column name="MEDICAID_ID" length="240" />
+		</property>
+		<property name="birthPlace" type="java.lang.String">
+			<column name="BIRTH_PLACE" />
+		</property>
+		<property name="externalId" type="java.lang.String">
+			<column name="EXTERNAL_ID" />
+		</property>
+		<property name="chartNumber" type="java.lang.String">
+			<column name="CHART_NUMBER" length="20" />
+		</property>
+		<property name="birthDateForDisplay" type="java.lang.String">
+			<column name="entered_birth_date" length="10" />
+		</property>
+		<property name="fhirUuid" column="fhir_uuid"
+			type="java.util.UUID" />
+		<property name="upidCode" column="upid_code"
+			type="java.lang.String" />
 
-    </class>
+	</class>
 </hibernate-mapping>

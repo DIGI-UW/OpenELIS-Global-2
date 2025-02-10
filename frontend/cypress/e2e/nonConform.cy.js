@@ -1,6 +1,5 @@
 import LoginPage from "../pages/LoginPage";
 
-
 let homePage = null;
 let loginPage = null;
 let nonConform = null;
@@ -64,7 +63,7 @@ describe("Report Non-Conforming Event", function () {
       nonConform.enterSearchField(order.labNo);
       nonConform.clickSearchButton();
       nonConform.validateSearchResult(order.labNo);
-      nonConform.clickCheckbox({force: true});
+      nonConform.clickCheckbox({ force: true });
       nonConform.clickGoToNceFormButton();
     });
 

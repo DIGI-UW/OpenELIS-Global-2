@@ -363,7 +363,7 @@ const SampleBatchEntry = (props) => {
                         setGenerateSaveButtonDisabled(true);
                       }}
                       disabled={generateSaveButtonDisabled}
-                      data-testid='generate-barcode-link-BatchOrderEntry'
+                      data-testid="generate-barcode-link-BatchOrderEntry"
                     >
                       <p>
                         <FormattedMessage id="order.generate.barcode" />
@@ -405,7 +405,7 @@ const SampleBatchEntry = (props) => {
                           },
                         });
                       }}
-                      data-testid='next-button-BatchOrderEntry'
+                      data-testid="next-button-BatchOrderEntry"
                       disabled={buttonDisabled}
                     >
                       <FormattedMessage id="nextLabel.action.button" />
@@ -471,7 +471,7 @@ const SampleBatchEntry = (props) => {
                         ]);
                       }}
                       disabled={generateSaveButtonDisabled}
-                      data-testid='generate-barcode-btn-BatchOrderEntry'
+                      data-testid="generate-barcode-btn-BatchOrderEntry"
                     >
                       <FormattedMessage id="column.name.save" />
                     </Button>

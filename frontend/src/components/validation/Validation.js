@@ -212,7 +212,7 @@ const Validation = (props) => {
               hasIconOnly
               renderIcon={Copy}
             />
-            <div className="sampleInfo">
+            <div className="sampleInfo" data-testid="LabNo">
               <br></br>
               {formatLabNum
                 ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
@@ -234,7 +234,7 @@ const Validation = (props) => {
         );
       case "testName":
         return (
-          <div className="sampleInfo">
+          <div className="sampleInfo" data-testid="sampleInfo">
             <br></br>
             {testName}
             <br></br>
@@ -245,17 +245,19 @@ const Validation = (props) => {
       case "save":
         return (
           <>
-            <Field name="isAccepted">
-              {({ field }) => (
-                <Checkbox
-                  id={"resultList" + row.id + ".isAccepted"}
-                  name={"resultList[" + row.id + "].isAccepted"}
-                  labelText=""
-                  value={true}
-                  onChange={(e) => handleCheckBox(e, row.id)}
-                />
-              )}
-            </Field>
+            <div data-testid="Checkbox">
+              <Field name="isAccepted">
+                {({ field }) => (
+                  <Checkbox
+                    id={"resultList" + row.id + ".isAccepted"}
+                    name={"resultList[" + row.id + "].isAccepted"}
+                    labelText=""
+                    value={true}
+                    onChange={(e) => handleCheckBox(e, row.id)}
+                  />
+                )}
+              </Field>
+            </div>
           </>
         );
 
@@ -470,6 +472,7 @@ const Validation = (props) => {
               onClick={() => handleSave(values)}
               id="submit"
               style={{ marginTop: "16px" }}
+              data-testid="Save-btn"
               disabled={isSubmitting}
             >
               <FormattedMessage id="label.button.save" />

@@ -138,7 +138,6 @@ class BatchOrderEntry {
     cy.get("h2").should("contain.text", "Batch Order Entry");
   }
 
-
   clickGenerateAndSaveBarcode() {
     cy.get("[data-testid='generate-barcode-link-BatchOrderEntry']").click();
   }

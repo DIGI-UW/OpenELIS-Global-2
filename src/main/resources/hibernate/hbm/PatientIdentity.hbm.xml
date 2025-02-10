@@ -3,32 +3,32 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.patientidentity.valueholder.PatientIdentity"
-        table="PATIENT_IDENTITY" optimistic-lock="version"
-        dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">patient_identity_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class
+		name="org.openelisglobal.patientidentity.valueholder.PatientIdentity"
+		table="PATIENT_IDENTITY" optimistic-lock="version"
+		dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">patient_identity_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="identityTypeId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="IDENTITY_TYPE_ID" precision="10" scale="0" />
-        </property>
-        <property name="patientId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="PATIENT_ID" precision="10" scale="0"
-                not-null="true" />
-        </property>
-        <property name="identityData" type="java.lang.String">
-            <column name="IDENTITY_DATA" />
-        </property>
-    </class>
+		<property name="identityTypeId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="IDENTITY_TYPE_ID" precision="10" scale="0" />
+		</property>
+		<property name="patientId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="PATIENT_ID" precision="10" scale="0"
+				not-null="true" />
+		</property>
+		<property name="identityData" type="java.lang.String">
+			<column name="IDENTITY_DATA" />
+		</property>
+	</class>
 </hibernate-mapping>

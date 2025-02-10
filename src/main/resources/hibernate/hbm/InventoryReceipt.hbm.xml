@@ -3,33 +3,33 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.inventory.valueholder.InventoryReceipt"
-        table="inventory_receipt" optimistic-lock="version"
-        dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">inventory_receipt_seq</param>
-            </generator>
-        </id>
+	<class
+		name="org.openelisglobal.inventory.valueholder.InventoryReceipt"
+		table="inventory_receipt" optimistic-lock="version"
+		dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">inventory_receipt_seq</param>
+			</generator>
+		</id>
 
-        <many-to-one name="organization"
-            class="org.openelisglobal.organization.valueholder.Organization"
-            fetch="select" lazy="false">
-            <column name="ORG_ID" precision="10" scale="0" />
-        </many-to-one>
+		<many-to-one name="organization"
+			class="org.openelisglobal.organization.valueholder.Organization"
+			fetch="select" lazy="false">
+			<column name="ORG_ID" precision="10" scale="0" />
+		</many-to-one>
 
-        <property name="inventoryItemId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="invitem_id" precision="10" scale="0" />
-        </property>
+		<property name="inventoryItemId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="invitem_id" precision="10" scale="0" />
+		</property>
 
-        <property name="receivedDate" type="timestamp">
-            <column name="received_date" />
-        </property>
+		<property name="receivedDate" type="timestamp">
+			<column name="received_date" />
+		</property>
 
-    </class>
+	</class>
 </hibernate-mapping>
