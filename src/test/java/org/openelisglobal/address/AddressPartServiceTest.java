@@ -16,7 +16,7 @@ public class AddressPartServiceTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void init() throws Exception {
-        executeDataSetWithStateManagement("testdata/personaddress.xml");
+        executeDataSetWithStateManagement("testdata/address-part.xml");
     }
 
     @Test
