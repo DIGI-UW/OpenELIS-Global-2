@@ -1,248 +1,298 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
-import {
-  Heading,
-  Button,
-  Loading,
-  Grid,
-  Column,
-  Section,
-  DataTable,
-  Table,
-  TableHead,
-  TableRow,
-  TableBody,
-  TableHeader,
-  TableCell,
-  TableSelectRow,
-  TableSelectAll,
-  TableContainer,
-  Pagination,
-  Search,
-} from "@carbon/react";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServer,
-  postToOpenElisServerFormData,
-  postToOpenElisServerFullResponse,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils.js";
-import { NotificationContext } from "../../layout/Layout.js";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification.js";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
-import PageBreadCrumb from "../../common/PageBreadCrumb.js";
-import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
-
+// Constants
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+  { label: "organization.main.title", link: "/MasterListsPage#organizationManagement" },
+];
+
+const TABLE_HEADERS = (intl) => [
   {
-    label: "organization.main.title",
-    link: "/MasterListsPage#organizationManagement",
+    key: "select",
+    header: intl.formatMessage({ id: "organization.select" }),
+  },
+  {
+    key: "orgName",
+    header: intl.formatMessage({ id: "organization.organizationName" }),
+  },
+  {
+    key: "parentOrg",
+    header: intl.formatMessage({ id: "organization.parent" }),
+  },
+  {
+    key: "orgPrefix",
+    header: intl.formatMessage({ id: "organization.short.CI" }),
+  },
+  {
+    key: "active",
+    header: intl.formatMessage({ id: "organization.isActive" }),
+  },
+  {
+    key: "internetAddress",
+    header: intl.formatMessage({ id: "organization.internetaddress" }),
+  },
+  {
+    key: "streetAddress",
+    header: intl.formatMessage({ id: "organization.streetAddress" }),
+  },
+  {
+    key: "city",
+    header: intl.formatMessage({ id: "organization.city" }),
+  },
+  {
+    key: "cliaNumber",
+    header: intl.formatMessage({ id: "organization.clia.number" }),
   },
 ];
 
-function OrganizationManagement() {
-  const { notificationVisible, setNotificationVisible, addNotification } =
-    useContext(NotificationContext);
+// Custom Hooks
+const usePagination = (initialPage = 1, initialPageSize = 10) => {
+  const [page, setPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(initialPageSize);
 
-  const intl = useIntl();
+  const handlePageChange = useCallback(({ page, pageSize }) => {
+    setPage(page);
+    setPageSize(pageSize);
+  }, []);
 
-  const componentMounted = useRef(false);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [deactivateButton, setDeactivateButton] = useState(true);
-  const [modifyButton, setModifyButton] = useState(true);
-  const [selectedRowIds, setSelectedRowIds] = useState([]);
-  const [selectedRowIdsPost, setSelectedRowIdsPost] = useState([]);
+  return { page, pageSize, handlePageChange };
+};
+
+const useOrganizationData = (paging, startingRecNo, panelSearchTerm, isSearching) => {
+  const [organizationData, setOrganizationData] = useState({
+    list: [],
+    fromRecordCount: 0,
+    toRecordCount: 0,
+    totalRecordCount: 0,
+  });
   const [loading, setLoading] = useState(true);
-  const [isSearching, setIsSearching] = useState(false);
-  const [panelSearchTerm, setPanelSearchTerm] = useState("");
-  const [totalRecordCount, setTotalRecordCount] = useState("");
-  const [startingRecNo, setStartingRecNo] = useState(1);
-  const [fromRecordCount, setFromRecordCount] = useState("");
-  const [toRecordCount, setToRecordCount] = useState("");
-  const [paging, setPaging] = useState(1);
-  const [
-    searchedOrganizationManagamentList,
-    setSearchedOrganizationManagamentList,
-  ] = useState();
-  const [
-    searchedOrganizationManagamentListShow,
-    setSearchedOrganizationManagamentListShow,
-  ] = useState([]);
-  const [organizationsManagmentList, setOrganizationsManagmentList] =
-    useState();
-  const [organizationsManagmentListShow, setOrganizationsManagmentListShow] =
-    useState([]);
+  const [error, setError] = useState(null);
 
-  function deleteDeactivateOrganizationManagament(event) {
-    event.preventDefault();
-    setLoading(true);
-    postToOpenElisServerJsonResponse(
-      `/rest/DeleteOrganization?ID=${selectedRowIds.join(",")}&startingRecNo=1`,
-      JSON.stringify(selectedRowIdsPost),
-      () => {
-        deleteDeactivateOrganizationManagamentCallback();
-      },
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const endpoint = isSearching
+          ? `/rest/SearchOrganizationMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}`
+          : `/rest/OrganizationMenu?paging=${paging}&startingRecNo=${startingRecNo}`;
+
+        const response = await getFromOpenElisServer(endpoint);
+        
+        if (!response) throw new Error('No data received');
+
+        const formattedData = response.modelMap.form.menuList.map((item) => ({
+          id: item.id,
+          orgName: item.organizationName,
+          parentOrg: item.organization?.organizationName || "",
+          orgPrefix: item.shortName || "",
+          active: item.isActive || "",
+          internetAddress: item.internetAddress || "",
+          streetAddress: item.streetAddress || "",
+          city: item.city || "",
+          cliaNumber: item.cliaNum || "",
+        }));
+
+        setOrganizationData({
+          list: formattedData,
+          fromRecordCount: response.modelMap.form.fromRecordCount,
+          toRecordCount: response.modelMap.form.toRecordCount,
+          totalRecordCount: response.modelMap.form.totalRecordCount,
+        });
+      } catch (err) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [paging, startingRecNo, panelSearchTerm, isSearching]);
+
+  return { organizationData, loading, error };
+};
+
+// Components
+const TableCellRenderer = memo(({ cell, row, onSelect, selectedRowIds }) => {
+  if (cell.info.header === "select") {
+    return (
+      <TableSelectRow
+        key={cell.id}
+        id={cell.id}
+        checked={selectedRowIds.includes(row.id)}
+        name="selectRowCheckbox"
+        ariaLabel={`Select row ${row.id}`}
+        onSelect={() => onSelect(row.id)}
+      />
     );
   }
+  
+  if (cell.info.header === "active") {
+    return <TableCell key={cell.id}>{cell.value.toString()}</TableCell>;
+  }
+  
+  return <TableCell key={cell.id}>{cell.value}</TableCell>;
+});
 
-  const handleNextPage = () => {
-    setPaging((pager) => Math.max(pager, 2));
-    setStartingRecNo(fromRecordCount);
-  };
+const OrganizationTable = memo(({ 
+  data, 
+  page, 
+  pageSize, 
+  selectedRowIds, 
+  onRowSelect, 
+  onSelectAll,
+  intl 
+}) => {
+  const paginatedData = useMemo(() => 
+    data.slice((page - 1) * pageSize, page * pageSize),
+    [data, page, pageSize]
+  );
 
-  const handlePreviousPage = () => {
-    setPaging((pager) => Math.max(pager - 1, 1));
-    setStartingRecNo(Math.max(fromRecordCount, 1));
-  };
+  return (
+    <DataTable
+      rows={paginatedData}
+      headers={TABLE_HEADERS(intl)}
+    >
+      {({ rows, headers, getHeaderProps, getTableProps }) => (
+        <TableContainer>
+          <Table {...getTableProps()}>
+            <TableHead>
+              <TableRow>
+                <TableSelectAll
+                  id="table-select-all"
+                  checked={
+                    selectedRowIds.length === pageSize &&
+                    paginatedData.every(row => selectedRowIds.includes(row.id))
+                  }
+                  indeterminate={
+                    selectedRowIds.length > 0 &&
+                    selectedRowIds.length < paginatedData.length
+                  }
+                  onSelect={onSelectAll}
+                />
+                {headers.map(
+                  header =>
+                    header.key !== "select" && (
+                      <TableHeader
+                        key={header.key}
+                        {...getHeaderProps({ header })}
+                      >
+                        {header.header}
+                      </TableHeader>
+                    )
+                )}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.map(row => (
+                <TableRow
+                  key={row.id}
+                  onClick={() => onRowSelect(row.id)}
+                >
+                  {row.cells.map(cell => (
+                    <TableCellRenderer
+                      key={cell.id}
+                      cell={cell}
+                      row={row}
+                      onSelect={onRowSelect}
+                      selectedRowIds={selectedRowIds}
+                    />
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </DataTable>
+  );
+});
 
-  const handlePanelSearchChange = (event) => {
+// Main Component
+function OrganizationManagement() {
+  const intl = useIntl();
+  const { notificationVisible, setNotificationVisible, addNotification } = useContext(NotificationContext);
+
+  // Pagination state
+  const { page, pageSize, handlePageChange } = usePagination();
+  const [paging, setPaging] = useState(1);
+  const [startingRecNo, setStartingRecNo] = useState(1);
+
+  // Search state
+  const [isSearching, setIsSearching] = useState(false);
+  const [panelSearchTerm, setPanelSearchTerm] = useState("");
+
+  // Selection state
+  const [selectedRowIds, setSelectedRowIds] = useState([]);
+  const [deactivateButton, setDeactivateButton] = useState(true);
+  const [modifyButton, setModifyButton] = useState(true);
+
+  // Fetch data
+  const { organizationData, loading, error } = useOrganizationData(
+    paging,
+    startingRecNo,
+    panelSearchTerm,
+    isSearching
+  );
+
+  // Handlers
+  const handlePanelSearchChange = useCallback((event) => {
     setIsSearching(true);
     setPaging(1);
     setStartingRecNo(1);
-    const query = event.target.value;
-    setPanelSearchTerm(query);
+    setPanelSearchTerm(event.target.value);
     setSelectedRowIds([]);
-  };
+  }, []);
 
-  const deleteDeactivateOrganizationManagamentCallback = () => {
-    setLoading(false);
-    setNotificationVisible(true);
-    addNotification({
-      title: intl.formatMessage({
-        id: "notification.title",
-      }),
-      message: intl.formatMessage({
-        id: "notification.organization.post.delete.success",
-      }),
-      kind: NotificationKinds.success,
+  const handleDeleteDeactivate = useCallback(async (event) => {
+    event.preventDefault();
+    try {
+      await postToOpenElisServerJsonResponse(
+        `/rest/DeleteOrganization?ID=${selectedRowIds.join(",")}&startingRecNo=1`,
+        JSON.stringify({ selectedIDs: selectedRowIds })
+      );
+
+      setNotificationVisible(true);
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "notification.organization.post.delete.success" }),
+        kind: NotificationKinds.success,
+      });
+
+      setTimeout(() => window.location.reload(), 200);
+    } catch (error) {
+      addNotification({
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: error.message,
+        kind: NotificationKinds.error,
+      });
+    }
+  }, [selectedRowIds, intl, setNotificationVisible, addNotification]);
+
+  const handleRowSelect = useCallback((id) => {
+    setSelectedRowIds(prev => {
+      const newSelection = prev.includes(id)
+        ? prev.filter(selectedId => selectedId !== id)
+        : [...prev, id];
+      return newSelection;
     });
-    setTimeout(() => {
-      window.location.reload();
-    }, 200);
-  };
+  }, []);
 
-  const handlePageChange = ({ page, pageSize }) => {
-    setPage(page);
-    setPageSize(pageSize);
-    setSelectedRowIds([]);
-  };
+  const handleSelectAll = useCallback(() => {
+    const currentPageIds = organizationData.list
+      .slice((page - 1) * pageSize, page * pageSize)
+      .map(row => row.id);
 
-  const handleMenuItems = (res) => {
-    if (!res) {
-      setLoading(true);
-    } else {
-      setOrganizationsManagmentList(res);
-    }
-  };
-
-  useEffect(() => {
-    componentMounted.current = true;
-    setLoading(true);
-    getFromOpenElisServer(
-      `/rest/OrganizationMenu?paging=${paging}&startingRecNo=${startingRecNo}`,
-      handleMenuItems,
+    setSelectedRowIds(prev =>
+      prev.length === currentPageIds.length ? [] : currentPageIds
     );
-    return () => {
-      componentMounted.current = false;
-      setLoading(false);
-    };
-  }, [paging, startingRecNo]);
+  }, [page, pageSize, organizationData.list]);
 
-  const handleSearchedProviderMenuList = (res) => {
-    if (!res) {
-      setLoading(true);
-    } else {
-      setSearchedOrganizationManagamentList(res);
-    }
-  };
+  // Effects
+  useEffect(() => {
+    setModifyButton(selectedRowIds.length !== 1);
+  }, [selectedRowIds]);
 
   useEffect(() => {
-    getFromOpenElisServer(
-      `/rest/SearchOrganizationMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}`,
-      handleSearchedProviderMenuList,
-    );
-  }, [panelSearchTerm]);
-
-  useEffect(() => {
-    if (organizationsManagmentList) {
-      const newOrganizationsManagementList =
-        organizationsManagmentList.modelMap.form.menuList.map((item) => {
-          return {
-            id: item.id,
-            orgName: item.organizationName,
-            parentOrg: item.organization
-              ? item.organization.organizationName
-              : "",
-            orgPrefix: item.shortName || "",
-            active: item.isActive || "",
-            internetAddress: item.internetAddress || "",
-            streetAddress: item.streetAddress || "",
-            city: item.city || "",
-            cliaNumber: item.cliaNum || "",
-          };
-        });
-      const newOrganizationsManagementListArray = Object.values(
-        newOrganizationsManagementList,
-      );
-      setFromRecordCount(
-        organizationsManagmentList.modelMap.form.fromRecordCount,
-      );
-      setToRecordCount(organizationsManagmentList.modelMap.form.toRecordCount);
-      setTotalRecordCount(
-        organizationsManagmentList.modelMap.form.totalRecordCount,
-      );
-      setOrganizationsManagmentListShow(newOrganizationsManagementListArray);
-    }
-  }, [organizationsManagmentList]);
-
-  useEffect(() => {
-    if (searchedOrganizationManagamentList) {
-      const newOrganizationsManagementList =
-        searchedOrganizationManagamentList.modelMap.form.menuList.map(
-          (item) => {
-            return {
-              id: item.id,
-              orgName: item.organizationName,
-              parentOrg: item.organization
-                ? item.organization.organizationName
-                : "",
-              orgPrefix: item.shortName || "",
-              active: item.isActive || "",
-              internetAddress: item.internetAddress || "",
-              streetAddress: item.streetAddress || "",
-              city: item.city || "",
-              cliaNumber: item.cliaNum || "",
-            };
-          },
-        );
-      const newOrganizationsManagementListArray = Object.values(
-        newOrganizationsManagementList,
-      );
-      setSearchedOrganizationManagamentListShow(
-        newOrganizationsManagementListArray,
-      );
-    }
-  }, [searchedOrganizationManagamentList]);
-
-  useEffect(() => {
-    const selectedIDsObject = {
-      selectedIDs: selectedRowIds,
-    };
-
-    setSelectedRowIdsPost(selectedIDsObject);
-  }, [selectedRowIds, organizationsManagmentListShow]);
-
-  useEffect(() => {
-    if (selectedRowIds.length === 1) {
-      setModifyButton(false);
-    } else {
-      setModifyButton(true);
-    }
+    setDeactivateButton(selectedRowIds.length === 0);
   }, [selectedRowIds]);
 
   useEffect(() => {
@@ -253,40 +303,6 @@ function OrganizationManagement() {
     }
   }, [isSearching, panelSearchTerm]);
 
-  useEffect(() => {
-    if (selectedRowIds.length === 0) {
-      setDeactivateButton(true);
-    } else {
-      setDeactivateButton(false);
-    }
-  }, [selectedRowIds]);
-
-  const renderCell = (cell, row) => {
-    if (cell.info.header === "select") {
-      return (
-        <TableSelectRow
-          key={cell.id}
-          id={cell.id}
-          checked={selectedRowIds.includes(row.id)}
-          name="selectRowCheckbox"
-          ariaLabel="selectRows"
-          onSelect={() => {
-            setDeactivateButton(false);
-            if (selectedRowIds.includes(row.id)) {
-              setSelectedRowIds(selectedRowIds.filter((id) => id !== row.id));
-            } else {
-              setSelectedRowIds([...selectedRowIds, row.id]);
-            }
-          }}
-        />
-      );
-    } else if (cell.info.header === "active") {
-      return <TableCell key={cell.id}>{cell.value.toString()}</TableCell>;
-    } else {
-      return <TableCell key={cell.id}>{cell.value}</TableCell>;
-    }
-  };
-
   if (!loading) {
     return (
       <>
@@ -294,13 +310,21 @@ function OrganizationManagement() {
       </>
     );
   }
+  if (error) {
+    return (
+      <>
+        <ErrorMessage error={error} />
+      </>
+    )
+  }
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible && <AlertDialog />}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
-        <Grid fullWidth={true}>
+        
+        <Grid fullWidth>
           <Column lg={16} md={8} sm={4}>
             <Section>
               <Heading>
@@ -309,24 +333,30 @@ function OrganizationManagement() {
             </Section>
           </Column>
         </Grid>
-        <br />
+
         <ActionPaginationButtonType
           selectedRowIds={selectedRowIds}
           modifyButton={modifyButton}
           deactivateButton={deactivateButton}
-          fromRecordCount={fromRecordCount}
-          toRecordCount={toRecordCount}
-          totalRecordCount={totalRecordCount}
-          handlePreviousPage={handlePreviousPage}
-          handleNextPage={handleNextPage}
-          deleteDeactivate={deleteDeactivateOrganizationManagament}
+          fromRecordCount={organizationData.fromRecordCount}
+          toRecordCount={organizationData.toRecordCount}
+          totalRecordCount={organizationData.totalRecordCount}
+          handlePreviousPage={() => {
+            setPaging(p => Math.max(p - 1, 1));
+            setStartingRecNo(Math.max(organizationData.fromRecordCount, 1));
+          }}
+          handleNextPage={() => {
+            setPaging(p => Math.max(p, 2));
+            setStartingRecNo(organizationData.fromRecordCount);
+          }}
+          deleteDeactivate={handleDeleteDeactivate}
           id={selectedRowIds[0]}
-          otherParmsInLink={`&startingRecNo=1`}
-          addButtonRedirectLink={`/MasterListsPage#organizationEdit?ID=0`}
-          modifyButtonRedirectLink={`/MasterListsPage#organizationEdit?ID=`}
+          otherParmsInLink="&startingRecNo=1"
+          addButtonRedirectLink="/MasterListsPage#organizationEdit?ID=0"
+          modifyButtonRedirectLink="/MasterListsPage#organizationEdit?ID="
           type="type2"
         />
-        <br />
+
         <div className="orderLegendBody">
           <Grid>
             <Column lg={16} md={8} sm={4}>
@@ -334,475 +364,64 @@ function OrganizationManagement() {
                 <Search
                   size="lg"
                   id="org-name-search-bar"
-                  labelText={
-                    <FormattedMessage id="organization.search.byorgname" />
-                  }
-                  placeholder={intl.formatMessage({
-                    id: "organization.search.placeHolder",
-                  })}
+                  labelText={<FormattedMessage id="organization.search.byorgname" />}
+                  placeholder={intl.formatMessage({ id: "organization.search.placeHolder" })}
                   onChange={handlePanelSearchChange}
-                  value={(() => {
-                    if (panelSearchTerm) {
-                      return panelSearchTerm;
-                    }
-                    return "";
-                  })()}
-                ></Search>
+                  value={panelSearchTerm}
+                />
               </Section>
             </Column>
           </Grid>
-          <br />
-          {isSearching ? (
-            <>
-              <Grid fullWidth={true} className="gridBoundary">
-                <Column lg={16} md={8} sm={4}>
-                  <br />
-                  <DataTable
-                    rows={searchedOrganizationManagamentListShow.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )}
-                    headers={[
-                      {
-                        key: "select",
-                        header: intl.formatMessage({
-                          id: "organization.select",
-                        }),
-                      },
-                      {
-                        key: "orgName",
-                        header: intl.formatMessage({
-                          id: "organization.organizationName",
-                        }),
-                      },
 
-                      {
-                        key: "parentOrg",
-                        header: intl.formatMessage({
-                          id: "organization.parent",
-                        }),
-                      },
+          <Grid fullWidth className="gridBoundary">
+            <Column lg={16} md={8} sm={4}>
+              <OrganizationTable
+                data={organizationData.list}
+                page={page}
+                pageSize={pageSize}
+                selectedRowIds={selectedRowIds}
+                onRowSelect={handleRowSelect}
+                onSelectAll={handleSelectAll}
+                intl={intl}
+              />
 
-                      {
-                        key: "orgPrefix",
-                        header: intl.formatMessage({
-                          id: "organization.short.CI",
-                        }),
-                      },
-                      {
-                        key: "active",
-                        header: intl.formatMessage({
-                          id: "organization.isActive",
-                        }),
-                      },
-                      {
-                        key: "internetAddress",
-                        header: intl.formatMessage({
-                          id: "organization.internetaddress",
-                        }),
-                      },
-                      {
-                        key: "streetAddress",
-                        header: intl.formatMessage({
-                          id: "organization.streetAddress",
-                        }),
-                      },
-                      {
-                        key: "city",
-                        header: intl.formatMessage({
-                          id: "organization.city",
-                        }),
-                      },
-                      {
-                        key: "cliaNumber",
-                        header: intl.formatMessage({
-                          id: "organization.clia.number",
-                        }),
-                      },
-                    ]}
-                  >
-                    {({
-                      rows,
-                      headers,
-                      getHeaderProps,
-                      getTableProps,
-                      getSelectionProps,
-                    }) => (
-                      <TableContainer>
-                        <Table {...getTableProps()}>
-                          <TableHead>
-                            <TableRow>
-                              <TableSelectAll
-                                id="table-select-all"
-                                {...getSelectionProps()}
-                                checked={
-                                  selectedRowIds.length === pageSize &&
-                                  searchedOrganizationManagamentListShow
-                                    .slice(
-                                      (page - 1) * pageSize,
-                                      page * pageSize,
-                                    )
-                                    .filter(
-                                      (row) =>
-                                        !row.disabled &&
-                                        selectedRowIds.includes(row.id),
-                                    ).length === pageSize
-                                }
-                                indeterminate={
-                                  selectedRowIds.length > 0 &&
-                                  selectedRowIds.length <
-                                    searchedOrganizationManagamentListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled).length
-                                }
-                                onSelect={() => {
-                                  setDeactivateButton(false);
-                                  const currentPageIds =
-                                    searchedOrganizationManagamentListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled)
-                                      .map((row) => row.id);
-                                  if (
-                                    selectedRowIds.length === pageSize &&
-                                    currentPageIds.every((id) =>
-                                      selectedRowIds.includes(id),
-                                    )
-                                  ) {
-                                    setSelectedRowIds([]);
-                                  } else {
-                                    setSelectedRowIds(
-                                      currentPageIds.filter(
-                                        (id) => !selectedRowIds.includes(id),
-                                      ),
-                                    );
-                                  }
-                                }}
-                              />
-                              {headers.map(
-                                (header) =>
-                                  header.key !== "select" && (
-                                    <TableHeader
-                                      key={header.key}
-                                      {...getHeaderProps({ header })}
-                                    >
-                                      {header.header}
-                                    </TableHeader>
-                                  ),
-                              )}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            <>
-                              {rows.map((row) => (
-                                <TableRow
-                                  key={row.id}
-                                  onClick={() => {
-                                    const id = row.id;
-                                    const isSelected =
-                                      selectedRowIds.includes(id);
-                                    if (isSelected) {
-                                      setSelectedRowIds(
-                                        selectedRowIds.filter(
-                                          (selectedId) => selectedId !== id,
-                                        ),
-                                      );
-                                    } else {
-                                      setSelectedRowIds([
-                                        ...selectedRowIds,
-                                        id,
-                                      ]);
-                                    }
-                                  }}
-                                >
-                                  {row.cells.map((cell) =>
-                                    renderCell(cell, row),
-                                  )}
-                                </TableRow>
-                              ))}
-                            </>
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    )}
-                  </DataTable>
-                  <Pagination
-                    onChange={handlePageChange}
-                    page={page}
-                    pageSize={pageSize}
-                    pageSizes={[10, 20]}
-                    totalItems={searchedOrganizationManagamentListShow.length}
-                    forwardText={intl.formatMessage({
-                      id: "pagination.forward",
-                    })}
-                    backwardText={intl.formatMessage({
-                      id: "pagination.backward",
-                    })}
-                    itemRangeText={(min, max, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.item-range" },
-                        { min: min, max: max, total: total },
-                      )
-                    }
-                    itemsPerPageText={intl.formatMessage({
-                      id: "pagination.items-per-page",
-                    })}
-                    itemText={(min, max) =>
-                      intl.formatMessage(
-                        { id: "pagination.item" },
-                        { min: min, max: max },
-                      )
-                    }
-                    pageNumberText={intl.formatMessage({
-                      id: "pagination.page-number",
-                    })}
-                    pageRangeText={(_current, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.page-range" },
-                        { total: total },
-                      )
-                    }
-                    pageText={(page, pagesUnknown) =>
-                      intl.formatMessage(
-                        { id: "pagination.page" },
-                        { page: pagesUnknown ? "" : page },
-                      )
-                    }
-                  />
-                  <br />
-                </Column>
-              </Grid>
-            </>
-          ) : (
-            <>
-              <Grid fullWidth={true} className="gridBoundary">
-                <Column lg={16} md={8} sm={4}>
-                  <DataTable
-                    rows={organizationsManagmentListShow.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )}
-                    headers={[
-                      {
-                        key: "select",
-                        header: intl.formatMessage({
-                          id: "organization.select",
-                        }),
-                      },
-                      {
-                        key: "orgName",
-                        header: intl.formatMessage({
-                          id: "organization.organizationName",
-                        }),
-                      },
-
-                      {
-                        key: "parentOrg",
-                        header: intl.formatMessage({
-                          id: "organization.parent",
-                        }),
-                      },
-
-                      {
-                        key: "orgPrefix",
-                        header: intl.formatMessage({
-                          id: "organization.short.CI",
-                        }),
-                      },
-                      {
-                        key: "active",
-                        header: intl.formatMessage({
-                          id: "organization.isActive",
-                        }),
-                      },
-                      {
-                        key: "internetAddress",
-                        header: intl.formatMessage({
-                          id: "organization.internetaddress",
-                        }),
-                      },
-                      {
-                        key: "streetAddress",
-                        header: intl.formatMessage({
-                          id: "organization.streetAddress",
-                        }),
-                      },
-                      {
-                        key: "city",
-                        header: intl.formatMessage({
-                          id: "organization.city",
-                        }),
-                      },
-                      {
-                        key: "cliaNumber",
-                        header: intl.formatMessage({
-                          id: "organization.clia.number",
-                        }),
-                      },
-                    ]}
-                  >
-                    {({
-                      rows,
-                      headers,
-                      getHeaderProps,
-                      getTableProps,
-                      getSelectionProps,
-                    }) => (
-                      <TableContainer>
-                        <Table {...getTableProps()}>
-                          <TableHead>
-                            <TableRow>
-                              <TableSelectAll
-                                id="table-select-all"
-                                {...getSelectionProps()}
-                                checked={
-                                  selectedRowIds.length === pageSize &&
-                                  organizationsManagmentListShow
-                                    .slice(
-                                      (page - 1) * pageSize,
-                                      page * pageSize,
-                                    )
-                                    .filter(
-                                      (row) =>
-                                        !row.disabled &&
-                                        selectedRowIds.includes(row.id),
-                                    ).length === pageSize
-                                }
-                                indeterminate={
-                                  selectedRowIds.length > 0 &&
-                                  selectedRowIds.length <
-                                    organizationsManagmentListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled).length
-                                }
-                                onSelect={() => {
-                                  setDeactivateButton(false);
-                                  const currentPageIds =
-                                    organizationsManagmentListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled)
-                                      .map((row) => row.id);
-                                  if (
-                                    selectedRowIds.length === pageSize &&
-                                    currentPageIds.every((id) =>
-                                      selectedRowIds.includes(id),
-                                    )
-                                  ) {
-                                    setSelectedRowIds([]);
-                                  } else {
-                                    setSelectedRowIds(
-                                      currentPageIds.filter(
-                                        (id) => !selectedRowIds.includes(id),
-                                      ),
-                                    );
-                                  }
-                                }}
-                              />
-                              {headers.map(
-                                (header) =>
-                                  header.key !== "select" && (
-                                    <TableHeader
-                                      key={header.key}
-                                      {...getHeaderProps({ header })}
-                                    >
-                                      {header.header}
-                                    </TableHeader>
-                                  ),
-                              )}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            <>
-                              {rows.map((row) => (
-                                <TableRow
-                                  key={row.id}
-                                  onClick={() => {
-                                    const id = row.id;
-                                    const isSelected =
-                                      selectedRowIds.includes(id);
-                                    if (isSelected) {
-                                      setSelectedRowIds(
-                                        selectedRowIds.filter(
-                                          (selectedId) => selectedId !== id,
-                                        ),
-                                      );
-                                    } else {
-                                      setSelectedRowIds([
-                                        ...selectedRowIds,
-                                        id,
-                                      ]);
-                                    }
-                                  }}
-                                >
-                                  {row.cells.map((cell) =>
-                                    renderCell(cell, row),
-                                  )}
-                                </TableRow>
-                              ))}
-                            </>
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    )}
-                  </DataTable>
-                  <Pagination
-                    onChange={handlePageChange}
-                    page={page}
-                    pageSize={pageSize}
-                    pageSizes={[10, 20]}
-                    totalItems={organizationsManagmentListShow.length}
-                    forwardText={intl.formatMessage({
-                      id: "pagination.forward",
-                    })}
-                    backwardText={intl.formatMessage({
-                      id: "pagination.backward",
-                    })}
-                    itemRangeText={(min, max, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.item-range" },
-                        { min: min, max: max, total: total },
-                      )
-                    }
-                    itemsPerPageText={intl.formatMessage({
-                      id: "pagination.items-per-page",
-                    })}
-                    itemText={(min, max) =>
-                      intl.formatMessage(
-                        { id: "pagination.item" },
-                        { min: min, max: max },
-                      )
-                    }
-                    pageNumberText={intl.formatMessage({
-                      id: "pagination.page-number",
-                    })}
-                    pageRangeText={(_current, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.page-range" },
-                        { total: total },
-                      )
-                    }
-                    pageText={(page, pagesUnknown) =>
-                      intl.formatMessage(
-                        { id: "pagination.page" },
-                        { page: pagesUnknown ? "" : page },
-                      )
-                    }
-                  />
-                </Column>
-              </Grid>
-            </>
-          )}
+              <Pagination
+                onChange={handlePageChange}
+                page={page}
+                pageSize={pageSize}
+                pageSizes={[10, 20]}
+                totalItems={organizationData.list.length}
+                forwardText={intl.formatMessage({ id: "pagination.forward" })}
+                backwardText={intl.formatMessage({ id: "pagination.backward" })}
+                itemRangeText={(min, max, total) =>
+                  intl.formatMessage(
+                    { id: "pagination.item-range" },
+                    { min, max, total }
+                  )
+                }
+                itemsPerPageText={intl.formatMessage({ id: "pagination.items-per-page" })}
+                itemText={(min, max) =>
+                  intl.formatMessage(
+                    { id: "pagination.item" },
+                    { min, max }
+                  )
+                }
+                pageNumberText={intl.formatMessage({ id: "pagination.page-number" })}
+                pageRangeText={(_current, total) =>
+                  intl.formatMessage(
+                    { id: "pagination.page-range" },
+                    { total }
+                  )
+                }
+                pageText={(page, pagesUnknown) =>
+                  intl.formatMessage(
+                    { id: "pagination.page" },
+                    { page: pagesUnknown ? "" : page }
+                  )
+                }
+              />
+            </Column>
+          </Grid>
         </div>
       </div>
     </>
