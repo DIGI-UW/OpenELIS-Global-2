@@ -936,7 +936,7 @@ function CreatePatientForm(props) {
                               value={values.education || ""}
                               name={field.name}
                               labelText={intl.formatMessage({
-                                id: "pateint.eduction",
+                                id: "patient.eduction",
                               })}
                               onChange={() => {}}
                               helperText={intl.formatMessage({
@@ -967,7 +967,7 @@ function CreatePatientForm(props) {
                               })}
                               onChange={() => {}}
                               helperText={intl.formatMessage({
-                                id: "patient.emergency.additional.maritialstatus",
+                                id: "patient.emergency.additional.maritalstatus",
                               })}
                             >
                               <SelectItem text="" value="" />
