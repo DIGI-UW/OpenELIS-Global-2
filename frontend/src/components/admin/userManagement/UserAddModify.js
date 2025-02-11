@@ -139,7 +139,7 @@ function UserAddModify() {
   useEffect(() => {
     componentMounted.current = true;
     setIsLoading(true);
-    getFromOpenElisServer(`/rest/rest/users`, handleCopyUserPermissionsList);
+    getFromOpenElisServer(`/rest/users`, handleCopyUserPermissionsList);
     return () => {
       componentMounted.current = false;
       setIsLoading(false);

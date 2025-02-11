@@ -349,7 +349,7 @@ function CreatePatientForm(props) {
     }
     console.debug(JSON.stringify(values));
     postToOpenElisServer(
-      "/rest/patient-management",
+      "/rest/PatientManagement",
       JSON.stringify(values),
       (status) => {
         handlePost(status);

@@ -127,7 +127,7 @@ export default function Workplan(props) {
       delete form.testSectionId;
     }
     postToOpenElisServerForPDF(
-      "/rest/printWorkplanReport",
+      "/rest/PrintWorkplanReport",
       JSON.stringify(form),
       reportStatus,
     );

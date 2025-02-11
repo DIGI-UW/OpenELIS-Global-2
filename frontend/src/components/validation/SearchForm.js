@@ -115,7 +115,7 @@ const SearchForm = (props) => {
     var defaultDate = values.defaultDate ? values.defaultDate : "";
     var date = testDate ? testDate : defaultDate;
     let searchEndPoint =
-      "/rest/accessionValidation?" +
+      "/rest/AccessionValidation?" +
       "accessionNumber=" +
       accessionNumber +
       "&unitType=" +
