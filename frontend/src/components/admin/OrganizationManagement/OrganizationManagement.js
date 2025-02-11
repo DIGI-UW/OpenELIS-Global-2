@@ -1,8 +1,44 @@
+import React, { useContext, useState, useEffect, useRef } from "react";
+import {
+  Heading,
+  Loading,
+  Grid,
+  Column,
+  Section,
+  DataTable,
+  Table,
+  TableHead,
+  TableRow,
+  TableBody,
+  TableHeader,
+  TableCell,
+  TableSelectRow,
+  TableSelectAll,
+  TableContainer,
+  Pagination,
+  Search,
+} from "@carbon/react";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../../utils/Utils.js";
+import { NotificationContext } from "../../layout/Layout.js";
+import {
+  AlertDialog,
+  NotificationKinds,
+} from "../../common/CustomNotification.js";
+import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
+
 // Constants
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
-  { label: "organization.main.title", link: "/MasterListsPage#organizationManagement" },
+  {
+    label: "organization.main.title",
+    link: "/MasterListsPage#organizationManagement",
+  },
 ];
 
 const TABLE_HEADERS = (intl) => [
@@ -57,7 +93,12 @@ const usePagination = (initialPage = 1, initialPageSize = 10) => {
   return { page, pageSize, handlePageChange };
 };
 
-const useOrganizationData = (paging, startingRecNo, panelSearchTerm, isSearching) => {
+const useOrganizationData = (
+  paging,
+  startingRecNo,
+  panelSearchTerm,
+  isSearching,
+) => {
   const [organizationData, setOrganizationData] = useState({
     list: [],
     fromRecordCount: 0,
@@ -76,8 +117,8 @@ const useOrganizationData = (paging, startingRecNo, panelSearchTerm, isSearching
           : `/rest/OrganizationMenu?paging=${paging}&startingRecNo=${startingRecNo}`;
 
         const response = await getFromOpenElisServer(endpoint);
-        
-        if (!response) throw new Error('No data received');
+
+        if (!response) throw new Error("No data received");
 
         const formattedData = response.modelMap.form.menuList.map((item) => ({
           id: item.id,
@@ -124,92 +165,91 @@ const TableCellRenderer = memo(({ cell, row, onSelect, selectedRowIds }) => {
       />
     );
   }
-  
+
   if (cell.info.header === "active") {
     return <TableCell key={cell.id}>{cell.value.toString()}</TableCell>;
   }
-  
+
   return <TableCell key={cell.id}>{cell.value}</TableCell>;
 });
 
-const OrganizationTable = memo(({ 
-  data, 
-  page, 
-  pageSize, 
-  selectedRowIds, 
-  onRowSelect, 
-  onSelectAll,
-  intl 
-}) => {
-  const paginatedData = useMemo(() => 
-    data.slice((page - 1) * pageSize, page * pageSize),
-    [data, page, pageSize]
-  );
+const OrganizationTable = memo(
+  ({
+    data,
+    page,
+    pageSize,
+    selectedRowIds,
+    onRowSelect,
+    onSelectAll,
+    intl,
+  }) => {
+    const paginatedData = useMemo(
+      () => data.slice((page - 1) * pageSize, page * pageSize),
+      [data, page, pageSize],
+    );
 
-  return (
-    <DataTable
-      rows={paginatedData}
-      headers={TABLE_HEADERS(intl)}
-    >
-      {({ rows, headers, getHeaderProps, getTableProps }) => (
-        <TableContainer>
-          <Table {...getTableProps()}>
-            <TableHead>
-              <TableRow>
-                <TableSelectAll
-                  id="table-select-all"
-                  checked={
-                    selectedRowIds.length === pageSize &&
-                    paginatedData.every(row => selectedRowIds.includes(row.id))
-                  }
-                  indeterminate={
-                    selectedRowIds.length > 0 &&
-                    selectedRowIds.length < paginatedData.length
-                  }
-                  onSelect={onSelectAll}
-                />
-                {headers.map(
-                  header =>
-                    header.key !== "select" && (
-                      <TableHeader
-                        key={header.key}
-                        {...getHeaderProps({ header })}
-                      >
-                        {header.header}
-                      </TableHeader>
-                    )
-                )}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {rows.map(row => (
-                <TableRow
-                  key={row.id}
-                  onClick={() => onRowSelect(row.id)}
-                >
-                  {row.cells.map(cell => (
-                    <TableCellRenderer
-                      key={cell.id}
-                      cell={cell}
-                      row={row}
-                      onSelect={onRowSelect}
-                      selectedRowIds={selectedRowIds}
-                    />
-                  ))}
+    return (
+      <DataTable rows={paginatedData} headers={TABLE_HEADERS(intl)}>
+        {({ rows, headers, getHeaderProps, getTableProps }) => (
+          <TableContainer>
+            <Table {...getTableProps()}>
+              <TableHead>
+                <TableRow>
+                  <TableSelectAll
+                    id="table-select-all"
+                    checked={
+                      selectedRowIds.length === pageSize &&
+                      paginatedData.every((row) =>
+                        selectedRowIds.includes(row.id),
+                      )
+                    }
+                    indeterminate={
+                      selectedRowIds.length > 0 &&
+                      selectedRowIds.length < paginatedData.length
+                    }
+                    onSelect={onSelectAll}
+                  />
+                  {headers.map(
+                    (header) =>
+                      header.key !== "select" && (
+                        <TableHeader
+                          key={header.key}
+                          {...getHeaderProps({ header })}
+                        >
+                          {header.header}
+                        </TableHeader>
+                      ),
+                  )}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-    </DataTable>
-  );
-});
+              </TableHead>
+              <TableBody>
+                {rows.map((row) => (
+                  <TableRow key={row.id} onClick={() => onRowSelect(row.id)}>
+                    {row.cells.map((cell) => (
+                      <TableCellRenderer
+                        key={cell.id}
+                        cell={cell}
+                        row={row}
+                        onSelect={onRowSelect}
+                        selectedRowIds={selectedRowIds}
+                      />
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </DataTable>
+    );
+  },
+);
 
 // Main Component
 function OrganizationManagement() {
   const intl = useIntl();
-  const { notificationVisible, setNotificationVisible, addNotification } = useContext(NotificationContext);
+  const { notificationVisible, setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
 
   // Pagination state
   const { page, pageSize, handlePageChange } = usePagination();
@@ -230,7 +270,7 @@ function OrganizationManagement() {
     paging,
     startingRecNo,
     panelSearchTerm,
-    isSearching
+    isSearching,
   );
 
   // Handlers
@@ -242,35 +282,40 @@ function OrganizationManagement() {
     setSelectedRowIds([]);
   }, []);
 
-  const handleDeleteDeactivate = useCallback(async (event) => {
-    event.preventDefault();
-    try {
-      await postToOpenElisServerJsonResponse(
-        `/rest/DeleteOrganization?ID=${selectedRowIds.join(",")}&startingRecNo=1`,
-        JSON.stringify({ selectedIDs: selectedRowIds })
-      );
+  const handleDeleteDeactivate = useCallback(
+    async (event) => {
+      event.preventDefault();
+      try {
+        await postToOpenElisServerJsonResponse(
+          `/rest/DeleteOrganization?ID=${selectedRowIds.join(",")}&startingRecNo=1`,
+          JSON.stringify({ selectedIDs: selectedRowIds }),
+        );
 
-      setNotificationVisible(true);
-      addNotification({
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "notification.organization.post.delete.success" }),
-        kind: NotificationKinds.success,
-      });
+        setNotificationVisible(true);
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({
+            id: "notification.organization.post.delete.success",
+          }),
+          kind: NotificationKinds.success,
+        });
 
-      setTimeout(() => window.location.reload(), 200);
-    } catch (error) {
-      addNotification({
-        title: intl.formatMessage({ id: "notification.error" }),
-        message: error.message,
-        kind: NotificationKinds.error,
-      });
-    }
-  }, [selectedRowIds, intl, setNotificationVisible, addNotification]);
+        setTimeout(() => window.location.reload(), 200);
+      } catch (error) {
+        addNotification({
+          title: intl.formatMessage({ id: "notification.error" }),
+          message: error.message,
+          kind: NotificationKinds.error,
+        });
+      }
+    },
+    [selectedRowIds, intl, setNotificationVisible, addNotification],
+  );
 
   const handleRowSelect = useCallback((id) => {
-    setSelectedRowIds(prev => {
+    setSelectedRowIds((prev) => {
       const newSelection = prev.includes(id)
-        ? prev.filter(selectedId => selectedId !== id)
+        ? prev.filter((selectedId) => selectedId !== id)
         : [...prev, id];
       return newSelection;
     });
@@ -279,10 +324,10 @@ function OrganizationManagement() {
   const handleSelectAll = useCallback(() => {
     const currentPageIds = organizationData.list
       .slice((page - 1) * pageSize, page * pageSize)
-      .map(row => row.id);
+      .map((row) => row.id);
 
-    setSelectedRowIds(prev =>
-      prev.length === currentPageIds.length ? [] : currentPageIds
+    setSelectedRowIds((prev) =>
+      prev.length === currentPageIds.length ? [] : currentPageIds,
     );
   }, [page, pageSize, organizationData.list]);
 
@@ -315,7 +360,7 @@ function OrganizationManagement() {
       <>
         <ErrorMessage error={error} />
       </>
-    )
+    );
   }
 
   return (
@@ -323,7 +368,7 @@ function OrganizationManagement() {
       {notificationVisible && <AlertDialog />}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
-        
+
         <Grid fullWidth>
           <Column lg={16} md={8} sm={4}>
             <Section>
@@ -342,11 +387,11 @@ function OrganizationManagement() {
           toRecordCount={organizationData.toRecordCount}
           totalRecordCount={organizationData.totalRecordCount}
           handlePreviousPage={() => {
-            setPaging(p => Math.max(p - 1, 1));
+            setPaging((p) => Math.max(p - 1, 1));
             setStartingRecNo(Math.max(organizationData.fromRecordCount, 1));
           }}
           handleNextPage={() => {
-            setPaging(p => Math.max(p, 2));
+            setPaging((p) => Math.max(p, 2));
             setStartingRecNo(organizationData.fromRecordCount);
           }}
           deleteDeactivate={handleDeleteDeactivate}
@@ -364,8 +409,12 @@ function OrganizationManagement() {
                 <Search
                   size="lg"
                   id="org-name-search-bar"
-                  labelText={<FormattedMessage id="organization.search.byorgname" />}
-                  placeholder={intl.formatMessage({ id: "organization.search.placeHolder" })}
+                  labelText={
+                    <FormattedMessage id="organization.search.byorgname" />
+                  }
+                  placeholder={intl.formatMessage({
+                    id: "organization.search.placeHolder",
+                  })}
                   onChange={handlePanelSearchChange}
                   value={panelSearchTerm}
                 />
@@ -396,27 +445,25 @@ function OrganizationManagement() {
                 itemRangeText={(min, max, total) =>
                   intl.formatMessage(
                     { id: "pagination.item-range" },
-                    { min, max, total }
+                    { min, max, total },
                   )
                 }
-                itemsPerPageText={intl.formatMessage({ id: "pagination.items-per-page" })}
+                itemsPerPageText={intl.formatMessage({
+                  id: "pagination.items-per-page",
+                })}
                 itemText={(min, max) =>
-                  intl.formatMessage(
-                    { id: "pagination.item" },
-                    { min, max }
-                  )
+                  intl.formatMessage({ id: "pagination.item" }, { min, max })
                 }
-                pageNumberText={intl.formatMessage({ id: "pagination.page-number" })}
+                pageNumberText={intl.formatMessage({
+                  id: "pagination.page-number",
+                })}
                 pageRangeText={(_current, total) =>
-                  intl.formatMessage(
-                    { id: "pagination.page-range" },
-                    { total }
-                  )
+                  intl.formatMessage({ id: "pagination.page-range" }, { total })
                 }
                 pageText={(page, pagesUnknown) =>
                   intl.formatMessage(
                     { id: "pagination.page" },
-                    { page: pagesUnknown ? "" : page }
+                    { page: pagesUnknown ? "" : page },
                   )
                 }
               />
