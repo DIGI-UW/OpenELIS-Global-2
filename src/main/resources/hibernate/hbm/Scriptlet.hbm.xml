@@ -3,41 +3,41 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class name="org.openelisglobal.scriptlet.valueholder.Scriptlet"
-        table="SCRIPTLET" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">scriptlet_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class name="org.openelisglobal.scriptlet.valueholder.Scriptlet"
+		table="SCRIPTLET" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">scriptlet_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="scriptletName" type="java.lang.String">
-            <column name="NAME" length="40" />
-        </property>
-        <property name="codeType" type="java.lang.String">
-            <column name="CODE_TYPE" length="1" />
-        </property>
-        <property name="codeSource" type="java.lang.String">
-            <column name="CODE_SOURCE" length="0" />
-        </property>
+		<property name="scriptletName" type="java.lang.String">
+			<column name="NAME" length="40" />
+		</property>
+		<property name="codeType" type="java.lang.String">
+			<column name="CODE_TYPE" length="1" />
+		</property>
+		<property name="codeSource" type="java.lang.String">
+			<column name="CODE_SOURCE" length="0" />
+		</property>
 
-        <!-- <set name="tests" inverse="true"> <key> <column name="SCRIPTLET_ID"
-            precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.test.valueholder.Test"
-            /> </set> <set name="testResults" inverse="true"> <key> <column name="SCRIPTLET_ID"
-            precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.testresult.valueholder.TestResult"
-            /> </set> <set name="labels" inverse="true"> <key> <column name="SCRIPTLET_ID"
-            precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.label.valueholder.Label"
-            /> </set> <set name="projects" inverse="true"> <key> <column name="SCRIPTLET_ID"
-            precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.project.valueholder.Project"
-            /> </set> <set name="methodResults" inverse="true"> <key> <column name="SCRIP_ID"
-            precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.methodresult.valueholder.MethodResult"
-            /> </set> <set name="auxFields" inverse="true"> <key> <column name="SCRIPTLET_ID"
-            precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.auxfield.valueholder.AuxField"
-            /> </set> -->
-    </class>
+		<!-- <set name="tests" inverse="true"> <key> <column name="SCRIPTLET_ID"
+			precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.test.valueholder.Test"
+			/> </set> <set name="testResults" inverse="true"> <key> <column name="SCRIPTLET_ID"
+			precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.testresult.valueholder.TestResult"
+			/> </set> <set name="labels" inverse="true"> <key> <column name="SCRIPTLET_ID"
+			precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.label.valueholder.Label"
+			/> </set> <set name="projects" inverse="true"> <key> <column name="SCRIPTLET_ID"
+			precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.project.valueholder.Project"
+			/> </set> <set name="methodResults" inverse="true"> <key> <column name="SCRIP_ID"
+			precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.methodresult.valueholder.MethodResult"
+			/> </set> <set name="auxFields" inverse="true"> <key> <column name="SCRIPTLET_ID"
+			precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.auxfield.valueholder.AuxField"
+			/> </set> -->
+	</class>
 </hibernate-mapping>

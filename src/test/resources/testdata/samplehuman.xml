@@ -1,0 +1,87 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- * The contents of this file are subject to the Mozilla Public License
+	* Version 1.1 (the "License"); you may not use this file except in * compliance
+	with the License. You may obtain a copy of the License at * http://www.mozilla.org/MPL/
+	* * Software distributed under the License is distributed on an "AS IS" *
+	basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the *
+	License for the specific language governing rights and limitations under
+	* the License. * * The Original Code is OpenELIS code. * * Copyright (C)
+	ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+<dataset>
+	<person id="1" last_name="Doe" first_name="John"
+		middle_name="joddy" city="Kampala" state="Kampala metropolitan"
+		zip_code="256" country="Uganda" work_phone="12345678"
+		home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
+		fax="3456" email="john@gmail.com" lastupdated="2023-11-01 12:00:00" />
+	<person id="2" last_name="Mulizi" first_name="James"
+		middle_name="Mark" city="Orion" state="Texas" zip_code="001"
+		country="USA" work_phone="10000001" home_phone="8000001"
+		cell_phone="0000000" primary_phone="10000001" fax="0001"
+		email="james@gmail.com" lastupdated="2023-11-01 12:00:00" />
+	<person id="3" last_name="Kukki" first_name="Faith"
+		middle_name="Siannah" city="Dallas" state="Texas" zip_code="001"
+		country="USA" work_phone="10000002" home_phone="8000003"
+		cell_phone="0000001" primary_phone="10000002" fax="0002"
+		email="siannah@gmail.com" lastupdated="2023-11-01 12:00:00" />
+	<person id="4" last_name="Linn" first_name="Jane"
+		middle_name="jolly" city="Kampala" state="Kampala metropolitan"
+		zip_code="256" country="Uganda" work_phone="12345678"
+		home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
+		fax="3456" email="john@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+	<person id="5" last_name="Ataliah" first_name="Moreen"
+		middle_name="amore" city="Orion" state="Texas" zip_code="001"
+		country="USA" work_phone="10000001" home_phone="8000001"
+		cell_phone="0000000" primary_phone="10000001" fax="0001"
+		email="james@gmail.com" lastupdated="2023-11-01 12:00:00" />
+	<person id="6" last_name="Lucy" first_name="Nancy"
+		middle_name="Siannah" city="Dallas" state="Texas" zip_code="001"
+		country="USA" work_phone="10000002" home_phone="8000003"
+		cell_phone="0000001" primary_phone="10000002" fax="0002"
+		email="siannah@gmail.com" lastupdated="2023-11-01 12:00:00" />
+
+	<patient id="1" person_id="1" race="black" gender="M"
+		birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+		national_id="1234" ethnicity="U" external_id="EX456"
+		school_attend="MaKerere College" birth_place="Mulago"
+		entered_birth_date="1992-12-12" lastupdated="2023-11-01 12:00:02" />
+	<patient id="2" person_id="3" race="black" gender="F"
+		birth_date="1997-10-09 09:00:00" birth_time="1997-10-09 09:00:00"
+		national_id="56789" ethnicity="A" external_id="EX123"
+		school_attend="Merryland College" birth_place="Nevada"
+		entered_birth_date="1997-10-09" lastupdated="2023-11-01 12:00:02" />
+	<patient id="3" person_id="2" race="black" gender="M"
+		birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+		national_id="1234" ethnicity="U" external_id="EX432"
+		school_attend="MaKerere College" birth_place="Kawempe"
+		entered_birth_date="1992-12-12" lastupdated="2023-11-01 12:00:02" />
+
+	<provider id="1" person_id="4" provider_type="P"
+		lastupdated="2023-11-01 12:00:00" />
+	<provider id="2" person_id="5" provider_type="D"
+		lastupdated="2023-11-01 12:00:00" />
+	<provider id="3" person_id="6" provider_type="C"
+		lastdupated="2023-11-01 12:00:00" />
+
+	<sample id="1" accession_number="12345"
+		received_date="2024-06-03 00:00:00.0"
+		entered_date="2024-06-03 00:00:00.0"
+		collection_date="2024-06-03 00:00:00.0"
+		lastupdated="2023-11-01 12:00:00" />
+	<sample id="2" accession_number="13333"
+		received_date="2024-06-04 00:00:00.0"
+		entered_date="2024-06-03 00:00:00.0"
+		collection_date="2024-06-03 00:00:00.0"
+		lastupdated="2023-11-01 12:00:00" />
+	<sample id="3" accession_number="52541"
+		received_date="2024-06-05 00:00:00.0"
+		entered_date="2024-06-05 00:00:00.0"
+		collection_date="2024-06-05 00:00:00.0"
+		lastupdated="2023-11-01 12:00:00" />
+
+	<sample_human id="1" provider_id="1" samp_id="1"
+		patient_id="1" lastupdated="2023-11-01 12:00:00" />
+	<sample_human id="2" provider_id="2" samp_id="2"
+		patient_id="2" lastupdated="2023-11-01 12:00:00" />
+	<sample_human id="3" provider_id="3" samp_id="3"
+		patient_id="3" lastupdated="2023-11-01 12:00:00" />
+</dataset>

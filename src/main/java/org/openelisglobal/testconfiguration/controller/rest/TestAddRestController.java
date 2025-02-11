@@ -33,6 +33,7 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.testconfiguration.controller.TestAddController;
 import org.openelisglobal.testconfiguration.controller.TestAddController.TestSet;
 import org.openelisglobal.testconfiguration.form.TestAddForm;
 import org.openelisglobal.testconfiguration.service.TestAddService;
@@ -51,7 +52,12 @@ import org.springframework.http.MediaType;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.WebDataBinder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.InitBinder;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest")
@@ -89,6 +95,9 @@ public class TestAddRestController extends BaseController {
     @Autowired
     private TestService testService;
 
+    @Autowired
+    private TestAddController testAddController;
+
     @InitBinder
     public void initBinder(WebDataBinder binder) {
         binder.setAllowedFields(ALLOWED_FIELDS);
@@ -98,6 +107,7 @@ public class TestAddRestController extends BaseController {
     public TestAddForm showTestAdd(HttpServletRequest request) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "showTestAdd",
                 "Hibernate Version: " + org.hibernate.Version.getVersionString());
+
         TestAddForm form = new TestAddForm();
         Test test = new Test();
 
@@ -230,7 +240,7 @@ public class TestAddRestController extends BaseController {
                 typeOfSample.setActive("Y".equals(testAddParams.active));
             }
 
-            TestSet testSet = new TestSet();
+            TestSet testSet = testAddController.new TestSet();
             testSet.typeOfSample = typeOfSample;
 
             Test test = new Test();
@@ -289,6 +299,7 @@ public class TestAddRestController extends BaseController {
             limit.setDictionaryNormalId(testAddParams.dictionaryReferenceId);
             resultLimits.add(limit);
         }
+
         return resultLimits;
     }
 
@@ -315,6 +326,7 @@ public class TestAddRestController extends BaseController {
 
             resultLimits.add(limit);
         }
+
         return resultLimits;
     }
 
@@ -395,9 +407,11 @@ public class TestAddRestController extends BaseController {
                     testAddParams.dictionaryParamList.add(params);
                 }
             }
+
         } catch (ParseException e) {
             LogEvent.logDebug(e);
         }
+
         return testAddParams;
     }
 
@@ -439,6 +453,7 @@ public class TestAddRestController extends BaseController {
     private void extractPanels(JSONObject obj, JSONParser parser, TestAddParams testAddParams) throws ParseException {
         String panels = (String) obj.get("panels");
         JSONArray panelArray = (JSONArray) parser.parse(panels);
+
         for (int i = 0; i < panelArray.size(); i++) {
             testAddParams.panelList.add((String) (((JSONObject) panelArray.get(i)).get("id")));
         }
@@ -448,9 +463,11 @@ public class TestAddRestController extends BaseController {
             throws ParseException {
         String sampleTypes = (String) obj.get("sampleTypes");
         JSONArray sampleTypeArray = (JSONArray) parser.parse(sampleTypes);
+
         for (int i = 0; i < sampleTypeArray.size(); i++) {
             SampleTypeListAndTestOrder sampleTypeTests = new SampleTypeListAndTestOrder();
             sampleTypeTests.sampleTypeId = (String) (((JSONObject) sampleTypeArray.get(i)).get("typeId"));
+
             JSONArray testArray = (JSONArray) (((JSONObject) sampleTypeArray.get(i)).get("tests"));
             for (int j = 0; j < testArray.size(); j++) {
                 sampleTypeTests.orderedTests.add(String.valueOf(((JSONObject) testArray.get(j)).get("id")));
@@ -478,13 +495,16 @@ public class TestAddRestController extends BaseController {
                     if (dictionaryIdGroup != null) {
                         dictionaryIdGroups.add(dictionaryIdGroup);
                     }
+
                     dictionaryIdGroup = testResult.getValue();
                 }
             }
         }
+
         if (dictionaryIdGroup != null) {
             dictionaryIdGroups.add(dictionaryIdGroup);
         }
+
         return dictionaryIdGroups;
     }
 
@@ -500,6 +520,7 @@ public class TestAddRestController extends BaseController {
             }
             groups.add(dictionaryPairs);
         }
+
         Collections.sort(groups, new Comparator<List<IdValuePair>>() {
             @Override
             public int compare(List<IdValuePair> o1, List<IdValuePair> o2) {
@@ -560,14 +581,6 @@ public class TestAddRestController extends BaseController {
         ArrayList<ResultLimitParams> limits = new ArrayList<>();
         public ArrayList<DictionaryParams> dictionaryParamList = new ArrayList<>();
     }
-
-    /*
-     * public static class TestSet { public Test test; public TypeOfSampleTest
-     * sampleTypeTest; public TypeOfSample typeOfSample; public ArrayList<Test>
-     * sortedTests = new ArrayList<>(); public ArrayList<PanelItem> panelItems = new
-     * ArrayList<>(); public ArrayList<TestResult> testResults = new ArrayList<>();
-     * public ArrayList<ResultLimit> resultLimits = new ArrayList<>(); }
-     */
 
     public static class SampleTypeListAndTestOrder {
         String sampleTypeId;

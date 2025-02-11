@@ -3,33 +3,33 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class name="org.openelisglobal.action.valueholder.Action"
-        table="ACTION" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">action_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class name="org.openelisglobal.action.valueholder.Action"
+		table="ACTION" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">action_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="code" type="java.lang.String">
-            <column name="CODE" length="10" not-null="true" />
-        </property>
-        <property name="description" type="java.lang.String">
-            <column name="DESCRIPTION" length="256" not-null="true" />
-        </property>
-        <property name="type" type="java.lang.String">
-            <column name="TYPE" length="10" not-null="true" />
-        </property>
-    </class>
-<!-- 	<query name="action.getNext"> -->
-<!-- 		from Action act order by act.type, act.code -->
-<!-- 	</query> -->
-<!-- 	<query name="action.getPrevious"> -->
-<!-- 		from Action act order by act.type desc, act.code desc -->
-<!-- 	</query> -->
+		<property name="code" type="java.lang.String">
+			<column name="CODE" length="10" not-null="true" />
+		</property>
+		<property name="description" type="java.lang.String">
+			<column name="DESCRIPTION" length="256" not-null="true" />
+		</property>
+		<property name="type" type="java.lang.String">
+			<column name="TYPE" length="10" not-null="true" />
+		</property>
+	</class>
+	<!-- <query name="action.getNext"> -->
+	<!-- from Action act order by act.type, act.code -->
+	<!-- </query> -->
+	<!-- <query name="action.getPrevious"> -->
+	<!-- from Action act order by act.type desc, act.code desc -->
+	<!-- </query> -->
 </hibernate-mapping>

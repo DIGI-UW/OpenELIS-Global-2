@@ -1,0 +1,108 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- * The contents of this file are subject to the Mozilla Public License
+	* Version 1.1 (the "License"); you may not use this file except in * compliance
+	with the License. You may obtain a copy of the License at * http://www.mozilla.org/MPL/
+	* * Software distributed under the License is distributed on an "AS IS" *
+	basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the *
+	License for the specific language governing rights and limitations under
+	* the License. * * The Original Code is OpenELIS code. * * Copyright (C)
+	ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+<dataset>
+	<organization_type id="101"
+		lastupdated="2024-06-03 12:00:00.0" short_name="Research"
+		description="Focuses on research in public health studies."
+		name_display_key="Research_Org" />
+	<organization_type id="102"
+		lastupdated="2024-06-04 12:00:00.0" short_name="Clinical"
+		description="Offers medical services and treatments."
+		name_display_key="Clinical_Org" />
+	<organization_type id="103"
+		lastupdated="2024-06-05 12:00:00.0" short_name="Laboratory"
+		description="Focuses on diagnostics and clinical testing."
+		name_display_key="Laboratory_Org" />
+	<organization_type id="104"
+		lastupdated="2024-06-06 12:00:00.0" short_name="Diagnostics"
+		description="Provides diagnostic testing services."
+		name_display_key="Diagnostics_Org" />
+	<organization_type id="105"
+		lastupdated="2024-06-07 12:00:00.0" short_name="Outreach"
+		description="Focuses on public health outreach and community education."
+		name_display_key="Outreach_Org" />
+	<organization_type id="106"
+		lastupdated="2024-06-08 12:00:00.0" short_name="Training"
+		description="Provides health training and capacity building."
+		name_display_key="Training_Org" />
+
+	<organization id="1" lastupdated="2024-06-03 12:00:00.0"
+		name="Global Health Org" city="New York" zip_code="10001"
+		mls_sentinel_lab_flag="Y" short_name="GHG" multiple_unit="NYC Unit"
+		street_address="123 Health St" state="NY"
+		internet_address="www.globalhealth.org" clia_num="CLIA12345"
+		pws_id="PWS123" mls_lab_flag="Y" is_active="Y" local_abbrev="GHO"
+		code="GHG001" />
+	<organization id="2" lastupdated="2024-06-04 12:00:00.0"
+		name="Health Services Ltd" city="Los Angeles" zip_code="90001"
+		mls_sentinel_lab_flag="N" short_name="HSL" multiple_unit="LA Unit"
+		street_address="456 Medical Rd" state="CA"
+		internet_address="www.healthservices.com" clia_num="CLIA54321"
+		pws_d="PWS456" mls_lab_flag="N" is_active="Y" local_abbrev="HSL"
+		code="HSL002" />
+	<organization id="3" lastupdated="2024-06-05 12:00:00.0"
+		name="Community Health Initiative" city="Chicago" zip_code="60601"
+		mls_sentinel_lab_flag="Y" short_name="CHI" multiple_unit="CHI Unit"
+		street_address="789 Community Blvd" state="IL"
+		internet_address="www.communityhealth.org" clia_num="CLIA67890"
+		pws_d="PWS789" mls_lab_flag="Y" is_active="N" local_abbrev="CHI"
+		code="CHI003" />
+
+	<localization id="1" lastupdated="2024-06-10 12:00:00.0"
+		description="English Localization" english="Hello, how are you?"
+		french="Bonjour, comment ça va?" />
+	<localization id="2" lastupdated="2024-06-11 12:00:00.0"
+		description="French Localization" english="Goodbye" french="Au revoir" />
+	<localization id="3" lastupdated="2024-06-12 12:00:00.0"
+		description="German Localization" english="Thank you" french="Danke" />
+	<localization id="4" lastupdated="2024-06-13 12:00:00.0"
+		description="Spanish Localization" english="Good morning"
+		french="Buenos días" />
+	<localization id="5" lastupdated="2024-06-14 12:00:00.0"
+		description="Italian Localization" english="Please"
+		french="Per favore" />
+
+	<test_section id="1" lastupdated="2024-06-10 12:00:00.0"
+		name="Blood Test" description="General blood test section"
+		name_localization_id="1" display_key="blood_test_key" is_external="N"
+		is_active="Y" sort_order="1" org_id="1" />
+	<test_section id="2" lastupdated="2024-06-11 12:00:00.0"
+		name="X-Ray" description="X-Ray imaging section"
+		name_localization_id="2" display_key="x_ray_key" is_external="N"
+		is_active="Y" sort_order="2" org_id="1" />
+	<test_section id="3" lastupdated="2024-06-12 12:00:00.0"
+		name="Cardiology" description="Cardiology section"
+		name_localization_id="3" display_key="cardiology_key" is_external="Y"
+		is_active="Y" sort_order="3" org_id="2" />
+	<test_section id="4" lastupdated="2024-06-13 12:00:00.0"
+		name="Microbiology" description="Microbiology section"
+		name_localization_id="4" display_key="microbiology_key"
+		is_external="N" is_active="N" sort_order="4" org_id="2" />
+	<test_section id="5" lastupdated="2024-06-14 12:00:00.0"
+		name="Immunology" description="Immunology testing section"
+		name_localization_id="5" display_key="immunology_key" is_external="Y"
+		is_active="Y" sort_order="5" org_id="3" />
+
+	<program id="1" lastupdated="2024-06-10 12:00:00.0"
+		code="PROG001" name="Blood Test Program" manually_changed="false"
+		test_section_id="1" />
+	<program id="2" lastupdated="2024-06-11 12:00:00.0"
+		code="PROG002" name="X-Ray Program" manually_changed="true"
+		test_section_id="2" />
+	<program id="3" lastupdated="2024-06-12 12:00:00.0"
+		code="PROG003" name="Cardiology Program" manually_changed="false"
+		test_section_id="3" />
+	<program id="4" lastupdated="2024-06-13 12:00:00.0"
+		code="PROG004" name="Microbiology Program" manually_changed="true"
+		test_section_id="4" />
+	<program id="5" lastupdated="2024-06-14 12:00:00.0"
+		code="PROG005" name="Immunology Program" manually_changed="false"
+		test_section_id="5" />
+</dataset>

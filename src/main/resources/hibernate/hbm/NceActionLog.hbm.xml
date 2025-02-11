@@ -1,23 +1,25 @@
 <?xml version='1.0' encoding='utf-8'?>
 <!DOCTYPE hibernate-mapping PUBLIC
-    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+	"-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+	"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping>
 
-    <class name="org.openelisglobal.qaevent.valueholder.NceActionLog" table="nce_action_log" schema="clinlims">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                    class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">nce_action_log_id_seq</param>
-            </generator>
-        </id>
-        <property name="correctiveAction" column="corrective_action"/>
-        <property name="actionType" column="action_type"/>
-        <property name="personResponsible" column="person_responsible"/>
-        <property name="dateCompleted" column="date_completed"/>
-        <property name="turnAroundTime" column="turn_around_time"/>
-        <property name="ncEventId" column="nce_event_id"/>
-    </class>
+	<class name="org.openelisglobal.qaevent.valueholder.NceActionLog"
+		table="nce_action_log" schema="clinlims">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">nce_action_log_id_seq</param>
+			</generator>
+		</id>
+		<property name="correctiveAction" column="corrective_action" />
+		<property name="actionType" column="action_type" />
+		<property name="personResponsible"
+			column="person_responsible" />
+		<property name="dateCompleted" column="date_completed" />
+		<property name="turnAroundTime" column="turn_around_time" />
+		<property name="ncEventId" column="nce_event_id" />
+	</class>
 </hibernate-mapping>

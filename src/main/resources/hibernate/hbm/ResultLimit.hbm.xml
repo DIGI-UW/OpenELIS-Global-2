@@ -1,87 +1,87 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-                                   "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+								"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping
-    package="org.openelisglobal.resultlimits.valueholder">
-    <class name="ResultLimit" table="RESULT_LIMITS"
-        optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">result_limits_seq</param>
-            </generator>
-        </id>
+	package="org.openelisglobal.resultlimits.valueholder">
+	<class name="ResultLimit" table="RESULT_LIMITS"
+		optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">result_limits_seq</param>
+			</generator>
+		</id>
 
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="testId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="TEST_ID" precision="10" scale="0"
-                not-null="true" />
-        </property>
+		<property name="testId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="TEST_ID" precision="10" scale="0"
+				not-null="true" />
+		</property>
 
-        <property name="resultTypeId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="TEST_RESULT_TYPE_ID" not-null="true" />
-        </property>
+		<property name="resultTypeId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="TEST_RESULT_TYPE_ID" not-null="true" />
+		</property>
 
-        <property name="gender" type="java.lang.String">
-            <column name="gender" not-null="false" />
-        </property>
+		<property name="gender" type="java.lang.String">
+			<column name="gender" not-null="false" />
+		</property>
 
-        <property name="minAge" type="org.hibernate.type.DoubleType">
-            <column name="min_age" />
-        </property>
+		<property name="minAge" type="org.hibernate.type.DoubleType">
+			<column name="min_age" />
+		</property>
 
-        <property name="maxAge" type="org.hibernate.type.DoubleType">
-            <column name="max_age" />
-        </property>
+		<property name="maxAge" type="org.hibernate.type.DoubleType">
+			<column name="max_age" />
+		</property>
 
-        <property name="lowNormal"
-            type="org.hibernate.type.DoubleType">
-            <column name="low_normal" />
-        </property>
+		<property name="lowNormal"
+			type="org.hibernate.type.DoubleType">
+			<column name="low_normal" />
+		</property>
 
-        <property name="highNormal"
-            type="org.hibernate.type.DoubleType">
-            <column name="high_normal" />
-        </property>
+		<property name="highNormal"
+			type="org.hibernate.type.DoubleType">
+			<column name="high_normal" />
+		</property>
 
-        <property name="lowValid"
-            type="org.hibernate.type.DoubleType">
-            <column name="low_valid" />
-        </property>
+		<property name="lowValid"
+			type="org.hibernate.type.DoubleType">
+			<column name="low_valid" />
+		</property>
 
-        <property name="highValid"
-            type="org.hibernate.type.DoubleType">
-            <column name="high_valid" />
-        </property>
-        <property name="lowReportingRange"
-            type="org.hibernate.type.DoubleType">
-            <column name="low_reporting_range" />
-        </property>
+		<property name="highValid"
+			type="org.hibernate.type.DoubleType">
+			<column name="high_valid" />
+		</property>
+		<property name="lowReportingRange"
+			type="org.hibernate.type.DoubleType">
+			<column name="low_reporting_range" />
+		</property>
 
-        <property name="highReportingRange"
-            type="org.hibernate.type.DoubleType">
-            <column name="high_reporting_range" />
-        </property>
+		<property name="highReportingRange"
+			type="org.hibernate.type.DoubleType">
+			<column name="high_reporting_range" />
+		</property>
 
-        <property name="highCritical"
-            type="org.hibernate.type.DoubleType">
-            <column name="high_critical" />
-        </property>
-        <property name="lowCritical"
-            type="org.hibernate.type.DoubleType">
-            <column name="low_critical" />
-        </property>
+		<property name="highCritical"
+			type="org.hibernate.type.DoubleType">
+			<column name="high_critical" />
+		</property>
+		<property name="lowCritical"
+			type="org.hibernate.type.DoubleType">
+			<column name="low_critical" />
+		</property>
 
-        <property name="dictionaryNormalId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
-            column="normal_dictionary_id" />
-        <property name="alwaysValidate" type="boolean"
-            column="always_validate" />
-    </class>
+		<property name="dictionaryNormalId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+			column="normal_dictionary_id" />
+		<property name="alwaysValidate" type="boolean"
+			column="always_validate" />
+	</class>
 </hibernate-mapping>

@@ -917,7 +917,7 @@ function UserAddModify() {
                           )) ||
                         (passwordTouched.confirmPassword &&
                           userDataShow.confirmPassword !==
-                          userDataShow.userPassword)
+                            userDataShow.userPassword)
                       }
                       // invalidText={errors.order}
                       value={

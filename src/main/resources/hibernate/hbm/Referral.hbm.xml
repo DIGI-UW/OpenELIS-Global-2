@@ -2,55 +2,54 @@
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping auto-import="true">
-    <class name="org.openelisglobal.referral.valueholder.Referral"
-        table="referral" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">referral_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class name="org.openelisglobal.referral.valueholder.Referral"
+		table="referral" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">referral_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="sendReadyDate" type="java.sql.Timestamp"
-            column="send_ready_date" length="7" not-null="false" />
-        <property name="sentDate" type="java.sql.Timestamp"
-            column="sent_date" length="7" not-null="false" />
-        <property name="resultRecievedDate" type="java.sql.Timestamp"
-            column="result_recieved_date" length="7" not-null="false" />
-        <property name="requestDate" type="java.sql.Timestamp"
-            column="referral_request_date" length="7" not-null="false" />
-        <property name="referralTypeId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
-            column="referral_type_id" precision="10" scale="10" />
-        <property name="referralReasonId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
-            column="referral_reason_id" precision="10" scale="10" />
-        <property name="organizationName" column="organization_name"
-            length="30" not-null="false" />
-        <property name="requesterName" column="requester_name"
-            length="60" not-null="false" />
-        <property name="status" column="status">
-            <type name="org.hibernate.type.EnumType">
-                <param name="enumClass">org.openelisglobal.referral.valueholder.ReferralStatus</param>
-                <param name="useNamed">true</param>
-            </type>
-        </property>
-        <many-to-one name="analysis"
-            class="org.openelisglobal.analysis.valueholder.Analysis"
-            fetch="select"
-            lazy="false">
-            <column name="analysis_id" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="organization"
-            class="org.openelisglobal.organization.valueholder.Organization"
-            fetch="select">
-            <column name="organization_id" precision="10" scale="0" />
-        </many-to-one>
-        <property name="fhirUuid"
-            column="fhir_uuid" type="java.util.UUID" />
-    </class>
+		<property name="sendReadyDate" type="java.sql.Timestamp"
+			column="send_ready_date" length="7" not-null="false" />
+		<property name="sentDate" type="java.sql.Timestamp"
+			column="sent_date" length="7" not-null="false" />
+		<property name="resultRecievedDate" type="java.sql.Timestamp"
+			column="result_recieved_date" length="7" not-null="false" />
+		<property name="requestDate" type="java.sql.Timestamp"
+			column="referral_request_date" length="7" not-null="false" />
+		<property name="referralTypeId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+			column="referral_type_id" precision="10" scale="10" />
+		<property name="referralReasonId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+			column="referral_reason_id" precision="10" scale="10" />
+		<property name="organizationName" column="organization_name"
+			length="30" not-null="false" />
+		<property name="requesterName" column="requester_name"
+			length="60" not-null="false" />
+		<property name="status" column="status">
+			<type name="org.hibernate.type.EnumType">
+				<param name="enumClass">org.openelisglobal.referral.valueholder.ReferralStatus</param>
+				<param name="useNamed">true</param>
+			</type>
+		</property>
+		<many-to-one name="analysis"
+			class="org.openelisglobal.analysis.valueholder.Analysis"
+			fetch="select" lazy="false">
+			<column name="analysis_id" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="organization"
+			class="org.openelisglobal.organization.valueholder.Organization"
+			fetch="select">
+			<column name="organization_id" precision="10" scale="0" />
+		</many-to-one>
+		<property name="fhirUuid" column="fhir_uuid"
+			type="java.util.UUID" />
+	</class>
 </hibernate-mapping>
