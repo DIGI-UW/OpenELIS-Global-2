@@ -50,6 +50,13 @@ see [OpenELIS-Docker setup](https://github.com/I-TECH-UW/openelis-docker)
 
          git clone https://github.com/username/OpenELIS-Global-2.git
 
+1.  innitialize and build sub modules
+
+        cd OpenELIS-Global-2
+        git submodule update --init --recursive
+        cd dataexport
+        mvn clean install -DskipTests
+
 1.  Build the War file
 
           mvn clean install -DskipTests

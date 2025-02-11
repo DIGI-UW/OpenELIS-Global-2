@@ -264,7 +264,7 @@ const SampleBatchEntry = (props) => {
                   </Column>
                   <Column lg={4}>
                     <TextInput
-                      labelText={<FormattedMessage id="order.recieved.time" />}
+                      labelText={<FormattedMessage id="order.received.time" />}
                       value={orderFormValues.sampleOrderItems.receivedTime}
                       readOnly
                       id="recieved-time"

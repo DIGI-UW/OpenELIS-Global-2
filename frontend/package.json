@@ -26,7 +26,7 @@
     "geopattern": "1.2.3",
     "jsonpath": "^1.1.1",
     "lodash-es": "^4.17.15",
-    "prettier-eslint": "^15.0.1",
+    "prettier-eslint": "15.0.1",
     "qs": "6.11.0",
     "react": "^17.0.2",
     "react-avatar": "5.0.3",
@@ -55,7 +55,8 @@
     "eject": "react-scripts eject",
     "cy:run": "cypress run --headless --browser chrome",
     "cy:open": "cypress open --browser chrome",
-    "format": "prettier ./ --write"
+    "format": "prettier ./ --write",
+    "check-format": "prettier ./ --check"
   },
   "eslintConfig": {
     "extends": [

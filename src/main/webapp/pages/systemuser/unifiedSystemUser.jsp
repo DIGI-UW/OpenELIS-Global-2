@@ -439,7 +439,7 @@ function handleCopyPermisions(element){
 <hr/>
 <table>
 	<tr>
-	    <td> <spring:message code="systemuserrole.copypermisions"/> </td>
+	    <td> <spring:message code="systemuserrole.copypermissions"/> </td>
 		<td>
 		<input type="text" id="systemUserToCopySelector" onchange="handleCopyPermisions(this);" oninput="activateCopyPermisions();"/>
 		 <form:hidden id="systemUserToCopy" path="systemUserIdToCopy" />

@@ -3,85 +3,85 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.organization.valueholder.Organization"
-        table="ORGANIZATION" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">organization_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class
+		name="org.openelisglobal.organization.valueholder.Organization"
+		table="ORGANIZATION" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">organization_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <many-to-one name="organization"
-            class="org.openelisglobal.organization.valueholder.Organization"
-            fetch="select" lazy="false">
-            <column name="ORG_ID" precision="10" scale="0" />
-        </many-to-one>
-        <property name="orgMltOrgMltId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ORG_MLT_ORG_MLT_ID" length="10" />
-        </property>
-        <property name="organizationName" type="java.lang.String">
-            <column name="NAME" length="40" not-null="true" />
-        </property>
-        <property name="city" type="java.lang.String">
-            <column name="CITY" length="30" />
-        </property>
-        <property name="zipCode" type="java.lang.String">
-            <column name="ZIP_CODE" length="10" />
-        </property>
-        <property name="mlsSentinelLabFlag" type="java.lang.String">
-            <column name="MLS_SENTINEL_LAB_FLAG" length="1"
-                not-null="true" />
-        </property>
-        <property name="shortName" type="java.lang.String">
-            <column name="SHORT_NAME" length="15" />
-        </property>
-        <property name="multipleUnit" type="java.lang.String">
-            <column name="MULTIPLE_UNIT" length="30" />
-        </property>
-        <property name="streetAddress" type="java.lang.String">
-            <column name="STREET_ADDRESS" length="30" />
-        </property>
-        <property name="state" type="java.lang.String">
-            <column name="STATE" length="2" />
-        </property>
-        <property name="internetAddress" type="java.lang.String">
-            <column name="INTERNET_ADDRESS" length="40" />
-        </property>
-        <property name="cliaNum" type="java.lang.String">
-            <column name="CLIA_NUM" length="12" />
-        </property>
-        <property name="pwsId" type="java.lang.String">
-            <column name="PWS_ID" length="15" />
-        </property>
-        <property name="mlsLabFlag" type="java.lang.String">
-            <column name="MLS_LAB_FLAG" length="1" />
-        </property>
-        <property name="isActive" type="java.lang.String">
-            <column name="IS_ACTIVE" length="1" />
-        </property>
-        <property name="organizationLocalAbbreviation"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="LOCAL_ABBREV" length="10" />
-        </property>
-        <property name="code" column="code" type="java.lang.String"
-            length="20" />
-        <property name="fhirUuid"
-            column="fhir_uuid" type="java.util.UUID" />
+		<many-to-one name="organization"
+			class="org.openelisglobal.organization.valueholder.Organization"
+			fetch="select" lazy="false">
+			<column name="ORG_ID" precision="10" scale="0" />
+		</many-to-one>
+		<property name="orgMltOrgMltId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ORG_MLT_ORG_MLT_ID" length="10" />
+		</property>
+		<property name="organizationName" type="java.lang.String">
+			<column name="NAME" length="40" not-null="true" />
+		</property>
+		<property name="city" type="java.lang.String">
+			<column name="CITY" length="30" />
+		</property>
+		<property name="zipCode" type="java.lang.String">
+			<column name="ZIP_CODE" length="10" />
+		</property>
+		<property name="mlsSentinelLabFlag" type="java.lang.String">
+			<column name="MLS_SENTINEL_LAB_FLAG" length="1"
+				not-null="true" />
+		</property>
+		<property name="shortName" type="java.lang.String">
+			<column name="SHORT_NAME" length="15" />
+		</property>
+		<property name="multipleUnit" type="java.lang.String">
+			<column name="MULTIPLE_UNIT" length="30" />
+		</property>
+		<property name="streetAddress" type="java.lang.String">
+			<column name="STREET_ADDRESS" length="30" />
+		</property>
+		<property name="state" type="java.lang.String">
+			<column name="STATE" length="2" />
+		</property>
+		<property name="internetAddress" type="java.lang.String">
+			<column name="INTERNET_ADDRESS" length="40" />
+		</property>
+		<property name="cliaNum" type="java.lang.String">
+			<column name="CLIA_NUM" length="12" />
+		</property>
+		<property name="pwsId" type="java.lang.String">
+			<column name="PWS_ID" length="15" />
+		</property>
+		<property name="mlsLabFlag" type="java.lang.String">
+			<column name="MLS_LAB_FLAG" length="1" />
+		</property>
+		<property name="isActive" type="java.lang.String">
+			<column name="IS_ACTIVE" length="1" />
+		</property>
+		<property name="organizationLocalAbbreviation"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="LOCAL_ABBREV" length="10" />
+		</property>
+		<property name="code" column="code" type="java.lang.String"
+			length="20" />
+		<property name="fhirUuid" column="fhir_uuid"
+			type="java.util.UUID" />
 
-        <set name="organizationTypes"
-            table="organization_organization_type" cascade="all" lazy="true"
-            inverse="true">
-            <key column="org_id" />
-            <many-to-many column="org_type_id"
-                class="org.openelisglobal.organization.valueholder.OrganizationType" />
-        </set>
+		<set name="organizationTypes"
+			table="organization_organization_type" cascade="all" lazy="true"
+			inverse="true">
+			<key column="org_id" />
+			<many-to-many column="org_type_id"
+				class="org.openelisglobal.organization.valueholder.OrganizationType" />
+		</set>
 
-    </class>
+	</class>
 </hibernate-mapping>

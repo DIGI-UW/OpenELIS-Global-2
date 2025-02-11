@@ -48,13 +48,10 @@ jobs:
           repository: ${{github.repository}}
           submodules: recursive
 
-      - name: Run OpenELIS image
-        run: docker compose -f build.docker-compose.yml up -d  --build --wait --wait-timeout 600
-
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 14.x
+          node-version: 20
 
       - name: Install dependencies
         run: npm install
@@ -64,6 +61,13 @@ jobs:
         run: npm install react-scripts@5.0.1 -g
         working-directory: frontend
 
+      - name: Check Format
+        run: npx prettier ./ --check
+        working-directory: frontend  
+
+      - name: Build OpenELIS Images and Run containers
+        run: docker compose -f build.docker-compose.yml up -d  --build --wait --wait-timeout 600
+   
       - name: Run Frontend Qa Workflow
         run: npx cypress run –headless
         working-directory: frontend

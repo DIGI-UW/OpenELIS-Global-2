@@ -103,6 +103,7 @@ const SearchBar = (props) => {
               autoComplete
             />
             <Button
+              id="patientSearch"
               size="sm"
               style={{ width: 50 }}
               onClick={handleSearch}
