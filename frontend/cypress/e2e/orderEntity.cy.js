@@ -70,7 +70,7 @@ describe("Order Entity", function () {
 
   it("User clicks submit order button", function () {
     orderEntityPage.clickSubmitOrderButton();
-    cy.wait(500);
+    cy.wait(1000);
   });
 
   it("User prints barcode", function () {

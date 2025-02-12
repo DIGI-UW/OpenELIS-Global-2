@@ -807,6 +807,7 @@ const Index = () => {
 
               {page === orderPageNumber && (
                 <Button
+                  id="submit-button"
                   kind="primary"
                   className="forwardButton"
                   disabled={
