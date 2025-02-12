@@ -9,7 +9,6 @@ import org.openelisglobal.address.service.PersonAddressService;
 import org.openelisglobal.address.valueholder.AddressPK;
 import org.openelisglobal.address.valueholder.PersonAddress;
 import org.openelisglobal.person.service.PersonService;
-import org.openelisglobal.person.valueholder.Person;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class PersonAddressServiceTest extends BaseWebContextSensitiveTest {
@@ -28,14 +27,9 @@ public class PersonAddressServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void createPersonAddress_shouldCreatePersonAddress() throws Exception {
 
-        Person person = new Person();
-        person.setFirstName("john");
-        person.setLastName("Doe");
-        String personId = personService.insert(person);
-
         PersonAddress personAddress = new PersonAddress();
         personAddress.setAddressPartId("3");
-        personAddress.setPersonId(personId);
+        personAddress.setPersonId("3");
         personAddress.setType("D");
         personAddress.setValue("123");
 
@@ -71,14 +65,9 @@ public class PersonAddressServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void insert_shouldInsertPersonAdress() throws Exception {
 
-        Person person = new Person();
-        person.setFirstName("john");
-        person.setLastName("Doe");
-        String personId = personService.insert(person);
-
         PersonAddress personAddress = new PersonAddress();
         personAddress.setAddressPartId("5");
-        personAddress.setPersonId(personId);
+        personAddress.setPersonId("4");
         personAddress.setType("F");
         personAddress.setValue("123");
 
