@@ -43,14 +43,14 @@ class OrderEntityPage {
     });
   }
   enterSiteName(siteName) {
-    cy.get("input#siteName").type(siteName);
-    cy.wait(500);
-    cy.get(".suggestion-active").contains(siteName).click();
+    cy.get("#siteName").type(siteName);
+    cy.contains(".suggestion-active", siteName).click();
+    cy.wait(200);
   }
   searchRequester(requester) {
-    cy.get("input#requesterId").type(requester);
-    cy.wait(500);
-    cy.get(".suggestion-active").contains(requester).click();
+    cy.get("#requesterId").type(requester);
+    cy.contains(".suggestion-active", requester).click();
+    cy.wait(200);
   }
 
   generateLabOrderNumber() {
