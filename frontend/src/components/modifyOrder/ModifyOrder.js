@@ -66,7 +66,7 @@ const ModifyOrder = () => {
     accessionNumber = accessionNumber ? accessionNumber : "";
     patientId = patientId ? patientId : "";
     getFromOpenElisServer(
-      "/rest/sample-edit?patientId=" +
+      "/rest/SampleEdit?patientId=" +
         patientId +
         "&accessionNumber=" +
         accessionNumber,
@@ -143,7 +143,7 @@ const ModifyOrder = () => {
     orderFormValues.sampleOrderItems.testLocationCodeList = [];
     console.log(JSON.stringify(orderFormValues));
     postToOpenElisServer(
-      "/rest/sample-edit",
+      "/rest/SampleEdit",
       JSON.stringify(orderFormValues),
       handlePost,
     );

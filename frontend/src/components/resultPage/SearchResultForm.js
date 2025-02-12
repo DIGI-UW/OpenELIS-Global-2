@@ -170,7 +170,7 @@ export function SearchResultForm(props) {
     values.unitType = values.unitType ? values.unitType : "";
 
     let searchEndPoint =
-      "/rest/ReactLogbookResultsByRange?" +
+      "/rest/LogbookResults?" +
       "labNumber=" +
       labNo +
       "&upperRangeAccessionNumber=" +
@@ -1583,7 +1583,7 @@ export function SearchResults(props) {
     }
     setIsSubmitting(true);
     values.status = saveStatus;
-    var searchEndPoint = "/rest/ReactLogbookResultsUpdate";
+    var searchEndPoint = "/rest/LogbookResults";
     props.results.testResult.forEach((result) => {
       result.reportable = result.reportable === "N" ? false : true;
       delete result.result;
