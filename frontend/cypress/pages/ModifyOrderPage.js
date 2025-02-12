@@ -10,7 +10,7 @@ class ModifyOrderPage {
   }
 
   clickSubmitButton() {
-    cy.get("#submitOrderButton").should("be.visible").click({ force: true });
+    cy.get("#submit-button").should("be.visible").click({ force: true });
   }
 
   clickNextButton() {
@@ -20,7 +20,7 @@ class ModifyOrderPage {
   }
 
   generateLabOrderNumber() {
-    cy.get("#generate", { timeout: 10000 }).should("be.visible").click();
+    cy.get("#generate", { timeout: 5000 }).should("be.visible").click();
   }
 
   selectSerum() {
