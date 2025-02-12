@@ -333,7 +333,7 @@ function CreatePatientForm(props) {
     }
     console.debug(JSON.stringify(values));
     postToOpenElisServer(
-      "/rest/patient-management",
+      "/rest/PatientManagement",
       JSON.stringify(values),
       (status) => {
         handlePost(status);
@@ -920,7 +920,7 @@ function CreatePatientForm(props) {
                               value={values.education || ""}
                               name={field.name}
                               labelText={intl.formatMessage({
-                                id: "pateint.eduction",
+                                id: "patient.eduction",
                               })}
                               onChange={() => {}}
                               helperText={intl.formatMessage({
@@ -951,7 +951,7 @@ function CreatePatientForm(props) {
                               })}
                               onChange={() => {}}
                               helperText={intl.formatMessage({
-                                id: "patient.emergency.additional.maritialstatus",
+                                id: "patient.emergency.additional.maritalstatus",
                               })}
                             >
                               <SelectItem text="" value="" />
