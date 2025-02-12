@@ -4,11 +4,11 @@
       "sampleType": "Serum"
     }
   ],
-  "program": "Routine Testing",
+  "program": "Cytology",
   "specimen": "Conventional Smear",
   "smear": "Cervix",
-  "siteName": "279 - CAMES MAN",
-  "requester": "Prime, Optimus",
+  "siteName": "279 - CAMES",
+  "requester": "Prime",
   "labNo": "DEV012001",
   "invalidLabNo": "DEV0124000000000000"
 }

@@ -93,7 +93,6 @@ class NonConform {
   enterLabComponent(labComponent) {
     cy.get("#labComponent").select(labComponent);
   }
-
   // Text areas
   enterDescriptionAndComments(testText) {
     cy.get("#text-area-10").type(testText);
@@ -142,6 +141,7 @@ class NonConform {
       .should("not.be.disabled")
       .click();
   }
+
   // Data management
   getAndSaveNceNumber() {
     cy.get("[data-testid='nce-number-result']")

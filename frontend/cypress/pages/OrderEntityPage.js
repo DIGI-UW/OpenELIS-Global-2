@@ -49,29 +49,29 @@ class OrderEntityPage {
   enterSiteName(siteName) {
     cy.get("input#siteName").type(siteName);
     cy.wait(500);
-    cy.get(".suggestions").contains(siteName).click();
+    cy.get(".suggestion-active").contains(siteName).click();
   }
   searchRequester(requester) {
     cy.get("input#requesterId").type(requester);
     cy.wait(500);
-    cy.get(".suggestions").contains(requester).click();
+    cy.get(".suggestion-active").contains(requester).click();
+  }
+
+  generateLabOrderNumber() {
+    cy.get("#generate", { timeout: 5000 }).should("be.visible").click();
+  }
+
+  //for now we dont need FName and LName with the autocomplete option
+  requesterLName(requesterLName) {
+    cy.get("input#requesterLastName").type(requesterLName);
   }
 
   requesterFName(requesterFName) {
     cy.get("input#requesterFirstName").type(requesterFName);
   }
 
-  generateLabOrderNumber() {
-    cy.get("#generate", { timeout: 10000 }).should("be.visible").click();
-  }
-
-  requesterLName(requesterLName) {
-    cy.get("input#requesterLastName").type(requesterLName);
-  }
   clickSubmitOrderButton() {
-    cy.get("button.forwardButton.cds--btn--primary")
-      .should("be.visible")
-      .click();
+    cy.get("#submit-button").should("be.visible").click();
   }
 
   printBarCode() {
