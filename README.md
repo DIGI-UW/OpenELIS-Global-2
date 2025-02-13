@@ -79,7 +79,7 @@ see [OpenELIS-Docker setup](https://github.com/I-TECH-UW/openelis-docker)
 
         docker-compose -f dev.docker-compose.yml up -d  --no-deps --force-recreate oe.openelis.org
 
-#### The Instaces can be accesed at
+#### The Instances can be accessed at
 
 | Instance     |                   URL                   | credentials (user : password) |
 | ------------ | :-------------------------------------: | ----------------------------: |
@@ -106,3 +106,9 @@ accessing any of these links, simply follow these steps:
     to properly format the Java code
 
         mvn spotless:apply
+
+### Pull request guidelines
+
+Please follow the [pull request tips](PULL_REQUEST_TIPS.md) in order to make
+life easy for the code reviewers by having a well defined and clean pull
+request.
