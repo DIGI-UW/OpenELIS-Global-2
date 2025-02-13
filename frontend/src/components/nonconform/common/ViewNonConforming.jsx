@@ -262,15 +262,15 @@ export const ViewNonConformingEvent = () => {
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
       <Grid fullWidth={true}>
-        <Column lg={16}>
+        <Column lg={16} md={8} sm={4}>
           <h2>
             <FormattedMessage id={`nonconform.view.report`} />
           </h2>
         </Column>
-        <Column lg={16} md={10} sm={8}>
+        <Column lg={16} md={8} sm={4}>
           <Form>
             <Grid fullWidth={true}>
-              <Column lg={4} md={8}>
+              <Column lg={4} md={4} sm={2}>
                 <Select
                   id="type"
                   labelText={intl.formatMessage({
@@ -294,7 +294,7 @@ export const ViewNonConformingEvent = () => {
                   ))}
                 </Select>
               </Column>
-              <Column lg={4}>
+              <Column lg={4} md={4} sm={2}>
                 <TextInput
                   labelText={intl.formatMessage({
                     id: "testcalculation.label.textValue",
@@ -309,10 +309,10 @@ export const ViewNonConformingEvent = () => {
                   id={`field.name`}
                 />
               </Column>
-              <Column lg={16}>
+              <Column lg={16} md={8} sm={4}>
                 <br></br>
               </Column>
-              <Column lg={16}>
+              <Column lg={16} md={8} sm={4}>
                 <Button
                   type="button"
                   data-testid="nce-search-button"
@@ -333,7 +333,7 @@ export const ViewNonConformingEvent = () => {
             </Section>
           </Form>
         </Column>
-        <Column lg={16}>
+        <Column lg={16} md={8} sm={4}>
           <br></br>
         </Column>
       </Grid>
@@ -395,7 +395,7 @@ export const ViewNonConformingEvent = () => {
 
       {data && (
         <Grid fullWidth={true}>
-          <Column lg={3}>
+          <Column lg={3} md={3} sm={3}>
             <div style={{ marginBottom: "10px" }}>
               <span style={{ color: "#3366B3", fontWeight: "bold" }}>
                 <b>
@@ -410,7 +410,7 @@ export const ViewNonConformingEvent = () => {
               {data.nceEventsSearchResults[0].nceNumber}
             </div>
           </Column>
-          <Column lg={3} style={{ marginBottom: "20px" }}>
+          <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
             <div style={{ marginBottom: "10px" }}>
               <span style={{ color: "#3366B3", fontWeight: "bold" }}>
                 <FormattedMessage id="nonconform.view.event.date" />
@@ -419,7 +419,7 @@ export const ViewNonConformingEvent = () => {
             <div style={{ marginBottom: "10px" }}>{data.dateOfEvent}</div>
           </Column>
 
-          <Column lg={3} style={{ marginBottom: "20px" }}>
+          <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
             <div style={{ marginBottom: "10px" }}>
               <span style={{ color: "#3366B3", fontWeight: "bold" }}>
                 <FormattedMessage id="nonconform.view.reporting.person" />
@@ -430,7 +430,7 @@ export const ViewNonConformingEvent = () => {
             </div>
           </Column>
 
-          <Column lg={3} style={{ marginBottom: "20px" }}>
+          <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
             <div style={{ marginBottom: "10px" }}>
               <span style={{ color: "#3366B3", fontWeight: "bold" }}>
                 <FormattedMessage id="nonconform.label.reportingunit" />
@@ -443,7 +443,7 @@ export const ViewNonConformingEvent = () => {
               }
             </div>
           </Column>
-          <Column lg={3} style={{ marginBottom: "20px" }}>
+          <Column lg={4} md={3} sm={3} style={{ marginBottom: "20px" }}>
             <div style={{ marginBottom: "10px" }}>
               <span style={{ color: "#3366B3", fontWeight: "bold" }}>
                 <FormattedMessage id="nonconform.view.specimen" />
@@ -453,8 +453,7 @@ export const ViewNonConformingEvent = () => {
               {data.specimens[0].typeOfSample.description}
             </div>
           </Column>
-          <Column lg={1}></Column>
-          <Column lg={3} style={{ marginBottom: "20px" }}>
+          <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
             <div style={{ marginBottom: "10px" }}>
               <span style={{ color: "#3366B3", fontWeight: "bold" }}>
                 <FormattedMessage id="sample.label.labnumber" />
@@ -467,7 +466,7 @@ export const ViewNonConformingEvent = () => {
               {data.nceEventsSearchResults[0].labOrderNumber}
             </div>
           </Column>
-          <Column lg={3} style={{ marginBottom: "20px" }}>
+          <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
             <div style={{ marginBottom: "10px" }}>
               <span style={{ color: "#3366B3", fontWeight: "bold" }}>
                 <FormattedMessage id="nonconform.label.prescibernamesite" />
@@ -477,7 +476,7 @@ export const ViewNonConformingEvent = () => {
               style={{ marginBottom: "10px" }}
             >{`${data.nceEventsSearchResults[0].prescriberName}-${data.nceEventsSearchResults[0].site}`}</div>
           </Column>
-          <Column lg={3} style={{ marginBottom: "20px" }}>
+          <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
             <div style={{ marginBottom: "10px" }}>
               <span style={{ color: "#3366B3", fontWeight: "bold" }}>
                 <FormattedMessage id="nonconform.view.event.description" />
@@ -487,7 +486,7 @@ export const ViewNonConformingEvent = () => {
               {data.nceEventsSearchResults[0].description ?? ""}
             </div>
           </Column>
-          <Column lg={3} style={{ marginBottom: "20px" }}>
+          <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
             <div style={{ marginBottom: "10px" }}>
               <span style={{ color: "#3366B3", fontWeight: "bold" }}>
                 <FormattedMessage id="nonconform.label.suspected.cause.nce" />
@@ -497,7 +496,7 @@ export const ViewNonConformingEvent = () => {
               {data.nceEventsSearchResults[0].suspectedCauses ?? ""}
             </div>
           </Column>
-          <Column lg={3} style={{ marginBottom: "20px" }}>
+          <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
             <div style={{ marginBottom: "10px" }}>
               <span style={{ color: "#3366B3", fontWeight: "bold" }}>
                 <FormattedMessage id="nonconform.label.proposed.action" />
@@ -507,8 +506,8 @@ export const ViewNonConformingEvent = () => {
               {data.nceEventsSearchResults[0].proposedAction ?? ""}
             </div>
           </Column>
-          <Column lg={1}></Column>
-          <Column lg={3} style={{ marginBottom: "20px" }}>
+
+          <Column lg={3} md={3} sm={1} style={{ marginBottom: "20px" }}>
             <div style={{ marginBottom: "10px" }}>
               <span style={{ color: "#3366B3", fontWeight: "bold" }}>
                 <FormattedMessage id="nonconform.severity.score" />
@@ -528,10 +527,10 @@ export const ViewNonConformingEvent = () => {
           </pre>
           <Column lg={13}></Column>
 
-          <Column lg={16}>
+          <Column lg={16} md={8} sm={4}>
             <br></br>
           </Column>
-          <Column lg={8}>
+          <Column lg={8} md={4} sm={4}>
             <Select
               labelText={<FormattedMessage id="nonconform.view.nce.category" />}
               id="nceCategory"
@@ -553,7 +552,7 @@ export const ViewNonConformingEvent = () => {
               ))}
             </Select>
           </Column>
-          <Column lg={8}>
+          <Column lg={8} md={4} sm={4}>
             <Select
               labelText={<FormattedMessage id="nonconform.view.nce.type" />}
               id="nceType"
@@ -576,11 +575,11 @@ export const ViewNonConformingEvent = () => {
             </Select>
           </Column>
 
-          <Column lg={16}>
+          <Column lg={16} md={8} sm={4}>
             <br></br>
           </Column>
 
-          <Column lg={8}>
+          <Column lg={8} md={4} sm={4}>
             <Select
               labelText={
                 <FormattedMessage id="nonconform.view.severe.consequences" />
@@ -603,7 +602,7 @@ export const ViewNonConformingEvent = () => {
               ))}
             </Select>
           </Column>
-          <Column lg={8}>
+          <Column lg={8} md={4} sm={4}>
             <Select
               labelText={
                 <FormattedMessage id="nonconform.view.nce.likely.occur" />
@@ -627,10 +626,10 @@ export const ViewNonConformingEvent = () => {
             </Select>
           </Column>
 
-          <Column lg={16}>
+          <Column lg={16} md={8} sm={4}>
             <br></br>
           </Column>
-          <Column lg={8}>
+          <Column lg={8} md={4} sm={4}>
             <Select
               labelText={
                 <FormattedMessage id="nonconform.view.lab.component" />
@@ -709,11 +708,11 @@ export const ViewNonConformingEvent = () => {
               invalidText={<FormattedMessage id="text.length.max" />}
             />
           </Column>
-          <Column lg={16}>
+          <Column lg={16} md={8} sm={4}>
             <br></br>
           </Column>
 
-          <Column lg={16}>
+          <Column lg={16} md={8} sm={4}>
             {false && (
               <div style={{ color: "#c62828", margin: 4 }}>
                 {formData.error}
