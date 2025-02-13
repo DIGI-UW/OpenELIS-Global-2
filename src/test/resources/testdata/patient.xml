@@ -1,0 +1,105 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- * The contents of this file are subject to the Mozilla Public License
+	* Version 1.1 (the "License"); you may not use this file except in * compliance
+	with the License. You may obtain a copy of the License at * http://www.mozilla.org/MPL/
+	* * Software distributed under the License is distributed on an "AS IS" *
+	basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the *
+	License for the specific language governing rights and limitations under
+	* the License. * * The Original Code is OpenELIS code. * * Copyright (C)
+	ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+<dataset>
+	<!--Person catagory entries -->
+	<person id="1" last_name="Doe" first_name="John"
+		middle_name="joddy" city="Kampala" state="Kampala metropolitan"
+		zip_code="256" country="Uganda" work_phone="12345678"
+		home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
+		fax="3456" email="john@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+	<person id="2" last_name="Mulizi" first_name="James"
+		middle_name="Mark" city="Orion" state="Texas" zip_code="001"
+		country="USA" work_phone="10000001" home_phone="8000001"
+		cell_phone="0000000" primary_phone="10000001" fax="0001"
+		email="james@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+	<person id="3" last_name="Kukki" first_name="Faith"
+		middle_name="Siannah" city="Dallas" state="Texas" zip_code="001"
+		country="USA" work_phone="10000002" home_phone="8000003"
+		cell_phone="0000001" primary_phone="10000002" fax="0002"
+		email="siannah@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+	<person id="4" last_name="Shery" first_name="Norah"
+		middle_name="Siannah" city="Dallas" state="Texas" zip_code="001"
+		country="USA" work_phone="10000002" home_phone="8000003"
+		cell_phone="0000001" primary_phone="10000002" fax="0002"
+		email="siannah@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+
+	<!--Patient catagory entries -->
+	<patient id="1" person_id="1" race="black" gender="M"
+		birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+		national_id="1234" ethnicity="U" external_id="EX456"
+		school_attend="MaKerere College" birth_place="Mulago"
+		entered_birth_date="1992-12-12" lastUpdated="2023-11-01 12:00:02" />
+	<patient id="2" person_id="3" race="black" gender="F"
+		birth_date="1997-10-09 09:00:00" birth_time="1997-10-09 09:00:00"
+		national_id="56789" ethnicity="A" external_id="EX123"
+		school_attend="Merryland College" birth_place="Nevada"
+		entered_birth_date="1997-10-09" lastUpdated="2023-11-01 12:00:02" />
+	<patient id="3" person_id="2" race="black" gender="M"
+		birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+		national_id="12314" ethnicity="U" external_id="EX432"
+		school_attend="MaKerere College" birth_place="Kawempe"
+		entered_birth_date="1992-12-12" lastUpdated="2023-11-01 12:00:02" />
+	<patient id="4" person_id="4" race="black" gender="F"
+		birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+		national_id="12304" ethnicity="U" external_id="EX432"
+		school_attend="MaKerere College" birth_place="Kawempe"
+		entered_birth_date="1992-12-12" lastUpdated="2023-11-01 12:00:02" />
+
+	<!-- PatientIdentity Categoty entries -->
+	<patient_identity id="1" identity_type_id="9"
+		patient_id="1" identity_data="334-422-A"
+		lastUpdated="2023-11-01 12:00:02" />
+	<patient_identity id="2" identity_type_id="17"
+		patient_id="1" identity_data="Ugandan"
+		lastUpdated="2023-11-01 12:00:02" />
+	<patient_identity id="3" identity_type_id="18"
+		patient_id="1" identity_data="USA" lastUpdated="2023-11-01 12:00:02" />
+	<patient_identity id="4" identity_type_id="4"
+		patient_id="1" identity_data="Jackie Moore"
+		lastUpdated="2023-11-01 12:00:02" />
+	<patient_identity id="5" identity_type_id="11"
+		patient_id="1" identity_data="JM" lastUpdated="2023-11-01 12:00:02" />
+	<patient_identity id="6" identity_type_id="5"
+		patient_id="1" identity_data="US119a36"
+		lastUpdated="2023-11-01 12:00:02" />
+	<patient_identity id="7" identity_type_id="6"
+		patient_id="1" identity_data="Truck Driver"
+		lastUpdated="2023-11-01 12:00:02" />
+	<patient_identity id="8" identity_type_id="8"
+		patient_id="1" identity_data="orgSite"
+		lastUpdated="2023-11-01 12:00:02" />
+	<patient_identity id="9" identity_type_id="15"
+		patient_id="1" identity_data="MBA Certificate"
+		lastUpdated="2023-11-01 12:00:02" />
+	<patient_identity id="10" identity_type_id="19"
+		patient_id="1" identity_data="Jinja" lastUpdated="2023-11-01 12:00:02" />
+	<patient_identity id="11" identity_type_id="20"
+		patient_id="1" identity_data="EastAfrica"
+		lastUpdated="2023-11-01 12:00:02" />
+	<patient_identity id="12" identity_type_id="16"
+		patient_id="1" identity_data="Married"
+		lastUpdated="2023-11-01 12:00:02" />
+	<patient_identity id="13" identity_type_id="21"
+		patient_id="1" identity_data="1234" lastUpdated="2023-11-01 12:00:02" />
+	<patient_identity id="14" identity_type_id="22"
+		patient_id="1" identity_data="124" lastUpdated="2023-11-01 12:00:02" />
+	<patient_identity id="15" identity_type_id="2"
+		patient_id="1" identity_data="123" lastUpdated="2023-11-01 12:00:02" />
+	<patient_identity id="16" identity_type_id="3"
+		patient_id="1" identity_data="BigMan"
+		lastUpdated="2023-11-01 12:00:02" />
+	<patient_identity id="17" identity_type_id="14"
+		patient_id="1" identity_data="EA400A1"
+		lastUpdated="2023-11-01 12:00:02" />
+
+	<!--PatientType catagory entries -->
+	<patient_type id="6" type="D" description="Discharged"
+		lastUpdated="2023-11-01 12:00:02" />
+</dataset>

@@ -1,31 +1,31 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-                                   "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+								"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping
-    package="org.openelisglobal.role.valueholder">
-    <class name="Role" table="system_role" optimistic-lock="version"
-        dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">system_role_seq</param>
-            </generator>
-        </id>
+	package="org.openelisglobal.role.valueholder">
+	<class name="Role" table="system_role" optimistic-lock="version"
+		dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">system_role_seq</param>
+			</generator>
+		</id>
 
-        <property name="name" type="java.lang.String" column="name"
-            not-null="true" />
-        <property name="description" type="java.lang.String"
-            column="description" />
-        <property name="groupingRole" type="boolean"
-            column="is_grouping_role" />
-        <property name="groupingParent"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
-            column="grouping_parent" />
-        <property name="nameKey" type="java.lang.String"
-            column="display_key" />
-        <property name="active" type="boolean" column="active" />
-        <property name="editable" type="boolean" column="editable" />
-    </class>
+		<property name="name" type="java.lang.String" column="name"
+			not-null="true" />
+		<property name="description" type="java.lang.String"
+			column="description" />
+		<property name="groupingRole" type="boolean"
+			column="is_grouping_role" />
+		<property name="groupingParent"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+			column="grouping_parent" />
+		<property name="nameKey" type="java.lang.String"
+			column="display_key" />
+		<property name="active" type="boolean" column="active" />
+		<property name="editable" type="boolean" column="editable" />
+	</class>
 </hibernate-mapping>

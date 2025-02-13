@@ -3,25 +3,25 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.sampledomain.valueholder.SampleDomain"
-        table="SAMPLE_DOMAIN" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">sample_domain_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class
+		name="org.openelisglobal.sampledomain.valueholder.SampleDomain"
+		table="SAMPLE_DOMAIN" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">sample_domain_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <property name="description" type="java.lang.String">
-            <column name="DOMAIN_DESCRIPTION" length="20" />
-        </property>
-        <property name="code" type="java.lang.String">
-            <column name="DOMAIN" length="1" unique="true" />
-        </property>
-    </class>
+		<property name="description" type="java.lang.String">
+			<column name="DOMAIN_DESCRIPTION" length="20" />
+		</property>
+		<property name="code" type="java.lang.String">
+			<column name="DOMAIN" length="1" unique="true" />
+		</property>
+	</class>
 </hibernate-mapping>

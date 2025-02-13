@@ -3,33 +3,33 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class
-        name="org.openelisglobal.sampleorganization.valueholder.SampleOrganization"
-        table="SAMPLE_ORGANIZATION" optimistic-lock="version"
-        dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">sample_org_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class
+		name="org.openelisglobal.sampleorganization.valueholder.SampleOrganization"
+		table="SAMPLE_ORGANIZATION" optimistic-lock="version"
+		dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">sample_org_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <many-to-one name="organization" lazy="false"
-            class="org.openelisglobal.organization.valueholder.Organization"
-            fetch="select">
-            <column name="ORG_ID" precision="10" scale="0" />
-        </many-to-one>
-        <many-to-one name="sample" lazy="false"
-            class="org.openelisglobal.sample.valueholder.Sample" fetch="select">
-            <column name="SAMP_ID" precision="10" scale="0" />
-        </many-to-one>
-        <property name="sampleOrganizationType"
-            type="java.lang.String">
-            <column name="SAMP_ORG_TYPE" length="1" />
-        </property>
-    </class>
+		<many-to-one name="organization" lazy="false"
+			class="org.openelisglobal.organization.valueholder.Organization"
+			fetch="select">
+			<column name="ORG_ID" precision="10" scale="0" />
+		</many-to-one>
+		<many-to-one name="sample" lazy="false"
+			class="org.openelisglobal.sample.valueholder.Sample" fetch="select">
+			<column name="SAMP_ID" precision="10" scale="0" />
+		</many-to-one>
+		<property name="sampleOrganizationType"
+			type="java.lang.String">
+			<column name="SAMP_ORG_TYPE" length="1" />
+		</property>
+	</class>
 </hibernate-mapping>

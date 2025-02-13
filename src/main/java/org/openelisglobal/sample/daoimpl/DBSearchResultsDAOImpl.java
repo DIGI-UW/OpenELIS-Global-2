@@ -25,6 +25,9 @@ import org.hibernate.Session;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.patientidentitytype.util.PatientIdentityTypeMap;
 import org.openelisglobal.sample.dao.SearchResultsDAO;
 import org.springframework.context.annotation.Primary;
@@ -129,6 +132,7 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
             externalID = '%' + externalID + '%';
             // patientID = '%' + patientID + '%';
             // guid = '%' + guid + '%';
+            String dobFormated = '%' + getFormatedDOB(dateOfBirth) + '%';
             dateOfBirth = '%' + dateOfBirth + '%';
             // gender = '%' + gender + '%';
 
@@ -158,6 +162,7 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
             }
             if (queryDateOfBirth) {
                 query.setParameter(DATE_OF_BIRTH, dateOfBirth);
+                query.setParameter(DATE_OF_BIRTH_FORMATED, dobFormated);
             }
             if (queryGender) {
                 query.setParameter(GENDER, gender);
@@ -248,6 +253,7 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
             }
             if (queryDateOfBirth) {
                 query.setParameter(DATE_OF_BIRTH, dateOfBirth);
+                query.setParameter(DATE_OF_BIRTH_FORMATED, getFormatedDOB(dateOfBirth));
             }
             if (queryGender) {
                 query.setParameter(GENDER, gender);
@@ -270,6 +276,15 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
         }
 
         return results;
+    }
+
+    private String getFormatedDOB(String dob) {
+        String format1 = "dd/MM/yyyy";
+        String format2 = "MM/dd/yyyy";
+        String dobFormated = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE)
+                .equals("fr-FR") ? DateUtil.formatStringDate(dob, format2) : DateUtil.formatStringDate(dob, format1);
+
+        return dobFormated;
     }
 
     /**
@@ -367,6 +382,8 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
         if (dateOfBirth) {
             queryBuilder.append(" p.entered_birth_date ilike :");
             queryBuilder.append(DATE_OF_BIRTH);
+            queryBuilder.append(" or p.entered_birth_date ilike :");
+            queryBuilder.append(DATE_OF_BIRTH_FORMATED);
             queryBuilder.append(" and");
         }
 

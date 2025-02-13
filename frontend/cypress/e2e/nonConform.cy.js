@@ -1,6 +1,4 @@
 import LoginPage from "../pages/LoginPage";
-import HomePage from "../pages/HomePage";
-import NonConform from "../pages/NonConformPage";
 
 let homePage = null;
 let loginPage = null;
@@ -65,7 +63,7 @@ describe("Report Non-Conforming Event", function () {
       nonConform.enterSearchField(order.labNo);
       nonConform.clickSearchButton();
       nonConform.validateSearchResult(order.labNo);
-      nonConform.clickCheckbox();
+      nonConform.clickCheckbox({ force: true });
       nonConform.clickGoToNceFormButton();
     });
 
@@ -80,7 +78,7 @@ describe("Report Non-Conforming Event", function () {
       nonConform.enterDescription(nonConformData.description);
       nonConform.enterSuspectedCause(nonConformData.suspectedCause);
       nonConform.enterCorrectiveAction(nonConformData.proposedCorrectiveAction);
-      nonConform.submitFormNce();
+      nonConform.submitForm();
     });
   });
 });
@@ -100,12 +98,12 @@ describe("View New Non-Conforming Event", function () {
       .getViewNonConformTitle()
       .should("contain.text", "View New Non Conform Event");
   });
-
   it("Should Search by Lab Number and Validate the results", function () {
     cy.fixture("EnteredOrder").then((order) => {
       nonConform.selectSearchType("Lab Number");
       nonConform.enterSearchField(order.labNo);
       nonConform.clickSearchButton();
+      //nonConform.clickRadioButtonNCE();
       nonConform.validateLabNoSearchResult(order.labNo);
     });
   });
@@ -148,13 +146,13 @@ describe("Corrective Actions", function () {
       .getViewNonConformTitle()
       .should("contain.text", "Nonconforming Events Corrective Action");
   });
-
   it("Should Search by Lab Number and Validate the results", function () {
     cy.fixture("EnteredOrder").then((order) => {
       nonConform.selectSearchType("Lab Number");
       nonConform.enterSearchField(order.labNo);
       nonConform.clickSearchButton();
-      nonConform.validateLabNoSearchResultCorective(order.labNo);
+      //nonConform.clickRadioButtonNCE();
+      nonConform.validateLabNoSearchResult(order.labNo);
     });
   });
 

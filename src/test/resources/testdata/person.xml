@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- * The contents of this file are subject to the Mozilla Public License
+	* Version 1.1 (the "License"); you may not use this file except in * compliance
+	with the License. You may obtain a copy of the License at * http://www.mozilla.org/MPL/
+	* * Software distributed under the License is distributed on an "AS IS" *
+	basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the *
+	License for the specific language governing rights and limitations under
+	* the License. * * The Original Code is OpenELIS code. * * Copyright (C)
+	ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+<dataset>
+	<!--Person category entries -->
+	<person id="1" last_name="Doe" first_name="John"
+		middle_name="joddy" city="Kampala" state="Kampala metropolitan"
+		zip_code="256" country="Uganda" work_phone="12345678"
+		home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
+		fax="3456" email="john@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+	<person id="2" last_name="Mulizi" first_name="James"
+		middle_name="Mark" city="Orion" state="Texas" zip_code="001"
+		country="USA" work_phone="10000001" home_phone="8000001"
+		cell_phone="0000000" primary_phone="10000001" fax="0001"
+		email="james@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+	<person id="3" last_name="Kukki" first_name="Faith"
+		middle_name="Siannah" city="Dallas" state="Texas" zip_code="001"
+		country="USA" work_phone="10000002" home_phone="8000003"
+		cell_phone="0000001" primary_phone="10000002" fax="0002"
+		email="siannah@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+
+</dataset>

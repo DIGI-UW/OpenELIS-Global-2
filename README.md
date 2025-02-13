@@ -50,6 +50,13 @@ see [OpenELIS-Docker setup](https://github.com/I-TECH-UW/openelis-docker)
 
          git clone https://github.com/username/OpenELIS-Global-2.git
 
+1.  innitialize and build sub modules
+
+        cd OpenELIS-Global-2
+        git submodule update --init --recursive
+        cd dataexport
+        mvn clean install -DskipTests
+
 1.  Build the War file
 
           mvn clean install -DskipTests
@@ -72,7 +79,7 @@ see [OpenELIS-Docker setup](https://github.com/I-TECH-UW/openelis-docker)
 
         docker-compose -f dev.docker-compose.yml up -d  --no-deps --force-recreate oe.openelis.org
 
-#### The Instaces can be accesed at
+#### The Instances can be accessed at
 
 | Instance     |                   URL                   | credentials (user : password) |
 | ------------ | :-------------------------------------: | ----------------------------: |
@@ -99,3 +106,9 @@ accessing any of these links, simply follow these steps:
     to properly format the Java code
 
         mvn spotless:apply
+
+### Pull request guidelines
+
+Please follow the [pull request tips](PULL_REQUEST_TIPS.md) in order to make
+life easy for the code reviewers by having a well defined and clean pull
+request.
