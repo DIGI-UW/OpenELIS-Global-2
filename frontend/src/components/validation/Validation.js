@@ -120,7 +120,7 @@ const Validation = (props) => {
     }
     setIsSubmitting(true);
     postToOpenElisServer(
-      "/rest/accessionValidationByRangeUpdate",
+      "/rest/AccessionValidation",
       JSON.stringify(props.results),
       handleResponse,
     );

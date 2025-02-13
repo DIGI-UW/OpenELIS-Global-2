@@ -41,7 +41,7 @@ public class WorkplanByPriorityRestController extends WorkplanRestController {
     @Autowired
     private UserService userService;
 
-    @RequestMapping(value = "/rest/workplan-by-priority", method = RequestMethod.GET)
+    @RequestMapping(value = "/rest/WorkPlanByPriority", method = RequestMethod.GET)
     public WorkplanForm showWorkPlanByPriority(HttpServletRequest request,
             @RequestParam(name = "priority", defaultValue = "") OrderPriority priority)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {

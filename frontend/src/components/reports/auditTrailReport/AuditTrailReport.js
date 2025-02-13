@@ -56,7 +56,7 @@ const AuditTrailReport = ({ id }) => {
       "/rest/AuditTrailReport?accessionNumber=" + labNo,
       (data) => {
         if (!data.log) {
-          setIsLabNoError("labe.audittrail.labNo.invalidaccessionnumber");
+          setIsLabNoError("label.audittrail.labNo.invalidaccessionnumber");
           setData(null);
           setAuditTrailItems([]);
           setIsLoading(false);

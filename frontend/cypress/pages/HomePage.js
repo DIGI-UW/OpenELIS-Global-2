@@ -208,11 +208,31 @@ class HomePage {
   //home page navigation
 
   afterAll() {
-    //This closes the navigation components after each test
-    cy.get(".icon-wrapper > svg.clickable-icon").click();
+    cy.get("#minimizeIcon").should("be.visible").click();
   }
+
+  searchBar() {
+    cy.get("#search-Icon").click();
+    cy.get("#searchItem").type("Smith");
+    cy.get("#patientSearch").click();
+    cy.wait(1000);
+    cy.get("#search-Icon").click();
+  }
+
+  clickNotifications() {
+    cy.get("#notification-Icon").click();
+    cy.wait(800);
+    cy.get("#notification-Icon").click();
+  }
+
+  clickUserIcon() {
+    cy.get("#user-Icon").click();
+    cy.wait(800);
+    cy.get("#user-Icon").click();
+  }
+
   selectInProgress() {
-    cy.contains("a.cds--link", "In Progress").click();
+    cy.get("#maximizeIcon").click();
   }
 
   selectReadyforValidation() {

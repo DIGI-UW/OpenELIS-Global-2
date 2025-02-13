@@ -27,19 +27,19 @@ export default function WorkplanSearchForm(props) {
   switch (type) {
     case "test":
       title = <FormattedMessage id="workplan.test.types" />;
-      urlToPost = "/rest/workplan-by-test?test_id=";
+      urlToPost = "/rest/WorkPlanByTest?test_id=";
       break;
     case "panel":
       title = <FormattedMessage id="workplan.panel.types" />;
-      urlToPost = "/rest/workplan-by-panel?panel_id=";
+      urlToPost = "/rest/WorkPlanByPanel?panel_id=";
       break;
     case "unit":
       title = <FormattedMessage id="workplan.unit.types" />;
-      urlToPost = "/rest/workplan-by-test-section?test_section_id=";
+      urlToPost = "/rest/WorkPlanByTestSection?test_section_id=";
       break;
     case "priority":
       title = <FormattedMessage id="workplan.priority.list" />;
-      urlToPost = "/rest/workplan-by-priority?priority=";
+      urlToPost = "/rest/WorkPlanByPriority?priority=";
       break;
     default:
       title = "";
