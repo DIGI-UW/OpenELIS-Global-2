@@ -38,6 +38,7 @@ import ImmunohistochemistryDashboard from "./components/immunohistochemistry/Imm
 import ImmunohistochemistryCaseView from "./components/immunohistochemistry/ImmunohistochemistryCaseView";
 import RoutedResultsViewer from "./components/patient/resultsViewer/results-viewer.tsx";
 import EOrderPage from "./components/eOrder/Index";
+import SampleEntryByProject from "./components/SampleEntryByProject/Index";
 import RoutineIndex from "./components/reports/routine/Index.js";
 import StudyIndex from "./components/reports/study/index.js";
 import ReportIndex from "./components/reports/Index.js";
@@ -396,6 +397,12 @@ export default function App() {
                   component={() => <AddOrder />}
                   role={Roles.RECEPTION}
                 />
+                {/* <SecureRoute
+                  path="/SampleEntryByProject"
+                  exact
+                  component={() => <SampleEntryByProject />}
+                  role={["Reception"]}
+                /> */}
                 <SecureRoute
                   path="/ModifyOrder"
                   exact
