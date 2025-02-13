@@ -68,7 +68,7 @@ const ExistingOrder = () => {
       fetchPatientData,
     );
     getFromOpenElisServer(
-      `/rest/sample-edit?accessionNumber=${accessionNumber}`,
+      `/rest/SampleEdit?accessionNumber=${accessionNumber}`,
       fetchOrderData,
     );
   };

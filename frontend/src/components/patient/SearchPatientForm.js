@@ -108,7 +108,7 @@ function SearchPatientForm(props) {
     console.log("Data to send:", dataToSend);
 
     postToOpenElisServer(
-      "/rest/patient-management",
+      "/rest/PatientManagement",
       JSON.stringify(dataToSend),
       (status) => {
         handlePost(status, patientId);
