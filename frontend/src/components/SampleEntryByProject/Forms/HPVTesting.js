@@ -1,0 +1,313 @@
+import React, { useState } from "react";
+import {
+  Form,
+  TextInput,
+  Select,
+  SelectItem,
+  Checkbox,
+  Grid,
+  Column,
+  Button,
+  Stack,
+  FormGroup,
+  Section,
+  ButtonSet,
+  Link,
+} from "@carbon/react";
+import { useIntl } from "react-intl";
+
+const initialFormValues = {
+  facility: {
+    centerCode: "",
+  },
+  patientInfo: {
+    labNo: "",
+    patientId: "",
+    hivStatus: "",
+    dateOfBirth: "",
+    age: {
+      years: "",
+    },
+  },
+  sampleInfo: {
+    clinicianName: "",
+    receivedDate: "",
+    receivedTime: "",
+    dateTaken: "",
+    timeTaken: "",
+  },
+  specimens: {
+    preserveCyt: false,
+  },
+  tests: {
+    hpvHR: false,
+    abbottRoche: false,
+    geneXpert: false,
+  },
+};
+
+function HPVTesting() {
+  const [formValues, setFormValues] = useState(initialFormValues);
+  const intl = useIntl();
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+
+    setFormValues((prev) => {
+      const [section, field] = name.split(".");
+      if (section && field) {
+        return {
+          ...prev,
+          [section]: {
+            ...prev[section],
+            [field]: type === "checkbox" ? checked : value,
+          },
+        };
+      }
+      return {
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      };
+    });
+  };
+
+  const handleLabNoScan = () => {
+    // Implement scanner functionality
+    console.log("Scanning lab number...");
+  };
+
+  const generateLabNo = () => {
+    // Implement lab number generation logic
+    console.log("Generating lab number...");
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    console.log("Form values:", formValues);
+  };
+
+  return (
+    <div className="specimen-collection-form">
+      <Form onSubmit={handleSubmit}>
+        <Grid>
+          <Column lg={16}>
+            <Stack gap={7}>
+              <Section>
+                <FormGroup legendText="Facility">
+                  <Select
+                    id="center-code"
+                    labelText="* Center Code"
+                    name="facility.centerCode"
+                    value={formValues.facility.centerCode}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <SelectItem value="" text="Select Center Code" />
+                    {/* API call to get array and then map to get SelectItem Components */}
+                  </Select>
+                </FormGroup>
+              </Section>
+
+              <Section>
+                <FormGroup legendText="Patient Information">
+                  <Stack gap={5}>
+                    <div className="lab-no-container">
+                      <TextInput
+                        id="lab-no"
+                        labelText="* Lab No"
+                        name="patientInfo.labNo"
+                        value={formValues.patientInfo.labNo}
+                        onChange={handleInputChange}
+                        required
+                      />
+                      <div className="lab-no-actions">
+                        <Button
+                          kind="ghost"
+                          hasIconOnly
+                          iconDescription="Scan"
+                          onClick={handleLabNoScan}
+                        />
+                        <span className="or-text">OR</span>
+                        <Link onClick={() => {}}>Enter Manually</Link>
+                        <span className="or-text">OR</span>
+                        <Link onClick={generateLabNo}>Generate</Link>
+                      </div>
+                    </div>
+
+                    <TextInput
+                      id="patient-id"
+                      labelText="* Patient Identification"
+                      name="patientInfo.patientId"
+                      value={formValues.patientInfo.patientId}
+                      onChange={handleInputChange}
+                      required
+                    />
+
+                    <Select
+                      id="hiv-status"
+                      labelText="HIV Status"
+                      name="patientInfo.hivStatus"
+                      value={formValues.patientInfo.hivStatus}
+                      onChange={handleInputChange}
+                    >
+                      <SelectItem value="" text="Select HIV Status" />
+                      {/* HIV Status yahan pr ane chahiye, SelectItem ka use krke */}
+                    </Select>
+
+                    <TextInput
+                      id="date-of-birth"
+                      labelText="* Date of Birth (dd/mm/yyyy)"
+                      type="date"
+                      name="patientInfo.dateOfBirth"
+                      value={formValues.patientInfo.dateOfBirth}
+                      onChange={handleInputChange}
+                      required
+                    />
+
+                    <TextInput
+                      id="age-years"
+                      labelText="Age (years)"
+                      type="number"
+                      name="patientInfo.age.years"
+                      value={formValues.patientInfo.age.years}
+                      onChange={handleInputChange}
+                    />
+                  </Stack>
+                </FormGroup>
+              </Section>
+
+              <Section>
+                <FormGroup legendText="Sample Information">
+                  <Stack gap={5}>
+                    <TextInput
+                      id="clinician-name"
+                      labelText="Name of Clinician"
+                      name="sampleInfo.clinicianName"
+                      value={formValues.sampleInfo.clinicianName}
+                      onChange={handleInputChange}
+                    />
+
+                    <TextInput
+                      id="received-date"
+                      labelText="* Received Date (dd/mm/yyyy)"
+                      type="date"
+                      name="sampleInfo.receivedDate"
+                      value={formValues.sampleInfo.receivedDate}
+                      onChange={handleInputChange}
+                      required
+                    />
+
+                    <TextInput
+                      id="received-time"
+                      labelText="Received Time (HH:mm)"
+                      type="time"
+                      name="sampleInfo.receivedTime"
+                      value={formValues.sampleInfo.receivedTime}
+                      onChange={handleInputChange}
+                    />
+
+                    <TextInput
+                      id="date-taken"
+                      labelText="* Date Taken (dd/mm/yyyy)"
+                      type="date"
+                      name="sampleInfo.dateTaken"
+                      value={formValues.sampleInfo.dateTaken}
+                      onChange={handleInputChange}
+                      required
+                    />
+
+                    <TextInput
+                      id="time-taken"
+                      labelText="Time Taken (HH:mm)"
+                      type="time"
+                      name="sampleInfo.timeTaken"
+                      value={formValues.sampleInfo.timeTaken}
+                      onChange={handleInputChange}
+                    />
+                  </Stack>
+                </FormGroup>
+              </Section>
+
+              <Section>
+                <FormGroup legendText="Specimens Collected">
+                  <Checkbox
+                    id="preserve-cyt"
+                    labelText="PreservCyt (Cervico-vaginal sample)"
+                    name="specimens.preserveCyt"
+                    checked={formValues.specimens.preserveCyt}
+                    onChange={handleInputChange}
+                  />
+                </FormGroup>
+              </Section>
+
+              <Section>
+                <FormGroup legendText="Tests">
+                  <Stack gap={3}>
+                    <Checkbox
+                      id="hpv-hr"
+                      labelText="test HPV HR"
+                      name="tests.hpvHR"
+                      checked={formValues.tests.hpvHR}
+                      onChange={handleInputChange}
+                    />
+                    <Checkbox
+                      id="abbott-roche"
+                      labelText="Analysis on Abbott or Roche equipment"
+                      name="tests.abbottRoche"
+                      checked={formValues.tests.abbottRoche}
+                      onChange={handleInputChange}
+                    />
+                    <Checkbox
+                      id="gene-xpert"
+                      labelText="Analysis on GeneXpert"
+                      name="tests.geneXpert"
+                      checked={formValues.tests.geneXpert}
+                      onChange={handleInputChange}
+                    />
+                  </Stack>
+                </FormGroup>
+              </Section>
+
+              <Section>
+                <ButtonSet>
+                  <Button kind="primary" type="submit">
+                    Save
+                  </Button>
+                  <Button kind="secondary">Cancel</Button>
+                </ButtonSet>
+              </Section>
+            </Stack>
+          </Column>
+        </Grid>
+      </Form>
+
+      <style>{`
+        .specimen-collection-form {
+          padding: 1rem;
+        }
+        .lab-no-container {
+          display: flex;
+          align-items: flex-end;
+          gap: 1rem;
+        }
+        .lab-no-actions {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .or-text {
+          color: #525252;
+          margin: 0 0.25rem;
+        }
+        :global(.cds--form-item) {
+          margin-bottom: 1rem;
+        }
+        :global(.cds--fieldset) {
+          margin-bottom: 1.5rem;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+export default HPVTesting;

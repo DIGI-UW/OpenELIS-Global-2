@@ -1,0 +1,91 @@
+.edit-record-container {
+  padding: 2rem;
+  background-color: #ffffff;
+  min-height: 100vh;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.edit-record-title {
+  font-size: 2rem;
+  font-weight: 400;
+  color: #161616;
+  margin-bottom: 2rem;
+  padding: 0 2rem;
+}
+
+.edit-record-form {
+  background-color: #f4f4f4;
+  padding: 2rem;
+  width: 90vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.form-content {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.form-row {
+  margin-bottom: 1.5rem;
+}
+
+.form-group {
+  width: 100%;
+}
+
+.form-select {
+  width: 100%;
+  background-color: #ffffff;
+}
+
+.button-container {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-start;
+  margin-top: 2rem;
+}
+
+.save-button {
+  background-color: #0f62fe;
+  color: #ffffff;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.save-button:hover {
+  background-color: #0353e9;
+}
+
+.cancel-button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .edit-record-container {
+    padding: 1rem;
+  }
+
+  .form-content {
+    padding: 0 1rem;
+  }
+
+  .button-container {
+    flex-direction: column;
+  }
+}
