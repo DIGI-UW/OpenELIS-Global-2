@@ -319,12 +319,14 @@ export default function App() {
                   component={() => <AddOrder />}
                   role={["Reception"]}
                 />
+                {/* 
                 <SecureRoute
                   path="/SampleEntryByProject"
                   exact
                   component={() => <InitialEntry />}
                   role="Reception"
                 />
+                */}
                 <SecureRoute
                   path="/ModifyOrder"
                   exact
