@@ -50,12 +50,51 @@ const styles = {
     height: "40px",
     padding: "5px",
   },
-  "@media (max-width: 768px)": {
+  tableHeader: {
+    fontSize: "1rem",
+  },
+  tableCell: {
+    fontSize: "1rem",
+  },
+  "@media (max-width: 1024px)": {
+    adminPageContent: {
+      padding: "0.5rem",
+    },
     buttonContainer: {
       flexDirection: "column",
+      alignItems: "center",
     },
     responsiveButton: {
       width: "100%",
+      maxWidth: "100%",
+      fontSize: "0.875rem",
+    },
+    responsiveIconButton: {
+      width: "35px",
+      height: "35px",
+    },
+    tableHeader: {
+      fontSize: "0.875rem",
+    },
+    tableCell: {
+      fontSize: "0.875rem",
+    },
+  },
+  "@media (max-width: 768px)": {
+    adminPageContent: {
+      padding: "0.5rem",
+    },
+    buttonContainer: {
+      flexDirection: "column",
+      alignItems: "center",
+    },
+    responsiveButton: {
+      width: "100%",
+      fontSize: "0.75rem",
+    },
+    responsiveIconButton: {
+      width: "30px",
+      height: "30px",
     },
     tableHeader: {
       fontSize: "0.75rem",
@@ -65,9 +104,22 @@ const styles = {
     },
   },
   "@media (max-width: 480px)": {
+    adminPageContent: {
+      padding: "0.25rem",
+    },
     responsiveButton: {
-      fontSize: "0.875rem",
-      padding: "0.5rem",
+      width: "100%",
+      fontSize: "0.75rem",
+    },
+    responsiveIconButton: {
+      width: "25px",
+      height: "25px",
+    },
+    tableHeader: {
+      fontSize: "0.75rem",
+    },
+    tableCell: {
+      fontSize: "0.75rem",
     },
   },
 };
