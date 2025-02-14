@@ -57,6 +57,10 @@ see [OpenELIS-Docker setup](https://github.com/I-TECH-UW/openelis-docker)
         cd dataexport
         mvn clean install -DskipTests
 
+1.  Navigate to the repository directory:
+
+         cd OpenELIS-Global-2
+
 1.  Build the War file
 
           mvn clean install -DskipTests
