@@ -1,13 +1,8 @@
-import React, {
-  useContext,
-  useState,
-  useEffect,
-  useRef,
-  useMemo,
-  useCallback,
-} from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import {
+  Form,
   Heading,
+  Button,
   Loading,
   Grid,
   Column,
@@ -26,9 +21,13 @@ import {
   Search,
   Select,
   SelectItem,
+  Stack,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
+  postToOpenElisServer,
+  postToOpenElisServerFormData,
+  postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
 import { NotificationContext } from "../../layout/Layout.js";
@@ -41,10 +40,7 @@ import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import CustomCheckBox from "../../common/CustomCheckBox.js";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
 
-const INITIAL_PAGE_SIZE = 10;
-const PAGINATION_SIZES = [10, 20];
-
-const breadcrumbs = [
+let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
@@ -53,246 +49,311 @@ const breadcrumbs = [
   },
 ];
 
-const transformUserManagementList = (menuList) =>
-  menuList.map((item) => ({
-    id: item.systemUserId,
-    combinedUserID: item.combinedUserID,
-    firstName: item.firstName,
-    lastName: item.lastName,
-    loginName: item.loginName,
-    expDate: item.expDate,
-    locked: item.locked,
-    disabled: item.disabled,
-    active: item.active,
-    timeout: item.timeout,
-  }));
-
 function UserManagement() {
-  const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+
+  const intl = useIntl();
+
   const componentMounted = useRef(false);
-
-  // Pagination state
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(INITIAL_PAGE_SIZE);
-  const [startingRecNo, setStartingRecNo] = useState(1);
-  const [fromRecordCount, setFromRecordCount] = useState("");
-  const [toRecordCount, setToRecordCount] = useState("");
-  const [totalRecordCount, setTotalRecordCount] = useState("");
-  const [paging, setPaging] = useState(1);
-
-  // Selection state
+  const [pageSize, setPageSize] = useState(10);
+  const [deactivateButton, setDeactivateButton] = useState(true);
+  const [modifyButton, setModifyButton] = useState(true);
   const [selectedRowIds, setSelectedRowIds] = useState([]);
   const [selectedRowCombinedUserID, setSelectedRowCombinedUserID] = useState(
     [],
   );
-
-  // UI state
+  const [selectedRowCombinedUserIDPost, setSelectedRowCombinedUserIDPost] =
+    useState([]);
+  const [selectedRowIdsPost, setSelectedRowIdsPost] = useState();
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [filters, setFilters] = useState([]);
-
-  // Data state
-  const [userManagementList, setUserManagementList] = useState();
+  const [startingRecNo, setStartingRecNo] = useState(1);
+  const [totalRecordCount, setTotalRecordCount] = useState("");
+  const [paging, setPaging] = useState(1);
+  const [fromRecordCount, setFromRecordCount] = useState("");
+  const [toRecordCount, setToRecordCount] = useState("");
   const [searchedUserManagementList, setSearchedUserManagementList] =
     useState();
+  const [searchedUserManagementListShow, setSearchedUserManagementListShow] =
+    useState([]);
+  const [userManagementList, setUserManagementList] = useState();
+  const [userManagementListShow, setUserManagementListShow] = useState([]);
+  const [testSectionsSelect, setTestSectionsSelect] = useState("");
   const [testSectionsShow, setTestSectionsShow] = useState({});
 
-  // Memoized derived state
-  const deactivateButton = useMemo(
-    () => selectedRowIds.length === 0,
-    [selectedRowIds],
-  );
-  const modifyButton = useMemo(
-    () => selectedRowIds.length !== 1,
-    [selectedRowIds],
-  );
+  function deleteDeactivateUserManagement(event) {
+    event.preventDefault();
+    setLoading(true);
+    postToOpenElisServerJsonResponse(
+      `/rest/DeleteUnifiedSystemUser?ID=${selectedRowCombinedUserID.join(
+        ",",
+      )}&startingRecNo=1`,
+      JSON.stringify(selectedRowCombinedUserIDPost),
+      (res) => {
+        deleteDeactivateUserManagementCallback(res);
+      },
+    );
+  }
 
-  const userManagementListShow = useMemo(
-    () =>
-      userManagementList?.menuList
-        ? transformUserManagementList(userManagementList.menuList)
-        : [],
-    [userManagementList],
-  );
+  const handleNextPage = () => {
+    setPaging((pager) => Math.max(pager, 2));
+    setStartingRecNo(fromRecordCount);
+  };
 
-  const searchedUserManagementListShow = useMemo(
-    () =>
-      searchedUserManagementList?.menuList
-        ? transformUserManagementList(searchedUserManagementList.menuList)
-        : [],
-    [searchedUserManagementList],
-  );
+  const handlePreviousPage = () => {
+    setPaging((pager) => Math.max(pager - 1, 1));
+    setStartingRecNo(Math.max(fromRecordCount, 1));
+  };
 
-  // Memoized handlers
-  const handleDeleteDeactivateUserManagement = useCallback(
-    async (event) => {
-      event.preventDefault();
-      setLoading(true);
+  useEffect(() => {
+    const selectedIDsObject = {
+      selectedIDs: selectedRowIds,
+    };
 
-      try {
-        const res = await postToOpenElisServerJsonResponse(
-          `/rest/DeleteUnifiedSystemUser?ID=${selectedRowCombinedUserID.join(",")}&startingRecNo=1`,
-          JSON.stringify({ selectedIDs: selectedRowCombinedUserID }),
-        );
+    setSelectedRowIdsPost(selectedIDsObject);
+  }, [selectedRowIds, userManagementListShow]);
 
-        if (res) {
-          setNotificationVisible(true);
-          addNotification({
-            title: intl.formatMessage({ id: "notification.title" }),
-            message: intl.formatMessage({
-              id: "notification.user.post.delete.success",
-            }),
-            kind: NotificationKinds.success,
-          });
-        } else {
-          throw new Error("Server error");
-        }
-      } catch (error) {
-        addNotification({
-          kind: NotificationKinds.error,
-          title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage({ id: "server.error.msg" }),
-        });
-        setNotificationVisible(true);
-      } finally {
-        setLoading(false);
-        setTimeout(() => window.location.reload(), 200);
-      }
-    },
-    [selectedRowCombinedUserID, intl, addNotification, setNotificationVisible],
-  );
+  useEffect(() => {
+    const selectedRowCombinedUserIDObject = {
+      selectedIDs: selectedRowCombinedUserID,
+    };
 
-  const handlePageChange = useCallback(({ page, pageSize }) => {
+    setSelectedRowCombinedUserIDPost(selectedRowCombinedUserIDObject);
+  }, [selectedRowCombinedUserID, userManagementListShow]);
+
+  function deleteDeactivateUserManagementCallback(res) {
+    if (res) {
+      setLoading(false);
+      setNotificationVisible(true);
+      addNotification({
+        title: intl.formatMessage({
+          id: "notification.title",
+        }),
+        message: intl.formatMessage({
+          id: "notification.user.post.delete.success",
+        }),
+        kind: NotificationKinds.success,
+      });
+      setTimeout(() => {
+        window.location.reload();
+      }, 200);
+    } else {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "server.error.msg" }),
+      });
+      setNotificationVisible(true);
+      setTimeout(() => {
+        window.location.reload();
+      }, 200);
+    }
+  }
+
+  const handlePageChange = ({ page, pageSize }) => {
     setPage(page);
     setPageSize(pageSize);
     setSelectedRowIds([]);
     setSelectedRowCombinedUserID([]);
-  }, []);
+  };
 
-  const handlePanelSearchChange = useCallback((event) => {
-    setIsSearching(true);
-    setPaging(1);
-    setStartingRecNo(1);
-    setPanelSearchTerm(event.target.value);
-    setSelectedRowIds([]);
-  }, []);
+  const handleMenuItems = (res) => {
+    if (!res) {
+      setLoading(true);
+    } else {
+      setUserManagementList(res);
+    }
+  };
 
-  const handleTestSectionsSelectChange = useCallback((e) => {
-    setRoleFilter(e.target.value);
-  }, []);
-
-  // Memoized table headers
-  const TABLE_HEADERS = useMemo(
-    () => [
-      {
-        key: "select",
-        header: intl.formatMessage({ id: "unifiedSystemUser.select" }),
-      },
-      {
-        key: "firstName",
-        header: intl.formatMessage({ id: "systemuser.firstName" }),
-      },
-      {
-        key: "lastName",
-        header: intl.formatMessage({ id: "systemuser.lastName" }),
-      },
-      {
-        key: "loginName",
-        header: intl.formatMessage({ id: "systemuser.loginName" }),
-      },
-      {
-        key: "expDate",
-        header: intl.formatMessage({ id: "login.password.expired.date" }),
-      },
-      {
-        key: "locked",
-        header: intl.formatMessage({ id: "login.account.locked" }),
-      },
-      {
-        key: "disabled",
-        header: intl.formatMessage({ id: "login.account.disabled" }),
-      },
-      {
-        key: "active",
-        header: intl.formatMessage({ id: "systemuser.isActive" }),
-      },
-      { key: "timeout", header: intl.formatMessage({ id: "login.timeout" }) },
-    ],
-    [intl],
-  );
-
-  // Effects
   useEffect(() => {
     componentMounted.current = true;
+    setLoading(true);
+    getFromOpenElisServer(
+      `/rest/SearchUnifiedSystemUserMenu?search=N&startingRecNo=${startingRecNo}&filter=${filters.join(
+        ",",
+      )}&roleFilter=${roleFilter}`,
+      handleMenuItems,
+    );
     return () => {
       componentMounted.current = false;
+      setLoading(false);
     };
-  }, []);
+  }, [roleFilter, filters, startingRecNo]);
+
+  const handleSearchedProviderMenuList = (res) => {
+    if (!res) {
+      setLoading(true);
+    } else {
+      setSearchedUserManagementList(res);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const res = await getFromOpenElisServer(
-          `/rest/SearchUnifiedSystemUserMenu?search=N&startingRecNo=${startingRecNo}&filter=${filters.join(",")}&roleFilter=${roleFilter}`,
-        );
-        if (componentMounted.current) {
-          setUserManagementList(res);
-          if (res?.testSections) {
-            setTestSectionsShow(res.testSections);
-          }
-        }
-      } finally {
-        setLoading(false);
+    getFromOpenElisServer(
+      `/rest/SearchUnifiedSystemUserMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}&filter=${filters.join(
+        ",",
+      )}&roleFilter=${roleFilter}`,
+      handleSearchedProviderMenuList,
+    );
+  }, [panelSearchTerm, roleFilter, filters, startingRecNo]);
+
+  useEffect(() => {
+    if (userManagementListShow) {
+      if (selectedRowIds.length > 0) {
+        const combinedIds = selectedRowIds.map((id) => {
+          const selectedRow = userManagementListShow.find(
+            (row) => row.id === id,
+          );
+          return selectedRow.combinedUserID;
+        });
+        setSelectedRowCombinedUserID(combinedIds);
+      } else {
+        setSelectedRowCombinedUserID([]);
       }
-    };
-    fetchData();
-  }, [roleFilter, filters, startingRecNo]);
+    }
+  }, [selectedRowIds, userManagementListShow]);
 
   useEffect(() => {
     if (userManagementList) {
-      const { fromRecordCount, toRecordCount, totalRecordCount } =
-        userManagementList;
-      setFromRecordCount(fromRecordCount);
-      setToRecordCount(toRecordCount);
-      setTotalRecordCount(totalRecordCount);
+      const pagination = {
+        totalRecordCount: userManagementList.totalRecordCount,
+        fromRecordCount: userManagementList.fromRecordCount,
+        toRecordCount: userManagementList.toRecordCount,
+      };
+      setFromRecordCount(pagination.fromRecordCount);
+      setToRecordCount(pagination.toRecordCount);
+      setTotalRecordCount(pagination.totalRecordCount);
+
+      const newUserManagementList = userManagementList.menuList.map((item) => {
+        return {
+          id: item.systemUserId,
+          combinedUserID: item.combinedUserID,
+          firstName: item.firstName,
+          lastName: item.lastName,
+          loginName: item.loginName,
+          expDate: item.expDate,
+          locked: item.locked,
+          disabled: item.disabled,
+          active: item.active,
+          timeout: item.timeout,
+        };
+      });
+      const newUserManagementListArray = Object.values(newUserManagementList);
+      setUserManagementListShow(newUserManagementListArray);
+
+      const testSections = userManagementList.testSections.map((item) => {
+        return {
+          id: item.id,
+          value: item.value,
+        };
+      });
+
+      setTestSectionsShow(testSections);
     }
   }, [userManagementList]);
 
   useEffect(() => {
-    if (isSearching) {
-      const fetchSearchResults = async () => {
-        const res = await getFromOpenElisServer(
-          `/rest/SearchUnifiedSystemUserMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}&filter=${filters.join(",")}&roleFilter=${roleFilter}`,
-        );
-        setSearchedUserManagementList(res);
-      };
-      fetchSearchResults();
+    if (searchedUserManagementList) {
+      const newUserManagementList = searchedUserManagementList.menuList.map(
+        (item) => {
+          return {
+            id: item.systemUserId,
+            combinedUserID: item.combinedUserID,
+            firstName: item.firstName,
+            lastName: item.lastName,
+            loginName: item.loginName,
+            expDate: item.expDate,
+            locked: item.locked,
+            disabled: item.disabled,
+            active: item.active,
+            timeout: item.timeout,
+          };
+        },
+      );
+      const newUserManagementListArray = Object.values(newUserManagementList);
+      setSearchedUserManagementListShow(newUserManagementListArray);
     }
-  }, [panelSearchTerm, roleFilter, filters, startingRecNo, isSearching]);
+  }, [searchedUserManagementList]);
 
-  if (!loading) {
-    return <Loading />;
+  useEffect(() => {
+    if (selectedRowIds.length === 1) {
+      setModifyButton(false);
+    } else {
+      setModifyButton(true);
+    }
+  }, [selectedRowIds]);
+
+  const renderCell = (cell, row) => {
+    if (cell.info.header === "select") {
+      return (
+        <TableSelectRow
+          key={cell.id}
+          id={cell.id}
+          checked={selectedRowIds.includes(row.id)}
+          name="selectRowCheckbox"
+          ariaLabel="selectRows"
+          onSelect={() => {
+            setDeactivateButton(false);
+            if (selectedRowIds.includes(row.id)) {
+              setSelectedRowIds(selectedRowIds.filter((id) => id !== row.id));
+            } else {
+              setSelectedRowIds([...selectedRowIds, row.id]);
+            }
+          }}
+        />
+      );
+    } else {
+      return <TableCell key={cell.id}>{cell.value}</TableCell>;
+    }
+  };
+
+  const handlePanelSearchChange = (event) => {
+    setIsSearching(true);
+    setPaging(1);
+    setStartingRecNo(1);
+    const query = event.target.value;
+    setPanelSearchTerm(query);
+    setSelectedRowIds([]);
+  };
+
+  useEffect(() => {
+    if (isSearching && panelSearchTerm === "") {
+      setIsSearching(false);
+      setPaging(1);
+      setStartingRecNo(1);
+    }
+  }, [isSearching, panelSearchTerm]);
+
+  useEffect(() => {
+    if (selectedRowIds.length === 0) {
+      setDeactivateButton(true);
+    }
+  }, [selectedRowIds]);
+
+  function handleTestSectionsSelectChange(e) {
+    setTestSectionsSelect(e.target.value);
+    setRoleFilter(e.target.value);
   }
 
-  const currentList = isSearching
-    ? searchedUserManagementListShow
-    : userManagementListShow;
-  const paginatedList = currentList.slice(
-    (page - 1) * pageSize,
-    page * pageSize,
-  );
+  if (!loading) {
+    return (
+      <>
+        <Loading />
+      </>
+    );
+  }
 
   return (
     <>
-      {notificationVisible && <AlertDialog />}
+      {notificationVisible === true ? <AlertDialog /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
-        <Grid fullWidth>
+        <Grid fullWidth={true}>
           <Column lg={16} md={8} sm={4}>
             <Section>
               <Heading>
@@ -301,9 +362,15 @@ function UserManagement() {
             </Section>
             <br />
             <Section>
-              <Heading>
-                <FormattedMessage id="user.select.instruction" />
-              </Heading>
+              <Section>
+                <Section>
+                  <Section>
+                    <Heading>
+                      <FormattedMessage id="user.select.instruction" />
+                    </Heading>
+                  </Section>
+                </Section>
+              </Section>
             </Section>
             <br />
             <Section>
@@ -316,11 +383,13 @@ function UserManagement() {
                   fromRecordCount={fromRecordCount}
                   toRecordCount={toRecordCount}
                   totalRecordCount={totalRecordCount}
-                  handleDeleteDeactivate={handleDeleteDeactivateUserManagement}
+                  handlePreviousPage={handlePreviousPage}
+                  handleNextPage={handleNextPage}
+                  deleteDeactivate={deleteDeactivateUserManagement}
                   id={selectedRowCombinedUserID[0]}
-                  otherParmsInLink="&startingRecNo=1&roleFilter="
-                  addButtonRedirectLink="/MasterListsPage#userEdit?ID=0&startingRecNo=1&roleFilter="
-                  modifyButtonRedirectLink="/MasterListsPage#userEdit?ID="
+                  otherParmsInLink={`&startingRecNo=1&roleFilter=`}
+                  addButtonRedirectLink={`/MasterListsPage#userEdit?ID=0&startingRecNo=1&roleFilter=`}
+                  modifyButtonRedirectLink={`/MasterListsPage#userEdit?ID=`}
                   type="type2"
                 />
                 <br />
@@ -328,7 +397,6 @@ function UserManagement() {
             </Section>
           </Column>
         </Grid>
-
         <div className="orderLegendBody">
           <Grid>
             <Column lg={16} md={8} sm={4}>
@@ -343,14 +411,18 @@ function UserManagement() {
                     id: "unifiedSystemUser.browser.search.placeholder",
                   })}
                   onChange={handlePanelSearchChange}
-                  value={panelSearchTerm || ""}
-                />
+                  value={(() => {
+                    if (panelSearchTerm) {
+                      return panelSearchTerm;
+                    }
+                    return "";
+                  })()}
+                ></Search>
               </Section>
             </Column>
           </Grid>
           <br />
-
-          <Grid fullWidth>
+          <Grid fullWidth={true}>
             <Column lg={2} md={2} sm={1}>
               <FormattedMessage id="menu.label.filter" />
             </Column>
@@ -358,11 +430,15 @@ function UserManagement() {
               <Select
                 id="filters"
                 labelText={<FormattedMessage id="menu.label.filter.role" />}
-                defaultValue={testSectionsShow?.[0]?.id || ""}
+                defaultValue={
+                  testSectionsShow && testSectionsShow.length > 0
+                    ? testSectionsShow[0].id
+                    : ""
+                }
                 onChange={handleTestSectionsSelectChange}
               >
                 <SelectItem key="" value="" text="" />
-                {testSectionsShow?.length > 0 ? (
+                {testSectionsShow && testSectionsShow.length > 0 ? (
                   testSectionsShow.map((section) => (
                     <SelectItem
                       key={section.id}
@@ -384,11 +460,13 @@ function UserManagement() {
                 id="only-active"
                 label={<FormattedMessage id="menu.label.filter.active" />}
                 onChange={(isChecked) => {
-                  setFilters((prev) =>
-                    isChecked
-                      ? [...prev, "isActive"]
-                      : prev.filter((filter) => filter !== "isActive"),
-                  );
+                  if (isChecked) {
+                    setFilters([...filters, "isActive"]);
+                  } else {
+                    setFilters(
+                      filters.filter((filter) => filter !== "isActive"),
+                    );
+                  }
                 }}
               />
               <br />
@@ -396,153 +474,466 @@ function UserManagement() {
                 id="only-administrator"
                 label={<FormattedMessage id="menu.label.filter.admin" />}
                 onChange={(isChecked) => {
-                  setFilters((prev) =>
-                    isChecked
-                      ? [...prev, "isAdmin"]
-                      : prev.filter((filter) => filter !== "isAdmin"),
-                  );
+                  if (isChecked) {
+                    setFilters([...filters, "isAdmin"]);
+                  } else {
+                    setFilters(
+                      filters.filter((filter) => filter !== "isAdmin"),
+                    );
+                  }
                 }}
               />
             </Column>
           </Grid>
           <br />
-
-          <Grid fullWidth className="gridBoundary">
-            <Column lg={16} md={8} sm={4}>
-              <DataTable rows={paginatedList} headers={TABLE_HEADERS}>
-                {({
-                  rows,
-                  headers,
-                  getHeaderProps,
-                  getTableProps,
-                  getSelectionProps,
-                }) => (
-                  <TableContainer>
-                    <Table {...getTableProps()}>
-                      <TableHead>
-                        <TableRow>
-                          <TableSelectAll
-                            id="table-select-all"
-                            {...getSelectionProps()}
-                            checked={
-                              selectedRowIds.length === pageSize &&
-                              currentList
-                                .slice((page - 1) * pageSize, page * pageSize)
-                                .filter(
-                                  (row) =>
-                                    !row.disabled &&
-                                    selectedRowIds.includes(row.id),
-                                ).length === pageSize
-                            }
-                            indeterminate={
-                              selectedRowIds.length > 0 &&
-                              selectedRowIds.length <
-                                currentList
-                                  .slice((page - 1) * pageSize, page * pageSize)
-                                  .filter((row) => !row.disabled).length
-                            }
-                            onSelect={() => {
-                              const currentPageIds = currentList
-                                .slice((page - 1) * pageSize, page * pageSize)
-                                .filter((row) => !row.disabled)
-                                .map((row) => row.id);
-
-                              setSelectedRowIds((prev) =>
-                                prev.length === pageSize &&
-                                currentPageIds.every((id) => prev.includes(id))
-                                  ? []
-                                  : currentPageIds.filter(
-                                      (id) => !prev.includes(id),
-                                    ),
-                              );
-                            }}
-                          />
-                          {headers.map(
-                            (header) =>
-                              header.key !== "select" && (
-                                <TableHeader
-                                  key={header.key}
-                                  {...getHeaderProps({ header })}
+          {isSearching ? (
+            <>
+              <Grid fullWidth={true} className="gridBoundary">
+                <Column lg={16} md={8} sm={4}>
+                  <br />
+                  <DataTable
+                    rows={searchedUserManagementListShow.slice(
+                      (page - 1) * pageSize,
+                      page * pageSize,
+                    )}
+                    headers={[
+                      {
+                        key: "select",
+                        header: intl.formatMessage({
+                          id: "unifiedSystemUser.select",
+                        }),
+                      },
+                      {
+                        key: "firstName",
+                        header: intl.formatMessage({
+                          id: "systemuser.firstName",
+                        }),
+                      },
+                      {
+                        key: "lastName",
+                        header: intl.formatMessage({
+                          id: "systemuser.lastName",
+                        }),
+                      },
+                      {
+                        key: "loginName",
+                        header: intl.formatMessage({
+                          id: "systemuser.loginName",
+                        }),
+                      },
+                      {
+                        key: "expDate",
+                        header: intl.formatMessage({
+                          id: "login.password.expired.date",
+                        }),
+                      },
+                      {
+                        key: "locked",
+                        header: intl.formatMessage({
+                          id: "login.account.locked",
+                        }),
+                      },
+                      {
+                        key: "disabled",
+                        header: intl.formatMessage({
+                          id: "login.account.disabled",
+                        }),
+                      },
+                      {
+                        key: "active",
+                        header: intl.formatMessage({
+                          id: "systemuser.isActive",
+                        }),
+                      },
+                      {
+                        key: "timeout",
+                        header: intl.formatMessage({
+                          id: "login.timeout",
+                        }),
+                      },
+                    ]}
+                  >
+                    {({
+                      rows,
+                      headers,
+                      getHeaderProps,
+                      getTableProps,
+                      getSelectionProps,
+                    }) => (
+                      <TableContainer>
+                        <Table {...getTableProps()}>
+                          <TableHead>
+                            <TableRow>
+                              <TableSelectAll
+                                id="table-select-all"
+                                {...getSelectionProps()}
+                                checked={
+                                  selectedRowIds.length === pageSize &&
+                                  searchedUserManagementListShow
+                                    .slice(
+                                      (page - 1) * pageSize,
+                                      page * pageSize,
+                                    )
+                                    .filter(
+                                      (row) =>
+                                        !row.disabled &&
+                                        selectedRowIds.includes(row.id),
+                                    ).length === pageSize
+                                }
+                                indeterminate={
+                                  selectedRowIds.length > 0 &&
+                                  selectedRowIds.length <
+                                    searchedUserManagementListShow
+                                      .slice(
+                                        (page - 1) * pageSize,
+                                        page * pageSize,
+                                      )
+                                      .filter((row) => !row.disabled).length
+                                }
+                                onSelect={() => {
+                                  setDeactivateButton(false);
+                                  const currentPageIds =
+                                    searchedUserManagementListShow
+                                      .slice(
+                                        (page - 1) * pageSize,
+                                        page * pageSize,
+                                      )
+                                      .filter((row) => !row.disabled)
+                                      .map((row) => row.id);
+                                  if (
+                                    selectedRowIds.length === pageSize &&
+                                    currentPageIds.every((id) =>
+                                      selectedRowIds.includes(id),
+                                    )
+                                  ) {
+                                    setSelectedRowIds([]);
+                                  } else {
+                                    setSelectedRowIds(
+                                      currentPageIds.filter(
+                                        (id) => !selectedRowIds.includes(id),
+                                      ),
+                                    );
+                                  }
+                                }}
+                              />
+                              {headers.map(
+                                (header) =>
+                                  header.key !== "select" && (
+                                    <TableHeader
+                                      key={header.key}
+                                      {...getHeaderProps({ header })}
+                                    >
+                                      {header.header}
+                                    </TableHeader>
+                                  ),
+                              )}
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            <>
+                              {rows.map((row) => (
+                                <TableRow
+                                  key={row.id}
+                                  onClick={() => {
+                                    const id = row.id;
+                                    const CombinedUserID = row.combinedUserID;
+                                    const isSelected =
+                                      selectedRowIds.includes(id);
+                                    if (isSelected) {
+                                      setSelectedRowIds(
+                                        selectedRowIds.filter(
+                                          (selectedId) => selectedId !== id,
+                                        ),
+                                      );
+                                    } else {
+                                      setSelectedRowIds([
+                                        ...selectedRowIds,
+                                        id,
+                                      ]);
+                                    }
+                                  }}
                                 >
-                                  {header.header}
-                                </TableHeader>
-                              ),
-                          )}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {rows.map((row) => (
-                          <TableRow
-                            key={row.id}
-                            onClick={() => {
-                              const id = row.id;
-                              setSelectedRowIds((prev) =>
-                                prev.includes(id)
-                                  ? prev.filter(
-                                      (selectedId) => selectedId !== id,
-                                    )
-                                  : [...prev, id],
-                              );
-                              setSelectedRowCombinedUserID((prev) =>
-                                prev.includes(row.combinedUserID)
-                                  ? prev.filter(
-                                      (id) => id !== row.combinedUserID,
-                                    )
-                                  : [...prev, row.combinedUserID],
-                              );
-                            }}
-                          >
-                            <TableSelectRow {...getSelectionProps({ row })} />
-                            {Object.entries(row)
-                              .filter(
-                                ([key]) =>
-                                  key !== "id" && key !== "combinedUserID",
-                              )
-                              .map(([key, value]) => (
-                                <TableCell key={key}>{value}</TableCell>
+                                  {row.cells.map((cell) =>
+                                    renderCell(cell, row),
+                                  )}
+                                </TableRow>
                               ))}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                )}
-              </DataTable>
-              <Pagination
-                onChange={handlePageChange}
-                page={page}
-                pageSize={pageSize}
-                pageSizes={PAGINATION_SIZES}
-                totalItems={currentList.length}
-                forwardText={intl.formatMessage({ id: "pagination.forward" })}
-                backwardText={intl.formatMessage({ id: "pagination.backward" })}
-                itemRangeText={(min, max, total) =>
-                  intl.formatMessage(
-                    { id: "pagination.item-range" },
-                    { min, max, total },
-                  )
-                }
-                itemsPerPageText={intl.formatMessage({
-                  id: "pagination.items-per-page",
-                })}
-                itemText={(min, max) =>
-                  intl.formatMessage({ id: "pagination.item" }, { min, max })
-                }
-                pageNumberText={intl.formatMessage({
-                  id: "pagination.page-number",
-                })}
-                pageRangeText={(_current, total) =>
-                  intl.formatMessage({ id: "pagination.page-range" }, { total })
-                }
-                pageText={(page, pagesUnknown) =>
-                  intl.formatMessage(
-                    { id: "pagination.page" },
-                    { page: pagesUnknown ? "" : page },
-                  )
-                }
-              />
-            </Column>
-          </Grid>
+                            </>
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    )}
+                  </DataTable>
+                  <Pagination
+                    onChange={handlePageChange}
+                    page={page}
+                    pageSize={pageSize}
+                    pageSizes={[5, 10, 15, 20]}
+                    totalItems={searchedUserManagementListShow.length}
+                    forwardText={intl.formatMessage({
+                      id: "pagination.forward",
+                    })}
+                    backwardText={intl.formatMessage({
+                      id: "pagination.backward",
+                    })}
+                    itemRangeText={(min, max, total) =>
+                      intl.formatMessage(
+                        { id: "pagination.item-range" },
+                        { min: min, max: max, total: total },
+                      )
+                    }
+                    itemsPerPageText={intl.formatMessage({
+                      id: "pagination.items-per-page",
+                    })}
+                    itemText={(min, max) =>
+                      intl.formatMessage(
+                        { id: "pagination.item" },
+                        { min: min, max: max },
+                      )
+                    }
+                    pageNumberText={intl.formatMessage({
+                      id: "pagination.page-number",
+                    })}
+                    pageRangeText={(_current, total) =>
+                      intl.formatMessage(
+                        { id: "pagination.page-range" },
+                        { total: total },
+                      )
+                    }
+                    pageText={(page, pagesUnknown) =>
+                      intl.formatMessage(
+                        { id: "pagination.page" },
+                        { page: pagesUnknown ? "" : page },
+                      )
+                    }
+                  />
+                  <br />
+                </Column>
+              </Grid>
+            </>
+          ) : (
+            <>
+              <Grid fullWidth={true} className="gridBoundary">
+                <Column lg={16} md={8} sm={4}>
+                  <DataTable
+                    rows={userManagementListShow.slice(
+                      (page - 1) * pageSize,
+                      page * pageSize,
+                    )}
+                    headers={[
+                      {
+                        key: "select",
+                        header: intl.formatMessage({
+                          id: "unifiedSystemUser.select",
+                        }),
+                      },
+                      {
+                        key: "firstName",
+                        header: intl.formatMessage({
+                          id: "systemuser.firstName",
+                        }),
+                      },
+                      {
+                        key: "lastName",
+                        header: intl.formatMessage({
+                          id: "systemuser.lastName",
+                        }),
+                      },
+                      {
+                        key: "loginName",
+                        header: intl.formatMessage({
+                          id: "systemuser.loginName",
+                        }),
+                      },
+                      {
+                        key: "expDate",
+                        header: intl.formatMessage({
+                          id: "login.password.expired.date",
+                        }),
+                      },
+                      {
+                        key: "locked",
+                        header: intl.formatMessage({
+                          id: "login.account.locked",
+                        }),
+                      },
+                      {
+                        key: "disabled",
+                        header: intl.formatMessage({
+                          id: "login.account.disabled",
+                        }),
+                      },
+                      {
+                        key: "active",
+                        header: intl.formatMessage({
+                          id: "systemuser.isActive",
+                        }),
+                      },
+                      {
+                        key: "timeout",
+                        header: intl.formatMessage({
+                          id: "login.timeout",
+                        }),
+                      },
+                    ]}
+                  >
+                    {({
+                      rows,
+                      headers,
+                      getHeaderProps,
+                      getTableProps,
+                      getSelectionProps,
+                    }) => (
+                      <TableContainer>
+                        <Table {...getTableProps()}>
+                          <TableHead>
+                            <TableRow>
+                              <TableSelectAll
+                                id="table-select-all"
+                                {...getSelectionProps()}
+                                checked={
+                                  selectedRowIds.length === pageSize &&
+                                  userManagementListShow
+                                    .slice(
+                                      (page - 1) * pageSize,
+                                      page * pageSize,
+                                    )
+                                    .filter(
+                                      (row) =>
+                                        !row.disabled &&
+                                        selectedRowIds.includes(row.id),
+                                    ).length === pageSize
+                                }
+                                indeterminate={
+                                  selectedRowIds.length > 0 &&
+                                  selectedRowIds.length <
+                                    userManagementListShow
+                                      .slice(
+                                        (page - 1) * pageSize,
+                                        page * pageSize,
+                                      )
+                                      .filter((row) => !row.disabled).length
+                                }
+                                onSelect={() => {
+                                  setDeactivateButton(false);
+                                  const currentPageIds = userManagementListShow
+                                    .slice(
+                                      (page - 1) * pageSize,
+                                      page * pageSize,
+                                    )
+                                    .filter((row) => !row.disabled)
+                                    .map((row) => row.id);
+                                  if (
+                                    selectedRowIds.length === pageSize &&
+                                    currentPageIds.every((id) =>
+                                      selectedRowIds.includes(id),
+                                    )
+                                  ) {
+                                    setSelectedRowIds([]);
+                                  } else {
+                                    setSelectedRowIds(
+                                      currentPageIds.filter(
+                                        (id) => !selectedRowIds.includes(id),
+                                      ),
+                                    );
+                                  }
+                                }}
+                              />
+                              {headers.map(
+                                (header) =>
+                                  header.key !== "select" && (
+                                    <TableHeader
+                                      key={header.key}
+                                      {...getHeaderProps({ header })}
+                                    >
+                                      {header.header}
+                                    </TableHeader>
+                                  ),
+                              )}
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            <>
+                              {rows.map((row) => (
+                                <TableRow
+                                  key={row.id}
+                                  onClick={() => {
+                                    const id = row.id;
+                                    const CombinedUserID = row.combinedUserID;
+                                    const isSelected =
+                                      selectedRowIds.includes(id);
+                                    if (isSelected) {
+                                      setSelectedRowIds(
+                                        selectedRowIds.filter(
+                                          (selectedId) => selectedId !== id,
+                                        ),
+                                      );
+                                    } else {
+                                      setSelectedRowIds([
+                                        ...selectedRowIds,
+                                        id,
+                                      ]);
+                                    }
+                                  }}
+                                >
+                                  {row.cells.map((cell) =>
+                                    renderCell(cell, row),
+                                  )}
+                                </TableRow>
+                              ))}
+                            </>
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    )}
+                  </DataTable>
+                  <Pagination
+                    onChange={handlePageChange}
+                    page={page}
+                    pageSize={pageSize}
+                    pageSizes={[10, 20]}
+                    totalItems={userManagementListShow.length}
+                    forwardText={intl.formatMessage({
+                      id: "pagination.forward",
+                    })}
+                    backwardText={intl.formatMessage({
+                      id: "pagination.backward",
+                    })}
+                    itemRangeText={(min, max, total) =>
+                      intl.formatMessage(
+                        { id: "pagination.item-range" },
+                        { min: min, max: max, total: total },
+                      )
+                    }
+                    itemsPerPageText={intl.formatMessage({
+                      id: "pagination.items-per-page",
+                    })}
+                    itemText={(min, max) =>
+                      intl.formatMessage(
+                        { id: "pagination.item" },
+                        { min: min, max: max },
+                      )
+                    }
+                    pageNumberText={intl.formatMessage({
+                      id: "pagination.page-number",
+                    })}
+                    pageRangeText={(_current, total) =>
+                      intl.formatMessage(
+                        { id: "pagination.page-range" },
+                        { total: total },
+                      )
+                    }
+                    pageText={(page, pagesUnknown) =>
+                      intl.formatMessage(
+                        { id: "pagination.page" },
+                        { page: pagesUnknown ? "" : page },
+                      )
+                    }
+                  />
+                </Column>
+              </Grid>
+            </>
+          )}
         </div>
       </div>
     </>
