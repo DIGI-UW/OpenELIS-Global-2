@@ -98,7 +98,7 @@ structure.
     1.  `sudo docker exec -it openelisglobal-database vacuumlo -Uclinlims`
 
 1.  Collect metrics around the data to see that data loss has not occurred.
-    `The pg_largeobject` should be MUCH smaller, but `hfj_res_ver` should be
+    The `pg_largeobject` should be MUCH smaller, but `hfj_res_ver` should be
     similar to before.
 
     1.  `sudo docker exec -it openelisglobal-database psql -Uclinlims`
@@ -147,7 +147,7 @@ just reconnect and run `screen -x` to recover active session.
 
 1.  remove db container so auto restart doesn’t occur
 
-    1.  `sudo docker rm openelisglobal-database`1.
+    1.  `sudo docker rm openelisglobal-database`
 
 1.  create folders for first step db migration to take place (this can be done
     on a separate machine with docker installed if the main server lacks
