@@ -33,12 +33,13 @@ const ActionPaginationButtonType = ({
       }}
     >
       <Grid>
-        <Column lg={8} md={4} sm={4}>
+        <Column lg={10} md={5} sm={4}>
           {type === "type1" ? (
             <>
               <Button
                 onClick={() => openUpdateModal(selectedRowIds[0])}
                 disabled={selectedRowIds.length !== 1}
+                style={{ margin: "5px" }}
               >
                 <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.modify" />
               </Button>{" "}
@@ -46,11 +47,12 @@ const ActionPaginationButtonType = ({
                 disabled={deactivateButton}
                 onClick={deleteDeactivate}
                 type="button"
+                style={{ margin: "5px" }}
               >
                 {" "}
                 <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.deactivate" />
               </Button>{" "}
-              <Button onClick={openAddModal}>
+              <Button onClick={openAddModal} style={{ margin: "5px" }}>
                 {" "}
                 <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.add" />
               </Button>
@@ -66,6 +68,7 @@ const ActionPaginationButtonType = ({
                 }}
                 disabled={modifyButton}
                 type="button"
+                style={{ margin: "5px" }}
               >
                 <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.modify" />
               </Button>{" "}
@@ -73,6 +76,7 @@ const ActionPaginationButtonType = ({
                 onClick={deleteDeactivate}
                 disabled={deactivateButton}
                 type="button"
+                style={{ margin: "5px" }}
               >
                 <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.deactivate" />
               </Button>{" "}
@@ -81,6 +85,7 @@ const ActionPaginationButtonType = ({
                   window.location.href = `${addButtonRedirectLink}`;
                 }}
                 type="button"
+                style={{ margin: "5px" }}
               >
                 <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.add" />
               </Button>
@@ -88,8 +93,8 @@ const ActionPaginationButtonType = ({
           )}
         </Column>
         <Column
-          lg={8}
-          md={4}
+          lg={6}
+          md={3}
           sm={4}
           style={{ display: "flex", alignItems: "center" }}
         >
