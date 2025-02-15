@@ -104,9 +104,9 @@ Some points to keep in mind:
 
 The perl file is in
 "openelisglobal-core\tools\AnalyzerSideDataImport\FlatFileTransport.pl". Note
-that there exist two types of export files , one for windows environment and another
-for linux. the main difference is how we mention the folder path in the perl
-script.
+that there exist two types of export files , one for windows environment and
+another for linux. the main difference is how we mention the folder path in the
+perl script.
 
 Depending on where perl is installed on your system the script will be invoked
 with something similar to: `c:\Perl\bin\perl.exe FlatFileTransport.pl`

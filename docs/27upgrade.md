@@ -97,9 +97,9 @@ structure.
 
     1.  `sudo docker exec -it openelisglobal-database vacuumlo -Uclinlims`
 
-1.  Collect metrics around the data to see that data loss has not occurred.
-    The `pg_largeobject` should be MUCH smaller, but `hfj_res_ver` should be
-    similar to before.
+1.  Collect metrics around the data to see that data loss has not occurred. The
+    `pg_largeobject` should be MUCH smaller, but `hfj_res_ver` should be similar
+    to before.
 
     1.  `sudo docker exec -it openelisglobal-database psql -Uclinlims`
 
