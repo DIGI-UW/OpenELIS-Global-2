@@ -104,6 +104,7 @@ accessing any of these links, simply follow these steps:
     formatter to properly format the Frontend code
 
         cd frontend
+        npm i
         npm run format
 
 2.  After making changes to the [backend](./src/) directory, run the formatter
