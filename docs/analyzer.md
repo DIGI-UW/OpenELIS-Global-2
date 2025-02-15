@@ -67,7 +67,7 @@ Creation Steps
    project should match the name of the analyzer.
 2. Open up the properties for the project
 3. Select the Java build path (left hand side of the dialog)
-4. Select projects tab and add (right hand side of the dialog) openElisGlobal 1
+4. Select projects tab and add (right hand side of the dialog) OpenELISGlobal 1
 
 .. \_`https://github.com/openelisglobal/openelisglobal-plugins`:
 https://github.com/openelisglobal/openelisglobal-plugins .. \_SourceTree:
@@ -89,22 +89,22 @@ Some points to keep in mind:
 1. The file is copied from the staging directory to the transmissionQueue.
    Management of the staging directory is not part of the model
 
-1. The script depends on the timestamp of the files in the staging directory to
+2. The script depends on the timestamp of the files in the staging directory to
    insure that they are not moved to the transmissionQueue more than once. There
    are some strangely named files in the transmissionQueue that track the
    timestamp, do not delete them or all of the files from the staging directory
    will be resent.
 
-1. The file in the transmissionQueue folder is deleted after successful
+3. The file in the transmissionQueue folder is deleted after successful
    transmission.
 
-1. During development it is easiest to copy (not move) the test file to the
+4. During development it is easiest to copy (not move) the test file to the
    transmissionQueue directory rather than updating the timestamp and adding it
    to the staging directory.
 
 The perl file is in
 "openelisglobal-core\tools\AnalyzerSideDataImport\FlatFileTransport.pl". Note
-that it exist to type of export file , one for windows environment and another
+that there exist two types of export files , one for windows environment and another
 for linux. the main difference is how we mention the folder path in the perl
 script.
 
@@ -149,7 +149,7 @@ If you get an HTML response it is one of two things.
 1.  A response from Tomcat that it could not find the resources. This is usually
     about three lines of HTML and buried in it is the missing resource message.
     That indicates that the url is not correct
-1.  A response from openELIS than an exception has been thrown. This is the HTML
+2.  A response from openELIS than an exception has been thrown. This is the HTML
     for the gray screen of death and is usually dozens of lines wrong. This
     indicates that there was an error in the code and you should look for the
     stack trace in the console or in the logs
