@@ -155,7 +155,7 @@ Instructions are here https://projectlombok.org/setup/eclipse
 2. `sudo ln -s /path/to/project/dev/eclipse_common.properties /run/secrets/common.properties`
 3. this is the file that will allow you to configure OE while running in
    eclipse. Ensure values filled out work for your dev environment. do not
-   commit changes made for your deve environement.
+   commit changes made for your dev environement.
 
 ### create directory for logs
 
