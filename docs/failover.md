@@ -78,17 +78,19 @@ server’s ip/DNS address.
    1. cd /var/lib/openelsi-global
    2. sudo docker-compose restart
 2. If that doesn’t work, but only some services are down, bring them all down by
-   running 3. cd /var/lib/openelsi-global 4. sudo docker-compose down
+   running
+   1. cd /var/lib/openelsi-global
+   2. sudo docker-compose down
 3. Setup OpenELIS on the new secondary server as per normal install/upgrade
    procedures ensuring the db is listening on port 5432 IF using a new secondary
    server
-4. Run `scripts/configurePrimary.sh` on the target primary server 5. Enter the
+4. Run `scripts/configurePrimary.sh` on the target primary server a. Enter the
    ip address/dns entry that the target primary server sits at. The target
    secondary server must be able to reach the target primary server at this
-   address on port 5432 6. Enter the ip address/dns entry that the target
+   address on port 5432 b. Enter the ip address/dns entry that the target
    secondary server sits at. The target primary server must be able to reach the
-   target secondary server at this address on port 22 for ssh 7. Enter a user
-   that has sudo permissions on the target secondary server 8. Enter the
+   target secondary server at this address on port 22 for ssh c. Enter a user
+   that has sudo permissions on the target secondary server d. Enter the
    password for the user on the target secondary server
 5. Let the script run, it may look like further passwords are prompted for, but
    they should be automatically entered by the script
