@@ -72,14 +72,14 @@ The following instructions will use the frontend of OE and will require the user
 have admin privileges
 
 1. login to OE
-1. navigate to admin > External connections
-1. if there is no Entry for infohighway, click `Add`. otherwise click `Edit`
-1. ensure that connection type is: `Info Highway`
-1. ensure that Authentication Type is: `Basic`
-1. ensure the username and password are correct
-1. ensure the endpoint URL is correct
+2. navigate to admin > External connections
+3. if there is no Entry for infohighway, click `Add`. otherwise click `Edit`
+4. ensure that connection type is: `Info Highway`
+5. ensure that Authentication Type is: `Basic`
+6. ensure the username and password are correct
+7. ensure the endpoint URL is correct
    (`https://infohighway.govmu.org/ih-webservice/soap/query`)
-1. save the values and try to search for a patient by National ID. If this
+8. save the values and try to search for a patient by National ID. If this
    fails, proceed to the next point
 
 ## Check that extra_hosts has an entry for infohighway
@@ -88,17 +88,17 @@ The following instructions will use files on the machine running ubuntu and will
 require the user be able to ssh into the server and has sudo privileges
 
 1. ssh into the server having issues
-1. check that the file `/var/lib/config/openelis-global/EXTERNAL_HOSTS` exists
-1. check the contents of the file
+2. check that the file `/var/lib/config/openelis-global/EXTERNAL_HOSTS` exists
+3. check the contents of the file
    `/var/lib/openelis-global/config/EXTERNAL_HOSTS` has an entry that matches
    the ip address of the infohighway (`infohighway.govmu.org:xxx.xxx.xxx.xxx`)
-1. rerun the latest installer by running setup_OpenELIS.py in the installer
+4. rerun the latest installer by running setup_OpenELIS.py in the installer
    directory (usually located in `~/OpenELIS-Global_2.x.x.x_Installer/`)
-1. check that the `docker-compose.yml` in the installer directory has an entry
+5. check that the `docker-compose.yml` in the installer directory has an entry
    `oe.openelis.org`, and that under that property there is an `extra_hosts`
    property which contains the entry in
    `/var/lib/openelis-global/config/EXTERNAL_HOSTS`
-1. if none exists, add the entry manually, making sure to keep the right
+6. if none exists, add the entry manually, making sure to keep the right
    indentation on the file. and run `sudo docker-compose up -d`
-1. search for a patient by National ID. If this fails, contact a higher level of
+7. search for a patient by National ID. If this fails, contact a higher level of
    support
