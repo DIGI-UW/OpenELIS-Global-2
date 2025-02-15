@@ -2,13 +2,10 @@ import React, { useContext, useState, useEffect, useRef } from "react";
 import {
   Form,
   Heading,
-  Toggle,
   Button,
-  Loading,
   Grid,
   Column,
   Section,
-  Checkbox,
   DataTable,
   Table,
   TableHead,
@@ -17,20 +14,12 @@ import {
   TableHeader,
   TableCell,
   TableSelectRow,
-  TableSelectAll,
   TableContainer,
   Pagination,
 } from "@carbon/react";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServerFullResponse,
-} from "../../../utils/Utils.js";
+import { getFromOpenElisServer } from "../../../utils/Utils.js";
 import { NotificationContext } from "../../../layout/Layout.js";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../../common/CustomNotification.js";
-import config from "../../../../config.json";
+import { AlertDialog } from "../../../common/CustomNotification.js";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../../common/PageBreadCrumb.js";
 import GenericConfigEdit from "../../generalConfig/common/GenericConfigEdit.js";

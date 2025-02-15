@@ -13,8 +13,6 @@ import {
   Link,
   Accordion,
   AccordionItem,
-  Row,
-  FlexGrid,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";

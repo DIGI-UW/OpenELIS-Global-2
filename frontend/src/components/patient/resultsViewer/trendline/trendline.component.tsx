@@ -11,7 +11,6 @@ import {
 } from "../commons";
 import { EmptyState, OBSERVATION_INTERPRETATION } from "../commons";
 import { useObstreeData } from "./trendline-resource";
-import { testResultsBasePath } from "../helpers";
 import CommonDataTable from "../overview/common-datatable.component";
 import RangeSelector from "./range-selector.component";
 //import styles from './trendline.scss';

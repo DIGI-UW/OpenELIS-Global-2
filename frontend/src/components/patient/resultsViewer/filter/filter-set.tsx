@@ -7,7 +7,7 @@ import {
   Button,
   Search,
 } from "@carbon/react";
-import { TreeViewAlt, Close, Search as SearchIcon } from "@carbon/react/icons";
+import { Close } from "@carbon/react/icons";
 import type { FilterNodeProps, FilterLeafProps } from "./filter-types";
 import FilterContext from "./filter-context";
 //import styles from './filter-set.styles.scss';

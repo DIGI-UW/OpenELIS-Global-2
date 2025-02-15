@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   Button,
   Search,
-  Tile,
   Layer,
   Grid,
   Column,

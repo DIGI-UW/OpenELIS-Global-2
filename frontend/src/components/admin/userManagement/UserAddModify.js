@@ -29,7 +29,6 @@ import {
 } from "../../layout/Layout.js";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
 import AutoComplete from "../../common/AutoComplete.js";

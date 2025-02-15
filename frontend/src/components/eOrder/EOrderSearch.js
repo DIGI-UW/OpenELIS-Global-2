@@ -2,7 +2,6 @@ import {
   Button,
   Checkbox,
   Column,
-  Form,
   Grid,
   Heading,
   Section,
@@ -13,7 +12,7 @@ import {
 import { React, useEffect, useState } from "react";
 import CustomDatePicker from "../common/CustomDatePicker";
 
-import { FormattedMessage, useIntl, injectIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 let breadcrumbs = [{ label: "home.label", link: "/" }];

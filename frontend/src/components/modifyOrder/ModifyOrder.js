@@ -1,13 +1,5 @@
 import React, { useContext, useEffect, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
-import {
-  Button,
-  ProgressIndicator,
-  ProgressStep,
-  Stack,
-  Section,
-  Tag,
-} from "@carbon/react";
+import { Button, ProgressIndicator, ProgressStep, Stack } from "@carbon/react";
 import EditSample from "./EditSample";
 import AddOrder from "../addOrder/AddOrder";
 import "../addOrder/add-order.scss";
