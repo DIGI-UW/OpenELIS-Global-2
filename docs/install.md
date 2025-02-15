@@ -23,7 +23,7 @@
 
 **NOTE: I like to connect via ssh if I’m going to be using a lot of resources
 from my own computer here. This allows me to easily copy and paste commands
-below. For windows, the best utility I’ve found is Mobaxterm, as it incoperates
+below. For windows, the best utility I’ve found is Mobaxterm, as it incorporates
 a SCP client as well**
 [available for free download online](https://mobaxterm.mobatek.net/). .
 
@@ -84,7 +84,7 @@ This Option can be used where there is fast internet connectivity
 
     docker-compose up -d
 
-###### The Instaces can be accesed at
+###### The Instances can be accessed at
 
 | Instance     |                   URL                   | credentials (user : password) |
 | ------------ | :-------------------------------------: | ----------------------------: |
@@ -95,7 +95,7 @@ This Option can be used where there is fast internet connectivity
 
     docker-compose -f docker-compose-2x.yml up -d
 
-###### The Instaces can be accesed at
+###### The Instances can be accessed at
 
 | Instance |                   URL                    | credentials (user : password) |
 | -------- | :--------------------------------------: | ----------------------------: |
@@ -106,7 +106,7 @@ This Option can be used where there is fast internet connectivity
 1.  Clone the [OpenELIS Global](https://github.com/I-TECH-UW/OpenELIS-Global-2)
     repository.
 
-         git clone https://github.com/I-TECH-UW/OpenELIS-Global-2.git
+        git clone https://github.com/I-TECH-UW/OpenELIS-Global-2.git
 
 1.  Build and Run the docker images from source code
 
@@ -265,21 +265,21 @@ server address, it is not overwritten by the installer.
    used to set the default test order prefix, and to identify the system to the
    consolidated server and other data systems.
 
-1. Set the time zone for OpenELIS Application a. Select the region that your
-   country is in a. Select the country a. Verify the time zone
-1. Enter in the keystore password we set earlier
-1. Same with the truststore
-1. Enter an encryption key, this will help secure your data by encrypting your
+2. Set the time zone for OpenELIS Application a. Select the region that your
+   country is in b. Select the country c. Verify the time zone
+3. Enter in the keystore password we set earlier
+4. Same with the truststore
+5. Enter an encryption key, this will help secure your data by encrypting your
    database
 
 OpenELIS uses FHIR for much of its internal and external communication, if you
 don't know what the options mean, leave them at the default.
 
 1. Local FHIR store is the link to the local FHIR API
-1. The remote FHIR store is used in the use case where OpenELIS is polling for
+2. The remote FHIR store is used in the use case where OpenELIS is polling for
    lab orders and returning results. EG:
    [the FHIR2 Module for OpenMRS](../deployomrs)
-1. The Consolidated Sevrer is a central server which collects lab data for
+3. The Consolidated Sevrer is a central server which collects lab data for
    reporting, serves as a master facility list, etc.
 
 Wait while install procedure completes
