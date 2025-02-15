@@ -92,4 +92,12 @@
         </cookie-config>
     </session-config>
 
+    <filter>
+        <filter-name>ajaxFilter</filter-name>
+        <filter-class>org.openelisglobal.security.AjaxFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>ajaxFilter</filter-name>
+        <url-pattern>/ajaxQueryXML</url-pattern>  
+    </filter-mapping>
 </web-app>

@@ -51,14 +51,11 @@ import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.WebDataBinder;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -100,23 +97,6 @@ public class UnifiedSystemUserController extends BaseController {
     @InitBinder
     public void initBinder(WebDataBinder binder) {
         binder.setAllowedFields(ALLOWED_FIELDS);
-    }
-
-    @GetMapping(value = "/rest/users/{roleName}")
-    @ResponseBody
-    public List<IdValuePair> getUsersWithRole(@PathVariable String roleName) {
-        List<SystemUser> users = systemUserService.getAll();
-        return users.stream().filter(e -> userRoleService.userInRole(e.getId(), roleName))
-                .map(e -> new IdValuePair(e.getId(), e.getDisplayName())).collect(Collectors.toList());
-    }
-
-    @GetMapping(value = "/rest/users")
-    @ResponseBody
-    public List<IdValuePair> getUsersWithRole() {
-        List<SystemUser> users = systemUserService.getAll();
-        List<IdValuePair> idValues = users.stream().map(e -> new IdValuePair(e.getId(), e.getDisplayName()))
-                .collect(Collectors.toList());
-        return idValues;
     }
 
     @RequestMapping(value = "/UnifiedSystemUser", method = RequestMethod.GET)

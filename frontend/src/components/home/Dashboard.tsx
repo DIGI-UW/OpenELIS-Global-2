@@ -517,7 +517,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                   onClick={() => handleMaximizeClick(tile)}
                   className="icon-wrapper"
                 >
-                  <Maximize size={20} className="clickable-icon" />
+                  <Maximize
+                    id="maximizeIcon"
+                    size={20}
+                    className="clickable-icon"
+                  />
                 </div>
               </div>
             </ClickableTile>
@@ -534,7 +538,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                 {
                   <div className="tile-icon">
                     <div onClick={handleMinimizeClick} className="icon-wrapper">
-                      <Minimize size={20} className="clickable-icon" />
+                      <Minimize
+                        id="minimizeIcon"
+                        size={20}
+                        className="clickable-icon"
+                      />
                     </div>
                   </div>
                 }

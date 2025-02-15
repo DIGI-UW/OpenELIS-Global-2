@@ -200,7 +200,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         binder.setAllowedFields(ALLOWED_FIELDS);
     }
 
-    @GetMapping(value = "ReactLogbookResultsByRange", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "LogbookResults", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public LogbookResultsForm showReactLogbookResults(@RequestParam(required = false) String labNumber,
             @RequestParam(required = false) String patientPK, @RequestParam(required = false) String collectionDate,
@@ -410,7 +410,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         return DateUtil.formatDateAsText(today);
     }
 
-    @PostMapping(value = "ReactLogbookResultsUpdate", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "LogbookResults", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public Map<String, List<String>> showReactLogbookResultsUpdate(HttpServletRequest request,
             @Validated(LogbookResultsForm.LogbookResults.class) @RequestBody LogbookResultsForm form,
