@@ -27,18 +27,18 @@ an OpenMRS module made for an implementation of OpenMRS deployed in Haiti called
 
    1. Docker: https://github.com/IsantePlus/isanteplus-docker
 
-   1. Apache Tomcat WAR:
+   2. Apache Tomcat WAR:
       [SOP iSantePlus Installation.docx](https://wiki.openmrs.org/download/attachments/235274282/SOP%20iSantePlus%20Installation.docx?version=1&modificationDate=1590637509000&api=v2)
 
-1. [Install](https://wiki.openmrs.org/display/docs/Administering+Modules) the
+2. [Install](https://wiki.openmrs.org/display/docs/Administering+Modules) the
    [OpenMRS FHIR module](https://github.com/pmanko/openmrs-module-isanteplus-labonfhir)
    using the following omod file:
    [openmrs-module-fhir2.omod](https://drive.google.com/file/d/1SSlVrChKQ6i0zVbUgzR7Blx_czjiJhcG/view?usp=sharing)
 
-1. Install the iSantePlus Lab on FHIR module using the following omod file:
+3. Install the iSantePlus Lab on FHIR module using the following omod file:
    labonfhir-1.0.0-SNAPSHOT.omod
 
-1. Restart iSantePlus
+4. Restart iSantePlus
 
 Start up the OpenELIS Update Task in `System Administration` →
 `Advanced Administration` → `Scheduler` → `Manage Scheduler`
@@ -48,13 +48,13 @@ Start up the OpenELIS Update Task in `System Administration` →
 ### OpenELIS Global 2.x
 
 1. Install OpenELIS Global 2.x using the instructions [HERE](../install)
-1. Navigate to the "results reporting" configuration:
+2. Navigate to the "results reporting" configuration:
    https://IPforyourserver:8443/OpenELIS-Global/ResultReportingConfiguration
-1. Move the radio button for Result Reporting to "Enable" and enter in the URL
+3. Move the radio button for Result Reporting to "Enable" and enter in the URL
    for the OpenMRS connection like in the example below.
    - Please note, the Test URL button may not respond to the FHIR module, so
      please disregard any errors if you click it.
-1. Click Save at the bottom of the page.
+4. Click Save at the bottom of the page.
 
 ![screen1](img/omrsoe3.png)
 
