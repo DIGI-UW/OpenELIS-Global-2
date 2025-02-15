@@ -18,6 +18,7 @@ import { SecureRoute } from "./components/security";
 import "./index.scss";
 import RedirectOldUI from "./RedirectOldUI";
 import PatientManagement from "./components/patient/PatientManagement";
+import PatientEntryByProject from "./components/patient/study/Index";
 import PatientHistory from "./components/patient/PatientHistory";
 import Workplan from "./components/workplan/Workplan";
 import AddOrder from "./components/addOrder/Index";
@@ -378,6 +379,12 @@ export default function App() {
                   path="/PatientManagement"
                   exact
                   component={() => <PatientManagement />}
+                  role="Reception"
+                />
+                <SecureRoute
+                  path="/PatientEntryByProject"
+                  exact
+                  component={() => <PatientEntryByProject />}
                   role="Reception"
                 />
                 <SecureRoute
