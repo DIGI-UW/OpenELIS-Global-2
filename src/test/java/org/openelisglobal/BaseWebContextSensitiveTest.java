@@ -76,25 +76,28 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         if (datasetFileName == null) {
             throw new NullPointerException("Please provide test dataset file to execute!");
         }
-
+    
         IDatabaseConnection connection = null;
         InputStream inputStream = null;
-
+    
         try {
             connection = new DatabaseConnection(dataSource.getConnection());
+    
+            // FIX: Use PostgreSQL-specific metadata handler
             DatabaseConfig config = connection.getConfig();
             config.setProperty(DatabaseConfig.FEATURE_ALLOW_EMPTY_FIELDS, true);
-
+            config.setProperty(DatabaseConfig.FEATURE_CASE_SENSITIVE_TABLE_NAMES, false);
+            config.setProperty(DatabaseConfig.PROPERTY_DATATYPE_FACTORY, new org.dbunit.ext.postgresql.PostgresqlDataTypeFactory());
+            
             inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName);
-
             if (inputStream == null) {
                 throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
             }
-
+    
             IDataSet dataset = new FlatXmlDataSet(inputStream);
             String[] tableNames = dataset.getTableNames();
             cleanRowsInCurrentConnection(tableNames);
-
+    
             DatabaseOperation.REFRESH.execute(connection, dataset);
         } finally {
             if (inputStream != null) {
@@ -105,6 +108,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             }
         }
     }
+    
 
     /**
      * Helper method to clear out all rows in specified tables within the given
