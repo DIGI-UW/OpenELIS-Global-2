@@ -19,14 +19,14 @@ and also follow our Guidelines will be Selected
 ## Before the Application
 
 1.  Sign Up at [OpenELIS Talk](https://talk.openelis-global.org/) and get an ID
-2.  Introduce yourself on OpenELIS Talk on the
+1.  Introduce yourself on OpenELIS Talk on the
     [community introduction page](https://talk.openelis-global.org/t/welcome-please-introduce-yourself/155/8)
-3.  Become familiar with **OpenELIS Global** See our
+1.  Become familiar with **OpenELIS Global** See our
     [Installation](https://docs.openelis-global.org/en/latest/install/) and
     [Developer](https://docs.openelis-global.org/en/latest/dev_setup/)
     Instructions
-4.  Review project [ideas](./gsoc.md) & ask questions
-5.  Work on [Introductory Issues](https://github.com/orgs/I-TECH-UW/projects/6)
+1.  Review project [ideas](./gsoc.md) & ask questions
+1.  Work on [Introductory Issues](https://github.com/orgs/I-TECH-UW/projects/6)
     to get Familiar with the Project
 
 ## Proposal Template
@@ -34,19 +34,19 @@ and also follow our Guidelines will be Selected
 1.  Use this
     [GSOC Template](https://docs.google.com/document/d/1LaBPJluKTRhfRyV-nnHgow3oXgyLrrpI6_v835TuPHU/edit?usp=drive_link)
     to create your Application and Proposal write up.
-2.  Complete all the mandatory Fields for your application to be accepted
-3.  Submit your application through Google’s website. See Google's GSOC Get
+1.  Complete all the mandatory Fields for your application to be accepted
+1.  Submit your application through Google’s website. See Google's GSOC Get
     Started page [here](https://summerofcode.withgoogle.com/get-started/)
 
 ## After being accepted
 
 1. Set up a blog for your Project on OpenELIS Talk where you will be posting
    Updates weekly
-2. Contact your mentor immediately. Make a plan to communicate with them
+1. Contact your mentor immediately. Make a plan to communicate with them
    regularly.
-3. Review any [Issues ](https://github.com/orgs/I-TECH-UW/projects/3) related to
+1. Review any [Issues ](https://github.com/orgs/I-TECH-UW/projects/3) related to
    your project
-4. Prepare a detailed project plan together with your mentor.
+1. Prepare a detailed project plan together with your mentor.
 
 ## During the coding period
 
@@ -54,11 +54,11 @@ and also follow our Guidelines will be Selected
    things are on track and there are no problems with your project. Contact
    organization admins any time if you have concerns about working with your
    mentor(s).
-2. Write at least one blog post every week to help stay on schedule and to share
+1. Write at least one blog post every week to help stay on schedule and to share
    your work publicly.
-3. Commit early. Commit often. This is an important value in our open source
+1. Commit early. Commit often. This is an important value in our open source
    community
-4. Prepare mid-term & final project presentation videos about your project's
+1. Prepare mid-term & final project presentation videos about your project's
    status, progress, and any questions you have for the community.
 
 ## After GSoC
@@ -66,6 +66,6 @@ and also follow our Guidelines will be Selected
 1. Write a final blog post summarizing your overall experience! If you like,
    talk to the org admins for consideration to cross-post this article to the
    Google Open Source Blog.
-2. Stay involved with your project or other projects as your schedule permits!
+1. Stay involved with your project or other projects as your schedule permits!
    There is always plenty of development work needed for OpenELIS volunteers
    like you.

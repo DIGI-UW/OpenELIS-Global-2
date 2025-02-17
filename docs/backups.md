@@ -17,10 +17,10 @@ environment db BEFORE you delete the current database. proceed with caution so
 data is not lost.
 
 1. `sudo docker kill openelisglobal-webapp external-fhir-api`
-2. replace file name
+1. replace file name
    `sudo docker cp ./rollback/<backup-name.sql> openelisglobal-database:backup.sql`
-3. `sudo docker exec openelisglobal-database psql -U admin -d postgres -f backup.sql`
-4. `sudo docker-compose up -d`
+1. `sudo docker exec openelisglobal-database psql -U admin -d postgres -f backup.sql`
+1. `sudo docker-compose up -d`
 
 ## Physical backups
 
@@ -35,10 +35,10 @@ restoring does not go as planned. Move this directory back in place if you'd
 like to continue using it.
 
 1. `sudo docker kill openelisglobal-database`
-2. `sudo mv /var/lib/openelis-global/data/ /var/lib/openelis-global/data-old/`
-3. replace directory name
+1. `sudo mv /var/lib/openelis-global/data/ /var/lib/openelis-global/data-old/`
+1. replace directory name
    `sudo cp -r ./rollback/<backup-directory-name> /var/lib/openelis-global/data/`
-4. `sudo docker start openelisglobal-database`
+1. `sudo docker start openelisglobal-database`
 
 # Continuous Backups
 

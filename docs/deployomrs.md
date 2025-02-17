@@ -27,18 +27,18 @@ an OpenMRS module made for an implementation of OpenMRS deployed in Haiti called
 
    1. Docker: https://github.com/IsantePlus/isanteplus-docker
 
-   2. Apache Tomcat WAR:
+   1. Apache Tomcat WAR:
       [SOP iSantePlus Installation.docx](https://wiki.openmrs.org/download/attachments/235274282/SOP%20iSantePlus%20Installation.docx?version=1&modificationDate=1590637509000&api=v2)
 
-2. [Install](https://wiki.openmrs.org/display/docs/Administering+Modules) the
+1. [Install](https://wiki.openmrs.org/display/docs/Administering+Modules) the
    [OpenMRS FHIR module](https://github.com/pmanko/openmrs-module-isanteplus-labonfhir)
    using the following omod file:
    [openmrs-module-fhir2.omod](https://drive.google.com/file/d/1SSlVrChKQ6i0zVbUgzR7Blx_czjiJhcG/view?usp=sharing)
 
-3. Install the iSantePlus Lab on FHIR module using the following omod file:
+1. Install the iSantePlus Lab on FHIR module using the following omod file:
    labonfhir-1.0.0-SNAPSHOT.omod
 
-4. Restart iSantePlus
+1. Restart iSantePlus
 
 Start up the OpenELIS Update Task in `System Administration` →
 `Advanced Administration` → `Scheduler` → `Manage Scheduler`
@@ -48,13 +48,13 @@ Start up the OpenELIS Update Task in `System Administration` →
 ### OpenELIS Global 2.x
 
 1. Install OpenELIS Global 2.x using the instructions [HERE](../install)
-2. Navigate to the "results reporting" configuration:
+1. Navigate to the "results reporting" configuration:
    https://IPforyourserver:8443/OpenELIS-Global/ResultReportingConfiguration
-3. Move the radio button for Result Reporting to "Enable" and enter in the URL
+1. Move the radio button for Result Reporting to "Enable" and enter in the URL
    for the OpenMRS connection like in the example below.
    - Please note, the Test URL button may not respond to the FHIR module, so
      please disregard any errors if you click it.
-4. Click Save at the bottom of the page.
+1. Click Save at the bottom of the page.
 
 ![screen1](img/omrsoe3.png)
 
@@ -65,13 +65,13 @@ Start up the OpenELIS Update Task in `System Administration` →
 1.  Setup OpenRMS 3.x on top an instance of the Refference Application see
     [more](https://wiki.openmrs.org/display/projects/3.x+Implementer+Documentation)
 
-2.  Load the Following Modules
+1.  Load the Following Modules
     - [FHIR2 module](https://github.com/openmrs/openmrs-module-fhir2) version >=
       1.4.0
     - [Lab on FHIR](https://github.com/openmrs/openmrs-module-labonfhir) module
     - [Order Entry Ui Module](https://github.com/openmrs/openmrs-module-orderentryui)
     - [Order Entry Owa](https://github.com/openmrs/openmrs-owa-orderentry)
-3.  Configure the required settings .
+1.  Configure the required settings .
 
     - `labonfhir.openElisUrl` ,The URL for the FHIR server where OpenELIS polls
       the Orders From.
@@ -84,7 +84,7 @@ Start up the OpenELIS Update Task in `System Administration` →
     Note: The Lab test Concept should be of class `Test` ,and should be mapped
     to a `Loinc code` that matches a the `Test Loinc Code` in OpenELIS
 
-4.  Go to the Reff App (2.x) Patient Dashbord ,Go to `Prescribed Medication`
+1.  Go to the Reff App (2.x) Patient Dashbord ,Go to `Prescribed Medication`
     Widget. ![screen1](img/widget.png)
 
     See more on
@@ -93,18 +93,18 @@ Start up the OpenELIS Update Task in `System Administration` →
 
     ![screen1](img/order.png)
 
-5.  If the [Lab on FHIR](https://github.com/openmrs/openmrs-module-labonfhir)
+1.  If the [Lab on FHIR](https://github.com/openmrs/openmrs-module-labonfhir)
     module is rightly configured ,it will generate the lab FHIR Bundle and push
     to the remote Fhir Server for OpenELIS to poll the orders
 
-6.  Start the OpenELIS Pull Task ,to start polling for Lab Results via the
+1.  Start the OpenELIS Pull Task ,to start polling for Lab Results via the
     Sheduler Interface  
     `System Administration` → `Advanced Administration` → `Scheduler` →
     `Manage Scheduler`
 
         ![screen1](img/omrsoe1.png)
 
-7.  To view the lab Results , Ensure you have the
+1.  To view the lab Results , Ensure you have the
     [patient-test-results-app](https://github.com/openmrs/openmrs-esm-patient-chart/tree/master/packages/esm-patient-test-results-app).
     Go to the Patient DashBoard in 3.x ui and click Test Results.
     ![screen1](img/test-results.png)
@@ -131,19 +131,19 @@ The FHIR based Lab Workflow is supported in OpenELIS 2.6 .
    - `org.openelisglobal.fhir.subscriber=h<remoreFhirServerUrl>` .
    - `org.openelisglobal.fhir.subscriber.resources=Task,Patient,ServiceRequest,DiagnosticReport,Observation,Specimen,Practitioner,Encounter`
 
-2. Ensure OpenELIS has the test that maps to the same LOINC code as the test
+1. Ensure OpenELIS has the test that maps to the same LOINC code as the test
    Concept in OpenMRS. This can be added via the  
     `Admin page` → `Test Management` → `Add Tests` ![screen1](img/addTest.png)
 
-3. Configure OpenELIS to accept electronic order. `Admin` →
+1. Configure OpenELIS to accept electronic order. `Admin` →
    `Order Entry Configuration` → `external orders`
    ![screen1](img/accepteorder.png)
 
-4. Search for the Electronic Order ie  
+1. Search for the Electronic Order ie  
     `Order` → `Electronic Orders` and then Complete the Order Note that the user
    should have the right Lab Unit Priviledges to complete the Order ![screen1](img/eOrders.png)
 
-5. After Results are captured and Validated , OpenELIS sends back the results to
+1. After Results are captured and Validated , OpenELIS sends back the results to
    OpenMRS as a Diagnostic Report with an Observation
 
 ## Required FHIR Resources

@@ -54,13 +54,13 @@ This is the recommended method of upgrading
 ## Restore Database Dump on New Server
 
 1. Copy OpenELIS-backup.sql from old server onto new server
-2. Copy OpenELIS-backup.sql into the docker db container
+1. Copy OpenELIS-backup.sql into the docker db container
    1. `sudo docker cp OpenELIS-backup.sql openelisglobal-database:/OpenELIS-backup.sql`
-3. Recreate the database and import the dump
+1. Recreate the database and import the dump
    1. `sudo docker exec openelisglobal-database psql -Uadmin -dpostgres -c 'DROP DATABASE clinlims;'`
-   2. `sudo docker exec openelisglobal-database psql -Uadmin -dpostgres -c 'CREATE DATABASE clinlims;'`
-   3. `sudo docker exec openelisglobal-database psql -Uadmin -dpostgres -c 'ALTER DATABASE clinlims OWNER TO clinlims;'`
-   4. `sudo docker exec openelisglobal-database psql -Uadmin -dclinlims -f /OpenELIS-backup.sql`
+   1. `sudo docker exec openelisglobal-database psql -Uadmin -dpostgres -c 'CREATE DATABASE clinlims;'`
+   1. `sudo docker exec openelisglobal-database psql -Uadmin -dpostgres -c 'ALTER DATABASE clinlims OWNER TO clinlims;'`
+   1. `sudo docker exec openelisglobal-database psql -Uadmin -dclinlims -f /OpenELIS-backup.sql`
 
 ## Migrate Passwords (If Unmigrated) on New Server
 
@@ -70,11 +70,11 @@ This is the recommended method of upgrading
 ## Migrate Encrypted Values on New Server
 
 1. `sudo docker exec -it openelisglobal-database psql -Uclinlims -dclinlims`
-2. `SELECT id, name, value FROM clinlims.site_information WHERE encrypted = 't';`
-3. record the "value" column for each row
-4. `UPDATE clinlims.site_information SET value = '' WHERE encrypted = 't';`
-5. `\q`
-6. re-add the values using the front end once the server is back up and running
+1. `SELECT id, name, value FROM clinlims.site_information WHERE encrypted = 't';`
+1. record the "value" column for each row
+1. `UPDATE clinlims.site_information SET value = '' WHERE encrypted = 't';`
+1. `\q`
+1. re-add the values using the front end once the server is back up and running
 
 ## Run Liquibase on New Server
 
@@ -82,24 +82,24 @@ This is the recommended method of upgrading
    [old liquibase files](https://github.com/I-TECH-UW/Liquibase-Outdated) and if
    there is a custom branch, change to it
    1. `git clone https://github.com/I-TECH-UW/Liquibase-Outdated.git`
-   2. `cd Liquibase-Outdated`
-   3. `git checkout <branch>`
-2. Run the liquibase command
+   1. `cd Liquibase-Outdated`
+   1. `git checkout <branch>`
+1. Run the liquibase command
    1. put the correct connection values in `./liquibase.properties`
-   2. `java -jar -Dfile.encoding=utf-8 ./lib/liquibase-1.9.5.jar --defaultsFile=./liquibase.properties --url=jdbc:postgresql://localhost:5432/clinlims --contexts=<context> update`
-   3. if it complains about md5 checksums, run
+   1. `java -jar -Dfile.encoding=utf-8 ./lib/liquibase-1.9.5.jar --defaultsFile=./liquibase.properties --url=jdbc:postgresql://localhost:5432/clinlims --contexts=<context> update`
+   1. if it complains about md5 checksums, run
       1. `sudo docker exec -it openelisglobal-database psql -Uclinlims -dclinlims -c "UPDATE clinlims.databasechangelog SET md5sum = NULL;"`
-   4. if Liquibase exits citing that a changeset failed, then that changeset
+   1. if Liquibase exits citing that a changeset failed, then that changeset
       will need to be updated in the proper branch to accommodate that DB.
       Fixing a changeset can occur in many ways and should be done by a
       developer who understands OpenELIS and its relationship with the DB.
       1. If the changeset is doing an operation that is non-essential for your
          context (ie updating an Organization that doesn't exist in your DB),
          your context can be dropped from that changesets list of contexts
-      2. If the changeset relies on a previous changeset to run first (dropping
+      1. If the changeset relies on a previous changeset to run first (dropping
          a constraint from a table that is missing one), that previous changeset
          can be added to your context
-      3. If the changeset is updating based on some value that is different in
+      1. If the changeset is updating based on some value that is different in
          this DB, the SQL should be updated to accommodate both values (ie test
          section called Microbiology vs Microbiologie)
 
@@ -124,11 +124,11 @@ This is the recommended method of upgrading
 1. Update packages
    1. `sudo apt-get update`
    2. `sudo apt-get upgrade`
-2. Update current distribution 3. `sudo apt-get dist-upgrade`
-3. Upgrade to next version 4. `sudo apt-get install update-manager-core` 5.
+1. Update current distribution 3. `sudo apt-get dist-upgrade`
+1. Upgrade to next version 4. `sudo apt-get install update-manager-core` 5.
    `sudo do-release-upgrade` 6. Will run for a while...
-4. Check if running target version 7. `lsb_release -a`
-5. If version does not match target version, repeat from step 1
+1. Check if running target version 7. `lsb_release -a`
+1. If version does not match target version, repeat from step 1
 
 ## Update/Install Installation
 
@@ -139,11 +139,11 @@ This is the recommended method of upgrading
 
 1. Copy OpenELIS-backup.sql into the docker db container
    1. `sudo docker cp OpenELIS-backup.sql openelisglobal-database:/OpenELIS-backup.sql`
-2. Recreate the database and import the dump
+1. Recreate the database and import the dump
    1. `sudo docker exec openelisglobal-database psql -Uadmin -dpostgres -c 'DROP DATABASE clinlims;'`
-   2. `sudo docker exec openelisglobal-database psql -Uadmin -dpostgres -c 'CREATE DATABASE clinlims;'`
-   3. `sudo docker exec openelisglobal-database psql -Uadmin -dpostgres -c 'ALTER DATABASE clinlims OWNER TO clinlims;'`
-   4. `sudo docker exec openelisglobal-database psql -Uadmin -dclinlims -f /OpenELIS-backup.sql`
+   1. `sudo docker exec openelisglobal-database psql -Uadmin -dpostgres -c 'CREATE DATABASE clinlims;'`
+   1. `sudo docker exec openelisglobal-database psql -Uadmin -dpostgres -c 'ALTER DATABASE clinlims OWNER TO clinlims;'`
+   1. `sudo docker exec openelisglobal-database psql -Uadmin -dclinlims -f /OpenELIS-backup.sql`
 
 ## Migrate Passwords (If Unmigrated)
 
@@ -153,11 +153,11 @@ This is the recommended method of upgrading
 ## Migrate Encrypted Values on New Server
 
 1. `sudo docker exec -it openelisglobal-database psql -Uclinlims -dclinlims`
-2. `SELECT id, name, value FROM clinlims.site_information WHERE encrypted = 't';`
-3. record the "value" column for each row
-4. `UPDATE clinlims.site_information SET value = '' WHERE encrypted = 't';`
-5. `\q`
-6. re-add the values using the front end once the server is back up and running
+1. `SELECT id, name, value FROM clinlims.site_information WHERE encrypted = 't';`
+1. record the "value" column for each row
+1. `UPDATE clinlims.site_information SET value = '' WHERE encrypted = 't';`
+1. `\q`
+1. re-add the values using the front end once the server is back up and running
 
 ## Run Liquibase on New Server
 
@@ -167,10 +167,10 @@ This is the recommended method of upgrading
    1. `git clone https://github.com/I-TECH-UW/Liquibase-Outdated.git`
    2. `cd Liquibase-Outdated`
    3. `git checkout <branch>`
-2. Run the liquibase command
+1. Run the liquibase command
    1. put the correct connection values in `./liquibase.properties`
-   2. `java -jar -Dfile.encoding=utf-8 ./lib/liquibase-1.9.5.jar --defaultsFile=./liquibase.properties --url=jdbc:postgresql://localhost:5432/clinlims --contexts=<context> update`
-   3. if it complains about md5 checksums, run
+   1. `java -jar -Dfile.encoding=utf-8 ./lib/liquibase-1.9.5.jar --defaultsFile=./liquibase.properties --url=jdbc:postgresql://localhost:5432/clinlims --contexts=<context> update`
+   1. if it complains about md5 checksums, run
       1. `sudo docker exec -it openelisglobal-database psql -Uclinlims -dclinlims -c "UPDATE clinlims.databasechangelog SET md5sum = NULL;"`
 
 ## Update Installation

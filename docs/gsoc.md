@@ -21,9 +21,9 @@ If you are new to **OpenELIS Global**, we recommend starting with our
 ## GSoC 2024 Program Administrators
 
 1. Mutesasira Moses
-2. Casey Iiams-Hauser
-3. Herbert Yiga
-4. Brynn McKinney
+1. Casey Iiams-Hauser
+1. Herbert Yiga
+1. Brynn McKinney
 
 ## Selected Projects for GSoC 2024
 

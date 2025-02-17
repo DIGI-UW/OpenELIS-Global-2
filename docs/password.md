@@ -7,9 +7,9 @@ outdated method of storing passwords. To check if the old method is used, follow
 these steps:
 
 1. Connect to running database
-2. Query login_user table
+1. Query login_user table
    1. `SELECT * FROM clinlims.login_user;`
-3. Check the password column values
+1. Check the password column values
 
 If all passwords start with something similar to $2a$12$ then the passwords have
 been migrated, if not, then this procedure must be completed for OE2 to
@@ -34,12 +34,12 @@ possible that an attacker compromised their old password.
 
 ## Run the Password Migration tool
 
-2. Download the
+1. Download the
    [Password Migration](https://github.com/I-TECH-UW/Password-Migrator) tool and
    unpack it
    1. `wget https://github.com/I-TECH-UW/Password-Migrator/archive/master.tar.gz`
    1. `tar -xvzf master.tar.gz`
-3. Run the tool and follow instructions
+1. Run the tool and follow instructions
    1. `python2 Password-Migrator-master/migrator/migrate.py`
    1. Provide DB connection info
-4. Confirm that no errors occurred
+1. Confirm that no errors occurred

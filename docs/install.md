@@ -171,7 +171,7 @@ and then
 
     - when prompted if you want to trust the cert type `yes`
 
-2.  using openssl (less reliable, but doesn't require java):
+1.  using openssl (less reliable, but doesn't require java):
 
         openssl pkcs12 -export -nokeys -in /etc/ssl/certs/apache-selfsigned.crt -out /etc/openelis-global/truststore
 
@@ -212,7 +212,7 @@ and then
 
     - when prompted if you want to trust the cert type `yes`
 
-2.  using openssl (less reliable, but doesn't require java):
+1.  using openssl (less reliable, but doesn't require java):
 
         openssl pkcs12 -export -nokeys -in path/to/your/cert -out /etc/openelis-global/truststore
 
@@ -235,7 +235,7 @@ Ensure all keystores have global read permission
 
         curl -L -O https://www.dropbox.com/s/zrk5127xrg8cn6g/OpenELIS-Global_2.3.2.2_Installer.tar.gz
 
-2.  Unpack and enter the installer by running the following commands in
+1.  Unpack and enter the installer by running the following commands in
     Terminal, Mobaxterm, or Putty, replacing all in the { } with the appropriate
     values
 
@@ -246,12 +246,12 @@ Ensure all keystores have global read permission
     a. EG: tar -xvf OpenELIS-Global_2.3.2.2_Installer.tar.gz b. cd
     OpenELIS-Global_2.3.2.2_Installer/
 
-3.  Optionally configure your install by editing setup.ini
+1.  Optionally configure your install by editing setup.ini
 
     Find the section [DOCKER_VALUES] and set provide_database=True if you would
     like to use a Docker database
 
-4.  Run the install script in Terminal or Putty
+1.  Run the install script in Terminal or Putty
 
         sudo python3 setup_OpenELIS.py
 
@@ -265,21 +265,21 @@ server address, it is not overwritten by the installer.
    used to set the default test order prefix, and to identify the system to the
    consolidated server and other data systems.
 
-2. Set the time zone for OpenELIS Application a. Select the region that your
+1. Set the time zone for OpenELIS Application a. Select the region that your
    country is in b. Select the country c. Verify the time zone
-3. Enter in the keystore password we set earlier
-4. Same with the truststore
-5. Enter an encryption key, this will help secure your data by encrypting your
+1. Enter in the keystore password we set earlier
+1. Same with the truststore
+1. Enter an encryption key, this will help secure your data by encrypting your
    database
 
 OpenELIS uses FHIR for much of its internal and external communication, if you
 don't know what the options mean, leave them at the default.
 
 1. Local FHIR store is the link to the local FHIR API
-2. The remote FHIR store is used in the use case where OpenELIS is polling for
+1. The remote FHIR store is used in the use case where OpenELIS is polling for
    lab orders and returning results. EG:
    [the FHIR2 Module for OpenMRS](../deployomrs)
-3. The Consolidated Sevrer is a central server which collects lab data for
+1. The Consolidated Sevrer is a central server which collects lab data for
    reporting, serves as a master facility list, etc.
 
 Wait while install procedure completes
@@ -287,7 +287,7 @@ Wait while install procedure completes
 Please note: OpenELIS Global 2.x is designed for and is testing on Chrome only.
 Please be sure to use Chrome for OpenELIS.
 
-4. Check if OpenELIS is running at
+1. Check if OpenELIS is running at
    https://{server_ip_address}:8443/OpenELIS-Global/
 
 Default user: admin Default password: adminADMIN!

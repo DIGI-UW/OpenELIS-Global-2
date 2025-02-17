@@ -23,22 +23,22 @@ You will need the following in order to successfully setup your failover.
 1. Setup OpenELIS on the primary server as per
    [normal install/upgrade procedures](/install) ensuring the db is listening on
    port 5432
-2. Setup OpenELIS on the secondary server as per
+1. Setup OpenELIS on the secondary server as per
    [normal install/upgrade procedures](/install) ensuring the db is listening on
    port 5432
-3. Run `scripts/configurePrimary.sh` on the Primary server
+1. Run `scripts/configurePrimary.sh` on the Primary server
    1. Enter the ip address/dns entry that the primary server sits at. The
       secondary server must be able to reach the primary server at this address
       on port 5432
-   2. Enter the ip address/dns entry that the secondary server sits at. The
+   1. Enter the ip address/dns entry that the secondary server sits at. The
       primary server must be able to reach the secondary server at this address
       on port 22 for ssh
-   3. Enter a user that has sudo permissions on the secondary server
-   4. Enter the password for the user on the secondary server
-   5. Let the script run, it may look like further passwords are prompted for,
+   1. Enter a user that has sudo permissions on the secondary server
+   1. Enter the password for the user on the secondary server
+   1. Let the script run, it may look like further passwords are prompted for,
       but they should be automatically entered by the script
-4. Ensure that OpenELIS is started on the Primary server
-5. Ensure that information that is entered into the db on the Primary appears in
+1. Ensure that OpenELIS is started on the Primary server
+1. Ensure that information that is entered into the db on the Primary appears in
    the db on the Secondary.
 
 ## Notes
@@ -77,14 +77,14 @@ server’s ip/DNS address.
    to see if that fixes the issue.
    1. cd /var/lib/openelsi-global
    2. sudo docker-compose restart
-2. If that doesn’t work, but only some services are down, bring them all down by
+1. If that doesn’t work, but only some services are down, bring them all down by
    running
    1. cd /var/lib/openelsi-global
    2. sudo docker-compose down
-3. Setup OpenELIS on the new secondary server as per normal install/upgrade
+1. Setup OpenELIS on the new secondary server as per normal install/upgrade
    procedures ensuring the db is listening on port 5432 IF using a new secondary
    server
-4. Run `scripts/configurePrimary.sh` on the target primary server a. Enter the
+1. Run `scripts/configurePrimary.sh` on the target primary server a. Enter the
    ip address/dns entry that the target primary server sits at. The target
    secondary server must be able to reach the target primary server at this
    address on port 5432 b. Enter the ip address/dns entry that the target
@@ -92,10 +92,10 @@ server’s ip/DNS address.
    target secondary server at this address on port 22 for ssh c. Enter a user
    that has sudo permissions on the target secondary server d. Enter the
    password for the user on the target secondary server
-5. Let the script run, it may look like further passwords are prompted for, but
+1. Let the script run, it may look like further passwords are prompted for, but
    they should be automatically entered by the script
-6. Ensure that OpenELIS is started on the new Primary server
-7. Ensure that information that is entered into the db on the new Primary
+1. Ensure that OpenELIS is started on the new Primary server
+1. Ensure that information that is entered into the db on the new Primary
    appears in the db on the new Secondary.
 
 ## Notes
