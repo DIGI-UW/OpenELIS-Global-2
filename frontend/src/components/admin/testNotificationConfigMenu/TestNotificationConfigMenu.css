@@ -1,98 +1,82 @@
+.adminPageContent {
+  padding: 1rem;
 
-    adminPageContent: {
-      padding: "1rem",
-      margin: "0 auto",
-      maxWidth: "1200px",
-    },
-    buttonContainer: {
-      display: "flex",
-      justifyContent: "center",
-      marginTop: "1rem",
-      flexWrap: "wrap",
-      gap: "1rem",
-    },
-    responsiveButton: {
-      flex: 1,
-      minWidth: "120px",
-      maxWidth: "250px",
-      padding: "0.5rem 1rem",
-    },
-    responsiveIconButton: {
-      width: "40px",
-      height: "40px",
-      padding: "5px",
-    },
-    tableHeader: {
-      fontSize: "1rem",
-    },
-    tableCell: {
-      fontSize: "1rem",
-    },
-    "@media (max-width: 1024px)": {
-      adminPageContent: {
-        padding: "0.5rem",
-      },
-      buttonContainer: {
-        flexDirection: "column",
-        alignItems: "center",
-      },
-      responsiveButton: {
-        width: "100%",
-        maxWidth: "100%",
-        fontSize: "0.875rem",
-      },
-      responsiveIconButton: {
-        width: "35px",
-        height: "35px",
-      },
-      tableHeader: {
-        fontSize: "0.875rem",
-      },
-      tableCell: {
-        fontSize: "0.875rem",
-      },
-    },
-    "@media (max-width: 768px)": {
-      adminPageContent: {
-        padding: "0.5rem",
-      },
-      buttonContainer: {
-        flexDirection: "column",
-        alignItems: "center",
-      },
-      responsiveButton: {
-        width: "100%",
-        fontSize: "0.75rem",
-      },
-      responsiveIconButton: {
-        width: "30px",
-        height: "30px",
-      },
-      tableHeader: {
-        fontSize: "0.75rem",
-      },
-      tableCell: {
-        fontSize: "0.75rem",
-      },
-    },
-    "@media (max-width: 480px)": {
-      adminPageContent: {
-        padding: "0.25rem",
-      },
-      responsiveButton: {
-        width: "100%",
-        fontSize: "0.75rem",
-      },
-      responsiveIconButton: {
-        width: "25px",
-        height: "25px",
-      },
-      tableHeader: {
-        fontSize: "0.75rem",
-      },
-      tableCell: {
-        fontSize: "0.75rem",
-      },
+  .orderLegendBody {
+    margin-top: 1rem;
+    overflow-x: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+
+      th,
+      td {
+        padding: 0.5rem;
+        text-align: center;
+        border: 1px solid #ddd;
+      }
+
+      th {
+        background-color: #f3f3f3;
+      }
+
+      @media (max-width: 768px) {
+        th,
+        td {
+          font-size: 0.85rem;
+          padding: 0.3rem;
+        }
+      }
     }
+  }
 
-  
+  .button-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 1rem;
+
+    @media (max-width: 600px) {
+      flex-direction: column;
+      align-items: stretch;
+
+      button {
+        width: 100%;
+      }
+    }
+  }
+}
+
+.pagination-controls {
+  margin-top: 1rem;
+
+  @media (max-width: 768px) {
+    .bx--pagination {
+      flex-direction: column;
+
+      .bx--pagination__left,
+      .bx--pagination__right {
+        flex-direction: column;
+      }
+    }
+  }
+}
+
+.page-heading {
+  font-size: 2rem;
+
+  @media (max-width: 768px) {
+    font-size: 1.5rem;
+    text-align: center;
+  }
+}
+
+.bx--checkbox {
+  transform: scale(0.9);
+
+  @media (max-width: 480px) {
+    transform: scale(0.8);
+  }
+}
