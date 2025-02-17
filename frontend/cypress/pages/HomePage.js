@@ -33,7 +33,7 @@ class HomePage {
   }
 
   openNavigationMenu() {
-    cy.get("header#mainHeader > button[title='Open menu']", {
+    cy.get("[data-cy='menuButton']", {
       timeout: 30000,
     }).click();
   }

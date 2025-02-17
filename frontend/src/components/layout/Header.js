@@ -427,6 +427,7 @@ function OEHeader(props) {
                 <Header id="mainHeader" className="mainHeader" aria-label="">
                   {userSessionDetails.authenticated && (
                     <HeaderMenuButton
+                      data-cy="menuButton"
                       aria-label={
                         isSideNavExpanded ? "Close menu" : "Open menu"
                       }
