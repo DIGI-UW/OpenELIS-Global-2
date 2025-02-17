@@ -218,7 +218,11 @@ function Login(props) {
                               id: "login.msg.password",
                             })}
                           />
-                          <Button type="submit" disabled={!isValid}>
+                          <Button
+                            data-cy="loginButton"
+                            type="submit"
+                            disabled={!isValid}
+                          >
                             <FormattedMessage id="label.button.login" />
                             <Loading
                               small={true}
