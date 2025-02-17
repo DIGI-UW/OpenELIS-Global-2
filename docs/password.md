@@ -25,12 +25,12 @@ possible that an attacker compromised their old password.
 
 1. Run the following commands
    1. `sudo apt update`
-   2. `wget https://bootstrap.pypa.io/pip/2.7/get-pip.py`
-   3. `python2 get-pip.py`
-   4. `sudo apt install libpq-dev python-dev`
-   5. `python2 -m pip install pycrypto`
-   6. `python2 -m pip install psycopg2`
-   7. `python2 -m pip install bcrypt`
+   1. `wget https://bootstrap.pypa.io/pip/2.7/get-pip.py`
+   1. `python2 get-pip.py`
+   1. `sudo apt install libpq-dev python-dev`
+   1. `python2 -m pip install pycrypto`
+   1. `python2 -m pip install psycopg2`
+   1. `python2 -m pip install bcrypt`
 
 ## Run the Password Migration tool
 
