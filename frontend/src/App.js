@@ -381,12 +381,12 @@ export default function App() {
                   component={() => <PatientManagement />}
                   role="Reception"
                 />
-                // <SecureRoute
-                //   path="/PatientEditByProject"
-                //   exact
-                //   component={() => <EditPatient />}
-                //   role="Reception"
-                // />
+                    {/* <SecureRoute
+                   path="/PatientEditByProject"
+                   exact
+                   component={() => <EditPatient />}
+                   role="Reception"
+                /> */}
                 <SecureRoute
                   path="/PatientHistory"
                   exact
