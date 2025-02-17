@@ -123,7 +123,7 @@ This is the recommended method of upgrading
 
 1. Update packages
    1. `sudo apt-get update`
-   2. `sudo apt-get upgrade`
+   1. `sudo apt-get upgrade`
 1. Update current distribution 3. `sudo apt-get dist-upgrade`
 1. Upgrade to next version 4. `sudo apt-get install update-manager-core` 5.
    `sudo do-release-upgrade` 6. Will run for a while...
@@ -165,8 +165,8 @@ This is the recommended method of upgrading
    [old liquibase files](https://github.com/I-TECH-UW/Liquibase-Outdated) and if
    there is a custom branch, change to it
    1. `git clone https://github.com/I-TECH-UW/Liquibase-Outdated.git`
-   2. `cd Liquibase-Outdated`
-   3. `git checkout <branch>`
+   1. `cd Liquibase-Outdated`
+   1. `git checkout <branch>`
 1. Run the liquibase command
    1. put the correct connection values in `./liquibase.properties`
    1. `java -jar -Dfile.encoding=utf-8 ./lib/liquibase-1.9.5.jar --defaultsFile=./liquibase.properties --url=jdbc:postgresql://localhost:5432/clinlims --contexts=<context> update`
