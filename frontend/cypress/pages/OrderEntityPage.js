@@ -1,3 +1,4 @@
+//import { cy } from "date-fns/locale";
 import PatientEntryPage from "./PatientEntryPage";
 
 class OrderEntityPage {
@@ -23,6 +24,7 @@ class OrderEntityPage {
     cy.getElement("select#sampleId_0").select(sampleType);
   }
 
+
   checkPanelCheckBoxField() {
     cy.get(
       ".testPanels .cds--checkbox-wrapper:nth-child(5) .cds--checkbox",
@@ -36,7 +38,7 @@ class OrderEntityPage {
     cy.intercept("GET", `**/rest/SampleEntryAccessionNumberValidation**`).as(
       "accessionNoValidation",
     );
-    cy.get("#labNo").type(order, { delay: 300 });
+    cy.get("#display_labNo").type(order, { timeout: 10000 });
 
     cy.wait("@accessionNoValidation").then((interception) => {
       const responseBody = interception.response.body;
@@ -47,6 +49,9 @@ class OrderEntityPage {
     });
   }
   enterSiteName(siteName) {
+    cy.get("#siteName").type(siteName);
+    cy.contains(".suggestion-active", siteName).click();
+    cy.wait(200);
     cy.get("#siteName").type(siteName);
     cy.contains(".suggestion-active", siteName).click();
     cy.wait(200);
@@ -68,9 +73,35 @@ class OrderEntityPage {
 
   requesterFName(requesterFName) {
     cy.get("input#requesterFirstName").type(requesterFName);
+  searchRequester(requester) {
+    cy.get("#requesterId").type(requester);
+    cy.contains(".suggestion-active", requester).click();
+    cy.wait(200);
   }
 
+  generateLabOrderNumber() {
+    cy.get("#generate", { timeout: 5000 }).should("be.visible").click();
+  }
+
+  //for now we dont need FName and LName with the autocomplete option
+  requesterLName(requesterLName) {
+    cy.get("input#requesterLastName").type(requesterLName);
+  }
+
+  requesterFName(requesterFName) {
+    cy.get("input#requesterFirstName").type(requesterFName);
+  }
+
+
   clickSubmitOrderButton() {
+    cy.get("#submit-button").should("be.visible").click();
+  }
+
+  printBarCode() {
+    cy.get("[data-cy='print-barcode-button']", { timeout: 15000 })
+      .should("exist")
+      .should("be.visible")
+      .click();
     cy.get("#submit-button").should("be.visible").click();
   }
 
