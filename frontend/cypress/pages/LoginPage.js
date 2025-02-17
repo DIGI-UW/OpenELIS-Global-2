@@ -35,8 +35,10 @@ class LoginPage {
   }
 
   signIn() {
-    const button = cy.getElement(`[type='submit']`);
-    button.click();
+    cy.get("[data-cy='loginButton']")
+      .should("exist")
+      .should("be.visible")
+      .click();
   }
 
   acceptSelfAssignedCert() {
