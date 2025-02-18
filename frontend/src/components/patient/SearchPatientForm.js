@@ -433,6 +433,7 @@ function SearchPatientForm(props) {
                   id="local_search"
                   kind="tertiary"
                   type="submit"
+                  data-cy="searchPatientButton"
                   onClick={() => setFieldValue("suppressExternalSearch", true)}
                 >
                   <FormattedMessage id="label.button.search" />
