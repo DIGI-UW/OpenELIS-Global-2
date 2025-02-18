@@ -1,82 +1,113 @@
-.adminPageContent {
-  padding: 1rem;
+/* TestNotificationConfigMenuStyles.css */
 
-  .orderLegendBody {
-    margin-top: 1rem;
-    overflow-x: auto;
-    border: 1px solid #e0e0e0;
-    border-radius: 5px;
+/* Base styles for all screen sizes */
+.admin-page-content {
+  width: 100%;
+}
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
+.button-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
 
-      th,
-      td {
-        padding: 0.5rem;
-        text-align: center;
-        border: 1px solid #ddd;
-      }
+.action-button {
+  margin-right: 12px;
+}
 
-      th {
-        background-color: #f3f3f3;
-      }
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+}
 
-      @media (max-width: 768px) {
-        th,
-        td {
-          font-size: 0.85rem;
-          padding: 0.3rem;
-        }
-      }
-    }
+/* Mobile styles (up to 671px) */
+@media (max-width: 671px) {
+  .button-container {
+    flex-direction: column;
+    gap: 8px;
   }
+  
+  .action-button {
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 8px;
+  }
+  
+  .compact-cell {
+    padding: 8px;
+  }
+  
+  .responsive-heading {
+    font-size: 1.25rem;
+  }
+}
 
-  .button-group {
-    display: flex;
-    flex-wrap: wrap;
+/* Tablet styles (672px to 1055px) */
+@media (min-width: 672px) and (max-width: 1055px) {
+  .button-container {
     gap: 10px;
-    margin-bottom: 1rem;
-
-    @media (max-width: 600px) {
-      flex-direction: column;
-      align-items: stretch;
-
-      button {
-        width: 100%;
-      }
-    }
   }
-}
-
-.pagination-controls {
-  margin-top: 1rem;
-
-  @media (max-width: 768px) {
-    .bx--pagination {
-      flex-direction: column;
-
-      .bx--pagination__left,
-      .bx--pagination__right {
-        flex-direction: column;
-      }
-    }
+  
+  .action-button {
+    margin-right: 8px;
+    margin-bottom: 8px;
   }
-}
-
-.page-heading {
-  font-size: 2rem;
-
-  @media (max-width: 768px) {
+  
+  .responsive-heading {
     font-size: 1.5rem;
-    text-align: center;
   }
 }
 
-.bx--checkbox {
-  transform: scale(0.9);
+/* Desktop styles (1056px and above) */
+@media (min-width: 1056px) {
+  .button-container {
+    gap: 12px;
+  }
+  
+  .action-button {
+    margin-right: 12px;
+  }
+  
+  .responsive-heading {
+    font-size: 1.75rem;
+  }
+}
 
-  @media (max-width: 480px) {
-    transform: scale(0.8);
+/* Pagination responsiveness */
+.responsive-pagination {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Checkbox alignment for different screen sizes */
+@media (max-width: 671px) {
+  .responsive-checkbox {
+    margin: 0;
+    padding: 4px;
+  }
+}
+
+/* Make sure the table doesn't overflow on mobile */
+.responsive-table {
+  min-width: 100%;
+}
+
+@media (max-width: 671px) {
+  .responsive-table {
+    font-size: 0.875rem;
+  }
+}
+
+/* Adjust column widths on different screen sizes */
+@media (max-width: 671px) {
+  .narrow-column {
+    width: 60px;
+    max-width: 60px;
+  }
+  
+  .medium-column {
+    width: 80px;
+    max-width: 80px;
   }
 }
