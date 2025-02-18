@@ -24,7 +24,7 @@ class PatientEntryPage {
     return cy.get("section > h3");
   }
 
-  searchPatientButton() {
+  searchForPatientButton() {
     cy.get("[data-cy='searchForPatient']").click();
   }
 
@@ -43,7 +43,7 @@ class PatientEntryPage {
     cy.enterText(this.lastNameSelector, lastName);
     cy.enterText(this.firstNameSelector, firstName);
     cy.enterText(this.dateOfBirth, dateOfBirth);
-    this.getMaleGenderRadioButton().click();
+    this.checkMaleGenderRadioButton();
     cy.getElement("#submit").click();
   }
 
@@ -56,7 +56,7 @@ class PatientEntryPage {
   }
 
   clickSearchPatientButton() {
-    cy.getElement("#local_search").click();
+    cy.get("#local_search").click();
   }
 
   getExternalSearchButton() {
