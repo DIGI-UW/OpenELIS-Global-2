@@ -1,3 +1,8 @@
+/* eslint-disable no-redeclare */
+/* eslint-env jest */
+// Or individual globals:
+/* global test, expect */
+
 import { render, screen } from "@testing-library/react";
 import App from "./App";
 
