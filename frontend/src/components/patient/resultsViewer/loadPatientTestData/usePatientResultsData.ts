@@ -5,7 +5,7 @@ import loadPatientData from "./loadPatientData";
 type LoadingState = {
   sortedObs: PatientData;
   loaded: boolean;
-  error: Object | undefined;
+  error: unknown | undefined;
 };
 
 const usePatientResultsData = (patientUuid: string): LoadingState => {

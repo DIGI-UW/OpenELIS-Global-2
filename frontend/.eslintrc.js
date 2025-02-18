@@ -23,20 +23,16 @@ module.exports = {
     "react/react-in-jsx-scope": "off",
     "react/no-unescaped-entities": "warn",
     "react-hooks/exhaustive-deps": "off",
-    "no-unused-vars": "off",
-    "unused-imports/no-unused-imports": "error",
-    "unused-imports/no-unused-vars": [
-      "warn",
-      { vars: "all", varsIgnorePattern: "^_", args: "after-used", argsIgnorePattern: "^_" }
-    ],
+    "no-unused-vars": "warn",
     "@typescript-eslint/no-empty-function": "warn",
     "prettier/prettier": ["warn"],
+    "unused-imports/no-unused-imports": "error",
   },
   overrides: [
     {
       files: ["*.ts", "*.tsx"],
       parser: "@typescript-eslint/parser",
-      plugins: ["@typescript-eslint", "unused-imports"],
+      plugins: ["@typescript-eslint"],
       extends: [
         "plugin:react/recommended",
         "plugin:@typescript-eslint/recommended",
@@ -64,12 +60,7 @@ module.exports = {
         "@typescript-eslint/no-empty-interface": "warn",
         "no-case-declarations": "off",
         "react/display-name": "off",
-        "@typescript-eslint/no-unused-vars": "off",
         "unused-imports/no-unused-imports": "error",
-        "unused-imports/no-unused-vars": [
-          "warn",
-          { vars: "all", varsIgnorePattern: "^_", args: "after-used", argsIgnorePattern: "^_" }
-        ],
       },
     },
   ],
