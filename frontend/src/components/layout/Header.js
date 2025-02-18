@@ -10,6 +10,7 @@ import {
   LocationFilled,
 } from "@carbon/icons-react";
 import { Select, SelectItem } from "@carbon/react";
+import HelpMenu from "./HelpMenu";
 import React, {
   createRef,
   useContext,
@@ -516,6 +517,7 @@ function OEHeader(props) {
                     >
                       {panelSwitchIcon()}
                     </HeaderGlobalAction>
+                    <HelpMenu />
                   </HeaderGlobalBar>
                   <HeaderPanel
                     aria-label="Header Panel"
