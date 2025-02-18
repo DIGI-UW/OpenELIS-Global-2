@@ -1,31 +1,35 @@
-/* TestNotificationConfigMenuStyles.css */
+.adminPageContent {
+  padding: 1rem;
 
-/* Base styles for all screen sizes */
-.admin-page-content {
-  width: 100%;
-}
+  .orderLegendBody {
+    margin-top: 1rem;
+    overflow-x: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
 
-.button-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 16px;
-}
+    table {
+      width: 100%;
+      border-collapse: collapse;
 
-.action-button {
-  margin-right: 12px;
-}
+      th,
+      td {
+        padding: 0.5rem;
+        text-align: center;
+        border: 1px solid #ddd;
+      }
 
-.table-container {
-  width: 100%;
-  overflow-x: auto;
-}
+      th {
+        background-color: #f3f3f3;
+      }
 
-/* Mobile styles (up to 671px) */
-@media (max-width: 671px) {
-  .button-container {
-    flex-direction: column;
-    gap: 8px;
+      @media (max-width: 768px) {
+        th,
+        td {
+          font-size: 0.85rem;
+          padding: 0.3rem;
+        }
+      }
+    }
   }
 
   .action-button {
@@ -43,10 +47,20 @@
   }
 }
 
-/* Tablet styles (672px to 1055px) */
-@media (min-width: 672px) and (max-width: 1055px) {
-  .button-container {
+  .button-group {
+    display: flex;
+    flex-wrap: wrap;
     gap: 10px;
+    margin-bottom: 1rem;
+
+    @media (max-width: 600px) {
+      flex-direction: column;
+      align-items: stretch;
+
+      button {
+        width: 100%;
+      }
+    }
   }
 
   .action-button {
@@ -56,6 +70,7 @@
 
   .responsive-heading {
     font-size: 1.5rem;
+    text-align: center;
   }
 }
 

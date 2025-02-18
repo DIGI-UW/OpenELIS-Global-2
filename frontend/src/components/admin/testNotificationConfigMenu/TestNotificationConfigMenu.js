@@ -28,7 +28,6 @@ import {
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import { Settings } from "@carbon/icons-react";
-import "./TestNotificationConfigMenu.css";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -215,7 +214,6 @@ function TestNotificationConfigMenu() {
           <Checkbox
             id={`checkbox-${row.id}-${cell.info.header}`}
             labelText=""
-            className="responsive-checkbox"
             checked={
               testNotificationConfigMenuDataPost?.menuList.find(
                 (item) => item.testId === row.id,
@@ -236,7 +234,6 @@ function TestNotificationConfigMenu() {
             onClick={() => handleEditButtonClick(row.cells[0].value)}
             renderIcon={Settings}
             kind="tertiary"
-            className="responsive-button"
           />
         </TableCell>
       );
@@ -252,14 +249,14 @@ function TestNotificationConfigMenu() {
     <>
       {notificationVisible && <AlertDialog />}
       {loading && <Loading />}
-      <div className="adminPageContent admin-page-content">
+      <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
 
         {/* Top Buttons */}
         <Grid fullWidth>
           <Column lg={16} md={12} sm={4} xlg={16}>
             <Section>
-              <Heading className="responsive-heading">
+              <Heading>
                 <FormattedMessage id="testnotificationconfig.browse.title" />
               </Heading>
             </Section>
@@ -270,13 +267,12 @@ function TestNotificationConfigMenu() {
                 md={12}
                 sm={4}
                 xlg={16}
-                className="button-container"
+                style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}
               >
                 <Button
                   disabled={saveButton}
                   onClick={testNotificationConfigMenuSavePostCall}
                   type="button"
-                  className="action-button"
                 >
                   <FormattedMessage id="label.button.save" />
                 </Button>
@@ -288,7 +284,6 @@ function TestNotificationConfigMenu() {
                   }
                   kind="tertiary"
                   type="button"
-                  className="action-button"
                 >
                   <FormattedMessage id="label.button.exit" />
                 </Button>
@@ -441,18 +436,11 @@ function TestNotificationConfigMenu() {
 
           {/* Bottom Buttons */}
           <Grid fullWidth>
-            <Column
-              lg={16}
-              md={12}
-              sm={4}
-              xlg={16}
-              className="button-container"
-            >
+            <Column lg={16} md={12} sm={4} xlg={16}>
               <Button
                 disabled={saveButton}
                 onClick={testNotificationConfigMenuSavePostCall}
                 type="button"
-                className="action-button"
               >
                 <FormattedMessage id="label.button.save" />
               </Button>
@@ -464,7 +452,6 @@ function TestNotificationConfigMenu() {
                 }
                 kind="tertiary"
                 type="button"
-                className="action-button"
               >
                 <FormattedMessage id="label.button.exit" />
               </Button>
