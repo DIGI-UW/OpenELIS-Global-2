@@ -24,10 +24,13 @@ class PatientEntryPage {
     return cy.get("section > h3");
   }
 
-  clickNewPatientTab() {
-    cy.get(":nth-child(1) > :nth-child(2) > .cds--btn").click();
+  searchPatientButton() {
+    cy.get("[data-cy='searchForPatient']").click();
   }
 
+  clickNewPatientTab() {
+    cy.get("[data-cy='newPatientButton']").click();
+  }
   enterPatientInfo(
     firstName,
     lastName,
@@ -48,10 +51,8 @@ class PatientEntryPage {
     this.getSubmitButton().click();
   }
 
-  getMaleGenderRadioButton() {
-    return cy.getElement(
-      ":nth-child(2) > .cds--radio-button__label > .cds--radio-button__appearance",
-    );
+  checkMaleGenderRadioButton() {
+    cy.get("#search-radio-1").check({ force: true });
   }
 
   clickSearchPatientButton() {
@@ -122,7 +123,7 @@ class PatientEntryPage {
               const trimmedText = cellText.trim();
               expect(trimmedText).to.contain(expectedFieldValue);
             });
-        } else if (searchBy === "DOB") {
+        } else if (searchBy === "dOB") {
           cy.wrap($el)
             .find("td:nth-child(5)")
             .invoke("text")

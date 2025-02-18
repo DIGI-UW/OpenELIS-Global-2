@@ -14,7 +14,7 @@ describe("Patient Search", function () {
     patientPage = homePage.goToPatientEntry();
   });
 
-  it("Add|Modify Patient page should appear with search field", function () {
+  it("Add/Modify Patient page should appear with search field", function () {
     patientPage
       .getPatientEntryPageTitle()
       .should("contain.text", "Add Or Modify Patient");
@@ -36,7 +36,7 @@ describe("Patient Search", function () {
         patient.lastName,
         patient.subjectNumber,
         patient.nationalId,
-        patient.DOB,
+        patient.dOB,
       );
     });
   });
@@ -47,12 +47,15 @@ describe("Patient Search", function () {
     cy.wait(200).reload();
   });
 
+  it("Validate Search Buttons visibility", function () {
+    patientPage.searchForPatientButton().should("be.visible");
+    patientPage.clickSearchPatientButton().should("be.visible");
+  });
+
   it("Should be able to search patients By gender", function () {
-    cy.wait(1000);
-    patientPage.getMaleGenderRadioButton().should("be.visible");
-    patientPage.getMaleGenderRadioButton().click();
-    cy.wait(200);
+    patientPage.checkMaleGenderRadioButton().should("be.visible").click();
     patientPage.clickSearchPatientButton();
+    cy.wait(500);
     cy.fixture("Patient").then((patient) => {
       patientPage.validatePatientByGender("M");
     });
@@ -112,7 +115,7 @@ describe("Patient Search", function () {
       patientPage.searchPatientByDateOfBirth(patient.DOB);
       patientPage.clickSearchPatientButton();
       patientPage.validatePatientSearchTablebyRespectiveField(
-        patient.DOB,
+        patient.dOB,
         "DOB",
       );
     });
