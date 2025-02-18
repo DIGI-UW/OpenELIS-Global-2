@@ -715,6 +715,13 @@ function CreatePatientForm(props) {
                                 id: "patientcontact.person.lastname",
                               })}
                               id={field.name}
+                              invalid={
+                                errors.patientContact?.person?.lastName &&
+                                touched.patientContact?.person?.lastName
+                              }
+                              invalidText={
+                                errors.patientContact?.person?.lastName
+                              }
                               placeholder={intl.formatMessage({
                                 id: "patient.emergency.lastname",
                               })}
@@ -734,6 +741,13 @@ function CreatePatientForm(props) {
                                 id: "patientcontact.person.firstname",
                               })}
                               id={field.name}
+                              invalid={
+                                errors.patientContact?.person?.firstName &&
+                                touched.patientContact?.person?.firstName
+                              }
+                              invalidText={
+                                errors.patientContact?.person?.firstName
+                              }
                               placeholder={intl.formatMessage({
                                 id: "patient.emergency.firstname",
                               })}
