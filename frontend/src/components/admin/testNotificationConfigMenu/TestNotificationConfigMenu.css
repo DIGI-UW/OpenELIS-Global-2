@@ -72,9 +72,8 @@
     font-size: 1.5rem;
     text-align: center;
   }
-}
 
-/* Desktop styles (1056px and above) */
+
 @media (min-width: 1056px) {
   .button-container {
     gap: 12px;
@@ -89,13 +88,12 @@
   }
 }
 
-/* Pagination responsiveness */
+
 .responsive-pagination {
   width: 100%;
   overflow-x: auto;
 }
 
-/* Checkbox alignment for different screen sizes */
 @media (max-width: 671px) {
   .responsive-checkbox {
     margin: 0;
@@ -103,7 +101,6 @@
   }
 }
 
-/* Make sure the table doesn't overflow on mobile */
 .responsive-table {
   min-width: 100%;
 }
@@ -114,7 +111,7 @@
   }
 }
 
-/* Adjust column widths on different screen sizes */
+
 @media (max-width: 671px) {
   .narrow-column {
     width: 60px;

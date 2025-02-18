@@ -20,7 +20,9 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
-import { NotificationContext } from "../../layout/Layout.js";
+import {
+  NotificationContext,
+} from "../../layout/Layout.js";
 import {
   AlertDialog,
   NotificationKinds,
@@ -56,31 +58,6 @@ function TestNotificationConfigMenu() {
     setTestNotificationConfigMenuDataPost,
   ] = useState({ menuList: [] });
   const [testNamesMap, setTestNamesMap] = useState({});
-  const [windowWidth, setWindowWidth] = useState(
-    typeof window !== "undefined" ? window.innerWidth : 0,
-  );
-
-  const isMobile = windowWidth < 672;
-  const isTablet = windowWidth >= 672 && windowWidth < 1056;
-  const getResponsivePageSizes = () => {
-    if (isMobile) {
-      return [10, 25];
-    } else if (isTablet) {
-      return [25, 50];
-    } else {
-      return [25, 50, 100];
-    }
-  };
-
-  // Window resize handler
-  useEffect(() => {
-    function handleResize() {
-      setWindowWidth(window.innerWidth);
-    }
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   const handleMenuItems = (res) => {
     if (res) {
@@ -166,7 +143,7 @@ function TestNotificationConfigMenu() {
           setNotificationVisible(true);
         }
         setLoading(false);
-      },
+      }
     );
   }
 
@@ -199,18 +176,14 @@ function TestNotificationConfigMenu() {
 
   const renderCell = (cell, row) => {
     if (["testId", "testName"].includes(cell.info.header)) {
-      return (
-        <TableCell key={cell.id} className={isMobile ? "compact-cell" : ""}>
-          {cell.value}
-        </TableCell>
-      );
+      return <TableCell key={cell.id}>{cell.value}</TableCell>;
     } else if (
       ["patientEmail", "patientSMS", "providerEmail", "providerSMS"].includes(
-        cell.info.header,
+        cell.info.header
       )
     ) {
       return (
-        <TableCell key={cell.id} className={isMobile ? "compact-cell" : ""}>
+        <TableCell key={cell.id}>
           <Checkbox
             id={`checkbox-${row.id}-${cell.info.header}`}
             labelText=""
@@ -225,7 +198,7 @@ function TestNotificationConfigMenu() {
       );
     } else if (cell.info.header === "edit") {
       return (
-        <TableCell key={cell.id} className={isMobile ? "compact-cell" : ""}>
+        <TableCell key={cell.id}>
           <Button
             hasIconOnly
             iconDescription={intl.formatMessage({
@@ -238,11 +211,7 @@ function TestNotificationConfigMenu() {
         </TableCell>
       );
     }
-    return (
-      <TableCell key={cell.id} className={isMobile ? "compact-cell" : ""}>
-        {cell.value}
-      </TableCell>
-    );
+    return <TableCell key={cell.id}>{cell.value}</TableCell>;
   };
 
   return (
@@ -297,139 +266,73 @@ function TestNotificationConfigMenu() {
           <Grid fullWidth>
             <Column lg={16} md={12} sm={4} xlg={16}>
               <br />
-              <div className="table-container">
-                <DataTable
-                  rows={
-                    testNotificationConfigMenuDataPost?.menuList
-                      ?.slice((page - 1) * pageSize, page * pageSize)
-                      ?.map((item) => ({
-                        id: item.testId,
-                        testId: item.testId,
-                        patientEmail: item.patientEmail.active
-                          ? "true"
-                          : "false",
-                        patientSMS: item.patientSMS.active ? "true" : "false",
-                        providerEmail: item.providerEmail.active
-                          ? "true"
-                          : "false",
-                        providerSMS: item.providerSMS.active ? "true" : "false",
-                        testName: testNamesMap[item.testId] || item.testId,
-                      })) || []
-                  }
-                  headers={[
-                    {
-                      key: "testId",
-                      header: intl.formatMessage({ id: "column.name.testId" }),
-                    },
-                    {
-                      key: "testName",
-                      header: intl.formatMessage({ id: "label.testName" }),
-                    },
-                    {
-                      key: "patientEmail",
-                      header: intl.formatMessage({
-                        id: "testnotification.patient.email",
-                      }),
-                    },
-                    {
-                      key: "patientSMS",
-                      header: intl.formatMessage({
-                        id: "testnotification.patient.sms",
-                      }),
-                    },
-                    {
-                      key: "providerEmail",
-                      header: intl.formatMessage({
-                        id: "testnotification.provider.email",
-                      }),
-                    },
-                    {
-                      key: "providerSMS",
-                      header: intl.formatMessage({
-                        id: "testnotification.provider.sms",
-                      }),
-                    },
-                    {
-                      key: "edit",
-                      header: intl.formatMessage({
-                        id: "banner.menu.patientEdit",
-                      }),
-                    },
-                  ]}
-                  size={isMobile ? "sm" : isTablet ? "md" : "lg"}
-                  className="responsive-table"
-                >
-                  {({ rows, headers, getHeaderProps, getTableProps }) => (
-                    <Table {...getTableProps()}>
-                      <TableHead>
-                        <TableRow>
-                          {headers.map((header) => (
-                            <TableHeader
-                              key={header.key}
-                              {...getHeaderProps({ header })}
-                              className={
-                                isMobile &&
-                                (header.key === "testId" ||
-                                  header.key === "edit")
-                                  ? "narrow-column"
-                                  : isMobile
-                                    ? "medium-column"
-                                    : ""
-                              }
-                            >
-                              {header.header}
-                            </TableHeader>
-                          ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {rows.map((row) => (
-                          <TableRow key={row.id}>
-                            {row.cells.map((cell) => renderCell(cell, row))}
-                          </TableRow>
+              <DataTable
+                rows={
+                  testNotificationConfigMenuDataPost?.menuList
+                    ?.slice((page - 1) * pageSize, page * pageSize)
+                    ?.map((item) => ({
+                      id: item.testId,
+                      testId: item.testId,
+                      patientEmail: item.patientEmail.active ? "true" : "false",
+                      patientSMS: item.patientSMS.active ? "true" : "false",
+                      providerEmail: item.providerEmail.active
+                        ? "true"
+                        : "false",
+                      providerSMS: item.providerSMS.active ? "true" : "false",
+                      testName: testNamesMap[item.testId] || item.testId,
+                    })) || []
+                }
+                headers={[
+                  { key: "testId", header: intl.formatMessage({ id: "column.name.testId" }) },
+                  { key: "testName", header: intl.formatMessage({ id: "label.testName" }) },
+                  { key: "patientEmail", header: intl.formatMessage({ id: "testnotification.patient.email" }) },
+                  { key: "patientSMS", header: intl.formatMessage({ id: "testnotification.patient.sms" }) },
+                  { key: "providerEmail", header: intl.formatMessage({ id: "testnotification.provider.email" }) },
+                  { key: "providerSMS", header: intl.formatMessage({ id: "testnotification.provider.sms" }) },
+                  { key: "edit", header: intl.formatMessage({ id: "banner.menu.patientEdit" }) },
+                ]}
+              >
+                {({ rows, headers, getHeaderProps, getTableProps }) => (
+                  <Table {...getTableProps()}>
+                    <TableHead>
+                      <TableRow>
+                        {headers.map((header) => (
+                          <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                            {header.header}
+                          </TableHeader>
                         ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </DataTable>
-              </div>
-              <div className="responsive-pagination">
-                <Pagination
-                  onChange={handlePageChange}
-                  page={page}
-                  pageSize={pageSize}
-                  pageSizes={getResponsivePageSizes()}
-                  totalItems={
-                    testNotificationConfigMenuDataPost?.menuList.length
-                  }
-                  forwardText={intl.formatMessage({ id: "pagination.forward" })}
-                  backwardText={intl.formatMessage({
-                    id: "pagination.backward",
-                  })}
-                  itemRangeText={(min, max, total) =>
-                    intl.formatMessage(
-                      { id: "pagination.item-range" },
-                      { min, max, total },
-                    )
-                  }
-                  itemsPerPageText={intl.formatMessage({
-                    id: "pagination.items-per-page",
-                  })}
-                  itemText={(min, max) =>
-                    intl.formatMessage({ id: "pagination.item" }, { min, max })
-                  }
-                  pageNumberText={intl.formatMessage({
-                    id: "pagination.page-number",
-                  })}
-                  pageRangeText={(_, total) =>
-                    intl.formatMessage(
-                      { id: "pagination.page-range" },
-                      { total },
-                    )
-                  }
-                  size={isMobile ? "sm" : isTablet ? "md" : "lg"}
-                />
-              </div>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {rows.map((row) => (
+                        <TableRow key={row.id}>
+                          {row.cells.map((cell) => renderCell(cell, row))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </DataTable>
+              <Pagination
+                onChange={handlePageChange}
+                page={page}
+                pageSize={pageSize}
+                pageSizes={[25, 50]}
+                totalItems={testNotificationConfigMenuDataPost?.menuList.length}
+                forwardText={intl.formatMessage({ id: "pagination.forward" })}
+                backwardText={intl.formatMessage({ id: "pagination.backward" })}
+                itemRangeText={(min, max, total) =>
+                  intl.formatMessage({ id: "pagination.item-range" }, { min, max, total })
+                }
+                itemsPerPageText={intl.formatMessage({ id: "pagination.items-per-page" })}
+                itemText={(min, max) =>
+                  intl.formatMessage({ id: "pagination.item" }, { min, max })
+                }
+                pageNumberText={intl.formatMessage({ id: "pagination.page-number" })}
+                pageRangeText={(_, total) =>
+                  intl.formatMessage({ id: "pagination.page-range" }, { total })
+                }
+              />
               <br />
             </Column>
           </Grid>
@@ -446,9 +349,7 @@ function TestNotificationConfigMenu() {
               </Button>
               <Button
                 onClick={() =>
-                  window.location.assign(
-                    "/MasterListsPage#testNotificationConfigMenu",
-                  )
+                  window.location.assign("/MasterListsPage#testNotificationConfigMenu")
                 }
                 kind="tertiary"
                 type="button"
@@ -464,3 +365,4 @@ function TestNotificationConfigMenu() {
 }
 
 export default injectIntl(TestNotificationConfigMenu);
+  
