@@ -24,7 +24,6 @@ class OrderEntityPage {
     cy.getElement("select#sampleId_0").select(sampleType);
   }
 
-
   checkPanelCheckBoxField() {
     cy.get(
       ".testPanels .cds--checkbox-wrapper:nth-child(5) .cds--checkbox",
@@ -73,43 +72,6 @@ class OrderEntityPage {
 
   requesterFName(requesterFName) {
     cy.get("input#requesterFirstName").type(requesterFName);
-  searchRequester(requester) {
-    cy.get("#requesterId").type(requester);
-    cy.contains(".suggestion-active", requester).click();
-    cy.wait(200);
-  }
-
-  generateLabOrderNumber() {
-    cy.get("#generate", { timeout: 5000 }).should("be.visible").click();
-  }
-
-  //for now we dont need FName and LName with the autocomplete option
-  requesterLName(requesterLName) {
-    cy.get("input#requesterLastName").type(requesterLName);
-  }
-
-  requesterFName(requesterFName) {
-    cy.get("input#requesterFirstName").type(requesterFName);
-  }
-
-
-  clickSubmitOrderButton() {
-    cy.get("#submit-button").should("be.visible").click();
-  }
-
-  printBarCode() {
-    cy.get("[data-cy='print-barcode-button']", { timeout: 15000 })
-      .should("exist")
-      .should("be.visible")
-      .click();
-    cy.get("#submit-button").should("be.visible").click();
-  }
-
-  printBarCode() {
-    cy.get("[data-cy='print-barcode-button']", { timeout: 15000 })
-      .should("exist")
-      .should("be.visible")
-      .click();
   }
 }
 
