@@ -43,7 +43,7 @@ class PatientEntryPage {
     cy.enterText(this.lastNameSelector, lastName);
     cy.enterText(this.firstNameSelector, firstName);
     cy.enterText(this.dateOfBirth, dateOfBirth);
-    this.checkMaleGenderRadioButton();
+    this.getkMaleGenderRadioButton();
     cy.getElement("#submit").click();
   }
 
@@ -51,7 +51,7 @@ class PatientEntryPage {
     this.getSubmitButton().click();
   }
 
-  checkMaleGenderRadioButton() {
+  getMaleGenderRadioButton() {
     cy.get("#search-radio-1").check({ force: true });
   }
 
@@ -123,7 +123,7 @@ class PatientEntryPage {
               const trimmedText = cellText.trim();
               expect(trimmedText).to.contain(expectedFieldValue);
             });
-        } else if (searchBy === "dOB") {
+        } else if (searchBy === "DOB") {
           cy.wrap($el)
             .find("td:nth-child(5)")
             .invoke("text")

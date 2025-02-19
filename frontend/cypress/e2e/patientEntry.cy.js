@@ -36,7 +36,7 @@ describe("Patient Search", function () {
         patient.lastName,
         patient.subjectNumber,
         patient.nationalId,
-        patient.dOB,
+        patient.DOB,
       );
     });
   });
@@ -53,7 +53,7 @@ describe("Patient Search", function () {
   });
 
   it("Should be able to search patients By gender", function () {
-    patientPage.checkMaleGenderRadioButton();
+    patientPage.getkMaleGenderRadioButton();
     patientPage.clickSearchPatientButton();
     cy.wait(500);
     cy.fixture("Patient").then((patient) => {
@@ -112,10 +112,10 @@ describe("Patient Search", function () {
   it("should search patient By Date Of Birth", function () {
     cy.wait(1000);
     cy.fixture("Patient").then((patient) => {
-      patientPage.searchPatientByDateOfBirth(patient.dOB);
+      patientPage.searchPatientByDateOfBirth(patient.DOB);
       patientPage.clickSearchPatientButton();
       patientPage.validatePatientSearchTablebyRespectiveField(
-        patient.dOB,
+        patient.DOB,
         "DOB",
       );
     });
