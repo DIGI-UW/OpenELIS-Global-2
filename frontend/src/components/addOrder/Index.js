@@ -46,6 +46,7 @@ const Index = () => {
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   let SampleTypes = [];
   let sampleTypeMap = {};
@@ -552,7 +553,7 @@ const Index = () => {
     }
   };
   const elementError = (path) => {
-    if (errors?.errors?.length > 0) {
+    if (submitted && errors?.errors?.length > 0) {
       let error = errors.inner?.find((e) => e.path === path);
       if (error) {
         return error.message;
@@ -569,6 +570,7 @@ const Index = () => {
       return;
     }
     setIsSubmitting(true);
+    setSubmitted(true);
     if ("years" in orderFormValues.patientProperties) {
       delete orderFormValues.patientProperties.years;
     }
