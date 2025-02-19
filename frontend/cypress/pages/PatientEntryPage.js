@@ -43,7 +43,7 @@ class PatientEntryPage {
     cy.enterText(this.lastNameSelector, lastName);
     cy.enterText(this.firstNameSelector, firstName);
     cy.enterText(this.dateOfBirth, dateOfBirth);
-    this.getkMaleGenderRadioButton();
+    this.getMaleGenderRadioButton();
     cy.getElement("#submit").click();
   }
 

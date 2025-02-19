@@ -53,7 +53,7 @@ describe("Patient Search", function () {
   });
 
   it("Should be able to search patients By gender", function () {
-    patientPage.getkMaleGenderRadioButton();
+    patientPage.getMaleGenderRadioButton();
     patientPage.clickSearchPatientButton();
     cy.wait(500);
     cy.fixture("Patient").then((patient) => {
