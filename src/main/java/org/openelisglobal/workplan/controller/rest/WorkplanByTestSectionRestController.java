@@ -66,7 +66,7 @@ public class WorkplanByTestSectionRestController extends WorkplanRestController 
     @Autowired
     private UserService userService;
 
-    @GetMapping(value = "/rest/workplan-by-test-section", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/rest/WorkPlanByTestSection", produces = MediaType.APPLICATION_JSON_VALUE)
     public WorkplanForm showWorkPlanByTestSection(HttpServletRequest request,
             @RequestParam(name = "test_section_id", defaultValue = "0") String testSectionId)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {

@@ -68,14 +68,14 @@ function PatientStatusReport(props) {
     window.open(barcodesPdf);
   };
 
-  function handlePatientIdFrom(value) {
+  function handleLabNoFrom(value) {
     setReportFormValues({
       ...reportFormValues,
       from: value,
     });
   }
 
-  function handlePatientIdTo(value) {
+  function handleLabNoTo(value) {
     setReportFormValues({
       ...reportFormValues,
       to: value,
@@ -248,9 +248,14 @@ function PatientStatusReport(props) {
                                 defaultMessage: "From",
                               })}
                               id={field.name}
-                              onChange={(e, rawValue) => {
-                                setFieldValue(field.name, rawValue);
-                                handlePatientIdFrom(rawValue);
+                              onChange={(e, rawVal) => {
+                                setFieldValue(
+                                  field.name,
+                                  rawVal ? rawVal : e?.target?.value,
+                                );
+                                handleLabNoFrom(
+                                  rawVal ? rawVal : e?.target?.value,
+                                );
                               }}
                             />
                           )}
@@ -267,9 +272,14 @@ function PatientStatusReport(props) {
                                 defaultMessage: "To",
                               })}
                               id={field.name}
-                              onChange={(e, rawValue) => {
-                                setFieldValue(field.name, rawValue);
-                                handlePatientIdTo(rawValue);
+                              onChange={(e, rawVal) => {
+                                setFieldValue(
+                                  field.name,
+                                  rawVal ? rawVal : e?.target?.value,
+                                );
+                                handleLabNoTo(
+                                  rawVal ? rawVal : e?.target?.value,
+                                );
                               }}
                             />
                           )}

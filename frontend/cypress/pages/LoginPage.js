@@ -35,8 +35,10 @@ class LoginPage {
   }
 
   signIn() {
-    const button = cy.getElement(`[type='submit']`);
-    button.click();
+    cy.get("[data-cy='loginButton']")
+      .should("exist")
+      .should("be.visible")
+      .click();
   }
 
   acceptSelfAssignedCert() {
@@ -48,8 +50,12 @@ class LoginPage {
 
   goToHomePage() {
     cy.wait(1000);
+
     cy.url().then((url) => {
       if (url.includes("/login")) {
+        // Waits for the Login button to be available before proceeding
+        cy.contains("button", "Login", { timeout: 10000 }).should("be.visible");
+
         this.enterUsername(this.testProperties.getUsername());
         this.enterPassword(this.testProperties.getPassword());
         this.signIn();

@@ -21,9 +21,7 @@ class LabNumberManagementPage {
     cy.get("#alphanumPrefix").should("not.be.disabled").type(prefix);
   }
   clickSubmitButton() {
-    cy.get("button.cds--btn.cds--btn--primary[type='submit']")
-      .should("be.visible")
-      .click();
+    cy.get("[data-testid='submit-button']").should("be.visible").click();
   }
 }
 

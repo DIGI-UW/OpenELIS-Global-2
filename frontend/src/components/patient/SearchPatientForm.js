@@ -108,7 +108,7 @@ function SearchPatientForm(props) {
     console.log("Data to send:", dataToSend);
 
     postToOpenElisServer(
-      "/rest/patient-management",
+      "/rest/PatientManagement",
       JSON.stringify(dataToSend),
       (status) => {
         handlePost(status, patientId);
@@ -433,6 +433,7 @@ function SearchPatientForm(props) {
                   id="local_search"
                   kind="tertiary"
                   type="submit"
+                  data-cy="searchPatientButton"
                   onClick={() => setFieldValue("suppressExternalSearch", true)}
                 >
                   <FormattedMessage id="label.button.search" />
