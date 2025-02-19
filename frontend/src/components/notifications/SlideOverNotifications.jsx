@@ -39,7 +39,9 @@ export default function SlideOverNotifications(props) {
 
   const intialSubscriptionState = async () => {
     try {
-      const res = await getFromOpenElisServerAsync("/rest/notification/pnconfig");
+      const res = await getFromOpenElisServerAsync(
+        "/rest/notification/pnconfig",
+      );
       const reg = await navigator.serviceWorker.ready;
       const subscription = await reg.pushManager.getSubscription();
       if (!subscription && !res?.pf_endpoint) {
