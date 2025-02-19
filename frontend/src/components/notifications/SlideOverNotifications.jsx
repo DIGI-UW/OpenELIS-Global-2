@@ -7,7 +7,7 @@ import {
 } from "@carbon/icons-react";
 import {
   formatTimestamp,
-  getFromOpenElisServerV2,
+  getFromOpenElisServerAsync,
   postToOpenElisServer,
   putToOpenElisServer,
   urlBase64ToUint8Array,
@@ -39,7 +39,7 @@ export default function SlideOverNotifications(props) {
 
   const intialSubscriptionState = async () => {
     try {
-      const res = await getFromOpenElisServerV2("/rest/notification/pnconfig");
+      const res = await getFromOpenElisServerAsync("/rest/notification/pnconfig");
       const reg = await navigator.serviceWorker.ready;
       const subscription = await reg.pushManager.getSubscription();
       if (!subscription && !res?.pf_endpoint) {
@@ -113,7 +113,7 @@ export default function SlideOverNotifications(props) {
       const sw = await navigator.serviceWorker.ready;
 
       // Attempt to retrieve the public key from the server
-      let pbKeyData = await getFromOpenElisServerV2(
+      let pbKeyData = await getFromOpenElisServerAsync(
         "/rest/notification/public_key",
       ).catch((error) => {
         throw new Error(
