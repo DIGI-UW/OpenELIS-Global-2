@@ -218,6 +218,7 @@ function Login(props) {
                               id: "login.msg.password",
                             })}
                           />
+<<<<<<< Updated upstream
                           <Stack orientation="horizontal">
                             <Button
                               type="submit"
@@ -241,6 +242,20 @@ function Login(props) {
                               <FormattedMessage id="label.button.changepassword" />
                             </Button>
                           </Stack>
+=======
+                          <Button
+                            data-cy="loginButton"
+                            type="submit"
+                            disabled={!isValid}
+                          >
+                            <FormattedMessage id="label.button.login" />
+                            <Loading
+                              small={true}
+                              withOverlay={false}
+                              className={submitting ? "show" : "hidden"}
+                            />
+                          </Button>
+>>>>>>> Stashed changes
                         </>
                       )}
                       {configurationProperties?.useSaml == "true" && (
