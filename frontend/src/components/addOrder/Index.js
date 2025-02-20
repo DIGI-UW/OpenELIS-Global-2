@@ -574,7 +574,6 @@ const Index = () => {
       return;
     }
     setIsSubmitting(true);
-    setSubmitted(true);
     if ("years" in orderFormValues.patientProperties) {
       delete orderFormValues.patientProperties.years;
     }
