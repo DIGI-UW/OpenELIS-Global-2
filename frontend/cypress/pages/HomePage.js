@@ -170,13 +170,13 @@ class HomePage {
   goToRoutineReports() {
     this.openNavigationMenu();
     cy.get("#menu_reports").click();
-    cy.get("#menu_reports_routine_nav").click();
+    //cy.get("#menu_reports_routine_nav").click();
     return new RoutineReportPage();
   }
   goToStudyReports() {
     this.openNavigationMenu();
     cy.get("#menu_reports").click();
-    cy.get("#menu_reports_study_nav").click();
+    //cy.get("#menu_reports_study_nav").click();
     return new StudyReportPage();
   }
 
@@ -229,6 +229,11 @@ class HomePage {
     cy.get("#user-Icon").click();
     cy.wait(800);
     cy.get("#user-Icon").click();
+  }
+  clickHelpIcon() {
+    cy.get("#user-Help").click();
+    cy.wait(800);
+    cy.get("#user-Help").click();
   }
 
   selectInProgress() {
