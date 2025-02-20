@@ -1333,6 +1333,7 @@
   "reports.nonConformity.notification.report.instructions": "Instructions pour le rapport de notification de non-conformité",
   "banner.menu.results.SysmexXPanalyzer": "Analyseur Sysmex XP",
   "banner.menu.results.SysmexXNLanalyzer": "Analyseur Sysmex XNL",
+  "barcode.format": "Format du code-barres",
   "barcode.print.title": "Titre de l'impression du code-barres",
   "barcode.print.preprint": "Impression anticipée du code-barres",
   "barcode.print.preprint.button": "Bouton de pré-impression",
