@@ -46,7 +46,7 @@ const Index = () => {
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [touched, setTouched] = useState({});
 
   let SampleTypes = [];
   let sampleTypeMap = {};
@@ -339,6 +339,10 @@ const Index = () => {
     return index;
   };
 
+  const handleBlur = (fieldPath) => {
+    setTouched((prev) => ({ ...prev, [fieldPath]: true }));
+  };
+
   // const parseCrossPanels = (
   //   crosspanels,
   //   crossSampleTypeMap,
@@ -553,7 +557,7 @@ const Index = () => {
     }
   };
   const elementError = (path) => {
-    if (submitted && errors?.errors?.length > 0) {
+    if (touched[path] && errors?.errors?.length > 0) {
       let error = errors.inner?.find((e) => e.path === path);
       if (error) {
         return error.message;
@@ -779,6 +783,8 @@ const Index = () => {
                 samples={samples}
                 error={elementError}
                 isModifyOrder={false}
+                touched={touched} 
+  handleBlur={handleBlur} 
               />
             )}
 
