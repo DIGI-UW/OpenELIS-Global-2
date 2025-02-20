@@ -52,8 +52,9 @@ public abstract class BaseMenuController<T> extends BaseController {
         }
 
         form.setMenuList(menuList);
-        form.setAdminMenuItems(SpringContext.getBean(AdminMenuItemService.class).getActiveItemsSorted());
-
+        if (!isRestCall()) {
+            form.setAdminMenuItems(SpringContext.getBean(AdminMenuItemService.class).getActiveItemsSorted());
+        }
         request.setAttribute(DEACTIVATE_DISABLED, getDeactivateDisabled());
         request.setAttribute(ADD_DISABLED, getAddDisabled());
         request.setAttribute(EDIT_DISABLED, getEditDisabled());

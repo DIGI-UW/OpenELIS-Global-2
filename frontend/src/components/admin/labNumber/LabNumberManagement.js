@@ -241,7 +241,7 @@ function LabNumberManagement() {
             </Column>
             <br></br>
             <Column lg={16}>
-              <Button type="submit">
+              <Button type="submit" data-testid="submit-button">
                 <FormattedMessage id="label.button.submit" />
                 {isSubmitting && <Loading small={true} />}
               </Button>
