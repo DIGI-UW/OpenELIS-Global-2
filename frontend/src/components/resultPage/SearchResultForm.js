@@ -8,6 +8,8 @@ import {
   Roles,
 } from "../utils/Utils";
 import {
+  FileUploader,
+  Row,
   Form,
   TextInput,
   TextArea,
@@ -780,7 +782,94 @@ export function SearchResults(props) {
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fileUpload, setFileUpload] = useState(null);
 
+  const toBase64 = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
+
+  const handleFileUpload = async (e) => {
+    e.preventDefault();
+    try {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const base64Data = await toBase64(file);
+
+      // Get the row ID from the FileUploader's parent element's data attribute
+      const rowId = e.target
+        .closest("[data-row-id]")
+        ?.getAttribute("data-row-id");
+      console.log("Uploading file for row:", rowId);
+
+      // Create a copy of the current results
+      const updatedResults = {
+        ...props.results,
+        testResult: props.results.testResult.map((result) => {
+          if (result.id === rowId) {
+            return {
+              ...result,
+              fileUpload: base64Data,
+              fileName: file.name,
+            };
+          }
+          return result;
+        }),
+      };
+
+      // Update the state
+      props.setResultForm(updatedResults);
+      setFileUpload(base64Data);
+
+      console.log("File uploaded successfully:", {
+        fileName: file.name,
+        size: file.size,
+        type: file.type,
+      });
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "error.upload.file" }),
+        kind: NotificationKinds.error,
+      });
+    }
+  };
+
+  const handleFileDelete = (e, rowId) => {
+    e.preventDefault();
+    try {
+      // Create a copy of the current results
+      const updatedResults = {
+        ...props.results,
+        testResult: props.results.testResult.map((result) => {
+          if (result.id === rowId) {
+            // Remove file data
+            const { fileUpload, fileName, ...rest } = result;
+            return rest;
+          }
+          return result;
+        }),
+      };
+
+      // Update the state
+      props.setResultForm(updatedResults);
+      setFileUpload(null);
+
+      console.log("File deleted successfully for row:", rowId);
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "error.delete.file" }),
+        kind: NotificationKinds.error,
+      });
+    }
+  };
   const componentMounted = useRef(false);
 
   useEffect(() => {
@@ -1352,6 +1441,26 @@ export function SearchResults(props) {
             disallowFutureDate={true}
           />
         </Column>
+        <Row>
+          <Column lg={3}>
+            <div data-row-id={data.id}>
+              <FileUploader
+                style={{ marginTop: "-10px" }}
+                buttonLabel={<FormattedMessage id="label.button.uploadfile" />}
+                iconDescription="file upload"
+                multiple={false}
+                accept={["image/jpeg", "image/png", "application/pdf"]}
+                disabled={false}
+                name=""
+                buttonKind="primary"
+                size="lg"
+                filenameStatus="edit"
+                onChange={handleFileUpload}
+                onDelete={(e) => handleFileDelete(e, data.id)}
+              />
+            </div>
+          </Column>
+        </Row>
       </Grid>
     </>
   );
@@ -1514,6 +1623,8 @@ export function SearchResults(props) {
     }
     var isModified = "testResult[" + rowId + "].isModified";
     jp.value(form, isModified, "true");
+
+    console.log("Updated form data:", form);
     props.setResultForm(form);
   };
 
@@ -1577,6 +1688,7 @@ export function SearchResults(props) {
   };
 
   const handleSave = (values) => {
+    console.log("handleSave called with values:", values);
     console.debug("handleSave:" + values);
     if (isSubmitting) {
       return;
@@ -1588,6 +1700,8 @@ export function SearchResults(props) {
       result.reportable = result.reportable === "N" ? false : true;
       delete result.result;
     });
+
+    console.log("Sending to backend:", props.results);
     postToOpenElisServerJsonResponse(
       searchEndPoint,
       JSON.stringify(props.results),
@@ -1596,6 +1710,7 @@ export function SearchResults(props) {
   };
 
   const setResponse = (resp) => {
+    console.log("Response from backend:", resp);
     console.debug("setStatus" + JSON.stringify(resp));
     setIsSubmitting(false);
     if (resp) {
