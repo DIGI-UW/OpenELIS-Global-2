@@ -27,24 +27,37 @@ class ModifyOrderPage {
   }
 
   assignValues() {
-    cy.get(
-      ":nth-child(1) > :nth-child(4) > .cds--form-item > .cds--checkbox-label",
-    ).click();
+    // Wait for table to be visible first
+    cy.get("table").should("be.visible");
+    // Then find the checkbox within table cells
+    cy.get('table input[type="checkbox"][name="add"]')
+      .first()
+      .click({ force: true });
   }
 
   clickPrintBarcodeButton() {
-    return cy.get(".orderEntrySuccessMsg > :nth-child(3) > .cds--btn").click();
+    return cy.get("[data-cy='printBarCode']").click();
   }
   clickSearchPatientButton() {
-    return cy.get(":nth-child(12) > .cds--btn").click({ force: true });
+    return cy.get("[data-cy='searchPatientButton']").click({ force: true });
   }
 
   clickRespectivePatient() {
+    // Wait for the table to be visible first
+    cy.get("table").should("be.visible");
+
+    // Wait for at least one radio button to be present
+    cy.get('input[type="radio"][name="radio-group"]').should("exist");
+
+    // Click the first radio button with a more specific selector
     return cy
       .get("tbody tr")
       .first()
-      .find(".cds--radio-button__appearance")
-      .click();
+      .within(() => {
+        cy.get('input[type="radio"][name="radio-group"]')
+          .should("exist")
+          .click({ force: true });
+      });
   }
 }
 
