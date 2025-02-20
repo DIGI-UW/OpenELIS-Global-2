@@ -45,10 +45,8 @@ describe("Failing or Succeeding to Login", function () {
         login.signIn();
 
         if (user.correctPass === true) {
-          cy.get("header#mainHeader > button[title='Open menu']").should(
-            "exist",
-          );
-          cy.get(".custom-action svg path:first-of-type").should("exist");
+          cy.get("#mainHeader").should("exist");
+          cy.get("[data-cy='menuButton']").should("exist");
         } else {
           cy.get("div[role='status']").should("be.visible");
         }
