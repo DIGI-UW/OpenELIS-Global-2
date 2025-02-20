@@ -230,6 +230,11 @@ class HomePage {
     cy.wait(800);
     cy.get("#user-Icon").click();
   }
+  clickHelpIcon() {
+    cy.get("#user-Help").click();
+    cy.wait(800);
+    cy.get("#user-Help").click();
+  }
 
   selectInProgress() {
     cy.get("#maximizeIcon").click();
