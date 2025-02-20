@@ -783,8 +783,8 @@ const Index = () => {
                 samples={samples}
                 error={elementError}
                 isModifyOrder={false}
-                touched={touched} 
-  handleBlur={handleBlur} 
+                touched={touched}
+                handleBlur={handleBlur}
               />
             )}
 

@@ -29,8 +29,15 @@ const AddOrder = (props) => {
 
   const componentMounted = useRef(false);
 
-  const { orderFormValues, setOrderFormValues, samples, error, isModifyOrder, touched, handleBlur } =
-    props;
+  const {
+    orderFormValues,
+    setOrderFormValues,
+    samples,
+    error,
+    isModifyOrder,
+    touched,
+    handleBlur,
+  } = props;
   const [otherSamplingVisible, setOtherSamplingVisible] = useState(false);
   const [providers, setProviders] = useState([]);
   const [paymentOptions, setPaymentOptions] = useState([]);
@@ -493,7 +500,10 @@ const AddOrder = (props) => {
                     </>
                   }
                   id="labNo"
-                  invalid={touched["sampleOrderItems.labNo"] && error("sampleOrderItems.labNo")}
+                  invalid={
+                    touched["sampleOrderItems.labNo"] &&
+                    error("sampleOrderItems.labNo")
+                  }
                   invalidText={error("sampleOrderItems.labNo")}
                   onBlur={() => handleBlur("sampleOrderItems.labNo")}
                 />
@@ -699,7 +709,10 @@ const AddOrder = (props) => {
                 value={orderFormValues.sampleOrderItems.providerFirstName}
                 onChange={handleRequesterFirstName}
                 id="requesterFirstName"
-                invalid={touched["sampleOrderItems.providerFirstName"] && error("sampleOrderItems.providerFirstName")}
+                invalid={
+                  touched["sampleOrderItems.providerFirstName"] &&
+                  error("sampleOrderItems.providerFirstName")
+                }
                 invalidText={error("sampleOrderItems.providerFirstName")}
                 onBlur={() => handleBlur("sampleOrderItems.providerFirstName")}
               />
@@ -724,7 +737,10 @@ const AddOrder = (props) => {
                 value={orderFormValues.sampleOrderItems.providerLastName}
                 onChange={handleRequesterLastName}
                 id="requesterLastName"
-                invalid={touched["sampleOrderItems.providerLastName"] && error("sampleOrderItems.providerLastName")}
+                invalid={
+                  touched["sampleOrderItems.providerLastName"] &&
+                  error("sampleOrderItems.providerLastName")
+                }
                 invalidText={error("sampleOrderItems.providerLastName")}
                 onBlur={() => handleBlur("sampleOrderItems.providerLastName")}
               />
