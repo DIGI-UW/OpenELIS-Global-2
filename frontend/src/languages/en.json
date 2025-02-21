@@ -757,6 +757,7 @@
   "select.program": "Program",
   "referrer.label": "referrer",
   "provider.email": "Email",
+  "barcode.format": "Barcode Format",
   "print.barcode": "Print Barcode",
   "barcode.print.title": "Print Bar Code Labels",
   "barcode.print.preprint": "Pre-Print Barcodes",
