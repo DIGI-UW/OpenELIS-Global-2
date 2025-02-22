@@ -381,6 +381,14 @@ function CreatePatientForm(props) {
     }
   };
 
+  const handlePhoneNumberChange = (event) => {
+    const numericValue = event.target.value.replace(/[^0-9+]/g, "");
+
+    const formattedValue = numericValue.split("+").slice(0, 2).join("+");
+
+    event.target.value = formattedValue;
+  };
+
   return (
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
@@ -571,6 +579,7 @@ function CreatePatientForm(props) {
                       placeholder={intl.formatMessage({
                         id: "patient.information.primaryphone",
                       })}
+                      onChange={(e) => handlePhoneNumberChange(e)}
                     />
                   )}
                 </Field>
