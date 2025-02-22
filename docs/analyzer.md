@@ -65,15 +65,15 @@ Creation Steps
 
 1. Create a new Java project. Accept all of the defaults. The name of the
    project should match the name of the analyzer.
-1. Open up the properties for the project
-1. Select the Java build path (left hand side of the dialog)
-1. Select projects tab and add (right hand side of the dialog) OpenELISGlobal 1
+2. Open up the properties for the project
+3. Select the Java build path (left hand side of the dialog)
+4. Select projects tab and add (right hand side of the dialog) openElisGlobal 1
 
 .. \_`https://github.com/openelisglobal/openelisglobal-plugins`:
 https://github.com/openelisglobal/openelisglobal-plugins .. \_SourceTree:
 http://www.sourcetreeapp.com/
 
-1. login to OpenELIS -> Results -> from Analyzer -> Analyzer name.
+4. login to OpenELIS -> Results -> from Analyzer -> Analyzer name.
 
 # How are analyzer results imported to OpenELIS?
 
