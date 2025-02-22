@@ -20,24 +20,25 @@ import AutoComplete from "../common/AutoComplete";
 import OrderResultReporting from "./OrderResultReporting";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ConfigurationContext } from "../layout/Layout";
+
 const AddOrder = (props) => {
-  const { setNotificationVisible, addNotification } =
-    useContext(NotificationContext);
-  const { configurationProperties } = useContext(ConfigurationContext);
-
-  const intl = useIntl();
-
-  const componentMounted = useRef(false);
-
+  // Destructure props with defaults so that sampleOrderItems always exists.
   const {
-    orderFormValues,
+    orderFormValues = { sampleOrderItems: {} },
     setOrderFormValues,
     samples,
     error,
-    isModifyOrder,
-    touched,
-    handleBlur,
+    isModifyOrder = false,
+    touched = {},
+    handleBlur = () => {},
   } = props;
+
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
+  const { configurationProperties } = useContext(ConfigurationContext);
+  const intl = useIntl();
+
+  const componentMounted = useRef(false);
   const [otherSamplingVisible, setOtherSamplingVisible] = useState(false);
   const [providers, setProviders] = useState([]);
   const [paymentOptions, setPaymentOptions] = useState([]);
@@ -59,16 +60,22 @@ const AddOrder = (props) => {
     let obj = null;
     switch (datePicker) {
       case "requestDate":
-        obj = { ...orderFormValues.sampleOrderItems, requestDate: date };
+        obj = {
+          ...(orderFormValues?.sampleOrderItems || {}),
+          requestDate: date,
+        };
         break;
       case "receivedDate":
         obj = {
-          ...orderFormValues.sampleOrderItems,
+          ...(orderFormValues?.sampleOrderItems || {}),
           receivedDateForDisplay: date,
         };
         break;
       case "nextVisitDate":
-        obj = { ...orderFormValues.sampleOrderItems, nextVisitDate: date };
+        obj = {
+          ...(orderFormValues?.sampleOrderItems || {}),
+          nextVisitDate: date,
+        };
         break;
       default:
     }
@@ -82,7 +89,7 @@ const AddOrder = (props) => {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
+        ...(orderFormValues?.sampleOrderItems || {}),
         paymentOptionSelection: e.target.value,
       },
     });
@@ -92,7 +99,7 @@ const AddOrder = (props) => {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
+        ...(orderFormValues?.sampleOrderItems || {}),
         billingReferenceNumber: e.target.value,
       },
     });
@@ -102,7 +109,7 @@ const AddOrder = (props) => {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
+        ...(orderFormValues?.sampleOrderItems || {}),
         providerFax: e.target.value,
       },
     });
@@ -112,7 +119,7 @@ const AddOrder = (props) => {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
+        ...(orderFormValues?.sampleOrderItems || {}),
         providerEmail: e.target.value,
       },
     });
@@ -122,7 +129,7 @@ const AddOrder = (props) => {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
+        ...(orderFormValues?.sampleOrderItems || {}),
         providerWorkPhone: e.target.value,
       },
     });
@@ -133,7 +140,7 @@ const AddOrder = (props) => {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
+        ...(orderFormValues?.sampleOrderItems || {}),
         providerFirstName: e.target.value,
       },
     });
@@ -143,7 +150,7 @@ const AddOrder = (props) => {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
+        ...(orderFormValues?.sampleOrderItems || {}),
         providerLastName: e.target.value,
       },
     });
@@ -159,7 +166,7 @@ const AddOrder = (props) => {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
+        ...(orderFormValues?.sampleOrderItems || {}),
         testLocationCode: value,
       },
     });
@@ -169,7 +176,7 @@ const AddOrder = (props) => {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
+        ...(orderFormValues?.sampleOrderItems || {}),
         otherLocationCode: e.target.value,
       },
     });
@@ -179,7 +186,7 @@ const AddOrder = (props) => {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
+        ...(orderFormValues?.sampleOrderItems || {}),
         receivedTime: e.target.value,
       },
     });
@@ -210,11 +217,10 @@ const AddOrder = (props) => {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
+        ...(orderFormValues?.sampleOrderItems || {}),
         providerPersonId: providerId,
       },
     });
-
     getFromOpenElisServer(
       "/rest/practitioner?providerId=" + providerId,
       fetchPractitioner,
@@ -225,7 +231,7 @@ const AddOrder = (props) => {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
+        ...(orderFormValues?.sampleOrderItems || {}),
         providerFirstName: data.person.firstName,
         providerLastName: data.person.lastName,
         providerWorkPhone: data.person.workPhone,
@@ -242,7 +248,7 @@ const AddOrder = (props) => {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
+        ...(orderFormValues?.sampleOrderItems || {}),
         referringSiteDepartmentId: e.target.value,
         referringSiteName: "",
       },
@@ -253,7 +259,7 @@ const AddOrder = (props) => {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
+        ...(orderFormValues?.sampleOrderItems || {}),
         referringSiteName: e.target.value,
         referringSiteId: "",
         referringSiteDepartmentId: "",
@@ -262,11 +268,11 @@ const AddOrder = (props) => {
   }
 
   function clearProviderId(e) {
-    if (e.target.value == "") {
+    if (e.target.value === "") {
       setOrderFormValues({
         ...orderFormValues,
         sampleOrderItems: {
-          ...orderFormValues.sampleOrderItems,
+          ...(orderFormValues?.sampleOrderItems || {}),
           providerId: "",
           providerPersonId: "",
         },
@@ -278,38 +284,131 @@ const AddOrder = (props) => {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
+        ...(orderFormValues?.sampleOrderItems || {}),
         referringSiteId: siteId,
         referringSiteName: "",
         referringSiteDepartmentId: "",
       },
     });
   }
+
   const loadDepartments = (data) => {
     setDepartments(data);
   };
 
-  function handleLabNo(e, rawVal) {
-    if (isModifyOrder) {
-      setOrderFormValues({
-        ...orderFormValues,
-        newAccessionNumber: e?.target?.value,
-      });
-    } else {
-      setOrderFormValues({
-        ...orderFormValues,
-        sampleOrderItems: {
-          ...orderFormValues.sampleOrderItems,
-          labNo: rawVal ? rawVal : e?.target?.value,
-        },
-      });
-    }
-    handleLabNoValidationOnChange(e?.target?.value);
-    setNotificationVisible(false);
+  function handlePriority(e) {
+    setOrderFormValues({
+      ...orderFormValues,
+      sampleOrderItems: {
+        ...(orderFormValues?.sampleOrderItems || {}),
+        priority: e.target.value,
+      },
+    });
   }
 
+  function fetchGeneratedAccessionNo(res) {
+    if (res.status) {
+      if (isModifyOrder) {
+        setOrderFormValues({
+          ...orderFormValues,
+          newAccessionNumber: res.body,
+        });
+      } else {
+        setOrderFormValues({
+          ...orderFormValues,
+          sampleOrderItems: {
+            ...(orderFormValues?.sampleOrderItems || {}),
+            labNo: res.body,
+          },
+        });
+      }
+      setNotificationVisible(false);
+    }
+  }
+
+  const reportingNotifications = (object) => {
+    setOrderFormValues({
+      ...orderFormValues,
+      customNotificationLogic: true,
+      patientSMSNotificationTestIds: object.patientSMSNotificationTestIds,
+      patientEmailNotificationTestIds: object.patientEmailNotificationTestIds,
+      providerSMSNotificationTestIds: object.providerSMSNotificationTestIds,
+      providerEmailNotificationTestIds: object.providerEmailNotificationTestIds,
+    });
+  };
+
+  const getSampleEntryPreform = (response) => {
+    if (componentMounted.current) {
+      setSiteNames(response.sampleOrderItems.referringSiteList);
+      setPaymentOptions(response.sampleOrderItems.paymentOptions);
+      setSamplingPerformed(response.sampleOrderItems.testLocationCodeList);
+      setProviders(response.sampleOrderItems.providersList);
+    }
+  };
+
+  const getSafeValue = (path, defaultValue = "") => {
+    if (!orderFormValues) return defaultValue;
+    try {
+      const value = path.split(".").reduce((obj, key) => {
+        if (obj === null || obj === undefined) return defaultValue;
+        return obj[key];
+      }, orderFormValues);
+      return value === null || value === undefined ? defaultValue : value;
+    } catch (e) {
+      return defaultValue;
+    }
+  };
+
+  const safeError = (path) => {
+    try {
+      return error ? error(path) : null;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const isTouched = (path) => {
+    try {
+      return touched ? touched[path] : false;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  const handleKeyPress = (event) => {
+    if (event.key === "Enter") {
+      handleLabNoGeneration(event);
+    }
+  };
+
+  const handleLabNo = (e, rawVal) => {
+    try {
+      const newValue = rawVal || e?.target?.value || "";
+      if (isModifyOrder) {
+        setOrderFormValues((prevState) => ({
+          ...prevState,
+          newAccessionNumber: newValue,
+        }));
+      } else {
+        setOrderFormValues((prevState) => ({
+          ...prevState,
+          sampleOrderItems: {
+            ...(prevState?.sampleOrderItems || {}),
+            labNo: newValue,
+          },
+        }));
+      }
+      if (typeof handleLabNoValidationOnChange === "function") {
+        handleLabNoValidationOnChange(newValue);
+      }
+      setNotificationVisible(false);
+    } catch (err) {
+      console.error("Error in handleLabNo:", err);
+    }
+  };
+
   const handleLabNoValidation = () => {
-    if (orderFormValues.sampleOrderItems.labNo !== "") {
+    if (orderFormValues?.sampleOrderItems?.labNo !== "") {
       getFromOpenElisServer(
         "/rest/SampleEntryAccessionNumberValidation?ignoreYear=false&ignoreUsage=false&field=labNo&accessionNumber=" +
           orderFormValues.sampleOrderItems.labNo,
@@ -340,7 +439,7 @@ const AddOrder = (props) => {
   }
 
   const handlePhoneNoValidation = () => {
-    if (orderFormValues.sampleOrderItems.providerWorkPhone) {
+    if (orderFormValues?.sampleOrderItems?.providerWorkPhone) {
       const providerPhoneNo =
         orderFormValues.sampleOrderItems.providerWorkPhone.replace(
           /\+/g,
@@ -370,7 +469,7 @@ const AddOrder = (props) => {
       setOrderFormValues({
         ...orderFormValues,
         sampleOrderItems: {
-          ...orderFormValues.sampleOrderItems,
+          ...(orderFormValues?.sampleOrderItems || {}),
           requestDate: configurationProperties.currentDateAsText,
           receivedDateForDisplay: configurationProperties.currentDateAsText,
           nextVisitDate: configurationProperties.currentDateAsText,
@@ -378,75 +477,18 @@ const AddOrder = (props) => {
         },
       });
     }
-    if (orderFormValues.sampleOrderItems.requestDate != "") {
+    if (orderFormValues?.sampleOrderItems?.requestDate !== "") {
       setInnitialized(true);
     }
-  }, [orderFormValues]);
+  }, [orderFormValues, configurationProperties]);
 
   useEffect(() => {
     getFromOpenElisServer(
       "/rest/departments-for-site?refferingSiteId=" +
-        (orderFormValues.sampleOrderItems.referringSiteId || ""),
+        (orderFormValues?.sampleOrderItems?.referringSiteId || ""),
       loadDepartments,
     );
-  }, [orderFormValues.sampleOrderItems.referringSiteId]);
-
-  function handlePriority(e) {
-    setOrderFormValues({
-      ...orderFormValues,
-      sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
-        priority: e.target.value,
-      },
-    });
-  }
-
-  function fetchGeneratedAccessionNo(res) {
-    if (res.status) {
-      if (isModifyOrder) {
-        setOrderFormValues({
-          ...orderFormValues,
-          newAccessionNumber: res.body,
-        });
-      } else {
-        setOrderFormValues({
-          ...orderFormValues,
-          sampleOrderItems: {
-            ...orderFormValues.sampleOrderItems,
-            labNo: res.body,
-          },
-        });
-      }
-
-      setNotificationVisible(false);
-    }
-  }
-
-  const reportingNotifications = (object) => {
-    setOrderFormValues({
-      ...orderFormValues,
-      customNotificationLogic: true,
-      patientSMSNotificationTestIds: object.patientSMSNotificationTestIds,
-      patientEmailNotificationTestIds: object.patientEmailNotificationTestIds,
-      providerSMSNotificationTestIds: object.providerSMSNotificationTestIds,
-      providerEmailNotificationTestIds: object.providerEmailNotificationTestIds,
-    });
-  };
-
-  const getSampleEntryPreform = (response) => {
-    if (componentMounted.current) {
-      setSiteNames(response.sampleOrderItems.referringSiteList);
-      setPaymentOptions(response.sampleOrderItems.paymentOptions);
-      setSamplingPerformed(response.sampleOrderItems.testLocationCodeList);
-      setProviders(response.sampleOrderItems.providersList);
-    }
-  };
-
-  const handleKeyPress = (event) => {
-    if (event.key === "Enter") {
-      handleLabNoGeneration(event);
-    }
-  };
+  }, [orderFormValues?.sampleOrderItems?.referringSiteId]);
 
   return (
     <>
@@ -487,8 +529,8 @@ const AddOrder = (props) => {
                   })}
                   value={
                     isModifyOrder
-                      ? orderFormValues.newAccessionNumber
-                      : orderFormValues.sampleOrderItems.labNo
+                      ? getSafeValue("newAccessionNumber")
+                      : getSafeValue("sampleOrderItems.labNo")
                   }
                   //onMouseLeave={handleLabNoValidation}
                   onChange={handleLabNo}
