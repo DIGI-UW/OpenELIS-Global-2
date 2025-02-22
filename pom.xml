@@ -16,7 +16,7 @@
 		<minor.version>1</minor.version>
 		<state.version>0</state.version>
 		<!-- 0 = alpha, 1 = beta, 2 = rc, 3 = deployable -->
-		<fix.version>3</fix.version>
+		<fix.version>5</fix.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<liquibase.propertyFile>${project.basedir}/liquibase/liquibase.properties</liquibase.propertyFile>
 		<castor.version>1.4.1</castor.version>
@@ -31,7 +31,17 @@
 		<testContainersVersion>1.15.3</testContainersVersion>
 	</properties>
 	<dependencies>
-
+		<!-- ZXing QR Code Generation -->
+		<dependency>
+			<groupId>com.google.zxing</groupId>
+			<artifactId>core</artifactId>
+			<version>3.5.2</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.zxing</groupId>
+			<artifactId>javase</artifactId>
+			<version>3.5.2</version>
+		</dependency>
 		<dependency>
 			<groupId>commons-codec</groupId>
 			<artifactId>commons-codec</artifactId>
@@ -597,6 +607,12 @@
 		</dependency>
 	</dependencies>
 	<repositories>
+		<!-- Maven Central Repository -->
+		<repository>
+			<id>central</id>
+			<name>Central Repository</name>
+			<url>https://repo.maven.apache.org/maven2</url>
+		</repository>
 		<repository>
 			<id>jaspersoft-third-party</id>
 			<url>https://jaspersoft.jfrog.io/jaspersoft/third-party-ce-artifacts/</url>
@@ -780,6 +796,7 @@
 						<importOrder />
 						<!-- standard import order -->
 
+
 						<removeUnusedImports />
 
 						<eclipse>
@@ -822,9 +839,6 @@
 
 				</executions>
 			</plugin>
-
-
-
 		</plugins>
 	</build>
 </project>

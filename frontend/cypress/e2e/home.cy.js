@@ -22,6 +22,10 @@ describe("User interacts with the navigation bar", function () {
   it("User interacts with the user icon", function () {
     home.clickUserIcon();
   });
+
+  it("User interacts with the help icon", function () {
+    home.clickHelpIcon();
+  });
 });
 
 describe("User navigates to different tiles", function () {

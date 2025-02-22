@@ -116,3 +116,7 @@ accessing any of these links, simply follow these steps:
 Please follow the [pull request tips](PULL_REQUEST_TIPS.md) in order to make
 life easy for the code reviewers by having a well defined and clean pull
 request.
+
+### code of conduct
+
+Please see our [Contributor Code of Conduct](./CODE_OF_CONDUCT.md)
