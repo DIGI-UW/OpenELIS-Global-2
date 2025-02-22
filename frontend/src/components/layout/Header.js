@@ -546,13 +546,11 @@ function OEHeader(props) {
                             </li>
                           )}
                           <li
+                            data-cy="logOut"
                             className="userDetails clickableUserDetails"
                             onClick={logout}
                           >
-                            <Logout
-                              id="sign-out"
-                              style={{ marginRight: "3px" }}
-                            />
+                            <Logout style={{ marginRight: "3px" }} />
                             <FormattedMessage id="header.label.logout" />
                           </li>
                         </>
