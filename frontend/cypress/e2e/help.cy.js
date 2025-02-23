@@ -1,16 +1,16 @@
 import LoginPage from "../pages/LoginPage";
 
 describe("Interacts with Help options", function () {
-let loginPage, homePage, helpPage;
+  let loginPage, homePage, helpPage;
 
-beforeEach(() => {
-  // Initialize LoginPage object and navigate to Home Page
-  loginPage = new LoginPage();
-  loginPage.visit();
+  beforeEach(() => {
+    // Initialize LoginPage object and navigate to Home Page
+    loginPage = new LoginPage();
+    loginPage.visit();
 
-  homePage = loginPage.goToHomePage();
-  helpPage = homePage.goToHelp();
-});
+    homePage = loginPage.goToHomePage();
+    helpPage = homePage.goToHelp();
+  });
 
   it("User navigates to User Manual", function () {
     helpPage.clickUserManual();
