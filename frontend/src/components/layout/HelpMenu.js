@@ -65,6 +65,7 @@ const HelpMenu = () => {
     <>
       <HeaderGlobalAction
         ref={buttonRef}
+        id="user-Help"
         aria-label="Help"
         onClick={togglePanel}
         isActive={isExpanded}

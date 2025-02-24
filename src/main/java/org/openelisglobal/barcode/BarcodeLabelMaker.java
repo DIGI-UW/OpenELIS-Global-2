@@ -1,5 +1,8 @@
 package org.openelisglobal.barcode;
 
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
 import com.lowagie.text.BadElementException;
 import com.lowagie.text.Chunk;
 import com.lowagie.text.Document;
@@ -15,12 +18,15 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfTemplate;
 import com.lowagie.text.pdf.PdfWriter;
 import com.lowagie.text.pdf.draw.LineSeparator;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import javax.imageio.ImageIO;
 import org.openelisglobal.barcode.labeltype.BlankLabel;
 import org.openelisglobal.barcode.labeltype.BlockLabel;
 import org.openelisglobal.barcode.labeltype.Label;
@@ -54,6 +60,29 @@ import org.openelisglobal.test.valueholder.Test;
  */
 public class BarcodeLabelMaker {
 
+    public enum BarcodeType {
+        BARCODE, QR;
+
+        public static BarcodeType fromString(String value) {
+            for (BarcodeType type : BarcodeType.values()) {
+                if (type.name().equalsIgnoreCase(value)) {
+                    return type;
+                }
+            }
+            return BARCODE;
+        }
+    }
+
+    private BarcodeType barcodeType = BarcodeType.BARCODE;
+
+    public BarcodeType getBarcodeType() {
+        return barcodeType;
+    }
+
+    public void setBarcodeType(BarcodeType barcodeType) {
+        this.barcodeType = barcodeType;
+    }
+
     // number of columns for label layout grid
     private static int NUM_COLUMNS = 20;
 
@@ -77,6 +106,8 @@ public class BarcodeLabelMaker {
 
     public BarcodeLabelMaker() {
         labels = new ArrayList<>();
+        this.barcodeType = BarcodeType
+                .fromString(ConfigurationProperties.getInstance().getPropertyValue(Property.BAR_CODE_TYPE));
     }
 
     public BarcodeLabelMaker(Label label) {
@@ -116,7 +147,6 @@ public class BarcodeLabelMaker {
             // orderLabel.setSysUserId(sysUserId);
             // if (orderLabel.checkIfPrintable() || "true".equals(override)) {
             labels.add(orderLabel);
-            // }
 
             SpecimenLabel specimenLabel = new SpecimenLabel(accessionNumber, facilityName, tests);
             specimenLabel.setNumLabels(numSpecimenLabelsPerSet);
@@ -323,46 +353,104 @@ public class BarcodeLabelMaker {
         Rectangle rec = new Rectangle(label.pdfWidth, label.pdfHeight);
         document.setPageSize(rec);
         document.newPage();
-        PdfPTable table = new PdfPTable(NUM_COLUMNS);
-        table.getDefaultCell().setBorder(Rectangle.NO_BORDER);
-        table.setTotalWidth(label.pdfWidth - (2 * label.getMargin()));
-        table.setLockedWidth(true);
 
-        // add above fields into table
-        Iterable<LabelField> fields = label.getAboveFields();
-        if (fields != null) {
-            for (LabelField field : fields) {
-                if (field.isStartNewline()) {
-                    table.completeRow();
+        if (barcodeType == BarcodeType.BARCODE) {
+            PdfPTable table = new PdfPTable(NUM_COLUMNS);
+            table.getDefaultCell().setBorder(Rectangle.NO_BORDER);
+            table.setTotalWidth(label.pdfWidth - (2 * label.getMargin()));
+            table.setLockedWidth(true);
+
+            // add above fields into table
+            Iterable<LabelField> fields = label.getAboveFields();
+            if (fields != null) {
+                for (LabelField field : fields) {
+                    if (field.isStartNewline()) {
+                        table.completeRow();
+                    }
+                    table.addCell(createFieldAsPDFField(label, field));
                 }
-                table.addCell(createFieldAsPDFField(label, field));
+                table.completeRow();
             }
-            table.completeRow();
-        }
 
-        // add bar code
-        if (label.getScaledBarcodeSpace() != NUM_COLUMNS) {
-            table.addCell(createSpacerCell((NUM_COLUMNS - label.getScaledBarcodeSpace()) / 2));
-            table.addCell(create128Barcode(label, writer, label.getScaledBarcodeSpace()));
-            table.addCell(createSpacerCell((NUM_COLUMNS - label.getScaledBarcodeSpace()) / 2));
+            // add bar code
+            if (label.getScaledBarcodeSpace() != NUM_COLUMNS) {
+                table.addCell(createSpacerCell((NUM_COLUMNS - label.getScaledBarcodeSpace()) / 2));
+                table.addCell(create128Barcode(label, writer, label.getScaledBarcodeSpace()));
+                table.addCell(createSpacerCell((NUM_COLUMNS - label.getScaledBarcodeSpace()) / 2));
+            } else {
+                table.addCell(create128Barcode(label, writer, label.getScaledBarcodeSpace()));
+            }
+
+            // add below fields into table
+            Iterable<LabelField> belowFields = label.getBelowFields();
+            if (belowFields != null) {
+                for (LabelField field : belowFields) {
+                    if (field.isStartNewline()) {
+                        table.completeRow();
+                    }
+                    table.addCell(createFieldAsPDFField(label, field));
+                }
+                table.completeRow();
+            }
+
+            // convert table to image, scale image, and center it on document
+            document.add(scaleCentreTableAsImage(label, writer, table));
         } else {
-            table.addCell(create128Barcode(label, writer, label.getScaledBarcodeSpace()));
-        }
+            // QR code layout with QR on left, fields on right
+            PdfPTable mainTable = new PdfPTable(2); // 2 columns for QR and fields
+            mainTable.getDefaultCell().setBorder(Rectangle.NO_BORDER);
+            mainTable.setTotalWidth(label.pdfWidth - (2 * label.getMargin()));
+            mainTable.setLockedWidth(true);
+            float[] columnWidths = { 0.4f, 0.6f }; // 40% for QR, 60% for fields
+            mainTable.setWidths(columnWidths);
 
-        // add below fields into table
-        Iterable<LabelField> belowFields = label.getBelowFields();
-        if (belowFields != null) {
-            for (LabelField field : belowFields) {
-                if (field.isStartNewline()) {
-                    table.completeRow();
+            // Left column - QR Code
+            PdfPCell qrCell = createQRCode(label, writer, 1);
+            qrCell.setHorizontalAlignment(PdfPCell.ALIGN_CENTER);
+            qrCell.setVerticalAlignment(PdfPCell.ALIGN_MIDDLE);
+            mainTable.addCell(qrCell);
+
+            // Right column - Fields Table
+            PdfPTable fieldsTable = new PdfPTable(1);
+            fieldsTable.getDefaultCell().setBorder(Rectangle.NO_BORDER);
+            fieldsTable.setWidthPercentage(100);
+
+            // Add code text in larger font and bold
+            com.lowagie.text.Font boldFont = new com.lowagie.text.Font(label.getValueFont());
+            boldFont.setSize(15); // Larger font size
+            boldFont.setStyle(com.lowagie.text.Font.BOLD);
+
+            Paragraph codeText = new Paragraph(label.getCode(), boldFont);
+            codeText.setAlignment(Paragraph.ALIGN_CENTER);
+            PdfPCell codeCell = new PdfPCell(codeText);
+            codeCell.setBorder(Rectangle.NO_BORDER);
+            codeCell.setPadding(1);
+            fieldsTable.addCell(codeCell);
+
+            // Add above fields
+            Iterable<LabelField> fields = label.getAboveFields();
+            if (fields != null) {
+                for (LabelField field : fields) {
+                    fieldsTable.addCell(createFieldAsPDFField(label, field));
                 }
-                table.addCell(createFieldAsPDFField(label, field));
             }
-            table.completeRow();
-        }
 
-        // convert table to image, scale image, and center it on document
-        document.add(scaleCentreTableAsImage(label, writer, table));
+            // Add below fields
+            Iterable<LabelField> belowFields = label.getBelowFields();
+            if (belowFields != null) {
+                for (LabelField field : belowFields) {
+                    fieldsTable.addCell(createFieldAsPDFField(label, field));
+                }
+            }
+
+            PdfPCell fieldsCell = new PdfPCell(fieldsTable);
+            fieldsCell.setBorder(Rectangle.NO_BORDER);
+            fieldsCell.setPadding(5);
+            mainTable.addCell(fieldsCell);
+
+            document.add(scaleCentreTableAsImage(label, writer, mainTable));
+
+        }
     }
 
     /**
@@ -502,6 +590,59 @@ public class BarcodeLabelMaker {
             return null;
         } else {
             return patient;
+        }
+    }
+
+    private PdfPCell createQRCode(Label label, PdfWriter writer, int colspan) throws DocumentException, IOException {
+        try {
+            // Increased base size for QR code
+            int qrSize = 1000; // Further increased for higher quality
+
+            QRCodeWriter qrCodeWriter = new QRCodeWriter();
+            BitMatrix bitMatrix = qrCodeWriter.encode(label.getCode(), BarcodeFormat.QR_CODE, qrSize, qrSize);
+
+            BufferedImage qrImage = new BufferedImage(qrSize, qrSize, BufferedImage.TYPE_INT_RGB);
+            Graphics2D graphics = qrImage.createGraphics();
+            graphics.setColor(java.awt.Color.WHITE);
+            graphics.fillRect(0, 0, qrSize, qrSize);
+            graphics.setColor(java.awt.Color.BLACK);
+
+            for (int x = 0; x < qrSize; x++) {
+                for (int y = 0; y < qrSize; y++) {
+                    if (bitMatrix.get(x, y)) {
+                        graphics.fillRect(x, y, 1, 1);
+                    }
+                }
+            }
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(qrImage, "png", baos);
+            Image qrCodeImage = Image.getInstance(baos.toByteArray());
+
+            // Adjust cell to take up more space with minimal margins
+            float availableWidth = (label.pdfWidth * 0.4f) - 4; // Reduced margin from 20 to 4
+            float availableHeight = label.pdfHeight - 4; // Reduced margin from 20 to 4
+
+            // Scale QR code to fill more space
+            qrCodeImage.scaleToFit(availableWidth, availableHeight);
+
+            PdfPCell cell = new PdfPCell(qrCodeImage, true);
+            cell.setBorder(Rectangle.NO_BORDER);
+            cell.setColspan(colspan);
+            cell.setPadding(1); // Reduced padding from 5 to 2
+            cell.setVerticalAlignment(PdfPCell.ALIGN_MIDDLE);
+            cell.setHorizontalAlignment(PdfPCell.ALIGN_CENTER);
+
+            if (label.getCodeLabel() != null && !label.getCodeLabel().isEmpty()) {
+                Paragraph textPara = new Paragraph(label.getCodeLabel(), label.getValueFont());
+                cell.addElement(textPara);
+            }
+
+            return cell;
+
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            throw new DocumentException("Failed to create QR code: " + e.getMessage());
         }
     }
 

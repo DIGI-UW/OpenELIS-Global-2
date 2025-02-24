@@ -79,6 +79,7 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
     private void printPathologyBarcodeLabel(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
         // create requested labels as pdf stream
+        // In printPathologyBarcodeLabel method:
         BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
         UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
         labelMaker.setSysUserId(String.valueOf(usd.getSystemUserId()));

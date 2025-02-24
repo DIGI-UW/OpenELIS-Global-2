@@ -5,4 +5,5 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
   <include relativeToChangelogFile="true" file="panel_loinc.xml" />
+  <include relativeToChangelogFile="true" file="bar_code_config.xml" />
 </databaseChangeLog>
