@@ -34,8 +34,8 @@ class PatientEntryPage {
     cy.get("#search-patient-button").click();
   }
 
-  clickSearchBtn() {
-    cy.get("#local_search").click();
+  clickNewPatientTab() {
+    cy.get("#newPatient").click();
   }
 
   clickNewPatientBtn() {
@@ -47,7 +47,7 @@ class PatientEntryPage {
   }
 
   getMaleGenderRadioButton() {
-    cy.get("#search-radio-1").check({ force: true });
+    return cy.contains("span", "Male").click();
   }
 
   selectMaleGenderRadioButton() {

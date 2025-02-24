@@ -33,21 +33,8 @@ class WorkPlan {
       .should("be.visible")
       .click();
   }
-
-  getFinalPrintWorkPlanButton() {
-    cy.get("#finalprint", { timeout: 10000 })
-      .should("exist")
-      .should("be.visible")
-      .click();
-  }
-
-  checkToRemove() {
-    //cy.get("input#includedCheck_0", { timeout: 10000 })
-    cy.get("input[id^='includedCheck_']")
-      .first()
-      .should("exist")
-      .should("be.visible")
-      .check();
+  getWorkPlanResultsTable() {
+    return cy.get('[data-cy="workplanResultsTable"]');
   }
 }
 export default WorkPlan;

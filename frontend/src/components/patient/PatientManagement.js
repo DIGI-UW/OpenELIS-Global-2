@@ -56,7 +56,7 @@ function PatientManagement() {
         <Grid>
           <Column lg={4} md={3} sm={2}>
             <Button
-              id="search-patient-button"
+              id="searchPatient"
               kind={searchPatientTab.kind}
               onClick={handleSearchPatientTab}
             >
@@ -68,7 +68,7 @@ function PatientManagement() {
           </Column>
           <Column lg={4} md={3} sm={2}>
             <Button
-              id="new-patient-button"
+              id="newPatient"
               kind={newPatientTab.kind}
               onClick={handleNewPatientTab}
             >
