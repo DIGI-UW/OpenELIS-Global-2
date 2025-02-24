@@ -2,6 +2,7 @@ package org.openelisglobal.security.login;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,8 @@ import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.notifications.dao.NotificationDAO;
+import org.openelisglobal.notifications.entity.Notification;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.systemusermodule.service.PermissionModuleService;
@@ -47,6 +50,8 @@ public class CustomFormAuthenticationSuccessHandler extends SavedRequestAwareAut
     private PermissionModuleService<PermissionModule> permissionModuleService;
     @Autowired
     private SystemUserService systemUserService;
+    @Autowired
+    private NotificationDAO notificationDAO;
 
     @Value("${org.openelisglobal.timezone:}")
     private String timezone;
@@ -163,6 +168,16 @@ public class CustomFormAuthenticationSuccessHandler extends SavedRequestAwareAut
             Set<String> permittedPages = getPermittedForms(usd.getSystemUserId());
             request.getSession().setAttribute(IActionConstants.PERMITTED_ACTIONS_MAP, permittedPages);
             // showAdminMenu |= permittedPages.contains("MasterList");
+        }
+
+        if (passwordExpiringSoon(loginInfo)) {
+            Notification notification = new Notification();
+            notification.setMessage("Your password will expire in " + loginInfo.getPasswordExpiredDayNo()
+                    + " day(s). Please update it soon.");
+            notification.setUser(su);
+            notification.setCreatedDate(OffsetDateTime.now());
+            notification.setReadAt(null);
+            notificationDAO.save(notification);
         }
     }
 
