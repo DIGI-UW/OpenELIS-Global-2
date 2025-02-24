@@ -6,7 +6,7 @@ class ModifyOrderPage {
   }
 
   enterAccessionNo(accessionNo) {
-    cy.enterText("#labNumber", accessionNo);
+    cy.enterText("#display_labNumber", accessionNo);
   }
 
   clickSubmitButton() {
@@ -14,9 +14,7 @@ class ModifyOrderPage {
   }
 
   clickNextButton() {
-    cy.get('button[type="button"].forwardButton.cds--btn.cds--btn--primary')
-      .should("be.visible")
-      .click();
+    cy.get("#next-button").click();
   }
 
   generateLabOrderNumber() {
@@ -51,6 +49,10 @@ class ModifyOrderPage {
     cy.get('table input[type="checkbox"][name="add"]')
       .first()
       .click({ force: true });
+  }
+
+  barcodeButtonVisibility() {
+    cy.get("[data-cy='printBarCode']").should("be.visible");
   }
 
   clickPrintBarcodeButton() {

@@ -330,6 +330,7 @@ const ModifyOrder = () => {
 
                 {page < orderPageNumber && (
                   <Button
+                    id="next-button"
                     kind="primary"
                     className="forwardButton"
                     onClick={() => navigateForward()}

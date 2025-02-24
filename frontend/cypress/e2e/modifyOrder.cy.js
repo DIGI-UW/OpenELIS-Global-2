@@ -14,22 +14,60 @@ before("login", () => {
 });
 
 //"Modify Order search by accession Number", is a WIP.
-
-describe("Modify Order search by patient ", function () {
-  it("User Visits Home Page and goes to Modify Order Page ", function () {
+describe("Modify order by Accession Number", function () {
+  it("User navigates to Modify Order Page", function () {
     homePage = loginPage.goToHomePage();
     modifyOrderPage = homePage.goToModifyOrderPage();
   });
 
+  it("User navigates searches by Accession Number", function () {
+    cy.fixture("Patient").then((patient) => {
+      modifyOrderPage.enterAccessionNo(patient.labNo);
+    });
+    modifyOrderPage.clickNextButton();
+  });
+
+  it("User adds sample", function () {
+    cy.wait(10000);
+    modifyOrderPage.selectSerum();
+    orderEntityPage.checkPanelCheckBoxField();
+    modifyOrderPage.clickNextButton();
+  });
+
+  it("Add Order", function () {
+    modifyOrderPage.generateLabOrderNumber();
+    cy.fixture("Order").then((order) => {
+      orderEntityPage.searchRequester(order.requester);
+      orderEntityPage.enterSiteName(order.siteName);
+    });
+  });
+
+  it("Result Reporting and Submit Order", function () {
+    modifyOrderPage.checkPatientEmail();
+    modifyOrderPage.clickSubmitButton();
+    cy.wait(8000);
+  });
+
+  it("Validate by confirming barcode button visibility", function () {
+    modifyOrderPage.barcodeButtonVisibility();
+  });
+});
+
+describe("Modify Order search by patient ", function () {
+  it("User navigates to Modify Order Page ", function () {
+    //homePage = loginPage.goToHomePage();
+    modifyOrderPage = homePage.goToModifyOrderPage();
+  });
+
   it("Should search Patient By First and LastName", function () {
-    cy.wait(1000);
+    cy.wait(500);
     cy.fixture("Patient").then((patient) => {
       patientPage.patientFirstName(patient.firstName);
       patientPage.patientLastName(patient.lastName);
     });
     patientPage.clickSearchBtn();
     patientPage.selectPatient();
-    cy.wait(800);
+    cy.wait(8000);
     modifyOrderPage.clickNextButton();
   });
 
@@ -52,7 +90,7 @@ describe("Modify Order search by patient ", function () {
   it("Result Reporting and Submit Order", function () {
     modifyOrderPage.checkPatientEmail();
     modifyOrderPage.clickSubmitButton();
-    cy.wait(10000);
+    cy.wait(8000);
   });
 
   it("User Prints Barcode", function () {
