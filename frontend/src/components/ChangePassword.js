@@ -236,7 +236,11 @@ function ChangePassword() {
                         }
                       />
                       <Stack orientation="horizontal">
-                        <Button type="submit" disabled={!formik.isValid}>
+                        <Button
+                          data-cy="submitNewPassword"
+                          type="submit"
+                          disabled={!formik.isValid}
+                        >
                           <FormattedMessage id="label.button.submit" />
                           <Loading
                             small={true}
@@ -245,6 +249,7 @@ function ChangePassword() {
                           />
                         </Button>
                         <Button
+                          data-cy="exitPasswordReset"
                           kind="secondary"
                           onClick={() => {
                             window.location.href = "/";

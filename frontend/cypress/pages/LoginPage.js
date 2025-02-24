@@ -2,60 +2,85 @@ import HomePage from "./HomePage";
 import TestProperties from "../common/TestProperties";
 
 class LoginPage {
-  testProperties = null;
-
-  constructor() {
-    this.testProperties = new TestProperties();
-  }
+  testProperties = new TestProperties();
 
   visit() {
     cy.visit("/login");
   }
 
   getUsernameElement() {
-    return cy.getElement("#loginName");
+    return cy.get("#loginName");
   }
 
   getPasswordElement() {
-    return cy.getElement("#password");
+    return cy.get("#password");
   }
 
   enterUsername(value) {
-    const field = this.getUsernameElement();
-    field.should("be.visible").clear();
+    this.getUsernameElement().should("be.visible");
     this.getUsernameElement().type(value);
-    return this;
   }
 
   enterPassword(value) {
-    const field = this.getPasswordElement();
-    field.should("be.visible").clear();
+    this.getPasswordElement().should("be.visible");
     this.getPasswordElement().type(value);
-    return this;
   }
 
   signIn() {
-    cy.get("[data-cy='loginButton']")
-      .should("exist")
-      .should("be.visible")
-      .click();
+    cy.get("[data-cy='loginButton']").should("be.visible");
+    cy.get("[data-cy='loginButton']").click();
   }
 
-  acceptSelfAssignedCert() {
-    const detailsOption = cy.get(`#details-button`);
-    detailsOption.click();
-    const link = cy.get(`#proceed-link`);
-    link.click();
+  signOut() {
+    cy.get("#user-Icon").should("be.visible");
+    cy.get("#user-Icon").click();
+    cy.wait(200);
+    cy.get("[data-cy='logOut']").should("be.visible");
+    cy.get("[data-cy='logOut']").click();
+    cy.wait(1000);
+  }
+
+  changingPassword() {
+    cy.get("[data-cy='changePassword']").click();
+    cy.wait(500);
+  }
+
+  enterCurrentPassword(value) {
+    cy.get("#current-password").should("be.visible");
+    cy.get("#current-password").type(value);
+  }
+
+  enterNewPassword(value) {
+    cy.get("#new-password").should("be.visible");
+    cy.get("#new-password").type(value);
+  }
+
+  repeatNewPassword(value) {
+    cy.get("#repeat-new-password").should("be.visible");
+    cy.get("#repeat-new-password").type(value);
+  }
+
+  submitNewPassword() {
+    cy.get("[data-cy='submitNewPassword']").should("be.visible");
+    cy.get("[data-cy='submitNewPassword']").click();
+    cy.wait(800);
+  }
+
+  clickExitPasswordReset() {
+    cy.get("[data-cy='exitPasswordReset']").should("be.visible");
+    cy.get("[data-cy='exitPasswordReset']").click();
+    cy.wait(800);
+  }
+  clearInputs() {
+    this.getUsernameElement().clear();
+    this.getPasswordElement().clear();
   }
 
   goToHomePage() {
     cy.wait(1000);
-
     cy.url().then((url) => {
       if (url.includes("/login")) {
-        // Waits for the Login button to be available before proceeding
         cy.contains("button", "Login", { timeout: 10000 }).should("be.visible");
-
         this.enterUsername(this.testProperties.getUsername());
         this.enterPassword(this.testProperties.getPassword());
         this.signIn();

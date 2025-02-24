@@ -152,7 +152,7 @@ function Login(props) {
 
   return (
     <>
-      <div className="loginPageContent">
+      <div data-cy="login-Page-Content" className="loginPageContent">
         {notificationVisible === true ? <AlertDialog /> : ""}
         <Grid fullWidth={true}>
           <Column lg={0} md={0} sm={4}>
@@ -233,6 +233,7 @@ function Login(props) {
                             </Button>
 
                             <Button
+                              data-cy="changePassword"
                               type="button"
                               onClick={() => {
                                 window.location.href = "/ChangePasswordLogin";
