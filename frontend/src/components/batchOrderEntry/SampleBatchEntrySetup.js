@@ -735,7 +735,11 @@ const SampleBatchEntrySetup = () => {
                     </Button>
                   </Column>
                   <Column lg={4} md={2} sm={2}>
-                    <Button onClick={() => history.push("/")} kind="secondary">
+                    <Button
+                      data-testid="cancel-button-BatchOrderEntry"
+                      onClick={() => history.push("/")}
+                      kind="secondary"
+                    >
                       <FormattedMessage id="label.button.cancel" />
                     </Button>
                   </Column>
