@@ -427,19 +427,6 @@ function AnalyzerTestName() {
               setSelectedTestId(selectedItem ? selectedItem.id : null);
             }}
           />
-          <br />
-          <TextInput
-            id="testName"
-            labelText={intl.formatMessage({
-              id: "sidenav.label.admin.analyzerTest",
-            })}
-            value={testName}
-            onChange={(e) => setTestName(e.target.value)}
-            required
-          />
-          <br />
-
-          
         </Modal>
 
         <div className="orderLegendBody">
