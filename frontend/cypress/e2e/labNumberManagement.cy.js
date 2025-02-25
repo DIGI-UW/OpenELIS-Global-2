@@ -24,6 +24,10 @@ describe("Lab Number Management", function () {
     labNumMgtPage = adminPage.goToLabNumberManagementPage();
   });
 
+  it("Validate Page Visibility", function () {
+    labNumMgtPage.verifyPageLoaded();
+  });
+
   it("User selects legacy lab number type and submits", function () {
     cy.get("@labNMData").then((labNumberManagementData) => {
       labNumMgtPage.selectLabNumber(

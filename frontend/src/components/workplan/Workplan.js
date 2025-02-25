@@ -233,7 +233,7 @@ export default function Workplan(props) {
             <Grid fullWidth={true}>
               <Column sm={4} md={8} lg={16}>
                 <>
-                  <Table size={"sm"} data-set-id="workplanResultsTable">
+                  <Table size={"sm"} data-cy="workplanResultsTable">
                     <TableHead>
                       <TableRow>
                         <TableHeader>
