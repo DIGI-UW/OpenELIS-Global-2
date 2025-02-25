@@ -25,7 +25,7 @@ class PatientEntryPage {
   }
 
   clickNewPatientTab() {
-    cy.get(":nth-child(1) > :nth-child(2) > .cds--btn").click();
+    cy.get("#newPatient").click();
   }
 
   enterPatientInfo(
@@ -49,9 +49,7 @@ class PatientEntryPage {
   }
 
   getMaleGenderRadioButton() {
-    return cy.getElement(
-      ":nth-child(2) > .cds--radio-button__label > .cds--radio-button__appearance",
-    );
+    return cy.contains("span", "Male").click();
   }
 
   clickSearchPatientButton() {

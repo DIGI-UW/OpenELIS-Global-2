@@ -231,6 +231,20 @@ function SearchPatientForm(props) {
     setDob(date);
   };
 
+  const handleFirstNameChange = (event) => {
+    const regex = /^[A-Za-z]*$/;
+    if (!regex.test(event.target.value)) {
+      event.target.value = event.target.value.replace(/[^A-Za-z]/g, "");
+    }
+  };
+
+  const handleLastNameChange = (event) => {
+    const regex = /^[A-Za-z]*$/;
+    if (!regex.test(event.target.value)) {
+      event.target.value = event.target.value.replace(/[^A-Za-z]/g, "");
+    }
+  };
+
   const patientSelected = (e) => {
     const patientSelected = patientSearchResults.find((patient) => {
       return patient.patientID == e.target.id;
@@ -349,6 +363,7 @@ function SearchPatientForm(props) {
                         defaultMessage: "Last Name",
                       })}
                       id={field.name}
+                      onChange={(e) => handleLastNameChange(e)}
                     />
                   )}
                 </Field>
@@ -366,6 +381,7 @@ function SearchPatientForm(props) {
                         defaultMessage: "First Name",
                       })}
                       id={field.name}
+                      onChange={(e) => handleFirstNameChange(e)}
                     />
                   )}
                 </Field>

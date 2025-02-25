@@ -35,29 +35,28 @@ import org.openelisglobal.testcalculated.valueholder.Operation;
 import org.openelisglobal.testcalculated.valueholder.ResultCalculation;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 
 @Service
 @DependsOn({ "springContext" })
 public class TestCalculatedUtil {
-    @Autowired
-    private TestResultService testResultService;
-    @Autowired
-    private ResultCalculationService resultcalculationService;
-    @Autowired
-    private TestCalculationService calculationService;
-    @Autowired
-    private TestService testService;
-    @Autowired
-    private ResultService resultService;
-    @Autowired
-    private AnalysisService analysisService;
-    @Autowired
-    private NoteService noteService;
-    @Autowired
-    private ResultLimitService resultLimitService;
+
+    private TestResultService testResultService = SpringContext.getBean(TestResultService.class);
+
+    private ResultCalculationService resultcalculationService = SpringContext.getBean(ResultCalculationService.class);
+
+    private TestCalculationService calculationService = SpringContext.getBean(TestCalculationService.class);
+
+    private TestService testService = SpringContext.getBean(TestService.class);
+
+    private ResultService resultService = SpringContext.getBean(ResultService.class);
+
+    private AnalysisService analysisService = SpringContext.getBean(AnalysisService.class);
+
+    private NoteService noteService = SpringContext.getBean(NoteService.class);
+
+    private ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
 
     private String CALCULATION_SUBJECT = "Calculated Result Note";
 
