@@ -133,20 +133,20 @@ export const CommonProperties = () => {
                       let shortKey = key.replace(/^org\.openelisglobal\./, "");
 
                       return (
-                        <Grid >
+                        <Grid>
                           <Column lg={16} md={8} sm={4}>
-                          <TextInput
-                            id={key + "-input"}
-                            labelText={shortKey} // Use the modified key without the prefix
-                            value={commonProperties[key]}
-                            onChange={(e) => {
-                              setCommonProperties({
-                                ...commonProperties,
-                                [key]: e.target.value,
-                              });
-                            }}
-                          />
-                        </Column>
+                            <TextInput
+                              id={key + "-input"}
+                              labelText={shortKey} // Use the modified key without the prefix
+                              value={commonProperties[key]}
+                              onChange={(e) => {
+                                setCommonProperties({
+                                  ...commonProperties,
+                                  [key]: e.target.value,
+                                });
+                              }}
+                            />
+                          </Column>
                         </Grid>
                       );
                     })}
@@ -155,16 +155,16 @@ export const CommonProperties = () => {
             </Column>
           </Grid>
 
-          <Grid >
+          <Grid>
             <Column lg={16} md={8} sm={4}>
-            <Button type="submit" onClick={handleSubmit}>
-              <FormattedMessage
-                id="label.button.update"
-                defaultMessage="Update"
-              />
-            </Button>
+              <Button type="submit" onClick={handleSubmit}>
+                <FormattedMessage
+                  id="label.button.update"
+                  defaultMessage="Update"
+                />
+              </Button>
             </Column>
-            </Grid>
+          </Grid>
         </div>
       </div>
     </>
