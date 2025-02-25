@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.servlet.http.HttpSession;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.common.util.IdValuePair;
 
 public class PagingUtility<E> {
@@ -123,7 +124,9 @@ public class PagingUtility<E> {
         PagingBean paging = new PagingBean();
         paging.setCurrentPage(String.valueOf(currentPage));
         paging.setTotalPages(String.valueOf(totalPages));
-        paging.setSearchTermToPage(getPageMapping(session));
+        if (!ControllerUtills.isRestCall()) {
+            paging.setSearchTermToPage(getPageMapping(session));
+        }
 
         return paging;
     }

@@ -19,6 +19,9 @@ public class URLUtil {
         } else {
             pathWithoutSuffix = pathWithoutQuery;
         }
+        if (pathWithoutSuffix.startsWith("/rest")) {
+            pathWithoutSuffix = pathWithoutSuffix.split("/rest")[1];
+        }
         return pathWithoutSuffix;
     }
 }
