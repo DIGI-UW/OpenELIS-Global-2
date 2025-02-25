@@ -1,38 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <persistence xmlns="http://xmlns.jcp.org/xml/ns/persistence"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/persistence http://xmlns.jcp.org/xml/ns/persistence/persistence_2_2.xsd"
-        version="2.2">
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/persistence http://xmlns.jcp.org/xml/ns/persistence/persistence_2_2.xsd"
+	version="2.2">
 
-    <persistence-unit
-        name="OpenELIS-Global-persistence-unit">
-        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+	<persistence-unit
+		name="OpenELIS-Global-persistence-unit">
+		<provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
 
-        <!-- converters -->
-        <class>org.itech.fhir.dataexport.core.model.converter.DataExportStatusConverter</class>
-        <class>org.itech.fhir.dataexport.core.model.converter.FhirResourceTypeConverter</class>
-        <class>org.openelisglobal.hibernate.converter.URIConverter</class>
-        <class>org.openelisglobal.security.converter.EncryptionConverter</class>
+		<!-- converters -->
+		<class>org.itech.fhir.dataexport.core.model.converter.DataExportStatusConverter</class>
+		<class>org.itech.fhir.dataexport.core.model.converter.FhirResourceTypeConverter</class>
+		<class>org.openelisglobal.hibernate.converter.URIConverter</class>
+		<class>org.openelisglobal.security.converter.EncryptionConverter</class>
 
-        <!-- entities -->
-        <class>org.openelisglobal.login.valueholder.LoginUser</class>
-        <class>org.openelisglobal.gender.valueholder.Gender</class>
-        <class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
-        <class>org.openelisglobal.externalconnections.valueholder.ExternalConnectionContact</class>
-        <class>org.openelisglobal.externalconnections.valueholder.CertificateAuthenticationData</class>
-        <class>org.openelisglobal.externalconnections.valueholder.BasicAuthenticationData</class>
+		<!-- entities -->
+		<class>org.openelisglobal.login.valueholder.LoginUser</class>
+		<class>org.openelisglobal.gender.valueholder.Gender</class>
+		<class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
+		<class>org.openelisglobal.externalconnections.valueholder.ExternalConnectionContact</class>
+		<class>org.openelisglobal.externalconnections.valueholder.CertificateAuthenticationData</class>
+		<class>org.openelisglobal.externalconnections.valueholder.BasicAuthenticationData</class>
 
-        <class>org.itech.fhir.dataexport.core.model.DataExportAttempt</class>
-        <class>org.itech.fhir.dataexport.core.model.DataExportTask</class>
+		<class>org.itech.fhir.dataexport.core.model.DataExportAttempt</class>
+		<class>org.itech.fhir.dataexport.core.model.DataExportTask</class>
 
-        <class>org.ozeki.sms.valueholder.OzekiMessageOut</class>
+		<class>org.ozeki.sms.valueholder.OzekiMessageOut</class>
 
-        <properties>
-            <property name="hibernate.ejb.cfgfile"
-                value="hibernate/test-hibernate.cfg.xml" />
-            <property name="hibernate.search.backend.directory.type" value="local-heap" />
-            <property name="hibernate.search.backend.analysis.configurer" value="class:org.openelisglobal.hibernate.search.analysis.CustomLuceneAnalysisConfigurer"/>
-        </properties>
+		<class>org.openelisglobal.program.valueholder.ProgramSample</class>
 
-    </persistence-unit>
+		<class>org.openelisglobal.program.valueholder.pathology.PathologySample</class>
+		<class>org.openelisglobal.program.valueholder.pathology.PathologyTechnique</class>
+		<class>org.openelisglobal.program.valueholder.pathology.PathologySlide</class>
+		<class>org.openelisglobal.program.valueholder.pathology.PathologyRequest</class>
+		<class>org.openelisglobal.program.valueholder.pathology.PathologyReport</class>
+		<class>org.openelisglobal.program.valueholder.pathology.PathologyConclusion</class>
+		<class>org.openelisglobal.program.valueholder.pathology.PathologyBlock</class>
+
+		<properties>
+			<property name="hibernate.ejb.cfgfile"
+				value="hibernate/test-hibernate.cfg.xml" />
+			<property name="hibernate.search.backend.directory.type"
+				value="local-heap" />
+			<property
+				name="hibernate.search.backend.analysis.configurer"
+				value="class:org.openelisglobal.hibernate.search.analysis.CustomLuceneAnalysisConfigurer" />
+		</properties>
+
+	</persistence-unit>
 </persistence>

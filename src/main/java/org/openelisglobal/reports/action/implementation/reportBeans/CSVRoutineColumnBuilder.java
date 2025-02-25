@@ -59,6 +59,15 @@ import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
  * @since Mar 18, 2011
  */
 public abstract class CSVRoutineColumnBuilder {
+    protected String selectedLabUnit;
+
+    public String getSelectedLabUnit() {
+        return selectedLabUnit;
+    }
+
+    public void setSelectedLabUnit(String selectedLabUnit) {
+        this.selectedLabUnit = selectedLabUnit;
+    }
 
     // these are used so we are not passing around strings in the methods that are
     // appended to sql
@@ -530,6 +539,10 @@ public abstract class CSVRoutineColumnBuilder {
         SQLConstant listName = SQLConstant.RESULT;
         query.append(", \n\n ( SELECT si.samp_id, si.id AS sampleItem_id, si.sort_order AS sampleItemNo, " + listName
                 + ".* " + " FROM sample_item AS si JOIN \n ");
+        String labUnitFilter = "";
+        if (selectedLabUnit != null && !selectedLabUnit.isEmpty()) {
+            labUnitFilter = " AND ts.id = " + selectedLabUnit;
+        }
 
         // Begin cross tab / pivot table
         query.append(" crosstab( \n" + " 'SELECT si.id, t.description, replace(replace(replace(replace(r.value ,E''\\n"
@@ -539,6 +552,7 @@ public abstract class CSVRoutineColumnBuilder {
                 + "  join clinlims.sample AS s on s.id = si.samp_id \n"
                 + " join clinlims.test_result AS tr on r.test_result_id = tr.id \n"
                 + " join clinlims.test AS t on tr.test_id = t.id \n"
+                + " join clinlims.test_section ts on t.test_section_id = ts.id \n"
                 + " left join sample_projects sp on si.samp_id = sp.samp_id \n" + "\n"
                 + " WHERE sp.id IS NULL AND s.entered_date >= date(''" + formatDateForDatabaseSql(lowDate)
                 + "'')  AND s.entered_date <= date(''" + formatDateForDatabaseSql(highDate) + " '') " + "\n "
@@ -547,7 +561,7 @@ public abstract class CSVRoutineColumnBuilder {
                 // + (( excludeAnalytes == null)?"":
                 // " AND r.analyte_id NOT IN ( " + excludeAnalytes) + ")"
                 // + " AND a.test_id = t.id "
-                + "\n ORDER BY 1, 2 "
+                + labUnitFilter + "\n ORDER BY 1, 2 "
                 + "\n ', 'SELECT t.description FROM test t where t.is_active = ''Y'' ORDER BY 1' ) ");
         // end of cross tab
 
@@ -631,7 +645,11 @@ public abstract class CSVRoutineColumnBuilder {
     }
 
     protected void appendCrosstabPreamble(SQLConstant listName) {
-        query.append(", \n\n ( SELECT s.id AS samp_id, " + listName + ".* " + " FROM sample AS s LEFT JOIN \n ");
+        query.append(", \n\n ( SELECT s.id AS samp_id, " + " (SELECT ts.name FROM clinlims.test_section ts "
+                + "   JOIN clinlims.test t ON t.test_section_id = ts.id "
+                + "   JOIN clinlims.analysis a ON a.test_id = t.id "
+                + "   WHERE a.sampitem_id = si.id LIMIT 1) as lab_unit, " + listName + ".* " + " FROM sample AS s "
+                + " LEFT JOIN sample_item si ON s.id = si.samp_id " + " LEFT JOIN \n ");
     }
 
     protected void appendCrosstabPostfix(java.sql.Date lowDate, java.sql.Date highDate, SQLConstant listName) {

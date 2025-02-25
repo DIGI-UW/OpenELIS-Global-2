@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- * The contents of this file are subject to the Mozilla Public License
+	* Version 1.1 (the "License"); you may not use this file except in * compliance
+	with the License. You may obtain a copy of the License at * http://www.mozilla.org/MPL/
+	* * Software distributed under the License is distributed on an "AS IS" *
+	basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the *
+	License for the specific language governing rights and limitations under
+	* the License. * * The Original Code is OpenELIS code. * * Copyright (C)
+	ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+<dataset>
+	<localization id="1" lastupdated="2024-06-10 12:00:00.0"
+		description="English Localization" english="Hello, how are you?"
+		french="Bonjour, comment ça va?" />
+	<localization id="2" lastupdated="2024-06-11 12:00:00.0"
+		description="French Localization" english="Goodbye" french="Au revoir" />
+	<localization id="3" lastupdated="2024-06-12 12:00:00.0"
+		description="German Localization" english="Thank you" french="Danke" />
+
+	<test_section id="1" lastupdated="2024-06-10 12:00:00.0"
+		name="Blood Test" description="General blood test section"
+		name_localization_id="1" display_key="blood_test_key" is_external="N"
+		is_active="Y" sort_order="1" />
+	<test_section id="2" lastupdated="2024-06-11 12:00:00.0"
+		name="X-Ray" description="X-Ray imaging section"
+		name_localization_id="2" display_key="x_ray_key" is_external="N"
+		is_active="Y" sort_order="2" />
+	<test_section id="3" lastupdated="2024-06-12 12:00:00.0"
+		name="Cardiology" description="Cardiology section"
+		name_localization_id="3" display_key="cardiology_key" is_external="Y"
+		is_active="Y" sort_order="3" />
+
+	<program id="1" lastupdated="2024-06-10 12:00:00.0"
+		code="PROG001" name="Blood Test Program" manually_changed="false"
+		test_section_id="1" />
+	<program id="2" lastupdated="2024-06-11 12:00:00.0"
+		code="PROG002" name="X-Ray Program" manually_changed="true"
+		test_section_id="2" />
+	<program id="3" lastupdated="2024-06-12 12:00:00.0"
+		code="PROG003" name="Cardiology Program" manually_changed="false"
+		test_section_id="3" />
+
+	<sample id="1" accession_number="12345"
+		received_date="2024-06-03 00:00:00" entered_date="2024-06-03 00:00:00"
+		collection_date="2024-06-03 00:00:00"
+		lastupdated="2023-11-01 12:00:00" />
+	<sample id="2" accession_number="13333"
+		received_date="2024-06-04 00:00:00" entered_date="2024-06-03 00:00:00"
+		collection_date="2024-06-03 00:00:00"
+		lastupdated="2023-11-01 12:00:00" />
+	<sample id="3" accession_number="52541"
+		received_date="2024-06-05 00:00:00" entered_date="2024-06-05 00:00:00"
+		collection_date="2024-06-05 00:00:00"
+		lastupdated="2023-11-01 12:00:00" />
+
+	<program_sample id="1" program_id="1" sample_id="1"
+		last_updated="2024-06-10 12:00:00" />
+	<program_sample id="2" program_id="2" sample_id="2"
+		last_updated="2024-06-10 12:00:00" />
+	<program_sample id="3" program_id="3" sample_id="3"
+		last_updated="2024-06-10 12:00:00" />
+</dataset>

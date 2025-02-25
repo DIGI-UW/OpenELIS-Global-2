@@ -64,7 +64,16 @@ export const CommonProperties = () => {
     <>
       <div className="adminPageContent">
         {notificationVisible === true ? <AlertDialog /> : ""}
-        <PageBreadCrumb breadcrumbs={[{ label: "home.label", link: "/" }]} />
+        <PageBreadCrumb
+          breadcrumbs={[
+            { label: "home.label", link: "/" },
+            { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+            {
+              label: "common properties",
+              link: "/MasterListsPage#commonproperties",
+            },
+          ]}
+        />
         <Grid fullWidth={true}>
           <Column lg={16} md={8} sm={4}>
             <Section>

@@ -3,51 +3,51 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class name="org.openelisglobal.note.valueholder.Note"
-        table="NOTE" optimistic-lock="version" dynamic-update="true">
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">note_seq</param>
-            </generator>
-        </id>
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
+	<class name="org.openelisglobal.note.valueholder.Note"
+		table="NOTE" optimistic-lock="version" dynamic-update="true">
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">note_seq</param>
+			</generator>
+		</id>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
 
-        <many-to-one name="systemUser"
-            class="org.openelisglobal.systemuser.valueholder.SystemUser"
-            fetch="select">
-            <column name="SYS_USER_ID" precision="10" scale="0" />
-        </many-to-one>
-        <property name="referenceId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="REFERENCE_ID" precision="22" scale="0" />
-        </property>
-        <!--bugzilla 2571 -->
-        <!-- Note: could not solve transient object issues, sorry many-to-one name="referenceTables"
-            class="org.openelisglobal.referencetables.valueholder.ReferenceTables" fetch="select"
-            update="false" insert="false"> <column name="REFERENCE_TABLE" precision="22"
-            scale="0" /> </many-to-one -->
-        <property name="referenceTableId"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="REFERENCE_TABLE" precision="22" scale="0" />
-        </property>
-        <!--property name="timestamp" type="java.sql.Date"> <column name="TIMESTAMP"
-            length="7" /> </property -->
-        <property name="noteType" type="java.lang.String">
-            <column name="NOTE_TYPE" length="1" />
-        </property>
-        <property name="subject" type="java.lang.String">
-            <column name="SUBJECT" length="60" />
-        </property>
-        <property name="text" type="java.lang.String">
-            <column name="TEXT" />
-        </property>
-    </class>
-    <!-- Note: could not solve transient object issues, sorry <query name="note.getNext">
-        from Note n order by n.referenceTables.id, n.referenceId, n.noteType </query>
-        <query name="note.getPrevious"> from Note n order by n.referenceTables.id
-        desc, n.referenceId desc, n.noteType desc </query> -->
+		<many-to-one name="systemUser"
+			class="org.openelisglobal.systemuser.valueholder.SystemUser"
+			fetch="select">
+			<column name="SYS_USER_ID" precision="10" scale="0" />
+		</many-to-one>
+		<property name="referenceId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="REFERENCE_ID" precision="22" scale="0" />
+		</property>
+		<!--bugzilla 2571 -->
+		<!-- Note: could not solve transient object issues, sorry many-to-one name="referenceTables"
+			class="org.openelisglobal.referencetables.valueholder.ReferenceTables" fetch="select"
+			update="false" insert="false"> <column name="REFERENCE_TABLE" precision="22"
+			scale="0" /> </many-to-one -->
+		<property name="referenceTableId"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="REFERENCE_TABLE" precision="22" scale="0" />
+		</property>
+		<!--property name="timestamp" type="java.sql.Date"> <column name="TIMESTAMP"
+			length="7" /> </property -->
+		<property name="noteType" type="java.lang.String">
+			<column name="NOTE_TYPE" length="1" />
+		</property>
+		<property name="subject" type="java.lang.String">
+			<column name="SUBJECT" length="60" />
+		</property>
+		<property name="text" type="java.lang.String">
+			<column name="TEXT" />
+		</property>
+	</class>
+	<!-- Note: could not solve transient object issues, sorry <query name="note.getNext">
+		from Note n order by n.referenceTables.id, n.referenceId, n.noteType </query>
+		<query name="note.getPrevious"> from Note n order by n.referenceTables.id
+		desc, n.referenceId desc, n.noteType desc </query> -->
 </hibernate-mapping>

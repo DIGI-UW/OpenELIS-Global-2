@@ -151,8 +151,16 @@ function CreatePatientForm(props) {
   }
 
   function handleYearsChange(e, values) {
-    setPatientDetails(values);
-    let years = e.target.value;
+    // Ensure years is not negative
+    const years = Math.max(0, Number(e.target.value));
+
+    // Update form values with the validated years
+    setPatientDetails({
+      ...values,
+      // Update the specific field that contains years to ensure the form shows the corrected value
+      [e.target.name]: years,
+    });
+
     let dobFormatter = {
       ...dateOfBirthFormatter,
       years: years,
@@ -161,8 +169,16 @@ function CreatePatientForm(props) {
   }
 
   function handleMonthsChange(e, values) {
-    setPatientDetails(values);
-    let months = e.target.value;
+    // Ensure months is not negative
+    const months = Math.max(0, Number(e.target.value));
+
+    // Update form values with the validated months
+    setPatientDetails({
+      ...values,
+      // Update the specific field that contains months to ensure the form shows the corrected value
+      [e.target.name]: months,
+    });
+
     let dobFormatter = {
       ...dateOfBirthFormatter,
       months: months,
@@ -171,8 +187,16 @@ function CreatePatientForm(props) {
   }
 
   function handleDaysChange(e, values) {
-    setPatientDetails(values);
-    let days = e.target.value;
+    // Ensure days is not negative
+    const days = Math.max(0, Number(e.target.value));
+
+    // Update form values with the validated days
+    setPatientDetails({
+      ...values,
+      // Update the specific field that contains days to ensure the form shows the corrected value
+      [e.target.name]: days,
+    });
+
     let dobFormatter = {
       ...dateOfBirthFormatter,
       days: days,
@@ -188,6 +212,20 @@ function CreatePatientForm(props) {
       fetchHeathDistricts,
     );
   };
+
+  function handleFirstNameChange(event) {
+    const regex = /^[A-Za-z]*$/;
+    if (!regex.test(event.target.value)) {
+      event.target.value = event.target.value.replace(/[^A-Za-z]/g, "");
+    }
+  }
+
+  function handleLastNameChange(event) {
+    const regex = /^[A-Za-z]*$/;
+    if (!regex.test(event.target.value)) {
+      event.target.value = event.target.value.replace(/[^A-Za-z]/g, "");
+    }
+  }
 
   function fetchHealthDistrictsCallback(res) {
     setHealthDistricts(res);
@@ -333,7 +371,7 @@ function CreatePatientForm(props) {
     }
     console.debug(JSON.stringify(values));
     postToOpenElisServer(
-      "/rest/patient-management",
+      "/rest/PatientManagement",
       JSON.stringify(values),
       (status) => {
         handlePost(status);
@@ -509,6 +547,7 @@ function CreatePatientForm(props) {
                       placeholder={intl.formatMessage({
                         id: "patient.information.lastname",
                       })}
+                      onChange={(e) => handleLastNameChange(e)}
                     />
                   )}
                 </Field>
@@ -528,6 +567,7 @@ function CreatePatientForm(props) {
                       placeholder={intl.formatMessage({
                         id: "patient.information.firstname",
                       })}
+                      onChange={(e) => handleFirstNameChange(e)}
                     />
                   )}
                 </Field>
@@ -633,6 +673,7 @@ function CreatePatientForm(props) {
                   })}
                   id="years"
                   type="number"
+                  min="0"
                   onChange={(e) => handleYearsChange(e, values)}
                   placeholder={intl.formatMessage({
                     id: "patient.information.age",
@@ -645,6 +686,7 @@ function CreatePatientForm(props) {
                   name="months"
                   labelText={intl.formatMessage({ id: "patient.age.months" })}
                   type="number"
+                  min="0"
                   onChange={(e) => handleMonthsChange(e, values)}
                   id="months"
                   placeholder={intl.formatMessage({
@@ -657,6 +699,7 @@ function CreatePatientForm(props) {
                   value={dateOfBirthFormatter.days}
                   name="days"
                   type="number"
+                  min="0"
                   onChange={(e) => handleDaysChange(e, values)}
                   labelText={intl.formatMessage({ id: "patient.age.days" })}
                   id="days"
@@ -917,7 +960,7 @@ function CreatePatientForm(props) {
                               value={values.education || ""}
                               name={field.name}
                               labelText={intl.formatMessage({
-                                id: "pateint.eduction",
+                                id: "patient.eduction",
                               })}
                               onChange={() => {}}
                               helperText={intl.formatMessage({
@@ -948,7 +991,7 @@ function CreatePatientForm(props) {
                               })}
                               onChange={() => {}}
                               helperText={intl.formatMessage({
-                                id: "patient.emergency.additional.maritialstatus",
+                                id: "patient.emergency.additional.maritalstatus",
                               })}
                             >
                               <SelectItem text="" value="" />

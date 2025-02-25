@@ -1,45 +1,47 @@
 <?xml version='1.0' encoding='utf-8'?>
 <!DOCTYPE hibernate-mapping PUBLIC
-    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+	"-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+	"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping>
 
-    <class name="org.openelisglobal.qaevent.valueholder.NcEvent" table="nc_event" schema="clinlims">
+	<class name="org.openelisglobal.qaevent.valueholder.NcEvent"
+		table="nc_event" schema="clinlims">
 
-        <id name="id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="ID" precision="10" scale="0" />
-            <generator
-                    class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-                <param name="sequence_name">nc_event_id_seq</param>
-            </generator>
-        </id>
-        <property name="reportDate" column="report_date"/>
-        <property name="name" column="name"/>
-        <property name="nameOfReporter" column="name_of_reporter"/>
-        <property name="nceNumber" column="nce_number"/>
-        <property name="dateOfEvent" column="date_of_event"/>
-        <property name="labOrderNumber" column="lab_order_number"/>
-        <property name="prescriberName" column="prescriber_name"/>
-        <property name="site" column="site"/>
-        <property name="reportingUnitId" column="reporting_unit_id"/>
-        <property name="description" column="description"/>
-        <property name="suspectedCauses" column="suspected_causes"/>
-        <property name="proposedAction" column="proposed_action"/>
-        <property name="laboratoryComponent" column="laboratory_component"/>
-        <property name="consequenceId" column="consequence_id"/>
-        <property name="recurrenceId" column="recurrence_id"/>
-        <property name="severityScore" column="severity_score"/>
-        <property name="colorCode" column="color_code"/>
-        <property name="correctiveAction" column="corrective_action"/>
-        <property name="controlAction" column="control_action"/>
-        <property name="comments" column="comments"/>
-        <property name="effective" column="effective"/>
-        <property name="signature" column="signature"/>
-        <property name="dateCompleted" column="date_completed"/>
-        <property name="status" column="status"/>
-        <property name="nceTypeId" column="nce_type_id"/>
-        <property name="nceCategoryId" column="nce_category_id"/>
-        <property name="discussionDate" column="discussion_date"/>
-    </class>
+		<id name="id"
+			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+			<column name="ID" precision="10" scale="0" />
+			<generator
+				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+				<param name="sequence_name">nc_event_id_seq</param>
+			</generator>
+		</id>
+		<property name="reportDate" column="report_date" />
+		<property name="name" column="name" />
+		<property name="nameOfReporter" column="name_of_reporter" />
+		<property name="nceNumber" column="nce_number" />
+		<property name="dateOfEvent" column="date_of_event" />
+		<property name="labOrderNumber" column="lab_order_number" />
+		<property name="prescriberName" column="prescriber_name" />
+		<property name="site" column="site" />
+		<property name="reportingUnitId" column="reporting_unit_id" />
+		<property name="description" column="description" />
+		<property name="suspectedCauses" column="suspected_causes" />
+		<property name="proposedAction" column="proposed_action" />
+		<property name="laboratoryComponent"
+			column="laboratory_component" />
+		<property name="consequenceId" column="consequence_id" />
+		<property name="recurrenceId" column="recurrence_id" />
+		<property name="severityScore" column="severity_score" />
+		<property name="colorCode" column="color_code" />
+		<property name="correctiveAction" column="corrective_action" />
+		<property name="controlAction" column="control_action" />
+		<property name="comments" column="comments" />
+		<property name="effective" column="effective" />
+		<property name="signature" column="signature" />
+		<property name="dateCompleted" column="date_completed" />
+		<property name="status" column="status" />
+		<property name="nceTypeId" column="nce_type_id" />
+		<property name="nceCategoryId" column="nce_category_id" />
+		<property name="discussionDate" column="discussion_date" />
+	</class>
 </hibernate-mapping>

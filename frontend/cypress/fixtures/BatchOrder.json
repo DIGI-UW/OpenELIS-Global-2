@@ -1,9 +1,21 @@
 {
   "formTypeRoutine": "Routine",
-  "sampleType": "Serum",
+  "formTypeEID": "EID",
+  "formTypeViralLoad": "Viral Load",
+  "serumSample": "Serum",
   "methodOnDemand": "On Demand",
   "methodPrePrinted": "Pre-Printed",
   "siteName": "CAMES",
   "panel": "Western blot HIV",
-  "facility": "279 - CAMES MAN"
+  "facility": "279 - CAMES MAN",
+  "labNumber": "123456",
+  "firstName": "John",
+  "lastName": "Smith",
+  "subjectNumber": "001202782410",
+  "healthID": "03445656410",
+  "nationalID": "UG-23SLHD7DBD",
+  "years": "47",
+  "months": "9",
+  "days": "12",
+  "labNo": "DEV01240000000000001"
 }

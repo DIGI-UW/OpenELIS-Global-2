@@ -42,6 +42,7 @@ import NonConformIndex from "./components/nonconform/index";
 import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup.js";
 import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index.js";
 import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests.js";
+import ChangePassword from "./components/ChangePassword.js";
 
 export default function App() {
   let i18nConfig = {
@@ -129,22 +130,53 @@ export default function App() {
   }
 
   const logout = () => {
-    fetch(config.serverBaseUrl + "/Logout", {
-      //includes the browser sessionId in the Header for Authentication on the backend server
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
-      },
-    })
-      .then((response) => response.status)
-      .then(() => {
-        getUserSessionDetails();
-        window.location.href = config.loginRedirect;
+    if (userSessionDetails.loginMethod === "SAML") {
+      fetch(config.serverBaseUrl + "/Logout?useSAML=true", {
+        //includes the browser sessionId in the Header for Authentication on the backend server
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": localStorage.getItem("CSRF"),
+        },
       })
-      .catch((error) => {
-        console.error(error);
-      });
+        .then((response) => response.text())
+        .then((html) => {
+          const POPUP_HEIGHT = 700;
+          const POPUP_WIDTH = 600;
+          const top =
+            window.outerHeight / 2 + window.screenY - POPUP_HEIGHT / 2;
+          const left = window.outerWidth / 2 + window.screenX - POPUP_WIDTH / 2;
+          const newWindow = window.open(
+            "",
+            "SAML Popup",
+            `height=${POPUP_HEIGHT},width=${POPUP_WIDTH},top=${top},left=${left}`,
+          );
+          newWindow.document.write(html);
+          newWindow.document.close();
+          getUserSessionDetails();
+          window.location.href = config.loginRedirect;
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    } else {
+      fetch(config.serverBaseUrl + "/Logout", {
+        //includes the browser sessionId in the Header for Authentication on the backend server
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": localStorage.getItem("CSRF"),
+        },
+      })
+        .then((response) => response.status)
+        .then(() => {
+          getUserSessionDetails();
+          window.location.href = config.loginRedirect;
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    }
   };
 
   const changeLanguageReact = (lang) => {
@@ -211,12 +243,23 @@ export default function App() {
               <Switch>
                 <Route path="/login" exact component={() => <Login />} />
                 <Route
+                  path="/ChangePasswordLogin"
+                  exact
+                  component={() => <ChangePassword />}
+                />
+                <Route
                   path="/landing"
                   exact
                   component={() => <LandingPage />}
                 />
                 <SecureRoute
                   path="/"
+                  exact
+                  component={() => <Home />}
+                  role=""
+                />
+                <SecureRoute
+                  path="/Dashboard"
                   exact
                   component={() => <Home />}
                   role=""

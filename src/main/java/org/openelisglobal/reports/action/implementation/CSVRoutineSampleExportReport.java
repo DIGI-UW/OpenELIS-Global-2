@@ -27,6 +27,7 @@ public abstract class CSVRoutineSampleExportReport extends CSVRoutineExportRepor
 
     protected String lowDateStr;
     protected String highDateStr;
+    protected String selectedLabUnit;
     protected List<Object> reportItems;
     protected int iReportItem = -1;
 

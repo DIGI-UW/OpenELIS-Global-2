@@ -12,6 +12,7 @@ import RoutineReportPage from "./RoutineReportPage";
 import StudyReportPage from "./StudyReportPage";
 
 import DashBoardPage from "./DashBoard";
+import AdminPage from "./AdminPage";
 
 class HomePage {
   constructor() {}
@@ -32,7 +33,7 @@ class HomePage {
   }
 
   openNavigationMenu() {
-    cy.get("header#mainHeader > button[title='Open menu']", {
+    cy.get("[data-cy='menuButton']", {
       timeout: 30000,
     }).click();
   }
@@ -169,28 +170,110 @@ class HomePage {
   goToRoutineReports() {
     this.openNavigationMenu();
     cy.get("#menu_reports").click();
-    cy.get("#menu_reports_routine_nav").click();
+    //cy.get("#menu_reports_routine_nav").click();
     return new RoutineReportPage();
   }
   goToStudyReports() {
     this.openNavigationMenu();
     cy.get("#menu_reports").click();
-    cy.get("#menu_reports_study_nav").click();
+    //cy.get("#menu_reports_study_nav").click();
     return new StudyReportPage();
   }
 
   goToPathologyDashboard() {
     this.openNavigationMenu();
-    cy.get("#menu_pathology_dropdown").click();
-    cy.get("#menu_pathologydashboard_nav").click();
+    cy.get("#menu_pathology").click(); // Changed from menu_pathology_dropdown
     return new DashBoardPage();
   }
 
   goToImmunoChemistryDashboard() {
     this.openNavigationMenu();
-    cy.get("#menu_immunochem_dropdown").click();
-    cy.get("#menu_immunochemdashboard_nav").click();
+    cy.get("#menu_immunochem").click(); // Changed from menu_immunochem_dropdown
     return new DashBoardPage();
+  }
+
+  goToCytologyDashboard() {
+    this.openNavigationMenu();
+    cy.get("#menu_cytology").click();
+    return new DashBoardPage();
+  }
+
+  goToAdminPage() {
+    this.openNavigationMenu();
+    cy.get("#menu_administration").click();
+    //cy.get("#menu_administration_nav").click();
+    return new AdminPage();
+  }
+
+  //home page navigation
+
+  afterAll() {
+    cy.get("#minimizeIcon").should("be.visible").click();
+  }
+
+  searchBar() {
+    cy.get("#search-Icon").click();
+    cy.get("#searchItem").type("Smith");
+    cy.get("#patientSearch").click();
+    cy.wait(1000);
+    cy.get("#search-Icon").click();
+  }
+
+  clickNotifications() {
+    cy.get("#notification-Icon").click();
+    cy.wait(800);
+    cy.get("#notification-Icon").click();
+  }
+
+  clickUserIcon() {
+    cy.get("#user-Icon").click();
+    cy.wait(800);
+    cy.get("#user-Icon").click();
+  }
+  clickHelpIcon() {
+    cy.get("#user-Help").click();
+    cy.wait(800);
+    cy.get("#user-Help").click();
+  }
+
+  selectInProgress() {
+    cy.get("#maximizeIcon").click();
+  }
+
+  selectReadyforValidation() {
+    cy.contains("a.cds--link", "Ready For Validation").click();
+  }
+
+  selectOrdersCompletedToday() {
+    cy.contains("a.cds--link", "Orders Completed Today").click();
+  }
+
+  selectPartiallyCompletedToday() {
+    cy.contains("a.cds--link", "Partially Completed Today").click();
+  }
+
+  selectOrdersEnteredByUsers() {
+    cy.contains("a.cds--link", "Orders Entered By Users").click();
+  }
+
+  selectOrdersRejected() {
+    cy.contains("a.cds--link", "Orders Rejected").click();
+  }
+
+  selectUnPrintedResults() {
+    cy.contains("a.cds--link", "UnPrinted Results").click();
+  }
+
+  selectElectronicOrders() {
+    cy.contains("a.cds--link", "Electronic Orders").click();
+  }
+
+  selectAverageTurnAroundTime() {
+    cy.contains("a.cds--link", "Average Turn Around time").click();
+  }
+
+  selectDelayedTurnAround() {
+    cy.contains("a.cds--link", "Delayed Turn Around").click();
   }
 }
 

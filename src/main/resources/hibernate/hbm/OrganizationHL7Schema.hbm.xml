@@ -1,21 +1,21 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-                                   "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+								"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping
-    package="org.openelisglobal.testcodes.valueholder">
-    <class name="OrganizationHL7Schema" table="org_hl7_encoding_type"
-        optimistic-lock="version" dynamic-update="true">
-        <composite-id name="compoundId"
-            class="org.openelisglobal.testcodes.valueholder.OrganizationSchemaPK">
-            <key-property name="organizationId"
-                column="organization_id"
-                type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
-            <key-property name="encodingTypeId"
-                column="encoding_type_id"
-                type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
-        </composite-id>
+	package="org.openelisglobal.testcodes.valueholder">
+	<class name="OrganizationHL7Schema" table="org_hl7_encoding_type"
+		optimistic-lock="version" dynamic-update="true">
+		<composite-id name="compoundId"
+			class="org.openelisglobal.testcodes.valueholder.OrganizationSchemaPK">
+			<key-property name="organizationId"
+				column="organization_id"
+				type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+			<key-property name="encodingTypeId"
+				column="encoding_type_id"
+				type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+		</composite-id>
 
-        <version name="lastupdated" column="LASTUPDATED"
-            type="timestamp" access="field" />
-    </class>
+		<version name="lastupdated" column="LASTUPDATED"
+			type="timestamp" access="field" />
+	</class>
 </hibernate-mapping>

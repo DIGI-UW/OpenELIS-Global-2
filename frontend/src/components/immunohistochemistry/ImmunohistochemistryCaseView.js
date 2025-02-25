@@ -852,7 +852,7 @@ function ImmunohistochemistryCaseView() {
   const getResults = () => {
     setResults({ testResult: [] });
     var searchEndPoint =
-      "/rest/ReactLogbookResultsByRange?" +
+      "/rest/LogbookResults?" +
       "labNumber=" +
       immunohistochemistrySampleInfo.labNumber +
       "&doRange=" +
