@@ -205,14 +205,7 @@ function CreatePatientForm(props) {
     );
   };
 
-  function handleFirstNameChange(event) {
-    const regex = /^[A-Za-z]*$/;
-    if (!regex.test(event.target.value)) {
-      event.target.value = event.target.value.replace(/[^A-Za-z]/g, "");
-    }
-  }
-
-  function handleLastNameChange(event) {
+  function handleNameChange(event) {
     const regex = /^[A-Za-z]*$/;
     if (!regex.test(event.target.value)) {
       event.target.value = event.target.value.replace(/[^A-Za-z]/g, "");
@@ -539,7 +532,7 @@ function CreatePatientForm(props) {
                       placeholder={intl.formatMessage({
                         id: "patient.information.lastname",
                       })}
-                      onChange={(e) => handleLastNameChange(e)}
+                      onChange={(e) => handleNameChange(e)}
                     />
                   )}
                 </Field>
@@ -559,7 +552,7 @@ function CreatePatientForm(props) {
                       placeholder={intl.formatMessage({
                         id: "patient.information.firstname",
                       })}
-                      onChange={(e) => handleFirstNameChange(e)}
+                      onChange={(e) => handleNameChange(e)}
                     />
                   )}
                 </Field>
@@ -738,6 +731,7 @@ function CreatePatientForm(props) {
                               invalidText={
                                 errors.patientContact?.person?.lastName
                               }
+                              onChange={(e) => handleNameChange(e)}
                               placeholder={intl.formatMessage({
                                 id: "patient.emergency.lastname",
                               })}
@@ -764,6 +758,7 @@ function CreatePatientForm(props) {
                               invalidText={
                                 errors.patientContact?.person?.firstName
                               }
+                              onChange={(e) => handleNameChange(e)}
                               placeholder={intl.formatMessage({
                                 id: "patient.emergency.firstname",
                               })}
