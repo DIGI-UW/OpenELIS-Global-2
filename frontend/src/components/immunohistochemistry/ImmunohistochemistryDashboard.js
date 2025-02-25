@@ -325,43 +325,41 @@ function ImmunohistochemistryDashboard() {
             />
           </Column>
           <Column lg={8} md={4} sm={2}>
-            <div className="inlineDivBlock">
-              <div>Filters:</div>
-              <Checkbox
-                labelText={intl.formatMessage({
-                  id: "label.filters.mycases",
-                })}
-                id="filterMyCases"
-                value={filters.myCases}
-                onChange={(e) =>
-                  setFilters({ ...filters, myCases: e.target.checked })
-                }
-              />
-              <Select
-                id="statusFilter"
-                name="statusFilter"
-                labelText={intl.formatMessage({
-                  id: "label.filters.status",
-                })}
-                value={
-                  filters.statuses.length > 1 ? "All" : filters.statuses[0].id
-                }
-                onChange={setStatusFilter}
-                noLabel
-              >
-                <SelectItem disabled value="placeholder" text="Status" />
-                <SelectItem text="All" value="All" />
-                {statuses.map((status, index) => {
-                  return (
-                    <SelectItem
-                      key={index}
-                      text={status.value}
-                      value={status.id}
-                    />
-                  );
-                })}
-              </Select>
-            </div>
+            <div>Filters:</div>
+            <Checkbox
+              labelText={intl.formatMessage({
+                id: "label.filters.mycases",
+              })}
+              id="filterMyCases"
+              value={filters.myCases}
+              onChange={(e) =>
+                setFilters({ ...filters, myCases: e.target.checked })
+              }
+            />
+            <Select
+              id="statusFilter"
+              name="statusFilter"
+              labelText={intl.formatMessage({
+                id: "label.filters.status",
+              })}
+              value={
+                filters.statuses.length > 1 ? "All" : filters.statuses[0].id
+              }
+              onChange={setStatusFilter}
+              noLabel
+            >
+              <SelectItem disabled value="placeholder" text="Status" />
+              <SelectItem text="All" value="All" />
+              {statuses.map((status, index) => {
+                return (
+                  <SelectItem
+                    key={index}
+                    text={status.value}
+                    value={status.id}
+                  />
+                );
+              })}
+            </Select>
           </Column>
 
           <Column lg={16} md={8} sm={4}>

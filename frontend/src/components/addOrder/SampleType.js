@@ -9,6 +9,8 @@ import {
   Tag,
   Tile,
   Loading,
+  Grid,
+  Column,
 } from "@carbon/react";
 import CustomCheckBox from "../common/CustomCheckBox";
 import CustomSelect from "../common/CustomSelect";
@@ -486,40 +488,40 @@ const SampleType = (props) => {
           />
         )}
 
-        <div className="inlineDiv">
-          <CustomDatePicker
-            id={"collectionDate_" + index}
-            autofillDate={
-              configurationProperties?.AUTOFILL_COLLECTION_DATE === "true"
-            }
-            onChange={(date) => handleCollectionDate(date)}
-            value={sampleXml.collectionDate}
-            labelText={intl.formatMessage({ id: "sample.collection.date" })}
-            className="inputText"
-            disallowFutureDate={true}
-          />
+        <Grid>
+          <Column style={{ margin: 0 }} lg={16} md={8} sm={4}>
+            <CustomDatePicker
+              id={"collectionDate_" + index}
+              autofillDate={
+                configurationProperties?.AUTOFILL_COLLECTION_DATE === "true"
+              }
+              onChange={(date) => handleCollectionDate(date)}
+              value={sampleXml.collectionDate}
+              labelText={intl.formatMessage({ id: "sample.collection.date" })}
+              className="inputText"
+              disallowFutureDate={true}
+            />
 
-          <CustomTimePicker
-            id={"collectionTime_" + index}
-            autofillTime={
-              configurationProperties?.AUTOFILL_COLLECTION_DATE === "true"
-            }
-            onChange={(time) => handleCollectionTime(time)}
-            value={sampleXml.collectionTime}
-            className="inputText"
-            labelText={intl.formatMessage({ id: "sample.collection.time" })}
-          />
-        </div>
-        <div className="inlineDiv">
-          <CustomTextInput
-            id={"collector_" + index}
-            onChange={(value) => handleCollector(value)}
-            defaultValue={""}
-            value={sampleXml.collector}
-            labelText={intl.formatMessage({ id: "collector.label" })}
-            className="inputText"
-          />
-        </div>
+            <CustomTimePicker
+              id={"collectionTime_" + index}
+              autofillTime={
+                configurationProperties?.AUTOFILL_COLLECTION_DATE === "true"
+              }
+              onChange={(time) => handleCollectionTime(time)}
+              value={sampleXml.collectionTime}
+              className="inputText"
+              labelText={intl.formatMessage({ id: "sample.collection.time" })}
+            />
+            <CustomTextInput
+              id={"collector_" + index}
+              onChange={(value) => handleCollector(value)}
+              defaultValue={""}
+              value={sampleXml.collector}
+              labelText={intl.formatMessage({ id: "collector.label" })}
+              className="inputText"
+            />
+          </Column>
+        </Grid>
         <div className="testPanels">
           <div className="cds--col">
             <h4>

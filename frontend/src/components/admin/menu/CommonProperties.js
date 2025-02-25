@@ -102,23 +102,21 @@ export const CommonProperties = () => {
                       let shortKey = key.replace(/^org\.openelisglobal\./, "");
 
                       return (
-                        <div
-                          key={key}
-                          className="inlineDiv"
-                          style={{ gap: "20px" }}
-                        >
-                          <TextInput
-                            id={key + "-input"}
-                            labelText={shortKey} // Use the modified key without the prefix
-                            value={commonProperties[key]}
-                            onChange={(e) => {
-                              setCommonProperties({
-                                ...commonProperties,
-                                [key]: e.target.value,
-                              });
-                            }}
-                          />
-                        </div>
+                        <Grid>
+                          <Column lg={16} md={8} sm={4}>
+                            <TextInput
+                              id={key + "-input"}
+                              labelText={shortKey} // Use the modified key without the prefix
+                              value={commonProperties[key]}
+                              onChange={(e) => {
+                                setCommonProperties({
+                                  ...commonProperties,
+                                  [key]: e.target.value,
+                                });
+                              }}
+                            />
+                          </Column>
+                        </Grid>
                       );
                     })}
                 </>
@@ -135,23 +133,21 @@ export const CommonProperties = () => {
                       let shortKey = key.replace(/^org\.openelisglobal\./, "");
 
                       return (
-                        <div
-                          key={key}
-                          className="inlineDiv"
-                          style={{ gap: "20px" }}
-                        >
-                          <TextInput
-                            id={key + "-input"}
-                            labelText={shortKey} // Use the modified key without the prefix
-                            value={commonProperties[key]}
-                            onChange={(e) => {
-                              setCommonProperties({
-                                ...commonProperties,
-                                [key]: e.target.value,
-                              });
-                            }}
-                          />
-                        </div>
+                        <Grid>
+                          <Column lg={16} md={8} sm={4}>
+                            <TextInput
+                              id={key + "-input"}
+                              labelText={shortKey} // Use the modified key without the prefix
+                              value={commonProperties[key]}
+                              onChange={(e) => {
+                                setCommonProperties({
+                                  ...commonProperties,
+                                  [key]: e.target.value,
+                                });
+                              }}
+                            />
+                          </Column>
+                        </Grid>
                       );
                     })}
                 </>
@@ -159,14 +155,16 @@ export const CommonProperties = () => {
             </Column>
           </Grid>
 
-          <div style={{ marginLeft: "2em" }} className="inlineDiv">
-            <Button type="submit" onClick={handleSubmit}>
-              <FormattedMessage
-                id="label.button.update"
-                defaultMessage="Update"
-              />
-            </Button>
-          </div>
+          <Grid>
+            <Column lg={16} md={8} sm={4}>
+              <Button type="submit" onClick={handleSubmit}>
+                <FormattedMessage
+                  id="label.button.update"
+                  defaultMessage="Update"
+                />
+              </Button>
+            </Column>
+          </Grid>
         </div>
       </div>
     </>
