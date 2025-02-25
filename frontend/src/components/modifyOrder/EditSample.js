@@ -507,13 +507,13 @@ const EditSample = (props) => {
           })}
           <Row>
             <Grid>
-            <Column lg={16} md={8} sm={4}>
-              <Button onClick={handleAddNewSample}>
-                {<FormattedMessage id="sample.add.action" />}
-                &nbsp; &nbsp;
-                <Add size={16} />
-              </Button>
-            </Column>
+              <Column lg={16} md={8} sm={4}>
+                <Button onClick={handleAddNewSample}>
+                  {<FormattedMessage id="sample.add.action" />}
+                  &nbsp; &nbsp;
+                  <Add size={16} />
+                </Button>
+              </Column>
             </Grid>
           </Row>
         </div>

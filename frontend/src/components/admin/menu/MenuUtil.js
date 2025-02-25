@@ -34,41 +34,41 @@ export const MenuCheckBox = (props) => {
     let depth = path.match(/\./g) ? path.match(/\./g).length : 0;
     return (
       <>
-         <Grid>
-         <Column lg={16} md={8} sm={4}>
-          <Checkbox
-            id={curMenuItem?.menu.elementId + "_checkbox"}
-            labelText={intl.formatMessage({
-              id: labelKey
-                ? labelKey
-                : curMenuItem.menu.displayKey
-                  ? curMenuItem.menu.displayKey
-                  : "missing display key",
-            })}
-            disabled={curMenuItem.menu.elementId === "menu_sidenav"}
-            checked={curMenuItem?.menu.isActive}
-            onChange={(_, { checked }) => {
-              if (path === "$" || !path) {
-                if (curMenuItem.menu.elementId !== "menu_sidenav") {
-                  setMenuItem({
-                    ...setMenuIsActiveToValueIncludeChildren(
-                      checked,
-                      curMenuItem,
-                    ),
-                  });
+        <Grid>
+          <Column lg={16} md={8} sm={4}>
+            <Checkbox
+              id={curMenuItem?.menu.elementId + "_checkbox"}
+              labelText={intl.formatMessage({
+                id: labelKey
+                  ? labelKey
+                  : curMenuItem.menu.displayKey
+                    ? curMenuItem.menu.displayKey
+                    : "missing display key",
+              })}
+              disabled={curMenuItem.menu.elementId === "menu_sidenav"}
+              checked={curMenuItem?.menu.isActive}
+              onChange={(_, { checked }) => {
+                if (path === "$" || !path) {
+                  if (curMenuItem.menu.elementId !== "menu_sidenav") {
+                    setMenuItem({
+                      ...setMenuIsActiveToValueIncludeChildren(
+                        checked,
+                        curMenuItem,
+                      ),
+                    });
+                  }
+                } else {
+                  let newMenuItem = { ...menuItem };
+                  var jp = require("jsonpath");
+                  jp.value(
+                    newMenuItem,
+                    path,
+                    setMenuIsActiveToValueIncludeChildren(checked, curMenuItem),
+                  );
+                  setMenuItem(newMenuItem);
                 }
-              } else {
-                let newMenuItem = { ...menuItem };
-                var jp = require("jsonpath");
-                jp.value(
-                  newMenuItem,
-                  path,
-                  setMenuIsActiveToValueIncludeChildren(checked, curMenuItem),
-                );
-                setMenuItem(newMenuItem);
-              }
-            }}
-          />
+              }}
+            />
           </Column>
         </Grid>
         {recurse &&

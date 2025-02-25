@@ -662,21 +662,21 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         onChange={(e) => handleCalculationFieldChange(e, index)}
                       />
                     </div>
-                  <Grid>
+                    <Grid>
                       <Column lg={16} md={8} sm={4}>
-                    <div>
-                      <Toggle
-                        toggled={calculation.toggled}
-                        aria-label="toggle button"
-                        id={index + "_toggle"}
-                        labelText={
-                          <FormattedMessage id="rulebuilder.label.toggleRule" />
-                        }
-                        onToggle={(e) => toggleCalculation(e, index)}
-                      />
-                    </div>
-                    <div>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</div>
-                    </Column>
+                        <div>
+                          <Toggle
+                            toggled={calculation.toggled}
+                            aria-label="toggle button"
+                            id={index + "_toggle"}
+                            labelText={
+                              <FormattedMessage id="rulebuilder.label.toggleRule" />
+                            }
+                            onToggle={(e) => toggleCalculation(e, index)}
+                          />
+                        </div>
+                        <div>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</div>
+                      </Column>
                     </Grid>
                     <div>
                       <Checkbox

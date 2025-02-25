@@ -465,51 +465,51 @@ function ReflexRule() {
             <Form onSubmit={(e) => handleSubmit(e, index)}>
               <Stack gap={7}>
                 <div className="ruleBody">
-                <Grid>
-                  <Column lg={16} md={8} sm={4}>
-                    <div>
-                      <TextInput
-                        name="ruleName"
-                        className="reflexInputText"
-                        type="text"
-                        id={index + "_rulename"}
-                        labelText={
-                          <FormattedMessage id="rulebuilder.label.ruleName" />
-                        }
-                        value={rule.ruleName}
-                        onChange={(e) => handleRuleFieldChange(e, index)}
-                        required
-                      />
-                    </div>
-                    <div>&nbsp; &nbsp;</div>
-                    <div>
-                      <Toggle
-                        toggled={rule.toggled}
-                        aria-label="toggle button"
-                        id={index + "_toggle"}
-                        labelText={
-                          <FormattedMessage id="rulebuilder.label.toggleRule" />
-                        }
-                        onToggle={(e) => toggleRule(e, index)}
-                        onClick={handleClick}
-                      />
-                    </div>
-                    <div>&nbsp; &nbsp; &nbsp; &nbsp;</div>
-                    <div>
-                      <Checkbox
-                        labelText={"Active: " + rule.active}
-                        name="active"
-                        id={index + "_active"}
-                        checked={rule.active}
-                        disabled={rule.active}
-                        onChange={(e) => {
-                          const list = [...ruleList];
-                          list[index]["active"] = e.target.checked;
-                          setRuleList(list);
-                        }}
-                      />
-                    </div>
-                  </Column>
+                  <Grid>
+                    <Column lg={16} md={8} sm={4}>
+                      <div>
+                        <TextInput
+                          name="ruleName"
+                          className="reflexInputText"
+                          type="text"
+                          id={index + "_rulename"}
+                          labelText={
+                            <FormattedMessage id="rulebuilder.label.ruleName" />
+                          }
+                          value={rule.ruleName}
+                          onChange={(e) => handleRuleFieldChange(e, index)}
+                          required
+                        />
+                      </div>
+                      <div>&nbsp; &nbsp;</div>
+                      <div>
+                        <Toggle
+                          toggled={rule.toggled}
+                          aria-label="toggle button"
+                          id={index + "_toggle"}
+                          labelText={
+                            <FormattedMessage id="rulebuilder.label.toggleRule" />
+                          }
+                          onToggle={(e) => toggleRule(e, index)}
+                          onClick={handleClick}
+                        />
+                      </div>
+                      <div>&nbsp; &nbsp; &nbsp; &nbsp;</div>
+                      <div>
+                        <Checkbox
+                          labelText={"Active: " + rule.active}
+                          name="active"
+                          id={index + "_active"}
+                          checked={rule.active}
+                          disabled={rule.active}
+                          onChange={(e) => {
+                            const list = [...ruleList];
+                            list[index]["active"] = e.target.checked;
+                            setRuleList(list);
+                          }}
+                        />
+                      </div>
+                    </Column>
                   </Grid>
                   {rule.toggled && (
                     <>
@@ -942,14 +942,14 @@ function ReflexRule() {
                         ))}
                       </div>
                       <div className="section">
-                      <Grid>
-                      <Column lg={16} md={8} sm={4}>
-                          <div>
-                            <h5>
-                              <FormattedMessage id="rulebuilder.label.perfomActions" />
-                            </h5>
-                          </div>
-                        </Column>
+                        <Grid>
+                          <Column lg={16} md={8} sm={4}>
+                            <div>
+                              <h5>
+                                <FormattedMessage id="rulebuilder.label.perfomActions" />
+                              </h5>
+                            </div>
+                          </Column>
                         </Grid>
                         {rule.actions.map((action, action_index) => (
                           <Grid key={index + "_" + action_index}>

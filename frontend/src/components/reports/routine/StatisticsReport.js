@@ -185,35 +185,34 @@ const StatisticsReport = () => {
                     <FormattedMessage id="select.priority.tests" />
                   </h5>
                 </Section>
+                <Checkbox
+                  labelText="All"
+                  id="select-all-priorities"
+                  checked={selectedPriorities.length === priorities.length}
+                  onChange={(event) =>
+                    handleSelectAllPriorities(event.target.checked)
+                  }
+                />
+                {priorities.map((priority) => (
                   <Checkbox
-                    labelText="All"
-                    id="select-all-priorities"
-                    checked={selectedPriorities.length === priorities.length}
-                    onChange={(event) =>
-                      handleSelectAllPriorities(event.target.checked)
-                    }
+                    key={priority.id}
+                    labelText={intl.formatMessage({
+                      id: priority.value,
+                      defaultMessage: priority.value,
+                    })}
+                    id={priority.id}
+                    checked={selectedPriorities.includes(priority.id)}
+                    onChange={() => {
+                      setSelectedPriorities((prev) => {
+                        if (prev.includes(priority.id)) {
+                          return prev.filter((item) => item !== priority.id);
+                        } else {
+                          return [...prev, priority.id];
+                        }
+                      });
+                    }}
                   />
-                  {priorities.map((priority) => (
-                    <Checkbox
-                      key={priority.id}
-                      labelText={intl.formatMessage({
-                        id: priority.value,
-                        defaultMessage: priority.value,
-                      })}
-                      id={priority.id}
-                      checked={selectedPriorities.includes(priority.id)}
-                      onChange={() => {
-                        setSelectedPriorities((prev) => {
-                          if (prev.includes(priority.id)) {
-                            return prev.filter((item) => item !== priority.id);
-                          } else {
-                            return [...prev, priority.id];
-                          }
-                        });
-                      }}
-                    />
-                  ))}
-                
+                ))}
               </Column>
             </Grid>
             <Grid fullWidth={true}>

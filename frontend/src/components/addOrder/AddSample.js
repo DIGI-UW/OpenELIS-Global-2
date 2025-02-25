@@ -4,10 +4,7 @@ import { Add } from "@carbon/react/icons";
 import { getFromOpenElisServer } from "../utils/Utils";
 import SampleType from "./SampleType";
 import { FormattedMessage } from "react-intl";
-import {
-  Column,
-  Grid
-} from "@carbon/react";
+import { Column, Grid } from "@carbon/react";
 const AddSample = (props) => {
   const { samples, setSamples, error } = props;
   const componentMounted = useRef(false);
@@ -139,13 +136,13 @@ const AddSample = (props) => {
             );
           })}
           <Row>
-          <Grid>
+            <Grid>
               <Column lg={16} md={8} sm={4}>
-              <Button onClick={handleAddNewSample}>
-                {<FormattedMessage id="sample.add.action" />}
-                &nbsp; &nbsp;
-                <Add size={16} md={8} sm={4}/>
-              </Button>
+                <Button onClick={handleAddNewSample}>
+                  {<FormattedMessage id="sample.add.action" />}
+                  &nbsp; &nbsp;
+                  <Add size={16} md={8} sm={4} />
+                </Button>
               </Column>
             </Grid>
           </Row>
