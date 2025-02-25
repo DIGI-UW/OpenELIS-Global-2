@@ -104,23 +104,20 @@ export const CommonProperties = () => {
                       return (
                         <Grid>
                           <Column lg={16} md={8} sm={4}>
-                        <div
-                          key={key}
-                          style={{ gap: "20px" }}
-                        >
-                          <TextInput
-                            id={key + "-input"}
-                            labelText={shortKey} // Use the modified key without the prefix
-                            value={commonProperties[key]}
-                            onChange={(e) => {
-                              setCommonProperties({
-                                ...commonProperties,
-                                [key]: e.target.value,
-                              });
-                            }}
-                          />
-                        </div>
-                        </Column>
+                            <div key={key} style={{ gap: "20px" }}>
+                              <TextInput
+                                id={key + "-input"}
+                                labelText={shortKey} // Use the modified key without the prefix
+                                value={commonProperties[key]}
+                                onChange={(e) => {
+                                  setCommonProperties({
+                                    ...commonProperties,
+                                    [key]: e.target.value,
+                                  });
+                                }}
+                              />
+                            </div>
+                          </Column>
                         </Grid>
                       );
                     })}
@@ -140,23 +137,20 @@ export const CommonProperties = () => {
                       return (
                         <Grid>
                           <Column lg={16} md={8} sm={4}>
-                        <div
-                          key={key}
-                          style={{ gap: "20px" }}
-                        >
-                          <TextInput
-                            id={key + "-input"}
-                            labelText={shortKey} // Use the modified key without the prefix
-                            value={commonProperties[key]}
-                            onChange={(e) => {
-                              setCommonProperties({
-                                ...commonProperties,
-                                [key]: e.target.value,
-                              });
-                            }}
-                          />
-                        </div>
-                        </Column>
+                            <div key={key} style={{ gap: "20px" }}>
+                              <TextInput
+                                id={key + "-input"}
+                                labelText={shortKey} // Use the modified key without the prefix
+                                value={commonProperties[key]}
+                                onChange={(e) => {
+                                  setCommonProperties({
+                                    ...commonProperties,
+                                    [key]: e.target.value,
+                                  });
+                                }}
+                              />
+                            </div>
+                          </Column>
                         </Grid>
                       );
                     })}
@@ -165,16 +159,16 @@ export const CommonProperties = () => {
             </Column>
           </Grid>
 
-          <div style={{ marginLeft: "2em" }} >
-          <Grid>
-            <Column lg={16} md={8} sm={4}>
-            <Button type="submit" onClick={handleSubmit}>
-              <FormattedMessage
-                id="label.button.update"
-                defaultMessage="Update"
-              />
-            </Button>
-            </Column>
+          <div style={{ marginLeft: "2em" }}>
+            <Grid>
+              <Column lg={16} md={8} sm={4}>
+                <Button type="submit" onClick={handleSubmit}>
+                  <FormattedMessage
+                    id="label.button.update"
+                    defaultMessage="Update"
+                  />
+                </Button>
+              </Column>
             </Grid>
           </div>
         </div>
