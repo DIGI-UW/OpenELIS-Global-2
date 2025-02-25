@@ -361,7 +361,6 @@ function ImmunohistochemistryDashboard() {
               })}
             </Select>
           </Column>
-
           <Column lg={16} md={8} sm={4}>
             <DataTable
               rows={immunohistochemistryEntries.slice(
