@@ -13,11 +13,10 @@ import {
   TableBody,
   TableCell,
   Pagination,
-  Column,
   TextInput,
   Checkbox,
   Grid,
-  Column,
+  Column
 } from "@carbon/react";
 import { Add } from "@carbon/react/icons";
 import { getFromOpenElisServer } from "../utils/Utils";
