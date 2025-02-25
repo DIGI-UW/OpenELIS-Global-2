@@ -325,7 +325,7 @@ function ImmunohistochemistryDashboard() {
             />
           </Column>
           <Column lg={8} md={4} sm={2}>
-            <div className="inlineDivBlock">
+            
               <div>Filters:</div>
               <Checkbox
                 labelText={intl.formatMessage({
@@ -361,7 +361,7 @@ function ImmunohistochemistryDashboard() {
                   );
                 })}
               </Select>
-            </div>
+           
           </Column>
 
           <Column lg={16} md={8} sm={4}>

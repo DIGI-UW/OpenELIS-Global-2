@@ -6,7 +6,10 @@ import "../../App.css";
 import "../Style.css";
 import { getFromOpenElisServer } from "../utils/Utils";
 import Questionnaire from "../common/Questionnaire";
-
+import {
+  Column,
+  Grid
+} from "@carbon/react";
 export const ProgramSelect = ({
   programChange = () => {
     console.debug("default programChange function does nothing");
@@ -48,7 +51,8 @@ export const ProgramSelect = ({
 
   return (
     <>
-      <div className="formInlineDiv">
+      <Grid>
+        <Column lg={8} md={4} sm={4}>
         {programs.length > 0 && (
           <div className="inputText">
             <Select
@@ -71,7 +75,8 @@ export const ProgramSelect = ({
             </Select>
           </div>
         )}
-      </div>
+        </Column>
+      </Grid>
     </>
   );
 };

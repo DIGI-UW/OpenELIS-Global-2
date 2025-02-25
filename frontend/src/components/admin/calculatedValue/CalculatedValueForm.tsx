@@ -631,7 +631,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     <div className="adminPageContent">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth={true}>
-        <Column lg={16}>
+        <Column lg={16} md={8} sm={4}>
           <Section>
             <Heading>
               <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
@@ -662,7 +662,8 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         onChange={(e) => handleCalculationFieldChange(e, index)}
                       />
                     </div>
-                    <div>&nbsp; &nbsp;</div>
+                  <Grid>
+                      <Column lg={16} md={8} sm={4}>
                     <div>
                       <Toggle
                         toggled={calculation.toggled}
@@ -675,6 +676,8 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                       />
                     </div>
                     <div>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</div>
+                    </Column>
+                    </Grid>
                     <div>
                       <Checkbox
                         labelText={"Active: " + calculation.active}

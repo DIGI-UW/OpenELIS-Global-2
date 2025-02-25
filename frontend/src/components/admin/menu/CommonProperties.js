@@ -102,11 +102,8 @@ export const CommonProperties = () => {
                       let shortKey = key.replace(/^org\.openelisglobal\./, "");
 
                       return (
-                        <div
-                          key={key}
-                          className="inlineDiv"
-                          style={{ gap: "20px" }}
-                        >
+                        <Grid >
+                          <Column lg={16} md={8} sm={4}>
                           <TextInput
                             id={key + "-input"}
                             labelText={shortKey} // Use the modified key without the prefix
@@ -118,7 +115,8 @@ export const CommonProperties = () => {
                               });
                             }}
                           />
-                        </div>
+                          </Column>
+                        </Grid>
                       );
                     })}
                 </>
@@ -135,11 +133,8 @@ export const CommonProperties = () => {
                       let shortKey = key.replace(/^org\.openelisglobal\./, "");
 
                       return (
-                        <div
-                          key={key}
-                          className="inlineDiv"
-                          style={{ gap: "20px" }}
-                        >
+                        <Grid >
+                          <Column lg={16} md={8} sm={4}>
                           <TextInput
                             id={key + "-input"}
                             labelText={shortKey} // Use the modified key without the prefix
@@ -151,7 +146,8 @@ export const CommonProperties = () => {
                               });
                             }}
                           />
-                        </div>
+                        </Column>
+                        </Grid>
                       );
                     })}
                 </>
@@ -159,14 +155,16 @@ export const CommonProperties = () => {
             </Column>
           </Grid>
 
-          <div style={{ marginLeft: "2em" }} className="inlineDiv">
+          <Grid >
+            <Column lg={16} md={8} sm={4}>
             <Button type="submit" onClick={handleSubmit}>
               <FormattedMessage
                 id="label.button.update"
                 defaultMessage="Update"
               />
             </Button>
-          </div>
+            </Column>
+            </Grid>
         </div>
       </div>
     </>

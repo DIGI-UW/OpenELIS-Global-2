@@ -465,7 +465,8 @@ function ReflexRule() {
             <Form onSubmit={(e) => handleSubmit(e, index)}>
               <Stack gap={7}>
                 <div className="ruleBody">
-                  <div className="inlineDiv">
+                <Grid>
+                  <Column lg={16} md={8} sm={4}>
                     <div>
                       <TextInput
                         name="ruleName"
@@ -508,7 +509,8 @@ function ReflexRule() {
                         }}
                       />
                     </div>
-                  </div>
+                  </Column>
+                  </Grid>
                   {rule.toggled && (
                     <>
                       <div className="section">
@@ -940,13 +942,15 @@ function ReflexRule() {
                         ))}
                       </div>
                       <div className="section">
-                        <div className="inlineDiv">
+                      <Grid>
+                      <Column lg={16} md={8} sm={4}>
                           <div>
                             <h5>
                               <FormattedMessage id="rulebuilder.label.perfomActions" />
                             </h5>
                           </div>
-                        </div>
+                        </Column>
+                        </Grid>
                         {rule.actions.map((action, action_index) => (
                           <Grid key={index + "_" + action_index}>
                             <Column lg={3} sm={4}>

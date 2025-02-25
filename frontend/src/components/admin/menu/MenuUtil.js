@@ -34,10 +34,8 @@ export const MenuCheckBox = (props) => {
     let depth = path.match(/\./g) ? path.match(/\./g).length : 0;
     return (
       <>
-        <div
-          className="formInlineDiv"
-          style={{ marginLeft: 2 * depth + "rem" }}
-        >
+         <Grid>
+         <Column lg={16} md={8} sm={4}>
           <Checkbox
             id={curMenuItem?.menu.elementId + "_checkbox"}
             labelText={intl.formatMessage({
@@ -71,7 +69,8 @@ export const MenuCheckBox = (props) => {
               }
             }}
           />
-        </div>
+          </Column>
+        </Grid>
         {recurse &&
           curMenuItem?.childMenus?.map((childMenuItem, index) => {
             return (

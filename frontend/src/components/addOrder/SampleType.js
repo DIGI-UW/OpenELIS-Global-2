@@ -9,6 +9,8 @@ import {
   Tag,
   Tile,
   Loading,
+  Grid,
+  Column
 } from "@carbon/react";
 import CustomCheckBox from "../common/CustomCheckBox";
 import CustomSelect from "../common/CustomSelect";
@@ -486,7 +488,8 @@ const SampleType = (props) => {
           />
         )}
 
-        <div className="inlineDiv">
+          <Grid>
+          <Column style={{ margin: 0 }} lg={16} md={8} sm={4}>
           <CustomDatePicker
             id={"collectionDate_" + index}
             autofillDate={
@@ -509,8 +512,6 @@ const SampleType = (props) => {
             className="inputText"
             labelText={intl.formatMessage({ id: "sample.collection.time" })}
           />
-        </div>
-        <div className="inlineDiv">
           <CustomTextInput
             id={"collector_" + index}
             onChange={(value) => handleCollector(value)}
@@ -519,7 +520,8 @@ const SampleType = (props) => {
             labelText={intl.formatMessage({ id: "collector.label" })}
             className="inputText"
           />
-        </div>
+          </Column>
+         </Grid>
         <div className="testPanels">
           <div className="cds--col">
             <h4>

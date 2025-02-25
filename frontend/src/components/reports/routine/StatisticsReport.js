@@ -185,7 +185,6 @@ const StatisticsReport = () => {
                     <FormattedMessage id="select.priority.tests" />
                   </h5>
                 </Section>
-                <div className="inlineDiv">
                   <Checkbox
                     labelText="All"
                     id="select-all-priorities"
@@ -214,7 +213,7 @@ const StatisticsReport = () => {
                       }}
                     />
                   ))}
-                </div>
+                
               </Column>
             </Grid>
             <Grid fullWidth={true}>

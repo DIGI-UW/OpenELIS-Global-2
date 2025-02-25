@@ -104,7 +104,8 @@ function BillingMenuManagement() {
             <br />
             <Section>
               <Form onSubmit={handleSubmit}>
-                <div className="formInlineDiv">
+                <Grid>
+                  <Column lg={16} md={8} sm={4}>
                   <TextInput
                     id="billing address"
                     labelText={intl.formatMessage({
@@ -121,8 +122,8 @@ function BillingMenuManagement() {
                     required
                     pattern="https?://.*"
                   />
-                </div>
-                <div className="formInlineDiv">
+                 
+                
                   <Checkbox
                     id="billing_active"
                     labelText={intl.formatMessage({
@@ -136,7 +137,8 @@ function BillingMenuManagement() {
                       });
                     }}
                   />
-                </div>
+                 </Column>
+                 </Grid>
                 <div>
                   <Button type="submit">
                     <FormattedMessage id="label.button.submit" />
