@@ -19,7 +19,7 @@ import {
   OverflowMenu,
   OverflowMenuItem,
   InlineLoading,
-  Stack
+  Stack,
 } from "@carbon/react";
 
 import { FormattedMessage, useIntl } from "react-intl";
@@ -46,9 +46,9 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
       setWindowWidth(window.innerWidth);
     };
 
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("resize", handleResize);
     };
   }, []);
 
@@ -124,15 +124,27 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
     ];
 
     if (windowWidth < 768) {
-      return allHeaders.filter(header => 
-        ['requestDateDisplay', 'patientLastName', 'patientFirstName', 'status'].includes(header.key)
+      return allHeaders.filter((header) =>
+        [
+          "requestDateDisplay",
+          "patientLastName",
+          "patientFirstName",
+          "status",
+        ].includes(header.key),
       );
     }
 
     if (windowWidth < 1200) {
-      return allHeaders.filter(header => 
-        ['requestDateDisplay', 'patientLastName', 'patientFirstName', 'patientNationalId', 
-        'requestingFacility', 'status', 'testName'].includes(header.key)
+      return allHeaders.filter((header) =>
+        [
+          "requestDateDisplay",
+          "patientLastName",
+          "patientFirstName",
+          "patientNationalId",
+          "requestingFacility",
+          "status",
+          "testName",
+        ].includes(header.key),
       );
     }
 
@@ -257,7 +269,9 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
               }
             />
             {entering ? (
-              <InlineLoading description={intl.formatMessage({ id: "loading" })} />
+              <InlineLoading
+                description={intl.formatMessage({ id: "loading" })}
+              />
             ) : (
               <Stack orientation="horizontal" gap={2}>
                 <Button
@@ -271,7 +285,9 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
                     editOrder(electronicOrderUUID, eOrders[index].labNo);
                   }}
                 >
-                  {windowWidth > 768 ? intl.formatMessage({ id: "eorder.button.editOrder" }) : ""}
+                  {windowWidth > 768
+                    ? intl.formatMessage({ id: "eorder.button.editOrder" })
+                    : ""}
                 </Button>
                 <Button
                   type="button"
@@ -284,7 +300,9 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
                     saveEntry(electronicOrderUUID, eOrders[index].labNo);
                   }}
                 >
-                  {windowWidth > 768 ? intl.formatMessage({ id: "eorder.button.enterOrder" }) : ""}
+                  {windowWidth > 768
+                    ? intl.formatMessage({ id: "eorder.button.enterOrder" })
+                    : ""}
                 </Button>
               </Stack>
             )}
@@ -310,43 +328,69 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
 
   // For very small screens, create a card-based view instead of a table
   const renderCardView = (eOrdersCurrent) => {
-    const currentOrders = eOrdersCurrent.slice((page - 1) * pageSize, page * pageSize);
+    const currentOrders = eOrdersCurrent.slice(
+      (page - 1) * pageSize,
+      page * pageSize,
+    );
 
     return (
       <Stack gap={4}>
         {currentOrders.map((order, index) => (
-          <div key={order.id} style={{ border: '1px solid #e0e0e0', borderRadius: '4px', padding: '1rem' }}>
+          <div
+            key={order.id}
+            style={{
+              border: "1px solid #e0e0e0",
+              borderRadius: "4px",
+              padding: "1rem",
+            }}
+          >
             <Stack gap={3}>
               <div>
-                <strong>{intl.formatMessage({ id: "eorder.name.last" })}:</strong> {order.patientLastName}
+                <strong>
+                  {intl.formatMessage({ id: "eorder.name.last" })}:
+                </strong>{" "}
+                {order.patientLastName}
               </div>
               <div>
-                <strong>{intl.formatMessage({ id: "eorder.name.first" })}:</strong> {order.patientFirstName}
+                <strong>
+                  {intl.formatMessage({ id: "eorder.name.first" })}:
+                </strong>{" "}
+                {order.patientFirstName}
               </div>
               <div>
-                <strong>{intl.formatMessage({ id: "eorder.requestDate" })}:</strong> {order.requestDateDisplay}
+                <strong>
+                  {intl.formatMessage({ id: "eorder.requestDate" })}:
+                </strong>{" "}
+                {order.requestDateDisplay}
               </div>
               <div>
-                <strong>{intl.formatMessage({ id: "eorder.status" })}:</strong> {order.status}
+                <strong>{intl.formatMessage({ id: "eorder.status" })}:</strong>{" "}
+                {order.status}
               </div>
               <div>
                 <OverflowMenu flipped renderIcon={Menu}>
-                  <OverflowMenuItem 
-                    itemText={intl.formatMessage({ id: "eorder.button.editOrder" })}
+                  <OverflowMenuItem
+                    itemText={intl.formatMessage({
+                      id: "eorder.button.editOrder",
+                    })}
                     onClick={() => {
                       const electronicOrderUUID = order.externalOrderId;
                       editOrder(electronicOrderUUID, order.labNo);
                     }}
                   />
-                  <OverflowMenuItem 
-                    itemText={intl.formatMessage({ id: "eorder.button.enterOrder" })}
+                  <OverflowMenuItem
+                    itemText={intl.formatMessage({
+                      id: "eorder.button.enterOrder",
+                    })}
                     onClick={() => {
                       const electronicOrderUUID = order.externalOrderId;
                       saveEntry(electronicOrderUUID, order.labNo);
                     }}
                   />
-                  <OverflowMenuItem 
-                    itemText={intl.formatMessage({ id: "sample.label.labnumber.generate" })}
+                  <OverflowMenuItem
+                    itemText={intl.formatMessage({
+                      id: "sample.label.labnumber.generate",
+                    })}
                     onClick={(e) => {
                       handleLabNoGeneration(e, index);
                     }}
@@ -492,8 +536,9 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
       {eOrders.length > 0 && (
         <Grid fullWidth>
           <Column sm={4} md={8} lg={16}>
-            <div style={{ marginBottom: '1rem' }}>
-              <FormattedMessage id="eorder.instructions.enter1" /> <ChevronDown />{" "}
+            <div style={{ marginBottom: "1rem" }}>
+              <FormattedMessage id="eorder.instructions.enter1" />{" "}
+              <ChevronDown />{" "}
               <FormattedMessage id="eorder.instructions.enter2" /> <TaskAdd />{" "}
               <FormattedMessage id="eorder.instructions.enter3" /> <Edit />{" "}
               <FormattedMessage id="eorder.instructions.enter4" />

@@ -12,7 +12,7 @@ import {
   Stack,
   FlexGrid,
   Row,
-  Tile
+  Tile,
 } from "@carbon/react";
 import { React, useEffect, useState } from "react";
 import CustomDatePicker from "../common/CustomDatePicker";
@@ -47,14 +47,14 @@ const EOrderSearch = ({
       "/rest/displayList/ELECTRONIC_ORDER_STATUSES",
       handleOrderStatus,
     );
-    
+
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
     };
 
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("resize", handleResize);
     };
   }, []);
 
@@ -113,30 +113,30 @@ const EOrderSearch = ({
   };
 
   const getColumnSizes = () => {
-    if (windowWidth < 672) { 
-      return { 
+    if (windowWidth < 672) {
+      return {
         main: { sm: 4 },
         half: { sm: 4 },
         third: { sm: 4 },
-        quarter: { sm: 4 }
+        quarter: { sm: 4 },
       };
     } else if (windowWidth < 1056) {
-      return { 
+      return {
         main: { md: 8 },
         half: { md: 4 },
         third: { md: 2 },
-        quarter: { md: 2 }
+        quarter: { md: 2 },
       };
     } else {
-      return { 
+      return {
         main: { lg: 16 },
         half: { lg: 8 },
         third: { lg: 4 },
-        quarter: { lg: 2 }
+        quarter: { lg: 2 },
       };
     }
   };
-  
+
   const colSizes = getColumnSizes();
 
   return (
@@ -151,7 +151,7 @@ const EOrderSearch = ({
           </Section>
         </Column>
       </Grid>
-      
+
       <Tile>
         <Stack gap={5}>
           {/* Search by Identifier Section */}
@@ -159,7 +159,7 @@ const EOrderSearch = ({
             <Column {...colSizes.main}>
               <FormattedMessage id="eorder.search1.text" />
             </Column>
-            
+
             <Grid narrow>
               <Column {...colSizes.main}>
                 <TextInput
@@ -177,7 +177,7 @@ const EOrderSearch = ({
                 />
               </Column>
             </Grid>
-            
+
             <Grid narrow>
               <Column {...(windowWidth > 672 ? colSizes.half : colSizes.main)}>
                 <Checkbox
@@ -189,25 +189,40 @@ const EOrderSearch = ({
                   }}
                 />
               </Column>
-              
+
               <Column {...(windowWidth > 672 ? colSizes.half : colSizes.main)}>
-                <Button onClick={searchByIdentifier} size={windowWidth < 672 ? "md" : "default"}>
+                <Button
+                  onClick={searchByIdentifier}
+                  size={windowWidth < 672 ? "md" : "default"}
+                >
                   <FormattedMessage id="label.button.search" />
                 </Button>
               </Column>
             </Grid>
           </Stack>
-          
-          <div style={{ width: "100%", borderBottom: "1px solid #e0e0e0", margin: "1rem 0" }}></div>
-          
+
+          <div
+            style={{
+              width: "100%",
+              borderBottom: "1px solid #e0e0e0",
+              margin: "1rem 0",
+            }}
+          ></div>
+
           {/* Search by Date and Status Section */}
           <Stack gap={4}>
             <Column {...colSizes.main}>
               <FormattedMessage id="eorder.search2.text" />
             </Column>
-            
+
             <Grid narrow>
-              <Column {...(windowWidth < 672 ? colSizes.main : (windowWidth < 1056 ? { md: 4 } : { lg: 4 }))}>
+              <Column
+                {...(windowWidth < 672
+                  ? colSizes.main
+                  : windowWidth < 1056
+                    ? { md: 4 }
+                    : { lg: 4 })}
+              >
                 <CustomDatePicker
                   id="eOrder_startDate"
                   labelText={intl.formatMessage({ id: "eorder.date.start" })}
@@ -215,8 +230,14 @@ const EOrderSearch = ({
                   onChange={(date) => setStartDate(date)}
                 />
               </Column>
-              
-              <Column {...(windowWidth < 672 ? colSizes.main : (windowWidth < 1056 ? { md: 4 } : { lg: 4 }))}>
+
+              <Column
+                {...(windowWidth < 672
+                  ? colSizes.main
+                  : windowWidth < 1056
+                    ? { md: 4 }
+                    : { lg: 4 })}
+              >
                 <CustomDatePicker
                   id="eOrder_endDate"
                   labelText={intl.formatMessage({ id: "eorder.date.end" })}
@@ -225,7 +246,7 @@ const EOrderSearch = ({
                 />
               </Column>
             </Grid>
-            
+
             <Grid narrow>
               <Column {...(windowWidth < 672 ? colSizes.main : colSizes.half)}>
                 <Select
@@ -246,7 +267,7 @@ const EOrderSearch = ({
                   ))}
                 </Select>
               </Column>
-              
+
               <Column {...(windowWidth < 672 ? colSizes.main : colSizes.half)}>
                 <Stack>
                   <Checkbox
@@ -260,11 +281,11 @@ const EOrderSearch = ({
                 </Stack>
               </Column>
             </Grid>
-            
+
             <Grid narrow>
               <Column {...colSizes.main}>
-                <Button 
-                  onClick={searchByDateAndStatus} 
+                <Button
+                  onClick={searchByDateAndStatus}
                   size={windowWidth < 672 ? "md" : "default"}
                 >
                   <FormattedMessage id="label.button.search" />
@@ -272,7 +293,7 @@ const EOrderSearch = ({
               </Column>
             </Grid>
           </Stack>
-          
+
           {/* No Results Message */}
           {searchCompleted && !hasEOrders && (
             <Grid narrow>
