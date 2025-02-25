@@ -117,3 +117,4 @@ USER tomcat_admin
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
 
+
