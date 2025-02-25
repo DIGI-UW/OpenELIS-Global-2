@@ -113,7 +113,7 @@ public class UnifiedSystemUserRestController extends BaseController {
         binder.setAllowedFields(ALLOWED_FIELDS);
     }
 
-    @GetMapping(value = "/rest/users/{roleName}")
+    @GetMapping(value = "/users/{roleName}")
     @ResponseBody
     public List<IdValuePair> getUsersWithRole(@PathVariable String roleName) {
         List<SystemUser> users = systemUserService.getAll();
@@ -121,7 +121,7 @@ public class UnifiedSystemUserRestController extends BaseController {
                 .map(e -> new IdValuePair(e.getId(), e.getDisplayName())).collect(Collectors.toList());
     }
 
-    @GetMapping(value = "/rest/users")
+    @GetMapping(value = "/users")
     @ResponseBody
     public List<IdValuePair> getUsersWithRole() {
         List<SystemUser> users = systemUserService.getAll();

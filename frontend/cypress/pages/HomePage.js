@@ -33,7 +33,7 @@ class HomePage {
   }
 
   openNavigationMenu() {
-    cy.get("header#mainHeader > button[title='Open menu']", {
+    cy.get("[data-cy='menuButton']", {
       timeout: 30000,
     }).click();
   }
@@ -170,13 +170,13 @@ class HomePage {
   goToRoutineReports() {
     this.openNavigationMenu();
     cy.get("#menu_reports").click();
-    cy.get("#menu_reports_routine_nav").click();
+    //cy.get("#menu_reports_routine_nav").click();
     return new RoutineReportPage();
   }
   goToStudyReports() {
     this.openNavigationMenu();
     cy.get("#menu_reports").click();
-    cy.get("#menu_reports_study_nav").click();
+    //cy.get("#menu_reports_study_nav").click();
     return new StudyReportPage();
   }
 
@@ -192,6 +192,12 @@ class HomePage {
     return new DashBoardPage();
   }
 
+  goToCytologyDashboard() {
+    this.openNavigationMenu();
+    cy.get("#menu_cytology").click();
+    return new DashBoardPage();
+  }
+
   goToAdminPage() {
     this.openNavigationMenu();
     cy.get("#menu_administration").click();
@@ -202,11 +208,36 @@ class HomePage {
   //home page navigation
 
   afterAll() {
-    //This closes the navigation components after each test
-    cy.get(".icon-wrapper > svg.clickable-icon").click();
+    cy.get("#minimizeIcon").should("be.visible").click();
   }
+
+  searchBar() {
+    cy.get("#search-Icon").click();
+    cy.get("#searchItem").type("Smith");
+    cy.get("#patientSearch").click();
+    cy.wait(1000);
+    cy.get("#search-Icon").click();
+  }
+
+  clickNotifications() {
+    cy.get("#notification-Icon").click();
+    cy.wait(800);
+    cy.get("#notification-Icon").click();
+  }
+
+  clickUserIcon() {
+    cy.get("#user-Icon").click();
+    cy.wait(800);
+    cy.get("#user-Icon").click();
+  }
+  clickHelpIcon() {
+    cy.get("#user-Help").click();
+    cy.wait(800);
+    cy.get("#user-Help").click();
+  }
+
   selectInProgress() {
-    cy.contains("a.cds--link", "In Progress").click();
+    cy.get("#maximizeIcon").click();
   }
 
   selectReadyforValidation() {

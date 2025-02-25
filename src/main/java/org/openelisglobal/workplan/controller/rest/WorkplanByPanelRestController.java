@@ -77,7 +77,7 @@ public class WorkplanByPanelRestController extends WorkplanRestController {
     @Autowired
     private UserService userService;
 
-    @GetMapping(value = "/rest/workplan-by-panel", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/rest/WorkPlanByPanel", produces = MediaType.APPLICATION_JSON_VALUE)
     public WorkplanForm showWorkPlanByPanel(HttpServletRequest request,
             @RequestParam(name = "panel_id", defaultValue = "0") String panelID)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {

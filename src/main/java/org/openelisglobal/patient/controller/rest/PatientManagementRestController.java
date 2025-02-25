@@ -47,7 +47,7 @@ public class PatientManagementRestController extends BaseRestController {
     @Autowired
     FhirTransformService fhirTransformService;
 
-    @PostMapping(value = "patient-management", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "PatientManagement", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public void savepatient(HttpServletRequest request,
             @Validated(SamplePatientEntryForm.SamplePatientEntry.class) @RequestBody PatientManagementInfo patientInfo,
