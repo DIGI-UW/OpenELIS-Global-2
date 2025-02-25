@@ -16,6 +16,8 @@ import {
   Column,
   TextInput,
   Checkbox,
+  Grid,
+  Column
 } from "@carbon/react";
 import { Add } from "@carbon/react/icons";
 import { getFromOpenElisServer } from "../utils/Utils";
