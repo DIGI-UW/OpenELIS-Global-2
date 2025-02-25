@@ -10,14 +10,16 @@ import {
   SelectItem,
   TextInput,
   Stack,
+  FlexGrid,
+  Row,
+  Tile
 } from "@carbon/react";
 import { React, useEffect, useState } from "react";
 import CustomDatePicker from "../common/CustomDatePicker";
+
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import "./EOrderSearch.css";
-
 let breadcrumbs = [{ label: "home.label", link: "/" }];
 
 const EOrderSearch = ({
@@ -28,7 +30,6 @@ const EOrderSearch = ({
 }) => {
   const intl = useIntl();
 
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [hasEOrders, setHasEOrders] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -38,25 +39,23 @@ const EOrderSearch = ({
   const [allInfo, setAllInfo] = useState(false);
   const [allInfo2, setAllInfo2] = useState(false);
   const [searchCompleted, setSearchCompleted] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  useEffect(() => {
-    getFromOpenElisServer(
-      "/rest/ElectronicOrders/getOrders",
-      handleElectronicOrders,
-    );
+    getFromOpenElisServer("/rest/ElectronicOrders", handleElectronicOrders);
     getFromOpenElisServer(
       "/rest/displayList/ELECTRONIC_ORDER_STATUSES",
       handleOrderStatus,
     );
+    
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   const handleElectronicOrders = (response) => {
@@ -113,12 +112,38 @@ const EOrderSearch = ({
     }
   };
 
-  return (
-    <div className="eorder-search-container">
-      <PageBreadCrumb breadcrumbs={breadcrumbs} />
+  const getColumnSizes = () => {
+    if (windowWidth < 672) { 
+      return { 
+        main: { sm: 4 },
+        half: { sm: 4 },
+        third: { sm: 4 },
+        quarter: { sm: 4 }
+      };
+    } else if (windowWidth < 1056) {
+      return { 
+        main: { md: 8 },
+        half: { md: 4 },
+        third: { md: 2 },
+        quarter: { md: 2 }
+      };
+    } else {
+      return { 
+        main: { lg: 16 },
+        half: { lg: 8 },
+        third: { lg: 4 },
+        quarter: { lg: 2 }
+      };
+    }
+  };
+  
+  const colSizes = getColumnSizes();
 
-      <Grid narrow={isMobile} className="header-grid">
-        <Column sm={4} md={8} lg={16}>
+  return (
+    <>
+      <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      <Grid narrow>
+        <Column {...colSizes.main}>
           <Section>
             <Heading>
               <FormattedMessage id="eorder.header" />
@@ -126,125 +151,141 @@ const EOrderSearch = ({
           </Section>
         </Column>
       </Grid>
-
-      <div className="orderLegendBody">
-        <Grid narrow={isMobile}>
+      
+      <Tile>
+        <Stack gap={5}>
           {/* Search by Identifier Section */}
-          <Column sm={4} md={8} lg={16} className="search-section">
-            <Stack gap={5}>
+          <Stack gap={4}>
+            <Column {...colSizes.main}>
               <FormattedMessage id="eorder.search1.text" />
-
-              <div className="search-row">
-                <Column sm={4} md={6} lg={8} className="search-input">
-                  <TextInput
-                    id="searchValue"
-                    labelText={intl.formatMessage({ id: "eorder.searchValue" })}
-                    value={searchValue}
-                    onChange={(e) => setSearchValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") searchByIdentifier();
-                    }}
-                  />
-                </Column>
-
-                <Column sm={2} md={2} lg={2} className="checkbox-column">
-                  <Checkbox
-                    id="allInfo1"
-                    labelText={intl.formatMessage({ id: "eorder.allInfo" })}
-                    checked={allInfo}
-                    onChange={(e) => setAllInfo(e.currentTarget.checked)}
-                  />
-                </Column>
-
-                <Column sm={2} md={2} lg={4} className="button-column">
-                  <Button
-                    onClick={searchByIdentifier}
-                    className="search-button"
-                  >
-                    <FormattedMessage id="label.button.search" />
-                  </Button>
-                </Column>
-              </div>
-            </Stack>
-          </Column>
-
-          <Column sm={4} md={8} lg={16}>
-            <hr className="section-divider" />
-          </Column>
-
+            </Column>
+            
+            <Grid narrow>
+              <Column {...colSizes.main}>
+                <TextInput
+                  id="searchValue"
+                  labelText={intl.formatMessage({ id: "eorder.searchValue" })}
+                  value={searchValue}
+                  onChange={(e) => {
+                    setSearchValue(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      searchByIdentifier();
+                    }
+                  }}
+                />
+              </Column>
+            </Grid>
+            
+            <Grid narrow>
+              <Column {...(windowWidth > 672 ? colSizes.half : colSizes.main)}>
+                <Checkbox
+                  id="allInfo1"
+                  labelText={intl.formatMessage({ id: "eorder.allInfo" })}
+                  checked={allInfo}
+                  onChange={(e) => {
+                    setAllInfo(e.currentTarget.checked);
+                  }}
+                />
+              </Column>
+              
+              <Column {...(windowWidth > 672 ? colSizes.half : colSizes.main)}>
+                <Button onClick={searchByIdentifier} size={windowWidth < 672 ? "md" : "default"}>
+                  <FormattedMessage id="label.button.search" />
+                </Button>
+              </Column>
+            </Grid>
+          </Stack>
+          
+          <div style={{ width: "100%", borderBottom: "1px solid #e0e0e0", margin: "1rem 0" }}></div>
+          
           {/* Search by Date and Status Section */}
-          <Column sm={4} md={8} lg={16} className="search-section">
-            <Stack gap={5}>
+          <Stack gap={4}>
+            <Column {...colSizes.main}>
               <FormattedMessage id="eorder.search2.text" />
-
-              <div className="date-status-row">
-                <Column sm={4} md={2} lg={2} className="date-picker">
-                  <CustomDatePicker
-                    id="eOrder_startDate"
-                    labelText={intl.formatMessage({ id: "eorder.date.start" })}
-                    value={startDate}
-                    onChange={setStartDate}
-                    className="inputDate"
-                  />
-                </Column>
-
-                <Column sm={4} md={2} lg={2} className="date-picker">
-                  <CustomDatePicker
-                    id="eOrder_endDate"
-                    labelText={intl.formatMessage({ id: "eorder.date.end" })}
-                    value={endDate}
-                    onChange={setEndDate}
-                    className="inputDate"
-                  />
-                </Column>
-
-                <Column sm={4} md={4} lg={4} className="status-select">
-                  <Select
-                    id="statusId"
-                    labelText={intl.formatMessage({ id: "eorder.status" })}
-                    value={statusId}
-                    onChange={(e) => setStatusId(e.target.value)}
-                  >
-                    <SelectItem value="" text="All Statuses" />
-                    {statusOptions.map((option, index) => (
-                      <SelectItem
-                        key={index}
-                        value={option.id}
-                        text={option.value}
-                      />
-                    ))}
-                  </Select>
-                </Column>
-
-                <Column sm={2} md={2} lg={2} className="checkbox-column">
+            </Column>
+            
+            <Grid narrow>
+              <Column {...(windowWidth < 672 ? colSizes.main : (windowWidth < 1056 ? { md: 4 } : { lg: 4 }))}>
+                <CustomDatePicker
+                  id="eOrder_startDate"
+                  labelText={intl.formatMessage({ id: "eorder.date.start" })}
+                  value={startDate}
+                  onChange={(date) => setStartDate(date)}
+                />
+              </Column>
+              
+              <Column {...(windowWidth < 672 ? colSizes.main : (windowWidth < 1056 ? { md: 4 } : { lg: 4 }))}>
+                <CustomDatePicker
+                  id="eOrder_endDate"
+                  labelText={intl.formatMessage({ id: "eorder.date.end" })}
+                  value={endDate}
+                  onChange={(date) => setEndDate(date)}
+                />
+              </Column>
+            </Grid>
+            
+            <Grid narrow>
+              <Column {...(windowWidth < 672 ? colSizes.main : colSizes.half)}>
+                <Select
+                  id="statusId"
+                  labelText={intl.formatMessage({ id: "eorder.status" })}
+                  value={statusId}
+                  onChange={(e) => {
+                    setStatusId(e.target.value);
+                  }}
+                >
+                  <SelectItem value="" text="All Statuses" />
+                  {statusOptions.map((statusOption, index) => (
+                    <SelectItem
+                      key={index}
+                      value={statusOption.id}
+                      text={statusOption.value}
+                    />
+                  ))}
+                </Select>
+              </Column>
+              
+              <Column {...(windowWidth < 672 ? colSizes.main : colSizes.half)}>
+                <Stack>
                   <Checkbox
                     id="allInfo2"
                     labelText={intl.formatMessage({ id: "eorder.allInfo" })}
                     checked={allInfo2}
-                    onChange={(e) => setAllInfo2(e.currentTarget.checked)}
+                    onChange={(e) => {
+                      setAllInfo2(e.currentTarget.checked);
+                    }}
                   />
-                </Column>
-
-                <Column sm={2} md={2} lg={4} className="button-column">
-                  <Button
-                    onClick={searchByDateAndStatus}
-                    className="search-button"
-                  >
-                    <FormattedMessage id="label.button.search" />
-                  </Button>
-                </Column>
-              </div>
-            </Stack>
-          </Column>
-
+                </Stack>
+              </Column>
+            </Grid>
+            
+            <Grid narrow>
+              <Column {...colSizes.main}>
+                <Button 
+                  onClick={searchByDateAndStatus} 
+                  size={windowWidth < 672 ? "md" : "default"}
+                >
+                  <FormattedMessage id="label.button.search" />
+                </Button>
+              </Column>
+            </Grid>
+          </Stack>
+          
+          {/* No Results Message */}
           {searchCompleted && !hasEOrders && (
-            <Column sm={4} md={8} lg={16} className="no-results">
-              <FormattedMessage id="eorder.search.noresults" />
-            </Column>
+            <Grid narrow>
+              <Column {...colSizes.main}>
+                <div style={{ marginTop: "1rem" }}>
+                  <FormattedMessage id="eorder.search.noresults" />
+                </div>
+              </Column>
+            </Grid>
           )}
-        </Grid>
-      </div>
-    </div>
+        </Stack>
+      </Tile>
+    </>
   );
 };
 
