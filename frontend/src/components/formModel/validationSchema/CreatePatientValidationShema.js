@@ -2,11 +2,11 @@ import * as Yup from "yup";
 
 const CreatePatientValidationSchema = Yup.object().shape({
   firstName: Yup.string().matches(
-    /^[A-Za-z\s'-]+$/,
+    /^[A-Za-z]*$/,
     "First name must contain only letters",
   ),
   lastName: Yup.string().matches(
-    /^[A-Za-z\s'-]+$/,
+    /^[A-Za-z]*$/,
     "Last name must contain only letters",
   ),
   nationalId: Yup.string().required("National ID Required"),
@@ -28,14 +28,12 @@ const CreatePatientValidationSchema = Yup.object().shape({
     }),
   patientContact: Yup.object().shape({
     person: Yup.object().shape({
-      firstName: Yup.string().matches(
-        /^[A-Za-z\s'-]+$/,
-        "First name must contain only letters",
-      ),
-      lastName: Yup.string().matches(
-        /^[A-Za-z\s'-]+$/,
-        "Last name must contain only letters",
-      ),
+      firstName: Yup.string()
+        .trim()
+        .matches(/^[A-Za-z]*$/, "First name must contain only letters"),
+      lastName: Yup.string()
+        .trim()
+        .matches(/^[A-Za-z]*$/, "Last name must contain only letters"),
       email: Yup.string().email("Contact Email Must Be Valid"),
     }),
   }),
