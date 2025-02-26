@@ -13,7 +13,7 @@ export const getFromOpenElisServer = async (endPoint, callback) => {
     //     throw "No Login Session";
     // }
     const contentType = response.headers.get("content-type");
-    
+
     if (contentType && contentType.indexOf("application/json") !== -1) {
       const jsonResp = await response.json();
       callback(jsonResp);
@@ -157,7 +157,7 @@ export const postToOpenElisServerForPDF = async (
 
     const blob = await response.blob();
     callback(true, blob);
-    
+
     let link = document.createElement("a");
     link.href = window.URL.createObjectURL(blob, { type: "application/pdf" });
     link.target = "_blank";
