@@ -1,11 +1,11 @@
 package org.openelisglobal.organization.form;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import java.sql.Timestamp;
 import java.util.Collection;
 import java.util.List;
-import javax.validation.Valid;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Pattern;
 import org.hibernate.validator.constraints.URL;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.formfields.FormFields.Field;

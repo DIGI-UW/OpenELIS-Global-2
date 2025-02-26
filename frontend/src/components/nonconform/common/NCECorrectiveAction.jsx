@@ -761,7 +761,7 @@ export const NCECorrectiveAction = () => {
                       id={"dateCompleted"}
                       labelText=""
                       autofillDate={true}
-                      value={data[`dateCompleted`] ?? undefined}
+                      value={log[`dateCompleted`] ?? undefined}
                       onChange={(e) => {}}
                       disabled
                       style={{ marginTop: "5px" }}

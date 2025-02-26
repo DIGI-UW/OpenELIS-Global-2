@@ -22,10 +22,10 @@
 <%@ page isELIgnored="false"%>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags"%>
-<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions"%>
+
+<%@ taglib prefix="fn" uri="jakarta.tags.functions"%>
 
 <c:set var="tests" value="${form.testResult}" />
 <c:set var="testCount" value="${fn:length(tests)}" />
@@ -530,7 +530,7 @@ function validateEntrySize( elementValue ){
 
 function doShowTests(){
 	var form = document.getElementById("mainForm");
-	window.location.href = "${requestScope['javax.servlet.forward.request_uri']}?accessionNumber="  + $("searchAccessionID").value;
+	window.location.href = "${requestScope['jakarta.servlet.forward.request_uri']}?accessionNumber="  + $("searchAccessionID").value;
 }
 
 function /*void*/ handleEnterEvent(  ){

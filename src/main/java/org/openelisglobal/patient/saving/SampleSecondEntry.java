@@ -20,7 +20,7 @@ package org.openelisglobal.patient.saving;
 import static org.openelisglobal.common.services.StatusService.RecordStatus.InitialRegistration;
 import static org.openelisglobal.common.services.StatusService.RecordStatus.ValidationRegistration;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.saving.form.IAccessionerForm;

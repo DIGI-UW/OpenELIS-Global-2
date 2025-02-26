@@ -191,7 +191,7 @@ public abstract class AbstractHistoryService {
 
     protected String getViewableValue(String value, Result result) {
         if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())
-                && !GenericValidator.isBlankOrNull(value) && org.apache.commons.lang.StringUtils.isNumeric(value)) {
+                && !GenericValidator.isBlankOrNull(value) && org.apache.commons.lang3.StringUtils.isNumeric(value)) {
             Dictionary dictionaryValue = dictionaryService.getDictionaryById(value);
             value = dictionaryValue != null ? dictionaryValue.getDictEntry()
                     : MessageUtil.getMessage("result.undefined");
