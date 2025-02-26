@@ -22,7 +22,7 @@ describe("Interacts with Help options", function () {
   });
 
   describe("User navigates to Process Documentation", function () {
-    it("Navigates to Help", function(){
+    it("Navigates to Help", function () {
       helpPage.clickProcessDocumentation();
     });
 
