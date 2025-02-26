@@ -12,6 +12,7 @@ import RoutineReportPage from "./RoutineReportPage";
 import StudyReportPage from "./StudyReportPage";
 
 import DashBoardPage from "./DashBoard";
+import HelpPage from "./HelpPage";
 import AdminPage from "./AdminPage";
 
 class HomePage {
@@ -205,6 +206,13 @@ class HomePage {
     cy.get("#menu_administration").click();
     //cy.get("#menu_administration_nav").click();
     return new AdminPage();
+  }
+
+  goToHelp() {
+    this.openNavigationMenu();
+    cy.get("#menu_help").click();
+
+    return new HelpPage();
   }
 
   //home page navigation
