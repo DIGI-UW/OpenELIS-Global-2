@@ -1,39 +1,39 @@
 import config from "../../config.json";
 
-export const getFromOpenElisServerAsync = async (endPoint) => {
+export const getFromOpenElisServer = async (endPoint, callback) => {
   try {
     const response = await fetch(config.serverBaseUrl + endPoint, {
+      //includes the browser sessionId in the Header for Authentication on the backend server
       credentials: "include",
       method: "GET",
     });
 
+    console.debug("checking response");
+    // if (response.url.includes("LoginPage")) {
+    //     throw "No Login Session";
+    // }
     const contentType = response.headers.get("content-type");
-    if (contentType?.includes("application/json")) {
-      return await response.json();
+    
+    if (contentType && contentType.indexOf("application/json") !== -1) {
+      const jsonResp = await response.json();
+      callback(jsonResp);
+    } else {
+      callback();
     }
-    return undefined;
   } catch (error) {
     console.error(error);
-    throw error;
   }
 };
 
-export const getFromOpenElisServer = (endPoint, callback) => {
-  getFromOpenElisServerAsync(endPoint)
-    .then((data) => callback(data))
-    .catch((error) => {
-      console.error(error);
-      callback(null, error);
-    });
-};
-
-export const postToOpenElisServerAsync = async (
+export const postToOpenElisServer = async (
   endPoint,
   payLoad,
+  callback,
   extraParams,
 ) => {
   try {
     const response = await fetch(config.serverBaseUrl + endPoint, {
+      //includes the browser sessionId in the Header for Authentication on the backend server
       credentials: "include",
       method: "POST",
       headers: {
@@ -42,34 +42,23 @@ export const postToOpenElisServerAsync = async (
       },
       body: payLoad,
     });
-    return { status: response.status, extraParams };
+
+    const status = response.status;
+    callback(status, extraParams);
   } catch (error) {
     console.error(error);
-    throw error;
   }
 };
 
-export const postToOpenElisServer = (
+export const postToOpenElisServerFullResponse = async (
   endPoint,
   payLoad,
   callback,
   extraParams,
 ) => {
-  postToOpenElisServerAsync(endPoint, payLoad, extraParams)
-    .then((result) => callback(result.status, result.extraParams))
-    .catch((error) => {
-      console.error(error);
-      callback(null, error);
-    });
-};
-
-export const postToOpenElisServerFullResponseAsync = async (
-  endPoint,
-  payLoad,
-  extraParams,
-) => {
   try {
     const response = await fetch(config.serverBaseUrl + endPoint, {
+      //includes the browser sessionId in the Header for Authentication on the backend server
       credentials: "include",
       method: "POST",
       headers: {
@@ -78,30 +67,17 @@ export const postToOpenElisServerFullResponseAsync = async (
       },
       body: payLoad,
     });
-    return { response, extraParams };
+
+    callback(response, extraParams);
   } catch (error) {
     console.error(error);
-    throw error;
   }
 };
 
-export const postToOpenElisServerFullResponse = (
-  endPoint,
-  payLoad,
-  callback,
-  extraParams,
-) => {
-  postToOpenElisServerFullResponseAsync(endPoint, payLoad, extraParams)
-    .then((result) => callback(result.response, result.extraParams))
-    .catch((error) => {
-      console.error(error);
-      callback(null, error);
-    });
-};
-
-export const postToOpenElisServerFormDataAsync = async (
+export const postToOpenElisServerFormData = async (
   endPoint,
   formData,
+  callback,
   extraParams,
 ) => {
   try {
@@ -113,33 +89,23 @@ export const postToOpenElisServerFormDataAsync = async (
       },
       body: formData,
     });
-    return { status: response.status, extraParams };
+
+    const status = response.status;
+    callback(status, extraParams);
   } catch (error) {
     console.error(error);
-    throw error;
   }
 };
 
-export const postToOpenElisServerFormData = (
-  endPoint,
-  formData,
-  callback,
-  extraParams,
-) => {
-  postToOpenElisServerFormDataAsync(endPoint, formData, extraParams)
-    .then((result) => callback(result.status, result.extraParams))
-    .catch((error) => {
-      console.error(error);
-      callback(null, error);
-    });
-};
-export const postToOpenElisServerJsonResponseAsync = async (
+export const postToOpenElisServerJsonResponse = async (
   endPoint,
   payLoad,
+  callback,
   extraParams,
 ) => {
   try {
     const response = await fetch(config.serverBaseUrl + endPoint, {
+      //includes the browser sessionId in the Header for Authentication on the backend server
       credentials: "include",
       method: "POST",
       headers: {
@@ -148,39 +114,38 @@ export const postToOpenElisServerJsonResponseAsync = async (
       },
       body: payLoad,
     });
+
     const json = await response.json();
-    return { json, extraParams };
+    callback(json, extraParams);
   } catch (error) {
     console.error(error);
-    throw error;
   }
 };
 
-export const postToOpenElisServerJsonResponse = (
+//provides Synchronous calls to the api
+export const getFromOpenElisServerSync = (endPoint, callback) => {
+  try {
+    const request = new XMLHttpRequest();
+    request.open("GET", config.serverBaseUrl + endPoint, false);
+    request.setRequestHeader("credentials", "include");
+    request.send();
+    // if (request.response.url.includes("LoginPage")) {
+    //     throw "No Login Session";
+    // }
+    return callback(JSON.parse(request.response));
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+export const postToOpenElisServerForPDF = async (
   endPoint,
   payLoad,
   callback,
-  extraParams,
 ) => {
-  postToOpenElisServerJsonResponseAsync(endPoint, payLoad, extraParams)
-    .then((result) => callback(result.json, result.extraParams))
-    .catch((error) => {
-      console.error(error);
-      callback(null, error);
-    });
-};
-
-export const getFromOpenElisServerSync = (endPoint, callback) => {
-  const request = new XMLHttpRequest();
-  request.open("GET", config.serverBaseUrl + endPoint, false);
-  request.setRequestHeader("credentials", "include");
-  request.send();
-  return callback(JSON.parse(request.response));
-};
-
-export const postToOpenElisServerForPDFAsync = async (endPoint, payLoad) => {
   try {
     const response = await fetch(config.serverBaseUrl + endPoint, {
+      //includes the browser sessionId in the Header for Authentication on the backend server
       credentials: "include",
       method: "POST",
       headers: {
@@ -189,62 +154,68 @@ export const postToOpenElisServerForPDFAsync = async (endPoint, payLoad) => {
       },
       body: payLoad,
     });
-    const blob = await response.blob();
 
-    const link = document.createElement("a");
+    const blob = await response.blob();
+    callback(true, blob);
+    
+    let link = document.createElement("a");
     link.href = window.URL.createObjectURL(blob, { type: "application/pdf" });
     link.target = "_blank";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    return { success: true, blob };
   } catch (error) {
+    callback(false);
     console.error(error);
-    return { success: false };
   }
 };
 
-export const postToOpenElisServerForPDF = (endPoint, payLoad, callback) => {
-  postToOpenElisServerForPDFAsync(endPoint, payLoad)
-    .then((result) => callback(result.success, result.blob))
-    .catch((error) => {
-      console.error(error);
-      callback(false);
-    });
-};
-
-export const putToOpenElisServerAsync = async (endPoint, payLoad) => {
-  const options = {
-    credentials: "include",
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-    ...(payLoad && { body: payLoad }),
-  };
-
+export const putToOpenElisServer = async (endPoint, payLoad, callback) => {
   try {
+    // Build the request options
+    let options = {
+      // includes the browser sessionId in the Header for Authentication on the backend server
+      credentials: "include",
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": localStorage.getItem("CSRF"),
+      },
+    };
+
+    // Include the body only if payLoad is provided
+    if (payLoad) {
+      options.body = payLoad;
+    }
+
     const response = await fetch(config.serverBaseUrl + endPoint, options);
-    return response.status;
+    const status = response.status;
+    callback(status);
   } catch (error) {
     console.error(error);
-    throw error;
   }
-};
-
-export const putToOpenElisServer = (endPoint, payLoad, callback) => {
-  putToOpenElisServerAsync(endPoint, payLoad)
-    .then((status) => callback(status))
-    .catch((error) => console.error(error));
 };
 
 export const hasRole = (userSessionDetails, role) => {
   return userSessionDetails.roles && userSessionDetails.roles.includes(role);
 };
 
-// Helper functions (unchanged)
+// this is complicated to enable it to format "smartly" as a person types
+// possible rework could allow it to only format completed numbers
+
+export const getFromOpenElisServerV2 = (url) => {
+  return new Promise((resolve, reject) => {
+    // Simulating the original callback-based function
+    getFromOpenElisServer(url, (res) => {
+      if (res) {
+        resolve(res);
+      } else {
+        reject("Failed to fetch Subscription data");
+      }
+    });
+  });
+};
+
 export const convertAlphaNumLabNumForDisplay = (labNumber) => {
   if (!labNumber) {
     return labNumber;
@@ -253,9 +224,11 @@ export const convertAlphaNumLabNumForDisplay = (labNumber) => {
     console.warn("labNumber is not alphanumeric (too long), ignoring format");
     return labNumber;
   }
+  //if dash made it into value, then it's part of the analysis number, not the base lab number
   let labNumberParts = labNumber.split("-");
   let isAnalysisLabNumber = labNumberParts.length > 1;
   let labNumberForDisplay = labNumberParts[0];
+  //incomplete lab number
   if (labNumberParts[0].length < 8) {
     labNumberForDisplay = labNumberParts[0].slice(0, 2);
     if (labNumberParts[0].length > 2) {
@@ -263,8 +236,10 @@ export const convertAlphaNumLabNumForDisplay = (labNumber) => {
       labNumberForDisplay = labNumberForDisplay + labNumberParts[0].slice(2);
     }
   } else {
+    //possibly complete lab number
     labNumberForDisplay = labNumberParts[0].slice(0, 2) + "-";
     if (labNumberParts[0].length > 8) {
+      // lab number contains prefix
       labNumberForDisplay =
         labNumberForDisplay +
         labNumberParts[0].slice(2, labNumberParts[0].length - 6) +
@@ -282,6 +257,7 @@ export const convertAlphaNumLabNumForDisplay = (labNumber) => {
       labNumberForDisplay +
       labNumberParts[0].slice(labNumberParts[0].length - 3);
   }
+  //re-add dash
   if (isAnalysisLabNumber) {
     labNumberForDisplay = labNumberForDisplay + "-" + labNumberParts[1];
   }
@@ -299,12 +275,14 @@ export function encodeDate(dateString) {
 export function getDifferenceInDays(date1, date2) {
   console.log("secondDate", date2);
 
+  // Function to parse dates in DD/MM/YYYY format
   function parseDate(dateStr) {
     const [day, month, year] = dateStr.split("/").map(Number);
-    return new Date(year, month - 1, day);
+    return new Date(year, month - 1, day); // Months are 0-based in JavaScript Date
   }
 
   function correctDate(firstDate) {
+    // "08/05/2024" the error is 08 is not day it is month and 05 is day
     let dateParts = firstDate.split("/");
     if (dateParts[0].length === 4) {
       return dateParts[1] + "/" + dateParts[0] + "/" + dateParts[2];
@@ -312,34 +290,46 @@ export function getDifferenceInDays(date1, date2) {
     return firstDate;
   }
 
+  // Convert the date strings to Date objects
   const firstDate = parseDate(correctDate(date1));
   const secondDate = parseDate(correctDate(date2));
 
+  // Calculate the difference in time (milliseconds)
   const timeDifference = secondDate - firstDate;
+
+  // Convert the time difference from milliseconds to days
   const millisecondsPerDay = 1000 * 60 * 60 * 24;
   const dayDifference = timeDifference / millisecondsPerDay;
 
+  // Return the rounded difference in days
   return dayDifference;
 }
 
 export function formatTimestamp(timestamp) {
+  // Convert the timestamp to milliseconds and create a Date object
   const date = new Date(timestamp * 1000);
+
+  // Extract and format components
   const hours = date.getUTCHours();
   const minutes = date.getUTCMinutes();
   const day = date.getUTCDate();
-  const month = date.getUTCMonth() + 1;
+  const month = date.getUTCMonth() + 1; // Months are zero-based
   const year = date.getUTCFullYear();
 
+  // Determine AM or PM and format hours
   const ampm = hours >= 12 ? "PM" : "AM";
   const formattedHours = (hours % 12 || 12).toString().padStart(2, "0");
   const formattedMinutes = minutes.toString().padStart(2, "0");
 
+  // Format day and month
   const formattedDay = day.toString().padStart(2, "0");
   const formattedMonth = month.toString().padStart(2, "0");
 
+  // Combine and return the formatted string
   return `${formattedHours}:${formattedMinutes} ${ampm}; ${formattedDay}/${formattedMonth}/${year}`;
 }
 
+// Helper function to convert a URL-safe base64 string to a Uint8Array
 export function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
