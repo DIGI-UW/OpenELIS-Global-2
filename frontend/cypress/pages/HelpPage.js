@@ -2,7 +2,7 @@ class HelpPage {
   constructor() {}
 
   clickUserManual() {
-    cy.get("#menu_help_user_manual").should("be.visible");
+    cy.get("#menu_help_user_manual").click();
   }
 
   clickProcessDocumentation() {
@@ -10,11 +10,11 @@ class HelpPage {
   }
 
   clickVLForm() {
-    cy.get("#menu_help_form_VL").should("be.visible");
+    cy.get("#menu_help_form_VL").click();
   }
 
   clickDBSForm() {
-    cy.get("[data-cy='menu_help_form_DBS']").should("be.visible");
+    cy.get("[data-cy='menu_help_form_DBS']").click();
   }
 }
 
