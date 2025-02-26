@@ -7,7 +7,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.annotation.PostConstruct;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -23,6 +22,7 @@ import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.role.service.RoleService;
+import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestServiceImpl;
@@ -30,7 +30,6 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSamplePanel;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -42,20 +41,20 @@ import org.springframework.web.bind.annotation.ResponseBody;
 public class SampleEntryTestsForTypeProviderRestController extends BaseRestController {
 
     private static String USER_TEST_SECTION_ID;
-    @Autowired
-    private PanelService panelService;
-    @Autowired
-    private TestSectionService testSectionService;
-    @Autowired
-    private TypeOfSamplePanelService samplePanelService;
-    @Autowired
-    private PanelItemService panelItemService;
-    @Autowired
-    private TypeOfSampleService typeOfSampleService;
-    @Autowired
-    private UserService userService;
-    @Autowired
-    private RoleService roleService;
+
+    private PanelService panelService = SpringContext.getBean(PanelService.class);
+
+    private TestSectionService testSectionService = SpringContext.getBean(TestSectionService.class);
+
+    private TypeOfSamplePanelService samplePanelService = SpringContext.getBean(TypeOfSamplePanelService.class);
+
+    private PanelItemService panelItemService = SpringContext.getBean(PanelItemService.class);
+
+    private TypeOfSampleService typeOfSampleService = SpringContext.getBean(TypeOfSampleService.class);
+
+    private UserService userService = SpringContext.getBean(UserService.class);
+
+    private RoleService roleService = SpringContext.getBean(RoleService.class);
 
     ArrayList<PanelTestMap> panelsMapList = new ArrayList<>();
 
@@ -63,13 +62,13 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
     SampleEntryTests sampleEntryTests;
 
-    @PostConstruct
     private void initializeGlobalVariables() {
         USER_TEST_SECTION_ID = testSectionService.getTestSectionByName("user").getId();
         sampleEntryTests = new SampleEntryTests();
     }
 
     public SampleEntryTestsForTypeProviderRestController() {
+        initializeGlobalVariables();
     }
 
     @GetMapping(value = "sample-type-tests", produces = MediaType.APPLICATION_JSON_VALUE)

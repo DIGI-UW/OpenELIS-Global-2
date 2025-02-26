@@ -678,12 +678,12 @@
 
     function parseRequesterPerson(xhr) {
     	var requester = JSON.parse(xhr.responseText);
-            $("providerPersonId").value = requester.id;
-            $("providerFirstNameID").value = requester.firstName;
-            $("providerLastNameID").value = requester.lastName;    
-            $("providerWorkPhoneID").value = requester.primaryPhone;
-            $("providerFaxID").value = requester.fax;
-            $("providerEmailID").value = requester.email;
+            $("providerPersonId").value = requester.id?requester.id:"";
+            $("providerFirstNameID").value = requester.firstName?requester.firstName:"";
+            $("providerLastNameID").value = requester.lastName?requester.lastName:"";    
+            $("providerWorkPhoneID").value = requester.workPhone?requester.workPhone:"";
+            $("providerFaxID").value = requester.fax?requester.fax:"";
+            $("providerEmailID").value = requester.email?requester.email:"";
     }
 
     function setSelectComboboxToId(selectId, selectVal) {
