@@ -52,26 +52,24 @@ export const ProgramSelect = ({
       <Grid>
         <Column lg={8} md={4} sm={4}>
           {programs.length > 0 && (
-            <div className="inputText">
-              <Select
-                id="additionalQuestionsSelect"
-                labelText={intl.formatMessage({ id: "label.program" })}
-                onChange={programChange}
-                value={orderFormValues?.sampleOrderItems?.programId}
-                disabled={editable ? editable : false}
-              >
-                <SelectItem value="" text="" />
-                {programs.map((program) => {
-                  return (
-                    <SelectItem
-                      key={program.id}
-                      value={program.id}
-                      text={program.value}
-                    />
-                  );
-                })}
-              </Select>
-            </div>
+            <Select
+              id="additionalQuestionsSelect"
+              labelText={intl.formatMessage({ id: "label.program" })}
+              onChange={programChange}
+              value={orderFormValues?.sampleOrderItems?.programId}
+              disabled={editable ? editable : false}
+            >
+              <SelectItem value="" text="" />
+              {programs.map((program) => {
+                return (
+                  <SelectItem
+                    key={program.id}
+                    value={program.id}
+                    text={program.value}
+                  />
+                );
+              })}
+            </Select>
           )}
         </Column>
       </Grid>

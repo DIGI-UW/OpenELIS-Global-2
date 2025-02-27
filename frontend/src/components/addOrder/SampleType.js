@@ -498,7 +498,6 @@ const SampleType = (props) => {
               onChange={(date) => handleCollectionDate(date)}
               value={sampleXml.collectionDate}
               labelText={intl.formatMessage({ id: "sample.collection.date" })}
-              className="inputText"
               disallowFutureDate={true}
             />
 
@@ -509,7 +508,6 @@ const SampleType = (props) => {
               }
               onChange={(time) => handleCollectionTime(time)}
               value={sampleXml.collectionTime}
-              className="inputText"
               labelText={intl.formatMessage({ id: "sample.collection.time" })}
             />
             <CustomTextInput
@@ -518,7 +516,6 @@ const SampleType = (props) => {
               defaultValue={""}
               value={sampleXml.collector}
               labelText={intl.formatMessage({ id: "collector.label" })}
-              className="inputText"
             />
           </Column>
         </Grid>
