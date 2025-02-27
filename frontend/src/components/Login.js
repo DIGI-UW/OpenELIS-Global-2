@@ -53,7 +53,8 @@ function Login(props) {
   const loginMessage = () => {
     return (
       <>
-        <div>
+        <Column lg={6} md={0} sm={0} />
+        <Column lg={4} md={8} sm={4}>
           <picture>
             <img
               src={`images/openelis_logo_full.png`}
@@ -62,11 +63,13 @@ function Login(props) {
               height="56"
             />
           </picture>
-        </div>
-        <br></br>
-        <div>
+        </Column>
+        <Column lg={6} md={0} sm={0} />
+        <Column lg={6} md={0} sm={0} />
+        <Column lg={4} md={8} sm={4}>
           <FormattedMessage id="login.notice.message" />
-        </div>
+        </Column>
+        <Column lg={6} md={0} sm={0} />
       </>
     );
   };
@@ -154,11 +157,14 @@ function Login(props) {
     <>
       <div data-cy="login-Page-Content" className="loginPageContent">
         {notificationVisible === true ? <AlertDialog /> : ""}
-        <Grid fullWidth={true}>
-          <Column lg={0} md={0} sm={4}>
-            {loginMessage()}
+        <Grid fullWidth={true}>{loginMessage()}</Grid>
+        <Grid fullWidth={false}>
+          <Column lg={16}>
+            <br />
+            <br />
           </Column>
-          <Column lg={4} md={4} sm={4}>
+          <Column lg={6} md={0} sm={0} />
+          <Column lg={4} md={8} sm={4}>
             <Section>
               <Formik
                 initialValues={{
@@ -278,7 +284,8 @@ function Login(props) {
               </Formik>
             </Section>
           </Column>
-          <Column lg={8} md={4} sm={0}>
+          <Column lg={6} md={0} sm={0} />
+          <Column lg={0} md={0} sm={0}>
             {loginMessage()}
           </Column>
         </Grid>
