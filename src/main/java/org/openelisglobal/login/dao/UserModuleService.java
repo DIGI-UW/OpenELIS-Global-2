@@ -13,7 +13,7 @@
  */
 package org.openelisglobal.login.dao;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 
 /**

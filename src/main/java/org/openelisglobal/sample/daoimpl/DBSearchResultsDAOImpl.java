@@ -15,11 +15,11 @@
  */
 package org.openelisglobal.sample.daoimpl;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.Session;
 import org.openelisglobal.common.exception.LIMSRuntimeException;

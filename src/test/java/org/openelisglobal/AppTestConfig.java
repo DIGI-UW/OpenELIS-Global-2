@@ -6,7 +6,6 @@ import ca.uhn.fhir.context.FhirContext;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.ArrayList;
 import java.util.List;
-import javax.persistence.EntityManager;
 import lombok.NonNull;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
@@ -400,12 +399,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public SystemUserService systemUserService() {
         return mock(SystemUserService.class);
-    }
-
-    @Bean
-    @Profile("test")
-    public EntityManager entityManager() {
-        return mock(EntityManager.class);
     }
 
     @Override

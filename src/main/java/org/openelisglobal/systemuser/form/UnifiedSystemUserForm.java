@@ -1,13 +1,13 @@
 package org.openelisglobal.systemuser.form;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Pattern;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openelisglobal.common.form.BaseForm;

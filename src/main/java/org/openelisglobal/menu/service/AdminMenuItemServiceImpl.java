@@ -1,10 +1,10 @@
 package org.openelisglobal.menu.service;
 
+import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import javax.annotation.PostConstruct;
 import org.openelisglobal.common.formfields.AdminFormFields;
 import org.openelisglobal.common.formfields.AdminFormFields.Field;
 import org.openelisglobal.common.util.ConfigurationListener;

@@ -13,7 +13,7 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
-import com.lowagie.text.DocumentException;
+import com.itextpdf.text.DocumentException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.sql.SQLException;
