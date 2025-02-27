@@ -72,10 +72,12 @@ function OEHeader(props) {
   }, []);
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/menu", (res) => {
-      handleMenuItems("menu", res);
-    });
-  }, []);
+    userSessionDetails.authenticated
+      ? getFromOpenElisServer("/rest/menu", (res) => {
+          handleMenuItems("menu", res);
+        })
+      : console.log("User not authenticated, not getting menu");
+  }, [userSessionDetails.authenticated]);
 
   const panelSwitchLabel = () => {
     return userSessionDetails.authenticated ? "User" : "Lang";

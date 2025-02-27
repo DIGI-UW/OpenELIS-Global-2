@@ -14,8 +14,6 @@
 package org.openelisglobal.patientidentitytype.daoimpl;
 
 import java.util.List;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -34,9 +32,6 @@ public class PatientIdentityTypeDAOImpl extends BaseDAOImpl<PatientIdentityType,
     public PatientIdentityTypeDAOImpl() {
         super(PatientIdentityType.class);
     }
-
-    @SuppressWarnings("unused")
-    private static Log log = LogFactory.getLog(PatientIdentityTypeDAOImpl.class);
 
     @Override
     @Transactional(readOnly = true)

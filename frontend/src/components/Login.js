@@ -166,6 +166,7 @@ function Login(props) {
                   password: "",
                 }}
                 onSubmit={(values) => {
+                  doLogin(values);
                   fetch(config.serverBaseUrl + "/LoginPage", {
                     //includes the browser sessionId in the Header for Authentication on the backend server
                     credentials: "include",
