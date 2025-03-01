@@ -32,3 +32,6 @@ src/main/resources/adminPassword.txt
 Patient/*
 volume/*
 tools/Liquibase-Outdated
+
+# tomcat/hapi_server.xml 
+volume/tomcat/hapi_server.xml
