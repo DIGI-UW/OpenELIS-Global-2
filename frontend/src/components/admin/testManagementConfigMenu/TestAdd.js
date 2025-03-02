@@ -82,13 +82,13 @@ function TestAdd() {
   const handleToggle = () => {
     setShowGuide(!showGuide);
   };
-  
+
   const [selectedSections, setSelectedSections] = useState([]);
-  
+
   const handleSectionChange = (selectedItems) => {
     setSelectedSections(selectedItems.selectedItems);
   };
-  
+
   const rows = [
     {
       id: "name",
@@ -96,14 +96,18 @@ function TestAdd() {
       description: <FormattedMessage id="testadd.guide.description.name" />,
     },
     {
-      id: "reportName", 
+      id: "reportName",
       field: intl.formatMessage({ id: "testadd.guide.field.reportName" }),
-      description: <FormattedMessage id="testadd.guide.description.reportName" />,
+      description: (
+        <FormattedMessage id="testadd.guide.description.reportName" />
+      ),
     },
     {
       id: "testSection",
       field: intl.formatMessage({ id: "testadd.guide.field.testSection" }),
-      description: <FormattedMessage id="testadd.guide.description.testSection" />,
+      description: (
+        <FormattedMessage id="testadd.guide.description.testSection" />
+      ),
     },
     {
       id: "panel",
@@ -172,8 +176,10 @@ function TestAdd() {
     {
       id: "orderable",
       field: intl.formatMessage({ id: "testadd.guide.field.orderable" }),
-      description: <FormattedMessage id="testadd.guide.description.orderable" />,
-    }
+      description: (
+        <FormattedMessage id="testadd.guide.description.orderable" />
+      ),
+    },
   ];
 
   const componentMounted = useRef(false);
@@ -243,33 +249,33 @@ function TestAdd() {
         highAgeRange: "30",
         gender: false,
         lowNormal: "-Infinity",
-        highNormal: "Infinity"
+        highNormal: "Infinity",
       },
       {
         highAgeRange: "365",
         gender: false,
         lowNormal: "-Infinity",
-        highNormal: "Infinity"
+        highNormal: "Infinity",
       },
       {
         highAgeRange: "1825",
         gender: false,
         lowNormal: "-Infinity",
-        highNormal: "Infinity"
+        highNormal: "Infinity",
       },
       {
         highAgeRange: "5110",
         gender: false,
         lowNormal: "-Infinity",
-        highNormal: "Infinity"
+        highNormal: "Infinity",
       },
       {
         highAgeRange: "Infinity",
         gender: false,
         lowNormal: "-Infinity",
-        highNormal: "Infinity"
-      }
-    ]
+        highNormal: "Infinity",
+      },
+    ],
   });
 
   useEffect(() => {
@@ -629,7 +635,7 @@ function TestAdd() {
     setIsLoading(true);
     const dataToSend = {
       ...jsonWad,
-      resultLimits: JSON.stringify(jsonWad.resultLimits)
+      resultLimits: JSON.stringify(jsonWad.resultLimits),
     };
     postToOpenElisServerJsonResponse(
       `/rest/TestAdd`,
@@ -729,9 +735,9 @@ function TestAdd() {
               </Section>
             </Column>
             <Column lg={4} md={8} sm={12}>
-              <Toggle 
-                id="toggle" 
-                labelText="Show Guide" 
+              <Toggle
+                id="toggle"
+                labelText="Show Guide"
                 toggled={showGuide}
                 onToggle={handleToggle}
               />
