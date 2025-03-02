@@ -1380,19 +1380,14 @@
   "patient.nationalid": "National ID",
   "testadd.guide.field.name": "Name*",
   "testadd.guide.description.name": "The name of the test as it will appear within openELIS. Both English and French are required",
-  
   "testadd.guide.field.reportName": "Report Name*",
   "testadd.guide.description.reportName": "The name of the test as it will appear in reports. Both English and French are required. If the Name and reporting name are the same click on the button to copy the name",
-  
-  "testadd.guide.field.testSection": "Test Section*", 
+  "testadd.guide.field.testSection": "Test Section*",
   "testadd.guide.description.testSection": "The test section in which the test will be done",
-  
   "testadd.guide.field.panel": "Panel",
   "testadd.guide.description.panel": "If this test is part of a test panel then the panel can be added here. It is possible, but not usual, for a test to be in more then one panel",
-  
   "testadd.guide.field.uom": "UOM",
   "testadd.guide.description.uom": "Unit of measure for the test. This usually only applies to numeric or alphanumeric result types",
-  
   "testadd.guide.field.resultType": "Result Type*",
   "testadd.guide.description.resultType": "The kind of result for this test:",
   "testadd.guide.resultType.numeric": "Numeric - ",
@@ -1409,7 +1404,6 @@
   "testadd.guide.resultType.cascadingListDesc": "Similar to multi-select but the user will be able to select multiple groups from the dropdown list",
   "testadd.guide.field.active": "Active",
   "testadd.guide.description.active": "If the test is active it can be ordered on the order form or as part of a test algorithm. If it is not active it can not be ordered or be part of a test algorithm",
-  
   "testadd.guide.field.orderable": "Orderable",
   "testadd.guide.description.orderable": "If a test is active and orderable then it can be ordered on an order form. If it is active but not orderable then it will only be done if it is reflexed from another test"
 }

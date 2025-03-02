@@ -257,7 +257,6 @@ function TestManagementConfigMenu() {
                 <ClickableTile>
                   <ListItem
                     onClick={() => {
-                      // window.location.assign("/api/OpenELIS-Global/TestAdd");
                       window.location.assign("/admin#TestAdd");
                     }}
                   >

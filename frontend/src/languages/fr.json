@@ -1379,19 +1379,14 @@
   "searchindexmanagement.reindex": "Réindexer",
   "testadd.guide.field.name": "Nom*",
   "testadd.guide.description.name": "Le nom du test tel qu'il apparaîtra dans openELIS. L'anglais et le français sont requis",
-  
   "testadd.guide.field.reportName": "Nom du rapport*",
   "testadd.guide.description.reportName": "Le nom du test tel qu'il apparaîtra dans les rapports. L'anglais et le français sont requis. Si le nom et le nom du rapport sont identiques, cliquez sur le bouton pour copier le nom",
-  
   "testadd.guide.field.testSection": "Section de test*",
   "testadd.guide.description.testSection": "La section de test dans laquelle le test sera effectué",
-  
   "testadd.guide.field.panel": "Panel",
   "testadd.guide.description.panel": "Si ce test fait partie d'un panel de test, le panel peut être ajouté ici. Il est possible, mais pas habituel, qu'un test soit dans plus d'un panel",
-  
   "testadd.guide.field.uom": "UDM",
   "testadd.guide.description.uom": "Unité de mesure pour le test. Cela s'applique généralement uniquement aux types de résultats numériques ou alphanumériques",
-  
   "testadd.guide.field.resultType": "Type de résultat*",
   "testadd.guide.description.resultType": "Le type de résultat pour ce test :",
   "testadd.guide.resultType.numeric": "Numérique - ",
@@ -1406,10 +1401,8 @@
   "testadd.guide.resultType.multiSelectListDesc": "L'utilisateur pourra sélectionner une ou plusieurs valeurs dans une liste déroulante. Aucune valeur de référence ne sera spécifiée",
   "testadd.guide.resultType.cascadingList": "Liste de sélection multiple en cascade - ",
   "testadd.guide.resultType.cascadingListDesc": "Similaire à la sélection multiple mais l'utilisateur pourra sélectionner plusieurs groupes dans la liste déroulante",
-  
   "testadd.guide.field.active": "Actif",
   "testadd.guide.description.active": "Si le test est actif, il peut être commandé sur le formulaire de commande ou dans le cadre d'un algorithme de test. S'il n'est pas actif, il ne peut pas être commandé ni faire partie d'un algorithme de test",
-  
   "testadd.guide.field.orderable": "Commandable",
   "testadd.guide.description.orderable": "Si un test est actif et commandable, il peut être commandé sur un formulaire de commande. S'il est actif mais non commandable, il ne sera effectué que s'il est recommandé par un autre test"
 }
