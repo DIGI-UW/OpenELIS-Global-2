@@ -32,6 +32,12 @@ import {
   NumberInput,
   RadioButtonGroup,
   RadioButton,
+  Toggle,
+  StructuredListWrapper,
+  StructuredListHead,
+  StructuredListBody,
+  StructuredListRow,
+  StructuredListCell,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
@@ -70,6 +76,105 @@ function TestAdd() {
     useContext(NotificationContext);
 
   const intl = useIntl();
+
+  const [showGuide, setShowGuide] = useState(false);
+
+  const handleToggle = () => {
+    setShowGuide(!showGuide);
+  };
+  
+  const [selectedSections, setSelectedSections] = useState([]);
+  
+  const handleSectionChange = (selectedItems) => {
+    setSelectedSections(selectedItems.selectedItems);
+  };
+  
+  const rows = [
+    {
+      id: "name",
+      field: intl.formatMessage({ id: "testadd.guide.field.name" }),
+      description: <FormattedMessage id="testadd.guide.description.name" />,
+    },
+    {
+      id: "reportName", 
+      field: intl.formatMessage({ id: "testadd.guide.field.reportName" }),
+      description: <FormattedMessage id="testadd.guide.description.reportName" />,
+    },
+    {
+      id: "testSection",
+      field: intl.formatMessage({ id: "testadd.guide.field.testSection" }),
+      description: <FormattedMessage id="testadd.guide.description.testSection" />,
+    },
+    {
+      id: "panel",
+      field: intl.formatMessage({ id: "testadd.guide.field.panel" }),
+      description: <FormattedMessage id="testadd.guide.description.panel" />,
+    },
+    {
+      id: "uom",
+      field: intl.formatMessage({ id: "testadd.guide.field.uom" }),
+      description: <FormattedMessage id="testadd.guide.description.uom" />,
+    },
+    {
+      id: "resultType",
+      field: intl.formatMessage({ id: "testadd.guide.field.resultType" }),
+      description: (
+        <>
+          <p>
+            <FormattedMessage id="testadd.guide.description.resultType" />
+          </p>
+          <ul>
+            <li>
+              <strong>
+                <FormattedMessage id="testadd.guide.resultType.numeric" />
+              </strong>
+              <FormattedMessage id="testadd.guide.resultType.numericDesc" />
+            </li>
+            <li>
+              <strong>
+                <FormattedMessage id="testadd.guide.resultType.alphanumeric" />
+              </strong>
+              <FormattedMessage id="testadd.guide.resultType.alphanumericDesc" />
+            </li>
+            <li>
+              <strong>
+                <FormattedMessage id="testadd.guide.resultType.freeText" />
+              </strong>
+              <FormattedMessage id="testadd.guide.resultType.freeTextDesc" />
+            </li>
+            <li>
+              <strong>
+                <FormattedMessage id="testadd.guide.resultType.selectList" />
+              </strong>
+              <FormattedMessage id="testadd.guide.resultType.selectListDesc" />
+            </li>
+            <li>
+              <strong>
+                <FormattedMessage id="testadd.guide.resultType.multiSelectList" />
+              </strong>
+              <FormattedMessage id="testadd.guide.resultType.multiSelectListDesc" />
+            </li>
+            <li>
+              <strong>
+                <FormattedMessage id="testadd.guide.resultType.cascadingList" />
+              </strong>
+              <FormattedMessage id="testadd.guide.resultType.cascadingListDesc" />
+            </li>
+          </ul>
+        </>
+      ),
+    },
+    {
+      id: "active",
+      field: intl.formatMessage({ id: "testadd.guide.field.active" }),
+      description: <FormattedMessage id="testadd.guide.description.active" />,
+    },
+    {
+      id: "orderable",
+      field: intl.formatMessage({ id: "testadd.guide.field.orderable" }),
+      description: <FormattedMessage id="testadd.guide.description.orderable" />,
+    }
+  ];
 
   const componentMounted = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -110,65 +215,62 @@ function TestAdd() {
   const [onResultType, setOnResultType] = useState(true);
   const [existingTestSetupPage, setExistingTestSetupPage] = useState(true);
   const [finalSaveConfirmation, setFinalSaveConfirmation] = useState(true);
-  const [jsonWad, setJsonWad] = useState(
-    // {
-    //   testNameEnglish: "aasdf",
-    //   testNameFrench: "asdf",
-    //   testReportNameEnglish: "aasdf",
-    //   testReportNameFrench: "asdf",
-    //   testSection: "56",
-    //   panels: [{ id: "1" }, { id: "2" }],
-    //   uom: "1",
-    //   loinc: "asdf",
-    //   resultType: "4",
-    //   orderable: "Y",
-    //   notifyResults: "Y",
-    //   inLabOnly: "Y",
-    //   antimicrobialResistance: "Y",
-    //   active: "Y",
-    //   sampleTypes:
-    //     '[{"typeId": "31", "tests": [{"id": 301}, {"id": 0}]}, {"typeId": "3", "tests": [{"id": 306}, {"id": 304}, {"id": 308}, {"id": 319}, {"id": 317}, {"id": 311}, {"id": 314}, {"id": 3}, {"id": 32}, {"id": 40}, {"id": 41}, {"id": 56}, {"id": 47}, {"id": 49}, {"id": 51}, {"id": 0}]}]',
-    //   lowValid: "-Infinity",
-    //   highValid: "Infinity",
-    //   lowReportingRange: "-Infinity",
-    //   highReportingRange: "Infinity",
-    //   lowCritical: "-Infinity",
-    //   highCritical: "-Infinity",
-    //   significantDigits: "",
-    //   resultLimits:
-    //     '[{"highAgeRange": "30", "gender": false, "lowNormal": "-Infinity", "highNormal": "Infinity"}, {"highAgeRange": "365", "gender": false, "lowNormal": "-Infinity", "highNormal": "Infinity"}, {"highAgeRange": "1825", "gender": false, "lowNormal": "-Infinity", "highNormal": "Infinity"}, {"highAgeRange": "5110", "gender": false, "lowNormal": "-Infinity", "highNormal": "Infinity"}, {"highAgeRange": "Infinity", "gender": false, "lowNormal": "-Infinity", "highNormal": "Infinity"}]',
-    //   dictionary:
-    //     '[{"value": "824", "qualified": "N"}, {"value": "826", "qualified": "N"}, {"value": "825", "qualified": "N"}, {"value": "822", "qualified": "N"}, {"value": "829", "qualified": "N"}, {"value": "821", "qualified": "N"}]',
-    //   dictionaryReference: "824",
-    //   defaultTestResult: "825",
-    // },
-    {
-      testNameEnglish: "",
-      testNameFrench: "",
-      testReportNameEnglish: "",
-      testReportNameFrench: "",
-      testSection: "",
-      panels: [],
-      uom: "",
-      loinc: "",
-      resultType: "",
-      orderable: "Y",
-      notifyResults: "",
-      inLabOnly: "",
-      antimicrobialResistance: "",
-      active: "Y",
-      sampleTypes: [],
-      lowValid: "",
-      highValid: "",
-      lowReportingRange: "",
-      highReportingRange: "",
-      lowCritical: "",
-      highCritical: "",
-      significantDigits: "",
-      resultLimits:
-        '[{"highAgeRange": "30", "gender": false, "lowNormal": "-Infinity", "highNormal": "Infinity"}, {"highAgeRange": "365", "gender": false, "lowNormal": "-Infinity", "highNormal": "Infinity"}, {"highAgeRange": "1825", "gender": false, "lowNormal": "-Infinity", "highNormal": "Infinity"}, {"highAgeRange": "5110", "gender": false, "lowNormal": "-Infinity", "highNormal": "Infinity"}, {"highAgeRange": "Infinity", "gender": false, "lowNormal": "-Infinity", "highNormal": "Infinity"}]',
-    },
-  );
+  const [jsonWad, setJsonWad] = useState({
+    testNameEnglish: "",
+    testNameFrench: "",
+    testReportNameEnglish: "",
+    testReportNameFrench: "",
+    testSection: "",
+    panels: [],
+    uom: "",
+    loinc: "",
+    resultType: "",
+    orderable: "Y",
+    notifyResults: "",
+    inLabOnly: "",
+    antimicrobialResistance: "",
+    active: "Y",
+    sampleTypes: [],
+    lowValid: "",
+    highValid: "",
+    lowReportingRange: "",
+    highReportingRange: "",
+    lowCritical: "",
+    highCritical: "",
+    significantDigits: "",
+    resultLimits: [
+      {
+        highAgeRange: "30",
+        gender: false,
+        lowNormal: "-Infinity",
+        highNormal: "Infinity"
+      },
+      {
+        highAgeRange: "365",
+        gender: false,
+        lowNormal: "-Infinity",
+        highNormal: "Infinity"
+      },
+      {
+        highAgeRange: "1825",
+        gender: false,
+        lowNormal: "-Infinity",
+        highNormal: "Infinity"
+      },
+      {
+        highAgeRange: "5110",
+        gender: false,
+        lowNormal: "-Infinity",
+        highNormal: "Infinity"
+      },
+      {
+        highAgeRange: "Infinity",
+        gender: false,
+        lowNormal: "-Infinity",
+        highNormal: "Infinity"
+      }
+    ]
+  });
 
   useEffect(() => {
     componentMounted.current = true;
@@ -462,35 +564,6 @@ function TestAdd() {
     });
   };
 
-  // const handleSampleTypeListSelectIdTestTag = (e) => {
-  //   const selectedTestId = e.target.value;
-  //   const testName = e.target.options[e.target.selectedIndex].text;
-
-  //   const existingIndex = sampleTestTypeToGetTagList.findIndex(
-  //     (item) => item.id === selectedTestId,
-  //   );
-
-  //   let updatedList;
-  //   if (existingIndex !== -1) {
-  //     updatedList = [...sampleTestTypeToGetTagList];
-  //     updatedList.splice(existingIndex, 1);
-  //     setSampleTestTypeToGetTagList(updatedList);
-  //   } else {
-  //     const selectedTest = {
-  //       id: selectedTestId,
-  //       name: testName,
-  //     };
-  //     updatedList = [...sampleTestTypeToGetTagList, selectedTest];
-  //     setSampleTestTypeToGetTagList(updatedList);
-  //   }
-
-  //   const updatedReplace = updatedList.map((item) => item.id);
-  //   setJsonWad((prevJsonWad) => ({
-  //     ...prevJsonWad,
-  //     replace: updatedReplace,
-  //   }));
-  // };
-
   const handleSampleTypeListSelectIdTestTag = (e) => {
     const selectedId = e.target.value;
     const selectedSampleTypeObject = sampleTypeList.find(
@@ -554,9 +627,13 @@ function TestAdd() {
 
   function testAddPostCall() {
     setIsLoading(true);
+    const dataToSend = {
+      ...jsonWad,
+      resultLimits: JSON.stringify(jsonWad.resultLimits)
+    };
     postToOpenElisServerJsonResponse(
       `/rest/TestAdd`,
-      JSON.stringify(jsonWad),
+      JSON.stringify(dataToSend),
       (res) => {
         testAddPostCallback(res);
       },
@@ -651,10 +728,42 @@ function TestAdd() {
                 </Heading>
               </Section>
             </Column>
+            <Column lg={4} md={8} sm={12}>
+              <Toggle 
+                id="toggle" 
+                labelText="Show Guide" 
+                toggled={showGuide}
+                onToggle={handleToggle}
+              />
+            </Column>
           </Grid>
           <br />
           <hr />
           <br />
+
+          {showGuide && (
+            <>
+              <StructuredListWrapper ariaLabel="Structured list">
+                <StructuredListHead>
+                  <StructuredListRow head>
+                    <StructuredListCell head>Field</StructuredListCell>
+                    <StructuredListCell head>Description</StructuredListCell>
+                  </StructuredListRow>
+                </StructuredListHead>
+                <StructuredListBody>
+                  {rows.map((row) => (
+                    <StructuredListRow key={row.id}>
+                      <StructuredListCell>{row.field}</StructuredListCell>
+                      <StructuredListCell>{row.description}</StructuredListCell>
+                    </StructuredListRow>
+                  ))}
+                </StructuredListBody>
+              </StructuredListWrapper>
+              <hr />
+              <br />
+            </>
+          )}
+
           <Grid fullWidth={true}>
             <Column lg={8} md={4} sm={4}>
               <div>

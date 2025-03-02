@@ -43,7 +43,7 @@
   "login.msg.password": "Mot de passe",
   "login.msg.username.missing": "Votre nom d'utilisateur requis",
   "login.msg.password.missing": "Votre mot de passe requis",
-  "login.notice.message": "Avis : L’accès à ce service est réservé au personnel autorisé. Si vous n’avez pas l’autorisation expresse de l’administrateur, vous devez quitter immédiatement. Cette organisation interdit tout accès non autorisé, divulgation, duplication, modification, détournement, destruction, perte, utilisation abusive ou vol de ses informations.",
+  "login.notice.message": "Avis : L'accès à ce service est réservé au personnel autorisé. Si vous n'avez pas l'autorisation expresse de l'administrateur, vous devez quitter immédiatement. Cette organisation interdit tout accès non autorisé, divulgation, duplication, modification, détournement, destruction, perte, utilisation abusive ou vol de ses informations.",
   "error.invalidcredentials": "L'identifiant ou le mot de passe est incorrect",
   "patient.label.modify": "Ajouter ou modifier un patient",
   "patient.label.info": "Informations sur les patients",
@@ -124,7 +124,7 @@
   "result.nonconforming.item": "L'échantillon ou l'ordonnance est non conforme OU le test a été rejetée",
   "sample.entry.project.patient.and.testName": "Noms et/ou Numéro d'identité National \n Nom du Test",
   "label.button.remove": "Supprimer",
-  "reject.order.sample.notification": "Vous rejetez un échantillon.Cet échantillon sera rejeté et n’apparaîtra pas dans les plans de travail une fois enregistré,aucun résultat ne peut être entré pour cette commande.",
+  "reject.order.sample.notification": "Vous rejetez un échantillon.Cet échantillon sera rejeté et n'apparaîtra pas dans les plans de travail une fois enregistré,aucun résultat ne peut être entré pour cette commande.",
   "rulebuilder.label.ruleName": "Nom de la règle",
   "rulebuilder.label.toggleRule": "Basculer la règle",
   "rulebuilder.label.addRuleConditions": "Ajouter des conditions de règle réflexe",
@@ -1376,5 +1376,40 @@
   "searchindexmanagement.reindex.success": "Réindexation réussie",
   "searchindexmanagement.reindex.error": "Erreur de réindexation",
   "searchindexmanagement.description": "Gestion de l'index de recherche",
-  "searchindexmanagement.reindex": "Réindexer"
+  "searchindexmanagement.reindex": "Réindexer",
+  "testadd.guide.field.name": "Nom*",
+  "testadd.guide.description.name": "Le nom du test tel qu'il apparaîtra dans openELIS. L'anglais et le français sont requis",
+  
+  "testadd.guide.field.reportName": "Nom du rapport*",
+  "testadd.guide.description.reportName": "Le nom du test tel qu'il apparaîtra dans les rapports. L'anglais et le français sont requis. Si le nom et le nom du rapport sont identiques, cliquez sur le bouton pour copier le nom",
+  
+  "testadd.guide.field.testSection": "Section de test*",
+  "testadd.guide.description.testSection": "La section de test dans laquelle le test sera effectué",
+  
+  "testadd.guide.field.panel": "Panel",
+  "testadd.guide.description.panel": "Si ce test fait partie d'un panel de test, le panel peut être ajouté ici. Il est possible, mais pas habituel, qu'un test soit dans plus d'un panel",
+  
+  "testadd.guide.field.uom": "UDM",
+  "testadd.guide.description.uom": "Unité de mesure pour le test. Cela s'applique généralement uniquement aux types de résultats numériques ou alphanumériques",
+  
+  "testadd.guide.field.resultType": "Type de résultat*",
+  "testadd.guide.description.resultType": "Le type de résultat pour ce test :",
+  "testadd.guide.resultType.numeric": "Numérique - ",
+  "testadd.guide.resultType.numericDesc": "Accepte uniquement les résultats numériques dans une zone de texte. Les résultats peuvent être évalués comme étant dans une plage normale ou valide",
+  "testadd.guide.resultType.alphanumeric": "Alphanumérique - ",
+  "testadd.guide.resultType.alphanumericDesc": "Accepte des chiffres ou du texte dans une zone de texte. Il ne sera pas évalué comme normal ou valide",
+  "testadd.guide.resultType.freeText": "Texte libre - ",
+  "testadd.guide.resultType.freeTextDesc": "Accepte jusqu'à 200 caractères dans une zone de texte. Il ne sera pas évalué comme normal ou valide",
+  "testadd.guide.resultType.selectList": "Liste de sélection - ",
+  "testadd.guide.resultType.selectListDesc": "L'utilisateur pourra sélectionner dans une liste déroulante. La valeur normale sera spécifiée comme valeur de référence",
+  "testadd.guide.resultType.multiSelectList": "Liste de sélection multiple - ",
+  "testadd.guide.resultType.multiSelectListDesc": "L'utilisateur pourra sélectionner une ou plusieurs valeurs dans une liste déroulante. Aucune valeur de référence ne sera spécifiée",
+  "testadd.guide.resultType.cascadingList": "Liste de sélection multiple en cascade - ",
+  "testadd.guide.resultType.cascadingListDesc": "Similaire à la sélection multiple mais l'utilisateur pourra sélectionner plusieurs groupes dans la liste déroulante",
+  
+  "testadd.guide.field.active": "Actif",
+  "testadd.guide.description.active": "Si le test est actif, il peut être commandé sur le formulaire de commande ou dans le cadre d'un algorithme de test. S'il n'est pas actif, il ne peut pas être commandé ni faire partie d'un algorithme de test",
+  
+  "testadd.guide.field.orderable": "Commandable",
+  "testadd.guide.description.orderable": "Si un test est actif et commandable, il peut être commandé sur un formulaire de commande. S'il est actif mais non commandable, il ne sera effectué que s'il est recommandé par un autre test"
 }

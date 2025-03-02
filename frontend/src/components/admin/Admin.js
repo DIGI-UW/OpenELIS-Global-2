@@ -56,6 +56,7 @@ import OrganizationAddModify from "./OrganizationManagement/OrganizationAddModif
 import UserManagement from "./userManagement/UserManagement";
 import UserAddModify from "./userManagement/UserAddModify";
 import ManageMethod from "./testManagement/ManageMethod.js";
+import AddNewTests from "./testManagement/AddNewTests.js";
 import BatchTestReassignmentAndCancelation from "./BatchTestReassignmentAndCancellation/BatchTestReassignmentAndCancelation.js";
 import TestNotificationConfigMenu from "./testNotificationConfigMenu/TestNotificationConfigMenu.js";
 import TestNotificationConfigEdit from "./testNotificationConfigMenu/TestNotificationConfigEdit.js";
@@ -261,6 +262,9 @@ function Admin() {
       </PathRoute>
       <PathRoute path="#MethodManagement">
         <ManageMethod />
+      </PathRoute>
+      <PathRoute path="#AddNewTests">
+        <AddNewTests />
       </PathRoute>
       <PathRoute path="#AnalyzerTestName">
         <AnalyzerTestName />
