@@ -1,6 +1,6 @@
 package org.openelisglobal.plugin;
 
-import javax.servlet.Servlet;
+import jakarta.servlet.Servlet;
 
 public interface ServletPlugin extends Servlet {
 }

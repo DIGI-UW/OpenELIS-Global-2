@@ -58,6 +58,8 @@ function SearchPatientForm(props) {
   const [searchFormValues, setSearchFormValues] = useState(
     SearchPatientFormValues,
   );
+  const [prevfirstName, setPrevfirstName] = useState("");
+  const [prevlastName, setPrevlastName] = useState("");
 
   const handlePatientImport = (patientId) => {
     console.log("Import button clicked, patientId:", patientId);
@@ -231,6 +233,32 @@ function SearchPatientForm(props) {
     setDob(date);
   };
 
+  function handleFirstNameChange(event) {
+    const regexFlags = "iu";
+    const regex = new RegExp(
+      configurationProperties.FIRST_NAME_REGEX,
+      regexFlags,
+    );
+    const value = event.target.value;
+    if (!regex.test(value)) {
+      event.target.value = prevfirstName;
+    }
+    setPrevfirstName(event.target.value);
+  }
+
+  function handleLastNameChange(event) {
+    const regexFlags = "iu";
+    const regex = new RegExp(
+      configurationProperties.LAST_NAME_REGEX,
+      regexFlags,
+    );
+    const value = event.target.value;
+    if (!regex.test(value)) {
+      event.target.value = prevlastName;
+    }
+    setPrevlastName(event.target.value);
+  }
+
   const patientSelected = (e) => {
     const patientSelected = patientSearchResults.find((patient) => {
       return patient.patientID == e.target.id;
@@ -349,6 +377,7 @@ function SearchPatientForm(props) {
                         defaultMessage: "Last Name",
                       })}
                       id={field.name}
+                      onChange={(e) => handleLastNameChange(e)}
                     />
                   )}
                 </Field>
@@ -366,6 +395,7 @@ function SearchPatientForm(props) {
                         defaultMessage: "First Name",
                       })}
                       id={field.name}
+                      onChange={(e) => handleFirstNameChange(e)}
                     />
                   )}
                 </Field>

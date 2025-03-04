@@ -1,17 +1,20 @@
 package org.openelisglobal.workplan.controller;
 
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.HashMap;
 import java.util.List;
-import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import net.sf.jasperreports.engine.JRDataSource;
 import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JasperRunManager;
 import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.openelisglobal.common.controller.BaseController;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.workplan.form.WorkplanForm;
@@ -40,6 +43,8 @@ public class PrintWorkplanReportController extends BaseController {
     public void initBinder(WebDataBinder binder) {
         binder.setAllowedFields(ALLOWED_FIELDS);
     }
+
+    private String reportPath = null;
 
     @RequestMapping(value = "/PrintWorkplanReport", method = RequestMethod.POST)
     public void showPrintWorkplanReport(HttpServletRequest request, HttpServletResponse response,
@@ -75,15 +80,14 @@ public class PrintWorkplanReportController extends BaseController {
 
         // set Jasper report file name
         String reportFileName = workplanReport.getFileName();
-        ClassLoader classLoader = getClass().getClassLoader();
-        File reportFile = new File(classLoader.getResource("reports/" + reportFileName + ".jasper").getFile());
 
         try {
 
             byte[] bytes = null;
 
             JRDataSource dataSource = createReportDataSource(workplanRows);
-            bytes = JasperRunManager.runReportToPdf(reportFile.getAbsolutePath(), parameterMap, dataSource);
+            bytes = JasperRunManager.runReportToPdf(getReportPath() + reportFileName + ".jasper", parameterMap,
+                    dataSource);
 
             ServletOutputStream servletOutputStream = response.getOutputStream();
             response.setContentType("application/pdf");
@@ -130,10 +134,27 @@ public class PrintWorkplanReportController extends BaseController {
         return workplan;
     }
 
-    public String getReportPath() {
-        ClassLoader classLoader = getClass().getClassLoader();
-        File reportFile = new File(classLoader.getResource("reports/").getFile());
-        return reportFile.getAbsolutePath();
+    private String getReportPathValue() {
+        if (reportPath == null) {
+            ClassLoader classLoader = getClass().getClassLoader();
+            reportPath = classLoader.getResource("reports").getPath();
+            try {
+                reportPath = URLDecoder.decode(reportPath, "UTF-8");
+            } catch (UnsupportedEncodingException e) {
+                LogEvent.logError(e);
+                throw new LIMSRuntimeException(e);
+            }
+        }
+        return reportPath;
+    }
+
+    private String getReportPath() {
+        String reportPath = getReportPathValue();
+        if (reportPath.endsWith(File.separator)) {
+            return reportPath;
+        } else {
+            return reportPath + File.separator;
+        }
     }
 
     @Override

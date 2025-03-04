@@ -59,7 +59,7 @@ Detailed instructions found
 ## Download OpenELIS-Global-2
 
 1. Fork the repo at
-   [https://github.com/I-TECH-UW/OpenELIS-Global-2](https://github.com/I-TECH-UW/OpenELIS-Global-2)
+   [https://github.com/DIGI-UW/OpenELIS-Global-2](https://github.com/DIGI-UW/OpenELIS-Global-2)
 2. `cd /path/to/eclipse/workspace`
 3. `git clone [git@github.com](mailto:git@github.com):{Your_Github_Account}/OpenELIS-Global-2.git --recurse-submodules`
 

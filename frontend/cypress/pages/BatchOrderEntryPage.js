@@ -65,10 +65,9 @@ class BatchOrderEntry {
   }
 
   typeLabNumber(labNumber) {
-    cy.wait(10000);
-    cy.get('[placeholder="Enter Lab Number"]')
-      .should("be.visible")
-      .type(labNumber);
+    cy.wait(200);
+    cy.get("#labNo").should("be.visible");
+    cy.get("#labNo").type(labNumber);
   }
 
   uniqueHealthIDNum(healthID) {
@@ -103,7 +102,7 @@ class BatchOrderEntry {
     cy.contains("span", "Female").click();
   }
   checkNextButtonEnabled() {
-    cy.contains("button", "Next").wait(10000).click();
+    cy.get("[data-testid='next-button-BatchOrderEntry']").wait(500).click();
   }
 
   selectDNAPCRTest() {
@@ -119,10 +118,14 @@ class BatchOrderEntry {
   }
 
   clickNewPatientButton() {
+    //the #newPatient is not responding
+    cy.contains("button", "New Patient").should("be.visible");
     cy.contains("button", "New Patient").click();
   }
 
   clickSearchPatientButton() {
+    //the #searchPatient is not responding
+    cy.contains("button", "Search for Patient").should("be.visible");
     cy.contains("button", "Search for Patient").click();
   }
 
@@ -147,7 +150,7 @@ class BatchOrderEntry {
   }
 
   clickFinishButton() {
-    cy.contains("button", "Finish").click();
+    cy.get("[data-cy='finishButton']").click();
   }
 }
 

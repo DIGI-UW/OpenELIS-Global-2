@@ -3,40 +3,40 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class name="org.openelisglobal.audittrail.valueholder.History"
-		table="HISTORY">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<param name="sequence_name">history_seq</param>
-			</generator>
-		</id>
-		<property name="sysUserId"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="SYS_USER_ID" precision="10" scale="0"
-				not-null="true" />
-		</property>
-		<property name="referenceId"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="REFERENCE_ID" precision="22" scale="0"
-				not-null="true" />
-		</property>
-		<property name="referenceTable"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="REFERENCE_TABLE" precision="22" scale="0"
-				not-null="true" />
-		</property>
-		<property name="timestamp" type="java.sql.Timestamp">
-			<column name="TIMESTAMP" length="7" not-null="true" />
-		</property>
-		<property name="activity" type="java.lang.String">
-			<column name="ACTIVITY" length="1" not-null="true" />
-		</property>
-		<property name="changes" type="org.hibernate.type.BinaryType">
-			<!--bugzilla 1930 -->
-			<column name="CHANGES" not-null="false" />
-		</property>
-	</class>
+    <class name="org.openelisglobal.audittrail.valueholder.History"
+        table="HISTORY">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">history_seq</param>
+            </generator>
+        </id>
+        <property name="sysUserId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="SYS_USER_ID" precision="10" scale="0"
+                not-null="true" />
+        </property>
+        <property name="referenceId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="REFERENCE_ID" precision="22" scale="0"
+                not-null="true" />
+        </property>
+        <property name="referenceTable"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="REFERENCE_TABLE" precision="22" scale="0"
+                not-null="true" />
+        </property>
+        <property name="timestamp" type="java.sql.Timestamp">
+            <column name="TIMESTAMP" length="7" not-null="true" />
+        </property>
+        <property name="activity" type="java.lang.String">
+            <column name="ACTIVITY" length="1" not-null="true" />
+        </property>
+        <property name="changes" type="org.hibernate.type.BinaryType">
+            <!--bugzilla 1930 -->
+            <column name="CHANGES" not-null="false" />
+        </property>
+    </class>
 </hibernate-mapping>

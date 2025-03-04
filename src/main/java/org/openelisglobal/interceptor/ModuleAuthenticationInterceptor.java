@@ -1,12 +1,12 @@
 package org.openelisglobal.interceptor;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -25,12 +25,12 @@ import org.springframework.security.web.DefaultRedirectStrategy;
 import org.springframework.security.web.RedirectStrategy;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.Errors;
+import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
-import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
 @Component
 @Qualifier(value = "ModuleAuthenticationInterceptor")
-public class ModuleAuthenticationInterceptor extends HandlerInterceptorAdapter {
+public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
 
     private static final boolean USE_PARAMETERS = true;
 

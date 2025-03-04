@@ -1,5 +1,6 @@
 package org.openelisglobal.note.service;
 
+import jakarta.annotation.PostConstruct;
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -7,7 +8,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.annotation.PostConstruct;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisServiceImpl;
 import org.openelisglobal.analysis.valueholder.Analysis;

@@ -1,7 +1,7 @@
 package org.openelisglobal.sample.bean;
 
-import javax.validation.constraints.Pattern;
-import javax.validation.groups.Default;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.groups.Default;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.sample.form.SampleEditForm;

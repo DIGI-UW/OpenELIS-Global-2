@@ -1,6 +1,6 @@
 package org.openelisglobal.menu.controller;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.menu.form.AdminMenuForm;
 import org.openelisglobal.menu.service.AdminMenuItemService;

@@ -3,28 +3,28 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class name="org.openelisglobal.region.valueholder.Region"
-		table="REGION" optimistic-lock="version" dynamic-update="true">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<param name="sequence_name">region_seq</param>
-			</generator>
-		</id>
-		<version name="lastupdated" column="LASTUPDATED"
-			type="timestamp" access="field" />
+    <class name="org.openelisglobal.region.valueholder.Region"
+        table="REGION" optimistic-lock="version" dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">region_seq</param>
+            </generator>
+        </id>
+        <version name="lastupdated" column="LASTUPDATED"
+            type="timestamp" access="field" />
 
-		<property name="region" type="java.lang.String">
-			<column name="REGION" length="240" not-null="true" />
-		</property>
-		<set name="counties" inverse="true">
-			<key>
-				<column name="REGION_ID" precision="10" scale="0" />
-			</key>
-			<one-to-many
-				class="org.openelisglobal.county.valueholder.County" />
-		</set>
-	</class>
+        <property name="region" type="java.lang.String">
+            <column name="REGION" length="240" not-null="true" />
+        </property>
+        <set name="counties" inverse="true">
+            <key>
+                <column name="REGION_ID" precision="10" scale="0" />
+            </key>
+            <one-to-many
+                class="org.openelisglobal.county.valueholder.County" />
+        </set>
+    </class>
 </hibernate-mapping>

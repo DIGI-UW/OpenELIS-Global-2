@@ -333,7 +333,7 @@ const GenericConfigEdit = ({ menuType, ID }) => {
                         <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.value" />
                       </h4>
                     </Column>
-                    {!FormEntryConfig.tag && (
+                    {FormEntryConfig.tag !== "localization" && (
                       <Column lg={8}>
                         <TextInput
                           id="textInput"

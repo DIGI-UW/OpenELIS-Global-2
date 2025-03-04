@@ -25,26 +25,19 @@ import org.openelisglobal.systemmodule.service.SystemModuleUrlService;
 import org.openelisglobal.systemmodule.valueholder.SystemModule;
 import org.openelisglobal.systemmodule.valueholder.SystemModuleUrl;
 import org.openelisglobal.systemusermodule.valueholder.RoleModule;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- *
- */
+/** */
 @Service
 @DependsOn({ "springContext" })
 public class PluginPermissionService implements IPluginPermissionService {
 
-    @Autowired
-    private SystemModuleService moduleService;
-    @Autowired
-    private SystemModuleUrlService moduleUrlService;
-    @Autowired
-    private RoleService roleService;
-    @Autowired
-    private RoleModuleService roleModuleService;
+    private SystemModuleService moduleService = SpringContext.getBean(SystemModuleService.class);
+    private SystemModuleUrlService moduleUrlService = SpringContext.getBean(SystemModuleUrlService.class);
+    private RoleService roleService = SpringContext.getBean(RoleService.class);
+    private RoleModuleService roleModuleService = SpringContext.getBean(RoleModuleService.class);
 
     public static IPluginPermissionService getInstance() {
         return SpringContext.getBean(IPluginPermissionService.class);
