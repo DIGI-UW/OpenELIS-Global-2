@@ -16,6 +16,7 @@ COPY package.json ./
 COPY package-lock.json ./
 RUN npm install 
 RUN npm install react-scripts@5.0.1 -g
+RUN npm install react-router-dom@6.22.1
 
 # add app
 COPY . ./

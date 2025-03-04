@@ -140,7 +140,7 @@ function SecureRoute(props) {
         !userSessionDetails.authenticated &&
         intl.formatMessage({ id: "notAuthenticated" })}
       {!loading && userSessionDetails.authenticated && permissionGranted && (
-        <>{!stillThereOpen && <Route {...props} />}</>
+        <>{!stillThereOpen && props.element}</>
       )}
     </>
   );

@@ -12,6 +12,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
 import { ConfigurationContext } from "../layout/Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import { useNavigate } from "react-router-dom";
 
 const LandingPage: React.FC = () => {
   const intl = useIntl();
@@ -25,6 +26,7 @@ const LandingPage: React.FC = () => {
   const { userSessionDetails } = useContext<UserSessionDetailsContext>(
     UserSessionDetailsContext,
   );
+  const navigate = useNavigate();
 
   interface UserSessionDetailsContext {
     userSessionDetails: any;
@@ -41,9 +43,9 @@ const LandingPage: React.FC = () => {
     ) {
       const refererUrl = document.referrer;
       if (refererUrl.endsWith("/landing")) {
-        window.location.href = "/";
+        navigate("/");
       } else {
-        window.location.href = refererUrl;
+        navigate(refererUrl);
       }
     }
     getFromOpenElisServer("/rest/user-test-sections/ALL", (response) => {
@@ -77,9 +79,9 @@ const LandingPage: React.FC = () => {
     }
     const refererUrl = document.referrer;
     if (refererUrl.endsWith("/landing")) {
-      window.location.href = "/";
+      navigate("/");
     } else {
-      window.location.href = refererUrl;
+      navigate(refererUrl);
     }
   };
 

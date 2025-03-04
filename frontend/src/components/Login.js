@@ -20,6 +20,7 @@ import { Formik } from "formik";
 import { AlertDialog, NotificationKinds } from "./common/CustomNotification";
 import UserSessionDetailsContext from "../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./layout/Layout";
+import { useNavigate } from "react-router-dom";
 
 function Login(props) {
   const { notificationVisible, addNotification, setNotificationVisible } =
@@ -29,6 +30,7 @@ function Login(props) {
   const { userSessionDetails, refresh } = useContext(UserSessionDetailsContext);
   const [submitting, setSubmitting] = useState(false);
   const firstInput = createRef();
+  const navigate = useNavigate();
 
   useEffect(() => {
     firstInput?.current?.focus();
@@ -42,7 +44,7 @@ function Login(props) {
 
   useEffect(() => {
     if (userSessionDetails.authenticated) {
-      window.location.href = "/";
+      navigate("/");
     }
   }, [userSessionDetails]);
 
@@ -90,7 +92,7 @@ function Login(props) {
         // get json response here
         let data = await response.json();
         if (response.status === 200) {
-          window.location.href = "/";
+          navigate("/");
         } else {
           addNotification({
             title: props.intl.formatMessage({
@@ -143,7 +145,7 @@ function Login(props) {
             renderIcon={HardwareSecurityModule}
             onClick={() => {
               console.log(url);
-              window.location.href = config.serverBaseUrl + "/" + url.value;
+              navigate(config.serverBaseUrl + "/" + url.value);
             }}
           >
             <FormattedMessage id="label.button.login.sso" />
@@ -243,7 +245,7 @@ function Login(props) {
                               data-cy="changePassword"
                               type="button"
                               onClick={() => {
-                                window.location.href = "/ChangePasswordLogin";
+                                navigate("/ChangePasswordLogin");
                               }}
                             >
                               <FormattedMessage id="label.button.changepassword" />
