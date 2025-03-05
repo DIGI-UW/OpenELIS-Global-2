@@ -12,7 +12,10 @@ import org.openelisglobal.method.valueholder.Method;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class MethodServiceTest extends BaseWebContextSensitiveTest {
+<<<<<<< HEAD
 
+=======
+>>>>>>> 53e0cb44c (Create MethodServiceTest class)
     @Autowired
     MethodService mService;
 
@@ -41,7 +44,10 @@ public class MethodServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllActiveMethodsReturnAllActiveMethods() throws Exception {
+<<<<<<< HEAD
 
+=======
+>>>>>>> 53e0cb44c (Create MethodServiceTest class)
         List<Method> methods = mService.getAllActiveMethods();
 
         Assert.assertEquals(3, methods.size());
@@ -51,17 +57,27 @@ public class MethodServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllInActiveMethodsReturnAllInActiveMethods() throws Exception {
+<<<<<<< HEAD
 
         List<Method> methods = mService.getAllInActiveMethods();
 
         Assert.assertEquals(1, methods.size());
         Assert.assertEquals("imagining", methods.get(0).getMethodName());
 
+=======
+        List<Method> methods = mService.getAllActiveMethods();
+
+        Assert.assertEquals(1, methods.size());
+        Assert.assertEquals("imagining", methods.get(0).getMethodName());
+>>>>>>> 53e0cb44c (Create MethodServiceTest class)
     }
 
     @Test
     public void refreshNamesRefreshNames() throws Exception {
+<<<<<<< HEAD
 
+=======
+>>>>>>> 53e0cb44c (Create MethodServiceTest class)
         mService.refreshNames();
 
         Map<String, String> methodMap = mService.getMethodUnitIdToNameMap();
@@ -71,9 +87,13 @@ public class MethodServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getMethodsReturnAllFilteredMethods() throws Exception {
+<<<<<<< HEAD
 
         List<Method> filteredMethods = mService.getMethods("t");
 
+=======
+        List<Method> filteredMethods = mService.getMethods("t");
+>>>>>>> 53e0cb44c (Create MethodServiceTest class)
         Assert.assertEquals(1, filteredMethods.size());
         Assert.assertEquals("therapy", filteredMethods.get(0).getMethodName());
     }
