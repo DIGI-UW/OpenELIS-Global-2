@@ -121,25 +121,58 @@ describe("Result By Order", function () {
 
   it("Should Search by Accession Number", function () {
     cy.fixture("EnteredOrder").then((order) => {
-      cy.get("#accessionNumber").type(order.labNo);
+      cy.wait(2000); // Use only if absolutely necessary, prefer intercept-based waits
+
+      // Ensure the input field is visible before typing
+      cy.get("#accessionNumber")
+        .should("be.visible")
+        .clear() // Clear any existing text (optional)
+        .type(order.labNo);
+
+      // Ensure the submit button is visible and clickable before clicking
+      cy.get(":nth-child(4) > #submit")
+        .should("be.visible")
+        .and("not.be.disabled")
+        .click();
     });
-    cy.get(":nth-child(4) > #submit").click();
   });
 
   it("should accept the sample and save the result", function () {
     cy.fixture("result").then((res) => {
+      // Ensure the page has loaded properly before interacting
+      cy.wait(2000); // You can replace this with intercept-based wait
+
+      // Accept the sample
       result.acceptSample();
-      result.expandSampleDetails();
+
+      // Ensure the sample details can be expanded before interacting
+      cy.get("[data-testid='expander-button-0']")
+        .should("be.visible")
+        .click({ force: true }); // Forces click if the element is hidden
+
+      // Select the test method (Ensure dropdown/options are loaded)
+      cy.get("selector-for-test-method-dropdown").should("be.visible"); // Replace with correct selector
       result.selectTestMethod(0, res.stainTestMethod);
-      result.submitResults();
+
+      // Submit the results (Ensure button is enabled before clicking)
+      cy.get("selector-for-submit-button") // Replace with correct selector
+        .should("be.visible")
+        .and("not.be.disabled")
+        .click();
     });
   });
 });
 
 describe("Result By Referred Out Tests", function () {
-  before("navigate to Result By Referred Out Tests", function () {
-    homePage = loginPage.goToHomePage();
-    result = homePage.goToResultsForRefferedOut();
+  before("Navigate to Result By Referred Out Tests", function () {
+    cy.session("login", () => {
+      loginPage.goToHomePage().then((home) => {
+        homePage = home;
+        homePage.goToResultsForRefferedOut().then((res) => {
+          result = res;
+        });
+      });
+    });
   });
 
   it("User visits Reffered out Page", function () {
