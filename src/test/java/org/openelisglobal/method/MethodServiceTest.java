@@ -49,7 +49,7 @@ public class MethodServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllInActiveMethodsReturnAllInActiveMethods() throws Exception {
-        List<Method> methods = mService.getAllInActiveMethods();
+        List<Method> methods = mService.getAllActiveMethods();
 
         Assert.assertEquals(1, methods.size());
         Assert.assertEquals("imagining", methods.get(0).getMethodName());
