@@ -89,13 +89,13 @@ public class PatientTypeServiceTest extends BaseWebContextSensitiveTest {
         patientType.setType("Test Type");
 
         String patientTypeId = typeService.insert(patientType);
-        PatientType savedPatientType = typeService.get(patientTypeId);
+        typeService.get(patientTypeId);
 
         PatientType patientType2 = new PatientType();
         patientType2.setDescription("Test2 Type Description");
         patientType2.setType("Test2 Type");
 
-        String patientTypeId2 = typeService.insert(patientType2);
+        typeService.insert(patientType2);
         Assert.assertEquals(3, typeService.getAll().size());
 
         List<PatientType> patientTypesPage = typeService.getPageOfPatientType(1);
