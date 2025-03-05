@@ -14,19 +14,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class MethodServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
-
     MethodService mService;
 
     @Before
-
     public void setUp() throws Exception {
-
         executeDataSetWithStateManagement("testdata/method.xml");
 
     }
 
     @Test
-
     public void createMethodShouldReturnNewMethod() throws Exception {
 
         Date date = Date.valueOf("1992-12-12");
@@ -52,7 +48,6 @@ public class MethodServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-
     public void getAllActiveMethodsReturnAllActiveMethods() throws Exception {
 
         List<Method> methods = mService.getAllActiveMethods();
@@ -66,7 +61,6 @@ public class MethodServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-
     public void getAllInActiveMethodsReturnAllInActiveMethods() throws Exception {
 
         List<Method> methods = mService.getAllInActiveMethods();
@@ -78,7 +72,6 @@ public class MethodServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-
     public void refreshNamesRefreshNames() throws Exception {
 
         mService.refreshNames();
@@ -90,7 +83,6 @@ public class MethodServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-
     public void getMethodsReturnAllFilteredMethods() throws Exception {
 
         List<Method> filteredMethods = mService.getMethods("t");
@@ -100,5 +92,4 @@ public class MethodServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals("therapy", filteredMethods.get(0).getMethodName());
 
     }
-
 }
