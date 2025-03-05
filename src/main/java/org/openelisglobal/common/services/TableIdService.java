@@ -16,7 +16,7 @@
 
 package org.openelisglobal.common.services;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;

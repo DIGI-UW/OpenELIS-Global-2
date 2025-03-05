@@ -6,7 +6,6 @@ import ca.uhn.fhir.context.FhirContext;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.ArrayList;
 import java.util.List;
-import javax.persistence.EntityManager;
 import lombok.NonNull;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
@@ -86,14 +85,14 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.sampleitem.", "org.openelisglobal.analysis", "org.openelisglobal.result.service",
         "org.openelisglobal.result.daoimpl", "org.openelisglobal.resultlimit", "org.openelisglobal.resultlimits",
         "org.openelisglobal.typeoftestresult", "org.openelisglobal.samplehuman", "org.openelisglobal.provider",
-        "org.openelisglobal.role", "org.openelisglobal.organization", "org.openelisglobal.region.service",
-        "org.openelisglobal.region.dao", "org.openelisglobal.program.service", "org.openelisglobal.program.dao",
-        "org.openelisglobal.systemuser.daoimpl", "org.openelisglobal.note.service",
+        "org.openelisglobal.provider.controller.rest", "org.openelisglobal.role", "org.openelisglobal.organization",
+        "org.openelisglobal.region.service", "org.openelisglobal.region.dao", "org.openelisglobal.program.service",
+        "org.openelisglobal.program.dao", "org.openelisglobal.systemuser.daoimpl", "org.openelisglobal.note.service",
         "org.openelisglobal.requester.service", "org.openelisglobal.requester.daoimpl",
         "org.openelisglobal.organization.dao", "org.openelisglobal.note.daoimpl",
         "org.openelisglobal.OrganizationService" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
-                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.provider.controller.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.provider.controller.*.java"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.dictionary.controller.*.java"),
@@ -400,12 +399,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public SystemUserService systemUserService() {
         return mock(SystemUserService.class);
-    }
-
-    @Bean
-    @Profile("test")
-    public EntityManager entityManager() {
-        return mock(EntityManager.class);
     }
 
     @Override

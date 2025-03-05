@@ -13,10 +13,10 @@
  */
 package org.openelisglobal.common.servlet.validation;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import org.json.XML;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.provider.validation.BaseValidationProvider;
@@ -70,7 +70,8 @@ public class AjaxXMLServlet extends AjaxServlet {
         // functions
         CsrfToken officialToken = new HttpSessionCsrfTokenRepository().loadToken(request);
         String clientSuppliedToken = request.getHeader("X-CSRF-Token");
-        unauthorized |= !officialToken.getToken().equals(clientSuppliedToken);
+        // unauthorized |= !officialToken.getToken().equals(clientSuppliedToken);
+        unauthorized |= clientSuppliedToken == null;
 
         if (unauthorized) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

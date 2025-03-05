@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.common.services;
 
+import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -21,7 +22,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import javax.annotation.PostConstruct;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
@@ -634,7 +634,17 @@ public class DisplayListService implements LocaleChangeListener {
 
         List<Provider> providerList = providerService.getAllActiveProviders();
         providerList.sort((e, f) -> {
-            return e.getPerson().getLastName().compareTo(f.getPerson().getLastName());
+            String lastNameE = e.getPerson().getLastName();
+            String lastNameF = f.getPerson().getLastName();
+
+            if (lastNameE == null && lastNameF == null)
+                return 0;
+            if (lastNameE == null)
+                return 1; // Put null values at the end
+            if (lastNameF == null)
+                return -1; // Put null values at the end
+
+            return lastNameE.compareTo(lastNameF);
         });
 
         for (Provider provider : providerList) {

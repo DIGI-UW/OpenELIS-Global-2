@@ -43,7 +43,7 @@
   "login.msg.password": "Mot de passe",
   "login.msg.username.missing": "Votre nom d'utilisateur requis",
   "login.msg.password.missing": "Votre mot de passe requis",
-  "login.notice.message": "Veuillez entrer dans le logiciel de Syst\u00E8me d'Information \u00C9lectronique de Laboratoire:",
+  "login.notice.message": "Avis : L’accès à ce service est réservé au personnel autorisé. Si vous n’avez pas l’autorisation expresse de l’administrateur, vous devez quitter immédiatement. Cette organisation interdit tout accès non autorisé, divulgation, duplication, modification, détournement, destruction, perte, utilisation abusive ou vol de ses informations.",
   "error.invalidcredentials": "L'identifiant ou le mot de passe est incorrect",
   "patient.label.modify": "Ajouter ou modifier un patient",
   "patient.label.info": "Informations sur les patients",

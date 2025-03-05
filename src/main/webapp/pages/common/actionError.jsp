@@ -1,7 +1,7 @@
 <%@ page language="java"
 	contentType="text/html; charset=UTF-8"
 	import="java.util.Iterator,
-		javax.servlet.jsp.JspException,
+		jakarta.servlet.jsp.JspException,
 		org.openelisglobal.common.action.IActionConstants,
 		org.openelisglobal.common.util.resources.ResourceLocator,
 		org.owasp.encoder.Encode,
@@ -9,9 +9,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 <!DOCTYPE html>
 
 <script>

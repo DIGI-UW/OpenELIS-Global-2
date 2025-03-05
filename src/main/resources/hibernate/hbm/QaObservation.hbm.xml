@@ -3,42 +3,42 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class
-		name="org.openelisglobal.qaevent.valueholder.QaObservation"
-		table="QA_OBSERVATION" optimistic-lock="version" dynamic-update="true">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<param name="sequence_name">qa_observation_seq</param>
-			</generator>
-		</id>
+    <class
+        name="org.openelisglobal.qaevent.valueholder.QaObservation"
+        table="QA_OBSERVATION" optimistic-lock="version" dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">qa_observation_seq</param>
+            </generator>
+        </id>
 
-		<version name="lastupdated" column="LASTUPDATED"
-			type="timestamp" access="field" />
+        <version name="lastupdated" column="LASTUPDATED"
+            type="timestamp" access="field" />
 
-		<property name="observedId"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="observed_id" precision="10" scale="0"
-				not-null="true" />
-		</property>
-		<property name="observedType" type="java.lang.String">
-			<column name="observed_type" length="30" not-null="true" />
-		</property>
+        <property name="observedId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="observed_id" precision="10" scale="0"
+                not-null="true" />
+        </property>
+        <property name="observedType" type="java.lang.String">
+            <column name="observed_type" length="30" not-null="true" />
+        </property>
 
-		<many-to-one name="observationType"
-			class="org.openelisglobal.qaevent.valueholder.QaObservationType"
-			fetch="select">
-			<column name="qa_observation_type_id" precision="10" scale="0"
-				not-null="true" />
-		</many-to-one>
+        <many-to-one name="observationType"
+            class="org.openelisglobal.qaevent.valueholder.QaObservationType"
+            fetch="select">
+            <column name="qa_observation_type_id" precision="10" scale="0"
+                not-null="true" />
+        </many-to-one>
 
-		<property name="valueType" type="java.lang.String">
-			<column name="value_type" length="1" not-null="true" />
-		</property>
-		<property name="value" type="java.lang.String">
-			<column name="value" length="1" />
-		</property>
-	</class>
+        <property name="valueType" type="java.lang.String">
+            <column name="value_type" length="1" not-null="true" />
+        </property>
+        <property name="value" type="java.lang.String">
+            <column name="value" length="1" />
+        </property>
+    </class>
 </hibernate-mapping>

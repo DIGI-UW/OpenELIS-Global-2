@@ -58,6 +58,8 @@ function SearchPatientForm(props) {
   const [searchFormValues, setSearchFormValues] = useState(
     SearchPatientFormValues,
   );
+  const [prevfirstName, setPrevfirstName] = useState("");
+  const [prevlastName, setPrevlastName] = useState("");
 
   const handlePatientImport = (patientId) => {
     console.log("Import button clicked, patientId:", patientId);
@@ -231,19 +233,31 @@ function SearchPatientForm(props) {
     setDob(date);
   };
 
-  const handleFirstNameChange = (event) => {
-    const regex = /^[A-Za-z]*$/;
-    if (!regex.test(event.target.value)) {
-      event.target.value = event.target.value.replace(/[^A-Za-z]/g, "");
+  function handleFirstNameChange(event) {
+    const regexFlags = "iu";
+    const regex = new RegExp(
+      configurationProperties.FIRST_NAME_REGEX,
+      regexFlags,
+    );
+    const value = event.target.value;
+    if (!regex.test(value)) {
+      event.target.value = prevfirstName;
     }
-  };
+    setPrevfirstName(event.target.value);
+  }
 
-  const handleLastNameChange = (event) => {
-    const regex = /^[A-Za-z]*$/;
-    if (!regex.test(event.target.value)) {
-      event.target.value = event.target.value.replace(/[^A-Za-z]/g, "");
+  function handleLastNameChange(event) {
+    const regexFlags = "iu";
+    const regex = new RegExp(
+      configurationProperties.LAST_NAME_REGEX,
+      regexFlags,
+    );
+    const value = event.target.value;
+    if (!regex.test(value)) {
+      event.target.value = prevlastName;
     }
-  };
+    setPrevlastName(event.target.value);
+  }
 
   const patientSelected = (e) => {
     const patientSelected = patientSearchResults.find((patient) => {
