@@ -26,7 +26,7 @@
 ### Download Consolidated Server project:
 
 - git clone
-  [https://github.com/I-TECH-UW/Consolidated-Server.git](https://github.com/I-TECH-UW/Consolidated-Server.git)
+  [https://github.com/DIGI-UW/Consolidated-Server.git](https://github.com/DIGI-UW/Consolidated-Server.git)
   --recurse-submodules
 - cd Consolidated-Server/
 - git checkout reduced-stack

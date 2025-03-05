@@ -71,10 +71,10 @@ This Option can be used where there is fast internet connectivity
 #### Steps to Run Online Setup
 
 1.  Clone the
-    [OpenELIS-Global docker](https://github.com/I-TECH-UW/openelis-docker)
+    [OpenELIS-Global docker](https://github.com/DIGI-UW/openelis-docker)
     repository.
 
-        git clone https://github.com/I-TECH-UW/openelis-docker.git
+        git clone https://github.com/DIGI-UW/openelis-docker.git
 
 1.  Move to the Project directory
 
@@ -103,10 +103,10 @@ This Option can be used where there is fast internet connectivity
 
 ##### Running OpenELIS-Global2 from source code in docker
 
-1.  Clone the [OpenELIS Global](https://github.com/I-TECH-UW/OpenELIS-Global-2)
+1.  Clone the [OpenELIS Global](https://github.com/DIGI-UW/OpenELIS-Global-2)
     repository.
 
-         git clone https://github.com/I-TECH-UW/OpenELIS-Global-2.git
+         git clone https://github.com/DIGI-UW/OpenELIS-Global-2.git
 
 1.  Build and Run the docker images from source code
 
