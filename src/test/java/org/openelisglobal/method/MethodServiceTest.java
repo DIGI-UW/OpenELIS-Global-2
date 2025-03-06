@@ -1,5 +1,7 @@
 package org.openelisglobal.method;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,9 +21,23 @@ public class MethodServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getData() {
+    public void getDataFromDataBase() {
         List<Method> methods = methodService.getAll();
         methods.forEach(sampleItem -> System.out.print(sampleItem.getMethodName() + " "));
+    }
+
+    @Test
+    public void getMethods_shouldReturnMethodsGivenCriteria() {
+        List<Method> methods = methodService.getMethods("PCR");
+        methods.forEach(sampleItem -> assertEquals("PCR", sampleItem.getMethodName()));
+    }
+
+    @Test
+    public void deleteMethod_shouldSetIsActiveToNo() {
+        Method method = methodService.get("1");
+        methodService.delete(method);
+        assertEquals("N", method.getIsActive());
+
     }
 
 }

@@ -38,10 +38,9 @@ public class MethodServiceImpl extends AuditableBaseObjectServiceImpl<Method, St
 
     @Override
     public void delete(Method method) {
-        Method oldMethod = get(method.getId());
-        oldMethod.setIsActive(IActionConstants.NO);
-        oldMethod.setSysUserId(method.getSysUserId());
-        updateDelete(oldMethod);
+        method.setIsActive(IActionConstants.NO);
+        method.setSysUserId(method.getSysUserId());
+        updateDelete(method);
     }
 
     @Override
