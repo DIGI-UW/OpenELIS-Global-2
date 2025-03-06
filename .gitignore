@@ -30,8 +30,7 @@ src/main/resources/adminPassword.txt
 /.apt_generated/
 */plugins/*.jar
 Patient/*
-volume/*
-tools/Liquibase-Outdated
 
 # tomcat/hapi_server.xml 
 volume/tomcat/hapi_server.xml
+tools/Liquibase-Outdated
