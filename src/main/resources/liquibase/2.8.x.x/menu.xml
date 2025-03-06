@@ -333,5 +333,19 @@
         </update>
     </changeSet>
 
+    <changeSet author="HuzaifaOmar" id="17">
+        <comment>Remove action URLs for Routine and Study menus</comment>
+
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value=""/>
+            <where>element_id = 'menu_reports_routine'</where>
+        </update>
+
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value=""/>
+            <where>element_id = 'menu_reports_study'</where>
+        </update>
+    </changeSet>
+
 
 </databaseChangeLog>
