@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <method id="1" name="PCR"
+        description="Polymerase Chain Reaction"
+        reporting_description="PCR Testing" is_active="Y"
+        active_begin="2020-01-01 00:00:00" active_end="2025-03-06 12:00:00"
+        lastupdated="2025-03-06 12:00:00" name_localization_id="1" />
+    <method id="2" name="ELISA"
+        description="Enzyme-Linked Immunosorbent Assay"
+        reporting_description="ELISA Analysis" is_active="Y"
+        active_begin="2019-05-15 00:00:00" active_end="2025-03-06 12:00:00"
+        lastupdated="2025-03-06 12:00:00" name_localization_id="2" />
+    <method id="3" name="Microscopy"
+        description="Microscopic Examination"
+        reporting_description="Microscopy Test" is_active="N"
+        active_begin="2018-10-10 00:00:00" active_end="2025-03-06 12:00:00"
+        lastupdated="2025-03-06 12:00:00" name_localization_id="3" />
+</dataset>
