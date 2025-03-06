@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.NonNull;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.openelisglobal.analysisqaevent.dao.AnalysisQaEventDAO;
+import org.openelisglobal.analysisqaevent.service.AnalysisQaEventService;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.citystatezip.service.CityStateZipService;
 import org.openelisglobal.common.services.IStatusService;
@@ -90,7 +92,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.systemuser.daoimpl", "org.openelisglobal.note.service",
         "org.openelisglobal.requester.service", "org.openelisglobal.requester.daoimpl",
         "org.openelisglobal.organization.dao", "org.openelisglobal.note.daoimpl",
-        "org.openelisglobal.OrganizationService" }, excludeFilters = {
+       "org.openelisglobal.OrganizationService",
+         "org.openelisglobal.analysisqaevent.dao" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.provider.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
@@ -407,4 +410,12 @@ public class AppTestConfig implements WebMvcConfigurer {
         converters.add(new StringHttpMessageConverter());
         converters.add(jsonConverter());
     }
+
+    @Bean
+    @Profile("test")
+    public AnalysisQaEventService analysisQaService() {
+        return mock(AnalysisQaEventService.class);
+    }
+
+
 }
