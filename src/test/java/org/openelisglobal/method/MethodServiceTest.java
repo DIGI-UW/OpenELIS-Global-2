@@ -40,4 +40,19 @@ public class MethodServiceTest extends BaseWebContextSensitiveTest {
 
     }
 
+    @Test
+    public void getAllActiveMethods_shouldReturnActiveMethods() {
+        List<Method> methods = methodService.getAllActiveMethods();
+        methods.forEach(sampleItem -> assertEquals("Y", sampleItem.getIsActive()));
+        assertEquals(2, methods.size());
+
+    }
+
+    @Test
+    public void getAllInActiveMethods_shouldReturnInActiveMethods() {
+        List<Method> methods = methodService.getAllInActiveMethods();
+        methods.forEach(sampleItem -> assertEquals("N", sampleItem.getIsActive()));
+        assertEquals(2, methods.size());
+    }
+
 }

@@ -15,4 +15,10 @@
         reporting_description="Microscopy Test" is_active="N"
         active_begin="2018-10-10 00:00:00" active_end="2025-03-06 12:00:00"
         lastupdated="2025-03-06 12:00:00" name_localization_id="3" />
+    <method id="4" name="Test Method"
+        description="Test Method Description"
+        reporting_description="Test Method Reporting Description"
+        is_active="N" active_begin="1998-03-06 00:00:00"
+        active_end="2020-12-31 12:00:00" lastupdated="2025-03-06 00:00:00"
+        name_localization_id="4" />
 </dataset>
