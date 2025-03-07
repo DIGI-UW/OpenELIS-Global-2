@@ -14,7 +14,5 @@ public interface MethodService extends BaseObjectService<Method, String> {
 
     void refreshNames();
 
-    Map<String, String> getMethodUnitIdToNameMap();
-
     List<Method> getAllActiveMethods();
 }
