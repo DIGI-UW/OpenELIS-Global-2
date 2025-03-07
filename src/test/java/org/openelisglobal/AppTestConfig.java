@@ -4,7 +4,9 @@ import static org.mockito.Mockito.mock;
 
 import ca.uhn.fhir.context.FhirContext;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import java.util.ArrayList;
 import java.util.List;
+import lombok.NonNull;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.citystatezip.service.CityStateZipService;
@@ -17,18 +19,34 @@ import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.externalconnections.service.BasicAuthenticationDataService;
 import org.openelisglobal.externalconnections.service.ExternalConnectionService;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.localization.dao.LocalizationDAO;
 import org.openelisglobal.localization.service.LocalizationServiceImpl;
 import org.openelisglobal.notification.service.AnalysisNotificationConfigService;
 import org.openelisglobal.notification.service.TestNotificationConfigService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
+import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
+import org.openelisglobal.organization.service.OrganizationTypeService;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panelitem.service.PanelItemService;
+import org.openelisglobal.program.service.ImmunohistochemistrySampleService;
+import org.openelisglobal.referral.service.ReferralResultService;
+import org.openelisglobal.referral.service.ReferralService;
+import org.openelisglobal.referral.service.ReferralSetService;
+import org.openelisglobal.requester.service.RequesterTypeService;
 import org.openelisglobal.sample.service.SampleEditService;
 import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
+import org.openelisglobal.siteinformation.service.SiteInformationService;
+import org.openelisglobal.statusofsample.service.StatusOfSampleService;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemusersection.service.SystemUserSectionService;
+import org.openelisglobal.test.dao.TestDAO;
 import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
+import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.context.MessageSource;
@@ -38,6 +56,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
+import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
@@ -70,8 +89,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.program.dao", "org.openelisglobal.systemuser.daoimpl", "org.openelisglobal.note.service",
         "org.openelisglobal.requester.service", "org.openelisglobal.requester.daoimpl",
         "org.openelisglobal.organization.dao", "org.openelisglobal.note.daoimpl",
-        "org.openelisglobal.sampleorganization", "org.openelisglobal.analyte.service",
-        "org.openelisglobal.analyte.daoimp", "org.openelisglobal.analyte" }, excludeFilters = {
+        "org.openelisglobal.sampleorganization", "org.openelisglobal.menu.controller", "org.openelisglobal.analyte",
+        "org.openelisglobal.analyte.service" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.provider.controller.*.java"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
@@ -116,7 +135,7 @@ public class AppTestConfig implements WebMvcConfigurer {
 
     @Bean()
     @Profile("test")
-    public FhirTransformService fhirTransformService() {
+    public FhirTransformService fhirTransformServicehirTransformService() {
         return mock(FhirTransformService.class);
     }
 
@@ -124,6 +143,12 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public LocalizationServiceImpl localise() {
         return mock(LocalizationServiceImpl.class);
+    }
+
+    @Bean()
+    @Profile("test")
+    public FhirTransformService fhirTransformService() {
+        return mock(FhirTransformService.class);
     }
 
     @Bean()
@@ -140,7 +165,7 @@ public class AppTestConfig implements WebMvcConfigurer {
 
     @Bean()
     @Profile("test")
-    public SystemUserSectionService systemUserSectionService() {
+    public SystemUserSectionService stemUserSectionService() {
         return mock(SystemUserSectionService.class);
     }
 
@@ -177,6 +202,12 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean()
     public SampleEditService sampleEditService() {
         return mock(SampleEditService.class);
+    }
+
+    @Bean()
+    @Profile("test")
+    public BasicAuthenticationDataService basicAuthenticationDataService() {
+        return mock(BasicAuthenticationDataService.class);
     }
 
     @Bean()
@@ -223,14 +254,20 @@ public class AppTestConfig implements WebMvcConfigurer {
 
     @Bean()
     @Profile("test")
-    public AuditTrailService auditTrailService() {
-        return mock(AuditTrailService.class);
+    public ImmunohistochemistrySampleService immunohistochemistrySampleService() {
+        return mock(ImmunohistochemistrySampleService.class);
     }
 
     @Bean()
     @Profile("test")
-    public Versioning versioning() {
-        return mock(Versioning.class);
+    public ObservationHistoryTypeService observationHistoryTypeService() {
+        return mock(ObservationHistoryTypeService.class);
+    }
+
+    @Bean()
+    @Profile("test")
+    public ReferralResultService ReferralResultService() {
+        return mock(ReferralResultService.class);
     }
 
     @Bean()
@@ -241,38 +278,127 @@ public class AppTestConfig implements WebMvcConfigurer {
 
     @Bean()
     @Profile("test")
+    public ReferralService referralService() {
+        return mock(ReferralService.class);
+    }
+
+    @Bean()
+    @Profile("test")
+    public ReferralSetService ReferralSetService() {
+        return mock(ReferralSetService.class);
+    }
+
+    @Bean()
+    @Profile("test")
+    public TestServiceImpl testServiceImpl() {
+        return mock(TestServiceImpl.class);
+    }
+
+    @Bean()
+    @Profile("test")
+    public AuditTrailService auditTrailService() {
+        return mock(AuditTrailService.class);
+    }
+
+    @Bean()
+    @Profile("test")
+    public TestDAO testDao() {
+        return mock(TestDAO.class);
+    }
+
+    @Bean()
+    @Profile("test")
+    public TestResultService testResultService() {
+        return mock(TestResultService.class);
+    }
+
+    @Bean()
+    @Profile("test")
+    public TypeOfSampleTestService typeOfSampleTestService() {
+        return mock(TypeOfSampleTestService.class);
+    }
+
+    @Bean()
+    @Profile("test")
+    public TypeOfSampleService typeOfSample() {
+        return mock(TypeOfSampleService.class);
+    }
+
+    @Bean()
+    @Profile("test")
+    public Versioning versioning() {
+        return mock(Versioning.class);
+    }
+
+    @Bean()
+    @Profile("test")
+    public SiteInformationService siteInformationService() {
+        return mock(SiteInformationService.class);
+    }
+
+    @Bean
+    @Profile("test")
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    // Jackson Configuration
     @Bean
-    public Jackson2ObjectMapperBuilder jackson2ObjectMapperBuilder() {
-        return Jackson2ObjectMapperBuilder.json().serializationInclusion(JsonInclude.Include.NON_NULL);
+    public MessageSource messageSource() {
+        ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
+        messageSource.setBasename("classpath:/languages/message");
+        messageSource.setDefaultEncoding("UTF-8");
+        messageSource.setUseCodeAsDefaultMessage(true);
+        MessageUtil.setMessageSource(messageSource);
+        return messageSource;
     }
 
     @Bean
-    public MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter() {
-        return new MappingJackson2HttpMessageConverter(jackson2ObjectMapperBuilder().build());
+    public MappingJackson2HttpMessageConverter jsonConverter() {
+        List<MediaType> supportedMediaTypes = new ArrayList<>();
+        supportedMediaTypes.add(MediaType.APPLICATION_JSON);
+
+        Jackson2ObjectMapperBuilder builder = new Jackson2ObjectMapperBuilder();
+        builder.serializationInclusion(JsonInclude.Include.NON_NULL);
+
+        MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter(builder.build());
+        jsonConverter.setSupportedMediaTypes(supportedMediaTypes);
+        return jsonConverter;
     }
 
-    @Override
-    public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
-        converters.add(new StringHttpMessageConverter());
-        converters.add(mappingJackson2HttpMessageConverter());
-    }
-
-    @Bean
+    @Bean()
     @Profile("test")
-    public IStatusService statusService() {
+    public IStatusService iStatusService() {
         return mock(IStatusService.class);
     }
 
+    @Bean()
+    @Profile("Test")
+    public RequesterTypeService RequesterTypeService() {
+        return mock(RequesterTypeService.class);
+    }
+
+    @Bean()
+    @Profile("test")
+    public StatusOfSampleService statusOfSampleService() {
+        return mock(StatusOfSampleService.class);
+    }
+
+    @Bean()
+    @Profile("Test")
+    public OrganizationTypeService OrganizationTypeService() {
+        return mock(OrganizationTypeService.class);
+    }
+
     @Bean
     @Profile("test")
-    public MessageSource messageSource() {
-        ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
-        messageSource.setBasenames("classpath:messages/messages", "classpath:messages/validation");
-        return messageSource;
+    public SystemUserService systemUserService() {
+        return mock(SystemUserService.class);
+    }
+
+    @Override
+    public void configureMessageConverters(@NonNull List<HttpMessageConverter<?>> converters) {
+        WebMvcConfigurer.super.configureMessageConverters(converters);
+        converters.add(new StringHttpMessageConverter());
+        converters.add(jsonConverter());
     }
 }
