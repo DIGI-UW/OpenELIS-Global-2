@@ -59,9 +59,9 @@ public class AnalyteServiceImpl extends AuditableBaseObjectServiceImpl<Analyte, 
 
     @Override
     public void delete(Analyte analyte) {
-        Analyte oldData = get(analyte.getId());
-        oldData.setIsActive(IActionConstants.NO);
-        oldData.setSysUserId(analyte.getSysUserId());
-        updateDelete(oldData);
+        analyte.setIsActive(IActionConstants.NO);
+        analyte.setSysUserId(analyte.getSysUserId());
+        updateDelete(analyte);
     }
+
 }
