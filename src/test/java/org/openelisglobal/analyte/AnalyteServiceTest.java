@@ -1,6 +1,7 @@
 package org.openelisglobal.analyte;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.util.List;
 import org.junit.Before;
@@ -80,9 +81,14 @@ public class AnalyteServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void delete_shouldDeleteAnalyte() {
+
         Analyte analyte = analyteService.get("1");
+        assertNotNull(analyte);
+        assertEquals("Y", analyte.getIsActive());
+
         analyteService.delete(analyte);
         Analyte deleted = analyteService.get("1");
+        assertNotNull(deleted);
         assertEquals("N", deleted.getIsActive());
     }
 
