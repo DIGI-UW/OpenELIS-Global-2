@@ -39,10 +39,10 @@
             <column name="IS_EMPLOYEE" length="1" not-null="true" />
         </property>
     </class>
-<!-- 	<query name="systemuser.getNext"> -->
-<!-- 		from SystemUser su order by su.lastName, su.firstName -->
-<!-- 	</query> -->
-<!-- 	<query name="systemuser.getPrevious"> -->
-<!-- 		from SystemUser su order by su.lastName desc, su.firstName desc -->
-<!-- 	</query> -->
+    <!-- <query name="systemuser.getNext"> -->
+    <!-- from SystemUser su order by su.lastName, su.firstName -->
+    <!-- </query> -->
+    <!-- <query name="systemuser.getPrevious"> -->
+    <!-- from SystemUser su order by su.lastName desc, su.firstName desc -->
+    <!-- </query> -->
 </hibernate-mapping>

@@ -2,14 +2,12 @@ import React from "react";
 import { Grid, Column, Section, Tag, Tile } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import Avatar from "react-avatar";
-import GeoPattern from "geopattern";
 import { openPatientResults } from "./searchService";
 
 const SearchOutput = ({ patientData, className = "patientHead" }) => {
   return (
     <div>
       {patientData.map((patient) => {
-        const patternUrl = GeoPattern.generate(patient.id).toDataUri();
         return (
           <Column lg={16} md={8} sm={4} key={patient.id}>
             <Section>
@@ -28,7 +26,7 @@ const SearchOutput = ({ patientData, className = "patientHead" }) => {
                         size={patient.referringFacility ? "50" : "40"}
                         textSizeRatio={2}
                         style={{
-                          backgroundImage: `url(${patternUrl})`,
+                          backgroundImage: `url('/images/patient-background.svg')`,
                           marginTop: "5px",
                         }}
                       />

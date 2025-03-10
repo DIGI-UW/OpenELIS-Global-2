@@ -53,8 +53,8 @@
             column="significant_digits" />
         <property name="grouping" type="java.lang.Integer"
             column="grouping" />
-        <property name="fhirUuid"
-            column="fhir_uuid" type="java.util.UUID" />
+        <property name="fhirUuid" column="fhir_uuid"
+            type="java.util.UUID" />
         <many-to-one name="parentResult"
             class="org.openelisglobal.result.valueholder.Result" fetch="select">
             <column name="parent_id" precision="10" scale="0" />

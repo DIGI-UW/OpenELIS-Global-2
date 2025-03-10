@@ -1,5 +1,8 @@
 package org.openelisglobal.systemuser.controller.rest;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -13,9 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.annotation.PostConstruct;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.json.JSONArray;
@@ -113,7 +113,7 @@ public class UnifiedSystemUserRestController extends BaseController {
         binder.setAllowedFields(ALLOWED_FIELDS);
     }
 
-    @GetMapping(value = "/rest/users/{roleName}")
+    @GetMapping(value = "/users/{roleName}")
     @ResponseBody
     public List<IdValuePair> getUsersWithRole(@PathVariable String roleName) {
         List<SystemUser> users = systemUserService.getAll();
@@ -121,7 +121,7 @@ public class UnifiedSystemUserRestController extends BaseController {
                 .map(e -> new IdValuePair(e.getId(), e.getDisplayName())).collect(Collectors.toList());
     }
 
-    @GetMapping(value = "/rest/users")
+    @GetMapping(value = "/users")
     @ResponseBody
     public List<IdValuePair> getUsersWithRole() {
         List<SystemUser> users = systemUserService.getAll();

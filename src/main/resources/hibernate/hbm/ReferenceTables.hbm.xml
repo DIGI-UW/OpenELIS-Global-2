@@ -29,10 +29,10 @@
         </property>
 
     </class>
-<!-- 	<query name="referencetables.getNext"> -->
-<!-- 		from ReferenceTables r order by r.tableName -->
-<!-- 	</query> -->
-<!-- 	<query name="referencetables.getPrevious"> -->
-<!-- 		from ReferenceTables r order by r.tableName -->
-<!-- 	</query> -->
+    <!-- <query name="referencetables.getNext"> -->
+    <!-- from ReferenceTables r order by r.tableName -->
+    <!-- </query> -->
+    <!-- <query name="referencetables.getPrevious"> -->
+    <!-- from ReferenceTables r order by r.tableName -->
+    <!-- </query> -->
 </hibernate-mapping>

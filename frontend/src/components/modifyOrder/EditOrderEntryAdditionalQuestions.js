@@ -12,10 +12,8 @@ import "../../index.css";
 import "../../App.css";
 import "../Style.css";
 import { getFromOpenElisServer } from "../utils/Utils";
-import {
-  Questionnaire,
-  ProgramSelect,
-} from "../addOrder/OrderEntryAdditionalQuestions";
+import { ProgramSelect } from "../addOrder/OrderEntryAdditionalQuestions";
+import Questionnaire from "../common/Questionnaire";
 
 const EditOrderEntryAdditionalQuestions = ({
   orderFormValues,

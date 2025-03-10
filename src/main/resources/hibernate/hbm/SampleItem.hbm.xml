@@ -59,8 +59,8 @@
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
         <property name="collector" column="collector"
             type="java.lang.String" />
-        <property name="fhirUuid"
-            column="fhir_uuid" type="java.util.UUID" />
+        <property name="fhirUuid" column="fhir_uuid"
+            type="java.util.UUID" />
         <property name="rejected" column="rejected"
             type="java.lang.Boolean" />
         <property name="rejectReasonId" column="reject_reason_id"

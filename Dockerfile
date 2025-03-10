@@ -1,7 +1,7 @@
 ##
 # Build Stage
 #
-FROM maven:3-jdk-11 AS build
+FROM maven:3-eclipse-temurin-21 AS build
 
 RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     --mount=target=/var/cache/apt,type=cache,sharing=locked \
@@ -20,17 +20,17 @@ RUN ./install/createDefaultPassword.sh -c -p ${DEFAULT_PW}
 ##
 # Build DataExport
 #
-# COPY ./dataexport /build/dataexport
-# WORKDIR /build/dataexport/dataexport-core
-# RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-#     mvn dependency:go-offline 
-# RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-#     mvn clean install -DskipTests
-# WORKDIR /build/dataexport/
-# RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-#     mvn dependency:go-offline 
-# RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-#     mvn clean install -DskipTests
+COPY ./dataexport /build/dataexport
+WORKDIR /build/dataexport/dataexport-core
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+    mvn dependency:go-offline 
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+    mvn clean install -DskipTests
+WORKDIR /build/dataexport/
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+    mvn dependency:go-offline 
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+    mvn clean install -DskipTests
 
 ##
 # Build the Project
@@ -49,7 +49,7 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
 ##
 # Run Stage
 #
-FROM tomcat:8.5-jdk11
+FROM tomcat:10-jre21
 
 COPY install/createDefaultPassword.sh ./
 

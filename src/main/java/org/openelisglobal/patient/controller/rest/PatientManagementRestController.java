@@ -1,9 +1,9 @@
 package org.openelisglobal.patient.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.StaleObjectStateException;
@@ -47,7 +47,7 @@ public class PatientManagementRestController extends BaseRestController {
     @Autowired
     FhirTransformService fhirTransformService;
 
-    @PostMapping(value = "patient-management", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "PatientManagement", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public void savepatient(HttpServletRequest request,
             @Validated(SamplePatientEntryForm.SamplePatientEntry.class) @RequestBody PatientManagementInfo patientInfo,

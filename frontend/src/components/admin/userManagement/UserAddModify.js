@@ -118,14 +118,16 @@ function UserAddModify() {
       setIsLoading(true);
     } else {
       setUserData(res);
-      setValidation({
-        validatepassword: true,
-        password: true,
-        password2: true,
-        loginName: true,
-        firstName: true,
-        secondName: true,
-      });
+      if (res.loginUserId) {
+        setValidation({
+          validatepassword: true,
+          password: true,
+          password2: true,
+          loginName: true,
+          firstName: true,
+          secondName: true,
+        });
+      }
       var KeyList = [];
       Object.keys(res.selectedTestSectionLabUnits).map((key) =>
         KeyList.push(key),
@@ -137,7 +139,7 @@ function UserAddModify() {
   useEffect(() => {
     componentMounted.current = true;
     setIsLoading(true);
-    getFromOpenElisServer(`/rest/rest/users`, handleCopyUserPermissionsList);
+    getFromOpenElisServer(`/rest/users`, handleCopyUserPermissionsList);
     return () => {
       componentMounted.current = false;
       setIsLoading(false);
@@ -377,7 +379,7 @@ function UserAddModify() {
     const value = e.target.value.trim();
     const isValid = loginNameRegex.test(value);
 
-    if (value && !isValid) {
+    if (!value || (value && !isValid)) {
       if (!notificationVisible) {
         setNotificationVisible(true);
         addNotification({
@@ -484,7 +486,7 @@ function UserAddModify() {
     const value = e.target.value;
     const isValid = nameRegex.test(value);
 
-    if (value && !isValid) {
+    if (!value || (value && !isValid)) {
       if (!notificationVisible) {
         setNotificationVisible(true);
         addNotification({
@@ -517,7 +519,7 @@ function UserAddModify() {
     const value = e.target.value;
     const isValid = nameRegex.test(value);
 
-    if (value && !isValid) {
+    if (!value || (value && !isValid)) {
       if (!notificationVisible) {
         setNotificationVisible(true);
         addNotification({
@@ -913,8 +915,9 @@ function UserAddModify() {
                           !passwordPatternRegex.test(
                             userDataShow.confirmPassword,
                           )) ||
-                        userDataShow.confirmPassword !==
-                          userDataShow.userPassword
+                        (passwordTouched.confirmPassword &&
+                          userDataShow.confirmPassword !==
+                            userDataShow.userPassword)
                       }
                       // invalidText={errors.order}
                       value={
@@ -1183,7 +1186,7 @@ function UserAddModify() {
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
                     <>
-                      <FormattedMessage id="systemuserrole.copypermisions" /> :
+                      <FormattedMessage id="systemuserrole.copypermissions" /> :
                     </>
                   </Column>
                   <Column lg={8} md={4} sm={4}>

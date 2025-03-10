@@ -40,12 +40,12 @@
             type="java.lang.String" />
     </class>
 
-<!-- 	<query name="statusofsample.getNext"> -->
-<!-- 		from StatusOfSample sos order by sos.statusType, sos.code, sos.description -->
-<!-- 	</query> -->
-<!-- 	<query name="statusofsample.getPrevious"> -->
-<!-- 		from StatusOfSample sos order by sos.statusType desc, sos.code desc, -->
-<!-- 		sos.description desc -->
-<!-- 	</query> -->
+    <!-- <query name="statusofsample.getNext"> -->
+    <!-- from StatusOfSample sos order by sos.statusType, sos.code, sos.description -->
+    <!-- </query> -->
+    <!-- <query name="statusofsample.getPrevious"> -->
+    <!-- from StatusOfSample sos order by sos.statusType desc, sos.code desc, -->
+    <!-- sos.description desc -->
+    <!-- </query> -->
 
 </hibernate-mapping>

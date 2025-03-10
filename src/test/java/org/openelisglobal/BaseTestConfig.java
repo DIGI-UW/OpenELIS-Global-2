@@ -1,7 +1,7 @@
 package org.openelisglobal;
 
+import jakarta.persistence.EntityManagerFactory;
 import java.io.IOException;
-import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
 import liquibase.integration.spring.SpringLiquibase;
 import org.springframework.beans.factory.annotation.Autowired;

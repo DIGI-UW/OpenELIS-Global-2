@@ -3,9 +3,9 @@
 	import="org.openelisglobal.common.action.IActionConstants"%>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
 <c:set var="success" value="${success || param.forward == 'success'}" />
 <c:if test="${success || (not empty requestScope[Constants.SUCCESS_MSG])}">

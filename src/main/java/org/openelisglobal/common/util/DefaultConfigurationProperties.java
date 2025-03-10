@@ -16,6 +16,7 @@ package org.openelisglobal.common.util;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -34,7 +35,6 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Pattern;
-import javax.annotation.PostConstruct;
 import org.apache.commons.lang3.EnumUtils;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
@@ -306,6 +306,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.USE_ALPHANUM_ACCESSION_PREFIX, "false");
         properties.setPropertyValue(Property.REQUIRE_LAB_UNIT_AT_LOGIN, "false");
         properties.setPropertyValue(Property.ENABLE_CLIENT_REGISTRY, "false");
+        properties.setPropertyValue(Property.BAR_CODE_TYPE, "BARCODE");
         return properties;
     }
 

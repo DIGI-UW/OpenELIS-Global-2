@@ -2,9 +2,9 @@ package org.openelisglobal.resultvalidation.controller.rest;
 
 import static org.apache.commons.validator.GenericValidator.isBlankOrNull;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -132,7 +132,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         binder.setAllowedFields(ALLOWED_FIELDS);
     }
 
-    @GetMapping(value = "accessionValidation", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "AccessionValidation", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResultValidationForm showAccessionValidationRange(HttpServletRequest request,
             @RequestParam(required = false) String accessionNumber, @RequestParam(required = false) String date,
@@ -239,7 +239,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         return validationStatus;
     }
 
-    @PostMapping(value = "accessionValidationByRangeUpdate", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "AccessionValidation", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResultValidationForm showAccessionValidationRangeSave(HttpServletRequest request,
             @Validated(ResultValidationForm.ResultValidation.class) @RequestBody ResultValidationForm form,

@@ -19,7 +19,7 @@ class WorkPlan {
     return cy.get("button#print");
   }
   getWorkPlanResultsTable() {
-    return cy.get(".cds--data-table.cds--data-table--sm");
+    return cy.get('[data-cy="workplanResultsTable"]');
   }
 }
 export default WorkPlan;

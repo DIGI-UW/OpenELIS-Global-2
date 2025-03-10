@@ -91,17 +91,6 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals("Y", dictionary.getIsActive());
     }
 
-//    @Test
-//    This fails with java.lang.AssertionError: Values should be different. Actual: 0
-//    public void getDictionaryEntrysByCategoryAbbreviation_shouldGetDictEntrysByCategoryAbbreviation() {
-//        List<Dictionary> dictionaries = dictionaryService.getDictionaryEntrysByCategoryAbbreviation("Dictionary", "CA2");
-//        Assert.assertNotEquals(0, dictionaries.size());
-//
-//        Assert.assertEquals("Dictionary Entry 2", dictionaries.get(0).getDictEntry());
-//        Assert.assertEquals("N", dictionaries.get(0).getIsActive());
-//        Assert.assertEquals("DE2", dictionaries.get(0).getLocalAbbreviation());
-//    }
-
     @Test
     public void getDictionaryEntrysByNameAndCategoryDescription_shouldGetDictionaryEntrysByNameAndCategoryDescription() {
         Dictionary dictionary = dictionaryService.getDictionaryEntrysByNameAndCategoryDescription("Dictionary Entry 1",
@@ -189,5 +178,26 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
 
         Assert.assertEquals("Y", dictionaryService.get("1").getIsActive());
         Assert.assertEquals("INFLUENZA VIRUS A RNA DETECTEDetest", dictionaryService.get("1").getDictEntry());
+    }
+
+    @Test
+    public void createDictionary_shouldCreateNewDictionary() throws Exception {
+        Dictionary dict = createDictionaryObject();
+
+        String inserted = dictionaryService.insert(dict);
+        Dictionary dictionary = dictionaryService.get(inserted);
+
+        Assert.assertEquals("Dictionary Entry 4", dictionary.getDictEntry());
+        Assert.assertEquals("Y", dictionary.getIsActive());
+    }
+
+    private Dictionary createDictionaryObject() {
+        Dictionary dictionary = new Dictionary();
+        dictionary.setSortOrder(4);
+        dictionary.setDictionaryCategory(dictionaryCategoryService.getDictionaryCategoryByName("CA3"));
+        dictionary.setDictEntry("Dictionary Entry 4");
+        dictionary.setIsActive("Y");
+        dictionary.setLocalAbbreviation("DE4");
+        return dictionary;
     }
 }

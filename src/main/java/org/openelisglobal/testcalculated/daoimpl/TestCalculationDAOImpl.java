@@ -1,6 +1,6 @@
 package org.openelisglobal.testcalculated.daoimpl;
 
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.testcalculated.dao.TestCalculationDAO;
 import org.openelisglobal.testcalculated.valueholder.Calculation;

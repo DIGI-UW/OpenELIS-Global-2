@@ -13,11 +13,11 @@
  */
 package org.openelisglobal.common.provider.autocomplete;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.testtrailer.service.TestTrailerService;
 
@@ -41,8 +41,8 @@ public class TestTrailerAutocompleteProvider extends BaseAutocompleteProvider {
     protected TestTrailerService testTrailerService = SpringContext.getBean(TestTrailerService.class);
 
     /**
-     * @see org.ajaxtags.demo.servlet.BaseAjaxServlet#getXmlContent(javax.servlet.http.HttpServletRequest,
-     *      javax.servlet.http.HttpServletResponse)
+     * @see org.ajaxtags.demo.servlet.BaseAjaxServlet#getXmlContent(jakarta.servlet.http.HttpServletRequest,
+     *      jakarta.servlet.http.HttpServletResponse)
      */
     public List processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {

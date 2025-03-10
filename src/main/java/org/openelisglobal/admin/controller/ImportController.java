@@ -14,19 +14,38 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/import")
 public class ImportController {
 
+    private enum ResourceType {
+        ORGANIZATION, PROVIDER
+    }
+
+    private void importDataFromFhir(ResourceType resourceType)
+            throws FhirLocalPersistingException, FhirGeneralException, IOException {
+        switch (resourceType) {
+        case ORGANIZATION:
+            SpringContext.getBean(OrganizationImportService.class).importOrganizationList();
+            break;
+        case PROVIDER:
+            SpringContext.getBean(ProviderImportService.class).importPractitionerList();
+            break;
+        default:
+            // Handle invalid resource type
+            throw new UnsupportedOperationException("Unsupported resource type");
+        }
+    }
+
     @GetMapping(value = "/all")
     public void importAll() throws FhirLocalPersistingException, FhirGeneralException, IOException {
-        SpringContext.getBean(OrganizationImportService.class).importOrganizationList();
-        SpringContext.getBean(ProviderImportService.class).importPractitionerList();
+        importDataFromFhir(ResourceType.ORGANIZATION);
+        importDataFromFhir(ResourceType.PROVIDER);
     }
 
     @GetMapping(value = "/organization")
     public void importOrganizations() throws FhirLocalPersistingException, FhirGeneralException, IOException {
-        SpringContext.getBean(OrganizationImportService.class).importOrganizationList();
+        importDataFromFhir(ResourceType.ORGANIZATION);
     }
 
     @GetMapping(value = "/provider")
     public void importProviders() throws FhirLocalPersistingException, FhirGeneralException, IOException {
-        SpringContext.getBean(ProviderImportService.class).importPractitionerList();
+        importDataFromFhir(ResourceType.PROVIDER);
     }
 }

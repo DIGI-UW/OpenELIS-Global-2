@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet author="moses_mutesa" id="1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'BarCodeType'; </sqlCheck>
+        </preConditions>
+        <comment>add Config to enable Selecting Bar Code Type</comment>
+         <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq" />
+            <column name="description" value="Bar Code Type" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="BarCode" />
+            <column name="name" value="BarCodeType" />
+        </insert>
+         <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="BARCODE" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'BarCodeType' limit 1)" />
+        </insert>
+         <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="QR" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'BarCodeType' limit 1)" />
+        </insert>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="BarCodeType" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Configure Bar Code Type" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')" />
+            <column name="value_type" value="dictionary" />
+             <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'BarCodeType' limit 1)" />
+            <column name="value" value="BARCODE" />
+            <column name="group" value="0" />
+        </insert>
+    </changeSet>
+</databaseChangeLog>
