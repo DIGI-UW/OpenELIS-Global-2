@@ -1,8 +1,8 @@
 package org.openelisglobal.qaevent.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.*;
 import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
 import org.openelisglobal.common.rest.BaseRestController;

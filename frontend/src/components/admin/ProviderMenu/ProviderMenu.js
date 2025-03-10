@@ -151,7 +151,7 @@ function ProviderMenu() {
             lastName: item.person.lastName,
             firstName: item.person.firstName,
             active: item.active,
-            telephone: item.person.telephone,
+            telephone: item.person.workPhone,
             fax: item.person.fax,
           };
         },
@@ -311,6 +311,54 @@ function ProviderMenu() {
     window.location.reload();
   };
 
+  const handleLastNameChange = (event) => {
+    const value = event.target.value;
+    if (value === "" || /^[A-Za-z\s]+$/.test(value)) {
+      setLastName(value);
+    }
+  };
+
+  const handleFirstNameChange = (event) => {
+    const value = event.target.value;
+    if (value === "" || /^[A-Za-z\s]+$/.test(value)) {
+      setFirstName(value);
+    }
+  };
+
+  const handleTelephoneChange = (event) => {
+    const value = event.target.value;
+    if (value === "" || (/^\d+$/.test(value) && value.length <= 10)) {
+      setTelephone(value);
+    }
+  };
+
+  const handleFaxChange = (event) => {
+    const value = event.target.value;
+    if (value === "" || (/^\d+$/.test(value) && value.length <= 10)) {
+      setFax(value);
+    }
+  };
+
+  const getVisibleRows = () => {
+    const currentList = isSearching
+      ? serachedProviderMenuListShow
+      : providerMenuListShow;
+    return currentList.slice((page - 1) * pageSize, page * pageSize);
+  };
+
+  const handleSelectAll = (checked) => {
+    const visibleRows = getVisibleRows();
+    if (checked) {
+      const newSelectedIds = [
+        ...new Set([...selectedRowIds, ...visibleRows.map((row) => row.id)]),
+      ];
+      setSelectedRowIds(newSelectedIds);
+    } else {
+      const visibleIds = new Set(visibleRows.map((row) => row.id));
+      setSelectedRowIds(selectedRowIds.filter((id) => !visibleIds.has(id)));
+    }
+  };
+
   const renderCell = (cell, row) => {
     if (cell.info.header === "select") {
       return (
@@ -320,8 +368,8 @@ function ProviderMenu() {
           checked={selectedRowIds.includes(row.id)}
           name="selectRowCheckbox"
           ariaLabel="selectRows"
-          onSelect={() => {
-            setDeactivateButton(false);
+          onSelect={(e) => {
+            e.stopPropagation();
             if (selectedRowIds.includes(row.id)) {
               setSelectedRowIds(selectedRowIds.filter((id) => id !== row.id));
             } else {
@@ -387,29 +435,25 @@ function ProviderMenu() {
             id="lastName"
             labelText={intl.formatMessage({ id: "provider.providerLastName" })}
             value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
+            onChange={(e) => handleLastNameChange(e)}
             required
           />
           <TextInput
             id="firstName"
             labelText={intl.formatMessage({ id: "provider.providerFirstName" })}
             value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
+            onChange={(e) => handleFirstNameChange(e)}
             required
           />
           <TextInput
             id="telephone"
             labelText={intl.formatMessage({ id: "provider.telephone" })}
             value={telephone}
-            onChange={(e) => setTelephone(e.target.value)}
+            onChange={(e) => handleTelephoneChange(e)}
           />
-          <TextInput
-            id="fax"
-            labelText={intl.formatMessage({ id: "provider.fax" })}
-            value={fax}
-            onChange={(e) => setFax(e.target.value)}
-          />
+
           <Dropdown
+            className="dropdown-list"
             id="isActive"
             titleText="Active"
             label={intl.formatMessage({ id: "provider.select" })}
@@ -417,6 +461,12 @@ function ProviderMenu() {
             itemToString={(item) => (item ? item.value : "")}
             selectedItem={isActive}
             onChange={({ selectedItem }) => setIsActive(selectedItem)}
+          />
+          <TextInput
+            id="fax"
+            labelText={intl.formatMessage({ id: "provider.fax" })}
+            value={fax}
+            onChange={(e) => setFax(e.target.value)}
           />
         </Modal>
 
@@ -432,27 +482,21 @@ function ProviderMenu() {
             id="lastName"
             labelText={intl.formatMessage({ id: "provider.providerLastName" })}
             value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
+            onChange={(e) => handleLastNameChange(e)}
             required
           />
           <TextInput
             id="firstName"
             labelText={intl.formatMessage({ id: "provider.providerFirstName" })}
             value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
+            onChange={(e) => handleFirstNameChange(e)}
             required
           />
           <TextInput
             id="telephone"
             labelText={intl.formatMessage({ id: "provider.telephone" })}
             value={telephone}
-            onChange={(e) => setTelephone(e.target.value)}
-          />
-          <TextInput
-            id="fax"
-            labelText={intl.formatMessage({ id: "provider.fax" })}
-            value={fax}
-            onChange={(e) => setFax(e.target.value)}
+            onChange={(e) => handleTelephoneChange(e)}
           />
           <Dropdown
             id="isActive"
@@ -462,6 +506,12 @@ function ProviderMenu() {
             itemToString={(item) => (item ? item.value : "")}
             selectedItem={isActive}
             onChange={({ selectedItem }) => setIsActive(selectedItem)}
+          />
+          <TextInput
+            id="fax"
+            labelText={intl.formatMessage({ id: "provider.fax" })}
+            value={fax}
+            onChange={(e) => setFax(e.target.value)}
           />
         </Modal>
 
@@ -552,52 +602,22 @@ function ProviderMenu() {
                                 id="table-select-all"
                                 {...getSelectionProps()}
                                 checked={
-                                  selectedRowIds.length === pageSize &&
-                                  serachedProviderMenuListShow
-                                    .slice(
-                                      (page - 1) * pageSize,
-                                      page * pageSize,
-                                    )
-                                    .filter(
-                                      (row) =>
-                                        !row.disabled &&
-                                        selectedRowIds.includes(row.id),
-                                    ).length === pageSize
+                                  getVisibleRows().length > 0 &&
+                                  getVisibleRows().every((row) =>
+                                    selectedRowIds.includes(row.id),
+                                  )
                                 }
                                 indeterminate={
-                                  selectedRowIds.length > 0 &&
-                                  selectedRowIds.length <
-                                    serachedProviderMenuListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled).length
+                                  getVisibleRows().some((row) =>
+                                    selectedRowIds.includes(row.id),
+                                  ) &&
+                                  !getVisibleRows().every((row) =>
+                                    selectedRowIds.includes(row.id),
+                                  )
                                 }
-                                onSelect={() => {
-                                  setDeactivateButton(false);
-                                  const currentPageIds =
-                                    serachedProviderMenuListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled)
-                                      .map((row) => row.id);
-                                  if (
-                                    selectedRowIds.length === pageSize &&
-                                    currentPageIds.every((id) =>
-                                      selectedRowIds.includes(id),
-                                    )
-                                  ) {
-                                    setSelectedRowIds([]);
-                                  } else {
-                                    setSelectedRowIds(
-                                      currentPageIds.filter(
-                                        (id) => !selectedRowIds.includes(id),
-                                      ),
-                                    );
-                                  }
+                                onSelect={(e) => {
+                                  const checked = e.target.checked;
+                                  handleSelectAll(checked);
                                 }}
                               />
                               {headers.map(
@@ -620,20 +640,13 @@ function ProviderMenu() {
                                   key={row.id}
                                   onClick={() => {
                                     const id = row.id;
-                                    const isSelected =
-                                      selectedRowIds.includes(id);
-                                    if (isSelected) {
-                                      setSelectedRowIds(
-                                        selectedRowIds.filter(
-                                          (selectedId) => selectedId !== id,
-                                        ),
-                                      );
-                                    } else {
-                                      setSelectedRowIds([
-                                        ...selectedRowIds,
-                                        id,
-                                      ]);
-                                    }
+                                    setSelectedRowIds(
+                                      selectedRowIds.includes(id)
+                                        ? selectedRowIds.filter(
+                                            (selectedId) => selectedId !== id,
+                                          )
+                                        : [...selectedRowIds, id],
+                                    );
                                   }}
                                 >
                                   {row.cells.map((cell) =>
@@ -757,51 +770,22 @@ function ProviderMenu() {
                                 id="table-select-all"
                                 {...getSelectionProps()}
                                 checked={
-                                  selectedRowIds.length === pageSize &&
-                                  providerMenuListShow
-                                    .slice(
-                                      (page - 1) * pageSize,
-                                      page * pageSize,
-                                    )
-                                    .filter(
-                                      (row) =>
-                                        !row.disabled &&
-                                        selectedRowIds.includes(row.id),
-                                    ).length === pageSize
+                                  getVisibleRows().length > 0 &&
+                                  getVisibleRows().every((row) =>
+                                    selectedRowIds.includes(row.id),
+                                  )
                                 }
                                 indeterminate={
-                                  selectedRowIds.length > 0 &&
-                                  selectedRowIds.length <
-                                    providerMenuListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled).length
+                                  getVisibleRows().some((row) =>
+                                    selectedRowIds.includes(row.id),
+                                  ) &&
+                                  !getVisibleRows().every((row) =>
+                                    selectedRowIds.includes(row.id),
+                                  )
                                 }
-                                onSelect={() => {
-                                  setDeactivateButton(false);
-                                  const currentPageIds = providerMenuListShow
-                                    .slice(
-                                      (page - 1) * pageSize,
-                                      page * pageSize,
-                                    )
-                                    .filter((row) => !row.disabled)
-                                    .map((row) => row.id);
-                                  if (
-                                    selectedRowIds.length === pageSize &&
-                                    currentPageIds.every((id) =>
-                                      selectedRowIds.includes(id),
-                                    )
-                                  ) {
-                                    setSelectedRowIds([]);
-                                  } else {
-                                    setSelectedRowIds(
-                                      currentPageIds.filter(
-                                        (id) => !selectedRowIds.includes(id),
-                                      ),
-                                    );
-                                  }
+                                onSelect={(e) => {
+                                  const checked = e.target.checked;
+                                  handleSelectAll(checked);
                                 }}
                               />
                               {headers.map(
@@ -824,20 +808,13 @@ function ProviderMenu() {
                                   key={row.id}
                                   onClick={() => {
                                     const id = row.id;
-                                    const isSelected =
-                                      selectedRowIds.includes(id);
-                                    if (isSelected) {
-                                      setSelectedRowIds(
-                                        selectedRowIds.filter(
-                                          (selectedId) => selectedId !== id,
-                                        ),
-                                      );
-                                    } else {
-                                      setSelectedRowIds([
-                                        ...selectedRowIds,
-                                        id,
-                                      ]);
-                                    }
+                                    setSelectedRowIds(
+                                      selectedRowIds.includes(id)
+                                        ? selectedRowIds.filter(
+                                            (selectedId) => selectedId !== id,
+                                          )
+                                        : [...selectedRowIds, id],
+                                    );
                                   }}
                                 >
                                   {row.cells.map((cell) =>

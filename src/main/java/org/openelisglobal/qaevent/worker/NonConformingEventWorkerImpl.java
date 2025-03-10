@@ -123,6 +123,9 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
      * @return {@link Date} object or null if there is a parse error.
      */
     private Date getDate(String value, String pattern) {
+        if (value == null) {
+            return null;
+        }
         try {
             SimpleDateFormat format = new SimpleDateFormat(pattern);
             return new Date(format.parse(value).getTime());

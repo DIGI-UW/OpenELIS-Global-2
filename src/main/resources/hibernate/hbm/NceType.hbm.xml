@@ -4,19 +4,20 @@
     "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping>
 
-    <class name="org.openelisglobal.qaevent.valueholder.NceType" table="nce_type" schema="clinlims">
+    <class name="org.openelisglobal.qaevent.valueholder.NceType"
+        table="nce_type" schema="clinlims">
         <id name="id"
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
             <column name="ID" precision="10" scale="0" />
             <generator
-                    class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
                 <param name="sequence_name">nce_type_id_seq</param>
             </generator>
         </id>
-        <property name="name" column="name"/>
-        <property name="displayKey" column="display_key"/>
-        <property name="categoryId" column="category_id"/>
-        <property name="active" column="active"/>
-        <property name="lastupdated" column="last_updated"/>
+        <property name="name" column="name" />
+        <property name="displayKey" column="display_key" />
+        <property name="categoryId" column="category_id" />
+        <property name="active" column="active" />
+        <property name="lastupdated" column="last_updated" />
     </class>
 </hibernate-mapping>

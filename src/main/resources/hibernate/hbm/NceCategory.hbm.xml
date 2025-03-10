@@ -3,18 +3,18 @@
         "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class name="org.openelisglobal.qaevent.valueholder.NceCategory" table="nce_category" optimistic-lock="version"
-           dynamic-update="true">
+    <class name="org.openelisglobal.qaevent.valueholder.NceCategory"
+        table="nce_category" optimistic-lock="version" dynamic-update="true">
         <id name="id"
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
             <column name="ID" precision="10" scale="0" />
             <generator
-                    class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
                 <param name="sequence_name">nce_category_seq</param>
             </generator>
         </id>
         <version name="lastupdated" column="LAST_UPDATED"
-                 type="timestamp" access="field" />
+            type="timestamp" access="field" />
 
         <property name="active" type="java.lang.String">
             <column name="ACTIVE" length="1" />

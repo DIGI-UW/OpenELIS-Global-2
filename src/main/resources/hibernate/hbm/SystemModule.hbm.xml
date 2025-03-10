@@ -34,10 +34,10 @@
             <column name="HAS_DELETE_FLAG" length="1" />
         </property>
     </class>
-<!-- 	<query name="systemmodule.getNext"> -->
-<!-- 		from SystemModule s order by s.systemModuleName -->
-<!-- 	</query> -->
-<!-- 	<query name="systemmodule.getPrevious"> -->
-<!-- 		from SystemModule s order by s.systemModuleName -->
-<!-- 	</query> -->
+    <!-- <query name="systemmodule.getNext"> -->
+    <!-- from SystemModule s order by s.systemModuleName -->
+    <!-- </query> -->
+    <!-- <query name="systemmodule.getPrevious"> -->
+    <!-- from SystemModule s order by s.systemModuleName -->
+    <!-- </query> -->
 </hibernate-mapping>

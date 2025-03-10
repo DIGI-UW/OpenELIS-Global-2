@@ -49,12 +49,12 @@
         <property name="sortOrderInt" column="sort_order"
             type="integer" />
     </class>
-<!-- 	<query name="renametestsection.getNext"> -->
-<!-- 		from TestSection ts order by ts.organization.organizationName, -->
-<!-- 		ts.testSectionName -->
-<!-- 	</query> -->
-<!-- 	<query name="renametestsection.getPrevious"> -->
-<!-- 		from TestSection ts order by ts.organization.organizationName desc, -->
-<!-- 		ts.testSectionName desc -->
-<!-- 	</query> -->
+    <!-- <query name="renametestsection.getNext"> -->
+    <!-- from TestSection ts order by ts.organization.organizationName, -->
+    <!-- ts.testSectionName -->
+    <!-- </query> -->
+    <!-- <query name="renametestsection.getPrevious"> -->
+    <!-- from TestSection ts order by ts.organization.organizationName desc, -->
+    <!-- ts.testSectionName desc -->
+    <!-- </query> -->
 </hibernate-mapping>

@@ -42,6 +42,7 @@ import NonConformIndex from "./components/nonconform/index";
 import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup.js";
 import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index.js";
 import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests.js";
+import ChangePassword from "./components/ChangePassword.js";
 
 export default function App() {
   let i18nConfig = {
@@ -241,6 +242,11 @@ export default function App() {
             <Layout onChangeLanguage={onChangeLanguage}>
               <Switch>
                 <Route path="/login" exact component={() => <Login />} />
+                <Route
+                  path="/ChangePasswordLogin"
+                  exact
+                  component={() => <ChangePassword />}
+                />
                 <Route
                   path="/landing"
                   exact

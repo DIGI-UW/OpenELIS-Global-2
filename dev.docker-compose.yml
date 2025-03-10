@@ -38,6 +38,9 @@ services:
             
     oe.openelis.org:
         container_name: openelisglobal-webapp 
+        # build:
+        #     context: .
+        #     dockerfile: Dockerfile.dev
         image: itechuw/openelis-global-2-dev:develop 
         # platform: linux/amd64
         depends_on:
@@ -50,7 +53,6 @@ services:
         networks:
           default:
               ipv4_address: 172.20.1.121
-
         environment:
             - DEFAULT_PW=adminADMIN! 
             - TZ=Africa/Nairobi

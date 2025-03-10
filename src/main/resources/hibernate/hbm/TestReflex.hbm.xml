@@ -62,12 +62,12 @@
             <column name="external_note" length="50" />
         </property>
     </class>
-    <!-- 	<query name="testreflex.getNext"> -->
-    <!-- 		from TestReflex tr order by tr.test.testName, -->
-    <!-- 		tr.testAnalyte.analyte.analyteName -->
-    <!-- 	</query> -->
-    <!-- 	<query name="testreflex.getPrevious"> -->
-    <!-- 		from TestReflex tr order by tr.test.testName desc, -->
-    <!-- 		tr.testAnalyte.analyte.analyteName desc -->
-    <!-- 	</query> -->
+    <!-- <query name="testreflex.getNext"> -->
+    <!-- from TestReflex tr order by tr.test.testName, -->
+    <!-- tr.testAnalyte.analyte.analyteName -->
+    <!-- </query> -->
+    <!-- <query name="testreflex.getPrevious"> -->
+    <!-- from TestReflex tr order by tr.test.testName desc, -->
+    <!-- tr.testAnalyte.analyte.analyteName desc -->
+    <!-- </query> -->
 </hibernate-mapping>

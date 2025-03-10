@@ -37,10 +37,10 @@
             <column name="SYSTEM_MODULE_ID" precision="10" scale="0" />
         </many-to-one>
     </class>
-<!-- 	<query name="rolemodule.getNext"> -->
-<!-- 		from RoleModule s -->
-<!-- 	</query> -->
-<!-- 	<query name="rolemodule.getPrevious"> -->
-<!-- 		from RoleModule s -->
-<!-- 	</query> -->
+    <!-- <query name="rolemodule.getNext"> -->
+    <!-- from RoleModule s -->
+    <!-- </query> -->
+    <!-- <query name="rolemodule.getPrevious"> -->
+    <!-- from RoleModule s -->
+    <!-- </query> -->
 </hibernate-mapping>

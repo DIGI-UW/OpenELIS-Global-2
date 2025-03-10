@@ -18,7 +18,8 @@
             type="timestamp" access="field" />
 
         <many-to-one name="analyte"
-            class="org.openelisglobal.analyte.valueholder.Analyte" fetch="select" lazy="false">
+            class="org.openelisglobal.analyte.valueholder.Analyte" fetch="select"
+            lazy="false">
             <column name="ANALYTE_ID" precision="10" scale="0" />
         </many-to-one>
         <many-to-one name="test"

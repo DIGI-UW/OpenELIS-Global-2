@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE hibernate-configuration PUBLIC
-          "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
-          "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
 
 <!--suppress HibernateConfigDomInspection -->
 <hibernate-configuration>
@@ -159,7 +159,7 @@
         <mapping resource="hibernate/hbm/LabComponent.hbm.xml" />
         <mapping resource="hibernate/hbm/NcEvent.hbm.xml" />
         <mapping resource="hibernate/hbm/Report.hbm.xml" />
-        <mapping resource="hibernate/hbm/PatientContact.hbm.xml"/>
+        <mapping resource="hibernate/hbm/PatientContact.hbm.xml" />
     </session-factory>
 
 </hibernate-configuration>

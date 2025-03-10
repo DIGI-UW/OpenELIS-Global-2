@@ -1,10 +1,11 @@
 package org.openelisglobal.barcode.labeltype;
 
-import com.lowagie.text.Font;
+import com.itextpdf.text.Font;
+import com.itextpdf.text.Font.FontFamily;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.barcode.LabelField;
@@ -103,8 +104,8 @@ public class SpecimenLabel extends Label {
         // setCode(labNo + "." + sampleCode);
         setCode(labNumber);
 
-        setValueFont(new Font(Font.HELVETICA, 7, Font.NORMAL));
-        setNameFont(new Font(Font.HELVETICA, 7, Font.BOLD));
+        setValueFont(new Font(FontFamily.HELVETICA, 7, Font.NORMAL));
+        setNameFont(new Font(FontFamily.HELVETICA, 7, Font.BOLD));
     }
 
     /**
@@ -196,8 +197,8 @@ public class SpecimenLabel extends Label {
         String sampleCode = sampleItem.getSortOrder();
         setCode(labNo + "." + sampleCode);
 
-        setValueFont(new Font(Font.HELVETICA, 7, Font.NORMAL));
-        setNameFont(new Font(Font.HELVETICA, 7, Font.BOLD));
+        setValueFont(new Font(FontFamily.HELVETICA, 7, Font.NORMAL));
+        setNameFont(new Font(FontFamily.HELVETICA, 7, Font.BOLD));
     }
 
     /**

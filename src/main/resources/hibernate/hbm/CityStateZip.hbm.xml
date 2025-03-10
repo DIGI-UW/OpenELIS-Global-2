@@ -46,14 +46,16 @@
         </property>
 
     </class>
-<!-- 	<sql-query name="cityStateZip.getCountyCodeByStateAndZipCode"> -->
-<!-- 		<return-scalar column="countyCode" -->
-<!-- 			type="java.lang.String" />  -->
-<!--       <![CDATA[select distinct (trim(csz.state_fips) ||  -->
-<!--                                case when length(trim(csz.county_fips)) = 3 then null else '0' end ||  -->
-<!--                                trim(csz.county_fips)) -->
-<!--                as countyCode -->
-<!-- 		       from CITY_STATE_ZIP csz where upper(csz.state) = (:param) and trim(csz.zip_code) = (:param2) -->
-<!--  ]]> -->
-<!-- 	</sql-query> -->
+    <!-- <sql-query name="cityStateZip.getCountyCodeByStateAndZipCode"> -->
+    <!-- <return-scalar column="countyCode" -->
+    <!-- type="java.lang.String" /> -->
+    <!-- <![CDATA[select distinct (trim(csz.state_fips) || -->
+    <!-- case when length(trim(csz.county_fips)) = 3 then null else '0' end
+        || -->
+    <!-- trim(csz.county_fips)) -->
+    <!-- as countyCode -->
+    <!-- from CITY_STATE_ZIP csz where upper(csz.state) = (:param) and trim(csz.zip_code)
+        = (:param2) -->
+    <!-- ]]> -->
+    <!-- </sql-query> -->
 </hibernate-mapping>

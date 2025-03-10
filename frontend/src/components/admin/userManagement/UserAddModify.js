@@ -139,7 +139,7 @@ function UserAddModify() {
   useEffect(() => {
     componentMounted.current = true;
     setIsLoading(true);
-    getFromOpenElisServer(`/rest/rest/users`, handleCopyUserPermissionsList);
+    getFromOpenElisServer(`/rest/users`, handleCopyUserPermissionsList);
     return () => {
       componentMounted.current = false;
       setIsLoading(false);
@@ -1186,7 +1186,7 @@ function UserAddModify() {
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
                     <>
-                      <FormattedMessage id="systemuserrole.copypermisions" /> :
+                      <FormattedMessage id="systemuserrole.copypermissions" /> :
                     </>
                   </Column>
                   <Column lg={8} md={4} sm={4}>

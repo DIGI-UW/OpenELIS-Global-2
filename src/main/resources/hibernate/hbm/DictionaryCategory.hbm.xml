@@ -31,10 +31,11 @@
             <column name="DESCRIPTION" length="60" />
         </property>
     </class>
-<!-- 	<query name="dictionarycategory.getNext"> -->
-<!-- 		from DictionaryCategory d order by d.description, d.categoryName -->
-<!-- 	</query> -->
-<!-- 	<query name="dictionarycategory.getPrevious"> -->
-<!-- 		from DictionaryCategory d order by d.description desc, d.categoryName desc -->
-<!-- 	</query> -->
+    <!-- <query name="dictionarycategory.getNext"> -->
+    <!-- from DictionaryCategory d order by d.description, d.categoryName -->
+    <!-- </query> -->
+    <!-- <query name="dictionarycategory.getPrevious"> -->
+    <!-- from DictionaryCategory d order by d.description desc, d.categoryName
+        desc -->
+    <!-- </query> -->
 </hibernate-mapping>

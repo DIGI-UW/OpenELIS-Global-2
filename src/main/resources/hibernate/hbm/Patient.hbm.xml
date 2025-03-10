@@ -74,10 +74,10 @@
         <property name="birthDateForDisplay" type="java.lang.String">
             <column name="entered_birth_date" length="10" />
         </property>
-        <property name="fhirUuid"
-            column="fhir_uuid" type="java.util.UUID" />
-        <property name="upidCode"
-            column="upid_code" type="java.lang.String" />
+        <property name="fhirUuid" column="fhir_uuid"
+            type="java.util.UUID" />
+        <property name="upidCode" column="upid_code"
+            type="java.lang.String" />
 
     </class>
 </hibernate-mapping>

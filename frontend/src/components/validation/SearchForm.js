@@ -115,7 +115,7 @@ const SearchForm = (props) => {
     var defaultDate = values.defaultDate ? values.defaultDate : "";
     var date = testDate ? testDate : defaultDate;
     let searchEndPoint =
-      "/rest/accessionValidation?" +
+      "/rest/AccessionValidation?" +
       "accessionNumber=" +
       accessionNumber +
       "&unitType=" +
@@ -330,6 +330,7 @@ const SearchForm = (props) => {
                       type="submit"
                       id="submit"
                       style={{ marginTop: "16px" }}
+                      data-testid="Search-btn"
                     >
                       <FormattedMessage id="label.button.search" />
                     </Button>

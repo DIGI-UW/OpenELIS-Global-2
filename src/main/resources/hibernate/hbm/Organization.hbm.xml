@@ -72,8 +72,8 @@
         </property>
         <property name="code" column="code" type="java.lang.String"
             length="20" />
-        <property name="fhirUuid"
-            column="fhir_uuid" type="java.util.UUID" />
+        <property name="fhirUuid" column="fhir_uuid"
+            type="java.util.UUID" />
 
         <set name="organizationTypes"
             table="organization_organization_type" cascade="all" lazy="true"
