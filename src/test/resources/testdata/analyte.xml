@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <analyte id="1" analyte_id="1" name="Glucose" is_active="Y"
+        external_id="EXT123" lastupdated="2025-03-07 12:00:00"
+        local_abbrev="GLU" />
+    <analyte id="2" analyte_id="2" name="Hemoglobin" is_active="N"
+        external_id="EXT124" lastupdated="2025-03-06 14:30:00"
+        local_abbrev="HGB" />
+    <analyte id="3" analyte_id="2" name="Cholesterol" is_active="Y"
+        external_id="EXT125" lastupdated="2025-03-05 09:45:00"
+        local_abbrev="CHOL" />
+    <analyte id="4" analyte_id="1" name="Potassium" is_active="Y"
+        external_id="EXT126" lastupdated="2025-03-04 18:15:00"
+        local_abbrev="K+" />
+    <analyte id="5" analyte_id="5" name="Sodium" is_active="N"
+        external_id="EXT127" lastupdated="2025-03-03 08:20:00"
+        local_abbrev="Na+" />
+</dataset>
