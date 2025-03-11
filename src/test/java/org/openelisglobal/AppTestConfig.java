@@ -91,7 +91,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.requester.service", "org.openelisglobal.requester.daoimpl",
         "org.openelisglobal.organization.dao", "org.openelisglobal.note.daoimpl",
 
-
         "org.openelisglobal.sampleorganization", "org.openelisglobal.panel.service", "org.openelisglobal.panelitem.dao",
 
         "org.openelisglobal.sampleorganization", "org.openelisglobal.menu.controller",
