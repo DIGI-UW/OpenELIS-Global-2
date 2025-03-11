@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- * The contents of this file are subject to the Mozilla Public License
+    * Version 1.1 (the "License"); you may not use this file except in * compliance
+    with the License. You may obtain a copy of the License at * http://www.mozilla.org/MPL/
+    * * Software distributed under the License is distributed on an "AS IS" *
+    basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the *
+    License for the specific language governing rights and limitations under
+    * the License. * * The Original Code is OpenELIS code. * * Copyright (C)
+    ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+<dataset>
+    <!-- UnitOfMeasure Category Entry -->
+    <unit_of_measure id="1"
+        lastupdated="2023-10-01 12:00:00" name="inch"
+        description="measure length" />
+    <unit_of_measure id="2"
+        lastupdated="2023-10-01 12:00:00" name="Square cubics"
+        description="measure area" />
+    <unit_of_measure id="3"
+        lastupdated="2023-10-01 12:00:00" name="milliSeconds"
+        description="measure time" />
+    <unit_of_measure id="4"
+        lastupdated="2023-10-01 12:00:00" name="beats per minute"
+        description="measure heart rate" />
+</dataset>
