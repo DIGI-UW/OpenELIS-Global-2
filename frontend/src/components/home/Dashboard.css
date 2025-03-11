@@ -1,84 +1,159 @@
-/* src/components/Dashboard.css */
+/* Root Variables for Consistency */
+:root {
+  --primary-color: #0f62fe;
+  --secondary-color: #4589ff;
+  --background-light: #f4f4f4;
+  --text-primary: #161616;
+  --text-secondary: #525252;
+  --border-subtle: #e0e0e0;
+  --transition-speed: 0.3s;
+  --tile-gradient: linear-gradient(135deg, #0f62fe 0%, #4589ff 100%);
+}
+
+/* Dashboard Container */
 .home-dashboard-container {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 50px;
-  padding: 50px;
+  min-height: 85vh;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+  padding: 3rem;
+  background-color: var(--background-light);
+  max-width: 90vw; /* Responsive width */
+  margin: 0 auto;
+  justify-content: center;
 }
 
-.dashboard-view {
-  padding: 50px;
+/* Responsive Grid Adjustments */
+@media (min-width: 1800px) {
+  .home-dashboard-container {
+    max-width: 1800px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 3rem;
+  }
 }
+
+@media (min-width: 1200px) and (max-width: 1799px) {
+  .home-dashboard-container {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2.5rem;
+  }
+}
+
+@media (min-width: 992px) and (max-width: 1199px) {
+  .home-dashboard-container {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  .home-dashboard-container {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    padding: 2rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .home-dashboard-container {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1.5rem;
+  }
+}
+
+/* Dashboard Tile */
 .dashboard-tile {
-  padding: 20px;
-  border-radius: 3px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  background-color: #f4f4f4;
+  position: relative;
+  background: rgba(255, 255, 255, 0.9); /* Slight transparency */
+  border-radius: 16px; /* More rounded corners */
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  padding: 2.5rem;
+  transition: all var(--transition-speed) ease;
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  min-height: 220px;
+  backdrop-filter: blur(10px); /* Glassmorphism */
 }
 
+/* Hover Effect
+.dashboard-tile:hover {
+  transform: translateY(2px) scale(1.02);
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
+} */
+
+/* Gradient Header Strip */
+.dashboard-tile::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 8px;
+  background: var(--tile-gradient);
+  border-radius: 16px 16px 0 0;
+}
+
+/* Tile Text Styling */
 .tile-title {
-  margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 0.8rem;
+  line-height: 1.4;
 }
 
 .tile-subtitle {
-  margin-top: 5px;
-  color: #666;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  flex-grow: 1;
 }
 
+/* Value Display */
 .tile-value {
-  margin-top: 10px;
-  font-size: 1.5rem;
+  font-size: 2.4rem;
   font-weight: bold;
+  color: var(--text-primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
+/* Tile Icon */
 .tile-icon {
   position: absolute;
-  top: 0.1rem;
-  right: 0.1rem;
+  top: 1rem;
+  right: 1rem;
 }
 
+/* Icon Wrapper */
 .icon-wrapper {
-  transition: border-color 0.3s; /* Add a smooth transition effect for the border */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  transition: background-color var(--transition-speed) ease;
+  background: rgba(15, 98, 254, 0.1);
 }
 
+/* Hover Effect on Icons */
 .icon-wrapper:hover {
-  border: 1px solid #78a9ff; /* Add a blue border on hover */
-  cursor: pointer;
+  background-color: rgba(15, 98, 254, 0.2);
 }
 
-.tile-title-view {
-  margin: 0;
-  font-size: 1.6rem;
+.clickable-icon {
+  color: var(--primary-color);
+  transition: transform var(--transition-speed) ease;
 }
 
-.tile-subtitle-view {
-  margin-top: 5px;
-  color: #666;
-}
-
-.tile-value-view {
-  margin-top: 10px;
-  font-size: 1.9rem;
-  font-weight: bold;
-}
-
-@media (max-width: 925px) {
-  .home-dashboard-container {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 22px;
-    padding: 22px;
-  }
-}
-
-@media (max-width: 500px) {
-  .home-dashboard-container {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 846px) {
-  .dashboard-view {
-    padding: 0;
-  }
+/* Scale Up Icon on Hover */
+.icon-wrapper:hover .clickable-icon {
+  transform: scale(1.2);
 }
