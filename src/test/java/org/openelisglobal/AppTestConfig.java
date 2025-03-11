@@ -35,11 +35,9 @@ import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.service.ReferralSetService;
 import org.openelisglobal.requester.service.RequesterTypeService;
 import org.openelisglobal.sample.service.SampleEditService;
-import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
 import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.statusofsample.service.StatusOfSampleService;
-import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemusersection.service.SystemUserSectionService;
 import org.openelisglobal.test.dao.TestDAO;
 import org.openelisglobal.test.service.TestSectionService;
@@ -87,10 +85,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.typeoftestresult", "org.openelisglobal.samplehuman", "org.openelisglobal.provider",
         "org.openelisglobal.provider.controller.rest", "org.openelisglobal.role", "org.openelisglobal.organization",
         "org.openelisglobal.region.service", "org.openelisglobal.region.dao", "org.openelisglobal.program.service",
-        "org.openelisglobal.program.dao", "org.openelisglobal.systemuser.daoimpl", "org.openelisglobal.note.service",
+        "org.openelisglobal.program.dao", "org.openelisglobal.systemuser.daoimpl",
+        "org.openelisglobal.systemuser.service", "org.openelisglobal.note.service",
         "org.openelisglobal.requester.service", "org.openelisglobal.requester.daoimpl",
         "org.openelisglobal.organization.dao", "org.openelisglobal.note.daoimpl",
-        "org.openelisglobal.OrganizationService" }, excludeFilters = {
+        "org.openelisglobal.sampleorganization", "org.openelisglobal.menu.controller",
+        "org.openelisglobal.analyte.daoimpl", "org.openelisglobal.analyte.service" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.provider.controller.*.java"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
@@ -266,12 +266,6 @@ public class AppTestConfig implements WebMvcConfigurer {
 
     @Bean()
     @Profile("test")
-    public SampleOrganizationService sampleOrganizationService() {
-        return mock(SampleOrganizationService.class);
-    }
-
-    @Bean()
-    @Profile("test")
     public ReferralResultService ReferralResultService() {
         return mock(ReferralResultService.class);
     }
@@ -395,16 +389,11 @@ public class AppTestConfig implements WebMvcConfigurer {
         return mock(OrganizationTypeService.class);
     }
 
-    @Bean
-    @Profile("test")
-    public SystemUserService systemUserService() {
-        return mock(SystemUserService.class);
-    }
-
     @Override
     public void configureMessageConverters(@NonNull List<HttpMessageConverter<?>> converters) {
         WebMvcConfigurer.super.configureMessageConverters(converters);
         converters.add(new StringHttpMessageConverter());
         converters.add(jsonConverter());
     }
+
 }
