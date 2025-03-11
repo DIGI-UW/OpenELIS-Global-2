@@ -90,7 +90,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.program.dao", "org.openelisglobal.systemuser.daoimpl", "org.openelisglobal.unitofmeasure",
         "org.openelisglobal.systemuser.service", "org.openelisglobal.note.service",
         "org.openelisglobal.requester.service", "org.openelisglobal.requester.daoimpl",
-        "org.openelisglobal.organization.dao", "org.openelisglobal.note.daoimpl", "org.openelisglobal.method",
+        "org.openelisglobal.organization.dao", "org.openelisglobal.note.daoimpl",
         "org.openelisglobal.sampleorganization", "org.openelisglobal.menu.controller",
         "org.openelisglobal.analyte.daoimpl", "org.openelisglobal.analyte.service", "org.openelisglobal.panel.service",
         "org.openelisglobal.panelitem.dao", "org.openelisglobal.reports.*" }, excludeFilters = {
