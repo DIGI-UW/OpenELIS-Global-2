@@ -26,9 +26,7 @@ class OrderEntityPage {
     ).check({ force: true });
   }
   generateLabOrderNumber() {
-    cy.getElement(
-      ":nth-child(2) > :nth-child(1) > :nth-child(2) > .cds--link",
-    ).click();
+    cy.get("a.cds--link").contains("Generate").click();
   }
 
   validateAcessionNumber(order) {
@@ -39,7 +37,9 @@ class OrderEntityPage {
 
     cy.wait("@accessionNoValidation").then((interception) => {
       const responseBody = interception.response.body;
+
       console.log(responseBody);
+
       expect(responseBody.status).to.be.false;
     });
   }

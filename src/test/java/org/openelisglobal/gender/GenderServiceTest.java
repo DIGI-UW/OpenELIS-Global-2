@@ -2,10 +2,10 @@ package org.openelisglobal.gender;
 
 import static org.junit.Assert.assertEquals;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.sql.Timestamp;
 import java.util.List;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

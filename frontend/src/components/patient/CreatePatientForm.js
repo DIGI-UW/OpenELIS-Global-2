@@ -50,6 +50,10 @@ function CreatePatientForm(props) {
   const [healthDistricts, setHealthDistricts] = useState([]);
   const [educationList, setEducationList] = useState([]);
   const [maritalStatuses, setMaritalStatuses] = useState([]);
+  const [prevfirstName, setPrevfirstName] = useState("");
+  const [prevlastName, setPrevlastName] = useState("");
+  const [prevfirstContactName, setPrevfirstContactName] = useState("");
+  const [prevlastContactName, setPrevlastContactName] = useState("");
   const [formAction, setFormAction] = useState("ADD");
   const [dateOfBirthFormatter, setDateOfBirthFormatter] = useState({
     years: "",
@@ -204,6 +208,58 @@ function CreatePatientForm(props) {
       fetchHeathDistricts,
     );
   };
+
+  function handleFirstNameChange(event) {
+    const regexFlags = "iu";
+    const regex = new RegExp(
+      configurationProperties.FIRST_NAME_REGEX,
+      regexFlags,
+    );
+    const value = event.target.value;
+    if (!regex.test(value)) {
+      event.target.value = prevfirstName;
+    }
+    setPrevfirstName(event.target.value);
+  }
+
+  function handleLastNameChange(event) {
+    const regexFlags = "iu";
+    const regex = new RegExp(
+      configurationProperties.LAST_NAME_REGEX,
+      regexFlags,
+    );
+    const value = event.target.value;
+    if (!regex.test(value)) {
+      event.target.value = prevlastName;
+    }
+    setPrevlastName(event.target.value);
+  }
+
+  function handleFirstContactNameChange(event) {
+    const regexFlags = "iu";
+    const regex = new RegExp(
+      configurationProperties.FIRST_NAME_REGEX,
+      regexFlags,
+    );
+    const value = event.target.value;
+    if (!regex.test(value)) {
+      event.target.value = prevfirstContactName;
+    }
+    setPrevfirstContactName(event.target.value);
+  }
+
+  function handleLastContactNameChange(event) {
+    const regexFlags = "iu";
+    const regex = new RegExp(
+      configurationProperties.LAST_NAME_REGEX,
+      regexFlags,
+    );
+    const value = event.target.value;
+    if (!regex.test(value)) {
+      event.target.value = prevlastContactName;
+    }
+    setPrevlastContactName(event.target.value);
+  }
 
   function fetchHealthDistrictsCallback(res) {
     setHealthDistricts(res);
@@ -525,6 +581,7 @@ function CreatePatientForm(props) {
                       placeholder={intl.formatMessage({
                         id: "patient.information.lastname",
                       })}
+                      onChange={(e) => handleLastNameChange(e)}
                     />
                   )}
                 </Field>
@@ -544,6 +601,7 @@ function CreatePatientForm(props) {
                       placeholder={intl.formatMessage({
                         id: "patient.information.firstname",
                       })}
+                      onChange={(e) => handleFirstNameChange(e)}
                     />
                   )}
                 </Field>
@@ -715,6 +773,7 @@ function CreatePatientForm(props) {
                                 id: "patientcontact.person.lastname",
                               })}
                               id={field.name}
+                              onChange={(e) => handleLastContactNameChange(e)}
                               placeholder={intl.formatMessage({
                                 id: "patient.emergency.lastname",
                               })}
@@ -734,6 +793,7 @@ function CreatePatientForm(props) {
                                 id: "patientcontact.person.firstname",
                               })}
                               id={field.name}
+                              onChange={(e) => handleFirstContactNameChange(e)}
                               placeholder={intl.formatMessage({
                                 id: "patient.emergency.firstname",
                               })}

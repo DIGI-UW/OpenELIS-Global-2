@@ -127,7 +127,11 @@ function Admin() {
           <SideNavLink href="#AnalyzerTestName" renderIcon={ListDropdown}>
             <FormattedMessage id="sidenav.label.admin.analyzerTest" />
           </SideNavLink>
-          <SideNavLink href="#labNumber" renderIcon={CharacterWholeNumber}>
+          <SideNavLink
+            data-cy="labNumberMgmnt"
+            href="#labNumber"
+            renderIcon={CharacterWholeNumber}
+          >
             <FormattedMessage id="sidenav.label.admin.labNumber" />
           </SideNavLink>
           <SideNavLink renderIcon={ChartBubble} href="#program">
@@ -161,10 +165,14 @@ function Admin() {
             <FormattedMessage id="master.lists.page.test.management" />
           </SideNavLink>
           <SideNavMenu
+            data-testid="menuConfig"
             title={intl.formatMessage({ id: "sidenav.label.admin.menu" })}
             renderIcon={TableOfContents}
           >
-            <SideNavMenuItem href="#globalMenuManagement">
+            <SideNavMenuItem
+              data-cy="globalMenuMgmnt"
+              href="#globalMenuManagement"
+            >
               <FormattedMessage id="sidenav.label.admin.menu.global" />
             </SideNavMenuItem>
             <SideNavMenuItem href="#billingMenuManagement">
@@ -227,7 +235,7 @@ function Admin() {
             <FormattedMessage id="dictionary.label.modify" />
           </SideNavLink>
           <SideNavLink href="#NotifyUser" renderIcon={Bullhorn}>
-            <FormattedMessage id="Notify User" />
+            <FormattedMessage id="notify.main.title" />
           </SideNavLink>
           <SideNavLink href="#SearchIndexManagement" renderIcon={Search}>
             <FormattedMessage id="searchindexmanagement.label" />

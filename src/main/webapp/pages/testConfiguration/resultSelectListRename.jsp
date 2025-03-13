@@ -17,10 +17,10 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
+<%@ taglib uri="jakarta.tags.functions" prefix="fn" %>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
 <link rel="stylesheet" media="screen" type="text/css"
       href="css/jquery_ui/jquery.ui.theme.css?"/>

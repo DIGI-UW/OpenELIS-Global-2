@@ -304,6 +304,7 @@ export const NCECorrectiveAction = () => {
             </Section>
           </Form>
         </Column>
+
         <Column lg={16} md={8} sm={4}>
           <br />
         </Column>
@@ -760,7 +761,7 @@ export const NCECorrectiveAction = () => {
                       id={"dateCompleted"}
                       labelText=""
                       autofillDate={true}
-                      value={data[`dateCompleted`] ?? undefined}
+                      value={log[`dateCompleted`] ?? undefined}
                       onChange={(e) => {}}
                       disabled
                       style={{ marginTop: "5px" }}

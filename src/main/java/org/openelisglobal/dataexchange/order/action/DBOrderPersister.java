@@ -13,11 +13,11 @@
  */
 package org.openelisglobal.dataexchange.order.action;
 
+import jakarta.annotation.PostConstruct;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import javax.annotation.PostConstruct;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.service.PersonAddressService;

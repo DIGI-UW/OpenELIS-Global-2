@@ -7,9 +7,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
 <html>
 <head>
@@ -225,7 +225,7 @@ if (document.layers) {
 		</tr>
 		<tr>
 			<td>
-				<jsp:include page="${bodyFragment}"/>
+				<jsp:include page="${bodyFragment}"/> 
 			</td>
 		</tr>
 		<tr>

@@ -1,12 +1,12 @@
 package org.openelisglobal.program.controller.cytology;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.program.bean.CytologyDashBoardCount;
 import org.openelisglobal.program.service.cytology.CytologyDisplayService;

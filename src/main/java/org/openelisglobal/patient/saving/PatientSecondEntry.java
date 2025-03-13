@@ -20,8 +20,8 @@ package org.openelisglobal.patient.saving;
 import static org.openelisglobal.common.services.StatusService.RecordStatus.InitialRegistration;
 import static org.openelisglobal.common.services.StatusService.RecordStatus.ValidationRegistration;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
-import javax.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.internationalization.MessageUtil;

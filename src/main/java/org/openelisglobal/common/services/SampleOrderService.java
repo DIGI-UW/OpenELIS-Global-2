@@ -296,7 +296,7 @@ public class SampleOrderService {
     }
 
     private boolean namesDiffer(Person providerPerson, SampleOrderItem sampleOrder) {
-        if (providerPerson == null) {
+        if (providerPerson == null || sampleOrder.getProviderPersonId() == null) {
             return true;
         }
         if (providerPerson.getId().trim().equals(sampleOrder.getProviderPersonId().trim())) {
