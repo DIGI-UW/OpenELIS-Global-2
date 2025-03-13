@@ -27,7 +27,8 @@ import org.openelisglobal.notification.service.TestNotificationConfigService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
 import org.openelisglobal.organization.service.OrganizationTypeService;
-import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panel.dao.PanelDAO;
+import org.openelisglobal.panel.daoimpl.PanelDAOImpl;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.program.service.ImmunohistochemistrySampleService;
 import org.openelisglobal.referral.service.ReferralResultService;
@@ -35,11 +36,9 @@ import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.service.ReferralSetService;
 import org.openelisglobal.requester.service.RequesterTypeService;
 import org.openelisglobal.sample.service.SampleEditService;
-import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
 import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.statusofsample.service.StatusOfSampleService;
-import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemusersection.service.SystemUserSectionService;
 import org.openelisglobal.test.dao.TestDAO;
 import org.openelisglobal.test.service.TestSectionService;
@@ -85,14 +84,17 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.sampleitem.", "org.openelisglobal.analysis", "org.openelisglobal.result.service",
         "org.openelisglobal.result.daoimpl", "org.openelisglobal.resultlimit", "org.openelisglobal.resultlimits",
         "org.openelisglobal.typeoftestresult", "org.openelisglobal.samplehuman", "org.openelisglobal.provider",
-        "org.openelisglobal.role", "org.openelisglobal.organization", "org.openelisglobal.region.service",
-        "org.openelisglobal.region.dao", "org.openelisglobal.program.service", "org.openelisglobal.program.dao",
-        "org.openelisglobal.systemuser.daoimpl", "org.openelisglobal.note.service",
+        "org.openelisglobal.provider.controller.rest", "org.openelisglobal.role", "org.openelisglobal.organization",
+        "org.openelisglobal.region.service", "org.openelisglobal.region.dao", "org.openelisglobal.program.service",
+        "org.openelisglobal.program.dao", "org.openelisglobal.systemuser.daoimpl",
+        "org.openelisglobal.systemuser.service", "org.openelisglobal.note.service",
         "org.openelisglobal.requester.service", "org.openelisglobal.requester.daoimpl",
-        "org.openelisglobal.organization.dao", "org.openelisglobal.note.daoimpl",
-        "org.openelisglobal.OrganizationService" }, excludeFilters = {
+        "org.openelisglobal.organization.dao", "org.openelisglobal.note.daoimpl", "org.openelisglobal.method",
+        "org.openelisglobal.sampleorganization", "org.openelisglobal.menu.controller",
+        "org.openelisglobal.analyte.daoimpl", "org.openelisglobal.analyte.service", "org.openelisglobal.panel.service",
+        "org.openelisglobal.panelitem.dao" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
-                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.provider.controller.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.provider.controller.*.java"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.dictionary.controller.*.java"),
@@ -153,8 +155,8 @@ public class AppTestConfig implements WebMvcConfigurer {
 
     @Bean()
     @Profile("test")
-    public PanelService panelService() {
-        return mock(PanelService.class);
+    public PanelDAO panelDAO() {
+        return new PanelDAOImpl();
     }
 
     @Bean()
@@ -262,12 +264,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public ObservationHistoryTypeService observationHistoryTypeService() {
         return mock(ObservationHistoryTypeService.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public SampleOrganizationService sampleOrganizationService() {
-        return mock(SampleOrganizationService.class);
     }
 
     @Bean()
@@ -395,16 +391,11 @@ public class AppTestConfig implements WebMvcConfigurer {
         return mock(OrganizationTypeService.class);
     }
 
-    @Bean
-    @Profile("test")
-    public SystemUserService systemUserService() {
-        return mock(SystemUserService.class);
-    }
-
     @Override
     public void configureMessageConverters(@NonNull List<HttpMessageConverter<?>> converters) {
         WebMvcConfigurer.super.configureMessageConverters(converters);
         converters.add(new StringHttpMessageConverter());
         converters.add(jsonConverter());
     }
+
 }

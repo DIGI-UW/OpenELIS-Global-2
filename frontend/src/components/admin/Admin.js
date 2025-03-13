@@ -235,7 +235,7 @@ function Admin() {
             <FormattedMessage id="dictionary.label.modify" />
           </SideNavLink>
           <SideNavLink href="#NotifyUser" renderIcon={Bullhorn}>
-            <FormattedMessage id="Notify User" />
+            <FormattedMessage id="notify.main.title" />
           </SideNavLink>
           <SideNavLink href="#SearchIndexManagement" renderIcon={Search}>
             <FormattedMessage id="searchindexmanagement.label" />
