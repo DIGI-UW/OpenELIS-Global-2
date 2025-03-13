@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { getFromOpenElisServer } from "../../utils/Utils";
+import { useHistory } from "react-router-dom";
 
 export const fetchPatientData = async (query, callback) => {
+  const history = useHistory();
   const [firstName, lastName] = query.split(" ");
   const queryParams = {
     firstName: firstName || query,
@@ -53,7 +55,7 @@ export const fetchPatientData = async (query, callback) => {
 
 export const openPatientResults = (patientId) => {
   if (patientId) {
-    window.location.href = "/PatientResults/" + patientId;
+    history.push("/PatientResults/" + patientId);
   }
 };
 

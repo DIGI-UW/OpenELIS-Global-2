@@ -9,12 +9,14 @@ import { Loading, Modal } from "@carbon/react/";
 import config from "../../config.json";
 import { Roles } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
+import { useHistory } from "react-router-dom";
 
 const idleTimeout = 1000 * 60 * 30; // milliseconds until idle warning will appear
 const idleWarningTimeout = 1000 * 60; // milliseconds until logout is automatically processed from idle warning
 const idleLogoutTimeout = idleTimeout + idleWarningTimeout;
 
 function SecureRoute(props) {
+  const history = useHistory();
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [stillThereOpen, setStillThereOpen] = useState(false);
@@ -41,7 +43,7 @@ function SecureRoute(props) {
           !userSessionDetails.loginLabUnit &&
           !userSessionDetails.roles.includes(Roles.GLOBAL_ADMIN)
         ) {
-          window.location.href = "/landing";
+          history.push("/landing");
         }
       } else {
         const options = {
@@ -51,7 +53,7 @@ function SecureRoute(props) {
             {
               label: intl.formatMessage({ id: "accessDenied.okButton" }),
               onClick: () => {
-                window.location.href = window.location.origin;
+                history.push(window.location.origin);
               },
             },
           ],
@@ -62,7 +64,7 @@ function SecureRoute(props) {
       }
       setPermissionGranted(hasPermission());
     } else if ("authenticated" in userSessionDetails) {
-      window.location.href = config.loginRedirect;
+      history.push(config.loginRedirect);
     }
   }, [userSessionDetails, errorLoadingSessionDetails]);
 

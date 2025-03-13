@@ -32,8 +32,10 @@ import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { useHistory } from "react-router-dom";
 
 function PathologyDashboard() {
+  const history = useHistory();
   const componentMounted = useRef(false);
 
   const intl = useIntl();
@@ -216,7 +218,7 @@ function PathologyDashboard() {
   };
 
   const openCaseView = (id) => {
-    window.location.href = "/PathologyCaseView/" + id;
+    history.push("/PathologyCaseView/" + id);
   };
 
   useEffect(() => {

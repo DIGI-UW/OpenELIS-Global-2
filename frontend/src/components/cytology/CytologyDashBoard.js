@@ -32,9 +32,11 @@ import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { useHistory } from "react-router-dom";
 
 function CytologyDashboard() {
   const componentMounted = useRef(false);
+  const history = useHistory();
 
   const { notificationVisible } = useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -211,7 +213,7 @@ function CytologyDashboard() {
   };
 
   const openCaseView = (id) => {
-    window.location.href = "/CytologyCaseView/" + id;
+    history.push("/CytologyCaseView/" + id);
   };
 
   useEffect(() => {

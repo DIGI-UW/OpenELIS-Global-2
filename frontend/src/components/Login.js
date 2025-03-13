@@ -20,8 +20,10 @@ import { Formik } from "formik";
 import { AlertDialog, NotificationKinds } from "./common/CustomNotification";
 import UserSessionDetailsContext from "../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./layout/Layout";
+import { useHistory } from "react-router-dom";
 
 function Login(props) {
+  const history = useHistory();
   const { notificationVisible, addNotification, setNotificationVisible } =
     useContext(NotificationContext);
   const { configurationProperties } = useContext(ConfigurationContext);
@@ -42,7 +44,7 @@ function Login(props) {
 
   useEffect(() => {
     if (userSessionDetails.authenticated) {
-      window.location.href = "/";
+      history.push("/");
     }
   }, [userSessionDetails]);
 
@@ -90,7 +92,7 @@ function Login(props) {
         // get json response here
         let data = await response.json();
         if (response.status === 200) {
-          window.location.href = "/";
+          history.push("/");
         } else {
           addNotification({
             title: props.intl.formatMessage({
@@ -143,7 +145,7 @@ function Login(props) {
             renderIcon={HardwareSecurityModule}
             onClick={() => {
               console.log(url);
-              window.location.href = config.serverBaseUrl + "/" + url.value;
+              history.push(config.serverBaseUrl + "/" + url.value);
             }}
           >
             <FormattedMessage id="label.button.login.sso" />
@@ -243,7 +245,7 @@ function Login(props) {
                               data-cy="changePassword"
                               type="button"
                               onClick={() => {
-                                window.location.href = "/ChangePasswordLogin";
+                                history.push("/ChangePasswordLogin");
                               }}
                             >
                               <FormattedMessage id="label.button.changepassword" />

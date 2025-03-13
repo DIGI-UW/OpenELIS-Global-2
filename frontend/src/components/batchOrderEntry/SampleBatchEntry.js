@@ -494,9 +494,7 @@ const SampleBatchEntry = (props) => {
               <Grid>
                 <Button
                   data-cy="finishButton"
-                  onClick={() =>
-                    (window.location.href = "/SampleBatchEntrySetup")
-                  }
+                  onClick={() => history.push("/SampleBatchEntrySetup")}
                 >
                   <FormattedMessage id="label.button.finish" />
                 </Button>

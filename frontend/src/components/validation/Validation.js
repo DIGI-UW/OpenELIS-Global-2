@@ -23,8 +23,10 @@ import { getFromOpenElisServer } from "../utils/Utils";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import config from "../../config.json";
+import { useHistory } from "react-router-dom";
 
 const Validation = (props) => {
+  const history = useHistory();
   const componentMounted = useRef(false);
 
   const { setNotificationVisible, addNotification } =
@@ -132,7 +134,7 @@ const Validation = (props) => {
     if (status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      window.location.href = "/validation" + props.params;
+      history.push("/validation" + props.params);
     }
     addNotification({
       kind: kind,

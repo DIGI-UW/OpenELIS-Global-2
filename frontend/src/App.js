@@ -43,8 +43,10 @@ import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntry
 import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index.js";
 import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests.js";
 import ChangePassword from "./components/ChangePassword.js";
+import { useHistory } from "react-router-dom";
 
 export default function App() {
+  const history = useHistory();
   let i18nConfig = {
     locale: navigator.language.split(/[-_]/)[0],
     defaultLocale: "en",
@@ -99,7 +101,7 @@ export default function App() {
               {
                 label: "OK",
                 onClick: () => {
-                  window.location.href = window.location.origin;
+                  history.push("/");
                 },
               },
             ],
@@ -154,7 +156,7 @@ export default function App() {
           newWindow.document.write(html);
           newWindow.document.close();
           getUserSessionDetails();
-          window.location.href = config.loginRedirect;
+          history.push(config.loginRedirect);
         })
         .catch((error) => {
           console.error(error);
@@ -171,7 +173,7 @@ export default function App() {
         .then((response) => response.status)
         .then(() => {
           getUserSessionDetails();
-          window.location.href = config.loginRedirect;
+          history.push(config.loginRedirect);
         })
         .catch((error) => {
           console.error(error);

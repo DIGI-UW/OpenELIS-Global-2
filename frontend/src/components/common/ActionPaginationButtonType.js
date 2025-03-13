@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { Button, Grid, Column, Section } from "@carbon/react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
+import { useHistory } from "react-router-dom";
 
 const ActionPaginationButtonType = ({
   selectedRowIds,
@@ -23,6 +24,7 @@ const ActionPaginationButtonType = ({
   type,
 }) => {
   const intl = useIntl();
+  const history = useHistory();
 
   return (
     <Grid fullWidth={true}>
@@ -62,7 +64,7 @@ const ActionPaginationButtonType = ({
                   onClick={() => {
                     if (selectedRowIds.length === 1) {
                       const url = `${modifyButtonRedirectLink}${id}${otherParmsInLink}`;
-                      window.location.href = url;
+                      history.push(url);
                     }
                   }}
                   disabled={modifyButton}

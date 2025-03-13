@@ -20,8 +20,10 @@ import PageBreadCrumb from "../../common/PageBreadCrumb";
 import AuditTrailReport from "../auditTrailReport/AuditTrailReport";
 import ReportByDateCSV from "../common/ReportByDateCSV";
 import IntermediateByService from "./IntermediateByService";
+import { useHistory } from "react-router-dom";
 
 export const StudyReports = (props) => {
+  const history = useHistory();
   const { type, report } = props;
 
   return (
@@ -224,7 +226,7 @@ const StudyIndex = () => {
       }
       setIsLoading(false);
     } else {
-      window.location.href = "/StudyReports";
+      history.push("/StudyReports");
     }
   }, [type, report]);
 

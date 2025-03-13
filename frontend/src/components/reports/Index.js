@@ -6,8 +6,10 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import { StudyReports } from "./study/index";
 import { RoutineReports } from "./routine/Index";
 import { Loading } from "@carbon/react";
+import { useHistory } from "react-router-dom";
 
 const ReportIndex = () => {
+  const history = useHistory();
   const intl = useIntl();
   const { setNotificationVisible, addNotification, notificationVisible } =
     useContext(NotificationContext);
@@ -26,7 +28,7 @@ const ReportIndex = () => {
     if (paramType && paramReport) {
       setIsLoading(false);
     } else {
-      window.location.href = "/";
+      history.push("/");
     }
   }, []);
 

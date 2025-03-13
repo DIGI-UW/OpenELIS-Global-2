@@ -9,8 +9,10 @@ import ReferredOut from "./ReferredOut";
 import ReportByDate from "../common/ReportByDate";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import AuditTrailReport from "../auditTrailReport/AuditTrailReport";
+import { useHistory } from "react-router-dom";
 
 export const RoutineReports = (props) => {
+  const history = useHistory();
   const { type, report } = props;
 
   return (
@@ -110,7 +112,7 @@ const RoutineIndex = () => {
     if (paramType && paramReport) {
       setIsLoading(false);
     } else {
-      window.location.href = "/RoutineReports";
+      history.push("/RoutineReports");
     }
   }, []);
 
