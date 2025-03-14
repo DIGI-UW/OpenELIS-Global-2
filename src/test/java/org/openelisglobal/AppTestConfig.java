@@ -29,6 +29,8 @@ import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeS
 import org.openelisglobal.organization.service.OrganizationTypeService;
 import org.openelisglobal.panel.dao.PanelDAO;
 import org.openelisglobal.panel.daoimpl.PanelDAOImpl;
+import org.openelisglobal.panel.dao.PanelDAO;
+import org.openelisglobal.panel.daoimpl.PanelDAOImpl;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.program.service.ImmunohistochemistrySampleService;
 import org.openelisglobal.referral.service.ReferralResultService;
@@ -87,7 +89,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.typeoftestresult", "org.openelisglobal.samplehuman", "org.openelisglobal.provider",
         "org.openelisglobal.provider.controller.rest", "org.openelisglobal.role", "org.openelisglobal.organization",
         "org.openelisglobal.region.service", "org.openelisglobal.region.dao", "org.openelisglobal.program.service",
-        "org.openelisglobal.program.dao", "org.openelisglobal.systemuser.daoimpl", "org.openelisglobal.unitofmeasure",
+        "org.openelisglobal.program.dao", "org.openelisglobal.systemuser.daoimpl",
         "org.openelisglobal.systemuser.service", "org.openelisglobal.note.service",
         "org.openelisglobal.requester.service", "org.openelisglobal.requester.daoimpl",
         "org.openelisglobal.organization.dao", "org.openelisglobal.note.daoimpl",
