@@ -88,7 +88,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.provider.controller.rest", "org.openelisglobal.role", "org.openelisglobal.organization",
         "org.openelisglobal.region.service", "org.openelisglobal.region.dao", "org.openelisglobal.program.service",
         "org.openelisglobal.program.dao", "org.openelisglobal.systemuser.daoimpl", "org.openelisglobal.unitofmeasure",
-        "org.openelisglobal.systemuser.service", "org.openelisglobal.note.service",
+        "org.openelisglobal.systemuser.service", "org.openelisglobal.note.service", "org.openelisglobal.method",
         "org.openelisglobal.requester.service", "org.openelisglobal.requester.daoimpl",
         "org.openelisglobal.organization.dao", "org.openelisglobal.note.daoimpl",
         "org.openelisglobal.sampleorganization", "org.openelisglobal.menu.controller",
