@@ -32,6 +32,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import "./../pathology/PathologyDashboard.css";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { useNavigate } from "react-router-dom";
 
 function ImmunohistochemistryDashboard() {
   const componentMounted = useRef(false);
@@ -40,6 +41,7 @@ function ImmunohistochemistryDashboard() {
   const { notificationVisible } = useContext(NotificationContext);
 
   const intl = useIntl();
+  const navigate = useNavigate();
 
   const [counts, setCounts] = useState({
     inProgress: 0,
@@ -237,7 +239,7 @@ function ImmunohistochemistryDashboard() {
   };
 
   const openCaseView = (id) => {
-    window.location.href = "/ImmunohistochemistryCaseView/" + id;
+    navigate("/ImmunohistochemistryCaseView/" + id);
   };
 
   useEffect(() => {

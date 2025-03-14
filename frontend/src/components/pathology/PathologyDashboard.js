@@ -32,11 +32,13 @@ import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { useNavigate } from "react-router-dom";
 
 function PathologyDashboard() {
   const componentMounted = useRef(false);
 
   const intl = useIntl();
+  const navigate = useNavigate();
 
   const { notificationVisible } = useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -216,7 +218,7 @@ function PathologyDashboard() {
   };
 
   const openCaseView = (id) => {
-    window.location.href = "/PathologyCaseView/" + id;
+    navigate("/PathologyCaseView/" + id);
   };
 
   useEffect(() => {

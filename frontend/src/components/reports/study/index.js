@@ -20,6 +20,7 @@ import PageBreadCrumb from "../../common/PageBreadCrumb";
 import AuditTrailReport from "../auditTrailReport/AuditTrailReport";
 import ReportByDateCSV from "../common/ReportByDateCSV";
 import IntermediateByService from "./IntermediateByService";
+import { useNavigate } from "react-router-dom";
 
 export const StudyReports = (props) => {
   const { type, report } = props;
@@ -197,6 +198,7 @@ const StudyIndex = () => {
     patient_Trends: "reports.label.trends",
   };
 
+  const navigate = useNavigate();
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const paramType = params.get("type");
@@ -224,7 +226,7 @@ const StudyIndex = () => {
       }
       setIsLoading(false);
     } else {
-      window.location.href = "/StudyReports";
+      navigate("/StudyReports");
     }
   }, [type, report]);
 

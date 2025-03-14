@@ -21,12 +21,14 @@ import { Formik } from "formik";
 import * as Yup from "yup";
 import { AlertDialog, NotificationKinds } from "./common/CustomNotification";
 import { NotificationContext } from "./layout/Layout";
+import { useNavigate } from "react-router-dom";
 
 function ChangePassword() {
   const intl = useIntl();
   const { notificationVisible, addNotification, setNotificationVisible } =
     useContext(NotificationContext);
   const [submitting, setSubmitting] = useState(false);
+  const navigate = useNavigate();
 
   const changePassword = (values) => {
     setSubmitting(true);
@@ -51,7 +53,7 @@ function ChangePassword() {
           });
           setNotificationVisible(true);
           setTimeout(() => {
-            window.location.href = "/login";
+            navigate("/login");
           }, 2000);
         } else {
           addNotification({
@@ -252,7 +254,7 @@ function ChangePassword() {
                           data-cy="exitPasswordReset"
                           kind="secondary"
                           onClick={() => {
-                            window.location.href = "/";
+                            navigate("/");
                           }}
                         >
                           <FormattedMessage id="label.button.exit" />

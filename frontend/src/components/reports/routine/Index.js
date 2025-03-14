@@ -9,7 +9,7 @@ import ReferredOut from "./ReferredOut";
 import ReportByDate from "../common/ReportByDate";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import AuditTrailReport from "../auditTrailReport/AuditTrailReport";
-
+import { useNavigate } from "react-router-dom";
 export const RoutineReports = (props) => {
   const { type, report } = props;
 
@@ -99,6 +99,7 @@ const RoutineIndex = () => {
   const [type, setType] = useState("");
   const [report, setReport] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -110,7 +111,7 @@ const RoutineIndex = () => {
     if (paramType && paramReport) {
       setIsLoading(false);
     } else {
-      window.location.href = "/RoutineReports";
+      navigate("/RoutineReports");
     }
   }, []);
 

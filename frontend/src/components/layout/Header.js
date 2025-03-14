@@ -20,11 +20,12 @@ import React, {
   useState,
 } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
-import { withRouter } from "react-router-dom";
+import { withRouter } from "./withRouter";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import "../Style.css";
 import { ConfigurationContext } from "../layout/Layout";
 import SlideOver from "../notifications/SlideOver";
+import { useNavigate } from "react-router-dom";
 
 import {
   Header,
@@ -53,6 +54,7 @@ function OEHeader(props) {
   const [isOpen, setIsOpen] = useState(false);
 
   const intl = useIntl();
+  const navigate = useNavigate();
 
   const [switchCollapsed, setSwitchCollapsed] = useState(true);
   const [menus, setMenus] = useState({
@@ -316,7 +318,7 @@ function OEHeader(props) {
           if (menuItem.menu.openInNewWindow) {
             window.open(menuItem.menu.actionURL);
           } else {
-            window.location.href = menuItem.menu.actionURL;
+            navigate(menuItem.menu.actionURL);
           }
         }}
       >
@@ -359,7 +361,7 @@ function OEHeader(props) {
             if (menuItem.menu.openInNewWindow) {
               window.open(menuItem.menu.actionURL);
             } else {
-              window.location.href = menuItem.menu.actionURL;
+              navigate(menuItem.menu.actionURL);
             }
           }}
         >

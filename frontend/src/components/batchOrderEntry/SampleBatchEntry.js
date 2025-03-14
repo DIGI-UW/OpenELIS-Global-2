@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import {
   Button,
@@ -36,7 +36,7 @@ const SampleBatchEntry = (props) => {
   const { configurationProperties } = useContext(ConfigurationContext);
   const intl = useIntl();
   const componentMounted = useRef(false);
-  const history = useHistory();
+  const navigate = useNavigate();
   const [siteNames, setSiteNames] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -494,9 +494,7 @@ const SampleBatchEntry = (props) => {
               <Grid>
                 <Button
                   data-cy="finishButton"
-                  onClick={() =>
-                    (window.location.href = "/SampleBatchEntrySetup")
-                  }
+                  onClick={() => navigate("/SampleBatchEntrySetup")}
                 >
                   <FormattedMessage id="label.button.finish" />
                 </Button>

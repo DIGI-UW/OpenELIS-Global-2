@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { Button, Grid, Column, Section } from "@carbon/react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
+import { useNavigate } from "react-router-dom";
 
 const ActionPaginationButtonType = ({
   selectedRowIds,
@@ -23,6 +24,7 @@ const ActionPaginationButtonType = ({
   type,
 }) => {
   const intl = useIntl();
+  const navigate = useNavigate();
 
   return (
     <Grid fullWidth={true}>
@@ -62,7 +64,7 @@ const ActionPaginationButtonType = ({
                   onClick={() => {
                     if (selectedRowIds.length === 1) {
                       const url = `${modifyButtonRedirectLink}${id}${otherParmsInLink}`;
-                      window.location.href = url;
+                      navigate(url);
                     }
                   }}
                   disabled={modifyButton}
@@ -79,7 +81,7 @@ const ActionPaginationButtonType = ({
                 </Button>{" "}
                 <Button
                   onClick={() => {
-                    window.location.href = `${addButtonRedirectLink}`;
+                    navigate(`${addButtonRedirectLink}`);
                   }}
                   type="button"
                 >
@@ -91,7 +93,8 @@ const ActionPaginationButtonType = ({
           <div style={{ display: "flex", alignItems: "center" }}>
             <h4 style={{ marginRight: "10px" }}>
               <FormattedMessage id="showing" /> {fromRecordCount} -{" "}
-              {toRecordCount} <FormattedMessage id="of" /> {totalRecordCount}{" "}
+              {toRecordCount} <FormattedMessage id="of" />{" "}
+              {totalRecordCount}{" "}
             </h4>
             <Button
               style={{ marginLeft: "10px" }}
