@@ -99,10 +99,6 @@ public class MethodServiceImpl extends AuditableBaseObjectServiceImpl<Method, St
         }
     }
 
-    public Map<String, String> getMethodUnitIdToNameMap() {
-        return methodUnitIdToNameMap;
-    }
-
     private String buildMethodName(Method method) {
         return method.getLocalization().getLocalizedValue();
     }
