@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <system_user id="3" external_id="EXT003" login_name="jdoe"
+        last_name="Doe" first_name="John" initials="JD" is_active="Y"
+        is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+    <system_user id="4" external_id="EXT004"
+        login_name="asmith" last_name="Smith" first_name="Alice" initials="AS"
+        is_active="Y" is_employee="N" lastupdated="2025-03-08 12:00:00" />
+    <system_user id="5" external_id="EXT005"
+        login_name="bwhite" last_name="White" first_name="Bob" initials="BW"
+        is_active="N" is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+</dataset>
