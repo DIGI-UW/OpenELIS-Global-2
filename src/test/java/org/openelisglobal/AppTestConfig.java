@@ -29,8 +29,6 @@ import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeS
 import org.openelisglobal.organization.service.OrganizationTypeService;
 import org.openelisglobal.panel.dao.PanelDAO;
 import org.openelisglobal.panel.daoimpl.PanelDAOImpl;
-import org.openelisglobal.panel.dao.PanelDAO;
-import org.openelisglobal.panel.daoimpl.PanelDAOImpl;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.program.service.ImmunohistochemistrySampleService;
 import org.openelisglobal.referral.service.ReferralResultService;
