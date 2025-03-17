@@ -10,46 +10,46 @@ describe("Test Notification Config E2E with Page Object Model", () => {
   });
 
   it("Loads the Notification Config Menu", () => {
-    notificationConfigPage.verifyPageLoaded();
+    NotificationConfigPage.verifyPageLoaded();
   });
 
   it("Navigates to the Edit Page", () => {
-    notificationConfigPage.clickEditButton();
+    NotificationConfigPage.clickEditButton();
     cy.url().should("include", "/TestNotificationConfigEdit");
   });
 
   it("Loads Config Data in Edit Page", () => {
-    notificationConfigPage.clickEditButton();
-    notificationConfigPage.verifyEditPageLoaded();
+    NotificationConfigPage.clickEditButton();
+    NotificationConfigPage.verifyEditPageLoaded();
   });
 
   it("Enables and Disables Notifications", () => {
-    notificationConfigPage.clickEditButton();
-    notificationConfigPage.toggleNotificationOption("#patientEmail");
-    notificationConfigPage.toggleNotificationOption("#patientEmail");
+    NotificationConfigPage.clickEditButton();
+    NotificationConfigPage.toggleNotificationOption("#patientEmail");
+    NotificationConfigPage.toggleNotificationOption("#patientEmail");
   });
 
   it("Edits Subject and Message Templates", () => {
-    notificationConfigPage.clickEditButton();
-    notificationConfigPage.editSubjectAndMessage("New Subject", "New Message");
+    NotificationConfigPage.clickEditButton();
+    NotificationConfigPage.editSubjectAndMessage("New Subject", "New Message");
   });
 
   it("Saves Notification Config", () => {
-    notificationConfigPage.clickEditButton();
-    notificationConfigPage.clickSaveButton();
-    notificationConfigPage.verifySuccessNotification();
+    NotificationConfigPage.clickEditButton();
+    NotificationConfigPage.clickSaveButton();
+    NotificationConfigPage.verifySuccessNotification();
   });
 
   it("Handles Errors on Save", () => {
     cy.intercept("POST", "/rest/TestNotificationConfig", { statusCode: 500 });
-    notificationConfigPage.clickEditButton();
-    notificationConfigPage.clickSaveButton();
-    notificationConfigPage.verifyErrorNotification();
+    NotificationConfigPage.clickEditButton();
+    NotificationConfigPage.clickSaveButton();
+    NotificationConfigPage.verifyErrorNotification();
   });
 
   it("Cancels and Returns to Menu", () => {
-    notificationConfigPage.clickEditButton();
-    notificationConfigPage.clickExitButton();
+    NotificationConfigPage.clickEditButton();
+    NotificationConfigPage.clickExitButton();
     cy.url().should("include", "testNotificationConfigMenu");
   });
 });
