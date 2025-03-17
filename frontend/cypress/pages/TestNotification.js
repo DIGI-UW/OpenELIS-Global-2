@@ -16,8 +16,11 @@ class NotificationConfigPage {
   }
 
   toggleNotificationOption(selector) {
-    cy.get(selector).check().should("be.checked");
-    cy.get(selector).uncheck().should("not.be.checked");
+    cy.get(selector).click({ force: true });
+  }
+
+  verifyToggleStatus(selector, expectedStatus) {
+    cy.get(selector).should(expectedStatus ? "be.checked" : "not.be.checked");
   }
 
   editSubjectAndMessage(subject, message) {
@@ -25,16 +28,21 @@ class NotificationConfigPage {
     cy.get("textarea#message").clear().type(message);
   }
 
+  verifySubjectAndMessage(subject, message) {
+    cy.get("input#subject").should("have.value", subject);
+    cy.get("textarea#message").should("have.value", message);
+  }
+
   clickSaveButton() {
     cy.get("button").contains("Save").click();
   }
 
   verifySuccessNotification() {
-    cy.get(".notification").should("contain", "success");
+    cy.get(".notification").should("be.visible").and("contain.text", "success");
   }
 
   verifyErrorNotification() {
-    cy.get(".notification").should("contain", "error");
+    cy.get(".notification").should("be.visible").and("contain.text", "error");
   }
 
   clickExitButton() {
