@@ -24,6 +24,7 @@ module.exports = defineConfig({
         "cypress/e2e/dashboard.cy.js",
         "cypress/e2e/labNumberManagement.cy.js",
         "cypress/e2e/AdminE2E/MenuConfig/globalMenuConfig.cy.js",
+        "cypress/e2e/testnotification.cy.js",
       ];
       return config;
     },
