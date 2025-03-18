@@ -20,8 +20,6 @@ import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.externalconnections.service.BasicAuthenticationDataService;
 import org.openelisglobal.externalconnections.service.ExternalConnectionService;
 import org.openelisglobal.internationalization.MessageUtil;
-import org.openelisglobal.localization.dao.LocalizationDAO;
-import org.openelisglobal.localization.service.LocalizationServiceImpl;
 import org.openelisglobal.notification.service.AnalysisNotificationConfigService;
 import org.openelisglobal.notification.service.TestNotificationConfigService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
@@ -48,7 +46,6 @@ import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
-import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
@@ -85,7 +82,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.note.service", "org.openelisglobal.requester", "org.openelisglobal.note.daoimpl",
         "org.openelisglobal.method", "org.openelisglobal.sampleorganization", "org.openelisglobal.analyte",
         "org.openelisglobal.panel.service", "org.openelisglobal.panelitem.dao",
-        "org.openelisglobal.reports.*" }, excludeFilters = {
+        "org.openelisglobal.reports.*", "org.openelisglobal.userrole",
+        "org.openelisglobal.unitofmeasure", "org.openelisglobal.organization", "org.openelisglobal.testtrailer",
+        "org.openelisglobal.scriptlet", "org.openelisglobal.localization.service",
+        "org.openelisglobal.localization.daoimpl", "org.openelisglobal.typeoftestresult",
+        "org.openelisglobal.systemuser", "org.openelisglobal.systemmodule" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
@@ -136,12 +137,6 @@ public class AppTestConfig implements WebMvcConfigurer {
 
     @Bean()
     @Profile("test")
-    public LocalizationServiceImpl localise() {
-        return mock(LocalizationServiceImpl.class);
-    }
-
-    @Bean()
-    @Profile("test")
     public FhirTransformService fhirTransformService() {
         return mock(FhirTransformService.class);
     }
@@ -168,12 +163,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public TestAnalyteService testAnalyteService() {
         return mock(TestAnalyteService.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public LocalizationDAO localiseDao() {
-        return mock(LocalizationDAO.class);
     }
 
     @Bean()
@@ -215,12 +204,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public TestSectionService testSectionService() {
         return mock(TestSectionService.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public UserRoleService userRoleService() {
-        return mock(UserRoleService.class);
     }
 
     @Bean()
