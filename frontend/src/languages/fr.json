@@ -1376,5 +1376,12 @@
   "searchindexmanagement.reindex.success": "Réindexation réussie",
   "searchindexmanagement.reindex.error": "Erreur de réindexation",
   "searchindexmanagement.description": "Gestion de l'index de recherche",
-  "searchindexmanagement.reindex": "Réindexer"
+  "searchindexmanagement.reindex": "Réindexer",
+  "searchindexmanagement.description": "Description de la gestion de l'index de recherche",
+  "searchindexmanagement.reindex": "Réindexer",
+  "instructions.test.order": "Les tests avec des cases cochées sont commandables, ceux sans cases cochées ne le sont pas. Modifiez les cases pour changer le statut. Pour qu’un test puisse être commandé lors de l’admission, il doit être à la fois actif et commandable. Les tests qui sont actifs mais non commandables peuvent être demandés dans le cadre d’un test réflexe.",
+  "label.test.order.confirm": "Vérification : Activer/désactiver l'ordonnabilité des tests",
+  "label.test.orderable": "Les tests suivants seront disponibles pour la commande depuis le formulaire de commande.",
+  "instructions.test.activation.confirm": "Vérifiez que ces modifications sont celles que vous souhaitez effectuer. Si elles sont correctes, enregistrez-les. Sinon, utilisez le bouton retour pour apporter les corrections nécessaires.",
+  "label.test.unorderable": "Les tests suivants ne seront pas disponibles à la commande sur le formulaire de commande. Ils ne pourront être commandés qu'en tant que tests réflexes."
 }
