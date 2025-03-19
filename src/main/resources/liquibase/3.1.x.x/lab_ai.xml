@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--Organization
+    settings-->
+    <changeSet author="reagan" id="1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_labai'
+            </sqlCheck>
+        </preConditions>
+        <comment>create LabAI tab menu option</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="presentation_order" value="1" />
+            <column name="element_id" value="menu_labai" />
+            <column name="action_url" value="" />
+            <column name="display_key" value="banner.menu.labai"  />
+            <column name="tool_tip_key" value="banner.menu.labai.tooltip" />
+            <column name="new_window" valueBoolean="true" />
+            <column name="is_active" valueBoolean="true" />
+        </insert>
+    </changeSet>
+</databaseChangeLog>
