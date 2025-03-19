@@ -54,6 +54,7 @@ function CreatePatientForm(props) {
   const [prevlastName, setPrevlastName] = useState("");
   const [prevfirstContactName, setPrevfirstContactName] = useState("");
   const [prevlastContactName, setPrevlastContactName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [formAction, setFormAction] = useState("ADD");
   const [dateOfBirthFormatter, setDateOfBirthFormatter] = useState({
     years: "",
@@ -220,6 +221,35 @@ function CreatePatientForm(props) {
       event.target.value = prevfirstName;
     }
     setPrevfirstName(event.target.value);
+  }
+
+  function handlePhoneNumberChange(event) {
+    let value = event.target.value;
+
+    if (value.startsWith("+")) {
+      value = "+" + value.slice(1).replace(/[^0-9]/g, "");
+    } else {
+      value = value.replace(/[^0-9]/g, "");
+    }
+
+    setPhoneNumber(value);
+    
+    // validate against the configured phone format if available
+    if (configurationProperties.PHONE_FORMAT) {
+      try {
+        // escape special characters in PHONE_FORMAT before using in RegExp
+        const escapedPhoneFormat = configurationProperties.PHONE_FORMAT.replace(
+          /[.*+?^${}()|[\]\\]/g,
+          "\\$&",
+        );
+        const phoneRegex = new RegExp(escapedPhoneFormat);
+        if (!phoneRegex.test(value)) {
+          console.warn("invalid phone number format");
+        }
+      } catch (error) {
+        console.error("invalid PHONE_FORMAT regex:", error);
+      }
+    }
   }
 
   function handleLastNameChange(event) {
@@ -614,8 +644,8 @@ function CreatePatientForm(props) {
                 <Field name="primaryPhone">
                   {({ field }) => (
                     <TextInput
-                      value={values.primaryPhone || ""}
-                      name={field.name}
+                      value={phoneNumber}
+                      name="primaryPhone"
                       labelText={intl.formatMessage(
                         {
                           id: "patient.label.primaryphone",
@@ -623,12 +653,13 @@ function CreatePatientForm(props) {
                         },
                         { PHONE_FORMAT: configurationProperties.PHONE_FORMAT },
                       )}
-                      id={field.name}
+                      id="primaryPhone"
                       invalid={errors.primaryPhone && touched.primaryPhone}
                       invalidText={errors.primaryPhone}
                       placeholder={intl.formatMessage({
                         id: "patient.information.primaryphone",
                       })}
+                      onChange={handlePhoneNumberChange}
                     />
                   )}
                 </Field>
