@@ -1,7 +1,7 @@
 package org.openelisglobal.security.converter;
 
-import javax.persistence.AttributeConverter;
-import javax.persistence.Converter;
+import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Converter;
 import org.apache.commons.validator.GenericValidator;
 import org.jasypt.util.text.TextEncryptor;
 import org.openelisglobal.spring.util.SpringContext;

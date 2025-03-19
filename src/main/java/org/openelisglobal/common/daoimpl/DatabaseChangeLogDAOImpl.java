@@ -15,9 +15,9 @@
  */
 package org.openelisglobal.common.daoimpl;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.util.List;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.dao.DatabaseChangeLogDAO;

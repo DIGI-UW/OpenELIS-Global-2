@@ -1,7 +1,7 @@
 package org.openelisglobal.samplebatchentry.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
-import javax.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;

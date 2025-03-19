@@ -1,8 +1,8 @@
 package org.openelisglobal.referral.controller.rest;
 
+import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
-import javax.validation.Valid;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.referral.form.ReferredOutTestsForm;

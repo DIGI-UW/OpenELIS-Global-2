@@ -1,10 +1,10 @@
 package org.openelisglobal.notifications.dao;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
 import java.time.OffsetDateTime;
 import java.util.List;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
-import javax.persistence.TypedQuery;
 import org.openelisglobal.notifications.entity.Notification;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.stereotype.Repository;

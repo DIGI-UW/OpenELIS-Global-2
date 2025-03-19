@@ -1,7 +1,7 @@
 package org.openelisglobal.resultreporting.form;
 
+import jakarta.validation.Valid;
 import java.util.List;
-import javax.validation.Valid;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.resultreporting.beans.ReportingConfiguration;

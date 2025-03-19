@@ -1,7 +1,7 @@
 package org.openelisglobal.datasubmission.valueholder;
 
-import javax.validation.constraints.Pattern;
-import javax.validation.groups.Default;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.groups.Default;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.datasubmission.form.DataSubmissionForm;
 import org.openelisglobal.validation.annotations.SafeHtml;
