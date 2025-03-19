@@ -227,27 +227,27 @@ function CreatePatientForm(props) {
     let value = event.target.value;
 
     if (value.startsWith("+")) {
-      value = "+" + value.slice(1).replace(/[^0-9]/g, "");
+      value = "+" + value.slice(1).replace(/[^0-9-]/g, "");
     } else {
-      value = value.replace(/[^0-9]/g, "");
+      value = value.replace(/[^0-9-]/g, "");
     }
 
     setPhoneNumber(value);
 
-    // validate against the configured phone format if available
-    if (configurationProperties.PHONE_FORMAT) {
+    if (configurationProperties.PHONE_FORMAT && value.length > 10) {
+      // we can adjust threshold as needed
       try {
-        // escape special characters in PHONE_FORMAT before using in RegExp
         const escapedPhoneFormat = configurationProperties.PHONE_FORMAT.replace(
           /[.*+?^${}()|[\]\\]/g,
           "\\$&",
         );
         const phoneRegex = new RegExp(escapedPhoneFormat);
+
         if (!phoneRegex.test(value)) {
-          console.warn("invalid phone number format");
+          console.warn("Invalid phone number format");
         }
       } catch (error) {
-        console.error("invalid PHONE_FORMAT regex:", error);
+        console.error("Invalid PHONE_FORMAT regex:", error);
       }
     }
   }
