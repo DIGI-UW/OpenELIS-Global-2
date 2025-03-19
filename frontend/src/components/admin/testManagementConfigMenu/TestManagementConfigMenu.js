@@ -306,9 +306,7 @@ function TestManagementConfigMenu() {
                 <ClickableTile>
                   <ListItem
                     onClick={() => {
-                      window.location.assign(
-                        "/api/OpenELIS-Global/TestOrderability",
-                      );
+                      window.location.assign("/admin#TestOrderability");
                     }}
                   >
                     <FormattedMessage id="configuration.test.orderable" />

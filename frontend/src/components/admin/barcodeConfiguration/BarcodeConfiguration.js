@@ -266,6 +266,7 @@ function BarcodeConfiguration() {
                               invalidText={errors.order}
                               value={values.numDefaultOrderLabels}
                               onChange={(e) => handleDefaultOrderLablesValue(e)}
+                              min={0}
                             />
                           )}
                         </Field>
@@ -284,6 +285,7 @@ function BarcodeConfiguration() {
                               onChange={(e) =>
                                 handleDefaultSpecimenLablesValue(e)
                               }
+                              min={0}
                             />
                           )}
                         </Field>
@@ -310,6 +312,7 @@ function BarcodeConfiguration() {
                               }
                               value={values.numMaxOrderLabels}
                               onChange={(e) => handleMaxOrderLablesValue(e)}
+                              min={0}
                             />
                           )}
                         </Field>
@@ -326,6 +329,7 @@ function BarcodeConfiguration() {
                               }
                               value={values.numMaxSpecimenLabels}
                               onChange={(e) => handleMaxSpecimenLablesValue(e)}
+                              min={0}
                             />
                           )}
                         </Field>
@@ -583,6 +587,7 @@ function BarcodeConfiguration() {
                                 onChange={(e) =>
                                   handleHeightOrderLabelsValue(e)
                                 }
+                                min={0}
                               />
                             )}
                           </Field>
@@ -602,6 +607,7 @@ function BarcodeConfiguration() {
                                 }
                                 value={values.widthOrderLabels}
                                 onChange={(e) => handleWidthOrderLabelsValue(e)}
+                                min={0}
                               />
                             )}
                           </Field>
@@ -626,6 +632,7 @@ function BarcodeConfiguration() {
                                 onChange={(e) =>
                                   handleHeightSpecimenLablesValue(e)
                                 }
+                                min={0}
                               />
                             )}
                           </Field>
@@ -647,6 +654,7 @@ function BarcodeConfiguration() {
                                 onChange={(e) =>
                                   handleWidthSpecimenLablesValue(e)
                                 }
+                                min={0}
                               />
                             )}
                           </Field>
@@ -674,6 +682,7 @@ function BarcodeConfiguration() {
                                 onChange={(e) =>
                                   handleHeightBlockLablesValue(e)
                                 }
+                                min={0}
                               />
                             )}
                           </Field>
@@ -692,6 +701,7 @@ function BarcodeConfiguration() {
                                 }
                                 value={values.widthBlockLabels}
                                 onChange={(e) => handleWidthBlockLablesValue(e)}
+                                min={0}
                               />
                             )}
                           </Field>
@@ -716,6 +726,7 @@ function BarcodeConfiguration() {
                                 onChange={(e) =>
                                   handleHeightSlideLablesValue(e)
                                 }
+                                min={0}
                               />
                             )}
                           </Field>
@@ -735,6 +746,7 @@ function BarcodeConfiguration() {
                                 }
                                 value={values.widthSlideLabels}
                                 onChange={(e) => handleWidthSlideLablesValue(e)}
+                                min={0}
                               />
                             )}
                           </Field>
