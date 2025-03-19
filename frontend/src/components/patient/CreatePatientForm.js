@@ -224,32 +224,20 @@ function CreatePatientForm(props) {
   }
 
   function handlePhoneNumberChange(event) {
-    let value = event.target.value;
+    let inputValue = event.target.value;
 
-    if (value.startsWith("+")) {
-      value = "+" + value.slice(1).replace(/[^0-9-]/g, "");
+    if (inputValue.startsWith("+")) {
+      inputValue = "+" + inputValue.slice(1).replace(/[^0-9-]/g, "");
     } else {
-      value = value.replace(/[^0-9-]/g, "");
+      inputValue = inputValue.replace(/[^0-9-]/g, "");
     }
 
-    setPhoneNumber(value);
-
-    if (configurationProperties.PHONE_FORMAT && value.length > 10) {
-      // we can adjust threshold as needed
-      try {
-        const escapedPhoneFormat = configurationProperties.PHONE_FORMAT.replace(
-          /[.*+?^${}()|[\]\\]/g,
-          "\\$&",
-        );
-        const phoneRegex = new RegExp(escapedPhoneFormat);
-
-        if (!phoneRegex.test(value)) {
-          console.warn("Invalid phone number format");
-        }
-      } catch (error) {
-        console.error("Invalid PHONE_FORMAT regex:", error);
-      }
+    if (event.target.value !== inputValue) {
+      event.target.value = inputValue;
+      return;
     }
+
+    setPhoneNumber(inputValue);
   }
 
   function handleLastNameChange(event) {
@@ -644,7 +632,7 @@ function CreatePatientForm(props) {
                 <Field name="primaryPhone">
                   {({ field }) => (
                     <TextInput
-                      value={phoneNumber}
+                      value={values.primaryPhone || phoneNumber}
                       name={field.name}
                       labelText={intl.formatMessage(
                         {
@@ -654,8 +642,6 @@ function CreatePatientForm(props) {
                         { PHONE_FORMAT: configurationProperties.PHONE_FORMAT },
                       )}
                       id={field.name}
-                      invalid={errors.primaryPhone && touched.primaryPhone}
-                      invalidText={errors.primaryPhone}
                       placeholder={intl.formatMessage({
                         id: "patient.information.primaryphone",
                       })}
