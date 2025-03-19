@@ -288,7 +288,7 @@ function CreatePatientForm(props) {
       if (props.selectedPatient.healthRegion != null) {
         getFromOpenElisServer(
           "/rest/health-districts-for-region?regionId=" +
-            props.selectedPatient.healthRegion,
+          props.selectedPatient.healthRegion,
           fetchHealthDistrictsCallback,
         );
       } else {
@@ -639,9 +639,11 @@ function CreatePatientForm(props) {
                           id: "patient.label.primaryphone",
                           defaultMessage: "Phone: {PHONE_FORMAT}",
                         },
-                        { PHONE_FORMAT: configurationProperties.PHONE_FORMAT },
+                        { PHONE_FORMAT: configurationProperties.PHONE_FORMAT }
                       )}
                       id={field.name}
+                      invalid={errors.primaryPhone && touched.primaryPhone}
+                      invalidText={errors.primaryPhone}
                       placeholder={intl.formatMessage({
                         id: "patient.information.primaryphone",
                       })}
@@ -984,7 +986,7 @@ function CreatePatientForm(props) {
                               labelText={intl.formatMessage({
                                 id: "patient.address.healthdistrict",
                               })}
-                              onChange={() => {}}
+                              onChange={() => { }}
                               helperText={intl.formatMessage({
                                 id: "patient.emergency.additional.district",
                               })}
@@ -1015,7 +1017,7 @@ function CreatePatientForm(props) {
                               labelText={intl.formatMessage({
                                 id: "patient.eduction",
                               })}
-                              onChange={() => {}}
+                              onChange={() => { }}
                               helperText={intl.formatMessage({
                                 id: "patient.emergency.additional.education",
                               })}
@@ -1042,7 +1044,7 @@ function CreatePatientForm(props) {
                               labelText={intl.formatMessage({
                                 id: "patient.maritalstatus",
                               })}
-                              onChange={() => {}}
+                              onChange={() => { }}
                               helperText={intl.formatMessage({
                                 id: "patient.emergency.additional.maritalstatus",
                               })}
@@ -1073,7 +1075,7 @@ function CreatePatientForm(props) {
                               labelText={intl.formatMessage({
                                 id: "patient.nationality",
                               })}
-                              onChange={() => {}}
+                              onChange={() => { }}
                               helperText={intl.formatMessage({
                                 id: "patient.emergency.additional.nationnality",
                               })}
