@@ -233,7 +233,7 @@ function CreatePatientForm(props) {
     }
 
     setPhoneNumber(value);
-    
+
     // validate against the configured phone format if available
     if (configurationProperties.PHONE_FORMAT) {
       try {
@@ -645,7 +645,7 @@ function CreatePatientForm(props) {
                   {({ field }) => (
                     <TextInput
                       value={phoneNumber}
-                      name="primaryPhone"
+                      name={field.name}
                       labelText={intl.formatMessage(
                         {
                           id: "patient.label.primaryphone",
@@ -653,7 +653,7 @@ function CreatePatientForm(props) {
                         },
                         { PHONE_FORMAT: configurationProperties.PHONE_FORMAT },
                       )}
-                      id="primaryPhone"
+                      id={field.name}
                       invalid={errors.primaryPhone && touched.primaryPhone}
                       invalidText={errors.primaryPhone}
                       placeholder={intl.formatMessage({
