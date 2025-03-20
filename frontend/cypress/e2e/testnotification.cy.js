@@ -28,12 +28,8 @@ describe("Test Notification Config E2E with Page Object Model", () => {
   it("Enables and Disables Notifications", () => {
     NotificationConfigPage.clickEditButton();
     NotificationConfigPage.verifyEditPageLoaded();
-
-    // Enable and verify
     NotificationConfigPage.toggleNotificationOption("#patientEmail");
     NotificationConfigPage.verifyToggleStatus("#patientEmail", true);
-
-    // Disable and verify
     NotificationConfigPage.toggleNotificationOption("#patientEmail");
     NotificationConfigPage.verifyToggleStatus("#patientEmail", false);
   });
