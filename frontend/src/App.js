@@ -13,6 +13,7 @@ import { getFromOpenElisServer } from "./components/utils/Utils";
 import "./App.css";
 import messages_en from "./languages/en.json";
 import messages_fr from "./languages/fr.json";
+import messages_es from "./languages/es.json";
 import config from "./config.json";
 import { SecureRoute } from "./components/security";
 import "./index.scss";
@@ -117,17 +118,20 @@ export default function App() {
 
   i18nConfig.locale =
     localStorage.getItem("locale") || navigator.language.split(/[-_]/)[0];
-  switch (i18nConfig.locale) {
-    case "en":
-      i18nConfig.messages = messages_en;
-      break;
-    case "fr":
-      i18nConfig.messages = messages_fr;
-      break;
-    default:
-      i18nConfig.messages = messages_en;
-      break;
-  }
+    switch (i18nConfig.locale) {
+      case "en":
+        i18nConfig.messages = messages_en;
+        break;
+      case "fr":
+        i18nConfig.messages = messages_fr;
+        break;
+      case "es":
+        i18nConfig.messages = messages_es;
+        break;
+      default:
+        i18nConfig.messages = messages_en;
+        break;
+    }
 
   const logout = () => {
     if (userSessionDetails.loginMethod === "SAML") {
@@ -186,6 +190,9 @@ export default function App() {
         break;
       case "fr":
         i18nConfig.messages = messages_fr;
+        break;
+      case "es":
+        i18nConfig.messages = messages_es;
         break;
       default:
         i18nConfig.messages = messages_en;
