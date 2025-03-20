@@ -58,7 +58,7 @@ public class TypeOfTestResultDAOImpl extends BaseDAOImpl<TypeOfTestResult, Strin
             if (!StringUtil.isNullorNill(typeOfTestResult.getId())) {
                 typeOfTestResultId = typeOfTestResult.getId();
             }
-            query.setParameter("param2", typeOfTestResultId);
+            query.setParameter("param2", Integer.parseInt(typeOfTestResultId));
 
             list = query.list();
             return list.size() > 0;
