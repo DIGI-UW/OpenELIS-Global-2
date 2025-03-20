@@ -717,6 +717,10 @@
                     <!-- legacy for java versions < 9 -->
                     <!-- <source>${maven.compiler.source}</source> -->
                     <!-- <target>${maven.compiler.target}</target> -->
+                    <compilerArgs>
+                        <arg>--add-opens</arg>
+                        <arg>jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
