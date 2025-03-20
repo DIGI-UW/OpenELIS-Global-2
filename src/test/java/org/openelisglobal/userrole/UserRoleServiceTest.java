@@ -10,7 +10,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.userrole.service.UserRoleService;
-import org.openelisglobal.userrole.valueholder.UserRole;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class UserRoleServiceTest extends BaseWebContextSensitiveTest {
@@ -21,14 +20,6 @@ public class UserRoleServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/user-role.xml");
-    }
-
-    @Test
-    public void testDataInDataBase() {
-        List<UserRole> userRoles = userRoleService.getAll();
-        userRoles.forEach(userRole -> {
-            System.out.print(userRole.getSystemUserId() + " - " + userRole.getRoleId() + " ");
-        });
     }
 
     @Test

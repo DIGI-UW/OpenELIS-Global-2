@@ -21,14 +21,6 @@ public class OrganizationTypeServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testDataBaseData() {
-        List<OrganizationType> organizationTypes = organizationTypeService.getAll();
-        organizationTypes.forEach(organizationType -> {
-            System.out.print(organizationType.getName() + " ");
-        });
-    }
-
-    @Test
     public void getAllOrganizationTypes() {
         List<OrganizationType> organizationTypes = organizationTypeService.getAllOrganizationTypes();
         assertEquals(2, organizationTypes.size());

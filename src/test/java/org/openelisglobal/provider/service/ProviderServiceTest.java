@@ -36,12 +36,6 @@ public class ProviderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void providerInThDataBase() {
-        List<Provider> providers = providerService.getAll();
-        providers.forEach(provider -> System.out.print(provider.getProviderType() + " "));
-    }
-
-    @Test
     public void getAllProviders_shouldReturnAllProvders() {
         List<Provider> providers = providerService.getAllProviders();
         assertNotNull("should return providers", providers);

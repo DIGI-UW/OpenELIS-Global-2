@@ -25,14 +25,6 @@ public class PanelServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void verifyTestData() {
-        List<Panel> panels = panelService.getAllActivePanels();
-        System.out.println("Panels in DB: " + panels.size());
-        panels.forEach(panel -> System.out
-                .println(panel.getId() + " - " + panel.getPanelName() + " - " + panel.getDescription()));
-    }
-
-    @Test
     public void insert_shouldCreateNewPanel() throws Exception {
         Panel existingPanel = panelService.getPanelByName("Test Panel");
         assertNotNull("Dataset panel should exist", existingPanel);

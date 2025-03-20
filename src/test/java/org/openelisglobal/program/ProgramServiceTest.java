@@ -20,14 +20,6 @@ public class ProgramServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void verifyTestData() {
-        List<Program> programList = programService.getAll();
-        System.out.println("program we have in db: " + programList.size());
-        programList.forEach(program -> System.out.println(program.getId() + " - " + program.getProgramName() + " - "
-                + program.getTestSection().getTestSectionName()));
-    }
-
-    @Test
     public void getAll_shouldGetAllPrograms() throws Exception {
         Assert.assertEquals(Integer.parseInt("5"), programService.getAll().size());
     }

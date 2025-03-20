@@ -41,13 +41,6 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void verifyTestData() {
-        List<Person> personList = personService.getAll();
-        System.out.println("Persons we have in db: " + personList.size());
-        personList.forEach(person -> System.out.println(person.getId() + " - " + person.getFirstName()));
-    }
-
-    @Test
     public void createPerson_shouldCreateNewPerson() throws Exception {
         cleanRowsInCurrentConnection(new String[] { "person", "patient" });
         String firstName = "John";

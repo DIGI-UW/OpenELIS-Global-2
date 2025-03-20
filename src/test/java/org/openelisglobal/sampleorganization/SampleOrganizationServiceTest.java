@@ -4,7 +4,6 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.List;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -28,14 +27,6 @@ public class SampleOrganizationServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/sample-organization.xml");
-    }
-
-    @Test
-    public void verifyTestData() {
-        List<SampleOrganization> sampleOrganizationList = sampleOrganizationService.getAll();
-        System.out.println("sample organization we have in db: " + sampleOrganizationList.size());
-        sampleOrganizationList.forEach(sampleOrganization -> System.out
-                .println(sampleOrganization.getId() + " - " + sampleOrganization.getSample().getAccessionNumber()));
     }
 
     @Test

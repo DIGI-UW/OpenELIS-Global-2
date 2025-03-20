@@ -24,14 +24,6 @@ public class OrganizationServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getDataBaseData() {
-        List<Organization> organisationList = organisationService.getAll();
-        organisationList.forEach(organisation -> {
-            System.out.print(organisation.getCity() + " ");
-        });
-    }
-
-    @Test
     public void getData_shouldReturnDataGivenOrganization() {
         Organization organisation = new Organization();
         organisation.setId("3");

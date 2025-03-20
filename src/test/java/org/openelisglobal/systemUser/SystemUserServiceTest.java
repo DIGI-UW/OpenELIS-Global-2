@@ -23,14 +23,6 @@ public class SystemUserServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testDataInDataBase() {
-        List<SystemUser> systemUsers = systemUserService.getAll();
-        systemUsers.forEach(systemUser -> {
-            System.out.print(systemUser.getLastName() + " ");
-        });
-    }
-
-    @Test
     public void getAllSystemUsers_shouldReturnAllSystemUsers() {
         List<SystemUser> systemUsers = systemUserService.getAllSystemUsers();
         assertTrue(systemUsers.size() == 3);

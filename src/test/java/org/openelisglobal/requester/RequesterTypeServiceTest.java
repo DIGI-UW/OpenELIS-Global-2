@@ -22,7 +22,6 @@ public class RequesterTypeServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void verifyRequesterTypeData() {
         List<RequesterType> requesterTypes = requesterTypeService.getAll();
-        System.out.println("Requester Types in DB: " + requesterTypes.size());
         requesterTypes.forEach(type -> System.out.println(type.getId() + " - " + type.getRequesterType()));
 
         Assert.assertFalse("❌ requester_type table should not be empty!", requesterTypes.isEmpty());

@@ -28,7 +28,6 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void setup() throws Exception {
-        // Load the dataset
         executeDataSetWithStateManagement("testdata/notes.xml");
     }
 

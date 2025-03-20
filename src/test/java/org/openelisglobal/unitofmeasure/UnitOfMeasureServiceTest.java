@@ -25,18 +25,6 @@ public class UnitOfMeasureServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testDataInDatabase() {
-        List<UnitOfMeasure> unitOfMeasures = unitOfMeasureService.getAll();
-        assertNotNull(unitOfMeasures);
-        assertTrue(unitOfMeasures.size() >= 10);
-
-        // Print unit names to console for debugging
-        unitOfMeasures.forEach(uom -> {
-            System.out.print(uom.getUnitOfMeasureName() + " ");
-        });
-    }
-
-    @Test
     public void getUnitOfMeasureById_shouldReturnCorrectUnitOfMeasure() {
         UnitOfMeasure unitOfMeasure = unitOfMeasureService.getUnitOfMeasureById("1");
         assertNotNull(unitOfMeasure);

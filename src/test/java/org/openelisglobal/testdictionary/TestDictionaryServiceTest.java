@@ -1,7 +1,6 @@
 package org.openelisglobal.testdictionary;
 
 import java.sql.Timestamp;
-import java.util.List;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -27,17 +26,6 @@ public class TestDictionaryServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/test-dictionary.xml");
-    }
-
-    @Test
-    public void verifyTestData() {
-        List<TestDictionary> testDictionaryList = testDictionaryService.getAll();
-        System.out.println("test dictionary entries we have in db: " + testDictionaryList.size());
-        testDictionaryList.forEach(
-                testDictionary -> System.out.println(testDictionary.getId() + " - " + testDictionary.getTestId() + " - "
-                        + (testDictionary.getDictionaryCategory() != null
-                                ? testDictionary.getDictionaryCategory().getId()
-                                : "null")));
     }
 
     @Test

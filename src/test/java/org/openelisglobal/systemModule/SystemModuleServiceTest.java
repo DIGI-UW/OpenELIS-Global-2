@@ -23,14 +23,6 @@ public class SystemModuleServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testDataBaseData() {
-        List<SystemModule> systemModules = systemModuleService.getAll();
-        systemModules.forEach(systemModule -> {
-            System.out.print(systemModule.getSystemModuleName() + " ");
-        });
-    }
-
-    @Test
     public void getData_shouldReturnDataGivenSystemModule() {
         SystemModule systemModule = systemModuleService.get("1");
         systemModuleService.getData(systemModule);

@@ -26,7 +26,6 @@ public class PersonAddressServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void createPersonAddress_shouldCreatePersonAddress() throws Exception {
-
         PersonAddress personAddress = new PersonAddress();
         personAddress.setAddressPartId("3");
         personAddress.setPersonId("3");

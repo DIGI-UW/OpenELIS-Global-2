@@ -27,13 +27,6 @@ public class TypeOfTestResultServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testDataInDataBase() {
-        List<TypeOfTestResult> typeOfTestResults = typeOfTestResultService.getAll();
-        assertNotNull(typeOfTestResults);
-        assertTrue(typeOfTestResults.size() > 0);
-    }
-
-    @Test
     public void getAll_shouldReturnAllTypeOfTestResults() {
         List<TypeOfTestResult> typeOfTestResults = typeOfTestResultService.getAll();
         assertEquals(7, typeOfTestResults.size());

@@ -19,7 +19,6 @@ public class AdminMenuItemServiceTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void setUp() throws Exception {
-
         executeDataSetWithStateManagement("testdata/menu.xml");
     }
 

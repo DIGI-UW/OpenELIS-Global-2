@@ -4,7 +4,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
-import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -22,14 +21,6 @@ public class DictionaryCategoryServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/dictionary-category.xml");
-    }
-
-    @Test
-    public void getDictionaryCategoryfromDataBase() {
-        List<DictionaryCategory> dictionaryCategoryList = dictionaryCategoryService.getAll();
-        dictionaryCategoryList.forEach(category -> {
-            System.out.print(category.getCategoryName() + " ");
-        });
     }
 
     @Test

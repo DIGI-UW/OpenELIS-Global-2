@@ -1,6 +1,5 @@
 package org.openelisglobal.address;
 
-import java.util.List;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -17,14 +16,6 @@ public class AddressPartServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void init() throws Exception {
         executeDataSetWithStateManagement("testdata/address-part.xml");
-    }
-
-    @Test
-    public void verifyTestData() {
-        List<AddressPart> addressPartList = partService.getAll();
-        System.out.println("address parts we have in db: " + addressPartList.size());
-        addressPartList.forEach(addressPart -> System.out.println(
-                addressPart.getId() + " - " + addressPart.getPartName() + " - " + addressPart.getDisplayOrder()));
     }
 
     @Test

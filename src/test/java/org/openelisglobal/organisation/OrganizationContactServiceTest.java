@@ -21,14 +21,6 @@ public class OrganizationContactServiceTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
-    public void testDataBaseData() {
-        List<OrganizationContact> organizationContacts = organizationContactService.getAll();
-        organizationContacts.forEach(organizationContact -> {
-            System.out.print(organizationContact.getPosition() + " ");
-        });
-    }
-
-    @Test
     public void getListForOrganizationId() {
         List<OrganizationContact> organizationContacts = organizationContactService.getListForOrganizationId("3");
         assertEquals(2, organizationContacts.size());

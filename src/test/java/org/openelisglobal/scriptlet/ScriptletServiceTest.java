@@ -23,14 +23,6 @@ public class ScriptletServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testDataBase() {
-        List<Scriptlet> scriptlets = scriptletService.getAll();
-        scriptlets.forEach(scriptlet -> {
-            System.out.print(scriptlet.getScriptletName() + " ");
-        });
-    }
-
-    @Test
     public void testGetData() {
         Scriptlet scriptlet = scriptletService.get("1");
         scriptletService.getData(scriptlet);

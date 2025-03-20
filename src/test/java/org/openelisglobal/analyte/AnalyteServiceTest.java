@@ -27,7 +27,6 @@ public class AnalyteServiceTest extends BaseWebContextSensitiveTest {
         analyteList.forEach(analyte -> {
             System.out.print(analyte.getAnalyteName() + " ");
         });
-
     }
 
     @Test

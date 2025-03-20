@@ -7,7 +7,6 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
-import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.annotation.Rollback;
 
@@ -23,18 +22,6 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setup() throws Exception {
         executeDataSetWithStateManagement("testdata/dictionary.xml");
-    }
-
-    // @Test
-    public void verifyTestData() {
-        List<DictionaryCategory> categories = dictionaryCategoryService.getAll();
-        System.out.println("Dictionary Categories: " + categories.size());
-        categories.forEach(cat -> System.out
-                .println(cat.getCategoryName() + " - " + cat.getLocalAbbreviation() + " - " + cat.getDescription()));
-
-        List<Dictionary> dictionaries = dictionaryService.getAll();
-        System.out.println("Dictionaries: " + dictionaries.size());
-        dictionaries.forEach(dict -> System.out.println(dict.getDictEntry() + " - " + dict.getIsActive()));
     }
 
     @Test

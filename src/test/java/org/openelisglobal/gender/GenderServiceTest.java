@@ -2,8 +2,6 @@ package org.openelisglobal.gender;
 
 import static org.junit.Assert.assertEquals;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import java.sql.Timestamp;
 import java.util.List;
 import org.junit.Assert;
@@ -20,21 +18,9 @@ public class GenderServiceTest extends BaseWebContextSensitiveTest {
     @Autowired
     GenderService genderService;
 
-    @PersistenceContext
-    private EntityManager entityManager;
-
     @Before
     public void init() throws Exception {
         executeDataSetWithStateManagement("testdata/gender.xml");
-    }
-
-    @Test
-    public void verifyTestData() {
-        List<Gender> genders = genderService.getAll();
-        System.out.println("Genders we have in db: " + genders.size());
-        genders.forEach(gender -> System.out
-                .println(gender.getId() + " - " + gender.getGenderType() + " - " + gender.getDescription()));
-
     }
 
     @Test

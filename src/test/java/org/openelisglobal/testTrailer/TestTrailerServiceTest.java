@@ -23,15 +23,6 @@ public class TestTrailerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getDatabaseData() {
-        List<TestTrailer> testTrailers = testTrailerService.getAll();
-        testTrailers.forEach(testTrailer -> {
-            System.out.print(testTrailer.getTestTrailerName() + " ");
-        });
-
-    }
-
-    @Test
     public void getTestTrailerByName() {
         TestTrailer testTrailer = new TestTrailer();
         testTrailer.setTestTrailerName("Trailer Name 1");

@@ -27,13 +27,11 @@ public class SampleRequesterServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void verifyTestData() {
         List<SampleRequester> sampleRequesters = sampleRequesterService.getAll();
-        System.out.println("Sample Requesters in DB: " + sampleRequesters.size());
         sampleRequesters.forEach(requester -> System.out
                 .println(requester.getId() + " - Sample ID: " + requester.getSampleId() + ", Requester ID: "
                         + requester.getRequesterId() + ", Requester Type ID: " + requester.getRequesterTypeId()));
 
         List<RequesterType> requesterTypes = requesterTypeService.getAll();
-        System.out.println("Requester Types in DB: " + requesterTypes.size());
         requesterTypes.forEach(type -> System.out.println(type.getId() + " - " + type.getRequesterType()));
 
         Assert.assertFalse("❌ sample_requester table should not be empty!", sampleRequesters.isEmpty());

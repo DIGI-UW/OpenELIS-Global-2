@@ -7,10 +7,8 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.program.service.ProgramSampleService;
 import org.openelisglobal.program.service.ProgramService;
-import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.sample.service.SampleService;
-import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class ProgramSampleServiceTest extends BaseWebContextSensitiveTest {
@@ -27,24 +25,6 @@ public class ProgramSampleServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void init() throws Exception {
         executeDataSetWithStateManagement("testdata/program-sample.xml");
-    }
-
-    @Test
-    public void verifyTestData() {
-        List<ProgramSample> programSamples = programSampleService.getAll();
-        System.out.println("program samples we have in db: " + programSamples.size());
-        programSamples.forEach(program -> System.out
-                .println(program.getId() + " - " + program.getProgram() + " - " + program.getSample()));
-
-        List<Program> programList = programService.getAll();
-        System.out.println("programs we have in db: " + programList.size());
-        programList.forEach(program -> System.out.println(program.getId() + " - " + program.getProgramName() + " - "
-                + program.getTestSection().getTestSectionName()));
-
-        List<Sample> samples = sampleService.getAll();
-        System.out.println("samples we have in db: " + samples.size());
-        samples.forEach(program -> System.out
-                .println(program.getId() + " - " + program.getAccessionNumber() + " - " + program.getReceivedDate()));
     }
 
     @Test

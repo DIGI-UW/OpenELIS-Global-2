@@ -32,7 +32,6 @@ public class OrganizationAddressServiceTest extends BaseWebContextSensitiveTest 
 
     @Test
     public void createOrganizationAddress_shouldCreateOrganisationAddress() throws Exception {
-
         Organization organization = new Organization();
         organization.setOrganizationName("MTN");
         organization.setIsActive("Y");
