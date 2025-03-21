@@ -92,6 +92,7 @@ class ProviderMenuPage {
     this.paginationNextButton.click();
   }
 
+  
   navigateToPreviousPage() {
     this.paginationPreviousButton.click();
   }
