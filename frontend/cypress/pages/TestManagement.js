@@ -1,7 +1,12 @@
 class TestManagementPage {
+<<<<<<< Updated upstream
   // Visit URLs
   visitCombinedPage() {
     cy.visit("/combined-page");
+=======
+  visitTestCatalog() {
+    cy.visit("/MasterListsPage#TestCatalog");
+>>>>>>> Stashed changes
   }
 
   getToggleButton() {
@@ -37,8 +42,21 @@ class TestManagementPage {
     return cy.get(".bx--data-table");
   }
 
+<<<<<<< Updated upstream
   openAddMethodModal() {
     cy.get("button").contains("Add Method").click();
+=======
+  getBreadcrumb() {
+    return cy.get(".breadcrumb");
+  }
+
+  visitManageMethod() {
+    cy.visit("/MasterListsPage#MethodManagment");
+  }
+
+  openAddMethodModal() {
+    cy.get("button").contains("Add New Method").click();
+>>>>>>> Stashed changes
   }
 
   fillMethodForm(english, french) {
@@ -61,6 +79,7 @@ class TestManagementPage {
   getInactiveMethods() {
     return cy.get("h4").contains("Inactive Methods").parent().find("div > div");
   }
+<<<<<<< Updated upstream
 
   verifyTestCatalogPage() {
     this.getToggleButton().should("be.visible");
@@ -76,3 +95,8 @@ class TestManagementPage {
 }
 
 export default TestManagementPage;
+=======
+}
+
+export default new TestManagementPage();
+>>>>>>> Stashed changes
