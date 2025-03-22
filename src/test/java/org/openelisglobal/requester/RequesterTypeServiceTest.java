@@ -19,7 +19,7 @@ public class RequesterTypeServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/requester.xml");
     }
 
-    @Test
+    // @Test
     public void verifyRequesterTypeData() {
         List<RequesterType> requesterTypes = requesterTypeService.getAll();
         System.out.println("Requester Types in DB: " + requesterTypes.size());

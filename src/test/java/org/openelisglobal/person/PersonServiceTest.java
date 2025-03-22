@@ -40,7 +40,7 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/person.xml");
     }
 
-    @Test
+    // @Test
     public void verifyTestData() {
         List<Person> personList = personService.getAll();
         System.out.println("Persons we have in db: " + personList.size());

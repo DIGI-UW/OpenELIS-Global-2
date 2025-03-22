@@ -115,13 +115,13 @@ const EOrderSearch = ({
       <br></br>
       <div className="orderLegendBody">
         <Grid fullWidth={true}>
-          <Column lg={16}>
+          <Column lg={16} md={8} sm={4}>
             <FormattedMessage id="eorder.search1.text" />
           </Column>
-          <Column lg={16}>
+          <Column lg={16} md={8} sm={4}>
             <br></br>
           </Column>
-          <Column lg={8}>
+          <Column lg={8} md={4} sm={4}>
             <TextInput
               id="searchValue"
               labelText={intl.formatMessage({ id: "eorder.searchValue" })}
@@ -155,16 +155,16 @@ const EOrderSearch = ({
             </Button>
           </Column>
 
-          <Column lg={16}>
+          <Column lg={16} md={8} sm={4}>
             <hr></hr>
           </Column>
-          <Column lg={16}>
+          <Column lg={16} md={8} sm={4}>
             <FormattedMessage id="eorder.search2.text" />
           </Column>
-          <Column lg={16}>
+          <Column lg={16} md={8} sm={4}>
             <br></br>
           </Column>
-          <Column lg={2}>
+          <Column lg={2} md={2} sm={2}>
             <CustomDatePicker
               id={"eOrder_startDate"}
               labelText={intl.formatMessage({ id: "eorder.date.start" })}
@@ -173,7 +173,7 @@ const EOrderSearch = ({
               onChange={(date) => setStartDate(date)}
             />
           </Column>
-          <Column lg={2}>
+          <Column lg={2} md={2} sm={2}>
             <CustomDatePicker
               id={"eOrder_startDate"}
               labelText={intl.formatMessage({ id: "eorder.date.end" })}
@@ -182,7 +182,7 @@ const EOrderSearch = ({
               onChange={(date) => setEndDate(date)}
             />
           </Column>
-          <Column lg={4}>
+          <Column lg={4} md={2} sm={2}>
             <Select
               id="statusId"
               labelText={intl.formatMessage({ id: "eorder.status" })}
@@ -216,7 +216,7 @@ const EOrderSearch = ({
             </div>
           </Column>
           <Column lg={2}></Column>
-          <Column lg={4}>
+          <Column lg={4} md={4} sm={2}>
             <Button onClick={searchByDateAndStatus}>
               <FormattedMessage id="label.button.search" />
             </Button>

@@ -9,4 +9,33 @@
     <system_user id="5" external_id="EXT005"
         login_name="bwhite" last_name="White" first_name="Bob" initials="BW"
         is_active="N" is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+
+    <login_user id="1" login_name="jdoe" password="password1"
+        password_expired_dt="2025-12-31" account_locked="N"
+        account_disabled="N" is_admin="Y" user_time_out="30"
+        last_updated="2025-03-16" />
+    <login_user id="2" login_name="asmith" password="password2"
+        password_expired_dt="2025-12-31" account_locked="N"
+        account_disabled="N" is_admin="N" user_time_out="30"
+        last_updated="2025-03-16" />
+    <login_user id="3" login_name="bwhite" password="password3"
+        password_expired_dt="2025-12-31" account_locked="N"
+        account_disabled="N" is_admin="N" user_time_out="30"
+        last_updated="2025-03-16" />
+
+    <system_role id="1" name="adminRole"
+        description="Administrator role" is_grouping_role="false"
+        grouping_parent="1" display_key="adminKey" active="true"
+        editable="true" />
+    <system_role id="2" name="adminRole"
+        description="User role" is_grouping_role="false" grouping_parent="1"
+        display_key="userKey" active="true" editable="true" />
+    <system_role id="3" name="demoRole"
+        description="This is a demo role" is_grouping_role="false"
+        grouping_parent="2" display_key="demoKey" active="true"
+        editable="false" />
+
+    <system_user_role system_user_id="3" role_id="1" />
+    <system_user_role system_user_id="4" role_id="2" />
+    <system_user_role system_user_id="5" role_id="3" />
 </dataset>
