@@ -126,6 +126,9 @@ const SearchForm = (props) => {
       doRange;
     setUrl(searchEndPoint);
     switch (searchBy) {
+      case "study":
+        props.setParams("?type=" + searchBy + "&test=" + unitType);
+        break;
       case "routine":
         props.setParams("?type=" + searchBy + "&testSectionId=" + unitType);
         break;
@@ -185,11 +188,14 @@ const SearchForm = (props) => {
       param = "range";
     } else if (window.location.pathname == "/ResultValidationByTestDate") {
       param = "testDate";
+    } else if (window.location.pathname == "/ResultValidationRetroC") {
+      param = "study";
     }
     setSearchBy(param);
     if (param === "order") {
       setDoRagnge(false);
     }
+
     switch (searchBy) {
       case "routine": {
         let testSectionId = new URLSearchParams(window.location.search).get(
@@ -212,6 +218,43 @@ const SearchForm = (props) => {
           let values = { unitType: testSectionId };
           handleSubmit(values);
         }
+        break;
+      }
+
+      case "study": {
+        // For study section, directly get the section type from URL
+        let studySectionType = new URLSearchParams(window.location.search).get(
+          "type",
+        );
+
+        let testSectionId;
+
+        switch (studySectionType) {
+          case "Biochemistry":
+            testSectionId = "56";
+            break;
+          case "Immunology":
+            testSectionId = "59";
+            break;
+          case "Virology":
+            testSectionId = "76";
+            break;
+          case "Serology":
+            testSectionId = "97";
+            break;
+          default:
+            testSectionId = null;
+        }
+
+        if (testSectionId) {
+          let values = { unitType: testSectionId };
+          handleSubmit(values);
+        }
+
+        getFromOpenElisServer(
+          "/rest/user-test-sections/" + Roles.VALIDATION,
+          fetchTestSections,
+        );
         break;
       }
 

@@ -14,9 +14,7 @@ export const RoutineReportsMenu = {
       icon: IbmWatsonDiscovery,
       SideNavMenuItem: [
         {
-          link:
-            config.serverBaseUrl +
-            "/ResultValidationRetroC?type=Immunology&test=",
+          link: "/ResultValidationRetroC?type=Immunology&test=",
           label: "Immunology - Hematology",
         },
       ],
@@ -26,9 +24,7 @@ export const RoutineReportsMenu = {
       icon: Microscope,
       SideNavMenuItem: [
         {
-          link:
-            config.serverBaseUrl +
-            "/ResultValidationRetroC?type=Biochemistry&test=",
+          link: "/ResultValidationRetroC?type=Biochemistry&test=",
           label: "Biochemistry",
         },
       ],
@@ -38,7 +34,7 @@ export const RoutineReportsMenu = {
       icon: IbmWatsonNaturalLanguageUnderstanding,
       SideNavMenuItem: [
         {
-          link: config.serverBaseUrl + "/ResultValidationRetroC?type=serology",
+          link: "/ResultValidationRetroC?type=serology",
           label: "Serology",
         },
       ],
@@ -48,21 +44,15 @@ export const RoutineReportsMenu = {
       icon: IbmWatsonNaturalLanguageUnderstanding,
       SideNavMenuItem: [
         {
-          link:
-            config.serverBaseUrl +
-            "/ResultValidationRetroC?type=virology&test=DNA PCR",
+          link: "/ResultValidationRetroC?type=virology&test=DNA PCR",
           label: "DNA PCR",
         },
         {
-          link:
-            config.serverBaseUrl +
-            "/ResultValidationRetroC?type=virology&test=Viral Load",
+          link: "/ResultValidationRetroC?type=virology&test=Viral Load",
           label: "Viral Load",
         },
         {
-          link:
-            config.serverBaseUrl +
-            "/ResultValidationRetroC?type=virology&test=Genotyping",
+          link: "/ResultValidationRetroC?type=virology&test=Genotyping",
           label: "Genotyping",
         },
       ],
