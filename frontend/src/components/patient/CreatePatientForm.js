@@ -404,37 +404,74 @@ function CreatePatientForm(props) {
     setHealthDistricts(districts);
   };
 
-  const handleSubmit = async (values, { resetForm }) => {
-    // Prevent multiple submissions.
-    if (isSubmitting) {
-      return;
-    }
+  const validatePhoneNumber = (phoneNumber, onSuccess) => {
+    const formattedPhone = phoneNumber.startsWith("+")
+      ? phoneNumber
+      : `+${phoneNumber}`;
+    const encodedPhone = encodeURIComponent(formattedPhone);
+    const phoneValidationUrl = `/rest/PhoneNumberValidationProvider?value=${encodedPhone}`;
 
-    setIsSubmitting(true);
-
-    if ("years" in values) {
-      delete values.years;
-    }
-    if ("months" in values) {
-      delete values.months;
-    }
-    if ("days" in values) {
-      delete values.days;
-    }
-    console.debug(JSON.stringify(values));
-    postToOpenElisServer(
-      "/rest/PatientManagement",
-      JSON.stringify(values),
-      (status) => {
-        handlePost(status);
-        resetForm({ values: CreatePatientFormValues });
-        setDateOfBirthFormatter({
-          years: "",
-          months: "",
-          days: "",
+    getFromOpenElisServer(
+      phoneValidationUrl,
+      (data) => {
+        if (!data.status) {
+          setNotificationVisible(true);
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: data.body || "Invalid phone number format",
+            kind: NotificationKinds.error,
+          });
+          setIsSubmitting(false);
+          return;
+        }
+        onSuccess(phoneNumber);
+      },
+      () => {
+        setNotificationVisible(true);
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: "Error validating phone number.",
+          kind: NotificationKinds.error,
         });
+        setIsSubmitting(false);
       },
     );
+  };
+
+  const handleSubmit = async (values, { resetForm }) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    // Validate phone number before proceeding
+    validatePhoneNumber(values.primaryPhone, (validatedPhone) => {
+      values.primaryPhone = validatedPhone;
+
+      // Remove unnecessary fields
+      ["years", "months", "days"].forEach((field) => delete values[field]);
+
+      console.debug(JSON.stringify(values));
+
+      // Submit patient data after validation
+      postToOpenElisServer(
+        "/rest/PatientManagement",
+        JSON.stringify(values),
+        (status) => {
+          handlePost(status);
+          resetForm({ values: CreatePatientFormValues });
+          setDateOfBirthFormatter({ years: "", months: "", days: "" });
+          setIsSubmitting(false);
+        },
+        () => {
+          setIsSubmitting(false);
+          setNotificationVisible(true);
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: "Error submitting patient data.",
+            kind: NotificationKinds.error,
+          });
+        },
+      );
+    });
   };
 
   const handlePost = (status) => {
