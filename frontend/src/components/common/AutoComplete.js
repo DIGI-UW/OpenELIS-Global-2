@@ -112,6 +112,7 @@ function AutoComplete(props) {
               }
               return (
                 <li
+                  data-cy="auto-suggestion"
                   className={className}
                   key={index}
                   onClick={(e) => onClick(e, suggestion.id, suggestion)}

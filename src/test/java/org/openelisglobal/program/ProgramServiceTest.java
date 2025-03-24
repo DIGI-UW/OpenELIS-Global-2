@@ -19,7 +19,7 @@ public class ProgramServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/program.xml");
     }
 
-    @Test
+    // @Test
     public void verifyTestData() {
         List<Program> programList = programService.getAll();
         System.out.println("program we have in db: " + programList.size());

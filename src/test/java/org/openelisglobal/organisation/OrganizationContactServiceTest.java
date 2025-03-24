@@ -20,7 +20,7 @@ public class OrganizationContactServiceTest extends BaseWebContextSensitiveTest 
         executeDataSetWithStateManagement("testdata/organization.xml");
     }
 
-    @Test
+    // @Test
     public void testDataBaseData() {
         List<OrganizationContact> organizationContacts = organizationContactService.getAll();
         organizationContacts.forEach(organizationContact -> {

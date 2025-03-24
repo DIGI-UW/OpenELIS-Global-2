@@ -31,9 +31,9 @@ public class UnitOfMeasureServiceTest extends BaseWebContextSensitiveTest {
         assertTrue(unitOfMeasures.size() >= 10);
 
         // Print unit names to console for debugging
-        unitOfMeasures.forEach(uom -> {
-            System.out.print(uom.getUnitOfMeasureName() + " ");
-        });
+        // unitOfMeasures.forEach(uom -> {
+        // System.out.print(uom.getUnitOfMeasureName() + " ");
+        // });
     }
 
     @Test

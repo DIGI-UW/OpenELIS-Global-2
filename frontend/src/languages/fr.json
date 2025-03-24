@@ -8,6 +8,8 @@
   "label.button.range": "Plage",
   "label.button.clear": "Effacer",
   "label.button.confirm": "Confirmer",
+  "label.button.previous": "Précédent",
+  "reject.action.button": "Rejeter",
   "label.button.confirmAction": "Confirmer l'action",
   "label.button.confirmTitle": "Êtes-vous sûr(e) ?",
   "label.button.viewReport": "Voir le rapport",
@@ -1383,5 +1385,12 @@
   "label.test.order.confirm": "Vérification : Activer/désactiver l'ordonnabilité des tests",
   "label.test.orderable": "Les tests suivants seront disponibles pour la commande depuis le formulaire de commande.",
   "instructions.test.activation.confirm": "Vérifiez que ces modifications sont celles que vous souhaitez effectuer. Si elles sont correctes, enregistrez-les. Sinon, utilisez le bouton retour pour apporter les corrections nécessaires.",
-  "label.test.unorderable": "Les tests suivants ne seront pas disponibles à la commande sur le formulaire de commande. Ils ne pourront être commandés qu'en tant que tests réflexes."
+  "label.test.unorderable": "Les tests suivants ne seront pas disponibles à la commande sur le formulaire de commande. Ils ne pourront être commandés qu'en tant que tests réflexes.",
+  "uom.existing": "Unité de mesure actuelle",
+  "uom.existing.inactive": "Unité de mesure inactive. Assignez des tests à cette unité de mesure pour l’activer.",
+  "uom.new": "Créer une nouvelle unité de mesure",
+  "uom.new.added": "Une nouvelle unité de mesure sera ajoutée",
+  "uom.create.heading.confirmation": "Confirmation",
+  "uom.notification.save": "La nouvelle unité de mesure a été enregistrée.",
+  "uom.notification.duplicate": "L’unité de mesure existe déjà"
 }

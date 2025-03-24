@@ -25,7 +25,7 @@ public class ProviderMenuRestControllerTest extends BaseWebContextSensitiveTest 
         MvcResult urlResult = super.mockMvc.perform(get("/rest/ProviderMenu").accept(MediaType.APPLICATION_JSON_VALUE)
                 .contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
 
-        System.out.println(urlResult.getResponse().getContentAsString());
+        // System.out.println(urlResult.getResponse().getContentAsString());
         String formJson = urlResult.getResponse().getContentAsString();
 
         ObjectMapper objectMapper = new ObjectMapper();
