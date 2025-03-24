@@ -1,0 +1,21 @@
+{
+  "providerInformation": {
+    "providerId": "P12345",
+    "providerName": "Dr. John Doe",
+    "providerType": "General Practitioner"
+  },
+  "providerAddress": {
+    "addressLine1": "123 Main Street",
+    "addressLine2": "Suite 456",
+    "city": "Springfield",
+    "state": "IL",
+    "zipCode": "62704",
+    "country": "USA"
+  },
+  "providerContact": {
+    "phone": "555-123-4567",
+    "email": "johndoe@example.com",
+    "fax": "555-765-4321"
+  },
+  "specialization": "Cardiology"
+}

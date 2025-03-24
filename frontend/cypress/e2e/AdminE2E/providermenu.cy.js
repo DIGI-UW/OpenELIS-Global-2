@@ -1,49 +1,59 @@
+import LoginPage from "../../pages/LoginPage";
 import ProviderMenuPage from "../../pages/ProviderMenu";
 
-describe("Provider Menu Tests", () => {
-  const providerMenuPage = new ProviderMenuPage();
+let loginPage = null;
+let homePage = null;
+let adminPage = null;
+let providerMenuPage = null;
 
+before(() => {
+  loginPage = new LoginPage();
+  loginPage.visit();
+
+  homePage = loginPage.goToHomePage();
+  adminPage = homePage.goToAdminPage();
+  providerMenuPage = adminPage.goToProviderMenuPage();
+});
+
+describe("Provider Menu Configuration", function () {
   beforeEach(() => {
-    providerMenuPage.visit();
+    // Load fixture before each test
+    cy.fixture("providerMenuData").as("providerData");
   });
 
-  it("should load provider menu and show correct title", () => {
-    providerMenuPage.getPageHeading().should("contain.text", "Provider Menu");
+  it("Navigates to Provider Menu", function () {
+    providerMenuPage.verifyProviderMenuPage();
   });
 
-  it("should search for a provider", () => {
-    providerMenuPage.searchProvider("Smith");
-    providerMenuPage.verifyProviderInTable("Smith");
+  it("Fills in Provider Information", function () {
+    cy.get("@providerData").then((data) => {
+      providerMenuPage.fillProviderInformation(data.providerInfo);
+    });
   });
 
-  it("should add a new provider", () => {
-    providerMenuPage.clickAddButton();
-    cy.get("input#lastName").type("Doe");
-    cy.get("input#firstName").type("Jane");
-    cy.get("input#telephone").type("1234567890");
-    cy.get("input#fax").type("9876543210");
-    cy.contains("Submit").click();
-    providerMenuPage.verifyProviderInTable("Doe");
+  it("Sets Provider Address", function () {
+    cy.get("@providerData").then((data) => {
+      providerMenuPage.setProviderAddress(data.address);
+    });
   });
 
-  it("should modify a provider", () => {
-    providerMenuPage.selectProviderById(1);
-    providerMenuPage.clickModifyButton();
-    cy.get("input#firstName").clear().type("John");
-    cy.contains("Submit").click();
-    providerMenuPage.verifyProviderInTable("John");
+  it("Sets Provider Contact Information", function () {
+    cy.get("@providerData").then((data) => {
+      providerMenuPage.setProviderContactInfo(data.contactInfo);
+    });
   });
 
-  it("should deactivate a provider", () => {
-    providerMenuPage.selectProviderById(1);
-    providerMenuPage.clickDeactivateButton();
-    cy.contains("Provider deactivated successfully").should("be.visible");
+  it("Adds Provider Specialization", function () {
+    cy.get("@providerData").then((data) => {
+      providerMenuPage.addProviderSpecialization(data.specialization);
+    });
   });
 
-  it("should handle pagination", () => {
-    providerMenuPage.navigateNextPage();
-    cy.url().should("include", "page=2");
-    providerMenuPage.navigatePreviousPage();
-    cy.url().should("include", "page=1");
+  it("Saves Provider Information", function () {
+    providerMenuPage.saveProviderInformation();
+  });
+
+  it("Verifies Provider Information Saved", function () {
+    providerMenuPage.verifySaveSuccess();
   });
 });

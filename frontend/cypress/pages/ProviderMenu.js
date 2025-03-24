@@ -1,101 +1,66 @@
 class ProviderMenuPage {
-  get pageHeading() {
-    return cy.get("h1");
-  }
-  get searchInput() {
-    return cy.get("input#provider-search-bar");
-  }
-  get addButton() {
-    return cy.contains("Add");
-  }
-  get modifyButton() {
-    return cy.contains("Modify");
-  }
-  get deactivateButton() {
-    return cy.contains("Deactivate");
-  }
-  get lastNameInput() {
-    return cy.get("input#lastName");
-  }
-  get firstNameInput() {
-    return cy.get("input#firstName");
-  }
-  get telephoneInput() {
-    return cy.get("input#telephone");
-  }
-  get faxInput() {
-    return cy.get("input#fax");
-  }
-  get activeDropdown() {
-    return cy.get("div.dropdown-list");
-  }
-  get tableRows() {
-    return cy.get("table tbody tr");
-  }
-  get paginationNextButton() {
-    return cy.contains("Next");
-  }
-  get paginationPreviousButton() {
-    return cy.contains("Previous");
+  constructor() {
+    this.selectors = {
+      providerMenuHeader: "[data-cy='providerMenuHeader']",
+      providerNameInput: "[data-cy='providerNameInput']",
+      providerIdInput: "[data-cy='providerIdInput']",
+      addressInput: "[data-cy='addressInput']",
+      cityInput: "[data-cy='cityInput']",
+      stateInput: "[data-cy='stateInput']",
+      zipCodeInput: "[data-cy='zipCodeInput']",
+      phoneNumberInput: "[data-cy='phoneNumberInput']",
+      emailInput: "[data-cy='emailInput']",
+      specializationDropdown: "[data-cy='specializationDropdown']",
+      addSpecializationButton: "[data-cy='addSpecializationButton']",
+      saveButton: "[data-cy='saveButton']",
+      successMessage: "[data-cy='successMessage']",
+    };
   }
 
-  openAddModal() {
-    this.addButton.click();
+  verifyProviderMenuPage() {
+    cy.get(this.selectors.providerMenuHeader).should("be.visible");
   }
 
-  closeAddModal() {
-    cy.get('button[aria-label="Cancel"]').click();
+  fillProviderInformation(name = "Dr. John Doe", id = "12345") {
+    cy.get(this.selectors.providerNameInput).clear().type(name);
+    cy.get(this.selectors.providerIdInput).clear().type(id);
   }
 
-  openUpdateModal(providerId) {
-    cy.get(`tr[data-id="${providerId}"]`).click();
+  setProviderAddress(
+    address = "123 Main St",
+    city = "Sample City",
+    state = "CA",
+    zip = "12345",
+  ) {
+    cy.get(this.selectors.addressInput).clear().type(address);
+    cy.get(this.selectors.cityInput).clear().type(city);
+    cy.get(this.selectors.stateInput).clear().type(state);
+    cy.get(this.selectors.zipCodeInput).clear().type(zip);
   }
 
-  closeUpdateModal() {
-    cy.get('button[aria-label="Cancel"]').click();
+  setProviderContactInfo(
+    phone = "123-456-7890",
+    email = "provider@example.com",
+  ) {
+    cy.get(this.selectors.phoneNumberInput).clear().type(phone);
+    cy.get(this.selectors.emailInput).clear().type(email);
   }
 
-  addProvider(lastName, firstName, telephone, fax, isActive) {
-    this.lastNameInput.type(lastName);
-    this.firstNameInput.type(firstName);
-    this.telephoneInput.type(telephone);
-    this.faxInput.type(fax);
-    this.activeDropdown.select(isActive);
-    cy.get('button[type="submit"]').click();
+  addProviderSpecialization(specialization = "Cardiology") {
+    cy.get(this.selectors.specializationDropdown).select(specialization);
+    cy.get(this.selectors.addSpecializationButton).click();
   }
 
-  updateProvider(lastName, firstName, telephone, fax, isActive) {
-    this.lastNameInput.clear().type(lastName);
-    this.firstNameInput.clear().type(firstName);
-    this.telephoneInput.clear().type(telephone);
-    this.faxInput.clear().type(fax);
-    this.activeDropdown.select(isActive);
-    cy.get('button[type="submit"]').click();
+  saveProviderInformation() {
+    cy.get(this.selectors.saveButton).click();
   }
 
-  searchProvider(searchTerm) {
-    this.searchInput.type(searchTerm);
-    cy.wait(1000);
-  }
-
-  selectRowById(providerId) {
-    cy.get(`tr[data-id="${providerId}"]`).click();
-  }
-
-  verifyTableRowContent(row, expectedValues) {
-    row.find("td").each((cell, index) => {
-      cy.wrap(cell).should("contain.text", expectedValues[index]);
-    });
-  }
-
-  navigateToNextPage() {
-    this.paginationNextButton.click();
-  }
-
-  
-  navigateToPreviousPage() {
-    this.paginationPreviousButton.click();
+  verifySaveSuccess() {
+    cy.get(this.selectors.successMessage).should(
+      "contain",
+      "Provider information saved successfully",
+    );
   }
 }
 
-export default new ProviderMenuPage();
+export default ProviderMenuPage;
