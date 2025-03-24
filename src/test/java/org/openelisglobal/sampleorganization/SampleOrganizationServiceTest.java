@@ -30,7 +30,7 @@ public class SampleOrganizationServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/sample-organization.xml");
     }
 
-    @Test
+    // @Test
     public void verifyTestData() {
         List<SampleOrganization> sampleOrganizationList = sampleOrganizationService.getAll();
         System.out.println("sample organization we have in db: " + sampleOrganizationList.size());

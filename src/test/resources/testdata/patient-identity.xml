@@ -1,0 +1,56 @@
+<dataset>
+    <!-- Patient Identity Type Records -->
+    <patient_identity_type id="9"
+        identity_type="NATIONAL" description="Patient ID Number"
+        lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="17"
+        identity_type="NATIONALITY" description="Nationality"
+        lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="18"
+        identity_type="OTHER NATIONALITY" description="Country of Residence"
+        lastupdated="2023-01-01 00:00:00" />
+
+    <!-- Person data -->
+    <person id="1" last_name="Doe" first_name="John"
+        middle_name="joddy" city="Kampala" state="Kampala metropolitan"
+        zip_code="256" country="Uganda" work_phone="12345678"
+        home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
+        fax="3456" email="john@gmail.com" lastupdated="2023-11-01 12:00:00" />
+    <person id="2" last_name="Mulizi" first_name="James"
+        middle_name="Mark" city="Orion" state="Texas" zip_code="001"
+        country="USA" work_phone="10000001" home_phone="8000001"
+        cell_phone="0000000" primary_phone="10000001" fax="0001"
+        email="james@gmail.com" lastupdated="2023-11-01 12:00:00" />
+    <person id="3" last_name="Kukki" first_name="Faith"
+        middle_name="Siannah" city="Dallas" state="Texas" zip_code="001"
+        country="USA" work_phone="10000002" home_phone="8000003"
+        cell_phone="0000001" primary_phone="10000002" fax="0002"
+        email="siannah@gmail.com" lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Patient data -->
+    <patient id="1" person_id="1" race="black" gender="M"
+        birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+        national_id="1234" ethnicity="U" external_id="EX456"
+        school_attend="MaKerere College" birth_place="Mulago"
+        entered_birth_date="1992-12-12" lastupdated="2023-11-01 12:00:02" />
+    <patient id="2" person_id="3" race="black" gender="F"
+        birth_date="1997-10-09 09:00:00" birth_time="1997-10-09 09:00:00"
+        national_id="56789" ethnicity="A" external_id="EX123"
+        school_attend="Merryland College" birth_place="Nevada"
+        entered_birth_date="1997-10-09" lastupdated="2023-11-01 12:00:02" />
+    <patient id="3" person_id="2" race="black" gender="M"
+        birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+        national_id="1234" ethnicity="U" external_id="EX432"
+        school_attend="MaKerere College" birth_place="Kawempe"
+        entered_birth_date="1992-12-12" lastupdated="2023-11-01 12:00:02" />
+
+    <!-- Patient Identity Records -->
+    <patient_identity id="1" identity_type_id="9"
+        patient_id="1" identity_data="334-422-A"
+        lastUpdated="2023-11-01 12:00:02" />
+    <patient_identity id="2" identity_type_id="17"
+        patient_id="1" identity_data="Ugandan"
+        lastUpdated="2023-11-01 12:00:02" />
+    <patient_identity id="3" identity_type_id="18"
+        patient_id="1" identity_data="USA" lastUpdated="2023-11-01 12:00:02" />
+</dataset>

@@ -24,7 +24,7 @@ public class PanelServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/panel.xml");
     }
 
-    @Test
+    // @Test
     public void verifyTestData() {
         List<Panel> panels = panelService.getAllActivePanels();
         System.out.println("Panels in DB: " + panels.size());

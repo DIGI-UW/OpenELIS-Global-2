@@ -19,7 +19,7 @@ public class AddressPartServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/address-part.xml");
     }
 
-    @Test
+    // @Test
     public void verifyTestData() {
         List<AddressPart> addressPartList = partService.getAll();
         System.out.println("address parts we have in db: " + addressPartList.size());

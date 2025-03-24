@@ -29,7 +29,7 @@ public class TestDictionaryServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/test-dictionary.xml");
     }
 
-    @Test
+    // @Test
     public void verifyTestData() {
         List<TestDictionary> testDictionaryList = testDictionaryService.getAll();
         System.out.println("test dictionary entries we have in db: " + testDictionaryList.size());

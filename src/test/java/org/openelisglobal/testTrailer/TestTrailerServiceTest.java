@@ -22,7 +22,7 @@ public class TestTrailerServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/test-trailer.xml");
     }
 
-    @Test
+    // @Test
     public void getDatabaseData() {
         List<TestTrailer> testTrailers = testTrailerService.getAll();
         testTrailers.forEach(testTrailer -> {

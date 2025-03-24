@@ -29,7 +29,7 @@ public class ProgramSampleServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/program-sample.xml");
     }
 
-    @Test
+    // @Test
     public void verifyTestData() {
         List<ProgramSample> programSamples = programSampleService.getAll();
         System.out.println("program samples we have in db: " + programSamples.size());

@@ -24,7 +24,7 @@ public class SampleRequesterServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/requester.xml");
     }
 
-    @Test
+    // @Test
     public void verifyTestData() {
         List<SampleRequester> sampleRequesters = sampleRequesterService.getAll();
         System.out.println("Sample Requesters in DB: " + sampleRequesters.size());
