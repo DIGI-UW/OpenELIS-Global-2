@@ -348,6 +348,7 @@ function ReferredOutTests(props) {
           <br></br>
           <Column lg={16} md={8} sm={4}>
             <Button
+              data-cy="referralsByPatient"
               type="button"
               disabled={searchByPatient}
               onClick={handleReferredOutPatient}
@@ -548,6 +549,7 @@ function ReferredOutTests(props) {
 
                 <Column lg={4} md={8} sm={4}>
                   <Button
+                    data-cy="byUnitsAndTests"
                     type="button"
                     disabled={searchByUnit}
                     onClick={handleReferredOutPatient}
@@ -598,6 +600,7 @@ function ReferredOutTests(props) {
 
                 <Column lg={4} md={8} sm={4}>
                   <Button
+                    data-cy="byLabNumber"
                     type="button"
                     disabled={searchByLabNumber}
                     onClick={handleReferredOutPatient}

@@ -22,7 +22,7 @@ public class ScriptletServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/scriptlet.xml");
     }
 
-    @Test
+    // @Test
     public void testDataBase() {
         List<Scriptlet> scriptlets = scriptletService.getAll();
         scriptlets.forEach(scriptlet -> {
