@@ -40,12 +40,14 @@ const ActionPaginationButtonType = ({
             {type === "type1" ? (
               <>
                 <Button
+                  data-cy="modify-Button"
                   onClick={() => openUpdateModal(selectedRowIds[0])}
                   disabled={selectedRowIds.length !== 1}
                 >
                   <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.modify" />
                 </Button>{" "}
                 <Button
+                  data-cy="deactivate-Button"
                   disabled={deactivateButton}
                   onClick={deleteDeactivate}
                   type="button"
@@ -53,7 +55,7 @@ const ActionPaginationButtonType = ({
                   {" "}
                   <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.deactivate" />
                 </Button>{" "}
-                <Button onClick={openAddModal}>
+                <Button data-cy="add-Button" onClick={openAddModal}>
                   {" "}
                   <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.add" />
                 </Button>
@@ -80,6 +82,7 @@ const ActionPaginationButtonType = ({
                   <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.deactivate" />
                 </Button>{" "}
                 <Button
+                  data-cy="add-button"
                   onClick={() => {
                     window.location.href = `${addButtonRedirectLink}`;
                   }}

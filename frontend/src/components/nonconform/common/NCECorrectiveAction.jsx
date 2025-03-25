@@ -277,6 +277,7 @@ export const NCECorrectiveAction = () => {
                       value: e.target.value,
                     })
                   }
+                  data-cy="fieldName"
                   id={`field.name`}
                 />
               </Column>

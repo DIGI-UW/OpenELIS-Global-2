@@ -659,7 +659,7 @@ export function SearchResultForm(props) {
                     <Button
                       style={{ marginTop: "16px" }}
                       type="submit"
-                      id="submit"
+                      id="searchResults"
                     >
                       <FormattedMessage id="label.button.search" />
                     </Button>
@@ -1045,6 +1045,7 @@ export function SearchResults(props) {
             <Field name="forceTechApproval">
               {() => (
                 <Checkbox
+                  data-cy="checkTestResult"
                   id={"testResult" + row.id + ".forceTechApproval"}
                   name={"testResult[" + row.id + "].forceTechApproval"}
                   labelText=""
@@ -1745,7 +1746,7 @@ export function SearchResults(props) {
 
               <Button
                 type="button"
-                id="submit"
+                id="saveResults"
                 onClick={handleSave}
                 style={{ marginTop: "16px" }}
                 disabled={isSubmitting}

@@ -330,6 +330,7 @@ const ModifyOrder = () => {
 
                 {page < orderPageNumber && (
                   <Button
+                    data-cy="next-button"
                     kind="primary"
                     className="forwardButton"
                     onClick={() => navigateForward()}
@@ -340,6 +341,7 @@ const ModifyOrder = () => {
 
                 {page === orderPageNumber && (
                   <Button
+                    data-cy="submit-order"
                     kind="primary"
                     className="forwardButton"
                     onClick={handleSubmitOrderForm}
