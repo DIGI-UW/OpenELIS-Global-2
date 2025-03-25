@@ -186,13 +186,23 @@ function Admin() {
             <SideNavMenuItem href="#billingMenuManagement">
               <FormattedMessage id="sidenav.label.admin.menu.billing" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#nonConformityMenuManagement">
+            <SideNavMenuItem
+              data-cy="ncMenuMgmnt"
+              id="ncMenuMgmnt"
+              href="#nonConformityMenuManagement"
+            >
               <FormattedMessage id="sidenav.label.admin.menu.nonconform" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#patientMenuManagement">
+            <SideNavMenuItem
+              data-cy="patientMenuMgmnt"
+              href="#patientMenuManagement"
+            >
               <FormattedMessage id="sidenav.label.admin.menu.patient" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#studyMenuManagement">
+            <SideNavMenuItem
+              data-cy="studyMenuMgmnt"
+              href="#studyMenuManagement"
+            >
               <FormattedMessage id="sidenav.label.admin.menu.study" />
             </SideNavMenuItem>
           </SideNavMenu>
