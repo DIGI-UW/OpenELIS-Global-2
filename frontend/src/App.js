@@ -520,12 +520,6 @@ export default function App() {
                   role="Validation"
                 />
                 <SecureRoute
-                  path="/ResultValidationRetroC"
-                  exact
-                  component={() => <StudyValidation />}
-                  role="Validation"
-                />
-                <SecureRoute
                   path="/AccessionValidationRange"
                   exact
                   component={() => <StudyValidation />}
