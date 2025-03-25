@@ -34,21 +34,21 @@ public class TestSectionServiceTest extends BaseWebContextSensitiveTest {
     public void getData_shouldReturnDataGivenTestSection() {
         TestSection testSection1 = testSectionService.get("1");
         testSectionService.getData(testSection1);
-        assertEquals("SectionName1", testSection1.getTestSectionName());
+        assertEquals("TB", testSection1.getTestSectionName());
         assertEquals("SectionDescription1", testSection1.getDescription());
     }
 
     @Test
     public void getTestSections_shouldReturnTestSectionsGivenFilter() {
-        String filter = "Section";
+        String filter = "T";
         List<TestSection> testSections = testSectionService.getTestSections(filter);
         assertTrue(testSections.size() > 0);
     }
 
     @Test
     public void getTestSectionByName() {
-        TestSection testSection1 = testSectionService.getTestSectionByName("SectionName1");
-        assertEquals("SectionName1", testSection1.getTestSectionName());
+        TestSection testSection1 = testSectionService.getTestSectionByName("TB");
+        assertEquals("TB", testSection1.getTestSectionName());
         assertEquals("SectionDescription1", testSection1.getDescription());
     }
 
@@ -71,14 +71,14 @@ public class TestSectionServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getAllTestSections() {
         List<TestSection> testSections = testSectionService.getAllTestSections();
-        assertEquals("SectionName1", testSections.get(0).getTestSectionName());
-        assertEquals("SectionName2", testSections.get(1).getTestSectionName());
+        assertEquals("TB", testSections.get(0).getTestSectionName());
+        assertEquals("TestSection2", testSections.get(1).getTestSectionName());
     }
 
     @Test
     public void getTestSectionById() {
         TestSection testSection1 = testSectionService.getTestSectionById("1");
-        assertEquals("SectionName1", testSection1.getTestSectionName());
+        assertEquals("TB", testSection1.getTestSectionName());
         assertEquals("SectionDescription1", testSection1.getDescription());
 
     }
