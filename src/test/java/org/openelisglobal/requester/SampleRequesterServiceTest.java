@@ -1,5 +1,8 @@
 package org.openelisglobal.requester;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+
 import java.util.List;
 import org.junit.Assert;
 import org.junit.Before;
@@ -24,20 +27,27 @@ public class SampleRequesterServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/requester.xml");
     }
 
-    // @Test
+    @Test
     public void verifyTestData() {
         List<SampleRequester> sampleRequesters = sampleRequesterService.getAll();
-        System.out.println("Sample Requesters in DB: " + sampleRequesters.size());
-        sampleRequesters.forEach(requester -> System.out
-                .println(requester.getId() + " - Sample ID: " + requester.getSampleId() + ", Requester ID: "
-                        + requester.getRequesterId() + ", Requester Type ID: " + requester.getRequesterTypeId()));
-
         List<RequesterType> requesterTypes = requesterTypeService.getAll();
-        System.out.println("Requester Types in DB: " + requesterTypes.size());
-        requesterTypes.forEach(type -> System.out.println(type.getId() + " - " + type.getRequesterType()));
 
-        Assert.assertFalse("❌ sample_requester table should not be empty!", sampleRequesters.isEmpty());
-        Assert.assertFalse("❌ requester_type table should not be empty!", requesterTypes.isEmpty());
+        assertNotNull("Sample requester list should not be null", sampleRequesters);
+        assertFalse("Sample requester list should not be empty", sampleRequesters.isEmpty());
+        assertNotNull("Requester type list should not be null", requesterTypes);
+        assertFalse("Requester type list should not be empty", requesterTypes.isEmpty());
+
+        sampleRequesters.forEach(requester -> {
+            assertNotNull("SampleRequester ID should not be null", requester.getId());
+            assertNotNull("SampleRequester Sample ID should not be null", requester.getSampleId());
+            assertNotNull("SampleRequester Requester ID should not be null", requester.getRequesterId());
+            assertNotNull("SampleRequester Requester Type ID should not be null", requester.getRequesterTypeId());
+        });
+
+        requesterTypes.forEach(type -> {
+            assertNotNull("RequesterType ID should not be null", type.getId());
+            assertNotNull("RequesterType name should not be null", type.getRequesterType());
+        });
     }
 
     @Test

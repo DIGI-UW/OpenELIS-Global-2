@@ -1,6 +1,8 @@
 package org.openelisglobal.patientidentity;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -30,10 +32,16 @@ public class PatientIdentityServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/patient-identity.xml");
     }
 
+    @Test
     public void testDataInDataBase() {
         List<PatientIdentity> patientIdentities = patientIdentityService.getAll();
+
+        assertNotNull("Patient identity list should not be null", patientIdentities);
+        assertFalse("Patient identity list should not be empty", patientIdentities.isEmpty());
+
         patientIdentities.forEach(patientIdentity -> {
-            System.out.print(patientIdentity.getIdentityData() + " ");
+            assertNotNull("Patient identity data should not be null", patientIdentity.getIdentityData());
+            assertNotEquals("Patient identity data should not be empty", "", patientIdentity.getIdentityData());
         });
     }
 
@@ -55,7 +63,6 @@ public class PatientIdentityServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getPatientIdentitiesForPatient_shouldReturnAllIdentitiesForPatient() {
         List<PatientIdentity> patientIdentities = patientIdentityService.getPatientIdentitiesForPatient("1");
-        // assertTrue(patientIdentities.size() == 1);
         assertEquals(3, patientIdentities.size());
         assertEquals("334-422-A", patientIdentities.get(0).getIdentityData());
     }
@@ -104,45 +111,32 @@ public class PatientIdentityServiceTest extends BaseWebContextSensitiveTest {
         patientIdentity.setIdentityData("NEW_PASSPORT_123");
         assertEquals(0, patientIdentityService.getAll().size());
 
-        // Save the patient identity
         patientIdentityService.save(patientIdentity);
-
-        // Verify that the patient identity was saved
-        // PatientIdentity savedIdentity = patientIdentityService.get("1");
-        // assertNotNull(savedIdentity);
-        // assertEquals("NEW_PASSPORT_123", savedIdentity.getIdentityData());
         assertEquals(1, patientIdentityService.getAll().size());
-
         patientIdentityService.delete(patientIdentity);
     }
 
     @Test
     public void update_shouldUpdateExistingPatientIdentity() {
-        // Get an existing patient identity
         PatientIdentity patientIdentity = patientIdentityService.get("1");
         assertNotNull(patientIdentity);
 
-        // Update the patient identity
         String updatedData = "UPDATED_DATA";
         patientIdentity.setIdentityData(updatedData);
         patientIdentityService.update(patientIdentity);
 
-        // Verify that the patient identity was updated
         PatientIdentity updatedIdentity = patientIdentityService.get("1");
         assertEquals(updatedData, updatedIdentity.getIdentityData());
     }
 
     @Test
     public void delete_shouldRemovePatientIdentityFromDatabase() {
-        // Get the count before deletion
         List<PatientIdentity> beforeDelete = patientIdentityService.getAll();
         int countBeforeDelete = beforeDelete.size();
 
-        // Delete a patient identity
         PatientIdentity patientIdentity = patientIdentityService.get("1");
         patientIdentityService.delete(patientIdentity);
 
-        // Verify that the patient identity was deleted
         List<PatientIdentity> afterDelete = patientIdentityService.getAll();
         int countAfterDelete = afterDelete.size();
         assertEquals(countBeforeDelete - 1, countAfterDelete);

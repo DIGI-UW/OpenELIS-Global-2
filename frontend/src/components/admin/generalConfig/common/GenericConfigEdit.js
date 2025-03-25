@@ -213,7 +213,9 @@ const GenericConfigEdit = ({ menuType, ID }) => {
                     <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.name" />
                   </h4>
                 </Column>
-                <Column lg={3} md={6} sm={3}>{FormEntryConfig.paramName}</Column>
+                <Column lg={3} md={6} sm={3}>
+                  {FormEntryConfig.paramName}
+                </Column>
               </Grid>
               <br />
               <Grid fullWidth={true}>
@@ -222,7 +224,9 @@ const GenericConfigEdit = ({ menuType, ID }) => {
                     <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.description" />
                   </h4>
                 </Column>
-                <Column lg={7} md={6} sm={4}>{FormEntryConfig.description}</Column>
+                <Column lg={7} md={6} sm={4}>
+                  {FormEntryConfig.description}
+                </Column>
               </Grid>
               <br />
               {FormEntryConfig.valueType === "boolean" && (
