@@ -306,6 +306,7 @@ export const ViewNonConformingEvent = () => {
                       value: e.target.value,
                     });
                   }}
+                  data-cy="fieldName"
                   id={`field.name`}
                 />
               </Column>

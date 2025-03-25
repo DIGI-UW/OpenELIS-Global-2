@@ -41,7 +41,7 @@ class PatientEntryPage {
     cy.enterText(this.firstNameSelector, firstName);
     cy.enterText(this.dateOfBirth, dateOfBirth);
     this.getMaleGenderRadioButton().click();
-    cy.getElement("#submit").click();
+    //cy.getElement("#submit").click();
   }
 
   clickSavePatientButton() {
@@ -78,6 +78,11 @@ class PatientEntryPage {
   searchPatientByDateOfBirth(dateOfBirth) {
     cy.enterText(this.dateOfBirth, dateOfBirth);
   }
+
+  clearPatientInfo() {
+    cy.get("#clear").click();
+  }
+
   getSubmitButton() {
     return cy.getElement(this.savePatientBtn);
   }

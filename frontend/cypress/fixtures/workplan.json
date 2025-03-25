@@ -1,6 +1,11 @@
 {
-  "testName": "Western blot HIV(Serum)",
+  "testName": "Amylase(Serum)",
   "panelType": "Serologie VIH",
+  "unitBioType": "Biochemistry",
   "unitType": "Serology-Immunology",
-  "Priority": "Routine"
+  "priority": "Routine",
+  "panelTile": "Workplan By Panel",
+  "testTile": "Workplan By Test",
+  "unitTile": "Workplan By Unit",
+  "priorityTile": "Workplan By Priority"
 }

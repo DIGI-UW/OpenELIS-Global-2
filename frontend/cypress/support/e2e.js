@@ -19,3 +19,10 @@ import "./commands";
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
 require("cypress-xpath");
+
+// In cypress/support/e2e.js
+Cypress.on("fail", (error, runnable) => {
+  console.error("Test failed:", runnable.title);
+  console.error(error);
+  return false;
+});
