@@ -53,6 +53,8 @@ function NonConformityMenuManagement() {
         message: intl.formatMessage({ id: "success.add.edited.msg" }),
       });
       var body = await res.json();
+
+      console.log("The ncMenuConfig items are:", body);
       setMenuItem(body);
     } else {
       addNotification({
@@ -117,6 +119,7 @@ function NonConformityMenuManagement() {
                 <br></br>
                 <br></br>
                 <MenuCheckBox
+                  data-cy="checkbox1"
                   menuItem={menuItem}
                   curMenuItem={menuItem}
                   path="$"

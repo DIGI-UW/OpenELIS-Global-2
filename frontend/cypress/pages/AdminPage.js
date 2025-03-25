@@ -3,6 +3,7 @@ import LabNumberManagementPage from "./LabNumberManagementPage";
 import GlobalMenuConfigPage from "./GlobalMenuConfigPage";
 import ProgramEntryPage from "./ProgramEntryPage";
 import ProviderManagementPage from "./ProviderManagementPage";
+import NonComformMenuPage from "./NonComformMenuPage";
 
 class AdminPage {
   constructor() {}
@@ -37,6 +38,20 @@ class AdminPage {
     cy.contains("Global Menu Management").should("be.visible");
 
     return new GlobalMenuConfigPage();
+  }
+
+  goToNonComformMenuConfigPage() {
+    cy.contains("button", "Menu Configuration").click({ force: true });
+    cy.get(".cds--side-nav__menu-item")
+      .should("be.visible")
+      .contains("Non-Conform Menu Configuration")
+      .click({ force: true });
+
+    // Verify the URL and the visibility of the content
+    cy.url().should("include", "#nonConformityMenuManagement");
+    cy.contains("Non-Conformity Menu Management").should("be.visible");
+
+    return new NonComformMenuPage();
   }
 
   goToProgramEntry() {
