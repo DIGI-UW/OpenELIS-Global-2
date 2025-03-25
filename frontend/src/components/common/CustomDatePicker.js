@@ -17,7 +17,7 @@ const CustomDatePicker = (props) => {
         : "MM/dd/yyyy",
     );
     setCurrentDate(formatDate);
-    props.onChange(currentDate);
+    props.onChange(formatDate);
   }
 
   function handleInputChange(e) {

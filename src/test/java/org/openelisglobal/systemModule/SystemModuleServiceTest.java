@@ -1,6 +1,8 @@
 package org.openelisglobal.systemModule;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -22,11 +24,13 @@ public class SystemModuleServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/system-module.xml");
     }
 
-    // @Test
-    public void testDataBaseData() {
+    @Test
+    public void testDatabaseData() {
         List<SystemModule> systemModules = systemModuleService.getAll();
+        assertFalse("SystemModules should not be empty", systemModules.isEmpty());
         systemModules.forEach(systemModule -> {
-            System.out.print(systemModule.getSystemModuleName() + " ");
+            assertNotNull("SystemModule name should not be null", systemModule.getSystemModuleName());
+            assertFalse("SystemModule name should not be empty", systemModule.getSystemModuleName().isEmpty());
         });
     }
 
