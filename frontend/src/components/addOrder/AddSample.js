@@ -107,47 +107,44 @@ const AddSample = (props) => {
       <h3>
         <FormattedMessage id="label.button.sample" />
       </h3>
-      <Stack gap={10}>
-        <div className="orderLegendBody">
-          {samples.map((sample, i) => {
-            return (
-              <div className="sampleType" key={i}>
-                <h4>
-                  <FormattedMessage id="label.button.sample" /> {i + 1}
-                  <span className="requiredlabel">*</span>
-                </h4>
-                <Link href="#" onClick={(e) => handleRemoveSample(e, sample)}>
-                  {<FormattedMessage id="sample.remove.action" />}
-                </Link>
-                <SampleType
-                  index={i}
-                  rejectSampleReasons={rejectSampleReasons}
-                  removeSample={removeSample}
-                  sample={sample}
-                  setSample={(newSample) => {
-                    let newSamples = [...samples];
-                    newSamples[i] = newSample;
-                    setSamples(newSamples);
-                  }}
-                  sampleTypeObject={sampleTypeObject}
-                  error={error}
-                />
-              </div>
-            );
-          })}
-          <Row>
-            <Grid>
-              <Column lg={16} md={8} sm={4}>
-                <Button onClick={handleAddNewSample}>
-                  {<FormattedMessage id="sample.add.action" />}
-                  &nbsp; &nbsp;
-                  <Add size={16} />
-                </Button>
-              </Column>
-            </Grid>
-          </Row>
-        </div>
-      </Stack>
+      <Grid>
+        <Column lg={16} md={8} sm={4}>
+          <div className="orderLegendBody">
+            {samples.map((sample, i) => {
+              return (
+                <div className="sampleType" key={i}>
+                  <h4>
+                    <FormattedMessage id="label.button.sample" /> {i + 1}
+                    <span className="requiredlabel">*</span>
+                  </h4>
+                  <Link href="#" onClick={(e) => handleRemoveSample(e, sample)}>
+                    {<FormattedMessage id="sample.remove.action" />}
+                  </Link>
+                  <SampleType
+                    index={i}
+                    rejectSampleReasons={rejectSampleReasons}
+                    removeSample={removeSample}
+                    sample={sample}
+                    setSample={(newSample) => {
+                      let newSamples = [...samples];
+                      newSamples[i] = newSample;
+                      setSamples(newSamples);
+                    }}
+                    sampleTypeObject={sampleTypeObject}
+                    error={error}
+                  />
+                </div>
+              );
+            })}
+
+            <Button onClick={handleAddNewSample}>
+              {<FormattedMessage id="sample.add.action" />}
+              &nbsp; &nbsp;
+              <Add size={16} />
+            </Button>
+          </div>
+        </Column>
+      </Grid>
     </>
   );
 };

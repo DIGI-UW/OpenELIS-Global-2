@@ -49,8 +49,8 @@ export const ProgramSelect = ({
 
   return (
     <>
-      <Grid>
-        <Column lg={8} md={4} sm={4}>
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
           {programs.length > 0 && (
             <Select
               id="additionalQuestionsSelect"
@@ -275,29 +275,31 @@ const OrderEntryAdditionalQuestions = ({
 
   return (
     <>
-      <Stack gap={10}>
-        <div className="orderLegendBody">
-          <h3>
-            <FormattedMessage id="select.program" />
-          </h3>
-          <ProgramSelect
-            programChange={handleProgramSelection}
-            orderFormValues={orderFormValues}
-          />
-          <Questionnaire
-            questionnaire={questionnaire}
-            onAnswerChange={answerChange}
-            getAnswer={getAnswer}
-          />
-          {questionnaireResponse && (
-            <input
-              type="hidden"
-              name="additionalQuestions"
-              value={questionnaireResponse}
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <div className="orderLegendBody">
+            <h3>
+              <FormattedMessage id="select.program" />
+            </h3>
+            <ProgramSelect
+              programChange={handleProgramSelection}
+              orderFormValues={orderFormValues}
             />
-          )}
-        </div>
-      </Stack>
+            <Questionnaire
+              questionnaire={questionnaire}
+              onAnswerChange={answerChange}
+              getAnswer={getAnswer}
+            />
+            {questionnaireResponse && (
+              <input
+                type="hidden"
+                name="additionalQuestions"
+                value={questionnaireResponse}
+              />
+            )}
+          </div>
+        </Column>
+      </Grid>
     </>
   );
 };
