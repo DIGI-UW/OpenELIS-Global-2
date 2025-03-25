@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -22,12 +23,14 @@ public class TestSectionServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/test.xml");
     }
 
-    // @Test
-    public void testDataBaseData() {
+    public void testDatabaseData() {
         List<TestSection> testSections = testSectionService.getAll();
-        testSections.forEach(testSection -> {
-            System.out.print(testSection.getTestSectionName() + " ");
-        });
+
+        Assert.assertFalse("The test_sections table should not be empty!", testSections.isEmpty());
+
+        for (TestSection testSection : testSections) {
+            Assert.assertNotNull("Test section name should not be null", testSection.getTestSectionName());
+        }
     }
 
     @Test

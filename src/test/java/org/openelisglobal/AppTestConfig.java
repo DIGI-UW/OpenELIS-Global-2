@@ -88,7 +88,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @EnableWebMvc
 public class AppTestConfig implements WebMvcConfigurer {
 
-    // mock Beans
     @Bean()
     @Profile("test")
     public PluginAnalyzerService pluginAnalyzerService() {
