@@ -4,6 +4,7 @@ import GlobalMenuConfigPage from "./GlobalMenuConfigPage";
 import ProgramEntryPage from "./ProgramEntryPage";
 import ProviderManagementPage from "./ProviderManagementPage";
 import NonComformMenuPage from "./NonComformMenuPage";
+import PatientMenuConfigPage from "./PatitentMenuConfigPage";
 
 class AdminPage {
   constructor() {}
@@ -52,6 +53,20 @@ class AdminPage {
     cy.contains("Non-Conformity Menu Management").should("be.visible");
 
     return new NonComformMenuPage();
+  }
+
+  goToPatientMenuConfigPage() {
+    cy.contains("button", "Menu Configuration").click({ force: true });
+    cy.get(".cds--side-nav__menu-item")
+      .should("be.visible")
+      .contains("Patient Menu Configuration")
+      .click({ force: true });
+
+    // Verify the URL and the visibility of the content
+    cy.url().should("include", "#patientMenuManagement");
+    cy.contains("Patient Menu Management").should("be.visible");
+
+    return new PatientMenuConfigPage();
   }
 
   goToProgramEntry() {
