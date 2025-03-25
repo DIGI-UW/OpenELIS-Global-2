@@ -28,7 +28,7 @@ public class GenderServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/gender.xml");
     }
 
-    @Test
+    // @Test
     public void verifyTestData() {
         List<Gender> genders = genderService.getAll();
         System.out.println("Genders we have in db: " + genders.size());

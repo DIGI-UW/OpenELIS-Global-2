@@ -7,34 +7,27 @@ class Result {
     cy.get("#unitType").select(unitType);
   }
 
-  acceptSample(index = 0) {
-    cy.get(`.cds--checkbox-label`).eq(index).click();
+  acceptSample(index = 1) {
+    return cy.get("[data-cy='checkTestResult']").eq(index).check();
   }
 
   acceptResult() {
     cy.get("#cell-accept-0 > .cds--form-item > .cds--checkbox-label").click();
   }
 
-  expandSampleDetails(index = 0) {
-    cy.get(`[data-testid="expander-button-${index}"]`).click();
+  expandSampleDetails() {
+    return cy
+      .get("[data-testid='expander-button-1']")
+      .should("be.visible")
+      .click({ force: true });
   }
 
-  selectTestMethod(index = 0, method) {
+  selectTestMethod(index = 1, method) {
     cy.get(`#testMethod${index}`).select(method);
   }
 
-  selectPatient() {
-    cy.get(
-      "tbody > :nth-child(1) > :nth-child(1) > .cds--radio-button-wrapper > .cds--radio-button__label > .cds--radio-button__appearance",
-    ).click();
-  }
-
-  search() {
-    cy.get(":nth-child(1) > :nth-child(5) > .cds--btn").click();
-  }
-
-  searchByTest() {
-    cy.get(":nth-child(8) > #submit").click();
+  searchResults() {
+    cy.get("#searchResults").click();
   }
 
   validatePatientResult(patient) {
@@ -51,6 +44,17 @@ class Result {
   referSample(index = 0, reason, institute) {
     cy.get(`#referralReason${index}`).select(reason);
     cy.get(`#institute${index}`).select(institute);
+  }
+
+  referTests() {
+    cy.contains("span", "Refer test to a reference lab")
+      .should("be.visible")
+      .click();
+  }
+  selectPatientFromSearchResults() {
+    cy.get(
+      "tbody > :nth-child(1) > :nth-child(1) > .cds--radio-button-wrapper > .cds--radio-button__label > .cds--radio-button__appearance",
+    ).click();
   }
 
   selectRefferedTest() {
@@ -72,12 +76,25 @@ class Result {
       .click();
   }
 
-  setResultValue(index = 0, value) {
-    cy.get(`#resultValue${index}`).select(value);
+  clickReferralsByPatient() {
+    cy.get("[data-cy='referralsByPatient']").should("be.visible").click();
+  }
+  clickReferralsByTestAndName() {
+    cy.get("[data-cy='byUnitsAndTests']").should("be.visible").click();
+  }
+  clickReferralsByLabNumber() {
+    cy.get("[data-cy='byLabNumber']").should("be.visible").click();
   }
 
+  setResultValue(index = 0, value) {
+    cy.get(`#ResultValue${index}`).type(value);
+  }
+
+  selectResultValue(index = 0, value) {
+    cy.get(`#ResultValue${index}`).select(value);
+  }
   submitResults() {
-    cy.get("#submit").click();
+    cy.get("#saveResults").should("be.visible").click({ force: true });
   }
 }
 
