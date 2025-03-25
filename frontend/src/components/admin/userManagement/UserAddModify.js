@@ -17,6 +17,8 @@ import {
   Checkbox,
   FormGroup,
 } from "@carbon/react";
+import CustomDatePicker from "../../common/CustomDatePicker";
+import UserAddModifyValidationSchema from "../../formModel/validationSchema/UserAddModifyValidationSchema.js"
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import {
@@ -548,31 +550,83 @@ function UserAddModify() {
     }));
   }
 
-  function handleExpirationDateChange(e) {
+  async function handleExpirationDateChange(e) {
     setSaveButton(false);
-    setValidation({ ...validation, expDate: true });
+    setValidation((prev) => ({ ...prev, expDate: true }));
+  
+    const selectedDate = e.target ? e.target.value : e; // Handle both input and picker formats
+  
+    // Validate the format first
+    const dateFormat = /^\d{2}\/\d{2}\/\d{4}$/;
+    if (!selectedDate.match(dateFormat)) {
+      setValidation((prev) => ({
+        ...prev,
+        expDateError: "Invalid date format (Expected DD/MM/YYYY or MM/DD/YYYY)",
+        expDate: false,
+      }));
+      return;
+    }
+  
+    // Convert date based on locale
+    const isFrenchLocale = configurationProperties.DEFAULT_DATE_LOCALE === "fr-FR";
+    const [part1, part2, year] = selectedDate.split("/").map(Number);
+    const day = isFrenchLocale ? part1 : part2;
+    const month = isFrenchLocale ? part2 : part1;
+    const formattedDate = `${year}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+  
+    // ✅ Validate using Yup Schema
+    try {
+      await UserAddModifyValidationSchema.validate({ passwordExpireDate: formattedDate });
+  
+      setValidation((prev) => ({
+        ...prev,
+        expDateError: "",
+        expDate: true,
+      }));
+  
+      setSaveButton(true); // Enable save button only if validation passes
+    } catch (err) {
+      setValidation((prev) => ({
+        ...prev,
+        expDateError: err.message,
+        expDate: false,
+      }));
+      return; // Stop execution if validation fails
+    }
+  
+    // ✅ Update user data states after validation passes
     setUserDataPost((prevUserDataPost) => ({
       ...prevUserDataPost,
-      expirationDate: e.target.value,
+      expirationDate: formattedDate,
     }));
+  
     setUserDataShow((prevUserData) => ({
       ...prevUserData,
-      expirationDate: e.target.value,
+      expirationDate: selectedDate, // Keep the original format for display
     }));
   }
-
+  
   function handleTimeoutChange(e) {
     setSaveButton(false);
-    setValidation({ ...validation, timeout: true });
+  
+    const timeoutValue = e.target.value;
+  
+    setValidation((prev) => ({
+      ...prev,
+      timeout: true,
+    }));
+  
     setUserDataPost((prevUserDataPost) => ({
       ...prevUserDataPost,
-      timeout: e.target.value,
+      timeout: timeoutValue,
     }));
+  
     setUserDataShow((prevUserData) => ({
       ...prevUserData,
-      timeout: e.target.value,
+      timeout: timeoutValue,
     }));
   }
+  
 
   function handleAccountActiveChange(e) {
     setSaveButton(false);
@@ -1003,23 +1057,16 @@ function UserAddModify() {
                     </>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
-                    <TextInput
+                    <CustomDatePicker
                       id="password-expire-date"
-                      className="defalut"
-                      type="text"
-                      labelText=""
-                      placeholder={intl.formatMessage({
+                      className={`default ${validation.expDateError ? "error" : ""}`}  // Highlight input when error exists
+                      labelText={intl.formatMessage({
                         id: "login.password.expired.date.placeholder",
                       })}
-                      required={true}
-                      // invalid={errors.order && touched.order}
-                      // invalidText={errors.order}
-                      value={
-                        userDataShow && userDataShow.expirationDate
-                          ? userDataShow.expirationDate
-                          : ""
-                      }
-                      onChange={(e) => handleExpirationDateChange(e)}
+                      value={userDataShow?.expirationDate || ""}
+                      onChange={handleExpirationDateChange} // ✅ Updated function
+                      invalid={!!validation.expDateError} // ✅ Show error if exists
+                      invalidText={validation.expDateError} // ✅ Display error message
                     />
                   </Column>
                 </Grid>
@@ -1034,7 +1081,7 @@ function UserAddModify() {
                     <TextInput
                       id="login-timeout"
                       className="defalut"
-                      type="text"
+                      type="number"
                       labelText=""
                       placeholder={intl.formatMessage({
                         id: "login.timeout.placeholder",
@@ -1352,8 +1399,8 @@ function UserAddModify() {
                           legendText=""
                         >
                           {userDataShow &&
-                          userDataShow.labUnitRoles &&
-                          userDataShow.labUnitRoles.length > 0 ? (
+                            userDataShow.labUnitRoles &&
+                            userDataShow.labUnitRoles.length > 0 ? (
                             userDataShow.labUnitRoles.map((section) => (
                               <Checkbox
                                 key={`${section.elementID}-${key}`}
