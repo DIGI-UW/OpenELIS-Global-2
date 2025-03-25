@@ -23,6 +23,10 @@ class StudyReportPage {
     cy.get(selector).type(value);
   }
 
+  typeEndDate(selector, value) {
+    cy.get(selector).type(value);
+  }
+
   clickAccordionItem(nthChild) {
     cy.get(
       `:nth-child(${nthChild}) >.cds--accordion__item > .cds--accordion__heading`,
@@ -129,8 +133,8 @@ class StudyReportPage {
   }
 
   visitAuditTrailReport() {
-    this.visitStudyReports();
-    cy.get("[data-cy='menu_reports_auditTrail_study']").click();
+    //this.visitStudyReports();
+    cy.get("[data-cy='single-sidenav-button']").contains("Audit Trial").click();
   }
 
   validateAudit() {
@@ -265,7 +269,8 @@ class StudyReportPage {
       "Indeterminate",
     );
     this.typeInDate("#startDate", "01/02/2023");
-    this.typeInField("#siteName", "CAME", { force: true });
+    this.typeEndDate("#endDate", "06/02/2023");
+    this.typeInField("#siteName", "CAME");
     this.verifyElementVisible("#siteName");
   }
 
@@ -297,7 +302,7 @@ class StudyReportPage {
       "Collected ARV Patient Report",
     );
     this.verifyButtonDisabled();
-    this.typeInField("#nationalID", "UG-23SLHD7DBD");
+    this.typeInField("#display_nationalID", "UG-23SLHD7DBD");
     this.verifyButtonVisible();
   }
 
@@ -313,7 +318,7 @@ class StudyReportPage {
       "Associated Patient Report",
     );
     this.verifyButtonDisabled();
-    this.typeInField("#nationalID", "UG-23SLHD7DBD");
+    this.typeInField("#display_nationalID", "UG-23SLHD7DBD");
     this.verifyButtonVisible();
   }
 

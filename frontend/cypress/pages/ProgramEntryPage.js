@@ -14,7 +14,7 @@ class ProgramEntryPage {
     cy.contains("h2", "Add/Edit Program").should("be.visible");
   }
 
-  selectPrgram(value) {
+  selectProgram(value) {
     cy.get(this.selectors.program).select(value);
   }
 
