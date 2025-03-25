@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { getFromOpenElisServer } from "../../utils/Utils";
-import { useHistory } from "react-router-dom";
 
 export const fetchPatientData = async (query, callback) => {
   const [firstName, lastName] = query.split(" ");
@@ -45,6 +44,7 @@ export const fetchPatientData = async (query, callback) => {
       (value, index, self) =>
         index === self.findIndex((t) => t.patientID === value.patientID),
     );
+
     callback(uniqueResults);
   } catch (error) {
     callback([]);
@@ -52,14 +52,14 @@ export const fetchPatientData = async (query, callback) => {
 };
 
 export const openPatientResults = (patientId) => {
-  const history = useHistory();
   if (patientId) {
-    history.push("/PatientResults/" + patientId);
+    window.location.href = "/PatientResults/" + patientId;
   }
 };
 
 export const useAutocomplete = (props) => {
   const allowFreeText = props.allowFreeText;
+
   const [textValue, setTextValue] = useState("");
   const [activeSuggestion, setActiveSuggestion] = useState(0);
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
@@ -103,7 +103,6 @@ export const useAutocomplete = (props) => {
       if (filteredSuggestions.length === 0 && !allowFreeText) {
         setInvalid(true);
       }
-
       if (typeof props.onChange === "function") {
         props.onChange(e);
       }
