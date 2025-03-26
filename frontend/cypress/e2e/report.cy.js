@@ -353,3 +353,16 @@ describe("Study Reports", function () {
     //reportPage.validateAudit();
   });
 });
+
+describe("WHONET Report", function () {
+  it("Navigation to WHONET Report", function () {
+    reportPage = homePage.goToWHONETReport();
+  });
+
+  it("Enter data and get printable Version", function () {
+    reportPage.verifyButtonDisabled();
+    reportPage.typeInDatePicker("#startDate", "01/02/2023");
+    reportPage.typeInDatePicker("#endDate", "02/02/2023");
+    reportPage.verifyButtonVisible();
+  });
+});

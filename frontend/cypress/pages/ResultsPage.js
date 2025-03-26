@@ -1,4 +1,21 @@
 class Result {
+  enterPreviousLabNo = 'input[placeholder="Enter Previous Lab Number"]';
+  enterAccessionNo = 'input[placeholder="Enter Acceesion No"]';
+  startLabNo = "#startLabNo";
+  endLabNo = "endLabNo";
+
+  enterPreviousLabNo(value) {
+    cy.get(enterPreviousLabNo).type(value, { force: true });
+  }
+
+  enterAccessionNo(value) {
+    cy.get(enterAccessionNo).type(value, { force: true });
+  }
+
+  startLabNo(value) {
+    cy.get(startLabNo).type(value, { force: true });
+  }
+
   getResultTitle() {
     return cy.get("section > h3");
   }

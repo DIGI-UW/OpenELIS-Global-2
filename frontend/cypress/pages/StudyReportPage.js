@@ -134,9 +134,7 @@ class StudyReportPage {
 
   visitAuditTrailReport() {
     //this.visitStudyReports();
-    cy.get("[data-cy='menu_reports_auditTrial_study']")
-      .contains("Audit Trial")
-      .click();
+    cy.get("[data-cy='single-sidenav-button']").contains("Audit Trial").click();
   }
 
   validateAudit() {
