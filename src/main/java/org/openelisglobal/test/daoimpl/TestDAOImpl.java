@@ -449,12 +449,15 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     @Transactional(readOnly = true)
     public List<Test> getTestsByTestSectionAndMethod(String filter, String filter2) throws LIMSRuntimeException {
         try {
-            String sql = "from Test t where t.testSection = :param1 and t.method = :param2";
+            String sql = "select t from Test t join t.testSection ts join t.method m where ts.id = :param1 and m.id = :param2";
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
-            query.setParameter("param1", filter);
-            query.setParameter("param2", filter2);
 
-            List<Test> list = query.list();
+            // Convert filter values dynamically
+            query.setParameter("param1", convertToAppropriateType(filter));
+            query.setParameter("param2", convertToAppropriateType(filter2));
+
+            List<Test> list = query.getResultList();
+
             return list;
 
         } catch (RuntimeException e) {
@@ -787,4 +790,26 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
 
         return null;
     }
+
+    private Object convertToAppropriateType(String value) {
+        if (value == null) {
+            return null;
+        }
+        // Check if it's an integer
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            // Ignore and try next
+        }
+
+        // Check if it's a long
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException e) {
+            // Ignore and assume it's a string
+        }
+
+        return value; // Default to String if not a number
+    }
+
 }

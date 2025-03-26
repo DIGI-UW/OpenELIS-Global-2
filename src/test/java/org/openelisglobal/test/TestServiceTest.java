@@ -234,4 +234,25 @@ public class TestServiceTest extends BaseWebContextSensitiveTest {
         assertTrue(sortOrder > 0);
     }
 
+    @Test
+    public void getTotalSearchedTestCount() {
+        String seaString = "Blood Test";
+        int totalSearchedTestCount = testService.getTotalSearchedTestCount(seaString);
+        assertTrue(totalSearchedTestCount > 0);
+    }
+
+    @Test
+    public void getUOM() {
+        org.openelisglobal.test.valueholder.Test test = testService.get("1");
+        String uom = testService.getUOM(test, false);
+        assertEquals("mg/dL", uom);
+    }
+
+    @Test
+    public void getTestsByTestSectionAndMethod() {
+        List<org.openelisglobal.test.valueholder.Test> test = testService.getTestsByTestSectionAndMethod("1", "1");
+        assertEquals(1, test.size());
+        assertEquals("Blood Test", test.get(0).getDescription());
+    }
+
 }

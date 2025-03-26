@@ -104,4 +104,28 @@
         name="Urinalysis" orderable="true" guid="def-456"
         name_localization_id="2" antimicrobial_resistance="false" />
 
+    <dictionary_category id="1"
+        description="Category Description 1" local_Abbrev="CA1"
+        name="Category Name 1" lastUpdated="2023-11-01 12:00:00" />
+    <dictionary_category id="2"
+        description="Category Description 2" local_Abbrev="CA2"
+        name="Category Name 2" lastUpdated="2023-12-01 12:00:00" />
+
+    <dictionary id="1" is_active="Y"
+        dict_entry="Dictionary Entry 1" local_Abbrev="DE1"
+        dictionary_category_id="1" sort_order="1"
+        lastUpdated="2023-11-01 12:00:00" />
+    <dictionary id="2" is_active="Y"
+        dict_entry="Dictionary Entry 2" local_Abbrev="DE2"
+        dictionary_category_id="2" sort_order="2"
+        lastUpdated="2023-12-01 12:00:00" />
+
+
+    <panel id="1" name="TB" description="Test panel 1" is_active="Y"
+        name_localization_id="1" loinc="12345" />
+    <panel id="2" name="TestPanel2"
+        description="Duplicate description" is_active="N"
+        name_localization_id="1" loinc="67890" />
+
+
 </dataset>
