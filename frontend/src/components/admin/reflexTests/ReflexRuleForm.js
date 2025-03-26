@@ -949,6 +949,7 @@ function ReflexRule() {
                                 <FormattedMessage id="rulebuilder.label.perfomActions" />
                               </h5>
                             </div>
+                            <br />
                           </Column>
                         </Grid>
                         {rule.actions.map((action, action_index) => (
