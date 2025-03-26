@@ -86,8 +86,9 @@ class Result {
     cy.get("[data-cy='byLabNumber']").should("be.visible").click();
   }
 
-  setResultValue(index = 0, value) {
-    cy.get(`#ResultValue${index}`).type(value);
+  setResultValue(value) {
+    cy.get("#row-0");
+    cy.get("#ResultValue0").type(value);
   }
 
   selectResultValue(index = 0, value) {

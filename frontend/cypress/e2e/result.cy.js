@@ -31,7 +31,7 @@ describe("Result By Unit", function () {
 
   it("should accept the sample, refer the sample, and save the result", function () {
     cy.fixture("result").then((res) => {
-      result.setResultValue(0, res.positiveResult);
+      result.setResultValue(res.positiveResult);
       result.submitResults();
     });
   });
@@ -83,7 +83,7 @@ describe("Result By Patient", function () {
   it("should search patient By Lab Number and validate", function () {
     cy.wait(500);
     cy.fixture("Patient").then((patient) => {
-      cy.get("#labNumber").type(patient.labNo);
+      patientPage.enterPreviousLabNo(patient.labNo);
       patientPage.clickSearchPatientButton();
     });
   });
@@ -122,7 +122,7 @@ describe("Result By Order", function () {
 
   it("Should Search by Accession Number", function () {
     cy.fixture("Patient").then((order) => {
-      cy.get("#accessionNumber").type(order.labNo);
+      patientPage.enterAccessionNo(order.labNo);
     });
     result.searchResults();
     cy.wait(1000);
@@ -130,7 +130,7 @@ describe("Result By Order", function () {
 
   it("should accept the sample and save the result", function () {
     cy.fixture("result").then((res) => {
-      result.setResultValue(0, res.positiveResult);
+      result.setResultValue(res.positiveResult);
     });
     result.submitResults();
   });
@@ -188,7 +188,7 @@ describe("Result By Referred Out Tests", function () {
 
   it("should search Referrals By LabNumber and validate", function () {
     cy.fixture("Patient").then((order) => {
-      cy.get("#labNumberInput").type(order.labNo);
+      patientPage.enterPreviousLabNo(order.labNo);
     });
     result.clickReferralsByLabNumber();
   });
@@ -208,7 +208,7 @@ describe("Result By Range Of Order", function () {
 
   it("Should Enter Lab Number and perform Search", function () {
     cy.fixture("Patient").then((order) => {
-      cy.get("#startLabNo").type(order.labNo);
+      patientPage.startLabNo(order.labNo);
     });
     result.searchResults();
   });
@@ -249,7 +249,7 @@ describe("Result By Test And Status", function () {
     });
     cy.fixture("result").then((res) => {
       cy.wait(1000);
-      result.setResultValue(0, res.positiveResult);
+      result.setResultValue(res.positiveResult);
       result.submitResults();
     });
   });
