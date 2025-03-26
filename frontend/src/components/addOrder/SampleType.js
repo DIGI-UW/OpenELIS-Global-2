@@ -523,6 +523,7 @@ const SampleType = (props) => {
             />
           </Column>
         </Grid>
+        <br />
         <div className="testPanels">
           <h4>
             <FormattedMessage id="sample.label.orderpanel" />

@@ -943,7 +943,7 @@ function ReflexRule() {
                       </div>
                       <div className="section">
                         <Grid>
-                          <Column>
+                          <Column lg={16}>
                             <div>
                               <h5>
                                 <FormattedMessage id="rulebuilder.label.perfomActions" />
