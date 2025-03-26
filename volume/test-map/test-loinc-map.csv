@@ -1,4 +1,4 @@
-TEST,LOINC
-MTB ,770-8
-MTB Trace ,713-8
-RIF Resistance ,711-2
+ANALYSER_TEST,LOINC_CODE,ACTUAL_NAME
+MTB,10835-4,Neutrophiles
+MTB Trace,10836-2,Basophiles
+RIF Resistance,10837-0,Eosinophiles
