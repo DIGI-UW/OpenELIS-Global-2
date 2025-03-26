@@ -57,19 +57,19 @@ class PatientEntryPage {
   }
 
   enterPreviousLabNumber(value) {
-    cy.get(enterPreviousLabNo).type(value, { force: true });
+    cy.get(this.enterPreviousLabNo).type(value, { force: true });
   }
 
   enterAccessionNumber(value) {
-    cy.get(enterAccessionNo).type(value, { force: true });
+    cy.get(this.enterAccessionNo).type(value, { force: true });
   }
 
   startLabNumber(value) {
-    cy.get(startLabNo).type(value, { force: true });
+    cy.get(this.startLabNo).type(value, { force: true });
   }
 
   endLabNo(value) {
-    cy.get(endLabNo).type(value);
+    cy.get(this.endLabNo).type(value);
   }
 
   clickSearchPatientButton() {

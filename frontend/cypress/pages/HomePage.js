@@ -23,7 +23,7 @@ class HomePage {
       nonconformityDropdown: "#menu_nonconformity_dropdown",
       resultsMenu: "#menu_results_dropdown",
       resultValidationMenu: "#menu_resultvalidation",
-      reportsMenu: "#menu_reports_dropdown",
+      reportsMenu: "#menu_reports",
       pathologyMenu: "#menu_pathology",
       immunochemMenu: "#menu_immunochem",
       cytologyMenu: "#menu_cytology",
@@ -195,19 +195,17 @@ class HomePage {
 
   // Navigate to the Results by Order page
   goToResultsByOrder() {
-    this.clickDropdownItem(
-      this.selectors.resultsMenu,
-      this.selectors.resultsAccession,
-    );
+    this.openNavigationMenu();
+    cy.get(this.selectors.resultsMenu).click({ force: true });
+    cy.get(this.selectors.resultsAccession).click({ force: true });
     return new Result();
   }
 
   // Navigate to the Results by Patient page
   goToResultsByPatient() {
-    this.clickDropdownItem(
-      this.selectors.resultsMenu,
-      this.selectors.resultsPatient,
-    );
+    this.openNavigationMenu();
+    cy.get(this.selectors.resultsMenu).click({ force: true });
+    cy.get(this.selectors.resultsPatient).click({ force: true });
     return new Result();
   }
 
@@ -231,10 +229,10 @@ class HomePage {
 
   // Navigate to the Results by Test and Status page
   goToResultsByTestAndStatus() {
-    this.clickDropdownItem(
-      this.selectors.resultsMenu,
-      this.selectors.resultsStatus,
-    );
+    this.openNavigationMenu();
+    cy.get(this.selectors.resultsMenu).click({ force: true });
+    cy.get(this.selectors.resultsStatus).click({ force: true });
+
     return new Result();
   }
 

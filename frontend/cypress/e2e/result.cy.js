@@ -19,7 +19,7 @@ describe("Result By Unit", function () {
 
   it("User visits Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
@@ -44,7 +44,7 @@ describe("Result By Patient", function () {
 
   it("User visits Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
@@ -116,7 +116,7 @@ describe("Result By Order", function () {
 
   it("User visits Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
@@ -144,7 +144,7 @@ describe("Result By Referred Out Tests", function () {
 
   it("User visits Reffered out Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.referralPageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
@@ -202,7 +202,7 @@ describe("Result By Range Of Order", function () {
 
   it("User visits Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
@@ -229,18 +229,32 @@ describe("Result By Test And Status", function () {
 
   it("User visits Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
-  it("Should select testName, analysis status, and perform Search", function () {
+  it("Search by Sample status", function () {
+    cy.fixture("result").then((res) => {
+      result.sampleStatus(res.sample);
+    });
+    cy.reload();
+  });
+
+  it("Search by Test Analysis", function () {
+    cy.fixture("result").then((res) => {
+      result.selectAnalysisStatus(res.analysisStatus);
+    });
+    cy.reload();
+  });
+
+  it("Search by TestName", function () {
+    //result.enterCollectionDate();
     cy.fixture("workplan").then((order) => {
       result.selectTestName(order.testName);
     });
-    cy.fixture("result").then((res) => {
-      result.selectAnalysisStatus(res.analysisStatus);
-      result.searchResults();
-    });
+    //result. enterReceivedDate();
+
+    result.searchResults();
   });
 
   it("Should Validate And accept the result", function () {

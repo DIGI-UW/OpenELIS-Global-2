@@ -1,6 +1,6 @@
 class Result {
-  getResultTitle() {
-    return cy.get("section > h3");
+  getResultTitle(title) {
+    cy.contains("section > h3", title).should("be.visible");
   }
 
   selectUnitType(unitType) {
@@ -28,6 +28,14 @@ class Result {
 
   searchResults() {
     cy.get("#searchResults").click();
+  }
+
+  enterCollectionDate() {
+    cy.get("#collectionDate").type("24/03/2025");
+  }
+
+  enterReceivedDate() {
+    cy.get("#recievedDate").type("26/03/2025");
   }
 
   validatePatientResult(patient) {
@@ -63,6 +71,9 @@ class Result {
     ).click();
   }
 
+  sampleStatus(sample) {
+    cy.get("#sampleStatusType").select(sample);
+  }
   selectAnalysisStatus(status) {
     cy.get("#analysisStatus").select(status);
   }

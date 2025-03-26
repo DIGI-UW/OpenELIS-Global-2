@@ -10,5 +10,6 @@
   "eiaTestMethod": "EIA",
   "invalidTestMethod": "Invalid",
   "testNotPerformed": "Test not performed",
-  "cedres": "CEDRES"
+  "cedres": "CEDRES",
+  "sample": "Some tests have been run on this sample"
 }
