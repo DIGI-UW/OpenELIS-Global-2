@@ -133,8 +133,7 @@ class StudyReportPage {
   }
 
   visitAuditTrailReport() {
-    //this.visitStudyReports();
-    cy.get("[data-cy='single-sidenav-button']").contains("Audit Trial").click();
+    cy.get('a[href="/AuditTrialReport"]').click({ force: true });
   }
 
   validateAudit() {
@@ -153,7 +152,6 @@ class StudyReportPage {
     cy.get("#menu_reports_eid_version1").click();
   }
   visitEIDVersion1() {
-    //this.visitStudyReports();
     this.selectPatientStatusReport();
     this.selectEID();
     this.selectEIDVersion1();
@@ -397,6 +395,13 @@ class StudyReportPage {
     this.verifyButtonVisible();
   }
 
+  visitWHONET() {
+    this.verifyHeaderText("h1", "Export a CSV File by Date");
+    this.verifyButtonDisabled();
+    this.typeInDate("#startDate", "01/02/2023");
+    this.typeEndDate("#endDate", "02/02/2023");
+    this.verifyButtonVisible();
+  }
   selectGeneralReport() {
     cy.get("#menu_reports_export_general").click();
   }

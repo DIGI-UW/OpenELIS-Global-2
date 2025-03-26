@@ -56,15 +56,15 @@ class PatientEntryPage {
     return cy.contains("span", "Male").click();
   }
 
-  enterPreviousLabNo(value) {
+  enterPreviousLabNumber(value) {
     cy.get(enterPreviousLabNo).type(value, { force: true });
   }
 
-  enterAccessionNo(value) {
+  enterAccessionNumber(value) {
     cy.get(enterAccessionNo).type(value, { force: true });
   }
 
-  startLabNo(value) {
+  startLabNumber(value) {
     cy.get(startLabNo).type(value, { force: true });
   }
 

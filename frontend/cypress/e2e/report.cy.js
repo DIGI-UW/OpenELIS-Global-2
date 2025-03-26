@@ -360,9 +360,6 @@ describe("WHONET Report", function () {
   });
 
   it("Enter data and get printable Version", function () {
-    reportPage.verifyButtonDisabled();
-    reportPage.typeInDatePicker("#startDate", "01/02/2023");
-    reportPage.typeInDatePicker("#endDate", "02/02/2023");
-    reportPage.verifyButtonVisible();
+    reportPage.visitWHONET();
   });
 });

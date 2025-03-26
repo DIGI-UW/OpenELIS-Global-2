@@ -21,7 +21,7 @@ class HomePage {
       patientDropdown: "#menu_patient_dropdown",
       workplanDropdown: "#menu_workplan_dropdown",
       nonconformityDropdown: "#menu_nonconformity_dropdown",
-      resultsMenu: "#menu_results",
+      resultsMenu: "#menu_results_dropdown",
       resultValidationMenu: "#menu_resultvalidation",
       reportsMenu: "#menu_reports_dropdown",
       pathologyMenu: "#menu_pathology",
@@ -284,7 +284,7 @@ class HomePage {
   goToWHONETReport() {
     this.openNavigationMenu();
     cy.get(this.selectors.reportsMenu).click({ force: true });
-    cy.get(this.selectors.whonetReport).click();
+    cy.get(this.selectors.whonetReport).click({ force: true });
   }
 
   // Navigate to the Pathology Dashboard
