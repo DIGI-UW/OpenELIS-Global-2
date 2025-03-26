@@ -45,8 +45,7 @@ class NonConform {
   clickCheckbox() {
     cy.get("[data-testid='nce-sample-checkbox']")
       .should("be.visible")
-      .first()
-      .click({ force: true });
+      .check({ force: true });
   }
 
   clickGoToNceFormButton() {
@@ -129,21 +128,11 @@ class NonConform {
   }
 
   clickRadioButtonNCE() {
-    // Wait for the table to be visible first
-    cy.get("table").should("be.visible");
-
-    // Wait for at least one radio button to be present
-    cy.get('input[type="radio"][name="radio-group"]').should("exist");
-
-    // Click the first radio button with a more specific selector
-    return cy
-      .get("tbody tr")
+    cy.get(".cds--radio-button__appearance")
       .first()
-      .within(() => {
-        cy.get('input[type="radio"][name="radio-group"]')
-          .should("exist")
-          .click({ force: true });
-      });
+      .should("not.be.checked")
+      .click()
+      .should("be.checked");
   }
 
   enterDateCompleted0(date) {

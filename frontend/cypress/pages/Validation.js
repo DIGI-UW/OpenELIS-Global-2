@@ -12,7 +12,7 @@ class Validation {
   }
 
   enterLabNumberAndSearch(labNo) {
-    cy.get("#accessionNumber").type(labNo);
+    cy.contains("input", "Enter Lab No").type(labNo);
     cy.get("[data-testid='Search-btn']").click();
     //cy.get("[data-testid='LabNo']").should("contain.text", labNo);
   }

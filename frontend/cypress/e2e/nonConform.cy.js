@@ -93,13 +93,14 @@ describe("Report Non-Conforming Event", function () {
 
   it("Report NCE by Lab Number ", function () {
     cy.fixture("Patient").then((patient) => {
+      nonConform.selectSearchType("Lab Number");
       nonConform.enterSearchField(patient.labNo);
     });
     nonConform.clickSearchButton();
     //nonConform.validateSearchResult(patient.labNo);
-    //nonConform.clickCheckbox({ force: true });
-    //nonConform.clickGoToNceFormButton();
-    //nonConform.getAndSaveNceNumber();
+    nonConform.clickCheckbox({ force: true });
+    nonConform.clickGoToNceFormButton();
+    nonConform.getAndSaveNceNumber();
   });
 });
 
@@ -116,7 +117,6 @@ describe("View New Non-Conforming Event", function () {
       nonConform.selectSearchType("Lab Number");
       nonConform.enterSearchField(patient.labNo);
       nonConform.clickSearchButton();
-      //nonConform.clickRadioButtonNCE();
       //nonConform.validateLabNoSearchResult(patient.labNo);
     });
   });
@@ -185,10 +185,10 @@ describe("Corrective Actions", function () {
       nonConform.enterDateCompleted0(nce.dateOfEvent);
       nonConform.clickSubmitButton();
     });
-    cy.reload();
   });
 
   it("Search by NCE Number and Validate the results", function () {
+    cy.reload();
     cy.fixture("NonConform").then((nce) => {
       nonConform.selectSearchType("NCE Number");
       nonConform.enterSearchField(nce.NceNumber);

@@ -30,7 +30,7 @@ describe("Add requester details first", function () {
     providerManagementPage.clickActiveDropdown();
     providerManagementPage.addProvider();
   });
-  cy.reload();
+  //cy.reload();
 });
 
 describe("Add New Patient", function () {
