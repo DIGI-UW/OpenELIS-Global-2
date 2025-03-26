@@ -17,7 +17,7 @@ describe("Result By Unit", function () {
     result = homePage.goToResultsByUnit();
   });
 
-  it("User visits Results Page", function () {
+  it("User validates Results Page", function () {
     cy.fixture("result").then((res) => {
       result.getResultTitle(res.pageTitle);
     });
@@ -39,6 +39,7 @@ describe("Result By Unit", function () {
 
 describe("Result By Patient", function () {
   it("Navigate to Result By Patient", function () {
+    homePage = loginPage.goToHomePage();
     result = homePage.goToResultsByPatient();
   });
 
@@ -144,7 +145,7 @@ describe("Result By Referred Out Tests", function () {
 
   it("User visits Reffered out Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle(res.pageTitle);
+      result.getResultTitle(res.referrals);
     });
   });
 
@@ -186,7 +187,7 @@ describe("Result By Referred Out Tests", function () {
     cy.reload();
   });
 
-  it("should search Referrals By LabNumber and validate", function () {
+  it("search Referrals By LabNumber and validate", function () {
     cy.fixture("Patient").then((order) => {
       patientPage.enterPreviousLabNumber(order.labNo);
     });

@@ -54,7 +54,7 @@ class StudyReportPage {
   selectPatientStatusReport() {
     cy.get('[data-cy="sidenav-button"]')
       .contains("Patient Status Report")
-      .click();
+      .click({ force: true });
   }
 
   selectARV() {
@@ -395,7 +395,7 @@ class StudyReportPage {
     this.verifyButtonVisible();
   }
 
-  visitWHONET() {
+  visitWhonetReport() {
     this.verifyHeaderText("h1", "Export a CSV File by Date");
     this.verifyButtonDisabled();
     this.typeInDate("#startDate", "01/02/2023");

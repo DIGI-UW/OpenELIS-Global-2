@@ -13,8 +13,8 @@ class PatientEntryPage {
   primaryPhone = "input#primaryPhone";
   dateOfBirth = "input#date-picker-default-id";
   savePatientBtn = "#submit";
-  enterPreviousLabNo = 'input[placeholder="Enter Previous Lab Number"]';
-  enterAccessionNo = 'input[placeholder="Enter Acceesion No"]';
+  enterPreviousLabNo = "input#labNumber";
+  enterAccessionNo = "input#accessionNumber";
   startLabNo = "#startLabNo";
   endLabNo = "endLabNo";
 

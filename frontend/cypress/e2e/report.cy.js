@@ -356,10 +356,10 @@ describe("Study Reports", function () {
 
 describe("WHONET Report", function () {
   it("Navigation to WHONET Report", function () {
-    reportPage = homePage.goToWHONETReport();
+    reportPage = homePage.goToWhonetReport();
   });
 
   it("Enter data and get printable Version", function () {
-    reportPage.visitWHONET();
+    reportPage.visitWhonetReport();
   });
 });

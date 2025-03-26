@@ -186,10 +186,9 @@ class HomePage {
 
   // Navigate to the Results by Unit page
   goToResultsByUnit() {
-    this.clickDropdownItem(
-      this.selectors.resultsMenu,
-      this.selectors.resultsLogbook,
-    );
+    this.openNavigationMenu();
+    cy.get(this.selectors.resultsMenu).click({ force: true });
+    cy.get(this.selectors.resultsLogbook).click({ force: true });
     return new Result();
   }
 
@@ -275,11 +274,11 @@ class HomePage {
   goToStudyReports() {
     this.openNavigationMenu();
     cy.get(this.selectors.reportsMenu).click({ force: true });
-    cy.get(this.selectors.reportsStudyNav).click();
+    cy.get(this.selectors.reportsStudyNav).click({ force: true });
     return new StudyReportPage();
   }
 
-  goToWHONETReport() {
+  goToWhonetReport() {
     this.openNavigationMenu();
     cy.get(this.selectors.reportsMenu).click({ force: true });
     cy.get(this.selectors.whonetReport).click({ force: true });

@@ -1,6 +1,6 @@
 class Result {
   getResultTitle(title) {
-    cy.contains("section > h3", title).should("be.visible");
+    cy.get("h3").contains(title).should("be.visible");
   }
 
   selectUnitType(unitType) {
