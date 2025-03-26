@@ -61,7 +61,7 @@ function SearchOrder() {
               <br></br>
             </Column>
             <Column lg={2}>
-              <Button type="submit">
+              <Button data-cy="submit-button" type="submit">
                 <FormattedMessage id="label.button.submit" />
               </Button>
             </Column>

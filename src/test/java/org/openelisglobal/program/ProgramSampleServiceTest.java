@@ -1,5 +1,8 @@
 package org.openelisglobal.program;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+
 import java.util.List;
 import org.junit.Assert;
 import org.junit.Before;
@@ -30,21 +33,52 @@ public class ProgramSampleServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void verifyTestData() {
+    public void verifyProgramSampleData() {
         List<ProgramSample> programSamples = programSampleService.getAll();
-        System.out.println("program samples we have in db: " + programSamples.size());
-        programSamples.forEach(program -> System.out
-                .println(program.getId() + " - " + program.getProgram() + " - " + program.getSample()));
 
+        // Ensure the programSamples list is not null or empty
+        assertNotNull("Program samples should not be null", programSamples);
+        assertFalse("Program samples should not be empty", programSamples.isEmpty());
+
+        // Check that each ProgramSample has a valid ID and related Program/Sample
+        for (ProgramSample programSample : programSamples) {
+            assertNotNull("ProgramSample ID should not be null", programSample.getId());
+            assertNotNull("Program should not be null for ProgramSample", programSample.getProgram());
+            assertNotNull("Sample should not be null for ProgramSample", programSample.getSample());
+        }
+    }
+
+    @Test
+    public void verifyProgramData() {
         List<Program> programList = programService.getAll();
-        System.out.println("programs we have in db: " + programList.size());
-        programList.forEach(program -> System.out.println(program.getId() + " - " + program.getProgramName() + " - "
-                + program.getTestSection().getTestSectionName()));
 
+        // Ensure the programList is not null or empty
+        assertNotNull("Programs should not be null", programList);
+        assertFalse("Programs should not be empty", programList.isEmpty());
+
+        // Check that each Program has valid fields
+        for (Program program : programList) {
+            assertNotNull("Program ID should not be null", program.getId());
+            assertNotNull("Program name should not be null", program.getProgramName());
+            assertNotNull("Test section should not be null", program.getTestSection());
+            assertNotNull("Test section name should not be null", program.getTestSection().getTestSectionName());
+        }
+    }
+
+    @Test
+    public void verifySampleData() {
         List<Sample> samples = sampleService.getAll();
-        System.out.println("samples we have in db: " + samples.size());
-        samples.forEach(program -> System.out
-                .println(program.getId() + " - " + program.getAccessionNumber() + " - " + program.getReceivedDate()));
+
+        // Ensure the sample list is not null or empty
+        assertNotNull("Samples should not be null", samples);
+        assertFalse("Samples should not be empty", samples.isEmpty());
+
+        // Check that each Sample has valid fields
+        for (Sample sample : samples) {
+            assertNotNull("Sample ID should not be null", sample.getId());
+            assertNotNull("Accession number should not be null", sample.getAccessionNumber());
+            assertNotNull("Received date should not be null", sample.getReceivedDate());
+        }
     }
 
     @Test

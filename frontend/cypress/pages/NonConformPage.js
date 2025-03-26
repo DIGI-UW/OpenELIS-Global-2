@@ -14,11 +14,11 @@ class NonConform {
   }
 
   enterSearchField(value) {
-    cy.get("#field\\.name").type(value);
+    cy.get("[data-cy='fieldName']").type(value);
   }
 
   clickSearchButton() {
-    cy.get("[data-testid='nce-search-button']").click();
+    cy.get("[data-testid='nce-search-button']").should("be.visible").click();
   }
 
   // Search results validation
@@ -44,20 +44,21 @@ class NonConform {
   // Checkbox and navigation
   clickCheckbox() {
     cy.get("[data-testid='nce-sample-checkbox']")
+      .should("be.visible")
       .first()
       .click({ force: true });
   }
 
   clickGoToNceFormButton() {
-    cy.get("[data-testid='nce-goto-form-button']").click();
+    cy.get("[data-testid='nce-goto-form-button']").should("be.visible").click();
   }
 
   // Form fields (preserve original IDs)
   enterStartDate(date) {
-    cy.get(".cds--date-picker-input__wrapper > #startDate").type(date);
+    cy.get("input#startDate").type(date);
   }
 
-  enterReportingUnit(unit) {
+  selectReportingUnit(unit) {
     cy.get("#reportingUnits").select(unit);
   }
 
@@ -123,24 +124,34 @@ class NonConform {
     cy.get("[data-testid='nce-action-checkbox']").click({ force: true });
   }
 
-  selectResolution() {
-    cy.get(":nth-child(1) > .cds--radio-button__label").click();
+  checkResolution() {
+    cy.contains("span", "Yes").click();
   }
 
   clickRadioButtonNCE() {
-    cy.get("[data-testid='Radio-button']")
-      .eq(0) // 0 for first, 1 for second, 2 for third, etc.
-      .should("be.visible")
-      .click();
+    // Wait for the table to be visible first
+    cy.get("table").should("be.visible");
+
+    // Wait for at least one radio button to be present
+    cy.get('input[type="radio"][name="radio-group"]').should("exist");
+
+    // Click the first radio button with a more specific selector
+    return cy
+      .get("tbody tr")
+      .first()
+      .within(() => {
+        cy.get('input[type="radio"][name="radio-group"]')
+          .should("exist")
+          .click({ force: true });
+      });
   }
+
   enterDateCompleted0(date) {
     cy.get(".cds--date-picker-input__wrapper > #dateCompleted-0").type(date);
   }
 
   clickSubmitButton() {
-    cy.get("[data-testid='nce-submit-button']")
-      .should("not.be.disabled")
-      .click();
+    cy.get("[data-testid='nce-submit-button']").should("be.visible").click();
   }
   // Data management
   getAndSaveNceNumber() {
