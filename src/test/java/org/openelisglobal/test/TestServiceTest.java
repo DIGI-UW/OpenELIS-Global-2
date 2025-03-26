@@ -217,7 +217,6 @@ public class TestServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(2, tests.size());
         assertEquals("Blood Test", tests.get(0).getDescription());
         assertEquals("Urine Test", tests.get(1).getDescription());
-
     }
 
     @Test
@@ -253,6 +252,13 @@ public class TestServiceTest extends BaseWebContextSensitiveTest {
         List<org.openelisglobal.test.valueholder.Test> test = testService.getTestsByTestSectionAndMethod("1", "1");
         assertEquals(1, test.size());
         assertEquals("Blood Test", test.get(0).getDescription());
+    }
+
+    @Test
+    public void getActiveTestsByPanelName() {
+        List<org.openelisglobal.test.valueholder.Test> tests = testService.getActiveTestsByPanel("TB");
+        assertEquals(1, tests.size());
+        assertEquals("Blood Test", tests.get(0).getDescription());
     }
 
 }
