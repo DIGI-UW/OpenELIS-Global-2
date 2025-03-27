@@ -1,102 +1,62 @@
 class TestManagementPage {
-<<<<<<< Updated upstream
-  // Visit URLs
-  visitCombinedPage() {
-    cy.visit("/combined-page");
-=======
-  visitTestCatalog() {
-    cy.visit("/MasterListsPage#TestCatalog");
->>>>>>> Stashed changes
+  visitLogin() {
+    cy.visit("/login");
   }
 
-  getToggleButton() {
-    return cy.get("#toggle");
+  login(username, password) {
+    cy.get("#username").type(username);
+    cy.get("#password").type(password);
+    cy.get("button[type='submit']").click();
   }
 
-  getGuideSection() {
-    return cy.get(".structured-list-wrapper");
+  goToHomePage() {
+    cy.url().should("include", "/home");
   }
 
-  getTestSectionMultiSelect() {
-    return cy.get("#carbon-multiselect-example-3");
+  goToAdminPage() {
+    cy.get("#menu_admin").click();
+    cy.url().should("include", "/admin");
   }
 
-  selectTestSection(section) {
-    this.getTestSectionMultiSelect().click();
-    cy.contains(section).click();
+  goToBarcodeConfigPage() {
+    cy.get("#menu_barcode").click();
+    cy.url().should("include", "/admin/barcode");
   }
 
-  getSelectedTags() {
-    return cy.get('[type="cyan"]');
+  captureDefaultOrder() {
+    cy.get("#defaultOrderLabel").clear().type("Default Order");
   }
 
-  getTabs() {
-    return cy.get('[role="tablist"] button');
+  captureDefaultSpecimen() {
+    cy.get("#defaultSpecimenLabel").clear().type("Default Specimen");
   }
 
-  selectTab(section) {
-    cy.contains('[role="tab"]', section).click();
+  captureMaxOrder() {
+    cy.get("#maxOrderLabel").clear().type("Max Order");
   }
 
-  getDataTable() {
-    return cy.get(".bx--data-table");
+  captureMaxSpecimen() {
+    cy.get("#maxSpecimenLabel").clear().type("Max Specimen");
   }
 
-<<<<<<< Updated upstream
-  openAddMethodModal() {
-    cy.get("button").contains("Add Method").click();
-=======
-  getBreadcrumb() {
-    return cy.get(".breadcrumb");
+  uncheckCheckBoxes() {
+    cy.get("#optionalElements").uncheck();
+    cy.get("#preprintedBarcode").uncheck();
   }
 
-  visitManageMethod() {
-    cy.visit("/MasterListsPage#MethodManagment");
+  checkCheckBoxes() {
+    cy.get("#optionalElements").check();
+    cy.get("#preprintedBarcode").check();
   }
 
-  openAddMethodModal() {
-    cy.get("button").contains("Add New Method").click();
->>>>>>> Stashed changes
+  dimensionsBarCodeLabel() {
+    cy.get("#barcodeWidth").clear().type("100");
+    cy.get("#barcodeHeight").clear().type("50");
   }
 
-  fillMethodForm(english, french) {
-    cy.get("#englishLabel").clear().type(english);
-    cy.get("#frenchLabel").clear().type(french);
+  saveChanges() {
+    cy.get("#saveButton").click();
   }
-
-  submitForm() {
-    cy.get("button").contains("Save").click();
-  }
-
-  confirmAddMethod() {
-    cy.get("button").contains("Accept").click();
-  }
-
-  getExistingMethods() {
-    return cy.get("h4").contains("Existing Methods").parent().find("div > div");
-  }
-
-  getInactiveMethods() {
-    return cy.get("h4").contains("Inactive Methods").parent().find("div > div");
-  }
-<<<<<<< Updated upstream
-
-  verifyTestCatalogPage() {
-    this.getToggleButton().should("be.visible");
-    this.getTestSectionMultiSelect().should("be.visible");
-    this.getTabs().should("be.visible");
-  }
-
-  verifyManageMethodPage() {
-    cy.contains("Manage Method").should("be.visible");
-    this.getExistingMethods().should("have.length.greaterThan", 0);
-    this.getInactiveMethods().should("have.length.greaterThan", 0);
-  }
-}
-
-export default TestManagementPage;
-=======
 }
 
 export default new TestManagementPage();
->>>>>>> Stashed changes

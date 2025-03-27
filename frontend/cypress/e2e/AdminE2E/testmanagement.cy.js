@@ -1,4 +1,19 @@
+import LoginPage from "../../pages/LoginPage";
+import HomePage from "../../pages/HomePage";
+import AdminPage from "../../pages/AdminPage";
 import TestManagementPage from "../../pages/TestManagement";
+
+let loginPage = null;
+let homePage = null;
+let adminPage = null;
+
+before(() => {
+  loginPage = new LoginPage();
+  loginPage.visit();
+
+  homePage = loginPage.goToHomePage();
+  adminPage = homePage.goToAdminPage();
+});
 
 describe("Manage Method Page Tests", () => {
   beforeEach(() => {
@@ -28,7 +43,6 @@ describe("Manage Method Page Tests", () => {
     TestManagementPage.fillMethodForm(englishMethod, frenchMethod);
     TestManagementPage.submitForm();
     TestManagementPage.confirmAddMethod();
-
     cy.contains("Save configuration successful");
     TestManagementPage.getExistingMethods().should("contain", englishMethod);
   });
