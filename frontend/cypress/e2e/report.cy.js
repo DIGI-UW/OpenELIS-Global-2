@@ -26,8 +26,8 @@ describe("Routine Reports", function () {
     reportPage.toggleAccordionPatient(2);
 
     reportPage.toggleAccordion(3);
-    reportPage.validateFieldVisibility("#display_from");
-    reportPage.validateFieldVisibility("#display_to");
+    reportPage.validateFieldVisibility("#from");
+    reportPage.validateFieldVisibility("#to");
     reportPage.toggleAccordion(3);
 
     reportPage.toggleAccordion(6);
@@ -35,9 +35,7 @@ describe("Routine Reports", function () {
     reportPage.validateFieldVisibility(
       ".cds--date-picker-input__wrapper > #startDate",
     );
-    reportPage.validateButtonVisible(
-      ":nth-child(7) > :nth-child(2) > .cds--btn",
-    );
+    reportPage.validateButtonVisible("[data-cy='printableVersion']");
   });
 
   it("Should Visit Statistics Reports", () => {

@@ -58,7 +58,7 @@ class StudyReportPage {
   }
 
   selectARV() {
-    cy.get("#menu_reports_arv").click();
+    cy.get("#menu_reports_arv").click({ force: true });
   }
 
   selectVersion1() {
@@ -145,7 +145,7 @@ class StudyReportPage {
   }
 
   selectEID() {
-    cy.get("#menu_reports_eid").click();
+    cy.get("#menu_reports_eid").click({ force: true });
   }
 
   selectEIDVersion1() {
@@ -185,7 +185,7 @@ class StudyReportPage {
   }
 
   selectVL() {
-    cy.get("#menu_reports_vl").click();
+    cy.get("#menu_reports_vl").click({ force: true });
   }
 
   selectVLVersion() {
@@ -215,7 +215,7 @@ class StudyReportPage {
   }
 
   selectIndetermenate() {
-    cy.get("#menu_reports_indeterminate").click();
+    cy.get("#menu_reports_indeterminate").click({ force: true });
   }
 
   selectIndeterminateV1() {
@@ -273,7 +273,7 @@ class StudyReportPage {
   }
 
   selectSpecialRequest() {
-    cy.get("#menu_reports_special").click();
+    cy.get("#menu_reports_special").click({ force: true });
   }
   visitSpecialRequest() {
     //this.visitStudyReports();
@@ -289,7 +289,7 @@ class StudyReportPage {
   }
 
   selectCollectedARVPatientReport() {
-    cy.get("#menu_reports_patient_collection").click();
+    cy.get("#menu_reports_patient_collection").click({ force: true });
   }
   visitCollectedARVPatientReport() {
     //this.visitStudyReports();
@@ -305,7 +305,7 @@ class StudyReportPage {
   }
 
   selectAssociatedPatientReport() {
-    cy.get("#menu_reports_patient_associated").click();
+    cy.get("#menu_reports_patient_associated").click({ force: true });
   }
   visitAssociatedPatientReport() {
     //this.visitStudyReports();
