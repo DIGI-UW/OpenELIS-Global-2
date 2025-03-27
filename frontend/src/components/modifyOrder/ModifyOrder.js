@@ -54,6 +54,11 @@ const ModifyOrder = () => {
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [changed, setChanged] = useState({
+    "sampleOrderItems.providerFirstName": false,
+    "sampleOrderItems.providerLastName": false,
+    "sampleOrderItems.labNo": false,
+  });
 
   useEffect(() => {
     componentMounted.current = true;
@@ -89,7 +94,7 @@ const ModifyOrder = () => {
         setErrors(errors);
         console.error("Validation Errors:", errors.errors);
       });
-  }, [orderFormValues]);
+  }, [changed, orderFormValues]);
 
   const loadOrderValues = (data) => {
     if (componentMounted.current) {
@@ -310,6 +315,8 @@ const ModifyOrder = () => {
                   samples={samples}
                   error={elementError}
                   isModifyOrder={true}
+                  changed={changed}
+                  setChanged={setChanged}
                 />
               )}
 

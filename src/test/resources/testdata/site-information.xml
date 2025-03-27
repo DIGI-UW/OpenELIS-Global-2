@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <quartz_cron_scheduler id="1"
+        cron_statement="never" last_run="2024-03-01 08:00:00" active="false"
+        run_if_past="true" name="Daily Backup" job_name="backupDatabaseJob"
+        display_key="scheduler.backup.display"
+        description_key="siteInfo.reportConfig.reportDirectory" />
+    <quartz_cron_scheduler id="2"
+        cron_statement="never" last_run="2024-03-21 12:00:00" active="false"
+        run_if_past="true" name="Data Synchronization" job_name="dataSyncJob"
+        display_key="scheduler.sync.display"
+        description_key="siteInfo.testUsageSendStatus" />
+
+    <site_information_domain id="6"
+        name="siteIdentity"
+        description="Identityfing items which don't change the behavior" />
+    <site_information_domain id="11"
+        name="formating"
+        description="Items which specify the format of artifacts" />
+
+    <localization id="1" description="Test Description 1"
+        english="Hello" french="Bonjour" />
+    <localization id="2" description="Test Description 2"
+        english="Goodbye" french="Au revoir" />
+
+    <dictionary_category id="1"
+        description="Test Category 1" local_abbrev="TEST1"
+        name="TEST_CATEGORY_ONE" lastupdated="2023-01-01 12:00:00.000" />
+
+    <dictionary_category id="2"
+        description="Test Category 2" local_abbrev="TEST2"
+        name="TEST_CATEGORY_TWO" lastupdated="2023-01-01 12:30:00.000" />
+
+    <site_information id="1" name="reportsDirectory"
+        description="the directory for the reports" value="/reports"
+        encrypted="false" domain_id="11" value_type="text" schedule_id="1"
+        tag="report" dictionary_category_id="1"
+        description_key="siteInfo.reportConfig.reportDirectory"
+        name_key="scheduler.backup.display" lastupdated="2023-02-15 09:30:45" />
+
+    <site_information id="2" name="testUsageSendStatus"
+        description="The status of what happened the last time an attempt was made to send the report"
+        value="/tests" encrypted="false" domain_id="6" value_type="text"
+        schedule_id="2" tag="test" dictionary_category_id="2"
+        description_key="siteInfo.testUsageSendStatus"
+        name_key="scheduler.sync.display" lastupdated="2023-02-15 09:30:45" />
+</dataset>
