@@ -1,0 +1,8 @@
+{
+  "username": "testuser",
+  "password": "SecurePass123",
+  "email": "testuser@example.com",
+  "role": "Admin",
+  "updatedUsername": "updateduser",
+  "updatedEmail": "updateduser@example.com"
+}
