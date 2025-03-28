@@ -408,20 +408,82 @@ function ProviderMenu() {
           </Column>
         </Grid>
         <br />
-        <ActionPaginationButtonType
-          selectedRowIds={selectedRowIds}
-          modifyButton={modifyButton}
-          deactivateButton={deactivateButton}
-          deleteDeactivate={deleteDeactivateProvider}
-          openUpdateModal={openUpdateModal}
-          openAddModal={openAddModal}
-          handlePreviousPage={handlePreviousPage}
-          handleNextPage={handleNextPage}
-          fromRecordCount={fromRecordCount}
-          toRecordCount={toRecordCount}
-          totalRecordCount={totalRecordCount}
-          type="type1"
-        />
+        <Grid fullWidth condensed>
+          <Column lg={16} md={8} sm={4}>
+            <div
+              className="action-bar-container"
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: "0.5rem",
+                padding: "0.75rem 0",
+                marginBottom: "1rem",
+                marginLeft: "1rem",
+              }}
+            >
+              <div
+                className="action-buttons"
+                style={{
+                  display: "flex",
+                  gap: "0.5rem",
+                  flexWrap: "wrap",
+                  flex: "1 1 auto",
+                }}
+              >
+                <Button
+                  disabled={!selectedRowIds.length}
+                  onClick={() => {
+                    if (selectedRowIds.length === 1) {
+                      openUpdateModal(selectedRowIds[0]);
+                    }
+                  }}
+                >
+                  <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.modify" />
+                </Button>
+                <Button
+                  disabled={!selectedRowIds.length}
+                  onClick={deleteDeactivateProvider}
+                >
+                  <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.deactivate" />
+                </Button>
+                <Button onClick={openAddModal}>
+                  <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.add" />
+                </Button>
+              </div>
+
+              <div
+                className="pagination-controls"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  flexWrap: "wrap",
+                }}
+              >
+                <span>
+                  <FormattedMessage id="showing" /> {fromRecordCount} -{" "}
+                  {toRecordCount} of {totalRecordCount}
+                </span>
+                <div style={{ display: "flex", gap: "0.25rem" }}>
+                  <Button
+                    hasIconOnly
+                    iconDescription="Previous page"
+                    disabled={fromRecordCount <= 1}
+                    onClick={handlePreviousPage}
+                    renderIcon={ArrowLeft}
+                  />
+                  <Button
+                    hasIconOnly
+                    iconDescription="Next page"
+                    onClick={handleNextPage}
+                    renderIcon={ArrowRight}
+                  />
+                </div>
+              </div>
+            </div>
+          </Column>
+        </Grid>
         <br />
         <Modal
           open={isAddModalOpen}
