@@ -294,9 +294,6 @@ function DictionaryManagement() {
           name="selectRowRadio"
           ariaLabel="selectRow"
           onSelect={() => {
-            console.log("Selected row:", row);
-            console.log("All cells in row:", row.cells);
-
             const isActiveCell = row.cells.find((cell) =>
               cell.id.endsWith(":isActive"),
             );
