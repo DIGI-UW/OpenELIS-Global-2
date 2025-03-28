@@ -1,16 +1,16 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
-import { Heading, Button, Grid, Column, Section } from "@carbon/react";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils.js";
-import { NotificationContext } from "../../layout/Layout.js";
+import { Column, Grid, Heading, Section } from "@carbon/react";
+import React, { useContext, useEffect, useRef, useState } from "react";
+import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification.js";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import { NotificationContext } from "../../layout/Layout.js";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../../utils/Utils.js";
 import RenameModelBox from "./renameModel/RenameModelBox.js";
 
 let breadcrumbs = [

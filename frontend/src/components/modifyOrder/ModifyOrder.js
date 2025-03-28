@@ -1,26 +1,23 @@
-import React, { useContext, useEffect, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
 import {
   Button,
   ProgressIndicator,
   ProgressStep,
   Stack,
-  Section,
-  Tag,
 } from "@carbon/react";
-import EditSample from "./EditSample";
-import AddOrder from "../addOrder/AddOrder";
-import "../addOrder/add-order.scss";
-import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
-import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { postToOpenElisServer, getFromOpenElisServer } from "../utils/Utils";
-import EditOrderEntryAdditionalQuestions from "./EditOrderEntryAdditionalQuestions";
-import OrderSuccessMessage from "../addOrder/OrderSuccessMessage";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import PatientHeader from "../common/PatientHeader";
+import AddOrder from "../addOrder/AddOrder";
+import OrderSuccessMessage from "../addOrder/OrderSuccessMessage";
+import "../addOrder/add-order.scss";
+import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import PatientHeader from "../common/PatientHeader";
+import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import ModifyOrderEntryValidationSchema from "../formModel/validationSchema/ModifyOrderEntryValidationSchema";
+import { NotificationContext } from "../layout/Layout";
+import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
+import EditOrderEntryAdditionalQuestions from "./EditOrderEntryAdditionalQuestions";
+import EditSample from "./EditSample";
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "sample.label.search.Order", link: "/SampleEdit" },

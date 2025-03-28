@@ -1,56 +1,35 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
 import {
-  Form,
-  Heading,
   Button,
-  Loading,
-  Grid,
+  Checkbox,
   Column,
+  FlexGrid,
+  Grid,
+  Heading,
+  ListItem,
+  Loading,
+  NumberInput,
+  RadioButton,
+  RadioButtonGroup,
+  Row,
   Section,
-  DataTable,
-  Table,
-  TableHead,
-  TableRow,
-  TableBody,
-  TableHeader,
-  TableCell,
-  TableSelectRow,
-  TableSelectAll,
-  TableContainer,
-  Pagination,
-  Search,
   Select,
   SelectItem,
-  Stack,
-  TextInput,
-  Checkbox,
-  Row,
-  FlexGrid,
   Tag,
+  TextInput,
   UnorderedList,
-  ListItem,
-  NumberInput,
-  RadioButtonGroup,
-  RadioButton,
 } from "@carbon/react";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServer,
-  postToOpenElisServerFormData,
-  postToOpenElisServerFullResponse,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils.js";
-import { NotificationContext } from "../../layout/Layout.js";
+import React, { useContext, useEffect, useRef, useState } from "react";
+import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification.js";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
-import CustomCheckBox from "../../common/CustomCheckBox.js";
-import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
-import { id } from "date-fns/locale";
-import { value } from "jsonpath";
+import { NotificationContext } from "../../layout/Layout.js";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../../utils/Utils.js";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },

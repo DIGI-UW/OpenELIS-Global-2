@@ -1,46 +1,28 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
 import {
-  Heading,
   Button,
-  Loading,
-  Grid,
-  Column,
-  Section,
-  DataTable,
-  Table,
-  TableHead,
-  TableRow,
-  TableBody,
-  TableHeader,
-  TableCell,
-  TableSelectRow,
-  TableSelectAll,
-  TableContainer,
-  Pagination,
-  Search,
-  Modal,
-  TextInput,
-  Dropdown,
-  TextArea,
   Checkbox,
+  Column,
+  Grid,
+  Heading,
+  Loading,
+  Section,
+  TextArea,
+  TextInput,
 } from "@carbon/react";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServerFullResponse,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils.js";
-import {
-  ConfigurationContext,
-  NotificationContext,
-} from "../../layout/Layout.js";
+import React, { useContext, useEffect, useRef, useState } from "react";
+import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification.js";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
-import { ArrowLeft, ArrowRight, Cost } from "@carbon/icons-react";
-import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
+import {
+  NotificationContext,
+} from "../../layout/Layout.js";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../../utils/Utils.js";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },

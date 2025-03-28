@@ -1,30 +1,24 @@
-import React, { useState, useEffect, useContext } from "react";
 import {
   Button,
   Column,
   Form,
-  FormLabel,
-  Heading,
-  Row,
-  Section,
-  Stack,
-  TextInput,
-  SelectItem,
-  Select,
-  Loading,
   Grid,
   Link,
+  Loading,
+  Select,
+  SelectItem,
+  Stack,
 } from "@carbon/react";
-import CustomLabNumberInput from "../common/CustomLabNumberInput";
-import { FormattedMessage, useIntl } from "react-intl";
-import { Formik, Field } from "formik";
-import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
-import { getFromOpenElisServer, Roles } from "../utils/Utils";
-import { NotificationContext } from "../layout/Layout";
-import { NotificationKinds } from "../common/CustomNotification";
-import { format } from "date-fns";
-import CustomDatePicker from "../common/CustomDatePicker";
 import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
+import { Field, Formik } from "formik";
+import React, { useContext, useEffect, useState } from "react";
+import { FormattedMessage, useIntl } from "react-intl";
+import CustomDatePicker from "../common/CustomDatePicker";
+import CustomLabNumberInput from "../common/CustomLabNumberInput";
+import { NotificationKinds } from "../common/CustomNotification";
+import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
+import { NotificationContext } from "../layout/Layout";
+import { getFromOpenElisServer, Roles } from "../utils/Utils";
 
 const SearchForm = (props) => {
   const { setNotificationVisible, addNotification } =

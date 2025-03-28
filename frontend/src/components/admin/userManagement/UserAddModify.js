@@ -1,39 +1,38 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
 import {
-  Grid,
-  Column,
-  Section,
-  Heading,
-  Form,
-  TextInput,
-  UnorderedList,
-  ListItem,
-  RadioButton,
   Button,
+  Checkbox,
+  Column,
+  Form,
+  FormGroup,
+  Grid,
+  Heading,
+  ListItem,
   Loading,
+  PasswordInput,
+  RadioButton,
+  Section,
   Select,
   SelectItem,
-  PasswordInput,
-  Checkbox,
-  FormGroup,
+  TextInput,
+  UnorderedList,
 } from "@carbon/react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
-import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import AutoComplete from "../../common/AutoComplete.js";
+import CustomDatePicker from "../../common/CustomDatePicker.js";
 import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification.js";
+import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import {
   ConfigurationContext,
   NotificationContext,
 } from "../../layout/Layout.js";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
-import CustomDatePicker from "../../common/CustomDatePicker.js";
-import AutoComplete from "../../common/AutoComplete.js";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },

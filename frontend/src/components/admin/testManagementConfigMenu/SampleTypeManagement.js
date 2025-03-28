@@ -1,46 +1,19 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
 import {
-  Form,
-  Heading,
-  Button,
-  Loading,
-  Grid,
   Column,
-  Section,
-  DataTable,
-  Table,
-  TableHead,
-  TableRow,
-  TableBody,
-  TableHeader,
-  TableCell,
-  TableSelectRow,
-  TableSelectAll,
-  TableContainer,
-  Pagination,
-  Search,
-  Select,
-  SelectItem,
-  Stack,
-  UnorderedList,
+  Grid,
+  Heading,
   ListItem,
+  Section,
+  UnorderedList,
 } from "@carbon/react";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServer,
-  postToOpenElisServerFormData,
-  postToOpenElisServerFullResponse,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils.js";
-import { NotificationContext } from "../../layout/Layout.js";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification.js";
+import React, { useContext } from "react";
+
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import {
+  AlertDialog
+} from "../../common/CustomNotification.js";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
-import CustomCheckBox from "../../common/CustomCheckBox.js";
-import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
+import { NotificationContext } from "../../layout/Layout.js";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -61,7 +34,6 @@ function TestSectionManagement() {
 
   const intl = useIntl();
 
-  const componentMounted = useRef(false);
 
   return (
     <>
