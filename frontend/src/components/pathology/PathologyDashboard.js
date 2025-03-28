@@ -337,31 +337,47 @@ function PathologyDashboard() {
               })}
             />
           </Column>
-          <Column lg={8} md={4} sm={2}>
-            <div>Filters:</div>
-            <Checkbox
-              labelText={intl.formatMessage({ id: "label.filters.mycases" })}
-              id="filterMyCases"
-              value={filters.myCases}
-              onChange={(e) =>
-                setFilters({ ...filters, myCases: e.target.checked })
-              }
-            />
-            <Select
-              id="statusFilter"
-              name="statusFilter"
-              labelText={intl.formatMessage({ id: "label.filters.status" })}
-              value={getSelectedValue()}
-              onChange={setStatusFilter}
-              noLabel
-            >
-              <SelectItem disabled value="placeholder" text="Status" />
-              <SelectItem text="All" value="All" />
-              <SelectItem text="In Progress" value="IN_PROGRESS" />
-              {statuses.map((status, index) => (
-                <SelectItem key={index} text={status.value} value={status.id} />
-              ))}
-            </Select>
+          <Column lg={8} md={4} sm={4}>
+            <Grid fullWidth={true}>
+              <Column lg={2} md={1} sm={1}>
+                <div className="orderLegendBody">Filters:</div>
+              </Column>
+
+              <Column lg={2} md={1} sm={1}>
+                <Checkbox
+                  labelText={intl.formatMessage({
+                    id: "label.filters.mycases",
+                  })}
+                  id="filterMyCases"
+                  value={filters.myCases}
+                  onChange={(e) =>
+                    setFilters({ ...filters, myCases: e.target.checked })
+                  }
+                />
+              </Column>
+
+              <Column lg={3} md={2} sm={2}>
+                <Select
+                  id="statusFilter"
+                  name="statusFilter"
+                  labelText={intl.formatMessage({ id: "label.filters.status" })}
+                  value={getSelectedValue()}
+                  onChange={setStatusFilter}
+                  noLabel
+                >
+                  <SelectItem disabled value="placeholder" text="Status" />
+                  <SelectItem text="All" value="All" />
+                  <SelectItem text="In Progress" value="IN_PROGRESS" />
+                  {statuses.map((status, index) => (
+                    <SelectItem
+                      key={index}
+                      text={status.value}
+                      value={status.id}
+                    />
+                  ))}
+                </Select>
+              </Column>
+            </Grid>
           </Column>
 
           <Column lg={16} md={8} sm={4}>
