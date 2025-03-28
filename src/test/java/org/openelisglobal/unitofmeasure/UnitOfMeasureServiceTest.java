@@ -30,10 +30,6 @@ public class UnitOfMeasureServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(unitOfMeasures);
         assertTrue(unitOfMeasures.size() >= 10);
 
-        // Print unit names to console for debugging
-        unitOfMeasures.forEach(uom -> {
-            System.out.print(uom.getUnitOfMeasureName() + " ");
-        });
     }
 
     @Test
@@ -58,16 +54,13 @@ public class UnitOfMeasureServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void insert_shouldInsertNewUnitOfMeasure() {
-        // Create new unit of measure
         UnitOfMeasure unitOfMeasure = new UnitOfMeasure();
         unitOfMeasure.setUnitOfMeasureName("pg/mL");
         unitOfMeasure.setDescription("Picograms per milliliter");
 
-        // Insert the new unit
         String id = unitOfMeasureService.insert(unitOfMeasure);
         assertNotNull(id);
 
-        // Verify insertion by retrieving it
         UnitOfMeasure savedUnit = unitOfMeasureService.getUnitOfMeasureById(id);
         assertNotNull(savedUnit);
         assertEquals("pg/mL", savedUnit.getUnitOfMeasureName());
@@ -76,28 +69,24 @@ public class UnitOfMeasureServiceTest extends BaseWebContextSensitiveTest {
 
     @Test(expected = LIMSDuplicateRecordException.class)
     public void insert_shouldThrowExceptionForDuplicateUnitOfMeasure() {
-        // Create unit with existing name
         UnitOfMeasure unitOfMeasure = new UnitOfMeasure();
-        unitOfMeasure.setUnitOfMeasureName("mg/dL"); // This exists in the test data
+        unitOfMeasure.setUnitOfMeasureName("mg/dL");
         unitOfMeasure.setDescription("Duplicate unit test");
 
-        // Should throw LIMSDuplicateRecordException
         unitOfMeasureService.insert(unitOfMeasure);
     }
 
     @Test
     public void save_shouldSaveNewUnitOfMeasure() {
-        // Create new unit of measure
+
         UnitOfMeasure unitOfMeasure = new UnitOfMeasure();
         unitOfMeasure.setUnitOfMeasureName("fmol/L");
         unitOfMeasure.setDescription("Femtomoles per liter");
 
-        // Save the new unit
         UnitOfMeasure savedUnit = unitOfMeasureService.save(unitOfMeasure);
         assertNotNull(savedUnit);
         assertNotNull(savedUnit.getId());
 
-        // Verify save by retrieving it
         UnitOfMeasure retrievedUnit = unitOfMeasureService.getUnitOfMeasureById(savedUnit.getId());
         assertEquals("fmol/L", retrievedUnit.getUnitOfMeasureName());
         assertEquals("Femtomoles per liter", retrievedUnit.getDescription());
@@ -105,14 +94,11 @@ public class UnitOfMeasureServiceTest extends BaseWebContextSensitiveTest {
 
     @Test(expected = LIMSDuplicateRecordException.class)
     public void update_shouldThrowExceptionForDuplicateUnitName() {
-        // Get existing unit
         UnitOfMeasure unitOfMeasure = unitOfMeasureService.getUnitOfMeasureById("4");
         assertNotNull(unitOfMeasure);
 
-        // Try to update name to an existing name
-        unitOfMeasure.setUnitOfMeasureName("mg/dL"); // This exists for another unit
+        unitOfMeasure.setUnitOfMeasureName("mg/dL");
 
-        // Should throw LIMSDuplicateRecordException
         unitOfMeasureService.update(unitOfMeasure);
     }
 
@@ -120,10 +106,8 @@ public class UnitOfMeasureServiceTest extends BaseWebContextSensitiveTest {
     public void getAll_shouldReturnAllUnitsOfMeasure() {
         List<UnitOfMeasure> allUnits = unitOfMeasureService.getAll();
 
-        // At least 10 units in our test data
         assertTrue(allUnits.size() >= 10);
 
-        // Verify some expected units exist in the list
         boolean foundMgdL = false;
         boolean foundPercent = false;
 
