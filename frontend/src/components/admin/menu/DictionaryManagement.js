@@ -65,6 +65,7 @@ function DictionaryManagement() {
 
   const [selectedRowId, setSelectedRowId] = useState(null);
   const [modifyButton, setModifyButton] = useState(true);
+  const [deactivateButton, setDeactivateButton] = useState(true);
   const [editMode, setEditMode] = useState(true);
 
   const [paging, setPaging] = useState(null);
@@ -293,8 +294,23 @@ function DictionaryManagement() {
           name="selectRowRadio"
           ariaLabel="selectRow"
           onSelect={() => {
+            console.log("Selected row:", row);
+            console.log("All cells in row:", row.cells);
+
+            const isActiveCell = row.cells.find((cell) =>
+              cell.id.endsWith(":isActive"),
+            );
+
+            let isActiveValue = "";
+            if (isActiveCell) {
+              isActiveValue = isActiveCell.value;
+              console.log("isActiveValue:", isActiveValue);
+            }
+
             setModifyButton(false);
             setSelectedRowId(row.id);
+
+            setDeactivateButton(isActiveValue !== "Y");
           }}
         />
       );
@@ -516,7 +532,7 @@ function DictionaryManagement() {
                   />
                 </Modal>
                 <Button
-                  disabled={modifyButton}
+                  disabled={modifyButton || deactivateButton}
                   onClick={handleDeactivation}
                   type="submit"
                 >
