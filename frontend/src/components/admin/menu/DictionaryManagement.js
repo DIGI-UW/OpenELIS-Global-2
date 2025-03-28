@@ -301,7 +301,6 @@ function DictionaryManagement() {
             let isActiveValue = "";
             if (isActiveCell) {
               isActiveValue = isActiveCell.value;
-              console.log("isActiveValue:", isActiveValue);
             }
 
             setModifyButton(false);
