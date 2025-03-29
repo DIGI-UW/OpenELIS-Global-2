@@ -1,6 +1,8 @@
 package org.openelisglobal.organisation;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 
 import java.util.List;
 import org.junit.Before;
@@ -20,12 +22,17 @@ public class OrganizationTypeServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/organization.xml");
     }
 
-    // @Test
-    public void testDataBaseData() {
+    @Test
+    public void testDatabaseData() {
         List<OrganizationType> organizationTypes = organizationTypeService.getAll();
-        organizationTypes.forEach(organizationType -> {
-            System.out.print(organizationType.getName() + " ");
-        });
+
+        assertNotNull("OrganizationType list should not be null", organizationTypes);
+        assertFalse("OrganizationType list should not be empty", organizationTypes.isEmpty());
+
+        for (OrganizationType organizationType : organizationTypes) {
+            assertNotNull("OrganizationType ID should not be null", organizationType.getId());
+            assertNotNull("OrganizationType name should not be null", organizationType.getName());
+        }
     }
 
     @Test
@@ -46,5 +53,4 @@ public class OrganizationTypeServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("Healthcare", organizationType2.getName());
         assertEquals("Healthcare Organization", organizationType2.getDescription());
     }
-
 }
