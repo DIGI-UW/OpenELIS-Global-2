@@ -16,11 +16,13 @@
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.5.0",
     "@testing-library/user-event": "^7.2.1",
+    "@transifex/api": "latest",
     "carbon-components": "^10.58.12",
     "cors": "^2.8.5",
     "d3": "^7.6.1",
     "date-fns": "^2.8.1",
     "dayjs": "^1.10.4",
+    "dotenv": "latest",
     "formik": "^2.2.9",
     "formik-error-focus": "2.0.0",
     "geopattern": "1.2.3",
@@ -80,6 +82,7 @@
     "**/@types/react": "16.14.5"
   },
   "devDependencies": {
+    "@types/node": "^22.13.14",
     "cypress": "^12.17.3",
     "cypress-xpath": "^2.0.1",
     "eslint": "^8.48.0",
