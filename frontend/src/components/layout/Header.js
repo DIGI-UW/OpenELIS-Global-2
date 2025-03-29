@@ -308,23 +308,61 @@ function OEHeader(props) {
 
   const renderSingleNavButton = (menuItem, index, level, path) => {
     const marginValue = (level - 1) * 0.5 + "rem";
-    return (
-      <button
-        data-cy="single-sidenav-button"
-        className={"custom-sidenav-button"}
-        style={{ width: "100%", marginLeft: marginValue }}
-        id={menuItem.menu.elementId + "_nav"}
-        onClick={() => {
-          if (menuItem.menu.openInNewWindow) {
-            window.open(menuItem.menu.actionURL);
-          } else {
-            window.location.href = menuItem.menu.actionURL;
-          }
-        }}
-      >
-        {renderSideNavMenuItemLabel(menuItem, level)}
-      </button>
-    );
+    const urlActions = {
+      "/ResultValidationRetroC?type=Immunology&test=": "/validation",
+      "/ResultValidationRetroC?type=Biochemistry&test=": "/validation",
+      "/ResultValidationRetroC?type=virology&test=DNA PCR": "/validation",
+      "/ResultValidationRetroC?type=virology&test=Viral Load": "/validation",
+      "/ResultValidationRetroC?type=virology&test=Genotyping": "/validation",
+      "/ResultValidationRetroC?type=serology": "/validation",
+    };
+
+    if (urlActions[menuItem.menu.actionURL]) {
+      return (
+        <button
+          data-cy="single-sidenav-button"
+          className={"custom-sidenav-button"}
+          style={{ width: "100%", marginLeft: marginValue }}
+          id={menuItem.menu.elementId + "_nav"}
+          onClick={() => {
+            const baseUrl = urlActions[menuItem.menu.actionURL];
+            const queryParams = new URLSearchParams({
+              type: menuItem.menu.type || "defaultType",
+              test: menuItem.menu.test || "defaultTest",
+              additionalProp: menuItem.menu.additionalProp || "defaultValue",
+            }).toString();
+
+            const fullUrl = `${baseUrl}?${queryParams}`;
+
+            if (menuItem.menu.openInNewWindow) {
+              window.open(fullUrl);
+            } else {
+              window.location.href = fullUrl;
+            }
+          }}
+        >
+          {renderSideNavMenuItemLabel(menuItem, level)}
+        </button>
+      );
+    } else {
+      return (
+        <button
+          data-cy="single-sidenav-button"
+          className={"custom-sidenav-button"}
+          style={{ width: "100%", marginLeft: marginValue }}
+          id={menuItem.menu.elementId + "_nav"}
+          onClick={() => {
+            if (menuItem.menu.openInNewWindow) {
+              window.open(menuItem.menu.actionURL);
+            } else {
+              window.location.href = menuItem.menu.actionURL;
+            }
+          }}
+        >
+          {renderSideNavMenuItemLabel(menuItem, level)}
+        </button>
+      );
+    }
   };
 
   const renderSingleDropdownButton = (menuItem, index, level, path) => {
