@@ -353,12 +353,9 @@ describe("Study Reports", function () {
 });
 
 describe("WHONET Report", function () {
-  it("Navigation to WHONET Report", function () {
+  it("Navigation to WHONET Report and enter data", function () {
     cy.reload();
-    reportPage = homePage.goToWhonetReport();
-  });
-
-  it("Enter data and get printable Version", function () {
+    reportPage = homePage.goToReports();
     reportPage.visitWhonetReport();
   });
 });

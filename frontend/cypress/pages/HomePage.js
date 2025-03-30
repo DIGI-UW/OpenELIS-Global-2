@@ -59,7 +59,6 @@ class HomePage {
       accessionValidationRange: "#menu_accession_validation_range",
       reportsRoutineNav: "[data-cy='sidenav-button-menu_reports_routine']",
       reportsStudyNav: "[data-cy='sidenav-button-menu_reports_study']",
-      whonetReport: "#menu_reports_whonet_export_nav",
     };
   }
 
@@ -278,10 +277,9 @@ class HomePage {
     return new StudyReportPage();
   }
 
-  goToWhonetReport() {
+  goToReports() {
     this.openNavigationMenu();
     cy.get(this.selectors.reportsMenu).click({ force: true });
-    cy.get(this.selectors.whonetReport).click({ force: true });
   }
 
   // Navigate to the Pathology Dashboard

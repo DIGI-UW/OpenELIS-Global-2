@@ -52,21 +52,21 @@ class StudyReportPage {
   }
 
   selectPatientStatusReport() {
-    cy.get("#menu_reports_patients").click({
+    cy.get("#openreports\\.patientreports\\.title_dropdown").click({
       force: true,
     });
   }
 
   selectARV() {
-    cy.get("#menu_reports_arv").click({ force: true });
+    cy.get("#project\\.ARVStudies\\.name_dropdown").click({ force: true });
   }
 
   selectVersion1() {
-    cy.get("#menu_reports_arv_initial1_nav").click();
+    cy.get("#menu_reports_arv_initial1_nav").click({ force: true });
   }
 
   selectVersion2() {
-    cy.get("#menu_reports_arv_initial2_nav").click();
+    cy.get("#menu_reports_arv_initial2_nav").click({ force: true });
   }
   visitARVInitialVersion1() {
     //this.visitStudyReports();
@@ -74,7 +74,7 @@ class StudyReportPage {
     this.selectARV();
     this.selectVersion1();
     this.verifyButtonDisabled();
-    this.typeInField("#display_from", "DEV0124000000000000");
+    this.typeInField("#from", "DEV0124000000000000");
     this.verifyButtonVisible();
   }
 
@@ -85,12 +85,12 @@ class StudyReportPage {
     this.selectVersion2();
     this.verifyHeaderText("h3", "ARV-initial");
     this.verifyButtonDisabled();
-    this.typeInField("#display_from", "DEV0124000000000000");
+    this.typeInField("#from", "DEV0124000000000000");
     this.verifyButtonVisible();
   }
 
   selectFollowUpVersion1() {
-    cy.get("#menu_reports_arv_followup1_nav").click();
+    cy.get("#menu_reports_arv_followup1_nav").click({ force: true });
   }
 
   visitARVFollowUpVersion1() {
@@ -100,12 +100,12 @@ class StudyReportPage {
     this.selectFollowUpVersion1();
     this.verifyHeaderText("h3", "ARV-Follow-up");
     this.verifyButtonDisabled();
-    this.typeInField("#display_from", "DEV0124000000000000");
+    this.typeInField("#from", "DEV0124000000000000");
     this.verifyButtonVisible();
   }
 
   selectFollowUpVersion2() {
-    cy.get("#menu_reports_arv_followup2_nav").click();
+    cy.get("#menu_reports_arv_followup2_nav").click({ force: true });
   }
   visitARVFollowUpVersion2() {
     //this.visitStudyReports();
@@ -114,12 +114,12 @@ class StudyReportPage {
     this.selectFollowUpVersion2();
     this.verifyHeaderText("h3", "ARV-Follow-up");
     this.verifyButtonDisabled();
-    this.typeInField("#display_from", "DEV0124000000000000");
+    this.typeInField("#from", "DEV0124000000000000");
     this.verifyButtonVisible();
   }
 
   selectVersion3() {
-    cy.get("#menu_reports_arv_all_nav").click();
+    cy.get("#menu_reports_arv_all_nav").click({ force: true });
   }
   visitARVFollowUpVersion3() {
     //this.visitStudyReports();
@@ -128,12 +128,12 @@ class StudyReportPage {
     this.selectVersion3();
     this.verifyHeaderText("h3", "ARV -->Initial-FollowUp-VL");
     this.verifyButtonDisabled();
-    this.typeInField("#display_from", "DEV0124000000000000");
+    this.typeInField("#from", "DEV0124000000000000");
     this.verifyButtonVisible();
   }
 
   visitAuditTrailReport() {
-    cy.get('a[href="/AuditTrialReport"]').click({ force: true });
+    cy.get("#menu_reports_auditTrail\\.study_nav").click({ force: true });
   }
 
   validateAudit() {
@@ -145,11 +145,11 @@ class StudyReportPage {
   }
 
   selectEID() {
-    cy.get("#menu_reports_eid").click({ force: true });
+    cy.get("#project\\.EIDStudy\\.name_dropdown").click({ force: true });
   }
 
   selectEIDVersion1() {
-    cy.get("#menu_reports_eid_version1").click();
+    cy.get("#menu_reports_eid_version1_nav").click({ force: true });
   }
   visitEIDVersion1() {
     this.selectPatientStatusReport();
@@ -161,8 +161,8 @@ class StudyReportPage {
     this.verifyElementVisible("#local_search");
     this.clickAccordionPatient(2);
     this.clickAccordionItem(3);
-    this.verifyElementVisible("#display_from");
-    this.verifyElementVisible("#display_to");
+    this.verifyElementVisible("#from");
+    this.verifyElementVisible("#to");
     this.clickAccordionItem(3);
     this.clickAccordionItem(6);
     this.verifyElementVisible("#siteName");
@@ -171,7 +171,7 @@ class StudyReportPage {
   }
 
   selectEIDVersion2() {
-    cy.get("#menu_reports_eid_version2").click();
+    cy.get("#menu_reports_eid_version2_nav").click({ force: true });
   }
   visitEIDVersion2() {
     //this.visitStudyReports();
@@ -180,16 +180,16 @@ class StudyReportPage {
     this.selectEIDVersion2();
     this.verifyHeaderText("h3", "Diagnostic for children with DBS-PCR");
     this.verifyButtonDisabled();
-    this.typeInField("#display_from", "DEV0124000000000000");
+    this.typeInField("#from", "DEV0124000000000000");
     this.verifyButtonVisible();
   }
 
   selectVL() {
-    cy.get("#menu_reports_vl").click({ force: true });
+    cy.get("#project\\.VLStudy\\.name_dropdown").click({ force: true });
   }
 
   selectVLVersion() {
-    cy.get("#menu_reports_vl_version1").click();
+    cy.get("#menu_reports_vl_version1_nav").click({ force: true });
   }
   visitVLVersion() {
     //this.visitStudyReports();
@@ -205,8 +205,8 @@ class StudyReportPage {
     this.verifyElementVisible("#local_search");
     this.clickAccordionPatient(2);
     this.clickAccordionItem(3);
-    this.verifyElementVisible("#display_from");
-    this.verifyElementVisible("#display_to");
+    this.verifyElementVisible("#from");
+    this.verifyElementVisible("#to");
     this.clickAccordionItem(3);
     this.clickAccordionItem(6);
     this.verifyElementVisible("#siteName");
@@ -215,11 +215,13 @@ class StudyReportPage {
   }
 
   selectIndetermenate() {
-    cy.get("#menu_reports_indeterminate").click({ force: true });
+    cy.get("#project\\.IndeterminateStudy\\.name_dropdown").click({
+      force: true,
+    });
   }
 
   selectIndeterminateV1() {
-    cy.get("#menu_reports_indeterminate_version1").click();
+    cy.get("#menu_reports_indeterminate_version1_nav").click({ force: true });
   }
 
   visitIntermediateVersion1() {
@@ -232,12 +234,12 @@ class StudyReportPage {
       "Indeterminate",
     );
     this.verifyButtonDisabled();
-    this.typeInField("#display_from", "DEV0124000000000000");
+    this.typeInField("#from", "DEV0124000000000000");
     this.verifyButtonVisible();
   }
 
   selectIndeterminateV2() {
-    cy.get("#menu_reports_indeterminate_version2").click();
+    cy.get("#menu_reports_indeterminate_version2_nav").click({ force: true });
   }
 
   visitIntermediateVersion2() {
@@ -250,12 +252,12 @@ class StudyReportPage {
       "Indeterminate",
     );
     this.verifyButtonDisabled();
-    this.typeInField("#display_from", "DEV0124000000000000");
+    this.typeInField("#from", "DEV0124000000000000");
     this.verifyButtonVisible();
   }
 
   selectIndetermenateByService() {
-    cy.get("#menu_reports_indeterminate_location").click();
+    cy.get("#menu_reports_indeterminate_location_nav").click({ force: true });
   }
   visitIntermediateByService() {
     //this.visitStudyReports();
@@ -273,39 +275,33 @@ class StudyReportPage {
   }
 
   selectSpecialRequest() {
-    cy.get("#menu_reports_special").click({ force: true });
+    cy.get("#menu_reports_special_nav").click({ force: true });
   }
   visitSpecialRequest() {
     //this.visitStudyReports();
     this.selectPatientStatusReport();
     this.selectSpecialRequest();
-    this.verifyHeaderText(
-      ".cds--sm\\:col-span-4 > section > h3",
-      "Special Request",
-    );
+    this.verifyHeaderText("h3", "Special Request");
     this.verifyButtonDisabled();
-    this.typeInField("#display_from", "DEV0124000000000000");
+    this.typeInField("#from", "DEV0124000000000000");
     this.verifyButtonVisible();
   }
 
   selectCollectedARVPatientReport() {
-    cy.get("#menu_reports_patient_collection").click({ force: true });
+    cy.get("#menu_reports_patient_collection_nav").click({ force: true });
   }
   visitCollectedARVPatientReport() {
     //this.visitStudyReports();
     this.selectPatientStatusReport();
     this.selectCollectedARVPatientReport();
-    this.verifyHeaderText(
-      ":nth-child(1) > .cds--sm\\:col-span-4 > :nth-child(1) > section > h3",
-      "Collected ARV Patient Report",
-    );
+    this.verifyHeaderText("h3", "Collected ARV Patient Report");
     this.verifyButtonDisabled();
-    this.typeInField("#display_nationalID", "UG-23SLHD7DBD");
+    this.typeInField("#nationalID", "UG-23SLHD7DBD");
     this.verifyButtonVisible();
   }
 
   selectAssociatedPatientReport() {
-    cy.get("#menu_reports_patient_associated").click({ force: true });
+    cy.get("#menu_reports_patient_associated_nav").click({ force: true });
   }
   visitAssociatedPatientReport() {
     //this.visitStudyReports();
@@ -316,7 +312,7 @@ class StudyReportPage {
       "Associated Patient Report",
     );
     this.verifyButtonDisabled();
-    this.typeInField("#display_nationalID", "UG-23SLHD7DBD");
+    this.typeInField("#nationalID", "UG-23SLHD7DBD");
     this.verifyButtonVisible();
   }
 
@@ -362,7 +358,7 @@ class StudyReportPage {
       "ARV -->Initial-FollowUp-VL",
     );
     this.verifyButtonDisabled();
-    this.typeInField("#display_from", "DEV0124000000000000");
+    this.typeInField("#from", "DEV0124000000000000");
     this.verifyButtonVisible();
   }
 
@@ -395,7 +391,11 @@ class StudyReportPage {
     this.verifyButtonVisible();
   }
 
+  visitWhonetPage() {
+    cy.get("#menu_reports_whonet_export_nav").click({ force: true });
+  }
   visitWhonetReport() {
+    this.visitWhonetPage();
     this.verifyHeaderText("h1", "Export a CSV File by Date");
     this.verifyButtonDisabled();
     this.typeInDate("#startDate", "01/02/2023");
