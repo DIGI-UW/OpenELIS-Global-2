@@ -95,14 +95,13 @@ class Result {
   }
 
   resultsByLabNumber(number) {
-    cy.get("#labNumberInput").type(number);
+    cy.get("#labNumberInput").type(number, { force: true });
   }
   clickReferralsByLabNumber() {
     cy.get("[data-cy='byLabNumber']").should("be.visible").click();
   }
 
   setResultValue(value) {
-    cy.get("#row-0");
     cy.get("#ResultValue0").type(value);
   }
 
