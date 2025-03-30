@@ -1,6 +1,6 @@
 {
-  "username": "testuser",
-  "password": "SecurePass123",
+  "username": "admin",
+  "password": "adminAdmin!",
   "email": "testuser@example.com",
   "role": "Admin",
   "updatedUsername": "updateduser",

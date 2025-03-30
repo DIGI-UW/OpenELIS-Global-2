@@ -1,43 +1,70 @@
-class UserPage {
-  visit() {
-    cy.visit("/admin/user-management"); // Adjust URL based on your app
+class UserManagementPage {
+  visitLoginPage() {
+    cy.visit("/login");
+  }
+
+  login() {
+    cy.get("#login-button").click();
+  }
+
+  goToAdminPage() {
+    cy.get("#admin-menu").click();
+  }
+
+  goToUserManagementPage() {
+    cy.get("#user-management").click();
+  }
+
+  visitUserManagementPage() {
+    cy.visit("/admin/user-management");
   }
 
   clickAddUser() {
-    cy.get('[data-cy="add-user-btn"]').click();
+    cy.get("#add-user").click();
   }
 
-  fillUserDetails(username, password, email, role) {
-    cy.get('[data-cy="username-input"]').type(username);
-    cy.get('[data-cy="password-input"]').type(password);
-    cy.get('[data-cy="email-input"]').type(email);
-    cy.get('[data-cy="role-select"]').select(role);
+  fillUserDetails({ username, fullName, email, role }) {
+    cy.get("#username").type(username);
+    cy.get("#fullName").type(fullName);
+    cy.get("#email").type(email);
+    cy.get("#role").select(role);
   }
 
-  saveUser() {
-    cy.get('[data-cy="save-user-btn"]').click();
+  setPermissions() {
+    cy.get("#permissions").click();
+    cy.get("#select-all-permissions").click();
+  }
+
+  submitForm() {
+    cy.get("#save-user").click();
   }
 
   searchUser(username) {
-    cy.get('[data-cy="search-input"]').type(username);
-    cy.get('[data-cy="search-btn"]').click();
+    cy.get("#search-user").type(username);
+    cy.get("#search-button").click();
   }
 
-  clickEditUser(username) {
-    this.searchUser(username);
-    cy.get(`[data-cy="edit-btn-${username}"]`).click();
+  selectUser(username) {
+    cy.contains(username).click();
   }
 
-  modifyUser(newUsername, newEmail) {
-    cy.get('[data-cy="username-input"]').clear().type(newUsername);
-    cy.get('[data-cy="email-input"]').clear().type(newEmail);
+  updateUserDetails({ fullName }) {
+    cy.get("#fullName").clear().type(fullName);
   }
 
-  deleteUser(username) {
-    this.searchUser(username);
-    cy.get(`[data-cy="delete-btn-${username}"]`).click();
-    cy.get('[data-cy="confirm-delete"]').click();
+  copyPermissions(targetUser) {
+    cy.get("#copy-permissions").click();
+    cy.get("#copy-from").type(targetUser);
+    cy.get("#confirm-copy").click();
+  }
+
+  disableUser() {
+    cy.get("#disable-user").click();
+  }
+
+  deleteUser() {
+    cy.get("#delete-user").click();
+    cy.get("#confirm-delete").click();
   }
 }
-
-export default UserPage;
+export default UserManagementPage;
