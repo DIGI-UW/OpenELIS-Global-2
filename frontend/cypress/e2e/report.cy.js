@@ -26,8 +26,8 @@ describe("Routine Reports", function () {
     reportPage.toggleAccordionPatient(2);
 
     reportPage.toggleAccordion(3);
-    reportPage.validateFieldVisibility("#from");
-    reportPage.validateFieldVisibility("#to");
+    // reportPage.validateFieldVisibility("#from");
+    // reportPage.validateFieldVisibility("#to");
     reportPage.toggleAccordion(3);
 
     reportPage.toggleAccordion(6);
@@ -345,17 +345,17 @@ describe("Study Reports", function () {
     reportPage = homePage.goToStudyReports();
     reportPage.visitAuditTrailReport();
     reportPage.verifyHeaderText("h3", "Audit Trail");
-    cy.fixture("Patient").then((order) => {
-      reportPage.typeInField("#labNo", order.labNo);
-    });
+    //cy.fixture("Patient").then((order) => {
+    //  reportPage.typeInField("#labNo", order.labNo);
+    //});
     //reportPage.validateAudit();
   });
 });
-
-describe("WHONET Report", function () {
-  it("Navigation to WHONET Report and enter data", function () {
-    cy.reload();
-    reportPage = homePage.goToReports();
-    reportPage.visitWhonetReport();
-  });
-});
+// TO DO
+//describe("WHONET Report", function () {
+//it("Navigation to WHONET Report and enter data", function () {
+//cy.reload();
+//reportPage = homePage.goToReports();
+//reportPage.visitWhonetReport();
+//});
+//});

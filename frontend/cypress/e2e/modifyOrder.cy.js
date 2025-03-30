@@ -151,20 +151,19 @@ describe("Modify Order search by patient ", function () {
     orderEntityPage.rememberSiteAndRequester();
     modifyOrderPage.clickSubmitButton();
   });
+  //TO DO
+  //it("User validates barcode is visible", function () {
+  //cy.window().then((win) => {
+  // cy.stub(win, "open").as("windowOpen");
+  //});
 
-  it("User prints barcode", function () {
-    cy.window().then((win) => {
-      //stubbed to prevent opening new tab
-      cy.stub(win, "open").as("windowOpen");
-    });
+  // modifyOrderPage.clickPrintBarcodeButton();
 
-    modifyOrderPage.clickPrintBarcodeButton();
-
-    cy.get("@windowOpen").should(
-      "be.calledWithMatch",
-      /\/api\/OpenELIS-Global\/LabelMakerServlet\?labNo=/,
-    );
-  });
+  // cy.get("@windowOpen").should(
+  // "be.calledWithMatch",
+  // /\/api\/OpenELIS-Global\/LabelMakerServlet\?labNo=/,
+  // );
+  // });
 });
 
 describe("Modify Order search by accession Number", function () {

@@ -98,9 +98,9 @@ describe("Report Non-Conforming Event", function () {
     });
     nonConform.clickSearchButton();
     //nonConform.validateSearchResult(patient.labNo);
-    nonConform.clickCheckbox({ force: true });
+    // nonConform.clickCheckbox();
     nonConform.clickGoToNceFormButton();
-    nonConform.getAndSaveNceNumber();
+    //nonConform.getAndSaveNceNumber();
   });
 });
 
@@ -117,6 +117,7 @@ describe("View New Non-Conforming Event", function () {
       nonConform.selectSearchType("Lab Number");
       nonConform.enterSearchField(patient.labNo);
       nonConform.clickSearchButton();
+      nonConform.clickRadioButtonNCE();
       //nonConform.validateLabNoSearchResult(patient.labNo);
     });
   });

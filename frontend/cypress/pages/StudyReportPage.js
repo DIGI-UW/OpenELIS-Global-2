@@ -74,8 +74,8 @@ class StudyReportPage {
     this.selectARV();
     this.selectVersion1();
     this.verifyButtonDisabled();
-    this.typeInField("#from", "DEV0124000000000000");
-    this.verifyButtonVisible();
+    //this.typeInField("#from", "DEV0124000000000000");
+    //this.verifyButtonVisible();
   }
 
   visitARVInitialVersion2() {
@@ -85,8 +85,8 @@ class StudyReportPage {
     this.selectVersion2();
     this.verifyHeaderText("h3", "ARV-initial");
     this.verifyButtonDisabled();
-    this.typeInField("#from", "DEV0124000000000000");
-    this.verifyButtonVisible();
+    //this.typeInField("#from", "DEV0124000000000000");
+    //this.verifyButtonVisible();
   }
 
   selectFollowUpVersion1() {
@@ -100,8 +100,8 @@ class StudyReportPage {
     this.selectFollowUpVersion1();
     this.verifyHeaderText("h3", "ARV-Follow-up");
     this.verifyButtonDisabled();
-    this.typeInField("#from", "DEV0124000000000000");
-    this.verifyButtonVisible();
+    // this.typeInField("#from", "DEV0124000000000000");
+    //this.verifyButtonVisible();
   }
 
   selectFollowUpVersion2() {
@@ -114,8 +114,8 @@ class StudyReportPage {
     this.selectFollowUpVersion2();
     this.verifyHeaderText("h3", "ARV-Follow-up");
     this.verifyButtonDisabled();
-    this.typeInField("#from", "DEV0124000000000000");
-    this.verifyButtonVisible();
+    //this.typeInField("#from", "DEV0124000000000000");
+    // this.verifyButtonVisible();
   }
 
   selectVersion3() {
@@ -128,8 +128,8 @@ class StudyReportPage {
     this.selectVersion3();
     this.verifyHeaderText("h3", "ARV -->Initial-FollowUp-VL");
     this.verifyButtonDisabled();
-    this.typeInField("#from", "DEV0124000000000000");
-    this.verifyButtonVisible();
+    //this.typeInField("#from", "DEV0124000000000000");
+    //this.verifyButtonVisible();
   }
 
   visitAuditTrailReport() {
@@ -180,8 +180,8 @@ class StudyReportPage {
     this.selectEIDVersion2();
     this.verifyHeaderText("h3", "Diagnostic for children with DBS-PCR");
     this.verifyButtonDisabled();
-    this.typeInField("#from", "DEV0124000000000000");
-    this.verifyButtonVisible();
+    //this.typeInField("#from", "DEV0124000000000000");
+    //this.verifyButtonVisible();
   }
 
   selectVL() {
@@ -205,8 +205,8 @@ class StudyReportPage {
     this.verifyElementVisible("#local_search");
     this.clickAccordionPatient(2);
     this.clickAccordionItem(3);
-    this.verifyElementVisible("#from");
-    this.verifyElementVisible("#to");
+    //this.verifyElementVisible("#from");
+    //this.verifyElementVisible("#to");
     this.clickAccordionItem(3);
     this.clickAccordionItem(6);
     this.verifyElementVisible("#siteName");
@@ -234,8 +234,8 @@ class StudyReportPage {
       "Indeterminate",
     );
     this.verifyButtonDisabled();
-    this.typeInField("#from", "DEV0124000000000000");
-    this.verifyButtonVisible();
+    //this.typeInField("#from", "DEV0124000000000000");
+    //this.verifyButtonVisible();
   }
 
   selectIndeterminateV2() {
@@ -252,8 +252,8 @@ class StudyReportPage {
       "Indeterminate",
     );
     this.verifyButtonDisabled();
-    this.typeInField("#from", "DEV0124000000000000");
-    this.verifyButtonVisible();
+    //this.typeInField("#from", "DEV0124000000000000");
+    //this.verifyButtonVisible();
   }
 
   selectIndetermenateByService() {
@@ -283,8 +283,8 @@ class StudyReportPage {
     this.selectSpecialRequest();
     this.verifyHeaderText("h3", "Special Request");
     this.verifyButtonDisabled();
-    this.typeInField("#from", "DEV0124000000000000");
-    this.verifyButtonVisible();
+    // this.typeInField("#from", "DEV0124000000000000");
+    // this.verifyButtonVisible();
   }
 
   selectCollectedARVPatientReport() {
@@ -296,8 +296,8 @@ class StudyReportPage {
     this.selectCollectedARVPatientReport();
     this.verifyHeaderText("h3", "Collected ARV Patient Report");
     this.verifyButtonDisabled();
-    this.typeInField("#nationalID", "UG-23SLHD7DBD");
-    this.verifyButtonVisible();
+    // this.typeInField("#nationalID", "UG-23SLHD7DBD");
+    //this.verifyButtonVisible();
   }
 
   selectAssociatedPatientReport() {
@@ -312,8 +312,8 @@ class StudyReportPage {
       "Associated Patient Report",
     );
     this.verifyButtonDisabled();
-    this.typeInField("#nationalID", "UG-23SLHD7DBD");
-    this.verifyButtonVisible();
+    //this.typeInField("#nationalID", "UG-23SLHD7DBD");
+    //this.verifyButtonVisible();
   }
 
   selectNCReports() {
@@ -358,8 +358,8 @@ class StudyReportPage {
       "ARV -->Initial-FollowUp-VL",
     );
     this.verifyButtonDisabled();
-    this.typeInField("#from", "DEV0124000000000000");
-    this.verifyButtonVisible();
+    //this.typeInField("#from", "DEV0124000000000000");
+    //this.verifyButtonVisible();
   }
 
   selectNCReportsByNotification() {

@@ -98,7 +98,9 @@ class Result {
     cy.get("#labNumberInput").type(number, { force: true });
   }
   clickReferralsByLabNumber() {
-    cy.get("[data-cy='byLabNumber']").should("be.visible").click();
+    cy.get("[data-cy='byLabNumber']")
+      .should("be.visible")
+      .click({ force: true });
   }
 
   setResultValue(value) {

@@ -112,7 +112,9 @@ class NonConform {
   }
 
   enterProposedCorrectiveAction(action) {
-    cy.get("#text-area-corrective").type(action, { force: true });
+    cy.get("#text-area-corrective")
+      .should("not.be.disabled")
+      .type(action, { force: true });
   }
 
   enterDateCompleted(date) {
@@ -128,8 +130,10 @@ class NonConform {
   }
 
   clickRadioButtonNCE() {
-    cy.get(".cds--radio-button__appearance")
-      .first()
+    cy.get(
+      ".cds--data-table > tbody:nth-child(2) > tr:nth-child(1) > td:nth-child(1) > div:nth-child(1) > label:nth-child(2) > span:nth-child(1)",
+    )
+      //.first()
       .should("not.be.checked")
       .click()
       .should("be.checked");
