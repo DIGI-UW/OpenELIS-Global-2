@@ -463,7 +463,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 ))}
               </Select>
             </Column>
-            <Column lg={5}  md={2} sm={1}>
+            <Column lg={5} md={2} sm={1}>
               <AutoComplete
                 id={index + "_" + operationIndex + "_testresult"}
                 label={
@@ -692,18 +692,27 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                   </div>
                   {calculation.toggled && (
                     <>
-                      <div className="inlineDiv" style={{
-                        display:"flex",
-                        flexDirection:window.innerWidth < 768 ? "column" : "row",
-                      }}>
+                      <div
+                        className="inlineDiv"
+                        style={{
+                          display: "flex",
+                          flexDirection:
+                            window.innerWidth < 768 ? "column" : "row",
+                        }}
+                      >
                         <FormattedMessage id="label.button.add" /> &nbsp; &nbsp;
                         <div>
                           <Button
-                          style={{
-                            marginTop: window.innerWidth < 768 && "0.5rem",
-                            marginLeft: window.innerWidth > 500 && window.innerWidth < 1800 ? "0.3rem" : "0.5rem",
-                            marginRight: window.innerWidth < 768 ? "0.3rem" : "0.5rem",
-                          }}
+                            style={{
+                              marginTop: window.innerWidth < 768 && "0.5rem",
+                              marginLeft:
+                                window.innerWidth > 500 &&
+                                window.innerWidth < 1800
+                                  ? "0.3rem"
+                                  : "0.5rem",
+                              marginRight:
+                                window.innerWidth < 768 ? "0.3rem" : "0.5rem",
+                            }}
                             renderIcon={Add}
                             id={index + "_testresult"}
                             kind="tertiary"
@@ -716,10 +725,15 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         <div>&nbsp; &nbsp;</div>
                         <div>
                           <Button
-                          style={{
-                            marginLeft: window.innerWidth > 500 && window.innerWidth < 1800 ? "0.3rem" : "0.5rem",
-                            marginRight: window.innerWidth < 768 ? "0.3rem" : "0.5rem",
-                          }}
+                            style={{
+                              marginLeft:
+                                window.innerWidth > 500 &&
+                                window.innerWidth < 1800
+                                  ? "0.3rem"
+                                  : "0.5rem",
+                              marginRight:
+                                window.innerWidth < 768 ? "0.3rem" : "0.5rem",
+                            }}
                             renderIcon={Add}
                             id={index + "_mathfunction"}
                             kind="tertiary"
@@ -732,10 +746,15 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         <div>&nbsp; &nbsp;</div>
                         <div>
                           <Button
-                          style={{
-                            marginLeft: window.innerWidth > 500 && window.innerWidth < 1800 ? "0.3rem" : "0.5rem",
-                            marginRight: window.innerWidth < 768 ? "0.3rem" : "0.5rem",
-                          }}
+                            style={{
+                              marginLeft:
+                                window.innerWidth > 500 &&
+                                window.innerWidth < 1800
+                                  ? "0.3rem"
+                                  : "0.5rem",
+                              marginRight:
+                                window.innerWidth < 768 ? "0.3rem" : "0.5rem",
+                            }}
                             renderIcon={Add}
                             id={index + "_integer"}
                             kind="tertiary"
@@ -748,11 +767,16 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         <div>&nbsp; &nbsp;</div>
                         <div>
                           <Button
-                          style={{
-                            marginLeft: window.innerWidth > 500 && window.innerWidth < 1800 ? "0.3rem" : "0.5rem",
-                            marginRight: window.innerWidth < 768 ? "0.3rem" : "0.5rem",
-                            width:window.innerWidth < 1200 && "7rem"
-                          }}
+                            style={{
+                              marginLeft:
+                                window.innerWidth > 500 &&
+                                window.innerWidth < 1800
+                                  ? "0.3rem"
+                                  : "0.5rem",
+                              marginRight:
+                                window.innerWidth < 768 ? "0.3rem" : "0.5rem",
+                              width: window.innerWidth < 1200 && "7rem",
+                            }}
                             renderIcon={Add}
                             id={index + "_patientattribute"}
                             kind="tertiary"
@@ -806,11 +830,13 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         <Grid>
                           <Column lg={16} md={8} sm={4}>
                             {" "}
-                            &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
+                            &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                            &nbsp;{" "}
                           </Column>
                           <Column lg={16}>
                             {" "}
-                            &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
+                            &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                            &nbsp;{" "}
                           </Column>
                         </Grid>
                         {calculation.operations.map(
@@ -836,7 +862,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                   />
                                 )}
                               </Column>
-                              <Column lg={4} md={2} sm={1} >
+                              <Column lg={4} md={2} sm={1}>
                                 <Select
                                   id={
                                     index +
@@ -877,11 +903,13 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                               </Column>
                               <Column lg={16} md={8} sm={4}>
                                 {" "}
-                                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
+                                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                                &nbsp;{" "}
                               </Column>
                               <Column lg={16} md={8} sm={4}>
                                 {" "}
-                                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
+                                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                                &nbsp;{" "}
                               </Column>
                             </Grid>
                           ),
