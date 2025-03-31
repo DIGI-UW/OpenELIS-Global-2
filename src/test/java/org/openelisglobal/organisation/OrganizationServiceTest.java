@@ -1,6 +1,8 @@
 package org.openelisglobal.organisation;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -16,7 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class OrganizationServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
-    private OrganizationService organisationService;
+    OrganizationService organisationService;
 
     @Before
     public void setUp() throws Exception {
@@ -24,11 +26,14 @@ public class OrganizationServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getDataBaseData() {
-        List<Organization> organisationList = organisationService.getAll();
-        organisationList.forEach(organisation -> {
-            System.out.print(organisation.getCity() + " ");
-        });
+    public void getDatabaseData() {
+        List<Organization> organizationList = organisationService.getAll();
+        assertNotNull("Organization list should not be null", organizationList);
+        assertFalse("Organization list should not be empty", organizationList.isEmpty());
+
+        for (Organization organization : organizationList) {
+            assertNotNull("Organization city should not be null", organization.getCity());
+        }
     }
 
     @Test

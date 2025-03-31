@@ -6,8 +6,9 @@
     License for the specific language governing rights and limitations under
     * the License. * * The Original Code is OpenELIS code. * * Copyright (C)
     ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+<!-- System Users -->
+
 <dataset>
-    <!-- System Users -->
     <system_user id="1" login_name="testUser" last_name="Doe"
         first_name="John" is_active="Y" is_employee="Y" />
     <system_user id="109" login_name="anotherUser"

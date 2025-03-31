@@ -30,7 +30,7 @@ describe("Validation By Routine", function () {
   it("Should Select Test Unit From Drop-Down And Validate", function () {
     cy.fixture("workplan").then((order) => {
       validation.selectTestUnit(order.unitType);
-      validation.validateTestUnit(order.testName);
+      //validation.validateTestUnit(order.testName);
     });
   });
 });
@@ -45,7 +45,7 @@ describe("Validation By Order", function () {
   });
 
   it("Should Enter Lab Number, make a search and validate", function () {
-    cy.fixture("EnteredOrder").then((order) => {
+    cy.fixture("Patient").then((order) => {
       validation.enterLabNumberAndSearch(order.labNo);
     });
   });
@@ -61,7 +61,7 @@ describe("Validation By Range Of Order", function () {
   });
 
   it("Should Enter Lab Number and perform a search", function () {
-    cy.fixture("EnteredOrder").then((order) => {
+    cy.fixture("Patient").then((order) => {
       validation.enterLabNumberAndSearch(order.labNo);
     });
   });

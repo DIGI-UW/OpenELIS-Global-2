@@ -159,7 +159,7 @@ const IntermediateByService = (props) => {
               <p style={{ color: "red" }}>{reportFormValues.error}</p>
             )}
             <Section>
-              <Button type="submit">
+              <Button data-cy="printableVersion" type="submit">
                 <FormattedMessage id="label.button.generatePrintableVersion" />
               </Button>
             </Section>

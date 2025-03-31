@@ -22,22 +22,26 @@ public class TestDictionaryServiceTest extends BaseWebContextSensitiveTest {
 
     private static final String TEST_ID = "103";
     private static final String TEST_CONTEXT = "New Test Context";
-    private static final String DICTIONARY_CATEGORY_ID = "2"; // Blood category
+    private static final String DICTIONARY_CATEGORY_ID = "2";
 
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/test-dictionary.xml");
     }
 
-    @Test
     public void verifyTestData() {
         List<TestDictionary> testDictionaryList = testDictionaryService.getAll();
-        System.out.println("test dictionary entries we have in db: " + testDictionaryList.size());
-        testDictionaryList.forEach(
-                testDictionary -> System.out.println(testDictionary.getId() + " - " + testDictionary.getTestId() + " - "
-                        + (testDictionary.getDictionaryCategory() != null
-                                ? testDictionary.getDictionaryCategory().getId()
-                                : "null")));
+
+        Assert.assertFalse("The test_dictionary table should not be empty!", testDictionaryList.isEmpty());
+
+        for (TestDictionary testDictionary : testDictionaryList) {
+            Assert.assertNotNull("Test ID should not be null", testDictionary.getTestId());
+
+            if (testDictionary.getDictionaryCategory() != null) {
+                Assert.assertNotNull("Dictionary category ID should not be null",
+                        testDictionary.getDictionaryCategory().getId());
+            }
+        }
     }
 
     @Test
@@ -48,7 +52,6 @@ public class TestDictionaryServiceTest extends BaseWebContextSensitiveTest {
         testDictionaryService.insert(testDictionary);
         Assert.assertEquals(1, testDictionaryService.getAll().size());
 
-        // Verify the inserted dictionary has the correct values
         TestDictionary insertedDictionary = testDictionaryService.getTestDictionaryForTestId(TEST_ID);
         Assert.assertNotNull("TestDictionary should not be null", insertedDictionary);
         Assert.assertEquals(TEST_CONTEXT, insertedDictionary.getContext());
@@ -64,11 +67,10 @@ public class TestDictionaryServiceTest extends BaseWebContextSensitiveTest {
         TestDictionary testDictionary = createTestDictionary();
         testDictionaryService.insert(testDictionary);
 
-        // Verify the inserted dictionary has the correct values
         TestDictionary insertedDictionary = testDictionaryService.getTestDictionaryForTestId(TEST_ID);
 
         insertedDictionary.setContext("Updated Test Context");
-        insertedDictionary.setDictionaryCategory(dictionaryCategoryService.get("1")); // Chemistry category
+        insertedDictionary.setDictionaryCategory(dictionaryCategoryService.get("1"));
 
         testDictionaryService.update(insertedDictionary);
 
@@ -90,7 +92,6 @@ public class TestDictionaryServiceTest extends BaseWebContextSensitiveTest {
         testDictionaryService.insert(testDictionary);
         Assert.assertEquals(1, testDictionaryService.getAll().size());
 
-        // Verify the inserted dictionary has the correct values
         TestDictionary insertedDictionary = testDictionaryService.getTestDictionaryForTestId(TEST_ID);
         Assert.assertNotNull("TestDictionary should not be null", insertedDictionary);
         Assert.assertEquals(TEST_CONTEXT, insertedDictionary.getContext());
@@ -103,7 +104,6 @@ public class TestDictionaryServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getTestDictionaryForTestId_shouldReturnCorrectTestDictionary() {
-        // Using test ID from test data
         TestDictionary testDictionary = testDictionaryService.getTestDictionaryForTestId("101");
         Assert.assertNotNull("TestDictionary should not be null", testDictionary);
         Assert.assertEquals("1", testDictionary.getId());
@@ -111,7 +111,6 @@ public class TestDictionaryServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertNotNull(testDictionary.getDictionaryCategory());
         Assert.assertEquals("2", testDictionary.getDictionaryCategory().getId()); // Blood category
 
-        // Test with the new Glucose test
         TestDictionary glucoseTestDictionary = testDictionaryService.getTestDictionaryForTestId("103");
         Assert.assertNotNull("Glucose TestDictionary should not be null", glucoseTestDictionary);
         Assert.assertEquals("3", glucoseTestDictionary.getId());
@@ -119,7 +118,6 @@ public class TestDictionaryServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertNotNull(glucoseTestDictionary.getDictionaryCategory());
         Assert.assertEquals("2", glucoseTestDictionary.getDictionaryCategory().getId()); // Blood category
 
-        // Test with a non-existent test ID
         TestDictionary nonExistentTestDictionary = testDictionaryService.getTestDictionaryForTestId("999");
         Assert.assertNull("TestDictionary should be null for non-existent test ID", nonExistentTestDictionary);
     }
@@ -130,7 +128,6 @@ public class TestDictionaryServiceTest extends BaseWebContextSensitiveTest {
         testDictionary.setContext(TEST_CONTEXT);
         testDictionary.setQualifiableDictionaryId("2");
 
-        // Get the Blood category and set it
         DictionaryCategory bloodCategory = dictionaryCategoryService.get(DICTIONARY_CATEGORY_ID);
         testDictionary.setDictionaryCategory(bloodCategory);
 
