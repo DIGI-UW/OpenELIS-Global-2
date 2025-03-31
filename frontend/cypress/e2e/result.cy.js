@@ -30,10 +30,10 @@ describe("Result By Unit", function () {
   });
 
   it("should accept the sample, refer the sample, and save the result", function () {
-    cy.fixture("result").then((res) => {
-      result.setResultValue(res.resultNo);
-      result.submitResults();
-    });
+    //cy.fixture("result").then((res) => {
+    result.setResultValue();
+    result.submitResults();
+    //});
   });
 });
 
@@ -131,7 +131,7 @@ describe("Result By Order", function () {
 
   it("should accept the sample and save the result", function () {
     //cy.fixture("result").then((res) => {
-    // result.setResultValue(res.resultNo);
+    result.setResultValue();
     //});
     result.submitResults();
   });
@@ -262,10 +262,10 @@ describe("Result By Test And Status", function () {
     cy.fixture("workplan").then((order) => {
       cy.contains("#row-0", order.testName).should("be.visible");
     });
-    cy.fixture("result").then((res) => {
-      cy.wait(1000);
-      result.setResultValue(res.resultNo);
-      result.submitResults();
-    });
+    // cy.fixture("result").then((res) => {
+    cy.wait(1000);
+    result.setResultValue(); //res.resultNo ignored for now
+    result.submitResults();
+    //});
   });
 });

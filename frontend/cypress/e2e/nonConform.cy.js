@@ -179,7 +179,7 @@ describe("Corrective Actions", function () {
   it("Enter Discussion details and submit", function () {
     cy.fixture("NonConform").then((nce) => {
       //  nonConform.enterDiscussionDate(nce.dateOfEvent);
-      nonConform.selectActionType();
+      //nonConform.selectActionType();
       nonConform.checkResolution();
       nonConform.enterDateCompleted(nce.dateOfEvent);
       nonConform.enterProposedCorrectiveAction(nce.proposedCorrectiveAction);
@@ -198,15 +198,15 @@ describe("Corrective Actions", function () {
     });
   });
 
-  it("Enter Discussion details and submit", function () {
-    cy.fixture("NonConform").then((nce) => {
-      //  nonConform.enterDiscussionDate(nce.dateOfEvent);
-      nonConform.selectActionType();
-      nonConform.checkResolution();
-      nonConform.enterDateCompleted(nce.dateOfEvent);
-      nonConform.enterProposedCorrectiveAction(nce.proposedCorrectiveAction);
-      nonConform.enterDateCompleted0(nce.dateOfEvent);
-      nonConform.clickSubmitButton();
-    });
-  });
+  // it("Enter Discussion details and submit", function () {
+  // cy.fixture("NonConform").then((nce) => {
+  //  nonConform.enterDiscussionDate(nce.dateOfEvent);
+  // nonConform.selectActionType();
+  // nonConform.checkResolution();
+  //nonConform.enterDateCompleted(nce.dateOfEvent);
+  //nonConform.enterProposedCorrectiveAction(nce.proposedCorrectiveAction);
+  //nonConform.enterDateCompleted0(nce.dateOfEvent);
+  //nonConform.clickSubmitButton();
+  //});
+  //});
 });

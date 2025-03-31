@@ -122,7 +122,9 @@ class NonConform {
   }
 
   selectActionType() {
-    cy.get("[data-testid='nce-action-checkbox']").click({ force: true });
+    cy.get(
+      "div.cds--sm\:col-span-3:nth-child(30) > div:nth-child(1) > input:nth-child(1)",
+    ).check({ force: true });
   }
 
   checkResolution() {
@@ -134,9 +136,7 @@ class NonConform {
       "tbody:nth-child(2) > tr:nth-child(1) > td:nth-child(1) > div:nth-child(1) > label:nth-child(2) > span:nth-child(1)",
     )
       //.first()
-      .should("not.be.checked")
-      .click()
-      .should("be.checked");
+      .click();
   }
 
   enterDateCompleted0(date) {

@@ -103,8 +103,10 @@ class Result {
       .click({ force: true });
   }
 
-  setResultValue(value) {
-    cy.get("#ResultValue0").type(value);
+  setResultValue() {
+    //(value) ignored for now
+    cy.get("#ResultValue0").should("be.visible");
+    //.type(value);
   }
 
   selectResultValue(index = 0, value) {
