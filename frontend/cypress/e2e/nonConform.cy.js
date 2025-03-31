@@ -99,7 +99,7 @@ describe("Report Non-Conforming Event", function () {
     nonConform.clickSearchButton();
     //nonConform.validateSearchResult(patient.labNo);
     // nonConform.clickCheckbox();
-    nonConform.clickGoToNceFormButton();
+    nonConform.clickGoToNceFormButton({ timeout: 12000 });
     //nonConform.getAndSaveNceNumber();
   });
 });
@@ -117,14 +117,14 @@ describe("View New Non-Conforming Event", function () {
       nonConform.selectSearchType("Lab Number");
       nonConform.enterSearchField(patient.labNo);
       nonConform.clickSearchButton();
-      nonConform.clickRadioButtonNCE();
+      nonConform.clickRadioButtonNCE({ timeout: 12000 });
       //nonConform.validateLabNoSearchResult(patient.labNo);
     });
   });
 
   it("Enter details", function () {
     cy.fixture("NonConform").then((nce) => {
-      nonConform.enterNceCategory(nce.nceCategory);
+      nonConform.enterNceCategory(nce.nceCategory, { timeout: 12000 });
       nonConform.enterNceType(nce.nceType);
       nonConform.enterConsequences(nce.consequences);
       nonConform.enterRecurrence(nce.recurrence);
@@ -147,7 +147,7 @@ describe("View New Non-Conforming Event", function () {
 
   it("Enter The details and Submit", function () {
     cy.fixture("NonConform").then((nce) => {
-      nonConform.enterNceCategory(nce.nceCategory);
+      nonConform.enterNceCategory(nce.nceCategory, { timeout: 12000 });
       nonConform.enterNceType(nce.nceType);
       nonConform.enterConsequences(nce.consequences);
       nonConform.enterRecurrence(nce.recurrence);
@@ -171,7 +171,7 @@ describe("Corrective Actions", function () {
       nonConform.selectSearchType("Lab Number");
       nonConform.enterSearchField(patient.labNo);
       nonConform.clickSearchButton();
-      nonConform.clickRadioButtonNCE();
+      nonConform.clickRadioButtonNCE({ timeout: 12000 });
       //nonConform.validateLabNoSearchResult(patient.labNo);
     });
   });

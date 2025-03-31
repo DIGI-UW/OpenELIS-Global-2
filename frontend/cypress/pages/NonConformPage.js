@@ -128,7 +128,7 @@ class NonConform {
   }
 
   checkResolution() {
-    cy.contains("span", "Yes").click();
+    cy.contains("#yes\\.option").click();
   }
 
   clickRadioButtonNCE() {
