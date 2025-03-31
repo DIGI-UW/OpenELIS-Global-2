@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useIntl } from "react-intl";
 import { HeaderGlobalAction, HeaderPanel } from "@carbon/react";
-import { Help } from "@carbon/icons-react";
+import { Close, Help } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../utils/Utils";
 
 const HelpMenu = () => {
@@ -12,6 +12,7 @@ const HelpMenu = () => {
     tutorials: "",
     "release-notes": "",
   });
+  const [helpOpen, setHelpOpen] = useState(false);
   const [error, setError] = useState(null);
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
@@ -51,7 +52,10 @@ const HelpMenu = () => {
     };
   }, [isExpanded]);
 
-  const togglePanel = () => setIsExpanded(!isExpanded);
+  const togglePanel = () => {
+    setIsExpanded(!isExpanded);
+    setHelpOpen((prev) => !prev);
+  };
 
   const openHelp = (type) => {
     const url = helpUrls[type];
@@ -70,7 +74,7 @@ const HelpMenu = () => {
         onClick={togglePanel}
         isActive={isExpanded}
       >
-        <Help size={20} />
+        {!helpOpen ? <Help size={20} /> : <Close size={20} />}
       </HeaderGlobalAction>
       <HeaderPanel
         ref={panelRef}
