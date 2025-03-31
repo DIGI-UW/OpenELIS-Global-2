@@ -60,6 +60,7 @@ function OEHeader(props) {
     menu_billing: { menu: {}, childMenus: [] },
     menu_nonconformity: { menu: {}, childMenus: [] },
   });
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showRead, setShowRead] = useState(false);
@@ -93,6 +94,7 @@ function OEHeader(props) {
 
   const toggleSlideOver = () => {
     setIsOpen(!isOpen);
+    setNotificationsOpen((prev) => !prev);
   };
 
   const clickPanelSwitch = () => {
@@ -482,7 +484,11 @@ function OEHeader(props) {
                               display: "inline-block",
                             }}
                           >
-                            <Notification size={20} />
+                            {!notificationsOpen ? (
+                              <Notification size={20} />
+                            ) : (
+                              <Close size={20} />
+                            )}
                             {unReadNotifications?.length > 0 && (
                               <span
                                 style={{

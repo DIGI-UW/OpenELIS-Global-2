@@ -8,9 +8,11 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.NonNull;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.jasypt.util.text.TextEncryptor;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.citystatezip.service.CityStateZipService;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.common.util.Versioning;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
@@ -22,7 +24,6 @@ import org.openelisglobal.externalconnections.service.ExternalConnectionService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notification.service.AnalysisNotificationConfigService;
 import org.openelisglobal.notification.service.TestNotificationConfigService;
-import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.organization.service.OrganizationTypeService;
 import org.openelisglobal.referral.service.ReferralResultService;
 import org.openelisglobal.referral.service.ReferralService;
@@ -30,9 +31,6 @@ import org.openelisglobal.referral.service.ReferralSetService;
 import org.openelisglobal.reports.service.WHONetReportServiceImpl;
 import org.openelisglobal.requester.service.RequesterTypeService;
 import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
-import org.openelisglobal.siteinformation.service.SiteInformationService;
-import org.openelisglobal.systemusersection.service.SystemUserSectionService;
-import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
@@ -72,14 +70,17 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.userrole", "org.openelisglobal.unitofmeasure", "org.openelisglobal.testtrailer",
         "org.openelisglobal.scriptlet", "org.openelisglobal.localization", "org.openelisglobal.systemuser",
         "org.openelisglobal.systemmodule", "org.openelisglobal.testdictionary", "org.openelisglobal.dictionarycategory",
-        "org.openelisglobal.observationhistorytype", "org.openelisglobal.statusofsample",
-        "org.openelisglobal.test" }, excludeFilters = {
+        "org.openelisglobal.observationhistorytype", "org.openelisglobal.statusofsample", "org.openelisglobal.test",
+        "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer", "org.openelisglobal.testanalyte",
+        "org.openelisglobal.observationhistory", "org.openelisglobal.systemusersection",
+        "org.openelisglobal.siteinformation", "org.openelisglobal.config" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.result.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.login.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.program.controller.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.siteinformation.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.config.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.fhir.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.*.fhir.*"),
@@ -87,7 +88,18 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @EnableWebMvc
 public class AppTestConfig implements WebMvcConfigurer {
 
-    // mock Beans
+    @Bean
+    @Profile("test")
+    public TextEncryptor textEncryptor() {
+        return mock(TextEncryptor.class);
+    }
+
+    @Bean()
+    @Profile("test")
+    public PluginAnalyzerService pluginAnalyzerService() {
+        return mock(PluginAnalyzerService.class);
+    }
+
     @Bean()
     @Profile("test")
     public FhirPersistanceService fhirPesistence() {
@@ -132,18 +144,6 @@ public class AppTestConfig implements WebMvcConfigurer {
 
     @Bean()
     @Profile("test")
-    public SystemUserSectionService stemUserSectionService() {
-        return mock(SystemUserSectionService.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public TestAnalyteService testAnalyteService() {
-        return mock(TestAnalyteService.class);
-    }
-
-    @Bean()
-    @Profile("test")
     public ExternalConnectionService externalConnectService() {
         return mock(ExternalConnectionService.class);
     }
@@ -164,12 +164,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public BasicAuthenticationDataService basicAuthenticationDataService() {
         return mock(BasicAuthenticationDataService.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public ObservationHistoryService observationHistoryService() {
-        return mock(ObservationHistoryService.class);
     }
 
     @Bean()
@@ -248,12 +242,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public Versioning versioning() {
         return mock(Versioning.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public SiteInformationService siteInformationService() {
-        return mock(SiteInformationService.class);
     }
 
     @Bean

@@ -24,6 +24,7 @@ import {
   Stack,
   UnorderedList,
   ListItem,
+  ClickableTile,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
@@ -68,31 +69,35 @@ function UomManagement() {
       {notificationVisible === true ? <AlertDialog /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
-        <Grid fullWidth={true}>
-          <Column lg={16} md={8} sm={4}>
-            <Section>
-              <Heading>
-                <FormattedMessage id="configuration.uom.manage" />
-              </Heading>
-            </Section>
-          </Column>
-        </Grid>
-        <br />
-        <hr />
-        <br />
-        <Grid fullWidth={true}>
-          <Column lg={16} md={8} sm={4}>
-            <UnorderedList>
-              <ListItem
-                onClick={() => {
-                  window.location.assign("/MasterListsPage#UomCreate");
-                }}
-              >
-                <FormattedMessage id="configuration.uom.create" />
-              </ListItem>
-            </UnorderedList>
-          </Column>
-        </Grid>
+        <div className="orderLegendBody">
+          <Grid fullWidth={true}>
+            <Column lg={16} md={8} sm={4}>
+              <Section>
+                <Heading>
+                  <FormattedMessage id="configuration.uom.manage" />
+                </Heading>
+              </Section>
+            </Column>
+          </Grid>
+          <br />
+          <hr />
+          <br />
+          <Grid fullWidth={true}>
+            <Column lg={16} md={8} sm={4}>
+              <UnorderedList>
+                <ClickableTile>
+                  <ListItem
+                    onClick={() => {
+                      window.location.assign("/MasterListsPage#UomCreate");
+                    }}
+                  >
+                    <FormattedMessage id="configuration.uom.create" />
+                  </ListItem>
+                </ClickableTile>
+              </UnorderedList>
+            </Column>
+          </Grid>
+        </div>
       </div>
     </>
   );
