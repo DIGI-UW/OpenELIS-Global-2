@@ -36,10 +36,12 @@ const ActionPaginationButtonType = ({
             alignItems: "center",
           }}
         >
-          <div style={{ 
-            display: "flex", 
-            gap: window.innerWidth < 768 ? "0.81rem" : "0.4rem",
-          }}>
+          <div
+            style={{
+              display: "flex",
+              gap: window.innerWidth < 768 ? "0.81rem" : "0.4rem",
+            }}
+          >
             {type === "type1" ? (
               <>
                 <Button
@@ -109,7 +111,7 @@ const ActionPaginationButtonType = ({
             <h4
               style={{
                 margin: 0,
-                fontSize: window.innerWidth < 768 ? "0.875rem" : "1.3rem", 
+                fontSize: window.innerWidth < 768 ? "0.875rem" : "1.3rem",
                 whiteSpace: "nowrap",
               }}
             >
