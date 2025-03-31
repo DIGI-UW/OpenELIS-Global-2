@@ -84,7 +84,11 @@ function ReportByLabNo(props) {
         <Grid fullWidth={true}>
           <Column lg={16} md={8} sm={4}>
             <Section>
-              <Button type="submit" disabled={isButtonDisabled}>
+              <Button
+                data-cy="printableVersion"
+                type="submit"
+                disabled={isButtonDisabled}
+              >
                 <FormattedMessage id="label.button.generatePrintableVersion" />
               </Button>
             </Section>

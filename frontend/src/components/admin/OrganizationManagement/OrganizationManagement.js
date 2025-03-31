@@ -253,14 +253,6 @@ function OrganizationManagement() {
     }
   }, [isSearching, panelSearchTerm]);
 
-  useEffect(() => {
-    if (selectedRowIds.length === 0) {
-      setDeactivateButton(true);
-    } else {
-      setDeactivateButton(false);
-    }
-  }, [selectedRowIds]);
-
   const renderCell = (cell, row) => {
     if (cell.info.header === "select") {
       return (
@@ -271,7 +263,16 @@ function OrganizationManagement() {
           name="selectRowCheckbox"
           ariaLabel="selectRows"
           onSelect={() => {
-            setDeactivateButton(false);
+            const isActiveCell = row.cells.find((cell) =>
+              cell.id.endsWith(":active"),
+            );
+
+            let isActiveValue = "";
+            if (isActiveCell) {
+              isActiveValue = isActiveCell.value;
+            }
+
+            setDeactivateButton(isActiveValue !== "Y");
             if (selectedRowIds.includes(row.id)) {
               setSelectedRowIds(selectedRowIds.filter((id) => id !== row.id));
             } else {

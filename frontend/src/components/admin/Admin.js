@@ -134,10 +134,18 @@ function Admin() {
           >
             <FormattedMessage id="sidenav.label.admin.labNumber" />
           </SideNavLink>
-          <SideNavLink renderIcon={ChartBubble} href="#program">
+          <SideNavLink
+            data-cy="programEntry"
+            renderIcon={ChartBubble}
+            href="#program"
+          >
             <FormattedMessage id="sidenav.label.admin.program" />
           </SideNavLink>
-          <SideNavLink renderIcon={CicsSystemGroup} href="#providerMenu">
+          <SideNavLink
+            data-cy="providerMgmnt"
+            renderIcon={CicsSystemGroup}
+            href="#providerMenu"
+          >
             <FormattedMessage id="provider.browse.title" />
           </SideNavLink>
           <SideNavLink renderIcon={QrCode} href="#barcodeConfiguration">
@@ -235,7 +243,7 @@ function Admin() {
             <FormattedMessage id="dictionary.label.modify" />
           </SideNavLink>
           <SideNavLink href="#NotifyUser" renderIcon={Bullhorn}>
-            <FormattedMessage id="Notify User" />
+            <FormattedMessage id="notify.main.title" />
           </SideNavLink>
           <SideNavLink href="#SearchIndexManagement" renderIcon={Search}>
             <FormattedMessage id="searchindexmanagement.label" />

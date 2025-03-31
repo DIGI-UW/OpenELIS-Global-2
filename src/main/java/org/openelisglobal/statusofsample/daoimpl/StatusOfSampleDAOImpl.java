@@ -46,7 +46,7 @@ public class StatusOfSampleDAOImpl extends BaseDAOImpl<StatusOfSample, String> i
 
         try {
             // AIS - bugzilla 1546 - Used Upper
-            String sql = "from StatusOfSample ss where UPPER(ss.statusType) = UPPER(:param) and ss.code = :param2";
+            String sql = "from StatusOfSample ss where UPPER(ss.statusType) = UPPER(:param) and CAST(ss.code AS varchar) = :param2";
             Query<StatusOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, StatusOfSample.class);
             query.setParameter("param", statusofsample.getStatusType());
             query.setParameter("param2", statusofsample.getCode());

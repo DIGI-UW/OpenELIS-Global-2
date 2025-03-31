@@ -1,8 +1,12 @@
 import LoginPage from "../pages/LoginPage";
+import AdminPage from "../pages/AdminPage";
+import ProviderManagementPage from "../pages/ProviderManagementPage";
 
 let homePage = null;
 let loginPage = null;
 let dashboard = null;
+let providerManagementPage = new ProviderManagementPage();
+let adminPage = new AdminPage();
 
 // Helper function to log in and navigate to the homepage
 const loginAndNavigateToHome = () => {
@@ -59,10 +63,26 @@ const validateOrderStatus = (dashboardType) => {
   dashboard.statusFilter();
 };
 
+describe("Add requester details first", function () {
+  it("Navidates to admin", function () {
+    loginAndNavigateToHome();
+    dashboard = homePage.goToAdminPage();
+    dashboard = adminPage.goToProviderManagementPage();
+  });
+
+  it("Adds and saves requester", function () {
+    providerManagementPage.clickAddProviderButton();
+    providerManagementPage.enterProviderLastName();
+    providerManagementPage.enterProviderFirstName();
+    providerManagementPage.clickActiveDropdown();
+    providerManagementPage.addProvider();
+  });
+});
+
 // Main test suite
 describe("Dashboard Tests", function () {
-  before("Login and navigate to homepage", () => {
-    loginAndNavigateToHome();
+  before("Navigate to homepage", () => {
+    homePage = loginPage.goToHomePage();
   });
 
   // Pathology Dashboard Tests
