@@ -268,7 +268,11 @@ const ReportByDateCSV = (props) => {
                 </div>
               )}
 
-              <Button type="button" onClick={handleSubmit}>
+              <Button
+                data-cy="printableVersion"
+                type="button"
+                onClick={handleSubmit}
+              >
                 <FormattedMessage
                   id="label.button.generatePrintableVersion"
                   defaultMessage="Generate printable version"

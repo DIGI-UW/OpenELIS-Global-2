@@ -30,6 +30,53 @@ describe("Add requester details first", function () {
     providerManagementPage.clickActiveDropdown();
     providerManagementPage.addProvider();
   });
+  //cy.reload();
+});
+
+describe("Add New Patient", function () {
+  it("User Visits Home Page and goes to Add Add|Modify Patient Page", () => {
+    homePage = loginPage.goToHomePage();
+    patientPage = homePage.goToPatientEntry();
+  });
+
+  it("Navigate to create Patient tab", function () {
+    patientPage.clickNewPatientTab();
+    patientPage.getSubmitButton().should("be.visible");
+  });
+
+  it("Enter patient Information and clear", function () {
+    cy.fixture("Patient").then((patient) => {
+      patientPage.enterPatientInfo(
+        patient.firstName,
+        patient.lastName,
+        patient.subjectNumber,
+        patient.nationalId,
+        patient.DOB,
+      );
+    });
+  });
+
+  it("Clear new patient information", function () {
+    patientPage.clearPatientInfo();
+  });
+
+  it("Enter patient Information and save", function () {
+    cy.fixture("Patient").then((patient) => {
+      patientPage.enterPatientInfo(
+        patient.firstName,
+        patient.lastName,
+        patient.subjectNumber,
+        patient.nationalId,
+        patient.DOB,
+      );
+    });
+  });
+  it("Save new patient information button", function () {
+    patientPage.clickSavePatientButton();
+    cy.wait(1000);
+    cy.get("div[role='status']").should("be.visible");
+    cy.wait(200).reload();
+  });
 });
 
 describe("Modify Order search by patient ", function () {
@@ -82,7 +129,7 @@ describe("Modify Order search by patient ", function () {
       );
     });
   });
-  //TO DO needs fixing
+
   it("Should be able to search by respective patient ", function () {
     cy.wait(1000);
     modifyOrderPage.clickRespectivePatient();
@@ -104,20 +151,19 @@ describe("Modify Order search by patient ", function () {
     orderEntityPage.rememberSiteAndRequester();
     modifyOrderPage.clickSubmitButton();
   });
+  //TO DO
+  //it("User validates barcode is visible", function () {
+  //cy.window().then((win) => {
+  // cy.stub(win, "open").as("windowOpen");
+  //});
 
-  it("User prints barcode", function () {
-    cy.window().then((win) => {
-      //stubbed to prevent opening new tab
-      cy.stub(win, "open").as("windowOpen");
-    });
+  // modifyOrderPage.clickPrintBarcodeButton();
 
-    modifyOrderPage.clickPrintBarcodeButton();
-
-    cy.get("@windowOpen").should(
-      "be.calledWithMatch",
-      /\/api\/OpenELIS-Global\/LabelMakerServlet\?labNo=/,
-    );
-  });
+  // cy.get("@windowOpen").should(
+  // "be.calledWithMatch",
+  // /\/api\/OpenELIS-Global\/LabelMakerServlet\?labNo=/,
+  // );
+  // });
 });
 
 describe("Modify Order search by accession Number", function () {

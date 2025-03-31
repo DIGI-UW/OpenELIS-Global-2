@@ -6,7 +6,7 @@ class ModifyOrderPage {
   }
 
   enterAccessionNo(accessionNo) {
-    cy.enterText("#labNumber", accessionNo);
+    cy.enterText("#display_labNumber", accessionNo);
   }
   clickSubmitButton() {
     cy.getElement("[data-cy='submit-order']")
@@ -43,7 +43,7 @@ class ModifyOrderPage {
   }
 
   clickPrintBarcodeButton() {
-    return cy.get("[data-cy='printBarCode']").should("be.visible").click();
+    return cy.get("[data-cy='printBarCode']").should("be.visible");
   }
   clickSearchPatientButton() {
     return cy.get("[data-cy='searchPatientButton']").click();

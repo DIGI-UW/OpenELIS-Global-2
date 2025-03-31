@@ -1,5 +1,8 @@
 package org.openelisglobal.requester;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+
 import java.util.List;
 import org.junit.Assert;
 import org.junit.Before;
@@ -19,13 +22,17 @@ public class RequesterTypeServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/requester.xml");
     }
 
-    // @Test
+    @Test
     public void verifyRequesterTypeData() {
         List<RequesterType> requesterTypes = requesterTypeService.getAll();
-        System.out.println("Requester Types in DB: " + requesterTypes.size());
-        requesterTypes.forEach(type -> System.out.println(type.getId() + " - " + type.getRequesterType()));
 
-        Assert.assertFalse("❌ requester_type table should not be empty!", requesterTypes.isEmpty());
+        assertNotNull("Requester type list should not be null", requesterTypes);
+        assertFalse("Requester type list should not be empty", requesterTypes.isEmpty());
+
+        requesterTypes.forEach(type -> {
+            assertNotNull("RequesterType ID should not be null", type.getId());
+            assertNotNull("RequesterType name should not be null", type.getRequesterType());
+        });
     }
 
     @Test

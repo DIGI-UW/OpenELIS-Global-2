@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -22,12 +23,13 @@ public class SystemUserServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
-    // @Test
     public void testDataInDataBase() {
         List<SystemUser> systemUsers = systemUserService.getAll();
-        systemUsers.forEach(systemUser -> {
-            System.out.print(systemUser.getLastName() + " ");
-        });
+        Assert.assertFalse("The system_users table should not be empty!", systemUsers.isEmpty());
+        for (SystemUser systemUser : systemUsers) {
+            Assert.assertNotNull("System user last name should not be null!", systemUser.getLastName());
+            Assert.assertFalse("System user last name should not be empty!", systemUser.getLastName().trim().isEmpty());
+        }
     }
 
     @Test
