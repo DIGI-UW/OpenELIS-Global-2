@@ -5,9 +5,12 @@ import static org.junit.Assert.*;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import org.hibernate.ObjectNotFoundException;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.note.service.NoteObject;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl;
@@ -28,7 +31,6 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void setup() throws Exception {
-        // Load the dataset
         executeDataSetWithStateManagement("testdata/notes.xml");
     }
 
@@ -57,7 +59,6 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getNote_shouldReturnNoteForValidId() throws Exception {
-        // Fetch the note from the dataset
         Note note = noteService.get("1");
         assertNotNull("Note should exist in dataset", note);
         assertEquals("Note ID should match", "1", note.getId());
@@ -201,4 +202,119 @@ public class NoteServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("Note subject should match", "Test Subject", note.getSubject());
     }
 
+    @Test
+    public void getNotesAsString_withNonConformityType_shouldHandleNonConformity() {
+
+        NoteObject noteObject = createTestNoteObject("1001", "1");
+
+        String result = noteService.getNotesAsString(noteObject, true, true, "\n",
+                new NoteServiceImpl.NoteType[] { NoteServiceImpl.NoteType.NON_CONFORMITY }, false,
+                StringUtil.EncodeContext.HTML);
+
+        assertNull("Should return null when no matching notes found", result);
+    }
+
+    @Test
+    public void getNotesAsString_shouldFormatTimestampsConsistently() {
+        NoteObject noteObject = createTestNoteObject("1001", "1");
+        Note note = noteService.get("1");
+
+        String expectedTimestamp = DateUtil.convertTimestampToStringDateAndTime(note.getLastupdated());
+
+        String result = noteService.getNotesAsString(noteObject, true, true, "|", false, StringUtil.EncodeContext.HTML);
+
+        assertTrue("Should contain timestamp in expected format: " + expectedTimestamp,
+                result.contains(expectedTimestamp));
+    }
+
+    @Test
+    public void getNotesAsString_shouldReturnNullForEmptyNoteList() {
+        NoteObject noteObject = createTestNoteObject("999", "1");
+
+        String result = noteService.getNotesAsString(noteObject, true, true, "\n", false,
+                StringUtil.EncodeContext.HTML);
+
+        assertNull("Expected null for empty note list", result);
+    }
+
+    @Test
+    public void getNotesAsString_withSubjectFilter_shouldReturnMatchingNote() {
+        NoteObject noteObject = createTestNoteObject("1001", "1");
+        String result = noteService.getNotesAsString(noteObject, "Subject 1", "SAMPLE");
+
+        assertTrue(result.contains("Subject 1"));
+        assertFalse(result.contains("Subject 2"));
+    }
+
+    @Test
+    public void getNotesAsString_withTypeFilter_shouldFilterCorrectly() {
+        NoteObject noteObject = createTestNoteObject("1001", "1");
+        String result = noteService.getNotesAsString(noteObject, true, true, "\n",
+                new NoteServiceImpl.NoteType[] { NoteServiceImpl.NoteType.INTERNAL }, false,
+                StringUtil.EncodeContext.HTML);
+
+        assertTrue(result.contains("I"));
+        assertFalse(result.contains("E"));
+    }
+
+    @Test
+    public void getReferenceTableIdForNoteBinding_shouldReturnCorrectId() {
+        List<Note> notes = noteService.getNoteByRefIAndRefTableAndSubject("1001", "1", "Subject 1");
+
+        String tableId = null;
+        if (notes != null && !notes.isEmpty()) {
+            tableId = notes.get(0).getReferenceTableId();
+        }
+
+        assertEquals("1", tableId);
+    }
+
+    @Test
+    public void getTableReferenceId_shouldReturnConstantValue() {
+        List<Note> notes = noteService.getNoteByRefIAndRefTableAndSubject("1001", "1", "Subject 1");
+
+        String referenceTableId = notes.isEmpty() ? null : notes.get(0).getReferenceTableId();
+
+        assertEquals("Note should return correct reference", "1", referenceTableId);
+    }
+
+    @Test(expected = ObjectNotFoundException.class)
+    public void getNote_shouldThrowExceptionForInvalidId() {
+        noteService.get("999");
+    }
+
+    @Test
+    public void getNotesChronologicallyByRefIdAndRefTableAndType_shouldFilterByType() {
+        List<String> typeFilter = new ArrayList<>();
+        typeFilter.add("I");
+
+        List<Note> notes = noteService.getNotesChronologicallyByRefIdAndRefTableAndType("1001", "1", typeFilter);
+
+        assertEquals(1, notes.size());
+        assertEquals("I", notes.get(0).getNoteType());
+    }
+
+    private NoteObject createTestNoteObject(String refId, String tableId) {
+        return new NoteObject() {
+            @Override
+            public String getTableId() {
+                return tableId;
+            }
+
+            @Override
+            public String getObjectId() {
+                return refId;
+            }
+
+            @Override
+            public NoteServiceImpl.BoundTo getBoundTo() {
+                return NoteServiceImpl.BoundTo.SAMPLE;
+            }
+
+            @Override
+            public String toString() {
+                return "TestNoteObject[refId=" + refId + ", tableId=" + tableId + "]";
+            }
+        };
+    }
 }

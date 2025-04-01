@@ -40,7 +40,11 @@ const Index = () => {
   const samplePageNumber = firstPageNumber + 2;
   const orderPageNumber = firstPageNumber + 3;
   const successMsgPageNumber = lastPageNumber;
-
+  const [changed, setChanged] = useState({
+    "sampleOrderItems.providerFirstName": false,
+    "sampleOrderItems.providerLastName": false,
+    "sampleOrderItems.labNo": false,
+  });
   const [page, setPage] = useState(firstPageNumber);
   const [orderFormValues, setOrderFormValues] = useState(SampleOrderFormValues);
   const [samples, setSamples] = useState([sampleObject]);
@@ -605,6 +609,7 @@ const Index = () => {
   }, [page]);
 
   useEffect(() => {
+    console.log(changed);
     OrderEntryValidationSchema.validate(orderFormValues, { abortEarly: false })
       .then((validData) => {
         setErrors([]);
@@ -614,7 +619,7 @@ const Index = () => {
         setErrors(errors);
         console.error("Validation Errors:", errors.errors);
       });
-  }, [orderFormValues]);
+  }, [changed, orderFormValues]);
 
   useEffect(() => {
     const labNumber = new URLSearchParams(window.location.search).get(
@@ -777,6 +782,8 @@ const Index = () => {
                 samples={samples}
                 error={elementError}
                 isModifyOrder={false}
+                changed={changed}
+                setChanged={setChanged}
               />
             )}
 

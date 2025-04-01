@@ -65,6 +65,7 @@ services:
             - ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war
             - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
             -  lucene_index-vol:/var/lib/lucene_index
+            - ./volume/test-map/test-loinc-map.csv:/var/lib/openelis-global/plugin-test-mappings/test-loinc-map.csv
         secrets:
             - source: datasource.password
             - source: common.properties
