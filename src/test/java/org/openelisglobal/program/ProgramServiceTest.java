@@ -1,5 +1,8 @@
 package org.openelisglobal.program;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+
 import java.util.List;
 import org.junit.Assert;
 import org.junit.Before;
@@ -19,12 +22,18 @@ public class ProgramServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/program.xml");
     }
 
-    // @Test
+    @Test
     public void verifyTestData() {
         List<Program> programList = programService.getAll();
-        System.out.println("program we have in db: " + programList.size());
-        programList.forEach(program -> System.out.println(program.getId() + " - " + program.getProgramName() + " - "
-                + program.getTestSection().getTestSectionName()));
+        assertNotNull("Program list should not be null", programList);
+        assertFalse("Program list should not be empty", programList.isEmpty());
+
+        programList.forEach(program -> {
+            assertNotNull("Program ID should not be null", program.getId());
+            assertNotNull("Program name should not be null", program.getProgramName());
+            assertNotNull("Test section name should not be null", program.getTestSection());
+            assertNotNull("Test section should have a name", program.getTestSection().getTestSectionName());
+        });
     }
 
     @Test

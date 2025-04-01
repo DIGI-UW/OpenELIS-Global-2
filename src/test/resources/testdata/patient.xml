@@ -8,6 +8,57 @@
     * the License. * * The Original Code is OpenELIS code. * * Copyright (C)
     ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
 <dataset>
+    <!-- Patient Identity Type Records -->
+    <patient_identity_type id="2" identity_type="ST"
+        description="ST Number" lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="3" identity_type="AKA"
+        description="Nickname" lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="4"
+        identity_type="MOTHER" description="Mother's Information"
+        lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="5"
+        identity_type="INSURANCE" description="Insurance Number"
+        lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="6"
+        identity_type="OCCUPATION" description="Occupation"
+        lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="8"
+        identity_type="ORG_SITE" description="Organization Site"
+        lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="9"
+        identity_type="NATIONAL" description="Patient ID Number"
+        lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="11"
+        identity_type="SUBJECT" description="Full Name"
+        lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="14"
+        identity_type="GUID" description="Passport Number"
+        lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="15"
+        identity_type="EDUCATION" description="Education Level"
+        lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="16"
+        identity_type="MARITIAL" description="Marital Status"
+        lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="17"
+        identity_type="NATIONALITY" description="Nationality"
+        lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="18"
+        identity_type="OTHER NATIONALITY" description="Country of Residence"
+        lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="19"
+        identity_type="HEALTH DISTRICT" description="City"
+        lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="20"
+        identity_type="HEALTH REGION" description="Region"
+        lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="21"
+        identity_type="OB_NUMBER" description="Medical Record Number"
+        lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="22"
+        identity_type="PC_NUMBER" description="Room Number"
+        lastupdated="2023-01-01 00:00:00" />
+
     <!--Person catagory entries -->
     <person id="1" last_name="Doe" first_name="John"
         middle_name="joddy" city="Kampala" state="Kampala metropolitan"
