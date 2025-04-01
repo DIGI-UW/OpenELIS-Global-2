@@ -33,6 +33,7 @@
 .emptyFilterTests span {
   color: #d4373a;
 }
+
 .orderWorkFlowDiv {
   //border: 0.5px solid #295785;
   border-radius: 5px;
@@ -122,9 +123,9 @@
   width: 33rem !important;
 }
 
-.cds--time-picker__input-field {
-  width: 31.875rem !important;
-}
+// .cds--time-picker__input-field {
+//   width: 31.875rem !important;
+// }
 
 .requestTestReferral {
   margin-top: 40px;
@@ -134,6 +135,7 @@
 .requestTestReferral .cds--checkbox-label-text {
   color: red !important;
 }
+
 .orderEntrySuccessMsg {
   width: 240px;
   top: 0;
@@ -142,6 +144,7 @@
   right: 0;
   margin: auto;
 }
+
 .printBarCodeBtn {
   width: 220px;
   text-align: center;
@@ -164,18 +167,22 @@
 .orderReferralSentDate input {
   width: 13rem !important;
 }
+
 #order_requestDate {
   width: 438px !important;
   margin-right: 10px;
 }
+
 #order_receivedDate {
   width: 438px !important;
   margin-right: 10px;
 }
+
 #order_receivedTime {
   width: 433px !important;
   margin-right: 5px;
 }
+
 #order_nextVisitDate {
   width: 438px !important;
 }

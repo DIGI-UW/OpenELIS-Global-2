@@ -1,33 +1,31 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
-import { useHistory } from "react-router-dom";
-import CustomDatePicker from "../common/CustomDatePicker";
-import { ConfigurationContext } from "../layout/Layout";
 import {
+  Button,
+  Checkbox,
+  Column,
+  Grid,
+  Heading,
+  Loading,
+  Section,
   Select,
   SelectItem,
-  Checkbox,
-  Button,
-  Grid,
-  Column,
-  Row,
-  Section,
   TimePicker,
-  Loading,
-  Heading,
 } from "@carbon/react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import SampleType from "./SampleType";
-import BatchOrderEntryFormValues from "../formModel/innitialValues/BatchOrderEntryFormValues";
-import { NotificationContext } from "../layout/Layout";
-import { AlertDialog } from "../common/CustomNotification";
+import { useHistory } from "react-router-dom";
 import AutoComplete from "../common/AutoComplete";
+import CustomDatePicker from "../common/CustomDatePicker";
+import { AlertDialog } from "../common/CustomNotification";
+import PageBreadCrumb from "../common/PageBreadCrumb";
+import BatchOrderEntryFormValues from "../formModel/innitialValues/BatchOrderEntryFormValues";
+import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import "../Style.css";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../utils/Utils";
-import PageBreadCrumb from "../common/PageBreadCrumb";
 import SampleBatchEntry from "./SampleBatchEntry";
+import SampleType from "./SampleType";
 
 const SampleBatchEntrySetup = () => {
   const [orderFormValues, setOrderFormValues] = useState(
@@ -414,6 +412,7 @@ const SampleBatchEntrySetup = () => {
                           ? orderFormValues.currentTime
                           : configurationProperties.currentTimeAsText
                       }
+                      style={{ width: "100%" }}
                     />
                   </Column>
                   <Column lg={8}></Column>
@@ -450,6 +449,7 @@ const SampleBatchEntrySetup = () => {
                           ? orderFormValues.sampleOrderItems.receivedTime
                           : configurationProperties.currentTimeAsText
                       }
+                      style={{ width: "100%" }}
                     />
                   </Column>
                   <Column lg={8}></Column>
