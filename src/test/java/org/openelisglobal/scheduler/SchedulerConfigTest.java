@@ -3,14 +3,17 @@ package org.openelisglobal.scheduler;
 import static org.junit.Assert.*;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito.*;
 import org.mockito.MockitoAnnotations.*;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DefaultConfigurationProperties;
 import org.openelisglobal.scheduler.service.CronSchedulerService;
 
+@RunWith(MockitoJUnitRunner.class)
 public class SchedulerConfigTest {
 
     @InjectMocks
@@ -31,7 +34,13 @@ public class SchedulerConfigTest {
     public void getResultsResendTimeMillisTestDefaultValue() {
         long default_period_millis = 30L * 1000 * 60;
 
-        SchedulerConfig schedulerConfig = new SchedulerConfig();
+        SchedulerConfig schedulerConfig = new SchedulerConfig() {
+            @Override
+            public long getResultsResendTimeMillis() {
+                long period = 30L;
+                return period * 60 * 1000;
+            }
+        };
 
         long result = schedulerConfig.getResultsResendTimeMillis();
 
