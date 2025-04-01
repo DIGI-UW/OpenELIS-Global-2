@@ -40,7 +40,6 @@ import org.openelisglobal.result.action.util.ResultSet;
 import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
-import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.bean.SampleEditItem;
 import org.openelisglobal.sample.form.SampleEditForm;
 import org.openelisglobal.sample.valueholder.Sample;

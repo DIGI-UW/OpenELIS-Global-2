@@ -1,57 +1,50 @@
 package org.openelisglobal.analysis;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
 
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
-
-import java.util.List;
 import java.util.ArrayList;
-import java.util.Set;
 import java.util.HashSet;
-import java.util.UUID;
-
+import java.util.List;
+import java.util.Set;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.statusofsample.service.StatusOfSampleService;
-import org.openelisglobal.statusofsample.valueholder.StatusOfSample;
-import org.openelisglobal.panel.service.PanelService;
-import org.openelisglobal.panel.valueholder.Panel;
-import org.openelisglobal.typeofsample.service.TypeOfSampleService;
-import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
-import org.openelisglobal.test.service.TestService;
-import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.result.valueholder.Result;
-import org.openelisglobal.result.service.ResultService;
-import org.openelisglobal.sampleitem.service.SampleItemService;
-import org.openelisglobal.sampleitem.valueholder.SampleItem;
-import org.openelisglobal.sample.service.SampleService;
-import org.openelisglobal.sample.valueholder.Sample;
-import org.openelisglobal.sample.valueholder.OrderPriority;
-import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
-import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
-import org.openelisglobal.common.services.QAService;
-// import org.openelisglobal.test.valueholder.Test;
-import org.openelisglobal.test.valueholder.TestSection;
-import org.openelisglobal.reports.service.DocumentTrackService;
-import org.openelisglobal.reports.valueholder.DocumentTrack;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
+import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panel.valueholder.Panel;
+import org.openelisglobal.reports.service.DocumentTrackService;
+import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.OrderPriority;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
+import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
+import org.openelisglobal.statusofsample.service.StatusOfSampleService;
+import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private AnalysisService analysisService;
-    
+
     @Autowired
     private ResultService resultService;
 
@@ -98,7 +91,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getTestDisplayName_shouldReturnCorrectTestName() {
         String nullDisplayName = analysisService.getTestDisplayName(null);
-        assertEquals("", nullDisplayName); 
+        assertEquals("", nullDisplayName);
 
         Analysis analysis = analysisService.get("1");
         assertEquals("1", analysis.getId());
@@ -114,7 +107,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         newAnalysis.setAnalysisType("ROUTINE");
         String insertedId = analysisService.insert(newAnalysis);
         assertNotNull(insertedId);
-       
+
         Analysis retrievedAnalysis = analysisService.get(insertedId);
         assertEquals(insertedId, retrievedAnalysis.getId());
         assertEquals("ROUTINE", retrievedAnalysis.getAnalysisType());
@@ -187,7 +180,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         assertNull(resultForNull);
 
         Analysis newAnalysis = analysisService.get("1");
-        
+
         Result result1 = resultService.get("1");
         result1.setAnalysis(newAnalysis);
         result1.setResultType("D");
@@ -200,7 +193,6 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         result2.setValue("2");
         result2.setParentResult(result1);
         resultService.update(result2);
-        
 
         Result result = analysisService.getQuantifiedResult(newAnalysis);
         assertNotNull(result);
@@ -212,7 +204,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         // Test with null analysis
         String completedDateForNull = analysisService.getCompletedDateForDisplay(null);
         assertEquals("", completedDateForNull);
-    
+
         // Test with valid analysis
         Analysis analysis = analysisService.get("1");
         String completedDate = analysisService.getCompletedDateForDisplay(analysis);
@@ -226,7 +218,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         // Test with null analysis
         String analysisTypeForNull = analysisService.getAnalysisType(null);
         assertEquals("", analysisTypeForNull);
-    
+
         // Test with valid analysis
         Analysis analysis = analysisService.get("1");
         String analysisType = analysisService.getAnalysisType(analysis);
@@ -238,7 +230,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         // Test with null analysis
         String statusIdForNull = analysisService.getStatusId(null);
         assertEquals("", statusIdForNull);
-    
+
         // Test with valid analysis
         Analysis analysis = analysisService.get("1");
         String statusId = analysisService.getStatusId(analysis);
@@ -250,15 +242,15 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         // Null case
         Boolean nullResult = analysisService.getTriggeredReflex(null);
         assertFalse(nullResult);
-    
+
         // Valid cases
         Analysis analysis = analysisService.get("1");
         assertNotNull(analysis);
-    
+
         analysis.setTriggeredReflex(false);
         Boolean falseResult = analysisService.getTriggeredReflex(analysis);
         assertFalse(falseResult);
-    
+
         analysis.setTriggeredReflex(true);
         Boolean trueResult = analysisService.getTriggeredReflex(analysis);
         assertTrue(trueResult);
@@ -268,21 +260,21 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     public void resultIsConclusion_shouldHandleNullAndValidCases() {
         // Null cases
         assertFalse(analysisService.resultIsConclusion(null, null));
-    
+
         Analysis analysis1 = analysisService.get("1");
         Analysis analysis2 = analysisService.get("2");
         assertFalse(analysisService.resultIsConclusion(null, analysis1));
-    
+
         Result result1 = resultService.get("1");
         result1.setAnalysis(analysis1);
         resultService.update(result1);
 
         assertFalse(analysisService.resultIsConclusion(result1, null));
-    
+
         // Single result case
         List<Result> singleResultList = List.of(result1);
         assertFalse(analysisService.resultIsConclusion(result1, analysis1));
-    
+
         // Multiple results - current result has highest ID (is conclusion)
 
         Result result2 = resultService.get("2");
@@ -291,29 +283,29 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
         List<Result> multipleResultList = List.of(result1, result2);
         assertTrue(analysisService.resultIsConclusion(result2, analysis1));
-    
+
         // Multiple results - current result does not have highest ID (not conclusion)
         Result result3 = new Result();
         result3.setId("3");
         result3.setAnalysis(analysis1);
         resultService.insert(result3);
-    
+
         List<Result> resultList = List.of(result1, result2, result3);
         assertFalse(analysisService.resultIsConclusion(result2, analysis1));
     }
 
-    //SpringContextIssue
+    // SpringContextIssue
     @Test
     public void isParentNonConforming_shouldHandleNullAndValidCases() {
         // Null case
         assertFalse(analysisService.isParentNonConforming(null));
-    
+
         // Valid cases
         Analysis analysis = analysisService.get("1");
         SampleItem sampleItem = sampleItemService.get("1");
         Sample sample = sampleService.get("1");
         SampleQaEvent sampleQaEvent = sampleQaEventService.get("1");
-        
+
         sample.setStatusId("12");
         sampleService.update(sample);
 
@@ -331,7 +323,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(analysis);
         assertEquals("1", analysis.getId());
         assertEquals("1", analysis.getSampleItem().getSample().getId());
-    
+
         // Test true case
         boolean value = analysisService.isParentNonConforming(analysis);
         assertTrue(value);
@@ -342,14 +334,14 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         // Null case
         org.openelisglobal.test.valueholder.Test nullResult = analysisService.getTest(null);
         assertNull(nullResult);
-    
+
         // Valid case
         Analysis analysis = analysisService.get("1");
         assertNotNull(analysis);
-    
+
         org.openelisglobal.test.valueholder.Test expectedTest = testService.get("1");
         analysis.setTest(expectedTest);
-    
+
         org.openelisglobal.test.valueholder.Test result = analysisService.getTest(analysis);
         assertNotNull(result);
         assertEquals("1", result.getId());
@@ -359,13 +351,13 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     public void getAnalysisStartedOrCompletedInDateRange_shouldReturnCorrectList() {
         Date lowDate = Date.valueOf("2023-11-14");
         Date highDate = Date.valueOf("2023-11-17");
-    
+
         Analysis analysis1 = analysisService.get("1");
-    
+
         Analysis analysis2 = analysisService.get("2");
-    
+
         List<Analysis> expectedList = List.of(analysis1, analysis2);
-    
+
         List<Analysis> result = analysisService.getAnalysisStartedOrCompletedInDateRange(lowDate, highDate);
         assertNotNull(result);
         assertEquals(2, result.size());
@@ -383,10 +375,10 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         String testId = test1.getId();
         TestSection testSection1 = testSectionService.get("1");
         List<Integer> testSectionIds = List.of(Integer.parseInt(testSection1.getId()));
-        
-        List<Analysis> analyses = analysisService.getAnalysisByTestIdAndTestSectionIdsAndStartedInDateRange(
-                lowDate, highDate, testId, testSectionIds);
-        
+
+        List<Analysis> analyses = analysisService.getAnalysisByTestIdAndTestSectionIdsAndStartedInDateRange(lowDate,
+                highDate, testId, testSectionIds);
+
         // Verify results
         assertNotNull(analyses);
         assertTrue(analyses.size() > 0);
@@ -398,7 +390,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         // Test null analysis
         List<Result> nullResults = analysisService.getResults(null);
         assertEquals(0, nullResults.size());
-        
+
         // Test valid analysis
         Analysis validAnalysis = analysisService.get("1");
         Result result1 = resultService.get("1");
@@ -408,103 +400,103 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         resultService.update(result1);
 
         assertNotNull(validAnalysis);
-        
+
         List<Result> validResults = analysisService.getResults(validAnalysis);
 
         assertNotNull(validResults);
         assertEquals(1, validResults.size());
     }
-    
+
     @Test
     public void hasBeenCorrectedSinceLastPatientReport_shouldHandleNullAndValidAnalysis() {
         // Test null analysis
         boolean nullResult = analysisService.hasBeenCorrectedSinceLastPatientReport(null);
         assertFalse(nullResult);
-        
+
         // Test valid analysis
         Analysis analysis1 = analysisService.get("1");
         analysis1.setCorrectedSincePatientReport(true);
         analysisService.update(analysis1);
         boolean result = analysisService.hasBeenCorrectedSinceLastPatientReport(analysis1);
         assertTrue(result);
-        
+
         Analysis analysis2 = analysisService.get("1");
         analysis2.setCorrectedSincePatientReport(false);
         analysisService.update(analysis2);
         result = analysisService.hasBeenCorrectedSinceLastPatientReport(analysis2);
         assertFalse(result);
     }
-    
-    //Getting null
+
+    // Getting null
     // @Test
     // public void patientReportHasBeenDone_shouldHandleNullAndValidAnalysis() {
-    //     // Test null analysis
-    //     // boolean nullResult = analysisService.patientReportHasBeenDone(null);
-    //     // assertFalse(nullResult);
-        
-    //     // Valid analysis test
-    //     Timestamp ts = Timestamp.valueOf("2024-03-06 10:00:00");
-    //     Analysis analysis = analysisService.get("1");
-    //     SampleItem sampleItem = sampleItemService.get("1");
-    //     Sample sample = sampleService.get("1");
+    // // Test null analysis
+    // // boolean nullResult = analysisService.patientReportHasBeenDone(null);
+    // // assertFalse(nullResult);
 
-    //     sampleItem.setSample(sample);
-    //     sampleItemService.update(sampleItem);
+    // // Valid analysis test
+    // Timestamp ts = Timestamp.valueOf("2024-03-06 10:00:00");
+    // Analysis analysis = analysisService.get("1");
+    // SampleItem sampleItem = sampleItemService.get("1");
+    // Sample sample = sampleService.get("1");
 
-    //     analysis.setSampleItem(sampleItem);
-    //     analysisService.update(analysis);
+    // sampleItem.setSample(sample);
+    // sampleItemService.update(sampleItem);
 
-    //     DocumentTrack dt = documentTrackService.get("1");
-    //     dt.setTableId("1");
-    //     dt.setDocumentTypeId("4");
-    //     dt.setReportTime(ts);
-    //     documentTrackService.update(dt);
+    // analysis.setSampleItem(sampleItem);
+    // analysisService.update(analysis);
 
-    //     Analysis analysis1 = analysisService.get("1");
+    // DocumentTrack dt = documentTrackService.get("1");
+    // dt.setTableId("1");
+    // dt.setDocumentTypeId("4");
+    // dt.setReportTime(ts);
+    // documentTrackService.update(dt);
 
-        
-    //     // Test when report exists
-    //     boolean reportExistsResult = analysisService.patientReportHasBeenDone(analysis1);
-    //     assertTrue(reportExistsResult);
-        
-    //     // Test when report doesn't exist
-    //     // boolean reportNotExistsResult = analysisService.patientReportHasBeenDone(analysis1);
-    //     // assertFalse(reportNotExistsResult);
+    // Analysis analysis1 = analysisService.get("1");
+
+    // // Test when report exists
+    // boolean reportExistsResult =
+    // analysisService.patientReportHasBeenDone(analysis1);
+    // assertTrue(reportExistsResult);
+
+    // // Test when report doesn't exist
+    // // boolean reportNotExistsResult =
+    // analysisService.patientReportHasBeenDone(analysis1);
+    // // assertFalse(reportNotExistsResult);
     // }
-    
+
     @Test
     public void getNotesAsString_shouldHandleNullAndValidAnalysis() {
         // Test null analysis
         String nullResult = analysisService.getNotesAsString(null, true, true, "\n", false);
         assertEquals("", nullResult);
-        
+
         // Test valid analysis
         Analysis analysis = analysisService.get("1");
         assertNotNull(analysis);
-        
+
         String validResult = analysisService.getNotesAsString(analysis, true, true, "\n", false);
         assertEquals("Internal 22/02/2024 10:00 : Note text here\n", validResult);
     }
 
-        
     @Test
     public void getOrderAccessionNumber_shouldHandleNullAndValidInput() {
         // Test with null analysis
         String nullResult = analysisService.getOrderAccessionNumber(null);
         assertEquals("", nullResult);
-        
+
         // Test with valid analysis
         Analysis analysis = analysisService.get("1");
         String accessionNumber = analysisService.getOrderAccessionNumber(analysis);
         assertEquals("SAM-2023-001", accessionNumber);
     }
-    
+
     @Test
     public void getTypeOfSample_shouldHandleNullAndValidInput() {
         // Test with null analysis
         TypeOfSample nullResult = analysisService.getTypeOfSample(null);
         assertNull(nullResult);
-        
+
         // Test with valid analysis
         Analysis analysis = analysisService.get("1");
         SampleItem sampleItem = sampleItemService.get("1");
@@ -518,13 +510,13 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("1", typeOfSample.getId());
         assertEquals("Blood", typeOfSample.getDescription());
     }
-    
+
     @Test
     public void getPanel_shouldHandleNullAndValidInput() {
         // Test with null analysis
         Panel nullResult = analysisService.getPanel(null);
         assertNull(nullResult);
-        
+
         // Test with valid analysis that has panel
         Analysis analysis = analysisService.get("1");
         // Set up a panel for this analysis for testing
@@ -536,19 +528,19 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("1", retrievedPanel.getId());
         assertEquals("Test Panel", retrievedPanel.getPanelName());
     }
-    
+
     @Test
     public void getTestSection_shouldHandleNullAndValidInput() {
         // Test with null analysis
         TestSection nullResult = analysisService.getTestSection(null);
         assertNull(nullResult);
-        
+
         // Test with valid analysis
         Analysis analysis1 = analysisService.get("1");
         TestSection testSection1 = testSectionService.get("1");
         analysis1.setTestSection(testSection1);
         analysisService.update(analysis1);
-        
+
         Analysis analysis = analysisService.get("1");
 
         TestSection testSection = analysisService.getTestSection(analysis);
@@ -556,17 +548,17 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("1", testSection.getId());
         assertEquals("Chemistry", testSection.getTestSectionName());
     }
-    
-    //Issue with SpringContext
+
+    // Issue with SpringContext
     @Test
     public void buildAnalysis_shouldCreateAnalysisWithCorrectProperties() {
         // Get sample data for test
         org.openelisglobal.test.valueholder.Test test = testService.get("1");
         SampleItem sampleItem = analysisService.get("1").getSampleItem();
-        
+
         // Build analysis
         Analysis builtAnalysis = analysisService.buildAnalysis(test, sampleItem);
-        
+
         // Verify the built analysis
         assertNotNull(builtAnalysis);
         assertEquals(test, builtAnalysis.getTest());
@@ -577,7 +569,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(sampleItem, builtAnalysis.getSampleItem());
         assertEquals(test.getTestSection(), builtAnalysis.getTestSection());
         assertNotNull(builtAnalysis.getSampleTypeName());
-        
+
         // Verify status ID is set to NotStarted
         // assertEquals("NotStarted", builtAnalysis.getStatusId());
     }
@@ -644,12 +636,14 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
         // Test with date that has no collections
         Date noCollectionsDate = Date.valueOf("2022-01-01");
-        List<Analysis> noAnalyses = analysisService.getAnalysisCollectedOnExcludedByStatusId(noCollectionsDate, excludedStatusIds);
+        List<Analysis> noAnalyses = analysisService.getAnalysisCollectedOnExcludedByStatusId(noCollectionsDate,
+                excludedStatusIds);
         assertTrue(noAnalyses.isEmpty());
 
         // Test with empty excluded status IDs (should return all for that date)
         Set<Integer> emptyExcludedIds = new HashSet<>();
-        List<Analysis> allAnalyses = analysisService.getAnalysisCollectedOnExcludedByStatusId(testDate, emptyExcludedIds);
+        List<Analysis> allAnalyses = analysisService.getAnalysisCollectedOnExcludedByStatusId(testDate,
+                emptyExcludedIds);
         assertNotNull(allAnalyses);
         assertEquals(1, allAnalyses.size());
 
@@ -664,7 +658,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         Set<Integer> excludedStatusIds = new HashSet<>(List.of(2));
 
         // Test with valid sample item and excluded status IDs
-        List<Analysis> analyses = analysisService.getAnalysesBySampleItemsExcludingByStatusIds(sampleItem, excludedStatusIds);
+        List<Analysis> analyses = analysisService.getAnalysesBySampleItemsExcludingByStatusIds(sampleItem,
+                excludedStatusIds);
         assertNotNull(analyses);
         assertEquals(1, analyses.size());
         assertEquals("1", analyses.get(0).getId());
@@ -672,7 +667,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         // Test with non-existent sample item
         SampleItem nonExistentSampleItem = new SampleItem();
         nonExistentSampleItem.setId("999");
-        List<Analysis> noAnalyses = analysisService.getAnalysesBySampleItemsExcludingByStatusIds(nonExistentSampleItem, excludedStatusIds);
+        List<Analysis> noAnalyses = analysisService.getAnalysesBySampleItemsExcludingByStatusIds(nonExistentSampleItem,
+                excludedStatusIds);
         assertNotNull(noAnalyses);
         assertTrue(noAnalyses.isEmpty());
 
@@ -721,13 +717,15 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     public void getAnalysesBySampleStatusIdExcludingByStatusId_shouldFilterCorrectly() {
         // Test with valid sample status and excluded status IDs
         Set<Integer> excludedStatusIds = new HashSet<>(List.of(2));
-        List<Analysis> analyses = analysisService.getAnalysesBySampleStatusIdExcludingByStatusId("1", excludedStatusIds);
+        List<Analysis> analyses = analysisService.getAnalysesBySampleStatusIdExcludingByStatusId("1",
+                excludedStatusIds);
         assertNotNull(analyses);
         assertEquals(1, analyses.size());
         assertEquals("1", analyses.get(0).getId());
 
         // Test with non-existent sample status
-        List<Analysis> nonExistentAnalyses = analysisService.getAnalysesBySampleStatusIdExcludingByStatusId("999", excludedStatusIds);
+        List<Analysis> nonExistentAnalyses = analysisService.getAnalysesBySampleStatusIdExcludingByStatusId("999",
+                excludedStatusIds);
         assertNotNull(nonExistentAnalyses);
         assertTrue(nonExistentAnalyses.isEmpty());
 
@@ -743,7 +741,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("1", analyses.get(0).getId());
 
         // Test with non-existent test ID
-        List<Analysis> nonExistentAnalyses = analysisService.getAllAnalysisByTestAndExcludedStatus("999", excludedStatusIds);
+        List<Analysis> nonExistentAnalyses = analysisService.getAllAnalysisByTestAndExcludedStatus("999",
+                excludedStatusIds);
         assertNotNull(nonExistentAnalyses);
         assertTrue(nonExistentAnalyses.isEmpty());
 
@@ -755,39 +754,41 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     }
 
-    //SpringContextIssue
+    // SpringContextIssue
     // @Test
-    // public void updateAnalysises_shouldUpdateCancelAnalysisAndInsertNewAnalysis() {
-    //     // Prepare test data
-    //     List<Analysis> cancelAnalyses = new ArrayList<>();
-    //     Analysis cancelAnalysis = analysisService.get("1");
-    //     cancelAnalyses.add(cancelAnalysis);
+    // public void updateAnalysises_shouldUpdateCancelAnalysisAndInsertNewAnalysis()
+    // {
+    // // Prepare test data
+    // List<Analysis> cancelAnalyses = new ArrayList<>();
+    // Analysis cancelAnalysis = analysisService.get("1");
+    // cancelAnalyses.add(cancelAnalysis);
 
-    //     List<Analysis> newAnalyses = new ArrayList<>();
-    //     Analysis newAnalysis = new Analysis();
-    //     newAnalysis.setAnalysisType("ROUTINE");
-    //     newAnalyses.add(newAnalysis);
+    // List<Analysis> newAnalyses = new ArrayList<>();
+    // Analysis newAnalysis = new Analysis();
+    // newAnalysis.setAnalysisType("ROUTINE");
+    // newAnalyses.add(newAnalysis);
 
-    //     // Execute the method
-    //     analysisService.updateAnalysises(cancelAnalyses, newAnalyses, "107");
+    // // Execute the method
+    // analysisService.updateAnalysises(cancelAnalyses, newAnalyses, "107");
 
-    //     // Verify canceled analysis
-    //     Analysis updatedAnalysis = analysisService.get("1");
-    //     assertEquals("1", updatedAnalysis.getStatusId());
-    //     assertEquals("1", updatedAnalysis.getSysUserId());
+    // // Verify canceled analysis
+    // Analysis updatedAnalysis = analysisService.get("1");
+    // assertEquals("1", updatedAnalysis.getStatusId());
+    // assertEquals("1", updatedAnalysis.getSysUserId());
 
-    //     // Verify new analysis was inserted
-    //     List<Analysis> allAnalyses = analysisService.getAll();
+    // // Verify new analysis was inserted
+    // List<Analysis> allAnalyses = analysisService.getAll();
 
-    //     // Find the newly inserted analysis
-    //     boolean foundNewAnalysis = false;
-    //     for (Analysis analysis : allAnalyses) {
-    //         if ("ROUTINE".equals(analysis.getAnalysisType()) && "1".equals(analysis.getSysUserId())) {
-    //             foundNewAnalysis = true;
-    //             break;
-    //         }
-    //     }
-    //     assertTrue("New analysis should be inserted", foundNewAnalysis);
+    // // Find the newly inserted analysis
+    // boolean foundNewAnalysis = false;
+    // for (Analysis analysis : allAnalyses) {
+    // if ("ROUTINE".equals(analysis.getAnalysisType()) &&
+    // "1".equals(analysis.getSysUserId())) {
+    // foundNewAnalysis = true;
+    // break;
+    // }
+    // }
+    // assertTrue("New analysis should be inserted", foundNewAnalysis);
     // }
 
     @Test
@@ -817,8 +818,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         Date highDate = Date.valueOf("2023-11-17"); // 2023-11-17
 
         // Execute the method
-        List<Analysis> analyses = analysisService.getAllAnalysisByTestsAndStatusAndCompletedDateRange(
-        testIds, analysisStatusList, sampleStatusList, lowDate, highDate);
+        List<Analysis> analyses = analysisService.getAllAnalysisByTestsAndStatusAndCompletedDateRange(testIds,
+                analysisStatusList, sampleStatusList, lowDate, highDate);
 
         // Verify results
         assertNotNull(analyses);
@@ -826,10 +827,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         for (Analysis analysis : analyses) {
             assertEquals("1", analysis.getTest().getId());
             assertEquals("1", analysis.getStatusId());
-            assertTrue(analysis.getCompletedDate().after(lowDate) ||
-            analysis.getCompletedDate().equals(lowDate));
-            assertTrue(analysis.getCompletedDate().before(highDate) ||
-            analysis.getCompletedDate().equals(highDate));
+            assertTrue(analysis.getCompletedDate().after(lowDate) || analysis.getCompletedDate().equals(lowDate));
+            assertTrue(analysis.getCompletedDate().before(highDate) || analysis.getCompletedDate().equals(highDate));
         }
     }
 
@@ -839,8 +838,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         List<Integer> statusList = List.of(1);
 
         // Execute the method
-        List<Analysis> analyses = analysisService.getAllAnalysisByTestSectionAndStatus(
-        "1", statusList, true);
+        List<Analysis> analyses = analysisService.getAllAnalysisByTestSectionAndStatus("1", statusList, true);
 
         // Verify results
         assertNotNull(analyses);
@@ -857,8 +855,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         List<Integer> statusList = List.of(1);
 
         // Execute the method
-        List<Analysis> analyses = analysisService.getPageAnalysisByTestSectionAndStatus(
-        "1", statusList, true);
+        List<Analysis> analyses = analysisService.getPageAnalysisByTestSectionAndStatus("1", statusList, true);
 
         // Verify results
         assertNotNull(analyses);
@@ -875,8 +872,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         List<Integer> statusList = List.of(1);
 
         // 1. Test with standard accession number
-        List<Analysis> analyses = analysisService.getPageAnalysisAtAccessionNumberAndStatus(
-        "SAM-2023-001", statusList, true);
+        List<Analysis> analyses = analysisService.getPageAnalysisAtAccessionNumberAndStatus("SAM-2023-001", statusList,
+                true);
 
         // Verify results
         assertNotNull(analyses);
@@ -887,8 +884,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         }
 
         // 2. Test with dotted accession number
-        List<Analysis> dottedAnalyses = analysisService.getPageAnalysisAtAccessionNumberAndStatus(
-        "SAM-2023-001.1", statusList, true);
+        List<Analysis> dottedAnalyses = analysisService.getPageAnalysisAtAccessionNumberAndStatus("SAM-2023-001.1",
+                statusList, true);
 
         // Verify results
         assertNotNull(dottedAnalyses);
@@ -961,105 +958,112 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         Date startDate = java.sql.Date.valueOf("2023-11-15");
         Date endDate = java.sql.Date.valueOf("2023-11-16");
 
-        List<Analysis> analysisList = analysisService.getAnalysisByTestDescriptionAndCompletedDateRange(
-        descriptions, startDate, endDate);
+        List<Analysis> analysisList = analysisService.getAnalysisByTestDescriptionAndCompletedDateRange(descriptions,
+                startDate, endDate);
 
         assertNotNull(analysisList);
         assertTrue(analysisList.size() > 0);
         assertEquals("1", analysisList.get(0).getId());
     }
 
-    //Status Error
+    // Status Error
     // @Test
-    // public void getMaxRevisionPendingAnalysesReadyForReportPreviewBySample_shouldReturnCorrectList() {
-    //     SampleItem sampleItem1 = sampleItemService.get("1");
-    //     org.openelisglobal.test.valueholder.Test test1 = testService.get("1");
-    //     Analysis analysis1 = analysisService.get("1");
-    //     Sample sample1 = sampleService.get("1");
-    //     sampleItem1.setSample(sample1);
-    //     sampleItemService.update(sampleItem1);
-    //     analysis1.setTest(test1);
-    //     analysis1.setSampleItem(sampleItem1);
-    //     analysisService.update(analysis1);
+    // public void
+    // getMaxRevisionPendingAnalysesReadyForReportPreviewBySample_shouldReturnCorrectList()
+    // {
+    // SampleItem sampleItem1 = sampleItemService.get("1");
+    // org.openelisglobal.test.valueholder.Test test1 = testService.get("1");
+    // Analysis analysis1 = analysisService.get("1");
+    // Sample sample1 = sampleService.get("1");
+    // sampleItem1.setSample(sample1);
+    // sampleItemService.update(sampleItem1);
+    // analysis1.setTest(test1);
+    // analysis1.setSampleItem(sampleItem1);
+    // analysisService.update(analysis1);
 
-    //     SampleItem sampleItem2 = sampleItemService.get("2");
-    //     org.openelisglobal.test.valueholder.Test test2 = testService.get("2");
-    //     Analysis analysis2 = analysisService.get("2");
-    //     Sample sample2 = sampleService.get("2");
-    //     sampleItem2.setSample(sample2);
-    //     sampleItemService.update(sampleItem2);
-    //     analysis2.setTest(test2);
-    //     analysis2.setSampleItem(sampleItem2);
-    //     analysisService.update(analysis2);
+    // SampleItem sampleItem2 = sampleItemService.get("2");
+    // org.openelisglobal.test.valueholder.Test test2 = testService.get("2");
+    // Analysis analysis2 = analysisService.get("2");
+    // Sample sample2 = sampleService.get("2");
+    // sampleItem2.setSample(sample2);
+    // sampleItemService.update(sampleItem2);
+    // analysis2.setTest(test2);
+    // analysis2.setSampleItem(sampleItem2);
+    // analysisService.update(analysis2);
 
-    //     List<Analysis> analysisList = analysisService.getMaxRevisionPendingAnalysesReadyForReportPreviewBySample(sample2);
+    // List<Analysis> analysisList =
+    // analysisService.getMaxRevisionPendingAnalysesReadyForReportPreviewBySample(sample2);
 
-    //     assertNotNull(analysisList);
-    //     // Add assertions based on expected results
-    //     if (!analysisList.isEmpty()) {
-    //         assertEquals("1", analysisList.get(0).getSampleItem().getSample().getId());
-    //     }
+    // assertNotNull(analysisList);
+    // // Add assertions based on expected results
+    // if (!analysisList.isEmpty()) {
+    // assertEquals("1", analysisList.get(0).getSampleItem().getSample().getId());
+    // }
     // }
 
-    //Status Error
+    // Status Error
     // @Test
-    // public void getMaxRevisionPendingAnalysesReadyToBeReportedBySample_shouldReturnCorrectAnalyses() {
-    //     SampleItem sampleItem1 = sampleItemService.get("1");
-    //     org.openelisglobal.test.valueholder.Test test1 = testService.get("1");
-    //     Analysis analysis1 = analysisService.get("1");
-    //     Sample sample1 = sampleService.get("1");
-    //     sampleItem1.setSample(sample1);
-    //     sampleItemService.update(sampleItem1);
-    //     analysis1.setTest(test1);
-    //     analysis1.setSampleItem(sampleItem1);
-    //     analysisService.update(analysis1);
+    // public void
+    // getMaxRevisionPendingAnalysesReadyToBeReportedBySample_shouldReturnCorrectAnalyses()
+    // {
+    // SampleItem sampleItem1 = sampleItemService.get("1");
+    // org.openelisglobal.test.valueholder.Test test1 = testService.get("1");
+    // Analysis analysis1 = analysisService.get("1");
+    // Sample sample1 = sampleService.get("1");
+    // sampleItem1.setSample(sample1);
+    // sampleItemService.update(sampleItem1);
+    // analysis1.setTest(test1);
+    // analysis1.setSampleItem(sampleItem1);
+    // analysisService.update(analysis1);
 
-    //     SampleItem sampleItem2 = sampleItemService.get("2");
-    //     org.openelisglobal.test.valueholder.Test test2 = testService.get("2");
-    //     Analysis analysis2 = analysisService.get("2");
-    //     Sample sample2 = sampleService.get("2");
-    //     sampleItem2.setSample(sample2);
-    //     sampleItemService.update(sampleItem2);
-    //     analysis2.setTest(test2);
-    //     analysis2.setSampleItem(sampleItem2);
-    //     analysisService.update(analysis2);
+    // SampleItem sampleItem2 = sampleItemService.get("2");
+    // org.openelisglobal.test.valueholder.Test test2 = testService.get("2");
+    // Analysis analysis2 = analysisService.get("2");
+    // Sample sample2 = sampleService.get("2");
+    // sampleItem2.setSample(sample2);
+    // sampleItemService.update(sampleItem2);
+    // analysis2.setTest(test2);
+    // analysis2.setSampleItem(sampleItem2);
+    // analysisService.update(analysis2);
 
-    //     // Execute
-    //     List<Analysis> analysisList = analysisService.getMaxRevisionPendingAnalysesReadyToBeReportedBySample(sample2);
+    // // Execute
+    // List<Analysis> analysisList =
+    // analysisService.getMaxRevisionPendingAnalysesReadyToBeReportedBySample(sample2);
 
-    //     // Verify
-    //     assertNotNull(analysisList);
-    //     // Assuming the test data contains analyses ready to be reported for sample 1
-    //     if (!analysisList.isEmpty()) {
-    //         // Verify these are the highest revision analyses for this sample
-    //         for (Analysis analysis : analysisList) {
-    //             assertEquals("1", analysis.getSampleItem().getSample().getId());
+    // // Verify
+    // assertNotNull(analysisList);
+    // // Assuming the test data contains analyses ready to be reported for sample 1
+    // if (!analysisList.isEmpty()) {
+    // // Verify these are the highest revision analyses for this sample
+    // for (Analysis analysis : analysisList) {
+    // assertEquals("1", analysis.getSampleItem().getSample().getId());
 
-    //             // Additional verification: check if status is appropriate for reporting
-    //             // For example, if analyses with status "A" are ready to be reported:
-    //             assertEquals("A", analysis.getStatus());
+    // // Additional verification: check if status is appropriate for reporting
+    // // For example, if analyses with status "A" are ready to be reported:
+    // assertEquals("A", analysis.getStatus());
 
-    //             // Verify this is the max revision for this test
-    //             String testId = analysis.getTest().getId();
-    //             for (Analysis otherAnalysis : analysisService.getAll()) {
-    //                 if (otherAnalysis.getTest().getId().equals(testId) &&
-    //                 otherAnalysis.getSampleItem().getSample().getId().equals("1") &&
-    //                 !otherAnalysis.getId().equals(analysis.getId())) {
+    // // Verify this is the max revision for this test
+    // String testId = analysis.getTest().getId();
+    // for (Analysis otherAnalysis : analysisService.getAll()) {
+    // if (otherAnalysis.getTest().getId().equals(testId) &&
+    // otherAnalysis.getSampleItem().getSample().getId().equals("1") &&
+    // !otherAnalysis.getId().equals(analysis.getId())) {
 
-    //                 assertTrue("Should be max revision",
-    //                 Integer.parseInt(analysis.getRevision()) >=
-    //                 Integer.parseInt(otherAnalysis.getRevision()));
-    //                 }
-    //             }
-    //         }
-    //     }
+    // assertTrue("Should be max revision",
+    // Integer.parseInt(analysis.getRevision()) >=
+    // Integer.parseInt(otherAnalysis.getRevision()));
+    // }
+    // }
+    // }
+    // }
     // }
 
     @Test
     public void getMaxRevisionAnalysesReadyForReportPreviewBySample_shouldReturnCorrectAnalyses() {
         List<String> accessionNumbers = List.of("SAM-2023-001");
 
-        List<Analysis> analysisList = analysisService.getMaxRevisionAnalysesReadyForReportPreviewBySample(accessionNumbers);
+        List<Analysis> analysisList = analysisService
+                .getMaxRevisionAnalysesReadyForReportPreviewBySample(accessionNumbers);
 
         assertNotNull(analysisList);
         // Add assertions based on expected behavior
@@ -1091,8 +1095,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         List<Integer> analysisStatusList = List.of(1);
         List<Integer> sampleStatusList = List.of(1);
 
-        List<Analysis> analysisList = analysisService.getAllAnalysisByTestsAndStatus(
-        testIds, analysisStatusList, sampleStatusList);
+        List<Analysis> analysisList = analysisService.getAllAnalysisByTestsAndStatus(testIds, analysisStatusList,
+                sampleStatusList);
 
         assertNotNull(analysisList);
         if (!analysisList.isEmpty()) {
@@ -1107,8 +1111,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         List<Integer> analysisStatusList = List.of(1);
         List<Integer> sampleStatusList = List.of(1);
 
-        List<Analysis> analysisList = analysisService.getAllAnalysisByTestSectionAndStatus(
-        testSectionId, analysisStatusList, sampleStatusList);
+        List<Analysis> analysisList = analysisService.getAllAnalysisByTestSectionAndStatus(testSectionId,
+                analysisStatusList, sampleStatusList);
 
         assertNotNull(analysisList);
         if (!analysisList.isEmpty()) {
@@ -1125,8 +1129,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         List<Integer> analysisStatusList = List.of(1);
         List<Integer> sampleStatusList = List.of(1);
 
-        List<Analysis> analysisList = analysisService.getPageAnalysisByTestSectionAndStatus(
-        testSectionId, analysisStatusList, sampleStatusList);
+        List<Analysis> analysisList = analysisService.getPageAnalysisByTestSectionAndStatus(testSectionId,
+                analysisStatusList, sampleStatusList);
 
         assertNotNull(analysisList);
         // Add assertions specific to pagination behavior
@@ -1174,12 +1178,13 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getAnalysisByTestNamesAndCompletedDateRange_shouldReturnMatchingAnalyses() {
         // Prepare test data
-        List<String> testNames = List.of("Blood Chem","Test Localization 1");
+        List<String> testNames = List.of("Blood Chem", "Test Localization 1");
         Date lowDate = Date.valueOf("2023-11-14");
         Date highDate = Date.valueOf("2023-11-16");
 
         // Call the service method
-        List<Analysis> analyses = analysisService.getAnalysisByTestNamesAndCompletedDateRange(testNames, lowDate, highDate);
+        List<Analysis> analyses = analysisService.getAnalysisByTestNamesAndCompletedDateRange(testNames, lowDate,
+                highDate);
 
         // Verify results
         assertNotNull(analyses);
@@ -1196,7 +1201,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         List<Integer> statusIdList = List.of(1);
 
         // Call the service method
-        List<Analysis> analyses = analysisService.getAnalysesBySampleIdTestIdAndStatusId(sampleIdList, testIdList, statusIdList);
+        List<Analysis> analyses = analysisService.getAnalysesBySampleIdTestIdAndStatusId(sampleIdList, testIdList,
+                statusIdList);
 
         // Verify results
         assertNotNull(analyses);
@@ -1295,7 +1301,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         List<Integer> statusIdList = List.of(2);
 
         // Call the service method
-        List<Analysis> analyses = analysisService.getAllAnalysisByTestSectionAndExcludedStatus(testSectionId, statusIdList);
+        List<Analysis> analyses = analysisService.getAllAnalysisByTestSectionAndExcludedStatus(testSectionId,
+                statusIdList);
 
         // Verify results
         assertNotNull(analyses);
@@ -1331,7 +1338,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         Date highDate = Date.valueOf("2023-11-16");
 
         // Call the service method
-        List<Analysis> analyses = analysisService.getAnalysisByTestSectionAndCompletedDateRange(sectionID, lowDate, highDate);
+        List<Analysis> analyses = analysisService.getAnalysisByTestSectionAndCompletedDateRange(sectionID, lowDate,
+                highDate);
 
         // Verify results
         assertNotNull(analyses);
@@ -1346,18 +1354,21 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         }
     }
 
-    //DAO Issue
+    // DAO Issue
     // @Test
-    // public void getMaxRevisionAnalysesReadyToBeReported_shouldReturnLatestReportableRevisions() {
-    //     // Call the service method
-    //     List<Analysis> analyses = analysisService.getMaxRevisionAnalysesReadyToBeReported();
+    // public void
+    // getMaxRevisionAnalysesReadyToBeReported_shouldReturnLatestReportableRevisions()
+    // {
+    // // Call the service method
+    // List<Analysis> analyses =
+    // analysisService.getMaxRevisionAnalysesReadyToBeReported();
 
-    //     // Verify results
-    //     assertNotNull(analyses);
-    //     assertTrue(analyses.size() > 0);
-    //     for (Analysis analysis : analyses) {
-    //         assertEquals("Y", analysis.getIsReportable());
-    //     }
+    // // Verify results
+    // assertNotNull(analyses);
+    // assertTrue(analyses.size() > 0);
+    // for (Analysis analysis : analyses) {
+    // assertEquals("Y", analysis.getIsReportable());
+    // }
     // }
 
     @Test
@@ -1385,33 +1396,35 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     // Dao issue
     // @Test
-    // public void getAnalysesAlreadyReportedBySample_shouldReturnCorrectAnalyses() {
-    //     // Create a sample for testing
-    //     Analysis analysis = analysisService.get("2");
-    //     org.openelisglobal.test.valueholder.Test test = testService.get("1");
-    //     SampleItem sampleItem = sampleItemService.get("1");
-    //     Sample sample = sampleService.get("1");
-    //     sampleItem.setSample(sample);
-    //     sampleItemService.update(sampleItem);
+    // public void getAnalysesAlreadyReportedBySample_shouldReturnCorrectAnalyses()
+    // {
+    // // Create a sample for testing
+    // Analysis analysis = analysisService.get("2");
+    // org.openelisglobal.test.valueholder.Test test = testService.get("1");
+    // SampleItem sampleItem = sampleItemService.get("1");
+    // Sample sample = sampleService.get("1");
+    // sampleItem.setSample(sample);
+    // sampleItemService.update(sampleItem);
 
-    //     analysis.setTest(test);
-    //     analysis.setSampleItem(sampleItem);
-    //     analysisService.update(analysis);
-    //     Result result1 = resultService.get("1");
-    //     Analysis analysis1 = analysisService.get("1");
-    //     result1.setAnalysis(analysis1);
-    //     resultService.update(result1);
+    // analysis.setTest(test);
+    // analysis.setSampleItem(sampleItem);
+    // analysisService.update(analysis);
+    // Result result1 = resultService.get("1");
+    // Analysis analysis1 = analysisService.get("1");
+    // result1.setAnalysis(analysis1);
+    // resultService.update(result1);
 
-    //     List<Analysis> analysisList = analysisService.getAnalysesAlreadyReportedBySample(sample);
+    // List<Analysis> analysisList =
+    // analysisService.getAnalysesAlreadyReportedBySample(sample);
 
-    //     // There should be at least one analysis for sample "1" in the test data
-    //     assertNotNull(analysisList);
-    //     assertTrue(analysisList.size() > 0);
+    // // There should be at least one analysis for sample "1" in the test data
+    // assertNotNull(analysisList);
+    // assertTrue(analysisList.size() > 0);
 
-    //     // Verify that all analyses are reportable
-    //     for (Analysis analysis2 : analysisList) {
-    //         assertEquals("Y",analysis2.getIsReportable());
-    //     }
+    // // Verify that all analyses are reportable
+    // for (Analysis analysis2 : analysisList) {
+    // assertEquals("Y",analysis2.getIsReportable());
+    // }
     // }
 
     @Test
@@ -1424,13 +1437,13 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         test.setId("1");
 
         // Test with including latest revision
-        List<Analysis> analysesWithLatest = analysisService.getRevisionHistoryOfAnalysesBySampleAndTest(
-        sampleItem, test, true);
+        List<Analysis> analysesWithLatest = analysisService.getRevisionHistoryOfAnalysesBySampleAndTest(sampleItem,
+                test, true);
         assertNotNull(analysesWithLatest);
 
         // Test without including latest revision
-        List<Analysis> analysesWithoutLatest = analysisService.getRevisionHistoryOfAnalysesBySampleAndTest(
-        sampleItem, test, false);
+        List<Analysis> analysesWithoutLatest = analysisService.getRevisionHistoryOfAnalysesBySampleAndTest(sampleItem,
+                test, false);
         assertNotNull(analysesWithoutLatest);
 
         // If there are revisions, the lists should be different
@@ -1482,9 +1495,9 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
             SampleItem sampleItem = analysis.getSampleItem();
             if (sampleItem != null) {
                 Sample sample = sampleItem.getSample();
-            if (sample != null) {
-                assertEquals(sampleId, sample.getId());
-            }
+                if (sample != null) {
+                    assertEquals(sampleId, sample.getId());
+                }
             }
             assertTrue(statusIds.contains(Integer.parseInt(analysis.getStatusId())));
         }
@@ -1522,8 +1535,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         for (Analysis analysis : analysisList) {
             org.openelisglobal.test.valueholder.Test test = analysis.getTest();
             if (test != null) {
-                List<Analysis> revisions = analysisService.getRevisionHistoryOfAnalysesBySampleAndTest(
-                sampleItem, test, true);
+                List<Analysis> revisions = analysisService.getRevisionHistoryOfAnalysesBySampleAndTest(sampleItem, test,
+                        true);
 
                 int highestRevision = 0;
                 for (Analysis revision : revisions) {
@@ -1555,17 +1568,19 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     // Dao Issue
     // @Test
     // public void getAnalysesReadyToBeReported_shouldReturnReadyAnalyses() {
-    //     List<Analysis> readyAnalyses = analysisService.getAnalysesReadyToBeReported();
-    //     assertNotNull(readyAnalyses);
+    // List<Analysis> readyAnalyses =
+    // analysisService.getAnalysesReadyToBeReported();
+    // assertNotNull(readyAnalyses);
 
-    //     // Verify all analyses are ready to be reported
-    //     for (Analysis analysis : readyAnalyses) {
-    //         assertEquals("Y", analysis.getIsReportable());
+    // // Verify all analyses are ready to be reported
+    // for (Analysis analysis : readyAnalyses) {
+    // assertEquals("Y", analysis.getIsReportable());
 
-    //         // Typically, analyses are ready to be reported when they're complete but not yet released
-    //         assertNotNull(analysis.getCompletedDate());
-    //         assertNull(analysis.getReleasedDate());
-    //     }
+    // // Typically, analyses are ready to be reported when they're complete but not
+    // yet released
+    // assertNotNull(analysis.getCompletedDate());
+    // assertNull(analysis.getReleasedDate());
+    // }
     // }
 
     @Test
@@ -1583,12 +1598,12 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
             SampleItem sampleItem = analysis.getSampleItem();
             if (sampleItem != null) {
                 Sample sample = sampleItem.getSample();
-            if (sample != null) {
-                assertEquals(sampleKey, sample.getId());
+                if (sample != null) {
+                    assertEquals(sampleKey, sample.getId());
+                }
             }
-        }
 
-        assertTrue(testIds.contains(Integer.parseInt(analysis.getTest().getId())));
+            assertTrue(testIds.contains(Integer.parseInt(analysis.getTest().getId())));
         }
     }
 
@@ -1604,9 +1619,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         // Verify all analyses were completed within the specified range
         for (Analysis analysis : analysisList) {
             Date completedDate = analysis.getCompletedDate();
-            assertTrue(completedDate != null &&
-            (completedDate.after(lowDate) || completedDate.equals(lowDate)) &&
-            (completedDate.before(highDate) || completedDate.equals(highDate)));
+            assertTrue(completedDate != null && (completedDate.after(lowDate) || completedDate.equals(lowDate))
+                    && (completedDate.before(highDate) || completedDate.equals(highDate)));
         }
     }
 
@@ -1738,8 +1752,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         List<Integer> analysisStatusList = List.of(1);
         List<Integer> sampleStatusList = List.of(1);
 
-        int count = analysisService.getCountAnalysisByTestSectionAndStatus(
-        testSectionId, analysisStatusList, sampleStatusList);
+        int count = analysisService.getCountAnalysisByTestSectionAndStatus(testSectionId, analysisStatusList,
+                sampleStatusList);
 
         // Expected 1 from our test data
         assertEquals(1, count);
@@ -1750,8 +1764,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         String testSectionId = "1";
         List<Integer> analysisStatusList = List.of(1);
 
-        int count = analysisService.getCountAnalysisByTestSectionAndStatus(
-        testSectionId, analysisStatusList);
+        int count = analysisService.getCountAnalysisByTestSectionAndStatus(testSectionId, analysisStatusList);
 
         // Expected 1 from our test data
         assertEquals(1, count);
@@ -1759,13 +1772,13 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getCountAnalysisByStatusFromAccession_shouldHandleAccessionWithDotAndNormal() {
-        //With dot
+        // With dot
         List<Integer> analysisStatusList = List.of(1);
         List<Integer> sampleStatusList = List.of(1);
         String accessionNumber = "SAM-2023-001.1";
 
-        int count = analysisService.getCountAnalysisByStatusFromAccession(
-        analysisStatusList, sampleStatusList, accessionNumber);
+        int count = analysisService.getCountAnalysisByStatusFromAccession(analysisStatusList, sampleStatusList,
+                accessionNumber);
 
         // Should strip the dot and anything after
         assertEquals(1, count);
@@ -1775,8 +1788,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         List<Integer> sampleStatusList1 = List.of(1);
         String accessionNumber1 = "SAM-2023-001";
 
-        int count1 = analysisService.getCountAnalysisByStatusFromAccession(
-        analysisStatusList1, sampleStatusList1, accessionNumber1);
+        int count1 = analysisService.getCountAnalysisByStatusFromAccession(analysisStatusList1, sampleStatusList1,
+                accessionNumber1);
 
         assertEquals(1, count1);
     }
@@ -1787,8 +1800,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         List<Integer> sampleStatusList = List.of(1);
         String accessionNumber = "SAM-2023-001.1";
 
-        List<Analysis> analyses = analysisService.getPageAnalysisByStatusFromAccession(
-        analysisStatusList, sampleStatusList, accessionNumber);
+        List<Analysis> analyses = analysisService.getPageAnalysisByStatusFromAccession(analysisStatusList,
+                sampleStatusList, accessionNumber);
 
         assertNotNull(analyses);
         assertEquals(1, analyses.size());
@@ -1803,9 +1816,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         boolean doRange = true;
         boolean finished = false;
 
-        List<Analysis> analyses = analysisService.getPageAnalysisByStatusFromAccession(
-        analysisStatusList, sampleStatusList, accessionNumber,
-        upperRangeAccessionNumber, doRange, finished);
+        List<Analysis> analyses = analysisService.getPageAnalysisByStatusFromAccession(analysisStatusList,
+                sampleStatusList, accessionNumber, upperRangeAccessionNumber, doRange, finished);
 
         assertNotNull(analyses);
         assertEquals(2, analyses.size());
@@ -1817,8 +1829,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         LocalDate lowerDate = LocalDate.of(2023, 11, 1);
         LocalDate upperDate = LocalDate.of(2023, 12, 1);
 
-        List<Analysis> analyses = analysisService.getAnalysisForSiteBetweenResultDates(
-        referringSiteId, lowerDate, upperDate);
+        List<Analysis> analyses = analysisService.getAnalysisForSiteBetweenResultDates(referringSiteId, lowerDate,
+                upperDate);
 
         assertNotNull(analyses);
         // Verify dates are within the range
@@ -1826,10 +1838,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
             Date completedDate = analysis.getCompletedDate();
             if (completedDate != null) {
                 LocalDate localCompleteDate = completedDate.toLocalDate();
-                assertTrue(
-                !localCompleteDate.isBefore(lowerDate) &&
-                !localCompleteDate.isAfter(upperDate)
-            );
+                assertTrue(!localCompleteDate.isBefore(lowerDate) && !localCompleteDate.isAfter(upperDate));
             }
         }
     }
@@ -1839,8 +1848,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         OrderPriority priority = OrderPriority.ASAP;
         List<Integer> analysisStatusIds = List.of(1);
 
-        List<Analysis> analyses = analysisService.getAnalysesByPriorityAndStatusId(
-        priority, analysisStatusIds);
+        List<Analysis> analyses = analysisService.getAnalysesByPriorityAndStatusId(priority, analysisStatusIds);
 
         assertNotNull(analyses);
         for (Analysis analysis : analyses) {
@@ -1855,18 +1863,15 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         LocalDate lowerDate = LocalDate.of(2023, 11, 1);
         LocalDate upperDate = LocalDate.of(2023, 12, 1);
 
-        List<Analysis> analyses = analysisService.getStudyAnalysisForSiteBetweenResultDates(
-        referringSiteId, lowerDate, upperDate);
+        List<Analysis> analyses = analysisService.getStudyAnalysisForSiteBetweenResultDates(referringSiteId, lowerDate,
+                upperDate);
 
         assertNotNull(analyses);
         // Verify dates and site
         for (Analysis analysis : analyses) {
             if (analysis.getCompletedDate() != null) {
                 LocalDate localCompleteDate = analysis.getCompletedDate().toLocalDate();
-                assertTrue(
-                !localCompleteDate.isBefore(lowerDate) &&
-                !localCompleteDate.isAfter(upperDate)
-                );
+                assertTrue(!localCompleteDate.isBefore(lowerDate) && !localCompleteDate.isAfter(upperDate));
             }
         }
     }
@@ -1876,13 +1881,13 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         Date completedDate = Date.valueOf("2023-11-15");
         String statusId = "1";
 
-        List<Analysis> analyses = analysisService.getAnalysesCompletedOnByStatusId(
-        completedDate, statusId);
+        List<Analysis> analyses = analysisService.getAnalysesCompletedOnByStatusId(completedDate, statusId);
 
         assertNotNull(analyses);
         for (Analysis analysis : analyses) {
             assertEquals(statusId, analysis.getStatusId().toString());
-            // Compare dates (would need to check date equality ignoring time in a real test)
+            // Compare dates (would need to check date equality ignoring time in a real
+            // test)
         }
     }
 
@@ -1891,8 +1896,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         Date completedDate = Date.valueOf("2023-11-15");
         List<Integer> statusIds = List.of(1, 2);
 
-        int count = analysisService.getCountOfAnalysisCompletedOnByStatusId(
-        completedDate, statusIds);
+        int count = analysisService.getCountOfAnalysisCompletedOnByStatusId(completedDate, statusIds);
 
         // Expected count based on test data
         assertTrue(count >= 0);
@@ -1903,20 +1907,18 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         Date collectionDate = Date.valueOf("2023-11-15");
         Set<Integer> statusIds = new HashSet<>(List.of(3, 4)); // Excluded statuses
 
-        int count = analysisService.getCountOfAnalysisStartedOnExcludedByStatusId(
-        collectionDate, statusIds);
+        int count = analysisService.getCountOfAnalysisStartedOnExcludedByStatusId(collectionDate, statusIds);
 
         // Expected count based on test data (analyses with status 1 and 2)
         assertTrue(count >= 0);
-        }
+    }
 
-        @Test
-        public void getCountOfAnalysisStartedOnByStatusId_shouldReturnCorrectCount() {
+    @Test
+    public void getCountOfAnalysisStartedOnByStatusId_shouldReturnCorrectCount() {
         Date startedDate = Date.valueOf("2023-11-15");
         List<Integer> statusIds = List.of(1, 2);
 
-        int count = analysisService.getCountOfAnalysisStartedOnByStatusId(
-        startedDate, statusIds);
+        int count = analysisService.getCountOfAnalysisStartedOnByStatusId(startedDate, statusIds);
 
         // Expected count based on test data
         assertTrue(count >= 0);
@@ -1927,8 +1929,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         Date completedDate = Date.valueOf("2023-11-15");
         Set<Integer> statusIds = new HashSet<>(List.of(3, 4)); // Excluded statuses
 
-        List<Analysis> analyses = analysisService.getAnalysesResultEnteredOnExcludedByStatusId(
-        completedDate, statusIds);
+        List<Analysis> analyses = analysisService.getAnalysesResultEnteredOnExcludedByStatusId(completedDate,
+                statusIds);
 
         assertNotNull(analyses);
         for (Analysis analysis : analyses) {

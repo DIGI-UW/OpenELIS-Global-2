@@ -11,9 +11,9 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.jasypt.util.text.TextEncryptor;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.citystatezip.service.CityStateZipService;
+import org.openelisglobal.common.services.IReportTrackingService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.PluginAnalyzerService;
-import org.openelisglobal.common.services.IReportTrackingService;
 import org.openelisglobal.common.services.RequesterService;
 import org.openelisglobal.common.util.Versioning;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
@@ -33,8 +33,6 @@ import org.openelisglobal.referral.service.ReferralSetService;
 import org.openelisglobal.reports.service.WHONetReportServiceImpl;
 import org.openelisglobal.requester.service.RequesterTypeService;
 import org.openelisglobal.testresult.service.TestResultService;
-import org.openelisglobal.typeofsample.service.TypeOfSampleService;
-import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
@@ -74,7 +72,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.observationhistorytype", "org.openelisglobal.statusofsample", "org.openelisglobal.test",
         "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer", "org.openelisglobal.testanalyte",
         "org.openelisglobal.observationhistory", "org.openelisglobal.systemusersection",
-        "org.openelisglobal.siteinformation", "org.openelisglobal.config", "org.openelisglobal.analysis", 
+        "org.openelisglobal.siteinformation", "org.openelisglobal.config", "org.openelisglobal.analysis",
         "org.openelisglobal.typeofsample", "org.openelisglobal.qaevent", "org.openelisglobal.sampleproject",
         "org.openelisglobal.project", "org.openelisglobal.sampleqaevent" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),

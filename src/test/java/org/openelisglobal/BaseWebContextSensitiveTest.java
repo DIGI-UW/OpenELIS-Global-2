@@ -103,29 +103,30 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 DatabaseOperation.REFRESH.execute(connection, dataset);
             } catch (DatabaseUnitException e) {
                 logger.error("DBUnit error: {}", e.getMessage());
-            
+
                 // Get more detailed information about the error
                 if (e.getCause() != null) {
                     logger.error("Cause: {}", e.getCause().getMessage());
-                
+
                     // If it's a foreign key violation, get more details
                     if (e.getCause() instanceof SQLException) {
                         SQLException sqlEx = (SQLException) e.getCause();
                         logger.error("SQL State: {}, Error Code: {}", sqlEx.getSQLState(), sqlEx.getErrorCode());
-                    
+
                         // PostgreSQL specific error codes for foreign key violations
                         if ("23503".equals(sqlEx.getSQLState())) {
-                            logger.error("Foreign key violation detected. Check constraint relationships in your dataset.");
+                            logger.error(
+                                    "Foreign key violation detected. Check constraint relationships in your dataset.");
                         } else if ("23505".equals(sqlEx.getSQLState())) {
                             logger.error("Unique constraint violation. Duplicate key in your dataset.");
                         }
                     }
                 }
-            
+
                 // Log the problematic dataset file
                 logger.error("Error occurred with dataset file: {}", datasetFileName);
                 throw e;
-            } 
+            }
         } finally {
             if (inputStream != null) {
                 inputStream.close();

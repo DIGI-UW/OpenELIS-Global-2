@@ -773,8 +773,8 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
                     + "        anal.id = res.analysis_id and\n" + "        anal.test_id = test.id and\n"
                     + "        anal.sampitem_id = sampitem. id and\n" + "        sampitem.samp_id = samp.id\n"
                     + "        and anal.printed_date is not null";
-            return entityManager.unwrap(Session.class).createNativeQuery(sql).setParameter("sampleId", Integer.parseInt(sample.getId()))
-                    .list();
+            return entityManager.unwrap(Session.class).createNativeQuery(sql)
+                    .setParameter("sampleId", Integer.parseInt(sample.getId())).list();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in getAnalysesAlreadyReportedBySample()", e);
