@@ -85,6 +85,7 @@ function ReportByID(props) {
           <Column lg={16}>
             <Section>
               <Button
+                data-cy="printableVersion"
                 type="button"
                 onClick={handleSubmit}
                 disabled={!nationalId}

@@ -13,6 +13,10 @@ class PatientEntryPage {
   primaryPhone = "input#primaryPhone";
   dateOfBirth = "input#date-picker-default-id";
   savePatientBtn = "#submit";
+  enterPreviousLabNo = "input#labNumber";
+  enterAccessionNo = "input#accessionNumber";
+  startLabNo = "#startLabNo";
+  endLabNo = "endLabNo";
 
   constructor() {}
 
@@ -50,6 +54,22 @@ class PatientEntryPage {
 
   getMaleGenderRadioButton() {
     return cy.contains("span", "Male").click();
+  }
+
+  enterPreviousLabNumber(value) {
+    cy.get(this.enterPreviousLabNo).type(value, { force: true });
+  }
+
+  enterAccessionNumber(value) {
+    cy.get(this.enterAccessionNo).type(value, { force: true });
+  }
+
+  startLabNumber(value) {
+    cy.get(this.startLabNo).type(value, { force: true });
+  }
+
+  endLabNo(value) {
+    cy.get(this.endLabNo).type(value);
   }
 
   clickSearchPatientButton() {
