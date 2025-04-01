@@ -190,9 +190,7 @@ function ProgramManagement() {
         </Grid>
         <Form onSubmit={handleSubmit}>
           <Grid fullWidth={true}>
-
             <Column lg={8} md={4} sm={4}>
-
               <Select
                 id="additionalQuestionsSelect"
                 labelText="Program"
@@ -218,9 +216,7 @@ function ProgramManagement() {
               <br></br>
             </Column>
 
-
             <Column lg={8} md={4} sm={4}>
-
               <input
                 type="hidden"
                 name="program.id"
@@ -238,7 +234,6 @@ function ProgramManagement() {
             </Column>
 
             <Column lg={8} md={4} sm={4}>
-
               <TextInput
                 type="text"
                 name="program.questionnaireUUID"
@@ -254,7 +249,6 @@ function ProgramManagement() {
             </Column>
 
             <Column lg={8} md={4} sm={4}>
-
               <TextInput
                 type="text"
                 name="program.code"
@@ -265,9 +259,7 @@ function ProgramManagement() {
                 onChange={handleFieldChange}
               />
             </Column>
-<
             <Column lg={8} md={4} sm={4}>
-
               <Select
                 id="test_section"
                 labelText={intl.formatMessage({ id: "test.section.label" })}
@@ -292,7 +284,6 @@ function ProgramManagement() {
             </Column>
 
             <Column lg={8} md={4} sm={4}>
-
               <TextArea
                 name="additionalOrderEntryQuestions"
                 id="additionalOrderEntryQuestions"
@@ -308,7 +299,6 @@ function ProgramManagement() {
             </Column>
 
             <Column lg={8} md={4} sm={4}>
-
               {additionalOrderEntryQuestionsAreJson && (
                 <div>
                   <FormLabel>
@@ -329,7 +319,6 @@ function ProgramManagement() {
             </Column>
 
             <Column lg={3} md={3} sm={3}>
-
               <Button id="submitProgram" type="submit">
                 <FormattedMessage id="label.button.submit" />
                 {isSubmitting && <Loading small={true} />}
