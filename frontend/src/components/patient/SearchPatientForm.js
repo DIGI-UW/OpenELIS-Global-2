@@ -584,6 +584,7 @@ function SearchPatientForm(props) {
                         <TableCell>
                           {dataSourceName === "OpenElis" ? (
                             <RadioButton
+                              data-cy="radioButton"
                               name="radio-group"
                               onClick={patientSelected}
                               labelText=""
