@@ -269,6 +269,7 @@ const ReportByDate = (props) => {
               )}
 
               <Button
+                data-cy="printableVersion"
                 type="button"
                 onClick={handleSubmit}
                 disabled={

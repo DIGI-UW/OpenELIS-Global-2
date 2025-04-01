@@ -1,5 +1,7 @@
 {
   "pageTitle": "Results",
+  "resultNo": "38",
+  "referrals": "Referrals",
   "pcrTestMethod": "PCR",
   "stainTestMethod": "STAIN",
   "positiveResult": "Positive HIV1",
@@ -10,5 +12,6 @@
   "eiaTestMethod": "EIA",
   "invalidTestMethod": "Invalid",
   "testNotPerformed": "Test not performed",
-  "cedres": "CEDRES"
+  "cedres": "CEDRES",
+  "sample": "Some tests have been run on this sample"
 }

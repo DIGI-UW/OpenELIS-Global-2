@@ -2,11 +2,11 @@
 <dataset>
 
     <localization id="1" description="Test Description 1"
-        english="Hello" french="Bonjour" />
+        english="TB" french="TB" />
     <localization id="2" description="Test Description 2"
-        english="Goodbye" french="Au revoir" />
+        english="Urinalysis" french="Urinalysis" />
     <localization id="3" description="Test Description 3"
-        english="Thank you" french="Merci" />
+        english="blood test" french="Merci" />
 
     <unit_of_measure id="1" name="mg/dL"
         description="Milligrams per deciliter" />
@@ -103,5 +103,19 @@
         test_format_id="2" local_code="UA" sort_order="2147483646"
         name="Urinalysis" orderable="true" guid="def-456"
         name_localization_id="2" antimicrobial_resistance="false" />
+
+    <panel id="1" name="TB" description="Test panel 1" is_active="Y"
+        name_localization_id="1" loinc="12345" />
+    <panel id="2" name="TestPanel2"
+        description="Duplicate description" is_active="N"
+        name_localization_id="1" loinc="67890" />
+
+    <panel_item id="1" panel_id="1" sort_order="1"
+        test_local_abbrev="TLA1" method_name="therapy"
+        lastupdated="2025-03-26 10:00:00" test_name="Blood Test" test_id="1" />
+    <panel_item id="2" panel_id="2" sort_order="2"
+        test_local_abbrev="TLA2" method_name="imagining"
+        lastupdated="2025-03-26 11:00:00" test_name="Urine Test" test_id="2" />
+
 
 </dataset>

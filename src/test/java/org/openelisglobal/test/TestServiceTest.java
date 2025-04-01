@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
+import java.util.Locale;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -217,7 +218,6 @@ public class TestServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(2, tests.size());
         assertEquals("Blood Test", tests.get(0).getDescription());
         assertEquals("Urine Test", tests.get(1).getDescription());
-
     }
 
     @Test
@@ -232,6 +232,56 @@ public class TestServiceTest extends BaseWebContextSensitiveTest {
         org.openelisglobal.test.valueholder.Test test = testService.get("1");
         int sortOrder = testService.getNextAvailableSortOrderByTestSection(test);
         assertTrue(sortOrder > 0);
+    }
+
+    @Test
+    public void getTotalSearchedTestCount() {
+        String searchString = "Blood Test";
+        int totalSearchedTestCount = testService.getTotalSearchedTestCount(searchString);
+        assertTrue(totalSearchedTestCount > 0);
+    }
+
+    @Test
+    public void getUOM() {
+        org.openelisglobal.test.valueholder.Test test = testService.get("1");
+        String uom = testService.getUOM(test, false);
+        assertEquals("mg/dL", uom);
+    }
+
+    @Test
+    public void getActiveTestsByPanelName() {
+        List<org.openelisglobal.test.valueholder.Test> tests = testService.getActiveTestsByPanel("TB");
+        assertEquals(1, tests.size());
+        assertEquals("Blood Test", tests.get(0).getDescription());
+    }
+
+    @Test
+    public void getTestByName() {
+        org.openelisglobal.test.valueholder.Test test = testService.getTestByName("TB");
+        assertEquals("Blood Test", test.getDescription());
+    }
+
+    @Test
+    public void getActiveTestsByName() {
+        List<org.openelisglobal.test.valueholder.Test> tests = testService.getActiveTestsByName("TB");
+        assertEquals(1, tests.size());
+        assertEquals("Y", tests.get(0).getIsActive());
+    }
+
+    @Test
+    public void getActiveTestByLocalizedName() {
+        org.openelisglobal.test.valueholder.Test test = testService.getActiveTestByLocalizedName("TB", Locale.ENGLISH);
+        assertEquals("Y", test.getIsActive());
+        assertEquals("Blood Test", test.getDescription());
+    }
+
+    @Test
+    public void getTestByLocalizedName() {
+        org.openelisglobal.test.valueholder.Test test = testService.getTestByLocalizedName("TB", Locale.ENGLISH);
+        assertEquals("Blood Test", test.getDescription());
+        org.openelisglobal.test.valueholder.Test test2 = testService.getTestByLocalizedName("Urinalysis",
+                Locale.FRENCH);
+        assertEquals("Urine Test", test2.getDescription());
     }
 
 }
