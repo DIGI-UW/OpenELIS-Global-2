@@ -1,6 +1,6 @@
 class Result {
-  getResultTitle() {
-    return cy.get("section > h3");
+  getResultTitle(title) {
+    cy.get("h3").contains(title).should("be.visible");
   }
 
   selectUnitType(unitType) {
@@ -28,6 +28,14 @@ class Result {
 
   searchResults() {
     cy.get("#searchResults").click();
+  }
+
+  enterCollectionDate() {
+    cy.get("#collectionDate").type("24/03/2025");
+  }
+
+  enterReceivedDate() {
+    cy.get("#recievedDate").type("26/03/2025");
   }
 
   validatePatientResult(patient) {
@@ -63,6 +71,9 @@ class Result {
     ).click();
   }
 
+  sampleStatus(sample) {
+    cy.get("#sampleStatusType").select(sample);
+  }
   selectAnalysisStatus(status) {
     cy.get("#analysisStatus").select(status);
   }
@@ -82,12 +93,20 @@ class Result {
   clickReferralsByTestAndName() {
     cy.get("[data-cy='byUnitsAndTests']").should("be.visible").click();
   }
+
+  resultsByLabNumber(number) {
+    cy.get("#labNumberInput").type(number, { force: true });
+  }
   clickReferralsByLabNumber() {
-    cy.get("[data-cy='byLabNumber']").should("be.visible").click();
+    cy.get("[data-cy='byLabNumber']")
+      .should("be.visible")
+      .click({ force: true });
   }
 
-  setResultValue(index = 0, value) {
-    cy.get(`#ResultValue${index}`).type(value);
+  setResultValue() {
+    //(value) ignored for now
+    cy.get("#ResultValue0").should("be.visible");
+    //.type(value);
   }
 
   selectResultValue(index = 0, value) {

@@ -1,5 +1,4 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import "../../Style.css";
+import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import {
   Button,
   Column,
@@ -8,7 +7,6 @@ import {
   Form,
   Grid,
   Heading,
-  Link,
   Modal,
   Pagination,
   Search,
@@ -23,19 +21,20 @@ import {
   TableSelectRow,
   TextInput,
 } from "@carbon/react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
+import {
+  AlertDialog,
+  NotificationKinds,
+} from "../../common/CustomNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
+import "../../Style.css";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
-import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
-import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
 
 function DictionaryManagement() {
   const intl = useIntl();
@@ -65,6 +64,7 @@ function DictionaryManagement() {
 
   const [selectedRowId, setSelectedRowId] = useState(null);
   const [modifyButton, setModifyButton] = useState(true);
+  const [deactivateButton, setDeactivateButton] = useState(true);
   const [editMode, setEditMode] = useState(true);
 
   const [paging, setPaging] = useState(null);
@@ -293,8 +293,19 @@ function DictionaryManagement() {
           name="selectRowRadio"
           ariaLabel="selectRow"
           onSelect={() => {
+            const isActiveCell = row.cells.find((cell) =>
+              cell.id.endsWith(":isActive"),
+            );
+
+            let isActiveValue = "";
+            if (isActiveCell) {
+              isActiveValue = isActiveCell.value;
+            }
+
             setModifyButton(false);
             setSelectedRowId(row.id);
+
+            setDeactivateButton(isActiveValue !== "Y");
           }}
         />
       );
@@ -410,7 +421,7 @@ function DictionaryManagement() {
         ]}
       />
       <Grid fullWidth={true}>
-        <Column lg={16}>
+        <Column lg={16} md={8} sm={4}>
           <Section>
             <Heading>
               <FormattedMessage id="dictionary.label.modify" />
@@ -421,6 +432,8 @@ function DictionaryManagement() {
             <Form
               style={{
                 display: "flex",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+                gap: window.innerWidth < 768 ? "1rem" : "2rem",
                 justifyContent: "space-between",
                 alignItems: "center",
               }}
@@ -429,7 +442,10 @@ function DictionaryManagement() {
                 lg={16}
                 md={8}
                 sm={4}
-                style={{ display: "flex", gap: "10px" }}
+                style={{
+                  display: "flex",
+                  gap: "0.4rem",
+                }}
               >
                 <Button disabled={!editMode} onClick={() => setOpen(true)}>
                   {intl.formatMessage({
@@ -516,7 +532,7 @@ function DictionaryManagement() {
                   />
                 </Modal>
                 <Button
-                  disabled={modifyButton}
+                  disabled={modifyButton || deactivateButton}
                   onClick={handleDeactivation}
                   type="submit"
                 >
@@ -534,10 +550,16 @@ function DictionaryManagement() {
                   gap: "10px",
                 }}
               >
-                <Link>
+                <h4
+                  style={{
+                    margin: 0,
+                    fontSize: window.innerWidth < 768 ? "0.875rem" : "1rem",
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   Showing {fromRecordCount} - {toRecordCount} of{" "}
                   {totalRecordCount}
-                </Link>
+                </h4>
                 <div style={{ display: "flex", gap: "10px" }}>
                   <Button
                     hasIconOnly
