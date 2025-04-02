@@ -56,26 +56,22 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void persistData_shouldInsertNewAnalyzerAndMappings() throws Exception {
         cleanRowsInCurrentConnection(new String[] { "analyzer_test_map", "analyzer" });
-        // Create a new analyzer
+
         Analyzer newAnalyzer = createTestAnalyzer("Test Analyzer", "TEST-001", "TEST");
 
-        // Create new test mappings
         List<AnalyzerTestMapping> newMappings = new ArrayList<>();
         AnalyzerTestMapping mapping = new AnalyzerTestMapping();
         mapping.setAnalyzerTestName("New Test");
         mapping.setTestId("101");
         newMappings.add(mapping);
 
-        // Persist data
         analyzerService.persistData(newAnalyzer, newMappings, new ArrayList<>());
 
-        // Verify analyzer was inserted
         assertNotNull(newAnalyzer.getId());
         Analyzer savedAnalyzer = analyzerService.getAnalyzerByName("Test Analyzer");
         assertNotNull(savedAnalyzer);
         assertEquals("Test Analyzer", savedAnalyzer.getName());
 
-        // Verify mapping was created
         List<AnalyzerTestMapping> mappings = analyzerTestMappingService.getAll();
         boolean found = false;
         for (AnalyzerTestMapping m : mappings) {
@@ -90,28 +86,22 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void persistData_shouldUpdateExistingAnalyzerAndAddNewMappings() {
-        // Get existing analyzer
         Analyzer existingAnalyzer = analyzerService.getAnalyzerByName("Cobas 6800");
         assertNotNull(existingAnalyzer);
 
-        // Modify analyzer
         String originalLocation = existingAnalyzer.getLocation();
         existingAnalyzer.setLocation("Updated Location");
 
-        // Create new test mappings
         List<AnalyzerTestMapping> newMappings = new ArrayList<>();
         AnalyzerTestMapping mapping = new AnalyzerTestMapping();
         mapping.setAnalyzerTestName("Updated Test");
         mapping.setTestId("103");
         newMappings.add(mapping);
 
-        // Get existing mappings
         List<AnalyzerTestMapping> existingMappings = new ArrayList<>();
 
-        // Persist data
         analyzerService.persistData(existingAnalyzer, newMappings, existingMappings);
 
-        // Verify analyzer was updated
         Analyzer updatedAnalyzer = analyzerService.getAnalyzerByName("Cobas 6800");
         assertNotNull(updatedAnalyzer);
         assertEquals("Updated Location", updatedAnalyzer.getLocation());
@@ -131,11 +121,10 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void persistData_shouldNotDuplicateExistingMappings() {
-        // Get existing analyzer
+
         Analyzer existingAnalyzer = analyzerService.getAnalyzerByName("Cobas 6800");
         assertNotNull(existingAnalyzer);
 
-        // Create mapping that duplicates an existing one
         List<AnalyzerTestMapping> newMappings = new ArrayList<>();
         AnalyzerTestMapping mapping = new AnalyzerTestMapping();
         mapping.setAnalyzerTestName("Glucose Test");
@@ -143,17 +132,13 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
         mapping.setAnalyzerId(existingAnalyzer.getId());
         newMappings.add(mapping);
 
-        // Get existing mappings
         List<AnalyzerTestMapping> existingMappings = new ArrayList<>();
         existingMappings.add(mapping);
 
-        // Get initial count of mappings
         int initialCount = analyzerTestMappingService.getAll().size();
 
-        // Persist data
         analyzerService.persistData(existingAnalyzer, newMappings, existingMappings);
 
-        // Verify no new mappings were added (count should be the same)
         int newCount = analyzerTestMappingService.getAll().size();
         assertEquals(initialCount, newCount);
     }

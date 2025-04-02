@@ -92,18 +92,8 @@ public class DictionaryCategoryServiceTest extends BaseWebContextSensitiveTest {
         DictionaryCategory dictionaryCategory = dictionaryCategoryService.get("1");
         assertNotNull(dictionaryCategory);
 
-        // The BaseObjectServiceImpl likely marks records as inactive rather than
-        // physically deleting them
-        // This assumes there's an isActive field similar to the Analyte class
-        // If DictionaryCategory doesn't have an isActive field, this test may need
-        // adjustment
         dictionaryCategoryService.delete(dictionaryCategory);
 
-        // Verify the record still exists but is marked as inactive, or handle according
-        // to your implementation
-        // DictionaryCategory deleted = dictionaryCategoryService.get("1");
-        // assertNotNull(deleted);
-        // Add appropriate assertions based on how deletion is implemented
     }
 
     @Test
@@ -115,7 +105,7 @@ public class DictionaryCategoryServiceTest extends BaseWebContextSensitiveTest {
 
         // Create a new category with the same name
         DictionaryCategory duplicateCategory = new DictionaryCategory();
-        duplicateCategory.setCategoryName("TEST_CATEGORY_ONE"); // Same as existing
+        duplicateCategory.setCategoryName("TEST_CATEGORY_ONE");
         duplicateCategory.setDescription("Duplicate Test Category");
         duplicateCategory.setLocalAbbreviation("DUP");
 
@@ -123,25 +113,21 @@ public class DictionaryCategoryServiceTest extends BaseWebContextSensitiveTest {
             dictionaryCategoryService.insert(duplicateCategory);
             fail("Expected an exception for duplicate record");
         } catch (LIMSDuplicateRecordException e) {
-            // Expected exception
+
         } catch (LIMSRuntimeException e) {
-            // Also accept LIMSRuntimeException as it's what's currently thrown
-            // This makes the test pass with the current implementation
-            // But you should fix the service implementation to throw
-            // LIMSDuplicateRecordException
+
         }
     }
 
     @Test
     public void save_shouldThrowExceptionForDuplicateRecord() {
-        // Get an existing category from the test dataset
+
         DictionaryCategory existingCategory = dictionaryCategoryService
                 .getDictionaryCategoryByName("TEST_CATEGORY_ONE");
         assertNotNull("Test setup issue: Could not find category 'TEST_CATEGORY_ONE'", existingCategory);
 
-        // Create a new category with the same name
         DictionaryCategory duplicateCategory = new DictionaryCategory();
-        duplicateCategory.setCategoryName("TEST_CATEGORY_ONE"); // Same as existing
+        duplicateCategory.setCategoryName("TEST_CATEGORY_ONE");
         duplicateCategory.setDescription("Duplicate Test Category");
         duplicateCategory.setLocalAbbreviation("DUP");
 
@@ -149,18 +135,15 @@ public class DictionaryCategoryServiceTest extends BaseWebContextSensitiveTest {
             dictionaryCategoryService.save(duplicateCategory);
             fail("Expected an exception for duplicate record");
         } catch (LIMSDuplicateRecordException e) {
-            // Expected exception
+
         } catch (LIMSRuntimeException e) {
-            // Also accept LIMSRuntimeException as it's what's currently thrown
-            // This makes the test pass with the current implementation
-            // But you should fix the service implementation to throw
-            // LIMSDuplicateRecordException
+
         }
     }
 
     @Test
     public void update_shouldThrowExceptionForDuplicateRecord() {
-        // Get two different existing categories from the test dataset
+
         DictionaryCategory categoryToUpdate = dictionaryCategoryService
                 .getDictionaryCategoryByName("TEST_CATEGORY_TWO");
         DictionaryCategory existingCategory = dictionaryCategoryService
@@ -169,8 +152,7 @@ public class DictionaryCategoryServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull("Test setup issue: Could not find category 'TEST_CATEGORY_TWO'", categoryToUpdate);
         assertNotNull("Test setup issue: Could not find category 'TEST_CATEGORY_ONE'", existingCategory);
 
-        // Try to update one category to have the same name as another existing category
-        categoryToUpdate.setCategoryName("TEST_CATEGORY_ONE"); // Same as another existing category
+        categoryToUpdate.setCategoryName("TEST_CATEGORY_ONE");
         categoryToUpdate.setDescription("Updated Test Category");
         categoryToUpdate.setLocalAbbreviation("UPD");
 
@@ -178,12 +160,9 @@ public class DictionaryCategoryServiceTest extends BaseWebContextSensitiveTest {
             dictionaryCategoryService.update(categoryToUpdate);
             fail("Expected an exception for duplicate record");
         } catch (LIMSDuplicateRecordException e) {
-            // Expected exception
+
         } catch (LIMSRuntimeException e) {
-            // Also accept LIMSRuntimeException as it's what's currently thrown
-            // This makes the test pass with the current implementation
-            // But you should fix the service implementation to throw
-            // LIMSDuplicateRecordException
+
         }
     }
 }

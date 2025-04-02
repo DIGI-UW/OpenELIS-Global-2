@@ -47,4 +47,31 @@ public class SchedulerConfigTest {
         assertEquals(default_period_millis, result);
     }
 
+    @Test
+    public void getResultsResendTimeMillisTestCustomValue() {
+        final String customValue = "45";
+
+        SchedulerConfig schedulerConfig = new SchedulerConfig() {
+            long period = 30L;
+
+            @Override
+            public long getResultsResendTimeMillis() {
+                String reportInterval = customValue;
+                if (reportInterval != null && reportInterval.trim().isEmpty()) {
+                    try {
+                        period = Long.parseLong(reportInterval);
+                    } catch (NumberFormatException E) {
+
+                    }
+                }
+                return period * 1000 * 60;
+
+            }
+        };
+        long expected_result_millis = 45L * 1000 * 60;
+        long actual = schedulerConfig.getResultsResendTimeMillis();
+        assertEquals(expected_result_millis, actual);
+
+    }
+
 }

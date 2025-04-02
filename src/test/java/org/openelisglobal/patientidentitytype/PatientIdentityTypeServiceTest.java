@@ -62,7 +62,7 @@ public class PatientIdentityTypeServiceTest extends BaseWebContextSensitiveTest 
     @Test(expected = LIMSDuplicateRecordException.class)
     public void insert_shouldThrowExceptionForDuplicatePatientIdentityType() {
         PatientIdentityType patientIdentityType = new PatientIdentityType();
-        patientIdentityType.setIdentityType("NATIONAL"); // Already exists
+        patientIdentityType.setIdentityType("NATIONAL");
         patientIdentityType.setDescription("Duplicate National ID");
         patientIdentityTypeService.insert(patientIdentityType);
     }
@@ -80,7 +80,7 @@ public class PatientIdentityTypeServiceTest extends BaseWebContextSensitiveTest 
     @Test(expected = LIMSDuplicateRecordException.class)
     public void save_shouldThrowExceptionForDuplicatePatientIdentityType() {
         PatientIdentityType patientIdentityType = new PatientIdentityType();
-        patientIdentityType.setIdentityType("NATIONAL"); // Already exists
+        patientIdentityType.setIdentityType("NATIONAL");
         patientIdentityType.setDescription("Duplicate Passport");
         patientIdentityTypeService.save(patientIdentityType);
     }
@@ -101,7 +101,7 @@ public class PatientIdentityTypeServiceTest extends BaseWebContextSensitiveTest 
     @Test(expected = LIMSDuplicateRecordException.class)
     public void update_shouldThrowExceptionForDuplicatePatientIdentityType() {
         PatientIdentityType patientIdentityType = patientIdentityTypeService.get("9");
-        patientIdentityType.setIdentityType("NATIONAL"); // Already exists in record with id="1"
+        patientIdentityType.setIdentityType("NATIONAL");
         patientIdentityTypeService.update(patientIdentityType);
     }
 

@@ -63,7 +63,7 @@ public class ObservationHistoryServiceTest extends BaseWebContextSensitiveTest {
     public void insert_shouldInsertObservationHistory() throws Exception {
         cleanRowsInCurrentConnection(new String[] { "observation_history" });
         ObservationHistory observationHistory = new ObservationHistory();
-        // observationHistory.setId("5");
+
         observationHistory.setPatientId("4");
         observationHistory.setSampleId("4");
         observationHistory.setObservationHistoryTypeId("4");
@@ -110,10 +110,10 @@ public class ObservationHistoryServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getObservationHistoriesBySampleItemId_shouldReturnObservationHistoriesBySampleItemId() {
-        // Assuming sample item ID is stored in the sample_item_id field
+
         List<ObservationHistory> observationHistories = observationHistoryService
                 .getObservationHistoriesBySampleItemId("1");
-        assertTrue(observationHistories.isEmpty()); // Update this based on your test data
+        assertTrue(observationHistories.isEmpty());
     }
 
     @Test
@@ -126,10 +126,9 @@ public class ObservationHistoryServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getObservationsByTypeAndValue_shouldReturnObservationsByTypeAndValue() {
-        // Initialize the service to populate the observationTypeToIdMap
+
         String typeId = observationHistoryService.getObservationTypeIdForType(ObservationType.REQUEST_DATE);
 
-        // Only run this test if the observation type exists in the database
         if (typeId != null) {
             List<ObservationHistory> observationHistories = observationHistoryService
                     .getObservationsByTypeAndValue(ObservationType.REQUEST_DATE, "Engineer");
@@ -139,27 +138,27 @@ public class ObservationHistoryServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getValueForSample_shouldReturnValueForSample() {
-        // Initialize the service to populate the observationTypeToIdMap
+
         String typeId = observationHistoryService.getObservationTypeIdForType(ObservationType.REQUEST_DATE);
 
         String value = observationHistoryService.getValueForSample(ObservationType.REQUEST_DATE, "3");
-        // assertNotNull(value);
+
         assertEquals("Engineer", value);
     }
 
     @Test
     public void getMostRecentValueForPatient_shouldReturnMostRecentValueForPatient() {
-        // Initialize the service to populate the observationTypeToIdMap
+
         String typeId = observationHistoryService.getObservationTypeIdForType(ObservationType.REQUEST_DATE);
 
         String value = observationHistoryService.getMostRecentValueForPatient(ObservationType.REQUEST_DATE, "3");
-        // assertNotNull(value);
+
         assertEquals("Engineer", value);
     }
 
     @Test
     public void getObservationForSample_shouldReturnObservationForSample() {
-        // Initialize the service to populate the observationTypeToIdMap
+
         String typeId = observationHistoryService.getObservationTypeIdForType(ObservationType.REQUEST_DATE);
 
         ObservationHistory observation = observationHistoryService.getObservationForSample(ObservationType.REQUEST_DATE,
@@ -170,7 +169,7 @@ public class ObservationHistoryServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getLastObservationForPatient_shouldReturnLastObservationForPatient() {
-        // Initialize the service to populate the observationTypeToIdMap
+
         String typeId = observationHistoryService.getObservationTypeIdForType(ObservationType.REQUEST_DATE);
 
         ObservationHistory observation = observationHistoryService
