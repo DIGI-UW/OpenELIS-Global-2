@@ -1,7 +1,24 @@
 <?xml version='1.0' encoding='UTF-8'?>
 
 <dataset>
-
+    <!-- Status of Sample -->
+    <status_of_sample id="1"
+        description="Sample Description 1" code="1" status_type="SampleType1"
+        lastupdated="2023-11-15 14:00:00" name="Status 1"
+        display_key="sample_display_key_1" is_active="Y" />
+    <status_of_sample id="2"
+        description="Sample Description 2" code="1" status_type="SampleType2"
+        lastupdated="2023-11-15 14:00:00" name="Status 2"
+        display_key="sample_display_key_2" is_active="Y" />
+    <status_of_sample id="12"
+        description="The order is non-conforming" code="1" status_type="ORDER"
+        lastupdated="2023-11-15 14:00:00" name="NonConforming"
+        display_key="status.sample.nonConforming" is_active="N" />
+    <status_of_sample id="13"
+        description="The order is non-conforming" code="1"
+        status_type="ANALYSIS" lastupdated="2023-11-15 14:00:00"
+        name="NonConforming" display_key="status.analysis.nonConforming"
+        is_active="N" />
 
     <!-- System Users -->
     <system_user id="1" login_name="testUser" last_name="Doe"
@@ -186,6 +203,12 @@
         lastupdated="2023-12-01 12:00:00" />
     <sample_qaevent id="2" sample_id="2" sampleitem_id="2"
         lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Document Type -->
+    <document_type id="1" name="Test Type 1"
+        description="Test Document Type 1" lastupdated="2024-03-06 10:00:00" />
+    <document_type id="4" name="Test Type 2"
+        description="Test Document Type 2" lastupdated="2024-03-06 10:00:00" />
 
     <!-- Document Track -->
     <document_track id="1" document_type_id="4" table_id="1"
