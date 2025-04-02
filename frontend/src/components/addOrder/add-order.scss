@@ -61,6 +61,12 @@
   padding: 10px;
 }
 
+@media (max-width: 600px) {
+  .ProgressIndicator {
+    width: 100%;
+  }
+}
+
 .navigationButtonsLayout {
   width: 100%;
 }
