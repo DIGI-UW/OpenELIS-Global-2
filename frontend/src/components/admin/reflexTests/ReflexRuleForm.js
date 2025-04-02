@@ -417,7 +417,7 @@ function ReflexRule() {
 
   const validateTextInPut = (value, type) => {
     if (type === "N") {
-      if (value.match(/^-?\d+$/)) {
+      if (value.match(/^\d+$/)) {
         //valid integer (positive or negative)
         return false;
       } else if (value.match(/^\d+\.\d+$/)) {
@@ -432,7 +432,7 @@ function ReflexRule() {
 
   const addTextInPutError = (value, type, fieldName) => {
     if (type === "N") {
-      if (value.match(/^-?\d+$/)) {
+      if (value.match(/^\d+$/)) {
         //valid integer (positive or negative)
         clearError(fieldName);
       } else if (value.match(/^\d+\.\d+$/)) {
