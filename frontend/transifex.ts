@@ -6,9 +6,9 @@ const token = process.env.API_TOKEN;
 transifexApi.setup({ auth: token });
 
 const fetchOrganizations = async () => {
-  const organizations = transifexApi.Organization.list();
-  await organizations.fetch();
-  console.log(organizations);
+  const orgs = transifexApi.Organization.list();
+  await orgs.fetch();
+  console.log(orgs);
 };
 
 fetchOrganizations();

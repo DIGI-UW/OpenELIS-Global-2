@@ -140,15 +140,15 @@ var token = process.env.API_TOKEN;
 api_1.transifexApi.setup({ auth: token });
 var fetchOrganizations = function () {
   return __awaiter(void 0, void 0, void 0, function () {
-    var organizations;
+    var orgs;
     return __generator(this, function (_a) {
       switch (_a.label) {
         case 0:
-          organizations = api_1.transifexApi.Organization.list();
-          return [4 /*yield*/, organizations.fetch()];
+          orgs = api_1.transifexApi.Organization.list();
+          return [4 /*yield*/, orgs.fetch()];
         case 1:
           _a.sent();
-          console.log(organizations);
+          console.log(orgs);
           return [2 /*return*/];
       }
     });
