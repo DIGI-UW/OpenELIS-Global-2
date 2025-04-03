@@ -1,6 +1,7 @@
 //This handles all pages of the admin
-import LabNumberManagementPage from "./LabNumberManagementPage";
+import BillingMenuManagementPage from "./BillingMenuManagementPage";
 import GlobalMenuConfigPage from "./GlobalMenuConfigPage";
+import LabNumberManagementPage from "./LabNumberManagementPage";
 import ProgramEntryPage from "./ProgramEntryPage";
 import ProviderManagementPage from "./ProviderManagementPage";
 
@@ -44,6 +45,17 @@ class AdminPage {
     cy.get("[data-cy='programEntry']").click();
 
     return new ProgramEntryPage();
+  }
+
+  goToBillingMenuManagementPage() {
+    // cy.get("[data-testid='menuConfig']").click();
+    cy.contains("span", "Menu Configuration").click();
+
+    cy.get("[data-cy='billingMenuMgmnt']").should("be.visible");
+    cy.get("[data-cy='billingMenuMgmnt']").click();
+    cy.url().should("include", "#billingMenuManagement");
+    cy.contains("Billing Menu Management").should("be.visible");
+    return new BillingMenuManagementPage();
   }
 }
 

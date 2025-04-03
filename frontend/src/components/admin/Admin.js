@@ -1,40 +1,23 @@
-import React, { useState, useEffect } from "react";
-import config from "../../config.json";
-import { FormattedMessage, useIntl, injectIntl } from "react-intl";
-import "../Style.css";
-import ReflexTestManagement from "./reflexTests/ReflexTestManagement";
-import ProgramManagement from "./program/ProgramManagement";
-import LabNumberManagement from "./labNumber/LabNumberManagement";
 import {
-  GlobalMenuManagement,
-  BillingMenuManagement,
-  NonConformityMenuManagement,
-  PatientMenuManagement,
-  StudyMenuManagement,
-  DictionaryManagement,
-} from "./menu";
-import {
-  Microscope,
-  CharacterWholeNumber,
-  TableOfContents,
-  ChartBubble,
-  Catalog,
-  Settings,
-  ListDropdown,
-  CicsSystemGroup,
-  QrCode,
-  ContainerSoftware,
-  BootVolumeAlt,
-  Report,
-  Bullhorn,
-  User,
   BatchJob,
-  ResultNew,
+  BootVolumeAlt,
+  Bullhorn,
+  Catalog,
+  CharacterWholeNumber,
+  ChartBubble,
+  CicsSystemGroup,
+  ContainerSoftware,
+  ListDropdown,
+  Microscope,
   Popup,
+  QrCode,
+  Report,
+  ResultNew,
   Search,
+  Settings,
+  TableOfContents,
+  User,
 } from "@carbon/icons-react";
-import PathRoute from "../utils/PathRoute";
-import CalculatedValue from "./calculatedValue/CalculatedValueForm";
 import {
   SideNav,
   SideNavItems,
@@ -42,53 +25,69 @@ import {
   SideNavMenu,
   SideNavMenuItem,
 } from "@carbon/react";
-import { CommonProperties } from "./menu/CommonProperties";
-import ConfigMenuDisplay from "./generalConfig/common/ConfigMenuDisplay";
-import ProviderMenu from "./ProviderMenu/ProviderMenu";
-import BarcodeConfiguration from "./barcodeConfiguration/BarcodeConfiguration";
-import AnalyzerTestName from "./analyzerTestName/AnalyzerTestName.js";
-import PluginList from "./pluginFile/PluginFile.js";
-import ResultReportingConfiguration from "./ResultReportingConfiguration/ResultReportingConfiguration.js";
-import TestCatalog from "./testManagement/ViewTestCatalog.js";
+import React, { useEffect, useState } from "react";
+import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import config from "../../config.json";
 import PushNotificationPage from "../notifications/PushNotificationPage.jsx";
-import OrganizationManagement from "./OrganizationManagement/OrganizationManagement";
-import OrganizationAddModify from "./OrganizationManagement/OrganizationAddModify";
-import UserManagement from "./userManagement/UserManagement";
-import UserAddModify from "./userManagement/UserAddModify";
-import ManageMethod from "./testManagement/ManageMethod.js";
+import "../Style.css";
+import PathRoute from "../utils/PathRoute";
+import AnalyzerTestName from "./analyzerTestName/AnalyzerTestName.js";
+import BarcodeConfiguration from "./barcodeConfiguration/BarcodeConfiguration";
 import BatchTestReassignmentAndCancelation from "./BatchTestReassignmentAndCancellation/BatchTestReassignmentAndCancelation.js";
-import TestNotificationConfigMenu from "./testNotificationConfigMenu/TestNotificationConfigMenu.js";
-import TestNotificationConfigEdit from "./testNotificationConfigMenu/TestNotificationConfigEdit.js";
+import CalculatedValue from "./calculatedValue/CalculatedValueForm";
+import ConfigMenuDisplay from "./generalConfig/common/ConfigMenuDisplay";
+import LabNumberManagement from "./labNumber/LabNumberManagement";
+import {
+  BillingMenuManagement,
+  DictionaryManagement,
+  GlobalMenuManagement,
+  NonConformityMenuManagement,
+  PatientMenuManagement,
+  StudyMenuManagement,
+} from "./menu";
+import { CommonProperties } from "./menu/CommonProperties";
+import OrganizationAddModify from "./OrganizationManagement/OrganizationAddModify";
+import OrganizationManagement from "./OrganizationManagement/OrganizationManagement";
+import PluginList from "./pluginFile/PluginFile.js";
+import ProgramManagement from "./program/ProgramManagement";
+import ProviderMenu from "./ProviderMenu/ProviderMenu";
+import ReflexTestManagement from "./reflexTests/ReflexTestManagement";
+import ResultReportingConfiguration from "./ResultReportingConfiguration/ResultReportingConfiguration.js";
 import SearchIndexManagement from "./searchIndexManagement/SearchIndexManagement";
-import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu.js";
+import ManageMethod from "./testManagement/ManageMethod.js";
+import TestCatalog from "./testManagement/ViewTestCatalog.js";
+import MethodCreate from "./testManagementConfigMenu/MethodCreate.js";
+import MethodRenameEntry from "./testManagementConfigMenu/MethodRenameEntry.js";
+import PanelCreate from "./testManagementConfigMenu/PanelCreate.js";
+import PanelManagement from "./testManagementConfigMenu/PanelManagement.js";
+import PanelOrder from "./testManagementConfigMenu/PanelOrder.js";
+import PanelRenameEntry from "./testManagementConfigMenu/PanelRenameEntry.js";
+import PanelTestAssign from "./testManagementConfigMenu/PanelTestAssign.js";
 import ResultSelectListAdd from "./testManagementConfigMenu/ResultSelectListAdd.js";
+import SampleTypeCreate from "./testManagementConfigMenu/SampleTypeCreate.js";
+import SampleTypeManagement from "./testManagementConfigMenu/SampleTypeManagement.js";
+import SampleTypeOrder from "./testManagementConfigMenu/SampleTypeOrder.js";
+import SampleTypeRenameEntry from "./testManagementConfigMenu/SampleTypeRenameEntry.js";
+import SampleTypeTestAssign from "./testManagementConfigMenu/SampleTypeTestAssign.js";
+import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry.js";
+import TestActivation from "./testManagementConfigMenu/TestActivation.js";
 import TestAdd from "./testManagementConfigMenu/TestAdd.js";
+import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu.js";
 import TestModifyEntry from "./testManagementConfigMenu/TestModifyEntry.js";
 import TestOrderability from "./testManagementConfigMenu/TestOrderability.js";
-import MethodManagement from "./testManagementConfigMenu/MethodManagement.js";
-import MethodCreate from "./testManagementConfigMenu/MethodCreate.js";
-import TestSectionManagement from "./testManagementConfigMenu/TestSectionManagement.js";
-import TestSectionCreate from "./testManagementConfigMenu/TestSectionCreate.js";
-import TestSectionOrder from "./testManagementConfigMenu/TestSectionOrder.js";
-import SampleTypeManagement from "./testManagementConfigMenu/SampleTypeManagement.js";
-import TestSectionTestAssign from "./testManagementConfigMenu/TestSectionTestAssign.js";
-import SampleTypeOrder from "./testManagementConfigMenu/SampleTypeOrder.js";
-import SampleTypeCreate from "./testManagementConfigMenu/SampleTypeCreate.js";
-import SampleTypeTestAssign from "./testManagementConfigMenu/SampleTypeTestAssign.js";
-import UomManagement from "./testManagementConfigMenu/UomManagement.js";
-import UomCreate from "./testManagementConfigMenu/UomCreate.js";
-import PanelManagement from "./testManagementConfigMenu/PanelManagement.js";
-import PanelCreate from "./testManagementConfigMenu/PanelCreate.js";
-import PanelOrder from "./testManagementConfigMenu/PanelOrder.js";
-import PanelTestAssign from "./testManagementConfigMenu/PanelTestAssign.js";
-import TestActivation from "./testManagementConfigMenu/TestActivation.js";
 import TestRenameEntry from "./testManagementConfigMenu/TestRenameEntry.js";
-import PanelRenameEntry from "./testManagementConfigMenu/PanelRenameEntry.js";
-import SampleTypeRenameEntry from "./testManagementConfigMenu/SampleTypeRenameEntry.js";
+import TestSectionCreate from "./testManagementConfigMenu/TestSectionCreate.js";
+import TestSectionManagement from "./testManagementConfigMenu/TestSectionManagement.js";
+import TestSectionOrder from "./testManagementConfigMenu/TestSectionOrder.js";
 import TestSectionRenameEntry from "./testManagementConfigMenu/TestSectionRenameEntry.js";
+import TestSectionTestAssign from "./testManagementConfigMenu/TestSectionTestAssign.js";
+import UomCreate from "./testManagementConfigMenu/UomCreate.js";
+import UomManagement from "./testManagementConfigMenu/UomManagement.js";
 import UomRenameEntry from "./testManagementConfigMenu/UomRenameEntry.js";
-import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry.js";
-import MethodRenameEntry from "./testManagementConfigMenu/MethodRenameEntry.js";
+import TestNotificationConfigEdit from "./testNotificationConfigMenu/TestNotificationConfigEdit.js";
+import TestNotificationConfigMenu from "./testNotificationConfigMenu/TestNotificationConfigMenu.js";
+import UserAddModify from "./userManagement/UserAddModify";
+import UserManagement from "./userManagement/UserManagement";
 
 function Admin() {
   const intl = useIntl();
@@ -183,7 +182,10 @@ function Admin() {
             >
               <FormattedMessage id="sidenav.label.admin.menu.global" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#billingMenuManagement">
+            <SideNavMenuItem
+              data-cy="billingMenuMgmnt"
+              href="#billingMenuManagement"
+            >
               <FormattedMessage id="sidenav.label.admin.menu.billing" />
             </SideNavMenuItem>
             <SideNavMenuItem href="#nonConformityMenuManagement">
