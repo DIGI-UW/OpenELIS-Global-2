@@ -1,4 +1,5 @@
 name: OpenELis Frontend QA framework workflow
+
 on:
   push:
     branches: [develop]
@@ -61,15 +62,20 @@ jobs:
         run: npm install react-scripts@5.0.1 -g
         working-directory: frontend
 
+      - name: Install Google Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
       - name: Check Format
         run: npx prettier ./ --check
         working-directory: frontend  
 
       - name: Build OpenELIS Images and Run containers
-        run: docker compose -f build.docker-compose.yml up -d  --build --wait --wait-timeout 600
-   
-      - name: Run Frontend Qa Workflow
-        run: npx cypress run –headless
+        run: docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600
+
+      - name: Run Frontend QA Workflow (Headless Chrome)
+        run: npx cypress run --browser chrome --headless
         working-directory: frontend
 
       - name: Dump docker logs on failure

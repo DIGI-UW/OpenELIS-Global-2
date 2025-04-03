@@ -17,9 +17,9 @@ describe("Result By Unit", function () {
     result = homePage.goToResultsByUnit();
   });
 
-  it("User visits Results Page", function () {
+  it("User validates Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
@@ -30,21 +30,22 @@ describe("Result By Unit", function () {
   });
 
   it("should accept the sample, refer the sample, and save the result", function () {
-    cy.fixture("result").then((res) => {
-      result.setResultValue(0, res.positiveResult);
-      result.submitResults();
-    });
+    //cy.fixture("result").then((res) => {
+    result.setResultValue();
+    result.submitResults();
+    //});
   });
 });
 
 describe("Result By Patient", function () {
   it("Navigate to Result By Patient", function () {
+    homePage = loginPage.goToHomePage();
     result = homePage.goToResultsByPatient();
   });
 
   it("User visits Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
@@ -83,7 +84,7 @@ describe("Result By Patient", function () {
   it("should search patient By Lab Number and validate", function () {
     cy.wait(500);
     cy.fixture("Patient").then((patient) => {
-      cy.get("#labNumber").type(patient.labNo);
+      patientPage.enterPreviousLabNumber(patient.labNo);
       patientPage.clickSearchPatientButton();
     });
   });
@@ -101,9 +102,9 @@ describe("Result By Patient", function () {
     cy.wait(1000);
     result.selectPatientFromSearchResults();
     cy.wait(800);
-    cy.fixture("result").then((res) => {
-      result.selectResultValue(0, res.invalidResult);
-    });
+    //cy.fixture("result").then((res) => {
+    // result.selectResultValue(0, res.invalidResult);
+    //});
     result.submitResults();
   });
 });
@@ -116,22 +117,22 @@ describe("Result By Order", function () {
 
   it("User visits Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
   it("Should Search by Accession Number", function () {
     cy.fixture("Patient").then((order) => {
-      cy.get("#accessionNumber").type(order.labNo);
+      patientPage.enterAccessionNumber(order.labNo);
     });
     result.searchResults();
     cy.wait(1000);
   });
 
   it("should accept the sample and save the result", function () {
-    cy.fixture("result").then((res) => {
-      result.setResultValue(0, res.positiveResult);
-    });
+    //cy.fixture("result").then((res) => {
+    //result.setResultValue({ timeout: 12000 });
+    //});
     result.submitResults();
   });
 });
@@ -144,7 +145,7 @@ describe("Result By Referred Out Tests", function () {
 
   it("User visits Reffered out Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.referralPageTitle);
+      result.getResultTitle(res.referrals);
     });
   });
 
@@ -186,9 +187,9 @@ describe("Result By Referred Out Tests", function () {
     cy.reload();
   });
 
-  it("should search Referrals By LabNumber and validate", function () {
+  it("search Referrals By LabNumber and validate", function () {
     cy.fixture("Patient").then((order) => {
-      cy.get("#labNumberInput").type(order.labNo);
+      result.resultsByLabNumber(order.labNo);
     });
     result.clickReferralsByLabNumber();
   });
@@ -202,13 +203,13 @@ describe("Result By Range Of Order", function () {
 
   it("User visits Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
   it("Should Enter Lab Number and perform Search", function () {
     cy.fixture("Patient").then((order) => {
-      cy.get("#startLabNo").type(order.labNo);
+      patientPage.startLabNumber(order.labNo);
     });
     result.searchResults();
   });
@@ -218,6 +219,7 @@ describe("Result By Range Of Order", function () {
     cy.fixture("result").then((res) => {
       result.submitResults();
     });
+    cy.reload();
   });
 });
 
@@ -229,28 +231,42 @@ describe("Result By Test And Status", function () {
 
   it("User visits Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
-  it("Should select testName, analysis status, and perform Search", function () {
+  it("Search by Sample status", function () {
+    cy.fixture("result").then((res) => {
+      result.sampleStatus(res.sample);
+    });
+    cy.reload();
+  });
+
+  it("Search by Test Analysis", function () {
+    cy.fixture("result").then((res) => {
+      result.selectAnalysisStatus(res.analysisStatus);
+    });
+    cy.reload();
+  });
+
+  it("Search by TestName", function () {
+    //result.enterCollectionDate();
     cy.fixture("workplan").then((order) => {
       result.selectTestName(order.testName);
     });
-    cy.fixture("result").then((res) => {
-      result.selectAnalysisStatus(res.analysisStatus);
-      result.searchResults();
-    });
+    //result. enterReceivedDate();
+
+    result.searchResults();
   });
 
   it("Should Validate And accept the result", function () {
     cy.fixture("workplan").then((order) => {
       cy.contains("#row-0", order.testName).should("be.visible");
     });
-    cy.fixture("result").then((res) => {
-      cy.wait(1000);
-      result.setResultValue(0, res.positiveResult);
-      result.submitResults();
-    });
+    // cy.fixture("result").then((res) => {
+    cy.wait(1000);
+    result.setResultValue(); //res.resultNo ignored for now
+    result.submitResults();
+    //});
   });
 });

@@ -45,8 +45,7 @@ class NonConform {
   clickCheckbox() {
     cy.get("[data-testid='nce-sample-checkbox']")
       .should("be.visible")
-      .first()
-      .click({ force: true });
+      .check({ force: true });
   }
 
   clickGoToNceFormButton() {
@@ -113,7 +112,9 @@ class NonConform {
   }
 
   enterProposedCorrectiveAction(action) {
-    cy.get("#text-area-corrective").type(action, { force: true });
+    cy.get("#text-area-corrective")
+      .should("not.be.disabled")
+      .type(action, { force: true });
   }
 
   enterDateCompleted(date) {
@@ -121,29 +122,21 @@ class NonConform {
   }
 
   selectActionType() {
-    cy.get("[data-testid='nce-action-checkbox']").click({ force: true });
+    cy.get(
+      "div.cds--sm\:col-span-3:nth-child(30) > div:nth-child(1) > input:nth-child(1)",
+    ).check({ force: true });
   }
 
   checkResolution() {
-    cy.contains("span", "Yes").click();
+    cy.contains("#yes\\.option").click();
   }
 
   clickRadioButtonNCE() {
-    // Wait for the table to be visible first
-    cy.get("table").should("be.visible");
-
-    // Wait for at least one radio button to be present
-    cy.get('input[type="radio"][name="radio-group"]').should("exist");
-
-    // Click the first radio button with a more specific selector
-    return cy
-      .get("tbody tr")
-      .first()
-      .within(() => {
-        cy.get('input[type="radio"][name="radio-group"]')
-          .should("exist")
-          .click({ force: true });
-      });
+    cy.get(
+      "tbody:nth-child(2) > tr:nth-child(1) > td:nth-child(1) > div:nth-child(1) > label:nth-child(2) > span:nth-child(1)",
+    )
+      //.first()
+      .click();
   }
 
   enterDateCompleted0(date) {
