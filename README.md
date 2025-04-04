@@ -1,13 +1,14 @@
 # OpenELIS Global 2
 
-This is the OpenELIS rewrite onto Java Spring, and with all new technology and
-features. Please vist our [website](http://www.openelis-global.org/) for more
-information.
+This is the OpenELIS rewrite onto Java Spring, and with all new technology and features. 
 
-You can find more information on how to set up OpenELIS at our
-[docs page](http://docs.openelis-global.org/)
+Please visit our [website](http://www.openelis-global.org/) for more information.
 
-### CI Status
+You can find detailed setup instructions on our [docs page](http://docs.openelis-global.org/).
+
+---
+
+## ✅ CI Status
 
 [![Maven Build Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/ci.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/ci.yml)
 ![Coverage](https://raw.githubusercontent.com/DIGI-UW/OpenELIS-Global-2/refs/heads/gh-pages/badges/jacoco.svg)
@@ -16,118 +17,125 @@ You can find more information on how to set up OpenELIS at our
 
 [![End to End QA Tests Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend-qa.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend-qa.yml)
 
-[![End to End QA Tests Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml)
+[![Installer Build Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml)
 
-### Requirements
+---
 
-1. You need to install [Docker](https://docs.docker.com/engine/install/) and
-   [Docker compose](https://docs.docker.com/compose/install/)
+## 🛠 Requirements
 
-1. For development , you need to install [Java](https://openjdk.org/install/) 21
+1. Install [Docker](https://docs.docker.com/engine/install/)
+2. Install [Docker Compose](https://docs.docker.com/compose/install/)
+3. Install [Java 21](https://openjdk.org/install/) for development
 
-### For Offline Installation Using the OpenELIS Global2 Installer
+---
 
-Download the OpenELIS Global Installer for each Release from the
-[Release Assets](https://github.com/DIGI-UW/OpenELIS-Global-2/releases)
+## 💿 Offline Installation Using the OpenELIS Global2 Installer
 
-see full
-[installtion instructions](https://docs.openelis-global.org/en/latest/install/)
-for Offline Installation
+Download the installer from the [Release Assets](https://github.com/DIGI-UW/OpenELIS-Global-2/releases).
 
-### For running OpenELIS Global2 in Docker with default Settings out of the Box
+Full instructions are available in the [installation guide](https://docs.openelis-global.org/en/latest/install/).
 
-see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
+---
 
-### For Running OpenELIS Global2 from Source Code
+## 🐳 Running in Docker (Out of the Box)
 
-#### Running OpenELIS Global2 using docker compose With published docker images on dockerhub
+See [OpenELIS-Docker Setup](https://github.com/DIGI-UW/openelis-docker)
 
-    docker-compose up -d
+### Using published Docker images:
 
-#### Running OpenELIS Global2 using docker compose with docker images built directly from the source code
+```bash
+docker-compose up -d
+```
 
-    docker-compose -f build.docker-compose.yml up -d --build
+### Building Docker images from source:
 
-#### Running OpenELIS Global2 with docker compose For Development
+```bash
+docker-compose -f build.docker-compose.yml up -d --build
+```
 
-Here Artifacts (ie the War file and React code) are compiled/built on the local
-machine outside docker and just mounted into the docker compose setup. This
-speeds up the development process
+---
 
-1.  Fork the
-    [OpenELIS-Global Repository](https://github.com/DIGI-UW/OpenELIS-Global-2.git)
-    and clone the forked repo. The `username` below is the `username` of your
-    Github profile.
+## 🧑‍💻 Run from Source (For Developers)
 
-         git clone https://github.com/username/OpenELIS-Global-2.git
+### Clone and Build
 
-1.  innitialize and build sub modules
+```bash
+git clone https://github.com/your-username/OpenELIS-Global-2.git
+cd OpenELIS-Global-2
+git submodule update --init --recursive
+```
 
-        cd OpenELIS-Global-2
-        git submodule update --init --recursive
-        cd dataexport
-        mvn clean install -DskipTests
+### Build Submodules
 
-1.  Navigate back to the repository directory:
+```bash
+cd dataexport
+mvn clean install -DskipTests
+cd ..
+```
 
-         cd ..
+### Build WAR File
 
-1.  Build the War file
+```bash
+mvn clean install -DskipTests
+```
 
-          mvn clean install -DskipTests
+### Run Locally Using Docker Compose (Development Mode)
 
-1.  Start the containers to mount the locally compiled artifacts
+```bash
+docker-compose -f dev.docker-compose.yml up -d
+```
 
-        docker-compose -f dev.docker-compose.yml up -d
+### Notes for Developers
 
-    Note : For Reflecting Local changes in the Running Containers ;
+- **Frontend (React)**: supports **Hot Reloading**
+- **Backend (Java)**:
+  - Rebuild WAR file:
+    ```bash
+    mvn clean install -DskipTests
+    ```
+  - Restart backend container:
+    ```bash
+    docker-compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+    ```
 
-- Any Changes to the [Front-end](./frontend/) React Source Code will be directly
-  Hot Reloaded in the UI
-- For changes to the [Back-end](./src/) Java Source code
+---
 
-  - Run the maven build again to re-build the War file
+## 🌐 Access the Application
 
-         mvn clean install -DskipTests
+| Interface     | URL                                      | Credentials              |
+|---------------|------------------------------------------|--------------------------|
+| Legacy UI     | https://localhost/api/OpenELIS-Global/   | `admin : adminADMIN!`   |
+| New React UI  | https://localhost/                       | `admin : adminADMIN!`   |
 
-  - Recreate the Openelis webapp container
+> **Note**: If your browser warns about security:
+> - Click "Advanced"
+> - Click "Proceed to localhost"
 
-        docker-compose -f dev.docker-compose.yml up -d  --no-deps --force-recreate oe.openelis.org
+---
 
-#### The Instances can be accessed at
+## ✨ Formatting Code
 
-| Instance     |                   URL                   | credentials (user : password) |
-| ------------ | :-------------------------------------: | ----------------------------: |
-| Legacy UI    | https://localhost/api/OpenELIS-Global/  |            admin: adminADMIN! |
-| New React UI |           https://localhost/            |            admin: adminADMIN! |
+### Frontend (React)
 
-**Note:** If your browser indicates that the website is not secure after
-accessing any of these links, simply follow these steps:
+```bash
+cd frontend
+npm run format
+```
 
-1. Scroll down on the warning page.
-2. Click on the "Advanced" button.
-3. Finally, click on "Proceed to https://localhost" to access the development
-   environment.
+### Backend (Java)
 
-#### Formating the Source code after making changes
+```bash
+mvn spotless:apply
+```
 
-1.  After making UI changes to the [frontend](./frontend/) directory , run the
-    formatter to properly format the Frontend code
+---
 
-        cd frontend
-        npm run format
+## 🔁 Pull Request Guidelines
 
-2.  After making changes to the [backend](./src/) directory, run the formatter
-    to properly format the Java code
+Please follow the [Pull Request Tips](PULL_REQUEST_TIPS.md) to help us review your contributions effectively.
 
-        mvn spotless:apply
+---
 
-### Pull request guidelines
+## 📜 Code of Conduct
 
-Please follow the [pull request tips](PULL_REQUEST_TIPS.md) in order to make
-life easy for the code reviewers by having a well defined and clean pull
-request.
-
-### code of conduct
-
-Please see our [Contributor Code of Conduct](./CODE_OF_CONDUCT.md)
+All contributors must adhere to our [Code of Conduct](./CODE_OF_CONDUCT.md).
