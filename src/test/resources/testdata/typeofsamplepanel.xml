@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- * The contents of this file are subject to the Mozilla Public License
+    * Version 1.1 (the "License"); you may not use this file except in * compliance
+    with the License. You may obtain a copy of the License at * http://www.mozilla.org/MPL/
+    * * Software distributed under the License is distributed on an "AS IS" *
+    basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the *
+    License for the specific language governing rights and limitations under
+    * the License. * * The Original Code is OpenELIS code. * * Copyright (C)
+    ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+
+<dataset>
+    <!-- localization entries -->
+    <localization id="1" description="whole blood"
+        english="Blood" french="sang" />
+    <localization id="2" description="Urine" english="Urine"
+        french="Urine" />
+    <localization id="3" description="plasma" english="plasma"
+        french="plasma" />
+    <localization id="4" description="Fluids" english="Fluids"
+        french="Fluides" />
+    <localization id="5" description="Skin Tissue"
+        english="Skin Tissue" french="Tissu cutané" />
+    <!-- Panel entries -->
+    <panel id="1" name="Test Panel"
+        description="This is a test panel." is_active="Y"
+        name_localization_id="1" loinc="12345" />
+    <panel id="2" name="Duplicate Panel"
+        description="Duplicate description" is_active="N"
+        name_localization_id="2" loinc="67890" />
+    <panel id="3" name="New Panel Name"
+        description="A test panel from dataset." is_active="Y"
+        name_localization_id="3" loinc="11111" />
+    <panel id="4" name="Unique Panel"
+        description="This panel has a unique name." is_active="Y"
+        name_localization_id="4" loinc="54321" />
+    <!-- TypeOfSample entries -->
+    <type_of_sample id="1" description="whole blood"
+        domain="H" lastupdated="2023-11-01 12:00:00" local_abbrev=""
+        is_active="true" sort_order="4" name_localization_id="1"
+        display_key="sample.type.Sang" />
+    <type_of_sample id="2" description="Urine" domain="H"
+        lastupdated="2023-11-01 12:00:00" local_abbrev="" is_active="true"
+        sort_order="5" name_localization_id="2"
+        display_key="sample.type.Urines" />
+    <type_of_sample id="3" description="plasma" domain="H"
+        lastupdated="2023-11-01 12:00:00" local_abbrev="" is_active="true"
+        sort_order="1" name_localization_id="3"
+        display_key="sample.type.Plasma" />
+    <type_of_sample id="4" description="Fluids" domain="H"
+        lastupdated="2023-11-01 12:00:00" local_abbrev="" is_active="true"
+        sort_order="12" name_localization_id="4"
+        display_key="sample.type.Fluids" />
+    <!-- TypeOfSamplePanel entries -->
+    <sampletype_panel id="1" sample_type_id="3"
+        panel_id="2" />
+    <sampletype_panel id="2" sample_type_id="4"
+        panel_id="1" />
+    <sampletype_panel id="3" sample_type_id="2"
+        panel_id="4" />
+    <sampletype_panel id="4" sample_type_id="1"
+        panel_id="3" />
+</dataset>

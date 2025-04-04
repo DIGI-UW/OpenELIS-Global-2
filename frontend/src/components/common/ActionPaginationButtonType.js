@@ -1,6 +1,7 @@
-import React from "react";
+import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
+import { Button, Column, Grid, Section } from "@carbon/react";
 import PropTypes from "prop-types";
-import { Button, Grid, Column, Section } from "@carbon/react";
+import React from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import { useHistory } from "react-router-dom";
@@ -32,11 +33,18 @@ const ActionPaginationButtonType = ({
         <Section
           style={{
             display: "flex",
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+            gap: window.innerWidth < 768 ? "1rem" : "2rem",
             justifyContent: "space-between",
             alignItems: "center",
           }}
         >
-          <div>
+          <div
+            style={{
+              display: "flex",
+              gap: window.innerWidth < 768 ? "0.81rem" : "0.4rem",
+            }}
+          >
             {type === "type1" ? (
               <>
                 <Button
@@ -93,13 +101,33 @@ const ActionPaginationButtonType = ({
               </>
             )}
           </div>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <h4 style={{ marginRight: "10px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: window.innerWidth < 768 ? "0.5rem" : "1rem",
+              padding: window.innerWidth < 768 ? "0.5rem" : "1rem",
+              flexWrap: "wrap",
+            }}
+          >
+            <h4
+              style={{
+                margin: 0,
+                fontSize: window.innerWidth < 768 ? "0.875rem" : "1.3rem",
+                whiteSpace: "nowrap",
+              }}
+            >
               <FormattedMessage id="showing" /> {fromRecordCount} -{" "}
               {toRecordCount} <FormattedMessage id="of" /> {totalRecordCount}{" "}
             </h4>
             <Button
-              style={{ marginLeft: "10px" }}
+              style={{
+                minWidth: window.innerWidth < 768 ? "2rem" : "2.5rem",
+                minHeight: window.innerWidth < 768 ? "2rem" : "2.5rem",
+                padding: "0.5rem",
+                marginLeft: window.innerWidth < 768 ? "0" : "0.625rem",
+              }}
               hasIconOnly={true}
               disabled={parseInt(fromRecordCount) <= 1}
               onClick={handlePreviousPage}
@@ -107,9 +135,14 @@ const ActionPaginationButtonType = ({
               iconDescription={intl.formatMessage({
                 id: "organization.previous",
               })}
-            />{" "}
+            />
             <Button
-              style={{ marginLeft: "10px" }}
+              style={{
+                minWidth: window.innerWidth < 768 ? "2rem" : "2.5rem",
+                minHeight: window.innerWidth < 768 ? "2rem" : "2.5rem",
+                padding: "0.5rem",
+                marginLeft: window.innerWidth < 768 ? "0" : "0.625rem",
+              }}
               hasIconOnly={true}
               renderIcon={ArrowRight}
               onClick={handleNextPage}
