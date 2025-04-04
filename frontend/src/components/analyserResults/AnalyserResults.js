@@ -22,9 +22,10 @@ import { NotificationContext } from "../layout/Layout";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
+import ActionPaginationButtonType from "../common/ActionPaginationButtonType";
 import config from "../../config.json";
 
-const Validation = (props) => {
+const AnalyserResults = (props) => {
   const componentMounted = useRef(false);
 
   const { setNotificationVisible, addNotification } =
@@ -66,19 +67,19 @@ const Validation = (props) => {
       width: "15rem",
     },
     {
-      id: "normalRange",
-      name: intl.formatMessage({ id: "column.name.normalRange" }),
-      selector: (row) => row.normalRange,
-      sortable: true,
-      width: "8rem",
-    },
-    {
       id: "result",
       name: intl.formatMessage({ id: "column.name.result" }),
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
-      width: "8rem",
+      width: "15rem",
+    },
+    {
+      id: "completeDate",
+      name: intl.formatMessage({ id: "column.name.testDate" }),
+      selector: (row) => row.completeDate,
+      sortable: true,
+      width: "7rem",
     },
     {
       id: "save",
@@ -86,7 +87,7 @@ const Validation = (props) => {
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
-      width: "8rem",
+      width: "5rem",
     },
     {
       id: "retest",
@@ -94,7 +95,15 @@ const Validation = (props) => {
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
-      width: "8rem",
+      width: "5rem",
+    },
+    {
+      id: "ignore",
+      name: intl.formatMessage({ id: "column.name.ignore" }),
+      cell: (row, index, column, id) => {
+        return renderCell(row, index, column, id);
+      },
+      width: "5rem",
     },
     {
       id: "notes",
@@ -104,14 +113,6 @@ const Validation = (props) => {
       },
       width: "15rem",
     },
-    {
-      id: "pastNotes",
-      name: intl.formatMessage({ id: "column.name.pastNotes" }),
-      cell: (row, index, column, id) => {
-        return renderCell(row, index, column, id);
-      },
-      width: "28rem",
-    },
   ];
 
   const handleSave = (values) => {
@@ -120,7 +121,7 @@ const Validation = (props) => {
     }
     setIsSubmitting(true);
     postToOpenElisServer(
-      "/rest/AccessionValidation",
+      "/rest/AnalyzerResults",
       JSON.stringify(props.results),
       handleResponse,
     );
@@ -132,7 +133,7 @@ const Validation = (props) => {
     if (status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      window.location.href = "/validation" + props.params;
+      window.location.href = "/AnalyzerResults?type=" + props.type;
     }
     addNotification({
       kind: kind,
@@ -181,12 +182,12 @@ const Validation = (props) => {
     handleChange(e, rowId);
   };
 
+  const sampleGroupHasId = (id) => {
+    return props.sampleGroup.some((item) => item.id === id);
+  };
+
   const renderCell = (row, index, column, id) => {
     let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
-    const fullTestName = row.testName;
-    const splitIndex = fullTestName.lastIndexOf("(");
-    const testName = fullTestName.substring(0, splitIndex);
-    const sampleType = fullTestName.substring(splitIndex);
     switch (column.id) {
       case "sampleInfo":
         return (
@@ -235,28 +236,27 @@ const Validation = (props) => {
       case "testName":
         return (
           <div className="sampleInfo" data-testid="sampleInfo">
-            <br></br>
-            {testName}
-            <br></br>
-            {sampleType}
+            {row.testName}
           </div>
         );
 
       case "save":
         return (
           <>
-            <div data-testid="Checkbox">
-              <Field name="isAccepted">
-                {({ field }) => (
-                  <Checkbox
-                    id={"resultList" + row.id + ".isAccepted"}
-                    name={"resultList[" + row.id + "].isAccepted"}
-                    labelText=""
-                    value={true}
-                    onChange={(e) => handleCheckBox(e, row.id)}
-                  />
-                )}
-              </Field>
+            <div>
+              {sampleGroupHasId(row.id) && (
+                <Field name="isAccepted">
+                  {({ field }) => (
+                    <Checkbox
+                      id={"resultList" + row.id + ".isAccepted"}
+                      name={"resultList[?(@.id == " + row.id + ")].isAccepted"}
+                      labelText=""
+                      value={true}
+                      onChange={(e) => handleCheckBox(e, row.id)}
+                    />
+                  )}
+                </Field>
+              )}
             </div>
           </>
         );
@@ -264,17 +264,38 @@ const Validation = (props) => {
       case "retest":
         return (
           <>
-            <Field name="isRejected">
-              {({ field }) => (
-                <Checkbox
-                  id={"resultList" + row.id + ".isRejected"}
-                  name={"resultList[" + row.id + "].isRejected"}
-                  labelText=""
-                  value={true}
-                  onChange={(e) => handleCheckBox(e, row.id)}
-                />
-              )}
-            </Field>
+            {sampleGroupHasId(row.id) && (
+              <Field name="isRejected">
+                {({ field }) => (
+                  <Checkbox
+                    id={"resultList" + row.id + ".isRejected"}
+                    name={"resultList[?(@.id == " + row.id + ")].isRejected"}
+                    labelText=""
+                    value={true}
+                    onChange={(e) => handleCheckBox(e, row.id)}
+                  />
+                )}
+              </Field>
+            )}
+          </>
+        );
+
+      case "ignore":
+        return (
+          <>
+            {sampleGroupHasId(row.id) && (
+              <Field name="isDeleted">
+                {({ field }) => (
+                  <Checkbox
+                    id={"resultList" + row.id + ".isDeleted"}
+                    name={"resultList[?(@.id == " + row.id + ")].isDeleted"}
+                    labelText=""
+                    value={true}
+                    onChange={(e) => handleCheckBox(e, row.id)}
+                  />
+                )}
+              </Field>
+            )}
           </>
         );
 
@@ -284,7 +305,7 @@ const Validation = (props) => {
             <div className="note">
               <TextArea
                 id={"resultList" + row.id + ".note"}
-                name={"resultList[" + row.id + "].note"}
+                name={"resultList[?(@.id == " + row.id + ")].note"}
                 disabled={false}
                 type="text"
                 labelText=""
@@ -292,16 +313,6 @@ const Validation = (props) => {
                 onChange={(e) => handleChange(e, row.id)}
               ></TextArea>
             </div>
-          </>
-        );
-
-      case "pastNotes":
-        return (
-          <>
-            <div
-              className="note"
-              dangerouslySetInnerHTML={{ __html: row.pastNotes }}
-            />
           </>
         );
 
@@ -320,7 +331,26 @@ const Validation = (props) => {
               </>
             );
           default:
-            return row.result;
+            if (row.readOnly) {
+              return row.result;
+            } else {
+              return (
+                <>
+                  <div className="result">
+                    <TextInput
+                      id={"resultList" + row.id + ".result"}
+                      name={"resultList[?(@.id == " + row.id + ")].result"}
+                      disabled={false}
+                      type="text"
+                      value={row.result}
+                      labelText=""
+                      size="lg"
+                      onChange={(e) => handleChange(e, row.id)}
+                    ></TextInput>
+                  </div>
+                </>
+              );
+            }
         }
 
       default:
@@ -345,25 +375,6 @@ const Validation = (props) => {
               {" "}
               <FormattedMessage id="validation.label.nonconform" />
             </b>
-          </Column>
-          <Column lg={3} md={2} sm={4}>
-            <Checkbox
-              id={"saveallnormal"}
-              name={"autochecks"}
-              labelText={intl.formatMessage({ id: "validation.accept.normal" })}
-              onChange={(e) => {
-                const nomalResults = props.results.resultList?.filter(
-                  (result) => result.normal == true,
-                );
-                nomalResults.forEach((result) => {
-                  const checkbox = document.getElementById(
-                    "resultList" + result.id + ".isAccepted",
-                  );
-                  checkbox.checked = e.target.checked;
-                  handleAutomatedCheck(e.target.checked, checkbox.name);
-                });
-              }}
-            />
           </Column>
           <Column lg={3} md={2} sm={4}>
             <Checkbox
@@ -399,6 +410,23 @@ const Validation = (props) => {
               }}
             />
           </Column>
+          <Column lg={3} md={2} sm={4}>
+            <Checkbox
+              id={"ignorealltests"}
+              name={"autochecks"}
+              labelText={intl.formatMessage({ id: "validation.ignore.all" })}
+              onChange={(e) => {
+                const nomalResults = props.results.resultList;
+                nomalResults.forEach((result) => {
+                  const checkbox = document.getElementById(
+                    "resultList" + result.id + ".isDeleted",
+                  );
+                  checkbox.checked = e.target.checked;
+                  handleAutomatedCheck(e.target.checked, checkbox.name);
+                });
+              }}
+            />
+          </Column>
         </Grid>
       )}
       <Formik
@@ -412,7 +440,7 @@ const Validation = (props) => {
             <DataTable
               data={
                 props.results
-                  ? props?.results?.resultList?.slice(
+                  ? props.results.resultList.slice(
                       (page - 1) * pageSize,
                       page * pageSize,
                     )
@@ -484,4 +512,4 @@ const Validation = (props) => {
   );
 };
 
-export default Validation;
+export default AnalyserResults;
