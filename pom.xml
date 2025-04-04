@@ -34,6 +34,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <version>2.7.5</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -498,8 +499,8 @@
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <version>2.21.0</version>
+            <artifactId>mockito-inline</artifactId>
+            <version>5.5.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
