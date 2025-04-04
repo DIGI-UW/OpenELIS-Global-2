@@ -361,9 +361,11 @@ export const Roles = {
   GLOBAL_ADMIN: "Global Administrator",
   USER_ACCOUNT_ADMIN: "User Account Administrator",
   AUDIT_TRAIL: "Audit Trail",
+  ANALYSER_IMPORT: "Analyser Import",
+  CYTOPATHOLOGIST: "Cytopathologist",
+  PATHOLOGIST: "Pathologist",
   RECEPTION: "Reception",
   RESULTS: "Results",
   VALIDATION: "Validation",
   REPORTS: "Reports",
-  PATHOLOGIST: "Pathologist",
 };
