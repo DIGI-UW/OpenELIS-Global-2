@@ -1,10 +1,10 @@
 import React from "react";
-import { injectIntl } from "react-intl";
+import { injectIntl, FormattedMessage } from "react-intl";
 import ReflexRule from "./ReflexRuleForm";
 import { Grid, Column, Section, Heading } from "@carbon/react";
-import { FormattedMessage } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
+// Breadcrumbs setup
 const breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
@@ -16,21 +16,22 @@ const breadcrumbs = [
 
 function ReflexTestManagement() {
   return (
-    <>
-      <div className="adminPageContent">
-        <PageBreadCrumb breadcrumbs={breadcrumbs} />
-        <Grid fullWidth={true}>
-          <Column lg={16}>
-            <Section>
-              <Heading>
-                <FormattedMessage id="sidenav.label.admin.testmgt.reflex" />
-              </Heading>
-            </Section>
-          </Column>
-        </Grid>
-        <ReflexRule />
-      </div>
-    </>
+    <div className="adminPageContent">
+      <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      
+      <Grid fullWidth>
+        <Column lg={16} md={8} sm={4}>
+          <Section>
+            <Heading>
+              <FormattedMessage id="sidenav.label.admin.testmgt.reflex" />
+            </Heading>
+          </Section>
+        </Column>
+      </Grid>
+
+      {/* ReflexRule component should internally handle validation */}
+      <ReflexRule />
+    </div>
   );
 }
 
