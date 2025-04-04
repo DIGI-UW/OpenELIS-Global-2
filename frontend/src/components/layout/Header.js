@@ -19,7 +19,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { T,useLanguages,useT } from "@transifex/react";
 import { withRouter } from "react-router-dom";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import "../Style.css";
@@ -52,7 +52,7 @@ function OEHeader(props) {
   const scrollRef = useRef(window.scrollY);
   const [isOpen, setIsOpen] = useState(false);
 
-  const intl = useIntl();
+  // const intl = useIntl();
 
   const [switchCollapsed, setSwitchCollapsed] = useState(true);
   const [menus, setMenus] = useState({
@@ -67,6 +67,8 @@ function OEHeader(props) {
   const [unReadNotifications, setUnReadNotifications] = useState([]);
   const [readNotifications, setReadNotifications] = useState([]);
   const [searchBar, setSearchBar] = useState(false);
+  const t=useT();
+  const languages=useLanguages();
   scrollRef.current = window.scrollY;
   useLayoutEffect(() => {
     window.scrollTo(0, scrollRef.current);
@@ -199,12 +201,8 @@ function OEHeader(props) {
             >
               <SideNavMenu
                 className="top-level-menu-item"
-                aria-label={intl.formatMessage({
-                  id: menuItem.menu.displayKey,
-                })}
-                title={intl.formatMessage({
-                  id: menuItem.menu.displayKey,
-                })}
+                aria-label={t({_str:menuItem.menu.displayKey},{_key:menuItem.menu.displayKey})}
+                title={t({ _str: menuItem.menu.displayKey, _key: menuItem.menu.displayKey })}
                 key={"menu_" + index + "_" + level}
                 defaultExpanded={menuItem.expanded}
                 // onClick={(e) => { // not supported yet, but if it becomes so we can simplify the functionality here by having this here and not have a span around it
@@ -404,7 +402,7 @@ function OEHeader(props) {
     const fontPercent = 100 - 5 * (level - 1) + "%";
     return (
       <span style={{ fontSize: fontPercent }}>
-        <FormattedMessage id={menuItem.menu.displayKey} />
+        <T _str={menuItem.menu.displayKey} _key={menuItem.menu.displayKey} />
       </span>
     );
   };
@@ -453,7 +451,7 @@ function OEHeader(props) {
                     <div className="banner">
                       <h5>{configurationProperties?.BANNER_TEXT}</h5>
                       <p>
-                        <FormattedMessage id="header.label.version" /> &nbsp;{" "}
+                        <T _str="Version:" _key="header.label.version" /> &nbsp;{" "}
                         {configurationProperties?.releaseNumber}
                       </p>
                     </div>
@@ -559,7 +557,7 @@ function OEHeader(props) {
                             onClick={logout}
                           >
                             <Logout style={{ marginRight: "3px" }} />
-                            <FormattedMessage id="header.label.logout" />
+                            <T _str="Logout" _key="header.label.logout" />
                           </li>
                         </>
                       )}
@@ -570,21 +568,22 @@ function OEHeader(props) {
                           className="selectLocale"
                           invalidText="A valid locale value is required"
                           labelText={
-                            <FormattedMessage id="header.label.selectlocale" />
+                            <T _str="Select Locale" _key="header.label.selectlocale" />
                           }
                           onChange={(event) => {
                             props.onChangeLanguage(event.target.value);
                           }}
                           value={props.intl.locale}
                         >
-                          <SelectItem text="English" value="en" />
-                          <SelectItem text="French" value="fr" />
+                          {languages.map((lang) => (
+                            <SelectItem text={lang.name} key={lang.code} value={lang.code} />
+                          ))}
                         </Select>
                       </li>
                       <li className="userDetails">
                         <label className="cds--label">
                           {" "}
-                          <FormattedMessage id="header.label.version" />:{" "}
+                          <T _str="" _key="header.label.version" />:{" "}
                           {configurationProperties?.releaseNumber}
                         </label>
                       </li>
@@ -640,4 +639,4 @@ function OEHeader(props) {
   );
 }
 
-export default withRouter(injectIntl(OEHeader));
+export default withRouter(OEHeader);

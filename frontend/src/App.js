@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
-import { IntlProvider } from "react-intl";
 import { confirmAlert } from "react-confirm-alert";
 import Layout from "./components/layout/Layout";
 import Home from "./components/Home";
@@ -11,8 +10,6 @@ import ResultSearch from "./components/resultPage/ResultSearch";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import "./App.css";
-import messages_en from "./languages/en.json";
-import messages_fr from "./languages/fr.json";
 import config from "./config.json";
 import { SecureRoute } from "./components/security";
 import "./index.scss";
@@ -26,7 +23,6 @@ import ModifyOrder from "./components/modifyOrder/ModifyOrder";
 import RoutineReports from "./components/reports/Routine";
 import StudyReports from "./components/reports/Study";
 import StudyValidation from "./components/validation/Index";
-import AnalyserResultIndex from "./components/analyserResults/Index";
 import PathologyDashboard from "./components/pathology/PathologyDashboard";
 import CytologyDashboard from "./components/cytology/CytologyDashBoard";
 import CytologyCaseView from "./components/cytology/CytologyCaseView";
@@ -44,22 +40,25 @@ import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntry
 import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index.js";
 import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests.js";
 import ChangePassword from "./components/ChangePassword.js";
-import { Roles } from "./components/utils/Utils";
+import { tx } from "@transifex/native";
+import { useLocale, useT } from "@transifex/react";
 
 export default function App() {
-  let i18nConfig = {
-    locale: navigator.language.split(/[-_]/)[0],
-    defaultLocale: "en",
-    messages: messages_en,
-  };
+
+  tx.init({
+    token: "1/de77751e104fc7a6b936b112246383a699bb4e96",
+  });
 
   const [userSessionDetails, setUserSessionDetails] = useState({});
   const [errorLoadingSessionDetails, setErrorLoadingSessionDetails] =
     useState(false);
-  const [locale, setLocale] = useState("en");
+
+  const locale = useLocale();
+  const t = useT();
 
   useEffect(() => {
     getUserSessionDetails();
+    tx.setCurrentLocale(locale);
   }, []);
 
   const getUserSessionDetails = async () => {
@@ -117,20 +116,7 @@ export default function App() {
     return userSessionDetails;
   };
 
-  i18nConfig.locale =
-    localStorage.getItem("locale") || navigator.language.split(/[-_]/)[0];
-  switch (i18nConfig.locale) {
-    case "en":
-      i18nConfig.messages = messages_en;
-      break;
-    case "fr":
-      i18nConfig.messages = messages_fr;
-      break;
-    default:
-      i18nConfig.messages = messages_en;
-      break;
-  }
-
+ 
   const logout = () => {
     if (userSessionDetails.loginMethod === "SAML") {
       fetch(config.serverBaseUrl + "/Logout?useSAML=true", {
@@ -182,21 +168,9 @@ export default function App() {
   };
 
   const changeLanguageReact = (lang) => {
-    switch (lang) {
-      case "en":
-        i18nConfig.messages = messages_en;
-        break;
-      case "fr":
-        i18nConfig.messages = messages_fr;
-        break;
-      default:
-        i18nConfig.messages = messages_en;
-        break;
-    }
-    i18nConfig.locale = lang;
     localStorage.setItem("locale", lang);
+    tx.setCurrentLocale(lang);
     //rerender the component on changing locale
-    setLocale(lang);
   };
 
   const changeLanguageBackend = async (lang) => {
@@ -224,12 +198,6 @@ export default function App() {
   };
 
   return (
-    <IntlProvider
-      locale={i18nConfig.locale}
-      key={i18nConfig.locale}
-      defaultLocale={i18nConfig.defaultLocale}
-      messages={i18nConfig.messages}
-    >
       <UserSessionDetailsContext.Provider
         value={{
           userSessionDetails,
@@ -546,6 +514,5 @@ export default function App() {
           </Router>
         </>
       </UserSessionDetailsContext.Provider>
-    </IntlProvider>
   );
 }

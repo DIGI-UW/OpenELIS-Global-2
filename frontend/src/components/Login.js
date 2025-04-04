@@ -2,7 +2,6 @@ import React, { useContext, useEffect, useState, createRef } from "react";
 import config from "../config.json";
 import "./Style.css";
 import qs from "qs";
-import { FormattedMessage, injectIntl } from "react-intl";
 import { HardwareSecurityModule } from "@carbon/icons-react";
 import {
   Form,
@@ -20,6 +19,7 @@ import { Formik } from "formik";
 import { AlertDialog, NotificationKinds } from "./common/CustomNotification";
 import UserSessionDetailsContext from "../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./layout/Layout";
+import { T } from "@transifex/react";
 
 function Login(props) {
   const { notificationVisible, addNotification, setNotificationVisible } =
@@ -67,7 +67,7 @@ function Login(props) {
         <Column lg={6} md={0} sm={0} />
         <Column lg={6} md={0} sm={0} />
         <Column lg={4} md={8} sm={4}>
-          <FormattedMessage id="login.notice.message" />
+          <T _str="Notice: Access to this service is for authorized personnel only. If you do not have the expressed authorization of the administrator, you must exit now. This organization prohibits unauthorized access, disclosure, duplication, modification, diversion, destruction, loss, misuse, or theft of its information." _key="login.notice.message" />
         </Column>
         <Column lg={6} md={0} sm={0} />
       </>
@@ -146,7 +146,7 @@ function Login(props) {
               window.location.href = config.serverBaseUrl + "/" + url.value;
             }}
           >
-            <FormattedMessage id="label.button.login.sso" />
+            <T _str="Single Sign On" _key="label.button.login.sso" />
           </Button>
         ))}
       </span>
@@ -192,7 +192,7 @@ function Login(props) {
                     <Stack gap={5}>
                       <FormLabel>
                         <Heading>
-                          <FormattedMessage id="login.title" />
+                          <T _str="Login" _key="login.title" />
                         </Heading>
                       </FormLabel>
                       {configurationProperties?.useFormLogin == "true" && (
@@ -231,7 +231,7 @@ function Login(props) {
                               disabled={!isValid}
                               data-cy="loginButton"
                             >
-                              <FormattedMessage id="label.button.login" />
+                              <T _str="Login" _key="label.button.login" />
                               <Loading
                                 small={true}
                                 withOverlay={false}
@@ -246,7 +246,7 @@ function Login(props) {
                                 window.location.href = "/ChangePasswordLogin";
                               }}
                             >
-                              <FormattedMessage id="label.button.changepassword" />
+                              <T _str="Change Password" _key="label.button.changepassword" />
                             </Button>
                           </Stack>
                         </>
@@ -273,7 +273,7 @@ function Login(props) {
                             );
                           }}
                         >
-                          <FormattedMessage id="label.button.login.sso" />
+                          <T _str="Single Sign On" _key="label.button.login.sso" />
                         </Button>
                       )}
                       {configurationProperties?.useOauth == "true" &&
@@ -294,4 +294,4 @@ function Login(props) {
   );
 }
 
-export default injectIntl(Login);
+export default Login;
