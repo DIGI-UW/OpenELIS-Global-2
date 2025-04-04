@@ -5,10 +5,10 @@ dotenv.config();
 const token = process.env.API_TOKEN;
 transifexApi.setup({ auth: token });
 
-const fetchOrganizations = async () => {
-  const orgs = transifexApi.Organization.list();
-  await orgs.fetch();
-  console.log(orgs);
+const fetchOrganization = async () => {
+  const org = transifexApi.Organization.list();
+  await org.fetch();
+  console.log(org);
 };
 
-fetchOrganizations();
+fetchOrganization();
