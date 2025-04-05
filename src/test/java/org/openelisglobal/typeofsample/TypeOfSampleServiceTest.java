@@ -141,12 +141,12 @@ public class TypeOfSampleServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getTypeOfSampleNameForId_shouldReturnTypeOfSampleNameForId() {
-        Assert.assertEquals("Fluids", tosSample.getTypeOfSampleNameForId("4"));
+        Assert.assertEquals("Test Localization 2", tosSample.getTypeOfSampleNameForId("2"));
     }
 
     @Test
     public void getTypeOfSampleIdForLocalAbbreviation_shouldReturnTypeOfSampleIdForLocalAbbreviation() {
-        Assert.assertEquals("5", tosSample.getTypeOfSampleIdForLocalAbbreviation("tissue"));
+        Assert.assertEquals("2", tosSample.getTypeOfSampleIdForLocalAbbreviation("Variable"));
     }
 
     @Test

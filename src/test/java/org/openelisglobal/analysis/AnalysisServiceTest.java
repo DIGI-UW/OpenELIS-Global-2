@@ -36,6 +36,7 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
 import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
 import org.openelisglobal.statusofsample.service.StatusOfSampleService;
+import org.openelisglobal.analysisqaevent.service.AnalysisQaEventService;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.TestSection;
@@ -47,6 +48,9 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private AnalysisService analysisService;
+
+    @Autowired
+    private AnalysisQaEventService analysisQaEventService;
 
     @Autowired
     private ResultService resultService;
@@ -180,8 +184,6 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getQuantifiedResult_shouldHandleNullAndValidAnalysis() {
-        // cleanRowsInCurrentConnection(new String[] { "result", "analysis" });
-        // Test with null analysis
         Result resultForNull = analysisService.getQuantifiedResult(null);
         assertNull(resultForNull);
 
@@ -437,8 +439,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void patientReportHasBeenDone_shouldHandleNullAndValidAnalysis() {
     // Test null analysis
-    // boolean nullResult = analysisService.patientReportHasBeenDone(null);
-    // assertFalse(nullResult);
+    boolean nullResult = analysisService.patientReportHasBeenDone(null);
+    assertFalse(nullResult);
 
     // Valid analysis test
     Analysis analysis = analysisService.get("1");
@@ -463,12 +465,6 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     // Test when report exists
     boolean reportExistsResult = analysisService.patientReportHasBeenDone(analysis1);
     assertTrue(reportExistsResult);
-    // assertEquals("1", reportExistsResult.getId())
-
-    // Test when report doesn't exist
-    // boolean reportNotExistsResult =
-    // analysisService.patientReportHasBeenDone(analysis1);
-    // assertFalse(reportNotExistsResult);
     }
 
     @Test
@@ -555,7 +551,6 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("Chemistry", testSection.getTestSectionName());
     }
 
-    // Issue with SpringContext
     @Test
     public void buildAnalysis_shouldCreateAnalysisWithCorrectProperties() {
         // Get sample data for test
@@ -577,7 +572,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(builtAnalysis.getSampleTypeName());
 
         // Verify status ID is set to NotStarted
-        // assertEquals("NotStarted", builtAnalysis.getStatusId());
+        assertEquals("4", builtAnalysis.getStatusId());
     }
 
     @Test
@@ -760,42 +755,41 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     }
 
-    // SpringContextIssue
-    // @Test
-    // public void updateAnalysises_shouldUpdateCancelAnalysisAndInsertNewAnalysis()
-    // {
-    // // Prepare test data
-    // List<Analysis> cancelAnalyses = new ArrayList<>();
-    // Analysis cancelAnalysis = analysisService.get("1");
-    // cancelAnalyses.add(cancelAnalysis);
+    @Test
+    public void updateAnalysises_shouldUpdateCancelAnalysisAndInsertNewAnalysis(){
+        // Prepare test data
+        List<Analysis> cancelAnalyses = new ArrayList<>();
+        Analysis cancelAnalysis = analysisService.get("1");
+        cancelAnalyses.add(cancelAnalysis);
 
-    // List<Analysis> newAnalyses = new ArrayList<>();
-    // Analysis newAnalysis = new Analysis();
-    // newAnalysis.setAnalysisType("ROUTINE");
-    // newAnalyses.add(newAnalysis);
+        Analysis deleteAnalysis = analysisService.get("2");
+        analysisService.delete(deleteAnalysis);
 
-    // // Execute the method
-    // analysisService.updateAnalysises(cancelAnalyses, newAnalyses, "107");
+        List<Analysis> newAnalyses = new ArrayList<>();
+        Analysis newAnalysis = new Analysis();
+        newAnalysis.setAnalysisType("MANUAL");
+        newAnalyses.add(newAnalysis);
 
-    // // Verify canceled analysis
-    // Analysis updatedAnalysis = analysisService.get("1");
-    // assertEquals("1", updatedAnalysis.getStatusId());
-    // assertEquals("1", updatedAnalysis.getSysUserId());
+        // Execute the method
+        analysisService.updateAnalysises(cancelAnalyses, newAnalyses, "107");
 
-    // // Verify new analysis was inserted
-    // List<Analysis> allAnalyses = analysisService.getAll();
+        // Verify canceled analysis
+        Analysis updatedAnalysis = analysisService.get("1");
+        assertEquals("14", updatedAnalysis.getStatusId());
 
-    // // Find the newly inserted analysis
-    // boolean foundNewAnalysis = false;
-    // for (Analysis analysis : allAnalyses) {
-    // if ("ROUTINE".equals(analysis.getAnalysisType()) &&
-    // "1".equals(analysis.getSysUserId())) {
-    // foundNewAnalysis = true;
-    // break;
-    // }
-    // }
-    // assertTrue("New analysis should be inserted", foundNewAnalysis);
-    // }
+        // Verify new analysis was inserted
+        List<Analysis> allAnalyses = analysisService.getAll();
+
+        // Find the newly inserted analysis
+        boolean foundNewAnalysis = false;
+        for (Analysis analysis : allAnalyses) {
+            if ("MANUAL".equals(analysis.getAnalysisType())) {
+                foundNewAnalysis = true;
+                break;
+            }
+        }
+        assertTrue("New analysis should be inserted", foundNewAnalysis);
+    }
 
     @Test
     public void getAllAnalysisByTestAndStatus_shouldReturnMatchingAnalyses() {
@@ -972,110 +966,124 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("1", analysisList.get(0).getId());
     }
 
-    // Status Error
-    // @Test
-    // public void
-    // getMaxRevisionPendingAnalysesReadyForReportPreviewBySample_shouldReturnCorrectList()
-    // {
-    // SampleItem sampleItem1 = sampleItemService.get("1");
-    // org.openelisglobal.test.valueholder.Test test1 = testService.get("1");
-    // Analysis analysis1 = analysisService.get("1");
-    // Sample sample1 = sampleService.get("1");
-    // sampleItem1.setSample(sample1);
-    // sampleItemService.update(sampleItem1);
-    // analysis1.setTest(test1);
-    // analysis1.setSampleItem(sampleItem1);
-    // analysisService.update(analysis1);
+    @Test
+    public void
+    getMaxRevisionPendingAnalysesReadyForReportPreviewBySample_shouldReturnCorrectList()
+    {
+        SampleItem sampleItem1 = sampleItemService.get("1");
+        org.openelisglobal.test.valueholder.Test test1 = testService.get("1");
+        Analysis analysis1 = analysisService.get("1");
+        Sample sample1 = sampleService.get("1");
+        sampleItem1.setSample(sample1);
+        sampleItemService.update(sampleItem1);
+        analysis1.setTest(test1);
+        analysis1.setSampleItem(sampleItem1);
+        analysisService.update(analysis1);
 
-    // SampleItem sampleItem2 = sampleItemService.get("2");
-    // org.openelisglobal.test.valueholder.Test test2 = testService.get("2");
-    // Analysis analysis2 = analysisService.get("2");
-    // Sample sample2 = sampleService.get("2");
-    // sampleItem2.setSample(sample2);
-    // sampleItemService.update(sampleItem2);
-    // analysis2.setTest(test2);
-    // analysis2.setSampleItem(sampleItem2);
-    // analysisService.update(analysis2);
+        SampleItem sampleItem2 = sampleItemService.get("2");
+        org.openelisglobal.test.valueholder.Test test2 = testService.get("2");
+        Analysis analysis2 = analysisService.get("2");
+        Sample sample2 = sampleService.get("2");
+        sampleItem2.setSample(sample2);
+        sampleItemService.update(sampleItem2);
+        analysis2.setTest(test2);
+        analysis2.setSampleItem(sampleItem2);
+        analysisService.update(analysis2);
 
-    // List<Analysis> analysisList =
-    // analysisService.getMaxRevisionPendingAnalysesReadyForReportPreviewBySample(sample2);
+        List<Analysis> analysisList =
+        analysisService.getMaxRevisionPendingAnalysesReadyForReportPreviewBySample(sample2);
 
-    // assertNotNull(analysisList);
-    // // Add assertions based on expected results
-    // if (!analysisList.isEmpty()) {
-    // assertEquals("1", analysisList.get(0).getSampleItem().getSample().getId());
-    // }
-    // }
+        assertNotNull(analysisList);
+        // Add assertions based on expected results
+        if (!analysisList.isEmpty()) {
+            assertEquals("1", analysisList.get(0).getSampleItem().getSample().getId());
+        }
+    }
 
-    // Status Error
-    // @Test
-    // public void
-    // getMaxRevisionPendingAnalysesReadyToBeReportedBySample_shouldReturnCorrectAnalyses()
-    // {
-    // SampleItem sampleItem1 = sampleItemService.get("1");
-    // org.openelisglobal.test.valueholder.Test test1 = testService.get("1");
-    // Analysis analysis1 = analysisService.get("1");
-    // Sample sample1 = sampleService.get("1");
-    // sampleItem1.setSample(sample1);
-    // sampleItemService.update(sampleItem1);
-    // analysis1.setTest(test1);
-    // analysis1.setSampleItem(sampleItem1);
-    // analysisService.update(analysis1);
+    @Test
+    public void
+    getMaxRevisionPendingAnalysesReadyToBeReportedBySample_shouldReturnCorrectAnalyses()
+    {
+        SampleItem sampleItem1 = sampleItemService.get("1");
+        org.openelisglobal.test.valueholder.Test test1 = testService.get("1");
+        Analysis analysis1 = analysisService.get("1");
+        Sample sample1 = sampleService.get("1");
+        sampleItem1.setSample(sample1);
+        sampleItemService.update(sampleItem1);
+        analysis1.setTest(test1);
+        analysis1.setSampleItem(sampleItem1);
+        analysisService.update(analysis1);
 
-    // SampleItem sampleItem2 = sampleItemService.get("2");
-    // org.openelisglobal.test.valueholder.Test test2 = testService.get("2");
-    // Analysis analysis2 = analysisService.get("2");
-    // Sample sample2 = sampleService.get("2");
-    // sampleItem2.setSample(sample2);
-    // sampleItemService.update(sampleItem2);
-    // analysis2.setTest(test2);
-    // analysis2.setSampleItem(sampleItem2);
-    // analysisService.update(analysis2);
+        SampleItem sampleItem2 = sampleItemService.get("2");
+        org.openelisglobal.test.valueholder.Test test2 = testService.get("2");
+        Analysis analysis2 = analysisService.get("2");
+        Sample sample2 = sampleService.get("2");
+        sampleItem2.setSample(sample2);
+        sampleItemService.update(sampleItem2);
+        analysis2.setTest(test2);
+        analysis2.setSampleItem(sampleItem2);
+        analysisService.update(analysis2);
 
-    // // Execute
-    // List<Analysis> analysisList =
-    // analysisService.getMaxRevisionPendingAnalysesReadyToBeReportedBySample(sample2);
+        // Execute
+        List<Analysis> analysisList =
+        analysisService.getMaxRevisionPendingAnalysesReadyToBeReportedBySample(sample2);
 
-    // // Verify
-    // assertNotNull(analysisList);
-    // // Assuming the test data contains analyses ready to be reported for sample 1
-    // if (!analysisList.isEmpty()) {
-    // // Verify these are the highest revision analyses for this sample
-    // for (Analysis analysis : analysisList) {
-    // assertEquals("1", analysis.getSampleItem().getSample().getId());
+        // Verify
+        assertNotNull(analysisList);
+        // Assuming the test data contains analyses ready to be reported for sample 1
+        if (!analysisList.isEmpty()) {
+            // Verify these are the highest revision analyses for this sample
+            for (Analysis analysis : analysisList) {
+                assertEquals("1", analysis.getSampleItem().getSample().getId());
 
-    // // Additional verification: check if status is appropriate for reporting
-    // // For example, if analyses with status "A" are ready to be reported:
-    // assertEquals("A", analysis.getStatus());
+                // Additional verification: check if status is appropriate for reporting
+                // For example, if analyses with status "A" are ready to be reported:
+                assertEquals("A", analysis.getStatus());
 
-    // // Verify this is the max revision for this test
-    // String testId = analysis.getTest().getId();
-    // for (Analysis otherAnalysis : analysisService.getAll()) {
-    // if (otherAnalysis.getTest().getId().equals(testId) &&
-    // otherAnalysis.getSampleItem().getSample().getId().equals("1") &&
-    // !otherAnalysis.getId().equals(analysis.getId())) {
+                // Verify this is the max revision for this test
+                String testId = analysis.getTest().getId();
+                for (Analysis otherAnalysis : analysisService.getAll()) {
+                    if (otherAnalysis.getTest().getId().equals(testId) &&
+                        otherAnalysis.getSampleItem().getSample().getId().equals("1") &&
+                        !otherAnalysis.getId().equals(analysis.getId())) {
 
-    // assertTrue("Should be max revision",
-    // Integer.parseInt(analysis.getRevision()) >=
-    // Integer.parseInt(otherAnalysis.getRevision()));
-    // }
-    // }
-    // }
-    // }
-    // }
+                        assertTrue("Should be max revision",
+                        Integer.parseInt(analysis.getRevision()) >=
+                        Integer.parseInt(otherAnalysis.getRevision()));
+                    }
+                }
+            }
+        }
+    }
 
     @Test
     public void getMaxRevisionAnalysesReadyForReportPreviewBySample_shouldReturnCorrectAnalyses() {
-        List<String> accessionNumbers = List.of("SAM-2023-001");
+        Analysis analysis2 = analysisService.get("2");
+        Result result2 = resultService.get("2");
+        Sample sample2 = sampleService.get("2");
+
+        sample2.setStatusId("3");
+        sampleService.update(sample2);
+
+        result2.setAnalysis(analysis2);
+        result2.setIsReportable("Y");
+        resultService.update(result2);
+
+        analysis2.setStatusId("3");
+        analysis2.setIsReportable("Y");
+        analysis2.setPrintedDate(null);
+        analysisService.update(analysis2);
+        List<String> accessionNumbers = List.of("SAM-2023-002");
 
         List<Analysis> analysisList = analysisService
                 .getMaxRevisionAnalysesReadyForReportPreviewBySample(accessionNumbers);
 
         assertNotNull(analysisList);
+        assertEquals(1, analysisList.size());
         // Add assertions based on expected behavior
         if (!analysisList.isEmpty()) {
             for (Analysis analysis : analysisList) {
-                assertTrue(accessionNumbers.contains(analysis.getSampleItem().getSample().getAccessionNumber()));
+                assertEquals("SAM-2023-002", analysis.getSampleItem().getSample().getAccessionNumber());
             }
         }
     }
@@ -1087,8 +1095,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         List<Analysis> analysisList = analysisService.getAnalysesBySampleIdExcludedByStatusId("1", statusIds);
 
         assertNotNull(analysisList);
+        assertEquals(1, analysisList.size());
         if (!analysisList.isEmpty()) {
-            assertEquals(1, analysisList.size());
             for (Analysis analysis : analysisList) {
                 assertFalse(statusIds.contains(Integer.parseInt(analysis.getStatusId())));
             }
@@ -1360,22 +1368,37 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         }
     }
 
-    // DAO Issue
-    // @Test
-    // public void
-    // getMaxRevisionAnalysesReadyToBeReported_shouldReturnLatestReportableRevisions()
-    // {
-    // // Call the service method
-    // List<Analysis> analyses =
-    // analysisService.getMaxRevisionAnalysesReadyToBeReported();
+    @Test
+    public void
+    getMaxRevisionAnalysesReadyToBeReported_shouldReturnLatestReportableRevisions()
+    {
+        Analysis analysis2 = analysisService.get("2");
+        Result result2 = resultService.get("2");
+        Sample sample2 = sampleService.get("2");
 
-    // // Verify results
-    // assertNotNull(analyses);
-    // assertTrue(analyses.size() > 0);
-    // for (Analysis analysis : analyses) {
-    // assertEquals("Y", analysis.getIsReportable());
-    // }
-    // }
+        sample2.setStatusId("3");
+        sampleService.update(sample2);
+
+        result2.setAnalysis(analysis2);
+        result2.setIsReportable("Y");
+        resultService.update(result2);
+
+        analysis2.setStatusId("4");
+        analysis2.setIsReportable("Y");
+        analysis2.setPrintedDate(null);
+        analysisService.update(analysis2);
+        
+        // Call the service method
+        List<Analysis> analyses =
+        analysisService.getMaxRevisionAnalysesReadyToBeReported();
+
+        // Verify results
+        assertNotNull(analyses);
+        assertEquals(1, analyses.size());
+        for (Analysis analysis : analyses) {
+            assertEquals("2", analysis.getId());
+        }
+    }
 
     @Test
     public void getMaxRevisionAnalysisBySampleAndTest_shouldReturnLatestRevision() {
@@ -1400,38 +1423,40 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     }
 
-    // Dao issue
-    // @Test
-    // public void getAnalysesAlreadyReportedBySample_shouldReturnCorrectAnalyses()
-    // {
-    // // Create a sample for testing
-    // Analysis analysis = analysisService.get("2");
-    // org.openelisglobal.test.valueholder.Test test = testService.get("1");
-    // SampleItem sampleItem = sampleItemService.get("1");
-    // Sample sample = sampleService.get("1");
-    // sampleItem.setSample(sample);
-    // sampleItemService.update(sampleItem);
+    @Test
+    public void getAnalysesAlreadyReportedBySample_shouldReturnCorrectAnalyses()
+    {
+        // Create a sample for testing
+        Analysis analysis2 = analysisService.get("2");
+        Result result2 = resultService.get("2");
+        Sample sample2 = sampleService.get("2");
 
-    // analysis.setTest(test);
-    // analysis.setSampleItem(sampleItem);
-    // analysisService.update(analysis);
-    // Result result1 = resultService.get("1");
-    // Analysis analysis1 = analysisService.get("1");
-    // result1.setAnalysis(analysis1);
-    // resultService.update(result1);
+        sample2.setStatusId("3");
+        sampleService.update(sample2);
 
-    // List<Analysis> analysisList =
-    // analysisService.getAnalysesAlreadyReportedBySample(sample);
+        result2.setAnalysis(analysis2);
+        result2.setIsReportable("Y");
+        resultService.update(result2);
 
-    // // There should be at least one analysis for sample "1" in the test data
-    // assertNotNull(analysisList);
-    // assertTrue(analysisList.size() > 0);
+        analysis2.setStatusId("4");
+        analysis2.setIsReportable("Y");
+        analysis2.setPrintedDate(null);
+        analysisService.update(analysis2);
 
-    // // Verify that all analyses are reportable
-    // for (Analysis analysis2 : analysisList) {
-    // assertEquals("Y",analysis2.getIsReportable());
-    // }
-    // }
+        Sample sample = sampleService.get("2");
+
+        List<Analysis> analysisList =
+        analysisService.getAnalysesAlreadyReportedBySample(sample);
+
+        // There should be at least one analysis for sample "1" in the test data
+        assertNotNull(analysisList);
+        assertEquals(1, analysisList.size());
+
+        // Verify that all analyses are reportable
+        for (Analysis analysis : analysisList) {
+            assertEquals("Y",analysis.getIsReportable());
+        }
+    }
 
     @Test
     public void getRevisionHistoryOfAnalysesBySampleAndTest_shouldReturnCorrectAnalyses() {
@@ -1571,23 +1596,39 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         }
     }
 
-    // Dao Issue
-    // @Test
-    // public void getAnalysesReadyToBeReported_shouldReturnReadyAnalyses() {
-    // List<Analysis> readyAnalyses =
-    // analysisService.getAnalysesReadyToBeReported();
-    // assertNotNull(readyAnalyses);
+    @Test
+    public void getAnalysesReadyToBeReported_shouldReturnReadyAnalyses() {
+        Analysis analysis2 = analysisService.get("2");
+        Result result2 = resultService.get("2");
+        Sample sample2 = sampleService.get("2");
 
-    // // Verify all analyses are ready to be reported
-    // for (Analysis analysis : readyAnalyses) {
-    // assertEquals("Y", analysis.getIsReportable());
+        sample2.setStatusId("3");
+        sampleService.update(sample2);
 
-    // // Typically, analyses are ready to be reported when they're complete but not
-    // yet released
-    // assertNotNull(analysis.getCompletedDate());
-    // assertNull(analysis.getReleasedDate());
-    // }
-    // }
+        result2.setAnalysis(analysis2);
+        result2.setIsReportable("Y");
+        resultService.update(result2);
+
+        analysis2.setStatusId("4");
+        analysis2.setIsReportable("Y");
+        analysis2.setPrintedDate(null);
+        analysis2.setReleasedDate(null);
+        analysisService.update(analysis2);
+        
+        List<Analysis> readyAnalyses =
+        analysisService.getAnalysesReadyToBeReported();
+        assertNotNull(readyAnalyses);
+        assertEquals(1, readyAnalyses.size());
+
+        // Verify all analyses are ready to be reported
+        for (Analysis analysis : readyAnalyses) {
+        assertEquals("Y", analysis.getIsReportable());
+
+        // Typically, analyses are ready to be reported when they're complete but not yet released
+        assertNotNull(analysis.getCompletedDate());
+        assertNull(analysis.getReleasedDate());
+        }
+    }
 
     @Test
     public void getAnalysisBySampleAndTestIds_shouldReturnCorrectAnalyses() {

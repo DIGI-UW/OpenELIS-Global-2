@@ -453,22 +453,53 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             sampleStatusesToInclude
                     .add(ConfigurationProperties.getInstance().getPropertyValue("sample.status.released"));
 
-            String sql = "select distinct anal.id\n" + "        from\n" + "            sample samp,\n"
-                    + "            test_analyte ta,\n" + "            analysis anal,\n"
-                    + "            sample_item sampitem,\n" + "            test test,\n" + "            result res\n"
-                    + "\n" + "        where\n" + "            ta.test_id = test.id and\n"
-                    + "            ta.analyte_id=res.analyte_id and\n" + "            anal.id = res.analysis_id and\n"
-                    + "            anal.test_id = test.id and\n" + "            anal.sampitem_id = sampitem. id and\n"
-                    + "            sampitem.samp_id = samp.id\n" + "            and  res.is_reportable = 'Y'\n"
-                    + "            and anal.is_reportable = 'Y'\n" + "            and anal.printed_date is null\n"
-                    + "            and anal.status in (:analysisStatusesToInclude)\n"
-                    + "            and samp.status in(:sampleStatusesToInclude)\n"
-                    + "            --bugzilla 2028 - there is corresponding sql in main_report.jrxml and"
+            List<Integer> intAnalysisStatusesToInclude = new ArrayList<>();
+            for (String status : analysisStatusesToInclude) {
+                intAnalysisStatusesToInclude.add(Integer.parseInt(status));
+            }
+            
+            List<Integer> intSampleStatusesToInclude = new ArrayList<>();
+            for (String status : sampleStatusesToInclude) {
+                intSampleStatusesToInclude.add(Integer.parseInt(status));
+            }
+
+            String sql = "SELECT DISTINCT anal.*\n" +
+             "FROM\n" +
+             "    sample samp,\n" +
+             "    test_analyte ta,\n" +
+             "    analysis anal,\n" +
+             "    sample_item sampitem,\n" +
+             "    test test,\n" +
+             "    result res\n" +
+             "WHERE\n" +
+             "       ta.test_id = test.id\n" +
+             "and\n" +
+             "            ta.analyte_id=res.analyte_id\n" +
+             "and\n" + 
+             "            anal.id = res.analysis_id\n" +
+             "and\n" +
+             "            anal.test_id = test.id\n" + 
+             "and\n" + 
+             "            anal.sampitem_id = sampitem.id\n" +
+             "and\n" +
+             "            sampitem.samp_id = samp.id\n"+
+             "and\n" +
+             "            res.is_reportable = 'Y'\n" +
+             "and\n" +
+             "            anal.is_reportable = 'Y'\n"+
+             "and\n" +
+             "            anal.printed_date is null\n"+
+             "and\n" +
+             "            anal.status_id in (:analysisStatusesToInclude)\n"+
+             "and\n" +
+             "            samp.status_id in(:sampleStatusesToInclude)\n"+
+             "and\n" +
+             "            --bugzilla 2028 - there is corresponding sql in main_report.jrxml and"
                     + " test_results.jrxml to make sure we exclude the samples for which tests qa events"
                     + " are not completed\n" + "            --isQaEventsCompleted is 'Y' or 'N'\n"
                     + "            --------------if there are no qa events for this test then"
-                    + " isQaEventsCompleted = 'Y'\n"
-                    + "            and 'Y' = case when (select count(*) from analysis_qaevent aq where"
+                    + " isQaEventsCompleted = 'Y'\n"+
+             "'Y' = case when (select count(*) from analysis_qaevent aq where"
                     + " aq.analysis_id = anal.id)= 0 then 'Y'\n"
                     + "                        --if there are no holdable qa events for this test then "
                     + " isQaEventsCompleted = 'Y'\n"
@@ -481,10 +512,15 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
                     + " qa_event q where aq.analysis_id = anal.id and q.id = aq.qa_event_id and"
                     + " aq.completed_date is null and q.is_holdable = 'Y') = 0 then 'Y'\n"
                     + "                        --else isQaEventsCompleted = 'N'\n"
-                    + "                           else 'N'end";
-            return entityManager.unwrap(Session.class).createQuery(sql, Analysis.class)
-                    .setParameterList("analysisStatusesToInclude", analysisStatusesToInclude)
-                    .setParameterList("sampleStatusesToInclude", sampleStatusesToInclude).list();
+                    + "                           else 'N'\n" + "                      end";
+
+            List<Analysis> analyses = entityManager.unwrap(Session.class)
+                    .createNativeQuery(sql, Analysis.class)
+                    .setParameterList("analysisStatusesToInclude", intAnalysisStatusesToInclude)
+                    .setParameterList("sampleStatusesToInclude", intSampleStatusesToInclude)
+                    .getResultList();
+
+            return analyses;
 
         } catch (RuntimeException e) {
             LogEvent.logError(e);
@@ -641,26 +677,66 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             sampleStatusesToInclude
                     .add(ConfigurationProperties.getInstance().getPropertyValue("sample.status.released"));
 
-            String sql = "select distinct anal.id\n" + "        from\n" + "            sample samp,\n"
-                    + "            test_analyte ta,\n" + "            analysis anal,\n"
-                    + "            sample_item sampitem,\n" + "            test test,\n" + "            result res\n"
-                    + "\n" + "        where\n" + "          (\n" + "            (\n"
-                    + "             anal.SAMPITEM_ID , anal.TEST_ID , anal.REVISION\n" + "            )IN(\n"
-                    + "                select anal2.SAMPITEM_ID, anal2.TEST_ID, max(anal2.REVISION)\n"
-                    + "                from\n" + "                  analysis anal2\n" + "                group by\n"
-                    + "                    anal2.SAMPITEM_ID ,\n" + "                    anal2.TEST_ID\n"
-                    + "                )\n" + "            ) and\n" + "            ta.test_id = test.id and\n"
-                    + "            ta.analyte_id=res.analyte_id and\n" + "            anal.id = res.analysis_id and\n"
-                    + "            anal.test_id = test.id and\n" + "            anal.sampitem_id = sampitem. id and\n"
-                    + "            sampitem.samp_id = samp.id\n" + "            and  res.is_reportable = 'Y'\n"
-                    + "            and anal.is_reportable = 'Y'\n" + "            and anal.printed_date is null\n"
-                    + "            and anal.status in (:analysisStatusesToInclude)\n"
-                    + "            and samp.status in(:sampleStatusesToInclude)\n"
-                    + "            --bugzilla 2028 make sure we exclude the samples for which tests qa"
+            List<Integer> intAnalysisStatusesToInclude = new ArrayList<>();
+            for (String status : analysisStatusesToInclude) {
+                intAnalysisStatusesToInclude.add(Integer.parseInt(status));
+            }
+            
+            List<Integer> intSampleStatusesToInclude = new ArrayList<>();
+            for (String status : sampleStatusesToInclude) {
+                intSampleStatusesToInclude.add(Integer.parseInt(status));
+            }
+
+            String sql = "SELECT DISTINCT anal.*\n" +
+             "FROM\n" +
+             "    sample samp,\n" +
+             "    test_analyte ta,\n" +
+             "    analysis anal,\n" +
+             "    sample_item sampitem,\n" +
+             "    test test,\n" +
+             "    result res\n" +
+             "WHERE\n" +
+             "    (\n" +
+             "        (anal.sampitem_id, anal.test_id, anal.revision) IN (\n" +
+             "            SELECT \n" +
+             "                anal2.sampitem_id, \n" +
+             "                anal2.test_id, \n" +
+             "                MAX(anal2.revision)\n" +
+             "            FROM \n" +
+             "                analysis anal2\n" +
+             "            GROUP BY \n" +
+             "                anal2.sampitem_id,\n" +
+             "                anal2.test_id\n" +
+             "        )\n" +
+             "    )" +
+             "and\n" + 
+             "       ta.test_id = test.id\n" +
+             "and\n" +
+             "            ta.analyte_id=res.analyte_id\n" +
+             "and\n" + 
+             "            anal.id = res.analysis_id\n" +
+             "and\n" +
+             "            anal.test_id = test.id\n" + 
+             "and\n" + 
+             "            anal.sampitem_id = sampitem.id\n" +
+             "and\n" +
+             "            sampitem.samp_id = samp.id\n"+
+             "and\n" +
+             "            res.is_reportable = 'Y'\n" +
+             "and\n" +
+             "            anal.is_reportable = 'Y'\n"+
+             "and\n" +
+             "            anal.printed_date is null\n"+
+             "and\n" +
+             "            anal.status_id in (:analysisStatusesToInclude)\n"+
+             "and\n" +
+             "            samp.status_id in(:sampleStatusesToInclude)\n"+
+             "and\n" +
+             "            --bugzilla 2028 make sure we exclude the samples for which tests qa"
                     + " events are not completed\n" + "            --isQaEventsCompleted is 'Y' or 'N'\n"
                     + "            --------------if there are no qa events for this test then"
-                    + " isQaEventsCompleted = 'Y'\n"
-                    + "            and 'Y' = case when (select count(*) from analysis_qaevent aq where"
+                    + " isQaEventsCompleted = 'Y'\n"+
+             "'Y' = case when (select count(*) from analysis_qaevent aq where"
                     + " aq.analysis_id = anal.id)= 0 then 'Y'\n"
                     + "                        --if there are no holdable qa events for this test then "
                     + " isQaEventsCompleted = 'Y'\n"
@@ -674,11 +750,18 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
                     + " aq.completed_date is null and q.is_holdable = 'Y') = 0 then 'Y'\n"
                     + "                        --else isQaEventsCompleted = 'N'\n"
                     + "                           else 'N'\n" + "                      end";
-            return entityManager.unwrap(Session.class).createNativeQuery(sql, Analysis.class)
-                    .setParameterList("analysisStatusesToInclude", analysisStatusesToInclude)
-                    .setParameterList("sampleStatusesToInclude", sampleStatusesToInclude).list();
+
+            List<Analysis> analyses = entityManager.unwrap(Session.class)
+                    .createNativeQuery(sql, Analysis.class)
+                    .setParameterList("analysisStatusesToInclude", intAnalysisStatusesToInclude)
+                    .setParameterList("sampleStatusesToInclude", intSampleStatusesToInclude)
+                    .getResultList();
+
+            return analyses;
+                    
 
         } catch (RuntimeException e) {
+
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in Analysis getMaxRevisionAnalysesReadyToBeReported()", e);
         }
@@ -689,7 +772,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     @Transactional
     public List<Analysis> getMaxRevisionAnalysesReadyForReportPreviewBySample(List<String> accessionNumbers)
             throws LIMSRuntimeException {
-        List<Analysis> list = new Vector<>();
+        List<Analysis> list = new ArrayList<>();
         try {
             List<String> analysisStatusesToInclude = new ArrayList<>();
             // see question in 1900 should this be released or results completed
@@ -704,48 +787,90 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             // see question in 1900 - should this be included? Yes
             sampleStatusesToInclude
                     .add(ConfigurationProperties.getInstance().getPropertyValue("sample.status.released"));
+            
+            List<Integer> intAnalysisStatusesToInclude = new ArrayList<>();
+            for (String status : analysisStatusesToInclude) {
+                intAnalysisStatusesToInclude.add(Integer.parseInt(status));
+            }
+            
+            List<Integer> intSampleStatusesToInclude = new ArrayList<>();
+            for (String status : sampleStatusesToInclude) {
+                intSampleStatusesToInclude.add(Integer.parseInt(status));
+            }
 
             if (accessionNumbers != null && accessionNumbers.size() > 0) {
-                String sql = "select distinct anal.id\n" + "        from\n" + "            sample samp,\n"
-                        + "            test_analyte ta,\n" + "            analysis anal,\n"
-                        + "            sample_item sampitem,\n" + "            test test,\n"
-                        + "            result res\n" + "\n" + "        where\n" + "          (\n" + "            (\n"
-                        + "             anal.SAMPITEM_ID , anal.TEST_ID , anal.REVISION\n" + "            )IN(\n"
-                        + "                select anal2.SAMPITEM_ID, anal2.TEST_ID, max(anal2.REVISION)\n"
-                        + "                from\n" + "                  analysis anal2\n" + "                group by\n"
-                        + "                    anal2.SAMPITEM_ID ,\n" + "                    anal2.TEST_ID\n"
-                        + "                )\n" + "            ) and\n" + "            ta.test_id = test.id and\n"
-                        + "            ta.analyte_id=res.analyte_id and\n"
-                        + "            anal.id = res.analysis_id and\n" + "            anal.test_id = test.id and\n"
-                        + "            anal.sampitem_id = sampitem. id and\n"
-                        + "            sampitem.samp_id = samp.id\n" + "            and  res.is_reportable = 'Y'\n"
-                        + "            and anal.is_reportable = 'Y'\n" + "            and anal.printed_date is null\n"
-                        + "            and anal.status in (:analysisStatusesToInclude)\n"
-                        + "            and samp.status in(:sampleStatusesToInclude)\n"
-                        + "            and samp.accession_number in(:samplesToInclude)\n"
-                        + "            --bugzilla 2509 removed exclusion of holdable not completed qa" + " events\n"
-                        + "            --bugzilla 2028 make sure we exclude the samples for which tests qa"
-                        + " events are not completed\n" + "            --isQaEventsCompleted is 'Y' or 'N'\n"
-                        + "            --------------if there are no qa events for this test then"
-                        + " isQaEventsCompleted = 'Y'\n"
-                        + "            --and 'Y' = case when (select count(*) from analysis_qaevent aq"
-                        + " where aq.analysis_id = anal.id)= 0 then 'Y'\n"
-                        + "                        --if there are no holdable qa events for this test then "
-                        + " isQaEventsCompleted = 'Y'\n"
-                        + "                           --when (select count(*) from analysis_qaevent aq,"
-                        + " qa_event q where aq.analysis_id = anal.id and q.id = aq.qa_event_id and"
-                        + " q.is_holdable = 'Y') = 0 then 'Y'\n"
-                        + "                        --if there the holdable qa events for this test are"
-                        + " completed (completed date is not null) then isQaEventsCompleted = 'Y'\n"
-                        + "                           --when (select count(*) from analysis_qaevent aq,"
-                        + " qa_event q where aq.analysis_id = anal.id and q.id = aq.qa_event_id and"
-                        + " aq.completed_date is null and q.is_holdable = 'Y') = 0 then 'Y'\n"
-                        + "                        --else isQaEventsCompleted = 'N'\n"
-                        + "                           --else 'N'\n" + "                      --end";
-                list = entityManager.unwrap(Session.class).createNativeQuery(sql)
-                        .setParameterList("analysisStatusesToInclude", analysisStatusesToInclude)
-                        .setParameterList("sampleStatusesToInclude", sampleStatusesToInclude)
-                        .setParameterList("samplesToInclude", accessionNumbers).list();
+                String sql = "SELECT DISTINCT anal.*\n" +
+             "FROM\n" +
+             "    sample samp,\n" +
+             "    test_analyte ta,\n" +
+             "    analysis anal,\n" +
+             "    sample_item sampitem,\n" +
+             "    test test,\n" +
+             "    result res\n" +
+             "WHERE\n" +
+             "    (\n" +
+             "        (anal.sampitem_id, anal.test_id, anal.revision) IN (\n" +
+             "            SELECT \n" +
+             "                anal2.sampitem_id, \n" +
+             "                anal2.test_id, \n" +
+             "                MAX(anal2.revision)\n" +
+             "            FROM \n" +
+             "                analysis anal2\n" +
+             "            GROUP BY \n" +
+             "                anal2.sampitem_id,\n" +
+             "                anal2.test_id\n" +
+             "        )\n" +
+             "    )" +
+             "and\n" + 
+             "       ta.test_id = test.id\n" +
+             "and\n" +
+             "            ta.analyte_id=res.analyte_id\n" +
+             "and\n" + 
+             "            anal.id = res.analysis_id\n" +
+             "and\n" +
+             "            anal.test_id = test.id\n" + 
+             "and\n" + 
+             "            anal.sampitem_id = sampitem.id\n" +
+             "and\n" +
+             "            sampitem.samp_id = samp.id\n"+
+             "and\n" +
+             "            res.is_reportable = 'Y'\n" +
+             "and\n" +
+             "            anal.is_reportable = 'Y'\n"+
+             "and\n" +
+             "            anal.printed_date is null\n"+
+             "and\n" +
+             "            anal.status_id in (:analysisStatusesToInclude)\n"+
+             "and\n" +
+             "            samp.status_id in(:sampleStatusesToInclude)\n"+
+             "and\n" +
+             "            samp.accession_number in(:samplesToInclude)\n"+
+             "and\n" +
+             "            --bugzilla 2028 make sure we exclude the samples for which tests qa"
+                    + " events are not completed\n" + "            --isQaEventsCompleted is 'Y' or 'N'\n"
+                    + "            --------------if there are no qa events for this test then"
+                    + " isQaEventsCompleted = 'Y'\n"+
+             "'Y' = case when (select count(*) from analysis_qaevent aq where"
+                    + " aq.analysis_id = anal.id)= 0 then 'Y'\n"
+                    + "                        --if there are no holdable qa events for this test then "
+                    + " isQaEventsCompleted = 'Y'\n"
+                    + "                           when (select count(*) from analysis_qaevent aq,"
+                    + " qa_event q where aq.analysis_id = anal.id and q.id = aq.qa_event_id and"
+                    + " q.is_holdable = 'Y') = 0 then 'Y'\n"
+                    + "                        --if there the holdable qa events for this test are"
+                    + " completed (completed date is not null) then isQaEventsCompleted = 'Y'\n"
+                    + "                           when (select count(*) from analysis_qaevent aq,"
+                    + " qa_event q where aq.analysis_id = anal.id and q.id = aq.qa_event_id and"
+                    + " aq.completed_date is null and q.is_holdable = 'Y') = 0 then 'Y'\n"
+                    + "                        --else isQaEventsCompleted = 'N'\n"
+                    + "                           else 'N'\n" + "                      end";
+                List<Analysis> analyses = entityManager.unwrap(Session.class)
+                        .createNativeQuery(sql, Analysis.class)
+                        .setParameterList("analysisStatusesToInclude", intAnalysisStatusesToInclude)
+                        .setParameterList("sampleStatusesToInclude", intSampleStatusesToInclude)
+                        .setParameterList("samplesToInclude", accessionNumbers).getResultList();
+
+                return analyses;
             }
 
         } catch (RuntimeException e) {
@@ -760,21 +885,51 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     @Transactional
     public List<Analysis> getAnalysesAlreadyReportedBySample(Sample sample) throws LIMSRuntimeException {
         try {
-            String sql = "select distinct anal.id\n" + "        from\n" + "            sample samp,\n"
-                    + "            test_analyte ta,\n" + "            analysis anal,\n"
-                    + "            sample_item sampitem,\n" + "            test test,\n" + "            result res\n"
-                    + "\n" + "        where\n" + "           (\n" + "            (\n"
-                    + "             anal.SAMPITEM_ID , anal.TEST_ID , anal.REVISION\n" + "            )IN(\n"
-                    + "                select anal2.SAMPITEM_ID, anal2.TEST_ID, max(anal2.REVISION)\n"
-                    + "                from\n" + "                  analysis anal2\n" + "                group by\n"
-                    + "                    anal2.SAMPITEM_ID ,\n" + "                    anal2.TEST_ID\n"
-                    + "                )\n" + "          ) and\n" + "        samp.id = :sampleId and\n"
-                    + "        ta.test_id = test.id and\n" + "        ta.analyte_id=res.analyte_id and\n"
-                    + "        anal.id = res.analysis_id and\n" + "        anal.test_id = test.id and\n"
-                    + "        anal.sampitem_id = sampitem. id and\n" + "        sampitem.samp_id = samp.id\n"
-                    + "        and anal.printed_date is not null";
-            return entityManager.unwrap(Session.class).createNativeQuery(sql)
-                    .setParameter("sampleId", Integer.parseInt(sample.getId())).list();
+            String sql = "SELECT DISTINCT anal.*\n" +
+             "FROM\n" +
+             "    sample samp,\n" +
+             "    test_analyte ta,\n" +
+             "    analysis anal,\n" +
+             "    sample_item sampitem,\n" +
+             "    test test,\n" +
+             "    result res\n" +
+             "WHERE\n" +
+             "    (\n" +
+             "        (anal.sampitem_id, anal.test_id, anal.revision) IN (\n" +
+             "            SELECT \n" +
+             "                anal2.sampitem_id, \n" +
+             "                anal2.test_id, \n" +
+             "                MAX(anal2.revision)\n" +
+             "            FROM \n" +
+             "                analysis anal2\n" +
+             "            GROUP BY \n" +
+             "                anal2.sampitem_id,\n" +
+             "                anal2.test_id\n" +
+             "        )\n" +
+             "    )" +
+             "and\n" +
+             "        samp.id = :sampleId\n" +
+             "and\n" + 
+             "       ta.test_id = test.id\n" +
+             "and\n" +
+             "            ta.analyte_id=res.analyte_id\n" +
+             "and\n" + 
+             "            anal.id = res.analysis_id\n" +
+             "and\n" +
+             "            anal.test_id = test.id\n" + 
+             "and\n" + 
+             "            anal.sampitem_id = sampitem.id\n" +
+             "and\n" +
+             "            sampitem.samp_id = samp.id\n"+
+             "and\n" +
+             "            anal.printed_date is null";
+
+            List<Analysis> analyses = entityManager.unwrap(Session.class)
+                    .createNativeQuery(sql, Analysis.class)
+                    .setParameter("sampleId", Integer.parseInt(sample.getId()))
+                    .getResultList();
+
+            return analyses;
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in getAnalysesAlreadyReportedBySample()", e);
@@ -820,7 +975,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
                     + "                                anal.id = anal2.id and\n"
                     + "                                anal2.status in (:analysisStatusesToInclude)\n"
                     + "                           )\n" + "   ) > 0";
-            return entityManager.unwrap(Session.class).createNativeQuery(sql).setParameter("sampleId", sample.getId())
+            return entityManager.unwrap(Session.class).createNativeQuery(sql).setParameter("sampleId", Integer.parseInt(sample.getId()))
                     .setParameterList("analysisStatusesToInclude", analysisStatusesToInclude).list();
 
         } catch (RuntimeException e) {
@@ -847,9 +1002,35 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             // Answer NO
             // analysisStatusesToInclude.add(ConfigurationProperties.getInstance().getPropertyValue("analysis.status.result.completed"));
 
+            String sql = "select\n" + "    distinct anal.id\n" + "    from\n" + "    sample_item sampitem,\n"
+                    + "    sample samp,\n" + "    analysis anal,\n" + "    test test\n" + "\n" + "   where\n"
+                    + "     (\n" + "       (\n" + "         anal.SAMPITEM_ID , anal.TEST_ID , anal.REVISION\n"
+                    + "        )IN(\n" + "         select anal2.SAMPITEM_ID, anal2.TEST_ID, max(anal2.REVISION)\n"
+                    + "         from\n" + "         analysis anal2\n" + "         group by\n"
+                    + "         anal2.SAMPITEM_ID ,\n" + "         anal2.TEST_ID\n" + "       )\n" + "    ) and\n"
+                    + "    samp.id = :sampleId\n" + "    and  sampitem.samp_id = samp.id\n"
+                    + "    and anal.sampitem_id = sampitem. id\n" + "    and anal.test_id = test.id\n" + "    and\n"
+                    + "\n" + "    (select count(*)\n" + "       from test_analyte   t_a\n"
+                    + "       where t_a.test_id = test.id and\n" + "             (t_a.id)  in (\n"
+                    + "                           select ta.id\n" + "                           from test_analyte ta,\n"
+                    + "                                analysis anal2,\n"
+                    + "                                sample_item sampitem,\n"
+                    + "                                sample samp,\n" + "                                test test\n"
+                    + "                           where\n" + "                                samp.id = :sampleId and\n"
+                    + "                                sampitem.samp_id = samp.id and\n"
+                    + "                                anal2.sampitem_id = sampitem. id and\n"
+                    + "                                anal2.test_id = test.id and\n"
+                    + "                                ta.test_id = test.id and\n"
+                    + "                                ta.is_reportable = 'Y' and\n"
+                    + "                                anal2.is_reportable = 'Y' and\n"
+                    + "                                anal2.printed_date is null and\n"
+                    + "                                anal.id = anal2.id and\n"
+                    + "                                anal2.status in (:analysisStatusesToInclude)\n"
+                    + "                           )\n" + "   ) > 0";
+
             list = entityManager.unwrap(Session.class)
-                    .getNamedQuery("analysis.getMaxRevisionPendingAnalysesReadyToBeReportedBySample")
-                    .setParameter("sampleId", sample.getId())
+                    .createNativeQuery(sql)
+                    .setParameter("sampleId", Integer.parseInt(sample.getId()))
                     .setParameterList("analysisStatusesToInclude", analysisStatusesToInclude).list();
 
         } catch (RuntimeException e) {
