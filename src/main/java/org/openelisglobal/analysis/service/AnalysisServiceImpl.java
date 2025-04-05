@@ -267,8 +267,8 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     @Override
     public boolean patientReportHasBeenDone(Analysis analysis) {
         return analysis == null ? false
-                : iReportTrackingService.getLastReportForSample(
-                        analysis.getSampleItem().getSample(), ReportTrackingService.ReportType.PATIENT) != null;
+                : iReportTrackingService.getLastReportForSample(analysis.getSampleItem().getSample(),
+                        ReportTrackingService.ReportType.PATIENT) != null;
     }
 
     @Override

@@ -11,13 +11,14 @@
         lastupdated="2023-11-15 14:00:00" name="Status 2"
         display_key="sample_display_key_2" is_active="Y" />
     <status_of_sample id="3"
-        description="All tests have been run on this order" code="1" status_type="ORDER"
-        lastupdated="2023-11-15 14:00:00" name="Testing finished"
-        display_key="status.sample.finished" is_active="Y" />
+        description="All tests have been run on this order" code="1"
+        status_type="ORDER" lastupdated="2023-11-15 14:00:00"
+        name="Testing finished" display_key="status.sample.finished"
+        is_active="Y" />
     <status_of_sample id="4"
-        description="This test has not yet been done" code="1" status_type="ANALYSIS"
-        lastupdated="2023-11-15 14:00:00" name="Not Tested"
-        display_key="status.test.notStarted" is_active="Y" />
+        description="This test has not yet been done" code="1"
+        status_type="ANALYSIS" lastupdated="2023-11-15 14:00:00"
+        name="Not Tested" display_key="status.test.notStarted" is_active="Y" />
     <status_of_sample id="12"
         description="The order is non-conforming" code="1" status_type="ORDER"
         lastupdated="2023-11-15 14:00:00" name="NonConforming"
@@ -30,8 +31,7 @@
     <status_of_sample id="14"
         description="Test was requested but then canceled" code="1"
         status_type="ANALYSIS" lastupdated="2023-11-15 14:00:00"
-        name="Test Canceled" display_key="status.test.canceled"
-        is_active="N" />
+        name="Test Canceled" display_key="status.test.canceled" is_active="N" />
 
     <!-- System Users -->
     <system_user id="1" login_name="testUser" last_name="Doe"
@@ -207,9 +207,8 @@
     <analysis_qaevent id="1" qa_event_id="1"
         analysis_id="1" completed_date="2023-11-15 14:00:00"
         lastupdated="2023-12-01 12:00:00" />
-    <!-- <analysis_qaevent id="2" qa_event_id="2"
-        analysis_id="2" completed_date="2023-11-16 14:00:00"
-        lastupdated="2023-12-01 12:00:00" /> -->
+    <!-- <analysis_qaevent id="2" qa_event_id="2" analysis_id="2" completed_date="2023-11-16
+        14:00:00" lastupdated="2023-12-01 12:00:00" /> -->
 
     <!-- Sample QA Event -->
     <sample_qaevent id="1" sample_id="1" sampleitem_id="1"
@@ -219,13 +218,17 @@
 
     <!-- Document Type -->
     <document_type id="1" name="nonConformityNotification"
-        description="Non_Conformity reports to be sent to clinic" lastupdated="2024-03-06 10:00:00" />
+        description="Non_Conformity reports to be sent to clinic"
+        lastupdated="2024-03-06 10:00:00" />
     <document_type id="2" name="resultExport"
-        description="Results sent electronically to other systems" lastupdated="2024-03-06 10:00:00" />
+        description="Results sent electronically to other systems"
+        lastupdated="2024-03-06 10:00:00" />
     <document_type id="3" name="malariaCase"
-        description="malaria case report sent" lastupdated="2024-03-06 10:00:00" />
+        description="malaria case report sent"
+        lastupdated="2024-03-06 10:00:00" />
     <document_type id="4" name="patientReport"
-        description="Any patient report, name in report_tracker" lastupdated="2024-03-06 10:00:00" />
+        description="Any patient report, name in report_tracker"
+        lastupdated="2024-03-06 10:00:00" />
 
     <!-- Document Track -->
     <document_track id="1" document_type_id="4" table_id="1"

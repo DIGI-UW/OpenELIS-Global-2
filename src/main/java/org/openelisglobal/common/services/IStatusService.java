@@ -7,7 +7,6 @@ import org.openelisglobal.common.services.StatusService.RecordStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sample.valueholder.Sample;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 public interface IStatusService {

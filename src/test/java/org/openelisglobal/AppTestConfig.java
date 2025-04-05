@@ -66,7 +66,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.observationhistorytype", "org.openelisglobal.statusofsample", "org.openelisglobal.test",
         "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer", "org.openelisglobal.testanalyte",
         "org.openelisglobal.observationhistory", "org.openelisglobal.systemusersection",
-        "org.openelisglobal.typeofsample", "org.openelisglobal.siteinformation", "org.openelisglobal.qaevent", 
+        "org.openelisglobal.typeofsample", "org.openelisglobal.siteinformation", "org.openelisglobal.qaevent",
         "org.openelisglobal.sampleproject", "org.openelisglobal.project", "org.openelisglobal.sampleqaevent",
         "org.openelisglobal.image", "org.openelisglobal.common.services", "org.openelisglobal.referral",
         "org.openelisglobal.analysisqaevent" }, excludeFilters = {

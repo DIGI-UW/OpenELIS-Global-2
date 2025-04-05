@@ -18,16 +18,16 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analysisqaevent.service.AnalysisQaEventService;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
+import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.reports.service.DocumentTrackService;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
-import org.openelisglobal.reports.valueholder.DocumentTrack;
-import org.openelisglobal.referencetables.service.ReferenceTablesService;
-import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -36,7 +36,6 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
 import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
 import org.openelisglobal.statusofsample.service.StatusOfSampleService;
-import org.openelisglobal.analysisqaevent.service.AnalysisQaEventService;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.TestSection;
@@ -438,33 +437,33 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     // Getting null
     @Test
     public void patientReportHasBeenDone_shouldHandleNullAndValidAnalysis() {
-    // Test null analysis
-    boolean nullResult = analysisService.patientReportHasBeenDone(null);
-    assertFalse(nullResult);
+        // Test null analysis
+        boolean nullResult = analysisService.patientReportHasBeenDone(null);
+        assertFalse(nullResult);
 
-    // Valid analysis test
-    Analysis analysis = analysisService.get("1");
-    SampleItem sampleItem = sampleItemService.get("1");
-    Sample sample = sampleService.get("1");
-    ReferenceTables refer1 = referenceTablesService.get("1");
-    ReferenceTables refer2 = referenceTablesService.get("2");
+        // Valid analysis test
+        Analysis analysis = analysisService.get("1");
+        SampleItem sampleItem = sampleItemService.get("1");
+        Sample sample = sampleService.get("1");
+        ReferenceTables refer1 = referenceTablesService.get("1");
+        ReferenceTables refer2 = referenceTablesService.get("2");
 
-    refer1.setTableName("SAMPLE");
-    referenceTablesService.update(refer1);
-    refer2.setTableName("ANALYSIS");
-    referenceTablesService.update(refer2);
+        refer1.setTableName("SAMPLE");
+        referenceTablesService.update(refer1);
+        refer2.setTableName("ANALYSIS");
+        referenceTablesService.update(refer2);
 
-    sampleItem.setSample(sample);
-    sampleItemService.update(sampleItem);
+        sampleItem.setSample(sample);
+        sampleItemService.update(sampleItem);
 
-    analysis.setSampleItem(sampleItem);
-    analysisService.update(analysis);
+        analysis.setSampleItem(sampleItem);
+        analysisService.update(analysis);
 
-    Analysis analysis1 = analysisService.get("1");
+        Analysis analysis1 = analysisService.get("1");
 
-    // Test when report exists
-    boolean reportExistsResult = analysisService.patientReportHasBeenDone(analysis1);
-    assertTrue(reportExistsResult);
+        // Test when report exists
+        boolean reportExistsResult = analysisService.patientReportHasBeenDone(analysis1);
+        assertTrue(reportExistsResult);
     }
 
     @Test
@@ -756,7 +755,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void updateAnalysises_shouldUpdateCancelAnalysisAndInsertNewAnalysis(){
+    public void updateAnalysises_shouldUpdateCancelAnalysisAndInsertNewAnalysis() {
         // Prepare test data
         List<Analysis> cancelAnalyses = new ArrayList<>();
         Analysis cancelAnalysis = analysisService.get("1");
@@ -967,9 +966,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void
-    getMaxRevisionPendingAnalysesReadyForReportPreviewBySample_shouldReturnCorrectList()
-    {
+    public void getMaxRevisionPendingAnalysesReadyForReportPreviewBySample_shouldReturnCorrectList() {
         SampleItem sampleItem1 = sampleItemService.get("1");
         org.openelisglobal.test.valueholder.Test test1 = testService.get("1");
         Analysis analysis1 = analysisService.get("1");
@@ -990,8 +987,8 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         analysis2.setSampleItem(sampleItem2);
         analysisService.update(analysis2);
 
-        List<Analysis> analysisList =
-        analysisService.getMaxRevisionPendingAnalysesReadyForReportPreviewBySample(sample2);
+        List<Analysis> analysisList = analysisService
+                .getMaxRevisionPendingAnalysesReadyForReportPreviewBySample(sample2);
 
         assertNotNull(analysisList);
         // Add assertions based on expected results
@@ -1001,9 +998,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void
-    getMaxRevisionPendingAnalysesReadyToBeReportedBySample_shouldReturnCorrectAnalyses()
-    {
+    public void getMaxRevisionPendingAnalysesReadyToBeReportedBySample_shouldReturnCorrectAnalyses() {
         SampleItem sampleItem1 = sampleItemService.get("1");
         org.openelisglobal.test.valueholder.Test test1 = testService.get("1");
         Analysis analysis1 = analysisService.get("1");
@@ -1025,8 +1020,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         analysisService.update(analysis2);
 
         // Execute
-        List<Analysis> analysisList =
-        analysisService.getMaxRevisionPendingAnalysesReadyToBeReportedBySample(sample2);
+        List<Analysis> analysisList = analysisService.getMaxRevisionPendingAnalysesReadyToBeReportedBySample(sample2);
 
         // Verify
         assertNotNull(analysisList);
@@ -1043,13 +1037,12 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
                 // Verify this is the max revision for this test
                 String testId = analysis.getTest().getId();
                 for (Analysis otherAnalysis : analysisService.getAll()) {
-                    if (otherAnalysis.getTest().getId().equals(testId) &&
-                        otherAnalysis.getSampleItem().getSample().getId().equals("1") &&
-                        !otherAnalysis.getId().equals(analysis.getId())) {
+                    if (otherAnalysis.getTest().getId().equals(testId)
+                            && otherAnalysis.getSampleItem().getSample().getId().equals("1")
+                            && !otherAnalysis.getId().equals(analysis.getId())) {
 
-                        assertTrue("Should be max revision",
-                        Integer.parseInt(analysis.getRevision()) >=
-                        Integer.parseInt(otherAnalysis.getRevision()));
+                        assertTrue("Should be max revision", Integer.parseInt(analysis.getRevision()) >= Integer
+                                .parseInt(otherAnalysis.getRevision()));
                     }
                 }
             }
@@ -1369,9 +1362,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void
-    getMaxRevisionAnalysesReadyToBeReported_shouldReturnLatestReportableRevisions()
-    {
+    public void getMaxRevisionAnalysesReadyToBeReported_shouldReturnLatestReportableRevisions() {
         Analysis analysis2 = analysisService.get("2");
         Result result2 = resultService.get("2");
         Sample sample2 = sampleService.get("2");
@@ -1387,10 +1378,9 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         analysis2.setIsReportable("Y");
         analysis2.setPrintedDate(null);
         analysisService.update(analysis2);
-        
+
         // Call the service method
-        List<Analysis> analyses =
-        analysisService.getMaxRevisionAnalysesReadyToBeReported();
+        List<Analysis> analyses = analysisService.getMaxRevisionAnalysesReadyToBeReported();
 
         // Verify results
         assertNotNull(analyses);
@@ -1424,8 +1414,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getAnalysesAlreadyReportedBySample_shouldReturnCorrectAnalyses()
-    {
+    public void getAnalysesAlreadyReportedBySample_shouldReturnCorrectAnalyses() {
         // Create a sample for testing
         Analysis analysis2 = analysisService.get("2");
         Result result2 = resultService.get("2");
@@ -1445,8 +1434,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
         Sample sample = sampleService.get("2");
 
-        List<Analysis> analysisList =
-        analysisService.getAnalysesAlreadyReportedBySample(sample);
+        List<Analysis> analysisList = analysisService.getAnalysesAlreadyReportedBySample(sample);
 
         // There should be at least one analysis for sample "1" in the test data
         assertNotNull(analysisList);
@@ -1454,7 +1442,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
         // Verify that all analyses are reportable
         for (Analysis analysis : analysisList) {
-            assertEquals("Y",analysis.getIsReportable());
+            assertEquals("Y", analysis.getIsReportable());
         }
     }
 
@@ -1614,19 +1602,19 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         analysis2.setPrintedDate(null);
         analysis2.setReleasedDate(null);
         analysisService.update(analysis2);
-        
-        List<Analysis> readyAnalyses =
-        analysisService.getAnalysesReadyToBeReported();
+
+        List<Analysis> readyAnalyses = analysisService.getAnalysesReadyToBeReported();
         assertNotNull(readyAnalyses);
         assertEquals(1, readyAnalyses.size());
 
         // Verify all analyses are ready to be reported
         for (Analysis analysis : readyAnalyses) {
-        assertEquals("Y", analysis.getIsReportable());
+            assertEquals("Y", analysis.getIsReportable());
 
-        // Typically, analyses are ready to be reported when they're complete but not yet released
-        assertNotNull(analysis.getCompletedDate());
-        assertNull(analysis.getReleasedDate());
+            // Typically, analyses are ready to be reported when they're complete but not
+            // yet released
+            assertNotNull(analysis.getCompletedDate());
+            assertNull(analysis.getReleasedDate());
         }
     }
 
