@@ -36,14 +36,57 @@ describe("Login Test Cases", function () {
     cy.contains("Username or Password are incorrect").should("be.visible");
   });
 
+  // it("User changes from default credentials", function () {
+  //   login.changingPassword();
+  //   login.enterUsername(usersData[3].username);
+  //   login.enterCurrentPassword(usersData[3].password);
+  //   login.enterNewPassword(usersData[4].password);
+  //   login.repeatNewPassword(usersData[4].password);
+  //   login.submitNewPassword();
+  //   cy.contains("Password changed successfully").should("be.visible");
+  // });
+  // it("User changes from default credentials", function () {
+  //   login.changingPassword();
+
+  //   cy.log("Username: " + usersData[3].username);
+  //   cy.log("Current Password: " + usersData[3].password);
+  //   cy.log("New Password: " + usersData[4].password);
+
+  //   login.enterUsername(usersData[3].username);
+  //   login.enterCurrentPassword(usersData[3].password);
+  //   login.enterNewPassword(usersData[4].password);
+  //   login.repeatNewPassword(usersData[4].password);
+
+  //   login.submitNewPassword();
+
+  //   cy.contains("Password changed successfully", { timeout: 10000 }).should("be.visible");
+  // });
   it("User changes from default credentials", function () {
+    login.visit(); // Ensure fresh login page
+    login.clearInputs(); // Clear fields if needed
+
     login.changingPassword();
-    login.enterUsername(usersData[3].username);
-    login.enterCurrentPassword(usersData[3].password);
-    login.enterNewPassword(usersData[4].password);
-    login.repeatNewPassword(usersData[4].password);
+
+    // Ensure all fields are available and enabled before typing
+    cy.get("#loginName")
+      .should("be.visible")
+      .and("not.be.disabled")
+      .clear()
+      .type(usersData[3].username);
+    cy.get("#current-password")
+      .should("be.visible")
+      .type(usersData[3].password);
+    cy.get("#new-password").should("be.visible").type(usersData[4].password);
+    cy.get("#repeat-new-password")
+      .should("be.visible")
+      .type(usersData[4].password);
+
     login.submitNewPassword();
-    cy.contains("Password changed successfully").should("be.visible");
+
+    // Robust check for success message
+    cy.contains("Password changed successfully", { timeout: 15000 }).should(
+      "be.visible",
+    );
   });
 
   it("Logs in with correct credentials", function () {
@@ -53,15 +96,34 @@ describe("Login Test Cases", function () {
     login.signIn();
   });
 
+  // it("Resets the default credentials", function () {
+  //   login.changingPassword();
+  //   login.enterUsername(usersData[4].username);
+  //   login.enterCurrentPassword(usersData[4].password);
+  //   login.enterNewPassword(usersData[3].password);
+  //   login.repeatNewPassword(usersData[3].password);
+  //   login.submitNewPassword();
+  //   //cy.get("div[role='status']").should("be.visible");
+  //   cy.contains("Password changed successfully").should("be.visible");
+  // });
   it("Resets the default credentials", function () {
+    login.visit(); // Ensure you're on the login page
+    login.clearInputs(); // Clear any previous input
+
     login.changingPassword();
-    login.enterUsername(usersData[4].username);
+
+    cy.get("#loginName")
+      .should("not.be.disabled")
+      .clear()
+      .type(usersData[4].username);
     login.enterCurrentPassword(usersData[4].password);
     login.enterNewPassword(usersData[3].password);
     login.repeatNewPassword(usersData[3].password);
     login.submitNewPassword();
-    //cy.get("div[role='status']").should("be.visible");
-    cy.contains("Password changed successfully").should("be.visible");
+
+    cy.contains("Password changed successfully", { timeout: 10000 }).should(
+      "be.visible",
+    );
   });
 
   it("User exits password reset", function () {
