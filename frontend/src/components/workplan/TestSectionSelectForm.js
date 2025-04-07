@@ -12,16 +12,20 @@ function TestSectionSelectForm({ value, title }) {
   const intl = useIntl();
 
   useEffect(() => {
-    let isMounted = true;
+    let isComponentMounted = true; // Ensures state updates only if component is mounted
 
     const fetchTestSections = async () => {
       try {
-        let testSectionId = new URLSearchParams(window.location.search).get("testSectionId") || "";
-        const fetchedTestSections = await getFromOpenElisServer(`/rest/user-test-sections/${Roles.RESULTS}`);
+        const testSectionId =
+          new URLSearchParams(window.location.search).get("testSectionId") || "";
 
-        if (isMounted) {
-          let testSection = fetchedTestSections.find((t) => t.id === testSectionId);
-          let testSectionLabel = testSection
+        const fetchedTestSections = await getFromOpenElisServer(
+          `/rest/user-test-sections/${Roles.RESULTS}`
+        );
+
+        if (isComponentMounted) {
+          const testSection = fetchedTestSections.find((t) => t.id === testSectionId);
+          const testSectionLabel = testSection
             ? testSection.value
             : intl.formatMessage({ id: "input.placeholder.selectTestSection" });
 
@@ -36,8 +40,9 @@ function TestSectionSelectForm({ value, title }) {
     };
 
     fetchTestSections();
+
     return () => {
-      isMounted = false;
+      isComponentMounted = false; // Cleanup function to prevent memory leaks
     };
   }, [value, intl]);
 
