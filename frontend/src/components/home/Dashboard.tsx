@@ -22,7 +22,22 @@ import {
   Tag,
 } from "@carbon/react";
 import "./Dashboard.css";
-import { Minimize, Maximize, ArrowLeft, ArrowRight } from "@carbon/react/icons";
+import {
+  Minimize,
+  Maximize,
+  ArrowLeft,
+  ArrowRight,
+  ChartLine,
+  CheckmarkOutline,
+  InProgress,
+  WarningAlt,
+  DocumentImport,
+  UserFollow,
+  Time,
+  Report,
+  Printer,
+  DocumentExport,
+} from "@carbon/react/icons";
 import { Copy } from "@carbon/icons-react";
 import { useState, useEffect, useRef, useContext } from "react";
 import {
@@ -35,14 +50,16 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 
-interface DashBoardProps {}
+type DashBoardProps = {};
 
-interface Tile {
+interface DashboardTile {
   title: string | JSX.Element;
   subTitle: string | JSX.Element;
   type: MetricType;
   value: number;
   id?: number;
+  icon?: React.ReactNode;
+  color?: string;
 }
 type MetricType =
   | "ORDERS_IN_PROGRESS"
@@ -96,7 +113,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const componentMounted = useRef(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
-  const [selectedTile, setSelectedTile] = useState<Tile>(null);
+  const [selectedTile, setSelectedTile] = useState<DashboardTile>(null);
   const [nextPage, setNextPage] = useState(null);
   const [previousPage, setPreviousPage] = useState(null);
   const [pagination, setPagination] = useState(false);
@@ -214,14 +231,14 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
         setPagination(true);
         setCurrentApiPage(currentPage);
         setTotalApiPages(totalPages);
-        if (parseInt(currentPage) < parseInt(totalPages)) {
-          setNextPage(parseInt(currentPage) + 1);
+        if (Number.parseInt(currentPage) < Number.parseInt(totalPages)) {
+          setNextPage(Number.parseInt(currentPage) + 1);
         } else {
           setNextPage(null);
         }
 
-        if (parseInt(currentPage) > 1) {
-          setPreviousPage(parseInt(currentPage) - 1);
+        if (Number.parseInt(currentPage) > 1) {
+          setPreviousPage(Number.parseInt(currentPage) - 1);
         } else {
           setPreviousPage(null);
         }
@@ -236,12 +253,14 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     setLoading(false);
   };
 
-  const tileList: Array<Tile> = [
+  const tileList: Array<DashboardTile> = [
     {
       title: <FormattedMessage id="dashboard.in.progress.label" />,
       subTitle: <FormattedMessage id="dashboard.in.progress.subtitle.label" />,
       type: "ORDERS_IN_PROGRESS",
       value: counts.ordersInProgress,
+      icon: <InProgress size={24} />,
+      color: "#0072c3",
     },
     {
       title: <FormattedMessage id="dashboard.validation.ready.label" />,
@@ -250,12 +269,16 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       ),
       type: "ORDERS_READY_FOR_VALIDATION",
       value: counts.ordersReadyForValidation,
+      icon: <CheckmarkOutline size={24} />,
+      color: "#24a148",
     },
     {
       title: <FormattedMessage id="dashboard.complete.orders.label" />,
       subTitle: <FormattedMessage id="dashboard.orders.subtitle.label" />,
       type: "ORDERS_COMPLETED_TODAY",
       value: counts.ordersCompletedToday,
+      icon: <DocumentExport size={24} />,
+      color: "#198038",
     },
     {
       title: <FormattedMessage id="dashboard.partially.completed.label" />,
@@ -264,18 +287,24 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       ),
       type: "ORDERS_PATIALLY_COMPLETED_TODAY",
       value: counts.patiallyCompletedToday,
+      icon: <Report size={24} />,
+      color: "#8a3ffc",
     },
     {
       title: <FormattedMessage id="dashboard.user.orders.label" />,
       subTitle: <FormattedMessage id="dashboard.user.orders.subtitle.label" />,
       type: "ORDERS_ENTERED_BY_USER_TODAY",
       value: counts.orderEnterdByUserToday,
+      icon: <UserFollow size={24} />,
+      color: "#1192e8",
     },
     {
       title: <FormattedMessage id="dashboard.rejected.orders" />,
       subTitle: <FormattedMessage id="dashboard.rejected.orders.subtitle" />,
       type: "ORDERS_REJECTED_TODAY",
       value: counts.ordersRejectedToday,
+      icon: <WarningAlt size={24} />,
+      color: "#da1e28",
     },
     {
       title: <FormattedMessage id="dashboard.unprints.results.label" />,
@@ -284,12 +313,16 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       ),
       type: "UN_PRINTED_RESULTS",
       value: counts.unPritendResults,
+      icon: <Printer size={24} />,
+      color: "#4589ff",
     },
     {
       title: <FormattedMessage id="sidenav.label.incomingorder" />,
       subTitle: <FormattedMessage id="label.electronic.orders" />,
       type: "INCOMING_ORDERS",
       value: counts.incomigOrders,
+      icon: <DocumentImport size={24} />,
+      color: "#a56eff",
     },
     {
       title: <FormattedMessage id="dashboard.avg.turn.around.label" />,
@@ -298,33 +331,43 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       ),
       type: "AVERAGE_TURN_AROUND_TIME",
       value: counts.averageTurnAroudTime,
+      icon: <ChartLine size={24} />,
+      color: "#08bdba",
     },
     {
       title: <FormattedMessage id="dashboard.turn.around.label" />,
       subTitle: <FormattedMessage id="dashboard.turn.around.subtitle.label" />,
       type: "DELAYED_TURN_AROUND",
       value: counts.delayedTurnAround,
+      icon: <Time size={24} />,
+      color: "#ff7eb6",
     },
   ];
 
-  const averageTimeTileList: Array<Tile> = [
+  const averageTimeTileList: Array<DashboardTile> = [
     {
       title: "Reception To Validation Average Time",
       subTitle: "Reception To Validation Average Time",
       type: "AVERAGE_TURN_AROUND_TIME",
       value: timeMetrics.receptionToValidation,
+      icon: <Time size={24} />,
+      color: "#08bdba",
     },
     {
       title: "Reception To Result Average Time",
       subTitle: "Reception To Result Average Time",
       type: "AVERAGE_TURN_AROUND_TIME",
       value: timeMetrics.receptionToResult,
+      icon: <Time size={24} />,
+      color: "#1192e8",
     },
     {
       title: "Result To Validation Average Time",
       subTitle: "Result To Validation Average Time",
       type: "AVERAGE_TURN_AROUND_TIME",
       value: timeMetrics.resultToValidation,
+      icon: <Time size={24} />,
+      color: "#a56eff",
     },
   ];
 
@@ -340,15 +383,16 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   ];
 
   const handleMinimizeClick = () => {
-    console.log("Icon clicked!");
     if (selectedTile.type == "ORDERS_FOR_USER") {
-      const tile: Tile = {
+      const tile: DashboardTile = {
         title: <FormattedMessage id="dashboard.user.orders.label" />,
         subTitle: (
           <FormattedMessage id="dashboard.user.orders.subtitle.label" />
         ),
         type: "ORDERS_ENTERED_BY_USER_TODAY",
         value: counts.orderEnterdByUserToday,
+        icon: <UserFollow size={24} />,
+        color: "#1192e8",
       };
       setSelectedTile(tile);
     } else {
@@ -376,7 +420,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   };
 
   const viewUserOrders = (row) => {
-    console.log("Icon clicked!");
     const firstName = row.cells.find(
       (e) => e.info.header === "userFirstName",
     ).value;
@@ -387,12 +430,14 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       (e) => e.info.header === "countOfOrdersEntered",
     ).value;
 
-    const tile: Tile = {
+    const tile: DashboardTile = {
       title: <FormattedMessage id="dashboard.user.orders.today.label" />,
       subTitle: firstName + " " + lastName,
       type: "ORDERS_FOR_USER",
       value: value,
       id: row.id,
+      icon: <UserFollow size={24} />,
+      color: "#1192e8",
     };
     setSelectedTile(tile);
   };
@@ -406,6 +451,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       setPageSize(pageInfo.pageSize);
     }
   };
+
   const renderCell = (cell, row) => {
     if (cell.info.header === "labNumber" && cell.value) {
       return (
@@ -430,7 +476,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               {selectedTile.type == "ORDERS_IN_PROGRESS" ||
               selectedTile.type == "ORDERS_READY_FOR_VALIDATION" ? (
                 <Link
-                  style={{ color: "blue" }}
+                  style={{ color: "#0f62fe", fontWeight: "500" }}
                   href={
                     selectedTile.type == "ORDERS_IN_PROGRESS"
                       ? "/result?type=order&doRange=false&accessionNumber=" +
@@ -450,7 +496,17 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     } else if (cell.info.header === "countOfOrdersEntered" && cell.value) {
       return (
         <TableCell key={cell.id}>
-          <Link style={{ color: "blue" }}>{cell.value} </Link>
+          <Link style={{ color: "#0f62fe", fontWeight: "500" }}>
+            {cell.value}{" "}
+          </Link>
+        </TableCell>
+      );
+    } else if (cell.info.header === "priority" && cell.value) {
+      return (
+        <TableCell key={cell.id}>
+          <Tag type={cell.value === "Routine" ? "blue" : "red"}>
+            {cell.value}
+          </Tag>
         </TableCell>
       );
     } else {
@@ -498,7 +554,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
 
   return (
     <>
-      {loading && <Loading description="Loading Dasboard..." />}
+      {loading && <Loading description="Loading Dashboard..." withOverlay />}
       {notificationVisible === true ? <AlertDialog /> : ""}
       {selectedTile == null ? (
         <div className="home-dashboard-container">
@@ -507,10 +563,44 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               key={index}
               className="dashboard-tile"
               onClick={() => handleMaximizeClick(tile)}
+              style={{
+                borderTop: `4px solid ${tile.color}`,
+                transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                position: "relative",
+                overflow: "hidden",
+              }}
             >
-              <h3 className="tile-title">{tile.title}</h3>
-              <p className="tile-subtitle">{tile.subTitle}</p>
-              <p className="tile-value">{tile.value}</p>
+              <div
+                className="tile-icon-bg"
+                style={{
+                  position: "absolute",
+                  top: "10px",
+                  right: "10px",
+                  opacity: 0.1,
+                  color: tile.color,
+                }}
+              >
+                {tile.icon}
+              </div>
+              <div className="tile-content">
+                <div
+                  className="tile-header"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    marginBottom: "8px",
+                  }}
+                >
+                  <div style={{ color: tile.color, marginRight: "8px" }}>
+                    {tile.icon}
+                  </div>
+                  <h3 className="tile-title">{tile.title}</h3>
+                </div>
+                <p className="tile-subtitle">{tile.subTitle}</p>
+                <p className="tile-value" style={{ color: tile.color }}>
+                  {tile.value}
+                </p>
+              </div>
 
               <div className="tile-icon">
                 <div
@@ -529,15 +619,61 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
         </div>
       ) : (
         <div className="dashboard-view">
-          <Tile className="dashboard-tile">
+          <Tile
+            className="dashboard-tile"
+            style={{
+              borderTop: `4px solid ${selectedTile.color}`,
+              borderRadius: "4px",
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+            }}
+          >
             <Grid>
               <Column lg={16} md={8} sm={4}>
-                <h3 className="tile-title-view">{selectedTile.title}</h3>
-                <p className="tile-subtitle-view">{selectedTile.subTitle}</p>
-                <p className="tile-value-view">{selectedTile.value}</p>
-                {
-                  <div className="tile-icon">
-                    <div onClick={handleMinimizeClick} className="icon-wrapper">
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    marginBottom: "12px",
+                  }}
+                >
+                  <div
+                    style={{ color: selectedTile.color, marginRight: "12px" }}
+                  >
+                    {selectedTile.icon}
+                  </div>
+                  <div>
+                    <h3 className="tile-title-view">{selectedTile.title}</h3>
+                    <p className="tile-subtitle-view">
+                      {selectedTile.subTitle}
+                    </p>
+                  </div>
+                  <p
+                    className="tile-value-view"
+                    style={{
+                      marginLeft: "auto",
+                      color: selectedTile.color,
+                      backgroundColor: `${selectedTile.color}15`,
+                      padding: "8px 16px",
+                      borderRadius: "20px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {selectedTile.value}
+                  </p>
+                  <div className="tile-icon" style={{ marginLeft: "16px" }}>
+                    <div
+                      onClick={handleMinimizeClick}
+                      className="icon-wrapper"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "4px",
+                        transition: "background-color 0.2s ease",
+                      }}
+                    >
                       <Minimize
                         id="minimizeIcon"
                         size={20}
@@ -545,7 +681,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                       />
                     </div>
                   </div>
-                }
+                </div>
               </Column>
             </Grid>
             <div className="gridBoundary">
@@ -553,10 +689,48 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                 <>
                   <div className="home-dashboard-container">
                     {averageTimeTileList.map((tile, index) => (
-                      <Tile key={index} className="dashboard-tile">
-                        <h3 className="tile-title">{tile.title}</h3>
+                      <Tile
+                        key={index}
+                        className="dashboard-tile"
+                        style={{
+                          borderTop: `4px solid ${tile.color}`,
+                          borderRadius: "4px",
+                          boxShadow: "0 2px 6px rgba(0, 0, 0, 0.1)",
+                          position: "relative",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          className="tile-icon-bg"
+                          style={{
+                            position: "absolute",
+                            top: "10px",
+                            right: "10px",
+                            opacity: 0.1,
+                            color: tile.color,
+                          }}
+                        >
+                          {tile.icon}
+                        </div>
+                        <div
+                          className="tile-header"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            marginBottom: "8px",
+                          }}
+                        >
+                          <div
+                            style={{ color: tile.color, marginRight: "8px" }}
+                          >
+                            {tile.icon}
+                          </div>
+                          <h3 className="tile-title">{tile.title}</h3>
+                        </div>
                         <p className="tile-subtitle">{tile.subTitle}</p>
-                        <p className="tile-value">{tile.value}</p>
+                        <p className="tile-value" style={{ color: tile.color }}>
+                          {tile.value}
+                        </p>
                       </Tile>
                     ))}
                   </div>
@@ -575,9 +749,10 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                             alignItems: "center",
                             gap: "10px",
                             width: "110%",
+                            marginBottom: "16px",
                           }}
                         >
-                          <Link>
+                          <Link style={{ fontWeight: "500" }}>
                             {currentApiPage} / {totalApiPages}
                           </Link>
                           <div style={{ display: "flex", gap: "10px" }}>
@@ -603,7 +778,12 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                     )}
                     {tilesWithTabs.includes(selectedTile.type) && (
                       <Grid>
-                        <Column lg={16} md={8} sm={4}>
+                        <Column
+                          lg={16}
+                          md={8}
+                          sm={4}
+                          style={{ marginBottom: "16px" }}
+                        >
                           <Tabs>
                             {hasRole(
                               userSessionDetails,
@@ -698,6 +878,13 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                                       "ORDERS_ENTERED_BY_USER_TODAY"
                                         ? viewUserOrders(row)
                                         : {};
+                                    }}
+                                    style={{
+                                      cursor:
+                                        selectedTile.type ==
+                                        "ORDERS_ENTERED_BY_USER_TODAY"
+                                          ? "pointer"
+                                          : "default",
                                     }}
                                   >
                                     {row.cells.map((cell) =>

@@ -2,83 +2,163 @@
 .home-dashboard-container {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 50px;
-  padding: 50px;
+  gap: 24px;
+  padding: 24px;
+  background-color: #f4f7fb;
 }
 
 .dashboard-view {
-  padding: 50px;
+  padding: 24px;
+  background-color: #f4f7fb;
 }
+
 .dashboard-tile {
   padding: 20px;
-  border-radius: 3px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  background-color: #f4f4f4;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  background-color: #ffffff;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  position: relative;
+}
+
+.dashboard-tile:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
 }
 
 .tile-title {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #161616;
 }
 
 .tile-subtitle {
   margin-top: 5px;
-  color: #666;
+  color: #6f6f6f;
+  font-size: 0.875rem;
 }
 
 .tile-value {
-  margin-top: 10px;
-  font-size: 1.5rem;
+  margin-top: 16px;
+  font-size: 2rem;
   font-weight: bold;
+  line-height: 1;
 }
 
 .tile-icon {
   position: absolute;
-  top: 0.1rem;
-  right: 0.1rem;
+  top: 0.75rem;
+  right: 0.75rem;
 }
 
 .icon-wrapper {
-  transition: border-color 0.3s; /* Add a smooth transition effect for the border */
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
 }
 
 .icon-wrapper:hover {
-  border: 1px solid #78a9ff; /* Add a blue border on hover */
+  background-color: #e0e0e0;
   cursor: pointer;
 }
 
 .tile-title-view {
   margin: 0;
   font-size: 1.6rem;
+  font-weight: 600;
+  color: #161616;
 }
 
 .tile-subtitle-view {
   margin-top: 5px;
-  color: #666;
+  color: #6f6f6f;
 }
 
 .tile-value-view {
-  margin-top: 10px;
+  margin-top: 0;
   font-size: 1.9rem;
   font-weight: bold;
 }
 
-@media (max-width: 925px) {
+.tile-content {
+  position: relative;
+  z-index: 1;
+}
+
+.tile-header {
+  display: flex;
+  align-items: center;
+}
+
+.tile-icon-bg svg {
+  width: 64px;
+  height: 64px;
+}
+
+/* Responsive styles */
+@media (max-width: 1200px) {
   .home-dashboard-container {
     grid-template-columns: repeat(3, 1fr);
-    gap: 22px;
-    padding: 22px;
   }
 }
 
-@media (max-width: 500px) {
+@media (max-width: 925px) {
   .home-dashboard-container {
     grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    padding: 20px;
+  }
+
+  .tile-value {
+    font-size: 1.75rem;
   }
 }
 
-@media (max-width: 846px) {
-  .dashboard-view {
-    padding: 0;
+@media (max-width: 600px) {
+  .home-dashboard-container {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px;
   }
+
+  .dashboard-view {
+    padding: 16px;
+  }
+
+  .tile-title-view {
+    font-size: 1.4rem;
+  }
+
+  .tile-value-view {
+    font-size: 1.6rem;
+  }
+}
+
+/* Table styling improvements */
+.bx--data-table {
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.bx--table-header-label {
+  font-weight: 600;
+}
+
+.bx--data-table tbody tr:hover {
+  background-color: #f2f4f8;
+}
+
+.bx--pagination {
+  border-radius: 0 0 4px 4px;
+  overflow: hidden;
+}
+
+/* Loading overlay styling */
+.bx--loading-overlay {
+  background-color: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(2px);
 }
