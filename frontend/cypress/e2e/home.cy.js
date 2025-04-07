@@ -1,16 +1,15 @@
 import LoginPage from "../pages/LoginPage";
 
-let loginPage = null;
-let home = null;
-
-before(() => {
-  loginPage = new LoginPage();
-  loginPage.visit();
-
-  home = loginPage.goToHomePage();
-});
-
 describe("User interacts with the navigation bar", function () {
+  let loginPage;
+  let home;
+
+  beforeEach(() => {
+    loginPage = new LoginPage();
+    loginPage.visit();
+    home = loginPage.goToHomePage();
+  });
+
   it("User searches for patient and closes search bar", function () {
     home.searchBar();
   });
@@ -29,7 +28,15 @@ describe("User interacts with the navigation bar", function () {
 });
 
 describe("User navigates to different tiles", function () {
-  // This action runs after each test
+  let loginPage;
+  let home;
+
+  beforeEach(() => {
+    loginPage = new LoginPage();
+    loginPage.visit();
+    home = loginPage.goToHomePage();
+  });
+
   afterEach(() => {
     home.afterAll();
   });

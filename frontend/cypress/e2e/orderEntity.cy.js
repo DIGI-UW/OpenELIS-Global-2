@@ -2,26 +2,24 @@ import LoginPage from "../pages/LoginPage";
 import ProviderManagementPage from "../pages/ProviderManagementPage";
 import AdminPage from "../pages/AdminPage";
 
-let homePage = null;
-let loginPage = null;
-let adminPage = new AdminPage();
-let orderEntityPage = null;
-let patientEntryPage = null;
-let providerManagementPage = new ProviderManagementPage();
+describe("Add requester details", function () {
+  let homePage;
+  let loginPage;
+  let adminPage = new AdminPage();
+  let providerManagementPage = new ProviderManagementPage();
 
-before("login", () => {
-  loginPage = new LoginPage();
-  loginPage.visit();
-});
-
-describe("Add requester details first", function () {
-  it("Navidates to admin", function () {
+  beforeEach(() => {
+    loginPage = new LoginPage();
+    loginPage.visit();
     homePage = loginPage.goToHomePage();
-    orderEntityPage = homePage.goToAdminPage();
-    orderEntityPage = adminPage.goToProviderManagementPage();
   });
 
-  it("Adds and saves requester", function () {
+  it("Navigates to admin and adds requester", function () {
+    // Go to provider management page
+    const orderEntityPage = homePage.goToAdminPage();
+    adminPage.goToProviderManagementPage();
+
+    // Add provider details
     providerManagementPage.clickAddProviderButton();
     providerManagementPage.enterProviderLastName();
     providerManagementPage.enterProviderFirstName();
@@ -31,14 +29,23 @@ describe("Add requester details first", function () {
 });
 
 describe("Order Entity", function () {
-  it("User Visits Home Page and goes to Order entity Page ", function () {
+  let homePage;
+  let loginPage;
+  let orderEntityPage;
+  let patientEntryPage;
+
+  beforeEach(() => {
+    loginPage = new LoginPage();
+    loginPage.visit();
     homePage = loginPage.goToHomePage();
     orderEntityPage = homePage.goToOrderPage();
   });
 
-  it("Should search patient in the search box", function () {
+  it("Should complete full order workflow", function () {
+    // Get patient page and search for patient
     patientEntryPage = orderEntityPage.getPatientPage();
     cy.wait(1000);
+
     cy.fixture("Patient").then((patient) => {
       patientEntryPage.searchPatientByFirstAndLastName(
         patient.firstName,
@@ -51,19 +58,19 @@ describe("Order Entity", function () {
       );
       patientEntryPage.selectPatientFromSearchResults();
       cy.wait(300);
+
+      // Verify patient is selected correctly
       patientEntryPage.getFirstName().should("have.value", patient.firstName);
       patientEntryPage.getLastName().should("have.value", patient.lastName);
     });
-    orderEntityPage.clickNextButton();
-  });
 
-  it("User goes to program selection", function () {
+    // Move to program selection
+    orderEntityPage.clickNextButton();
     orderEntityPage.selectCytology();
     cy.wait(200);
     orderEntityPage.clickNextButton();
-  });
 
-  it("User should select sample type option", function () {
+    // Select sample types
     cy.fixture("Order").then((order) => {
       order.samples.forEach((sample) => {
         orderEntityPage.selectSampleTypeOption(sample.sampleType);
@@ -72,15 +79,15 @@ describe("Order Entity", function () {
     });
     cy.wait(1000);
     orderEntityPage.clickNextButton();
-  });
 
-  it("Should do a validation check for labNo and then click generate Lab Order Number and store it in a fixture", function () {
+    // Validate and generate lab order number
     cy.fixture("Order").then((order) => {
       orderEntityPage.validateAcessionNumber(order.invalidLabNo);
     });
 
     orderEntityPage.generateLabOrderNumber();
 
+    // Save generated lab order number
     cy.get("#labNo").then(($input) => {
       const generatedOrderNumber = $input.val();
 
@@ -90,28 +97,21 @@ describe("Order Entity", function () {
       });
     });
     cy.wait(1000);
-  });
 
-  it("should Enter or select site name", function () {
+    // Enter site name and requester details
     cy.scrollTo("top");
     cy.wait(1000);
+
     cy.fixture("Order").then((order) => {
       orderEntityPage.enterSiteName(order.siteName);
-    });
-  });
-
-  it("should enter requester first and last name's", function () {
-    cy.fixture("Order").then((order) => {
       orderEntityPage.enterRequesterLastAndFirstName(
         order.requester.fullName,
         order.requester.firstName,
         order.requester.lastName,
       );
     });
+
     orderEntityPage.rememberSiteAndRequester();
-  });
-  it("should click submit order button", function () {
     orderEntityPage.clickSubmitOrderButton();
-    cy.wait(8000);
   });
 });

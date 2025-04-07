@@ -1,33 +1,25 @@
 import LoginPage from "../../../pages/LoginPage";
 
-let loginPage = null;
-let homePage = null;
-let adminPage = null;
-let globalMenuConfigPage = null;
-
-before(() => {
-  // Initialize LoginPage object and navigate to Admin Page
-  loginPage = new LoginPage();
-  loginPage.visit();
-
-  homePage = loginPage.goToHomePage();
-  adminPage = homePage.goToAdminPage();
-});
-
 describe("Global Menu Configuration", function () {
-  it("User navigates to the Global Menu Configuration page", function () {
+  let loginPage, homePage, adminPage, globalMenuConfigPage;
+
+  beforeEach(() => {
+    // Initialize LoginPage object and navigate to Admin Page
+    loginPage = new LoginPage();
+    loginPage.visit();
+    homePage = loginPage.goToHomePage();
+    adminPage = homePage.goToAdminPage();
     globalMenuConfigPage = adminPage.goToGlobalMenuConfigPage();
   });
 
-  it("User turns 0ff the toggle switch and submits", function () {
+  it("User can turn off the toggle switch and submit", function () {
     globalMenuConfigPage.turnOffToggleSwitch();
     globalMenuConfigPage.submitButton();
   });
 
-  it("User turns on the toggle switch", function () {
+  it("User can turn on the toggle switch and submit", function () {
+    // Setting up the test state first
     globalMenuConfigPage.turnOnToggleSwitch();
-  });
-  it("User checks the menu items and submits", function () {
     globalMenuConfigPage.checkMenuItem("home");
     globalMenuConfigPage.checkMenuItem("order");
     globalMenuConfigPage.checkMenuItem("billing");
@@ -45,12 +37,23 @@ describe("Global Menu Configuration", function () {
     globalMenuConfigPage.checkMenuItem("help");
     globalMenuConfigPage.submitButton();
   });
-  it("User relogs in to verify the menu changes", function () {
-    // Initialize LoginPage object and navigate to the menu
+
+  it("Verifies menu changes persist after relogging in", function () {
+    // First set up the menu configuration
+    globalMenuConfigPage.turnOnToggleSwitch();
+    globalMenuConfigPage.checkMenuItem("home");
+    globalMenuConfigPage.checkMenuItem("order");
+    globalMenuConfigPage.checkMenuItem("billing");
+    // Check necessary menu items
+    globalMenuConfigPage.submitButton();
+
+    // Re-login to verify changes
     loginPage = new LoginPage();
     loginPage.visit();
-
     homePage = loginPage.goToHomePage();
-    globalMenuConfigPage = homePage.openNavigationMenu();
+    const navigationMenu = homePage.openNavigationMenu();
+
+    // Add verification assertions here
+    // e.g., cy.get('[data-testid="home-menu-item"]').should('be.visible');
   });
 });

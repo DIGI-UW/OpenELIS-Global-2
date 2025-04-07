@@ -3,70 +3,78 @@ import HomePage from "../pages/HomePage";
 import PatientEntryPage from "../pages/PatientEntryPage";
 import Validation from "../pages/Validation";
 
-let homePage = null;
-let loginPage = null;
-let validation = null;
-let patientPage = new PatientEntryPage();
+describe("Validation Tests", () => {
+  let homePage = null;
+  let loginPage = null;
+  let validation = null;
+  let patientPage = null;
 
-before("login", () => {
-  loginPage = new LoginPage();
-  loginPage.visit();
-});
-
-const navigateToValidationPage = (validationType) => {
-  homePage = loginPage.goToHomePage();
-  validation = homePage[`goToValidationBy${validationType}`]();
-};
-
-describe("Validation By Routine", function () {
-  before("navigate to Validation Page", function () {
-    navigateToValidationPage("Routine");
+  beforeEach(() => {
+    // Setup before each test
+    loginPage = new LoginPage();
+    loginPage.visit();
+    homePage = loginPage.goToHomePage();
+    patientPage = new PatientEntryPage();
   });
 
-  it("User visits Validation Page", function () {
-    validation.checkForHeading();
-  });
+  const navigateToValidationPage = (validationType) => {
+    validation = homePage[`goToValidationBy${validationType}`]();
+  };
 
-  it("Should Select Test Unit From Drop-Down And Validate", function () {
-    cy.fixture("workplan").then((order) => {
-      validation.selectTestUnit(order.unitType);
-      //validation.validateTestUnit(order.testName);
+  describe("Validation By Routine", () => {
+    beforeEach(() => {
+      navigateToValidationPage("Routine");
     });
-  });
-});
 
-describe("Validation By Order", function () {
-  before("navigate to Validation Page", function () {
-    navigateToValidationPage("Order");
-  });
-
-  it("User visits Validation Page", function () {
-    validation.checkForHeading();
-  });
-
-  it("Should Enter Lab Number, make a search and validate", function () {
-    cy.fixture("Patient").then((order) => {
-      validation.enterLabNumberAndSearch(order.labNo);
+    it("should display validation page with correct heading", () => {
+      validation.checkForHeading();
     });
-  });
-});
 
-describe("Validation By Range Of Order", function () {
-  before("navigate to Validation Page", function () {
-    navigateToValidationPage("RangeOrder");
-  });
-
-  it("User visits Validation Page", function () {
-    validation.checkForHeading();
-  });
-
-  it("Should Enter Lab Number and perform a search", function () {
-    cy.fixture("Patient").then((order) => {
-      validation.enterLabNumberAndSearch(order.labNo);
+    it("should select test unit from dropdown and validate", () => {
+      cy.fixture("workplan").then((order) => {
+        validation.selectTestUnit(order.unitType);
+        // Uncomment when method is implemented
+        // validation.validateTestUnit(order.testName);
+      });
     });
   });
 
-  it("Should Save the results", function () {
-    validation.saveResults("Test Note");
+  describe("Validation By Order", () => {
+    beforeEach(() => {
+      navigateToValidationPage("Order");
+    });
+
+    it("should display validation page with correct heading", () => {
+      validation.checkForHeading();
+    });
+
+    it("should enter lab number, make a search and validate", () => {
+      cy.fixture("Patient").then((order) => {
+        validation.enterLabNumberAndSearch(order.labNo);
+      });
+    });
+  });
+
+  describe("Validation By Range Of Order", () => {
+    beforeEach(() => {
+      navigateToValidationPage("RangeOrder");
+    });
+
+    it("should display validation page with correct heading", () => {
+      validation.checkForHeading();
+    });
+
+    it("should enter lab number and perform a search", () => {
+      cy.fixture("Patient").then((order) => {
+        validation.enterLabNumberAndSearch(order.labNo);
+      });
+    });
+
+    it("should save the results", () => {
+      cy.fixture("Patient").then((order) => {
+        validation.enterLabNumberAndSearch(order.labNo);
+      });
+      validation.saveResults("Test Note");
+    });
   });
 });

@@ -1,16 +1,10 @@
 import LoginPage from "../pages/LoginPage";
 
-const login = new LoginPage();
-let usersData; // Store fixture data globally to avoid multiple calls
-
 describe("Login Test Cases", function () {
-  before("Load users fixture", () => {
-    cy.fixture("Users").then((users) => {
-      usersData = users;
-    });
-  });
+  const login = new LoginPage();
 
   beforeEach("User visits login page", () => {
+    cy.fixture("Users").as("usersData");
     login.visit();
     login.clearInputs(); // Clear inputs instead of waiting for backend on each test
   });
@@ -25,66 +19,104 @@ describe("Login Test Cases", function () {
   });
 
   it("Fails to login with only username", function () {
-    login.enterUsername(usersData[3].username);
-    login.signIn();
-    cy.contains("Username or Password are incorrect").should("be.visible");
+    cy.get("@usersData").then((usersData) => {
+      login.enterUsername(usersData[3].username);
+      login.signIn();
+      cy.contains("Username or Password are incorrect").should("be.visible");
+    });
   });
 
   it("Fails to login with only password", function () {
-    login.enterPassword(usersData[3].password);
-    login.signIn();
-    cy.contains("Username or Password are incorrect").should("be.visible");
+    cy.get("@usersData").then((usersData) => {
+      login.enterPassword(usersData[3].password);
+      login.signIn();
+      cy.contains("Username or Password are incorrect").should("be.visible");
+    });
   });
 
   it("User changes from default credentials", function () {
-    login.changingPassword();
-    login.enterUsername(usersData[3].username);
-    login.enterCurrentPassword(usersData[3].password);
-    login.enterNewPassword(usersData[4].password);
-    login.repeatNewPassword(usersData[4].password);
-    login.submitNewPassword();
-    cy.contains("Password changed successfully").should("be.visible");
+    cy.get("@usersData").then((usersData) => {
+      login.changingPassword();
+      login.enterUsername(usersData[3].username);
+      login.enterCurrentPassword(usersData[3].password);
+      login.enterNewPassword(usersData[4].password);
+      login.repeatNewPassword(usersData[4].password);
+      login.submitNewPassword();
+      cy.contains("Password changed successfully").should("be.visible");
+
+      // Reset the password back to default to maintain test isolation
+      login.changingPassword();
+      login.enterUsername(usersData[4].username);
+      login.enterCurrentPassword(usersData[4].password);
+      login.enterNewPassword(usersData[3].password);
+      login.repeatNewPassword(usersData[3].password);
+      login.submitNewPassword();
+    });
   });
 
   it("Logs in with correct credentials", function () {
-    let user = usersData[4];
-    login.enterUsername(user.username);
-    login.enterPassword(user.password);
-    login.signIn();
+    cy.get("@usersData").then((usersData) => {
+      login.enterUsername(usersData[3].username);
+      login.enterPassword(usersData[3].password);
+      login.signIn();
+      cy.get("#mainHeader").should("exist");
+    });
   });
 
   it("Resets the default credentials", function () {
-    login.changingPassword();
-    login.enterUsername(usersData[4].username);
-    login.enterCurrentPassword(usersData[4].password);
-    login.enterNewPassword(usersData[3].password);
-    login.repeatNewPassword(usersData[3].password);
-    login.submitNewPassword();
-    //cy.get("div[role='status']").should("be.visible");
-    cy.contains("Password changed successfully").should("be.visible");
+    cy.get("@usersData").then((usersData) => {
+      // First change the password
+      login.changingPassword();
+      login.enterUsername(usersData[3].username);
+      login.enterCurrentPassword(usersData[3].password);
+      login.enterNewPassword(usersData[4].password);
+      login.repeatNewPassword(usersData[4].password);
+      login.submitNewPassword();
+
+      // Now reset it back
+      login.visit();
+      login.changingPassword();
+      login.enterUsername(usersData[4].username);
+      login.enterCurrentPassword(usersData[4].password);
+      login.enterNewPassword(usersData[3].password);
+      login.repeatNewPassword(usersData[3].password);
+      login.submitNewPassword();
+      cy.contains("Password changed successfully").should("be.visible");
+    });
   });
 
   it("User exits password reset", function () {
-    login.changingPassword();
-    login.enterUsername(usersData[3].username);
-    login.enterCurrentPassword(usersData[3].password);
-    login.enterNewPassword(usersData[4].password);
-    login.repeatNewPassword(usersData[4].password);
-    login.clickExitPasswordReset();
+    cy.get("@usersData").then((usersData) => {
+      login.changingPassword();
+      login.enterUsername(usersData[3].username);
+      login.enterCurrentPassword(usersData[3].password);
+      login.enterNewPassword(usersData[4].password);
+      login.repeatNewPassword(usersData[4].password);
+      login.clickExitPasswordReset();
+    });
   });
 
   it("Validates user authentication", function () {
-    usersData.forEach((user) => {
-      // Reloads the page
-      cy.reload();
+    cy.get("@usersData").then((usersData) => {
+      // Test each user's authentication individually
+      for (const user of usersData) {
+        // Clear inputs and try with this user
+        login.clearInputs();
 
-      login.enterUsername(user.username);
-      login.enterPassword(user.password);
-      login.signIn();
+        login.enterUsername(user.username);
+        login.enterPassword(user.password);
+        login.signIn();
 
-      if (user.correctPass === true) {
-        cy.get("#mainHeader").should("exist");
-        cy.get("[data-cy='menuButton']").should("exist");
+        if (user.correctPass === true) {
+          cy.get("#mainHeader").should("exist");
+          cy.get("[data-cy='menuButton']").should("exist");
+          // Go back to login page for next iteration
+          cy.visit(Cypress.config().baseUrl);
+        } else {
+          cy.contains("Username or Password are incorrect").should(
+            "be.visible",
+          );
+        }
       }
     });
   });

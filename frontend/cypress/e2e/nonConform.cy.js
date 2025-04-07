@@ -1,212 +1,209 @@
 import LoginPage from "../pages/LoginPage";
 
-let homePage = null;
-let loginPage = null;
-let nonConform = null;
-//let skipBeforeEach = false;
-
-before("login", () => {
-  loginPage = new LoginPage();
-  loginPage.visit();
-});
-
 describe("Report Non-Conforming Event", function () {
-  it("User visits Report Non-Conforming Event Page", function () {
+  let homePage;
+  let loginPage;
+  let nonConform;
+
+  beforeEach(() => {
+    // Set up fresh environment for each test
+    loginPage = new LoginPage();
+    loginPage.visit();
     homePage = loginPage.goToHomePage();
     nonConform = homePage.goToReportNCE();
+
+    // Verify page loaded
     nonConform
       .getReportNonConformTitle()
       .should("contain.text", "Report Non-Conforming Event (NCE)");
   });
 
-  it("Report NCE by Last Name", function () {
+  it("Should report NCE by Last Name", function () {
     cy.fixture("Patient").then((patient) => {
       nonConform.selectSearchType("Last Name");
       nonConform.enterSearchField(patient.lastName);
       nonConform.clickSearchButton();
-      //nonConform.validateSearchResult(patient.labNo);
       nonConform.clickCheckbox({ force: true });
       nonConform.clickGoToNceFormButton();
+
+      // Enter NCE details
+      cy.fixture("NonConform").then((nonConformData) => {
+        nonConform.enterStartDate(nonConformData.dateOfEvent);
+        nonConform.selectReportingUnit(nonConformData.reportingUnit);
+        nonConform.enterDescription(nonConformData.description);
+        nonConform.enterSuspectedCause(nonConformData.suspectedCause);
+        nonConform.enterCorrectiveAction(
+          nonConformData.proposedCorrectiveAction,
+        );
+        nonConform.submitForm();
+      });
     });
   });
 
-  it("Enter details", function () {
-    cy.fixture("NonConform").then((nonConformData) => {
-      nonConform.enterStartDate(nonConformData.dateOfEvent);
-      nonConform.selectReportingUnit(nonConformData.reportingUnit);
-      nonConform.enterDescription(nonConformData.description);
-      nonConform.enterSuspectedCause(nonConformData.suspectedCause);
-      nonConform.enterCorrectiveAction(nonConformData.proposedCorrectiveAction);
-      nonConform.submitForm();
-    });
-    cy.reload();
-  });
-
-  it("Report NCE by First Name", function () {
+  it("Should report NCE by First Name", function () {
     cy.fixture("Patient").then((patient) => {
       nonConform.selectSearchType("First Name");
       nonConform.enterSearchField(patient.firstName);
       nonConform.clickSearchButton();
-      //nonConform.validateSearchResult(patient.labNo);
-      //});
-      //nonConform.clickCheckbox({ force: true });
-      //nonConform.clickGoToNceFormButton();
+      nonConform.clickCheckbox({ force: true });
+      nonConform.clickGoToNceFormButton();
+
+      // Enter NCE details
+      cy.fixture("NonConform").then((nonConformData) => {
+        nonConform.enterStartDate(nonConformData.dateOfEvent);
+        nonConform.selectReportingUnit(nonConformData.reportingUnit);
+        nonConform.enterDescription(nonConformData.description);
+        nonConform.enterSuspectedCause(nonConformData.suspectedCause);
+        nonConform.enterCorrectiveAction(
+          nonConformData.proposedCorrectiveAction,
+        );
+        nonConform.submitForm();
+      });
     });
-    cy.reload();
   });
 
-  //it("Enter details", function () {
-  //cy.fixture("NonConform").then((nonConformData) => {
-  //nonConform.enterStartDate(nonConformData.dateOfEvent);
-  //nonConform.selectReportingUnit(nonConformData.reportingUnit);
-  //nonConform.enterDescription(nonConformData.description);
-  //nonConform.enterSuspectedCause(nonConformData.suspectedCause);
-  //nonConform.enterCorrectiveAction(nonConformData.proposedCorrectiveAction);
-  //nonConform.submitForm();
-  //});
-  //});
-
-  it("Report NCE by PatientID", function () {
+  it("Should report NCE by PatientID", function () {
     cy.fixture("Patient").then((patient) => {
       nonConform.selectSearchType("Patient Identification Code");
       nonConform.enterSearchField(patient.nationalId);
       nonConform.clickSearchButton();
-      //nonConform.validateSearchResult(patient.labNo);
-      //});
       nonConform.clickCheckbox({ force: true });
       nonConform.clickGoToNceFormButton();
+
+      // Save NCE number for later reference
+      nonConform.getAndSaveNceNumber();
+
+      // Enter NCE details
+      cy.fixture("NonConform").then((nonConformData) => {
+        nonConform.enterStartDate(nonConformData.dateOfEvent);
+        nonConform.selectReportingUnit(nonConformData.reportingUnit);
+        nonConform.enterDescription(nonConformData.description);
+        nonConform.enterSuspectedCause(nonConformData.suspectedCause);
+        nonConform.enterCorrectiveAction(
+          nonConformData.proposedCorrectiveAction,
+        );
+        nonConform.submitForm();
+      });
     });
-    nonConform.getAndSaveNceNumber();
   });
 
-  it("Enter details", function () {
-    cy.fixture("NonConform").then((nonConformData) => {
-      nonConform.enterStartDate(nonConformData.dateOfEvent);
-      nonConform.selectReportingUnit(nonConformData.reportingUnit);
-      nonConform.enterDescription(nonConformData.description);
-      nonConform.enterSuspectedCause(nonConformData.suspectedCause);
-      nonConform.enterCorrectiveAction(nonConformData.proposedCorrectiveAction);
-      nonConform.submitForm();
-    });
-    cy.reload();
-  });
-
-  it("Report NCE by Lab Number ", function () {
+  it("Should report NCE by Lab Number", function () {
     cy.fixture("Patient").then((patient) => {
-      nonConform.selectSearchType("Lab Number");
       nonConform.enterSearchField(patient.labNo);
+      nonConform.clickSearchButton();
     });
-    nonConform.clickSearchButton();
-    //nonConform.validateSearchResult(patient.labNo);
-    // nonConform.clickCheckbox();
-    //nonConform.clickGoToNceFormButton({ timeout: 12000 });
-    //nonConform.getAndSaveNceNumber();
   });
 });
 
 describe("View New Non-Conforming Event", function () {
-  it("User visits View Non-Conforming Event Page", function () {
+  let homePage;
+  let loginPage;
+  let nonConform;
+
+  beforeEach(() => {
+    // Set up fresh environment for each test
+    loginPage = new LoginPage();
+    loginPage.visit();
     homePage = loginPage.goToHomePage();
     nonConform = homePage.goToViewNCE();
+
+    // Verify page loaded
     nonConform
       .getViewNonConformTitle()
       .should("contain.text", "View New Non Conform Event");
   });
-  it("View New NCE by Lab Number", function () {
+
+  it("Should view and update NCE by Lab Number", function () {
     cy.fixture("Patient").then((patient) => {
       nonConform.selectSearchType("Lab Number");
       nonConform.enterSearchField(patient.labNo);
       nonConform.clickSearchButton();
-      //nonConform.clickRadioButtonNCE({ timeout: 12000 });
-      //nonConform.validateLabNoSearchResult(patient.labNo);
+      nonConform.clickRadioButtonNCE();
+
+      // Enter NCE details
+      cy.fixture("NonConform").then((nce) => {
+        nonConform.enterNceCategory(nce.nceCategory);
+        nonConform.enterNceType(nce.nceType);
+        nonConform.enterConsequences(nce.consequences);
+        nonConform.enterRecurrence(nce.recurrence);
+        nonConform.enterLabComponent(nce.labComponent);
+        nonConform.enterDescriptionAndComments(nce.test);
+        nonConform.submitForm();
+      });
     });
-    cy.reload();
   });
 
-  //it("Enter details", function () {
-  //cy.fixture("NonConform").then((nce) => {
-  //nonConform.enterNceCategory(nce.nceCategory, { timeout: 12000 });
-  //nonConform.enterNceType(nce.nceType);
-  //nonConform.enterConsequences(nce.consequences);
-  //nonConform.enterRecurrence(nce.recurrence);
-  //nonConform.enterLabComponent(nce.labComponent);
-  //nonConform.enterDescriptionAndComments(nce.test);
-  //nonConform.submitForm();
-  //});
-  //});
-
-  it("View New NCE by NCE Number", function () {
+  it("Should view and update NCE by NCE Number", function () {
     cy.fixture("NonConform").then((nce) => {
       nonConform.selectSearchType("NCE Number");
       nonConform.enterSearchField(nce.NceNumber);
       nonConform.clickSearchButton();
-      cy.wait(5000);
-      //nonConform.validateNCESearchResult(nce.NceNumber);
+      cy.wait(1000);
+
+      // Enter NCE details
+      nonConform.enterNceCategory(nce.nceCategory);
+      nonConform.enterNceType(nce.nceType);
+      nonConform.enterConsequences(nce.consequences);
+      nonConform.enterRecurrence(nce.recurrence);
+      nonConform.enterLabComponent(nce.labComponent);
+      nonConform.enterDescriptionAndComments(nce.test);
+      nonConform.submitForm();
     });
   });
-
-  //it("Enter The details and Submit", function () {
-  //cy.fixture("NonConform").then((nce) => {
-  //nonConform.enterNceCategory(nce.nceCategory, { timeout: 12000 });
-  //nonConform.enterNceType(nce.nceType);
-  //nonConform.enterConsequences(nce.consequences);
-  //nonConform.enterRecurrence(nce.recurrence);
-  //nonConform.enterLabComponent(nce.labComponent);
-  //nonConform.enterDescriptionAndComments(nce.test);
-  //  nonConform.submitForm();
-  // });
-  // });
 });
 
 describe("Corrective Actions", function () {
-  it("User visits Corrective Actions Page", function () {
+  let homePage;
+  let loginPage;
+  let nonConform;
+
+  beforeEach(() => {
+    // Set up fresh environment for each test
+    loginPage = new LoginPage();
+    loginPage.visit();
     homePage = loginPage.goToHomePage();
     nonConform = homePage.goToCorrectiveActions();
+
+    // Verify page loaded
     nonConform
       .getViewNonConformTitle()
       .should("contain.text", "Nonconforming Events Corrective Action");
   });
-  it("Should Search by Lab Number and Validate the results", function () {
+
+  it("Should search by Lab Number and add corrective actions", function () {
     cy.fixture("Patient").then((patient) => {
       nonConform.selectSearchType("Lab Number");
       nonConform.enterSearchField(patient.labNo);
       nonConform.clickSearchButton();
-      // nonConform.clickRadioButtonNCE({ timeout: 12000 });
-      //nonConform.validateLabNoSearchResult(patient.labNo);
+      nonConform.clickRadioButtonNCE();
+
+      // Enter discussion details
+      cy.fixture("NonConform").then((nce) => {
+        nonConform.enterDiscussionDate(nce.dateOfEvent);
+        nonConform.selectActionType();
+        nonConform.checkResolution();
+        nonConform.enterDateCompleted(nce.dateOfEvent);
+        nonConform.enterProposedCorrectiveAction(nce.proposedCorrectiveAction);
+        nonConform.enterDateCompleted0(nce.dateOfEvent);
+        nonConform.clickSubmitButton();
+      });
     });
   });
 
-  //it("Enter Discussion details and submit", function () {
-  //cy.fixture("NonConform").then((nce) => {
-  //  nonConform.enterDiscussionDate(nce.dateOfEvent);
-  //nonConform.selectActionType();
-  // nonConform.checkResolution();
-  //nonConform.enterDateCompleted(nce.dateOfEvent);
-  //nonConform.enterProposedCorrectiveAction(nce.proposedCorrectiveAction);
-  //nonConform.enterDateCompleted0(nce.dateOfEvent);
-  //nonConform.clickSubmitButton();
-  //});
-  //});
-
-  it("Search by NCE Number and Validate the results", function () {
-    cy.reload();
+  it("Should search by NCE Number and add corrective actions", function () {
     cy.fixture("NonConform").then((nce) => {
       nonConform.selectSearchType("NCE Number");
       nonConform.enterSearchField(nce.NceNumber);
       nonConform.clickSearchButton();
-      //nonConform.validateNCESearchResult(nce.NceNumber);
+
+      // Enter discussion details
+      nonConform.enterDiscussionDate(nce.dateOfEvent);
+      nonConform.selectActionType();
+      nonConform.checkResolution();
+      nonConform.enterDateCompleted(nce.dateOfEvent);
+      nonConform.enterProposedCorrectiveAction(nce.proposedCorrectiveAction);
+      nonConform.enterDateCompleted0(nce.dateOfEvent);
+      nonConform.clickSubmitButton();
     });
   });
-
-  // it("Enter Discussion details and submit", function () {
-  // cy.fixture("NonConform").then((nce) => {
-  //  nonConform.enterDiscussionDate(nce.dateOfEvent);
-  // nonConform.selectActionType();
-  // nonConform.checkResolution();
-  //nonConform.enterDateCompleted(nce.dateOfEvent);
-  //nonConform.enterProposedCorrectiveAction(nce.proposedCorrectiveAction);
-  //nonConform.enterDateCompleted0(nce.dateOfEvent);
-  //nonConform.clickSubmitButton();
-  //});
-  //});
 });

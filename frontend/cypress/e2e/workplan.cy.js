@@ -1,120 +1,150 @@
 import LoginPage from "../pages/LoginPage";
 
-let homePage = null;
-let loginPage = null;
-let workplan = null;
+describe("Work Plan Tests", () => {
+  let homePage = null;
+  let loginPage = null;
+  let workplan = null;
 
-before("login", () => {
-  loginPage = new LoginPage();
-  loginPage.visit();
-});
-
-describe("Work plan by Test", function () {
-  it("User  selects work plan by test from main menu drop-down.And the page appears", function () {
+  beforeEach(() => {
+    // Setup before each test
+    loginPage = new LoginPage();
+    loginPage.visit();
     homePage = loginPage.goToHomePage();
-    workplan = homePage.goToWorkPlanPlanByTest();
-    cy.fixture("workplan").then((options) => {
-      workplan.getWorkPlanFilterTitle(options.testTile);
-    });
-  });
-  it("User should select test from drop-down selector option", () => {
-    cy.fixture("workplan").then((options) => {
-      workplan.selectDropdownOption(options.testName);
-      workplan.getPrintWorkPlanButton();
-    });
-  });
-  it("All known orders are present", () => {
-    cy.fixture("Order").then((options) => {
-      workplan
-        .getWorkPlanResultsTable()
-        .find("tr")
-        .then((row) => {
-          expect(row.text()).contains(options.labNo);
-        });
-    });
-  });
-});
-
-describe("Work plan by Panel", function () {
-  it("User can select work plan by test from main menu drop-down. Workplan by panel page appears.", function () {
-    homePage = loginPage.goToHomePage();
-    workplan = homePage.goToWorkPlanPlanByPanel();
-    cy.fixture("workplan").then((options) => {
-      workplan.getWorkPlanFilterTitle(options.panelTile);
-    });
   });
 
-  it("User should select panel from drop-down selector option", () => {
-    cy.fixture("workplan").then((options) => {
-      workplan.selectDropdownOption(options.panelType);
-      workplan.getPrintWorkPlanButton();
+  describe("Work plan by Test", () => {
+    beforeEach(() => {
+      workplan = homePage.goToWorkPlanPlanByTest();
+    });
+
+    it("should display work plan by test page with correct title", () => {
+      cy.fixture("workplan").then((options) => {
+        workplan.getWorkPlanFilterTitle(options.testTile);
+      });
+    });
+
+    it("should select test from dropdown selector option", () => {
+      cy.fixture("workplan").then((options) => {
+        workplan.selectDropdownOption(options.testName);
+        workplan.getPrintWorkPlanButton();
+      });
+    });
+
+    it("should display all known orders", () => {
+      cy.fixture("workplan").then((options) => {
+        workplan.selectDropdownOption(options.testName);
+      });
+
+      cy.fixture("Order").then((options) => {
+        workplan
+          .getWorkPlanResultsTable()
+          .find("tr")
+          .then((row) => {
+            expect(row.text()).contains(options.labNo);
+          });
+      });
     });
   });
 
-  it("All known orders are present", () => {
-    cy.fixture("Order").then((options) => {
-      workplan
-        .getWorkPlanResultsTable()
-        .find("tr")
-        .then((row) => {
-          expect(row.text()).contains(options.labNo);
-        });
+  describe("Work plan by Panel", () => {
+    beforeEach(() => {
+      workplan = homePage.goToWorkPlanPlanByPanel();
     });
-  });
-});
 
-describe("Work plan by Unit", function () {
-  it("User can select work plan By Unit from main menu drop-down. Workplan By Unit page appears.", function () {
-    homePage = loginPage.goToHomePage();
-    workplan = homePage.goToWorkPlanPlanByUnit();
-    cy.fixture("workplan").then((options) => {
-      workplan.getWorkPlanFilterTitle(options.unitTile);
+    it("should display work plan by panel page with correct title", () => {
+      cy.fixture("workplan").then((options) => {
+        workplan.getWorkPlanFilterTitle(options.panelTile);
+      });
     });
-  });
 
-  it("User should select unit type from drop-down selector option", () => {
-    cy.fixture("workplan").then((options) => {
-      workplan.selectDropdownOption(options.unitType);
-      workplan.getPrintWorkPlanButton();
+    it("should select panel from dropdown selector option", () => {
+      cy.fixture("workplan").then((options) => {
+        workplan.selectDropdownOption(options.panelType);
+        workplan.getPrintWorkPlanButton();
+      });
     });
-  });
 
-  it("All known orders are present", () => {
-    cy.fixture("Order").then((options) => {
-      workplan
-        .getWorkPlanResultsTable()
-        .find("tr")
-        .then((row) => {
-          expect(row.text()).contains(options.labNo);
-        });
-    });
-  });
-});
+    it("should display all known orders", () => {
+      cy.fixture("workplan").then((options) => {
+        workplan.selectDropdownOption(options.panelType);
+      });
 
-describe("Work plan by Priority", function () {
-  it("User can select work plan By Priority from main menu drop-down. Workplan By Priority page appears.", function () {
-    homePage = loginPage.goToHomePage();
-    workplan = homePage.goToWorkPlanPlanByPriority();
-    cy.fixture("workplan").then((options) => {
-      workplan.getWorkPlanFilterTitle(options.priorityTile);
+      cy.fixture("Order").then((options) => {
+        workplan
+          .getWorkPlanResultsTable()
+          .find("tr")
+          .then((row) => {
+            expect(row.text()).contains(options.labNo);
+          });
+      });
     });
   });
 
-  it("User should select Priority from drop-down selector option", () => {
-    cy.fixture("workplan").then((options) => {
-      workplan.selectDropdownOption(options.priority);
-      workplan.getPrintWorkPlanButton();
+  describe("Work plan by Unit", () => {
+    beforeEach(() => {
+      workplan = homePage.goToWorkPlanPlanByUnit();
+    });
+
+    it("should display work plan by unit page with correct title", () => {
+      cy.fixture("workplan").then((options) => {
+        workplan.getWorkPlanFilterTitle(options.unitTile);
+      });
+    });
+
+    it("should select unit type from dropdown selector option", () => {
+      cy.fixture("workplan").then((options) => {
+        workplan.selectDropdownOption(options.unitType);
+        workplan.getPrintWorkPlanButton();
+      });
+    });
+
+    it("should display all known orders", () => {
+      cy.fixture("workplan").then((options) => {
+        workplan.selectDropdownOption(options.unitType);
+      });
+
+      cy.fixture("Order").then((options) => {
+        workplan
+          .getWorkPlanResultsTable()
+          .find("tr")
+          .then((row) => {
+            expect(row.text()).contains(options.labNo);
+          });
+      });
     });
   });
 
-  it("All known orders are present", () => {
-    cy.fixture("Order").then((options) => {
-      workplan
-        .getWorkPlanResultsTable()
-        .find("tr")
-        .then((row) => {
-          expect(row.text()).contains(options.labNo);
-        });
+  describe("Work plan by Priority", () => {
+    beforeEach(() => {
+      workplan = homePage.goToWorkPlanPlanByPriority();
+    });
+
+    it("should display work plan by priority page with correct title", () => {
+      cy.fixture("workplan").then((options) => {
+        workplan.getWorkPlanFilterTitle(options.priorityTile);
+      });
+    });
+
+    it("should select priority from dropdown selector option", () => {
+      cy.fixture("workplan").then((options) => {
+        workplan.selectDropdownOption(options.priority);
+        workplan.getPrintWorkPlanButton();
+      });
+    });
+
+    it("should display all known orders", () => {
+      cy.fixture("workplan").then((options) => {
+        workplan.selectDropdownOption(options.priority);
+      });
+
+      cy.fixture("Order").then((options) => {
+        workplan
+          .getWorkPlanResultsTable()
+          .find("tr")
+          .then((row) => {
+            expect(row.text()).contains(options.labNo);
+          });
+      });
     });
   });
 });

@@ -1,141 +1,117 @@
 import LoginPage from "../pages/LoginPage";
 
-let homePage = null;
-let loginPage = null;
-let batchOrder = null;
+describe("Batch Order Entry Tests", function () {
+  let loginPage, homePage, batchOrder;
 
-const navigateToBatchOrderEntryPage = () => {
-  homePage = loginPage.goToHomePage();
-  batchOrder = homePage.goToBatchOrderEntry();
-};
-
-before(() => {
-  cy.fixture("BatchOrder").as("batchOrderData");
-});
-
-before("login", () => {
-  loginPage = new LoginPage();
-  loginPage.visit();
-});
-
-describe("Batch Order Entry On Demand and Serum form type", function () {
-  before("navigate to Batch Order Entry Page", function () {
-    navigateToBatchOrderEntryPage();
+  beforeEach(() => {
+    cy.fixture("BatchOrder").as("batchOrderData");
+    loginPage = new LoginPage();
+    loginPage.visit();
+    homePage = loginPage.goToHomePage();
   });
 
-  it("User visits Batch Order Entry Setup Page", function () {
-    batchOrder.visitSetupPage();
-    batchOrder.checkNextButtonDisabled();
-  });
+  describe("On Demand and Serum form type", function () {
+    beforeEach(() => {
+      batchOrder = homePage.goToBatchOrderEntry();
+      batchOrder.visitSetupPage();
+    });
 
-  it("User selects Routine Form and Serum Sample", function () {
-    cy.fixture("BatchOrder").then((batchOrderData) => {
-      batchOrder.selectForm(batchOrderData.formTypeRoutine);
-      batchOrder.selectSampleType(batchOrderData.serumSample);
+    it("Can complete the full batch order entry workflow for Routine Form and Serum Sample", function () {
+      // Step 1: Initial setup
+      batchOrder.checkNextButtonDisabled();
+
+      // Step 2: Select form and sample
+      cy.get("@batchOrderData").then((batchOrderData) => {
+        batchOrder.selectForm(batchOrderData.formTypeRoutine);
+        batchOrder.selectSampleType(batchOrderData.serumSample);
+      });
+
+      // Step 3: Check panels and tests
+      batchOrder.checkBilanPanel();
+      batchOrder.checkSerologiePanel();
+      batchOrder.checkDenguePCR();
+      batchOrder.checkHIVViralLoad();
+      batchOrder.checkCreatinine();
+
+      // Step 4: Select methods and move to next page
+      cy.get("@batchOrderData").then((batchOrderData) => {
+        batchOrder.selectMethod(batchOrderData.methodOnDemand);
+        batchOrder.checkFacilityCheckbox();
+        batchOrder.checkPatientCheckbox();
+        batchOrder.enterSiteName(batchOrderData.siteName);
+        batchOrder.checkNextButtonEnabled();
+        batchOrder.clickNextButton(); // Add this method to your page object if it doesn't exist
+      });
+
+      // Step 5: Add new patient
+      batchOrder.clickNewPatientButton();
+      cy.get("@batchOrderData").then((batchOrderData) => {
+        batchOrder.uniqueHealthIDNum(batchOrderData.healthID);
+        batchOrder.nationalID(batchOrderData.nationalID);
+        batchOrder.firstName(batchOrderData.firstName);
+        batchOrder.lastName(batchOrderData.lastName);
+        batchOrder.typePatientYears(batchOrderData.years);
+        batchOrder.typePatientMonths(batchOrderData.months);
+        batchOrder.typePatientDays(batchOrderData.days);
+        batchOrder.selectGender();
+      });
+
+      // Step 6: Generate barcode and finish
+      cy.get("@batchOrderData").then((batchOrderData) => {
+        batchOrder.typeLabNumber(batchOrderData.labNumber);
+        batchOrder.clickGenerateAndSaveBarcode();
+        batchOrder.checkNextLabel().should("be.visible");
+        batchOrder.clickFinishButton();
+      });
     });
   });
 
-  it("User checks Panels and Tests", function () {
-    batchOrder.checkBilanPanel();
-    batchOrder.checkSerologiePanel();
-    //tests picked at random
-    batchOrder.checkDenguePCR();
-    batchOrder.checkHIVViralLoad();
-    batchOrder.checkCreatinine();
-  });
-
-  it("Should Select Methods, Site Name and Move to Next Page", function () {
-    cy.fixture("BatchOrder").then((batchOrderData) => {
-      batchOrder.selectMethod(batchOrderData.methodOnDemand);
-      batchOrder.checkFacilityCheckbox();
-      batchOrder.checkPatientCheckbox();
-      batchOrder.enterSiteName(batchOrderData.siteName);
-      batchOrder.checkNextButtonEnabled();
+  describe("Pre Printed and EID form type", function () {
+    beforeEach(() => {
+      batchOrder = homePage.goToBatchOrderEntry();
+      batchOrder.visitSetupPage();
     });
-  });
 
-  it("User adds New Patient", function () {
-    batchOrder.clickNewPatientButton();
-    cy.fixture("BatchOrder").then((batchOrderData) => {
-      batchOrder.uniqueHealthIDNum(batchOrderData.healthID);
-      batchOrder.nationalID(batchOrderData.nationalID);
-      batchOrder.firstName(batchOrderData.firstName);
-      batchOrder.lastName(batchOrderData.lastName);
-      batchOrder.typePatientYears(batchOrderData.years);
-      batchOrder.typePatientMonths(batchOrderData.months);
-      batchOrder.typePatientDays(batchOrderData.days);
-      batchOrder.selectGender(); //female in this case
-    });
-  });
-  //Save button is lacking and needs to be added for this test to work
-  //it("User should click save new patient information button", function () {
-  // batchOrder.clickSavePatientButton();
-  //});
+    it("Can complete the full batch order entry workflow for EID form and pre-printed method", function () {
+      // Step 1: Initial setup
+      batchOrder.checkNextButtonDisabled();
 
-  it("Generate BarCode", function () {
-    cy.fixture("BatchOrder").then((batchOrderData) => {
-      batchOrder.typeLabNumber(batchOrderData.labNumber);
-      batchOrder.clickGenerateAndSaveBarcode();
-      batchOrder.checkNextLabel().should("be.visible");
-    });
-  });
+      // Step 2: Select form, samples and test
+      cy.get("@batchOrderData").then((batchOrderData) => {
+        batchOrder.selectForm(batchOrderData.formTypeEID);
+        batchOrder.selectDNAPCRTest();
+        batchOrder.selectTubeSample();
+        batchOrder.selectBloodSample();
+      });
 
-  it("User clicks the finish button", function () {
-    batchOrder.clickFinishButton();
-  });
-});
-describe("Batch Order Entry Pre Printed and EID form type", function () {
-  before("navigate to Batch Order Entry Page", function () {
-    navigateToBatchOrderEntryPage();
-  });
+      // Step 3: Select methods and move to next page
+      cy.get("@batchOrderData").then((batchOrderData) => {
+        batchOrder.selectMethod(batchOrderData.methodPrePrinted);
+        batchOrder.checkFacilityCheckbox();
+        batchOrder.checkPatientCheckbox();
+        batchOrder.enterSiteName(batchOrderData.siteName);
+        batchOrder.checkNextButtonEnabled();
+        batchOrder.clickNextButton(); // Add this method to your page object if it doesn't exist
+      });
 
-  it("User visits Batch Order Entry Setup Page", function () {
-    batchOrder.visitSetupPage();
-    batchOrder.checkNextButtonDisabled();
-  });
+      // Step 4: Search for existing patient
+      batchOrder.clickSearchPatientButton();
+      cy.get("@batchOrderData").then((batchOrderData) => {
+        batchOrder.lastName(batchOrderData.lastName);
+        batchOrder.firstName(batchOrderData.firstName);
+        batchOrder.localSearchButton();
+        batchOrder.checkPatientRadio();
+      });
 
-  it("User selects EID form, samples and test", function () {
-    cy.fixture("BatchOrder").then((batchOrderData) => {
-      batchOrder.selectForm(batchOrderData.formTypeEID);
-      batchOrder.selectDNAPCRTest();
-      batchOrder.selectTubeSample();
-      batchOrder.selectBloodSample();
-    });
-  });
-
-  it("User Selects Methods, Site Name and Move to Next Page", function () {
-    cy.fixture("BatchOrder").then((batchOrderData) => {
-      batchOrder.selectMethod(batchOrderData.methodPrePrinted);
-      batchOrder.checkFacilityCheckbox();
-      batchOrder.checkPatientCheckbox();
-      batchOrder.enterSiteName(batchOrderData.siteName);
-      batchOrder.checkNextButtonEnabled();
-    });
-  });
-
-  it("User Searches for Existing Patient", function () {
-    batchOrder.clickSearchPatientButton();
-    cy.fixture("BatchOrder").then((batchOrderData) => {
-      batchOrder.lastName(batchOrderData.lastName);
-      batchOrder.firstName(batchOrderData.firstName);
-      batchOrder.localSearchButton();
-      batchOrder.checkPatientRadio(); //the first on the list
-    });
-  });
-
-  it("Should Visit Batch Order Entry Page", function () {
-    batchOrder.visitBatchOrderEntryPage();
-  });
-
-  it(" User enters Lab Number and Generates Barcode", function () {
-    cy.fixture("BatchOrder").then((batchOrderData) => {
-      batchOrder.typeLabNumber(batchOrderData.labNumber);
+      // Step 5: Visit batch order entry page and generate barcode
       batchOrder.visitBatchOrderEntryPage();
-      batchOrder.clickGenerateButton();
-      batchOrder.saveOrder();
+      cy.get("@batchOrderData").then((batchOrderData) => {
+        batchOrder.typeLabNumber(batchOrderData.labNumber);
+        batchOrder.visitBatchOrderEntryPage();
+        batchOrder.clickGenerateButton();
+        batchOrder.saveOrder();
+        batchOrder.clickFinishButton();
+      });
     });
-  });
-  it("User clicks the finish button", function () {
-    batchOrder.clickFinishButton();
   });
 });
