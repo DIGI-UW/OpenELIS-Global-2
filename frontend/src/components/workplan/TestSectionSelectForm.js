@@ -23,6 +23,10 @@ function TestSectionSelectForm({ value, title }) {
           `/rest/user-test-sections/${Roles.RESULTS}`
         );
 
+        if (!fetchedTestSections || fetchedTestSections.length === 0) {
+          throw new Error("No test sections available. Please contact support.");
+        }
+
         if (isComponentMounted) {
           const testSection = fetchedTestSections.find((t) => t.id === testSectionId);
           const testSectionLabel = testSection
@@ -35,7 +39,8 @@ function TestSectionSelectForm({ value, title }) {
           value(testSectionId, testSectionLabel);
         }
       } catch (error) {
-        console.error("Error fetching test sections:", error);
+        console.error("Error fetching test sections:", error.message || error);
+        alert(`Failed to load test sections: ${error.message || "Unknown error occurred"}`);
       }
     };
 
