@@ -13,6 +13,7 @@
     "@fortawesome/free-solid-svg-icons": "^5.13.0",
     "@fortawesome/react-fontawesome": "^0.1.9",
     "@mui/icons-material": "^5.11.11",
+    "@tanstack/react-query": "^5.72.0",
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.5.0",
     "@testing-library/user-event": "^7.2.1",
@@ -28,14 +29,15 @@
     "lodash-es": "^4.17.15",
     "prettier-eslint": "15.0.1",
     "qs": "6.11.0",
-    "react": "^17.0.2",
+    "react": "^18.3.1",
     "react-avatar": "5.0.3",
     "react-confirm-alert": "^2.7.0",
     "react-data-table-component": "^7.5.3",
-    "react-dom": "^17.0.2",
+    "react-dom": "^18.3.1",
     "react-i18next": "11.x",
     "react-idle-timer": "^5.7.2",
     "react-intl": "^5.20.12",
+    "react-is": "^19.1.0",
     "react-router-dom": "^5.2.0",
     "react-scripts": "5.0.1",
     "rxjs": "6.x",
@@ -88,6 +90,7 @@
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "prettier": "^3.4.2",
-    "sass": "^1.57.1"
+    "sass": "^1.57.1",
+    "typescript": "^5.8.3"
   }
 }

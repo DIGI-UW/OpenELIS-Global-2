@@ -1,32 +1,32 @@
 import config from "../../config.json";
+import { QueryClient } from "@tanstack/react-query";
+
+const queryClient = new QueryClient();
+
+// Helper to fetch data
+const fetchData = async (url, options) => {
+  const response = await fetch(url, options);
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response;
+};
 
 export const getFromOpenElisServer = (endPoint, callback) => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
-      credentials: "include",
+  const fetchFn = async () => {
+    const response = await fetchData(config.serverBaseUrl + endPoint, {
       method: "GET",
-    },
-  )
-    .then((response) => {
-      console.debug("checking response");
-      // if (response.url.includes("LoginPage")) {
-      //     throw "No Login Session";
-      // }
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.indexOf("application/json") !== -1) {
-        return response.json().then((jsonResp) => {
-          callback(jsonResp);
-        });
-      } else {
-        callback();
-      }
-    })
-    .catch((error) => {
-      console.error(error);
+      credentials: "include",
     });
+    const contentType = response.headers.get("content-type");
+    if (contentType?.includes("application/json")) {
+      return response.json();
+    }
+    return null;
+  };
+
+  queryClient
+    .fetchQuery(["openelis", endPoint], fetchFn)
+    .then((data) => callback(data))
+    .catch((error) => console.error(error));
 };
 
 export const postToOpenElisServer = (
@@ -35,53 +35,45 @@ export const postToOpenElisServer = (
   callback,
   extraParams,
 ) => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
-      credentials: "include",
+  const mutationFn = async () => {
+    const response = await fetchData(config.serverBaseUrl + endPoint, {
       method: "POST",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
         "X-CSRF-Token": localStorage.getItem("CSRF"),
       },
       body: payLoad,
-    },
-  )
-    .then((response) => response.status)
-    .then((status) => {
-      callback(status, extraParams);
-    })
-    .catch((error) => {
-      console.error(error);
     });
+    return response.status;
+  };
+
+  mutationFn()
+    .then((status) => callback(status, extraParams))
+    .catch((error) => console.error(error));
 };
 
 export const postToOpenElisServerFullResponse = (
   endPoint,
   payLoad,
   callback,
-  extraParams,
 ) => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
-      credentials: "include",
+  const mutationFn = async () => {
+    const response = await fetchData(config.serverBaseUrl + endPoint, {
       method: "POST",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
         "X-CSRF-Token": localStorage.getItem("CSRF"),
       },
       body: payLoad,
-    },
-  )
-    .then((response) => callback(response, extraParams))
-    .catch((error) => {
-      console.error(error);
     });
+    return response;
+  };
+
+  mutationFn()
+    .then((response) => callback(response))
+    .catch((error) => console.error(error));
 };
 
 export const postToOpenElisServerFormData = (
@@ -90,25 +82,21 @@ export const postToOpenElisServerFormData = (
   callback,
   extraParams,
 ) => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      credentials: "include",
+  const mutationFn = async () => {
+    const response = await fetchData(config.serverBaseUrl + endPoint, {
       method: "POST",
+      credentials: "include",
       headers: {
         "X-CSRF-Token": localStorage.getItem("CSRF"),
       },
       body: formData,
-    },
-  )
-    .then((response) => response.status)
-    .then((status) => {
-      callback(status, extraParams);
-    })
-    .catch((error) => {
-      console.error(error);
     });
+    return response.status;
+  };
+
+  mutationFn()
+    .then((status) => callback(status, extraParams))
+    .catch((error) => console.error(error));
 };
 
 export const postToOpenElisServerJsonResponse = (
@@ -117,61 +105,43 @@ export const postToOpenElisServerJsonResponse = (
   callback,
   extraParams,
 ) => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
-      credentials: "include",
+  const mutationFn = async () => {
+    const response = await fetchData(config.serverBaseUrl + endPoint, {
       method: "POST",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
         "X-CSRF-Token": localStorage.getItem("CSRF"),
       },
       body: payLoad,
-    },
-  )
-    .then((response) => response.json())
-    .then((json) => {
-      callback(json, extraParams);
-    })
-    .catch((error) => {
-      console.error(error);
     });
-};
+    return response.json();
+  };
 
-//provides Synchronous calls to the api
-export const getFromOpenElisServerSync = (endPoint, callback) => {
-  const request = new XMLHttpRequest();
-  request.open("GET", config.serverBaseUrl + endPoint, false);
-  request.setRequestHeader("credentials", "include");
-  request.send();
-  // if (request.response.url.includes("LoginPage")) {
-  //     throw "No Login Session";
-  // }
-  return callback(JSON.parse(request.response));
+  mutationFn()
+    .then((data) => callback(data, extraParams))
+    .catch((error) => console.error(error));
 };
 
 export const postToOpenElisServerForPDF = (endPoint, payLoad, callback) => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
-      credentials: "include",
+  const mutationFn = async () => {
+    const response = await fetchData(config.serverBaseUrl + endPoint, {
       method: "POST",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
         "X-CSRF-Token": localStorage.getItem("CSRF"),
       },
       body: payLoad,
-    },
-  )
-    .then((response) => response.blob())
+    });
+    return response.blob();
+  };
+
+  mutationFn()
     .then((blob) => {
       callback(true, blob);
-      let link = document.createElement("a");
-      link.href = window.URL.createObjectURL(blob, { type: "application/pdf" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
       link.target = "_blank";
       document.body.appendChild(link);
       link.click();
@@ -184,30 +154,22 @@ export const postToOpenElisServerForPDF = (endPoint, payLoad, callback) => {
 };
 
 export const putToOpenElisServer = (endPoint, payLoad, callback) => {
-  // Build the request options
-  let options = {
-    // includes the browser sessionId in the Header for Authentication on the backend server
-    credentials: "include",
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
+  const mutationFn = async () => {
+    const response = await fetchData(config.serverBaseUrl + endPoint, {
+      method: "PUT",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": localStorage.getItem("CSRF"),
+      },
+      body: payLoad,
+    });
+    return response.status;
   };
 
-  // Include the body only if payLoad is provided
-  if (payLoad) {
-    options.body = payLoad;
-  }
-
-  fetch(config.serverBaseUrl + endPoint, options)
-    .then((response) => response.status)
-    .then((status) => {
-      callback(status);
-    })
-    .catch((error) => {
-      console.error(error);
-    });
+  mutationFn()
+    .then((status) => callback(status))
+    .catch((error) => console.error(error));
 };
 
 export const hasRole = (userSessionDetails, role) => {
