@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom"; // ✅ Updated navigation
 import SearchPatientForm from "../patient/SearchPatientForm";
 import { Button, Column, TextInput, Grid, Form } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
@@ -8,31 +9,29 @@ function SearchOrder() {
   const [selectedPatient, setSelectedPatient] = useState({});
   const componentMounted = useRef(false);
   const [accessionNumber, setAccessionNumber] = useState("");
+  const navigate = useNavigate(); // ✅ Using React Router for navigation
 
   const getSelectedPatient = (patient) => {
     setSelectedPatient(patient);
-    console.debug("selectedPatient:" + selectedPatient);
+    console.debug("selectedPatient:", patient);
   };
 
   useEffect(() => {
     componentMounted.current = true;
-    openPatientResults(selectedPatient.patientPK);
+    
+    if (selectedPatient?.patientPK) {
+      navigate(`/ModifyOrder?patientId=${selectedPatient.patientPK}`);
+    }
 
     return () => {
       componentMounted.current = false;
     };
-  }, [selectedPatient]);
-
-  const openPatientResults = (patientId) => {
-    if (patientId) {
-      window.location.href = "/ModifyOrder?patientId=" + patientId;
-    }
-  };
+  }, [selectedPatient, navigate]); // ✅ Improved dependency array
 
   const handleSearch = (e) => {
     e.preventDefault();
-    var labNumber = accessionNumber ? accessionNumber.split("-")[0] : "";
-    window.location.href = "/ModifyOrder?accessionNumber=" + labNumber;
+    const labNumber = accessionNumber ? accessionNumber.split("-")[0] : "";
+    navigate(`/ModifyOrder?accessionNumber=${labNumber}`);
   };
 
   return (
@@ -58,7 +57,7 @@ function SearchOrder() {
               />
             </Column>
             <Column lg={16}>
-              <br></br>
+              <br />
             </Column>
             <Column lg={2}>
               <Button data-cy="submit-button" type="submit">
@@ -72,14 +71,11 @@ function SearchOrder() {
         <Grid>
           <Column lg={16} md={8} sm={4}>
             <h4>
-              {" "}
               <FormattedMessage id="sample.label.search.patient" />
             </h4>
           </Column>
           <Column lg={16} md={8} sm={4}>
-            <SearchPatientForm
-              getSelectedPatient={getSelectedPatient}
-            ></SearchPatientForm>
+            <SearchPatientForm getSelectedPatient={getSelectedPatient} />
           </Column>
         </Grid>
       </div>
