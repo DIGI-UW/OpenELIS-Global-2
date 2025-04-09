@@ -16,6 +16,11 @@
   background-color: #f4f4f4;
 }
 
+.dashboard-tile:hover {
+  transform: scale(1.05); /* Pop-up effect by scaling up */
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15); /* Enhanced shadow */
+}
+
 .tile-title {
   margin: 0;
   font-size: 1.2rem;

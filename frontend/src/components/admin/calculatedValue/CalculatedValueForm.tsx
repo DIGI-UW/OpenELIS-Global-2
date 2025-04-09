@@ -435,7 +435,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
       case "TEST_RESULT":
         return (
           <>
-            <Column lg={5} md={2} sm={1}>
+            <Column lg={16} md={8} sm={4}>
               <Select
                 id={index + "_" + operationIndex + "_sample"}
                 name="sampleId"
@@ -463,7 +463,8 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 ))}
               </Select>
             </Column>
-            <Column lg={5} md={2} sm={1}>
+            <br />
+            <Column lg={16} md={8} sm={4}>
               <AutoComplete
                 id={index + "_" + operationIndex + "_testresult"}
                 label={
@@ -846,7 +847,8 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                 operation.type,
                                 operation,
                               )}
-                              <Column lg={2}>
+                              <br />
+                              <Column lg={16} md={8} sm={4}>
                                 {operation.type !== "" && (
                                   <IconButton
                                     renderIcon={Subtract}
@@ -860,7 +862,8 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                   />
                                 )}
                               </Column>
-                              <Column lg={4} md={2} sm={1}>
+                              <br />
+                              <Column lg={16} md={8} sm={4}>
                                 <Select
                                   id={
                                     index +
