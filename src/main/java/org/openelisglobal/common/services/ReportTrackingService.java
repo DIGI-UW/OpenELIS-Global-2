@@ -29,7 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ReportTrackingService implements IReportTrackingService {
-
     public enum ReportType {
         PATIENT, NON_CONFORMITY_NOTIFICATION, RESULT_EXPORT, MALARIA_CASE
     }
