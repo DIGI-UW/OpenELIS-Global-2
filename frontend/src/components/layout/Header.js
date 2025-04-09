@@ -67,6 +67,7 @@ function OEHeader(props) {
   const [unReadNotifications, setUnReadNotifications] = useState([]);
   const [readNotifications, setReadNotifications] = useState([]);
   const [searchBar, setSearchBar] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   scrollRef.current = window.scrollY;
   useLayoutEffect(() => {
     window.scrollTo(0, scrollRef.current);
@@ -92,13 +93,11 @@ function OEHeader(props) {
     }
   };
 
-  const toggleSlideOver = () => {
-    setIsOpen(!isOpen);
-    setNotificationsOpen((prev) => !prev);
-  };
-
-  const clickPanelSwitch = () => {
-    setSwitchCollapsed(!switchCollapsed);
+  const handlePanelToggle = (panel) => {
+    setSearchBar(panel === "search");
+    setNotificationsOpen(panel === "notifications");
+    setSwitchCollapsed(panel !== "user");
+    setHelpOpen(panel === "help");
   };
 
   const getNotifications = async () => {
@@ -182,9 +181,6 @@ function OEHeader(props) {
         </picture>
       </>
     );
-  };
-  const handleSearch = () => {
-    setSearchBar(!searchBar);
   };
   const generateMenuItems = (menuItem, index, level, path) => {
     if (menuItem.menu.isActive) {
@@ -466,7 +462,9 @@ function OEHeader(props) {
                         <HeaderGlobalAction
                           id="search-Icon"
                           aria-label="Search"
-                          onClick={handleSearch}
+                          onClick={() =>
+                            handlePanelToggle(searchBar ? "" : "search")
+                          }
                         >
                           {!searchBar ? (
                             <Search size={20} />
@@ -477,7 +475,11 @@ function OEHeader(props) {
                         <HeaderGlobalAction
                           id="notification-Icon"
                           aria-label="Notifications"
-                          onClick={toggleSlideOver}
+                          onClick={() =>
+                            handlePanelToggle(
+                              notificationsOpen ? "" : "notifications",
+                            )
+                          }
                         >
                           <div
                             style={{
@@ -511,7 +513,7 @@ function OEHeader(props) {
                                     "background-color 0.3s ease-in-out",
                                 }}
                               >
-                                {unReadNotifications?.length}
+                                {unReadNotifications.length}
                               </span>
                             )}
                           </div>
@@ -521,12 +523,17 @@ function OEHeader(props) {
                     <HeaderGlobalAction
                       id="user-Icon"
                       aria-label={panelSwitchLabel()}
-                      onClick={clickPanelSwitch}
+                      onClick={() =>
+                        handlePanelToggle(switchCollapsed ? "user" : "")
+                      }
                       ref={userSwitchRef}
                     >
                       {panelSwitchIcon()}
                     </HeaderGlobalAction>
-                    <HelpMenu />
+                    <HelpMenu
+                      helpOpen={helpOpen}
+                      handlePanelToggle={handlePanelToggle}
+                    />
                   </HeaderGlobalBar>
                   <HeaderPanel
                     aria-label="Header Panel"
@@ -616,8 +623,8 @@ function OEHeader(props) {
             />
             <div style={{ flex: 1 }}>
               <SlideOver
-                open={isOpen}
-                setOpen={setIsOpen}
+                open={notificationsOpen}
+                setOpen={(open) => setNotificationsOpen(open)}
                 slideFrom="right"
                 title="Notifications"
               >
