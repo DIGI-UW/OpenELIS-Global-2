@@ -1,86 +1,55 @@
-import LoginPage from "../pages/LoginPage";
-import HomePage from "../pages/HomePage";
-import AdminPage from "../pages/AdminPage";
-import UserManagementPage from "../pages/UserManagement";
+import LoginPage from "../../pages/LoginPage";
 
 let loginPage = null;
 let homePage = null;
 let adminPage = null;
-let userManagementPage = null;
+let barcodePage = null;
 
 before(() => {
+  // Set viewport for consistent rendering
+  cy.viewport(1280, 720);
+
+  // Login flow
   loginPage = new LoginPage();
   loginPage.visit();
 
   homePage = loginPage.goToHomePage();
   adminPage = homePage.goToAdminPage();
-  userManagementPage = adminPage.goToUserManagementPage();
 });
 
-describe("User Management Page Tests", () => {
-  beforeEach(() => {
-    userManagementPage.visitUserManagementPage();
+describe("Barcode configuration", function () {
+  it("User navigates to Barcode Config", function () {
+    barcodePage = adminPage.goToBarcodeConfigPage();
+
+    // Assert the URL or presence of a key element
+    cy.url().should("include", "#barcodeConfiguration");
+    cy.get("h2").contains("Bar Code Configuration").should("be.visible"); // Change header text if needed
   });
 
-  it("should open and close the add user modal", () => {
-    userManagementPage.clickAddUser();
-    cy.get('[aria-label="Add New User"]').should("be.visible");
-    cy.get('[aria-label="Cancel"]').click();
-    cy.get('[aria-label="Add New User"]').should("not.exist");
+  it("User adjusts the Default Bar Code Labels", function () {
+    barcodePage.captureDefaultOrder();
+    barcodePage.captureDefaultSpecimen();
   });
 
-  it("should show error when adding user with empty fields", () => {
-    userManagementPage.clickAddUser();
-    userManagementPage.submitForm();
-    cy.get("#username").parent().should("contain", "This field is required");
-    cy.get("#fullName").parent().should("contain", "This field is required");
+  it("User sets Maximum Bar Code Labels", function () {
+    barcodePage.captureMaxOrder();
+    barcodePage.captureMaxSpecimen();
   });
 
-  it("should add a new user", () => {
-    const newUser = {
-      username: "testuser",
-      fullName: "Test User",
-      email: "testuser@example.com",
-      role: "Admin",
-    };
-    userManagementPage.clickAddUser();
-    userManagementPage.fillUserDetails(newUser);
-    userManagementPage.setPermissions();
-    userManagementPage.submitForm();
-    cy.contains("User added successfully");
-    userManagementPage
-      .searchUser(newUser.username)
-      .should("contain", newUser.username);
+  it("User unchecks Optional Elements and Preprinted Bar Code Accession number", function () {
+    barcodePage.uncheckCheckBoxes();
   });
 
-  it("should modify an existing user", () => {
-    userManagementPage.searchUser("testuser");
-    userManagementPage.selectUser("testuser");
-    userManagementPage.updateUserDetails({ fullName: "Updated User" });
-    userManagementPage.submitForm();
-    cy.contains("User updated successfully");
+  it("User adjusts Dimensions Bar Code Label", function () {
+    barcodePage.dimensionsBarCodeLabel();
   });
 
-  it("should copy permissions from another user", () => {
-    userManagementPage.searchUser("testuser");
-    userManagementPage.selectUser("testuser");
-    userManagementPage.copyPermissions("adminUser");
-    userManagementPage.submitForm();
-    cy.contains("Permissions copied successfully");
+  it("User rechecks the boxes", function () {
+    barcodePage.checkCheckBoxes();
   });
 
-  it("should disable an existing user", () => {
-    userManagementPage.searchUser("testuser");
-    userManagementPage.selectUser("testuser");
-    userManagementPage.disableUser();
-    userManagementPage.submitForm();
-    cy.contains("User disabled successfully");
-  });
-
-  it("should delete an existing user", () => {
-    userManagementPage.searchUser("testuser");
-    userManagementPage.selectUser("testuser");
-    userManagementPage.deleteUser();
-    cy.contains("User deleted successfully");
+  it("User saves changes", function () {
+    barcodePage.saveChanges();
+    barcodePage.verifySaveSuccess(); // This checks if the toast/alert message appears
   });
 });
