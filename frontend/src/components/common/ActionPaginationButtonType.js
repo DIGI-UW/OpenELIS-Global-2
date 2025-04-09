@@ -116,7 +116,8 @@ const ActionPaginationButtonType = ({
               }}
             >
               <FormattedMessage id="showing" /> {fromRecordCount} -{" "}
-              {toRecordCount} <FormattedMessage id="of" /> {totalRecordCount}{" "}
+              {toRecordCount} <FormattedMessage id="of" />{" "}
+              {totalRecordCount}{" "}
             </h4>
             <Button
               style={{

@@ -11,30 +11,30 @@ let breadcrumbs = [
 ];
 
 function PatientEditByProject() {
-    return (
-      <>
-          <PageBreadCrumb breadcrumbs={breadcrumbs} />
-          <Grid fullWidth={true}>
-            <Column lg={16} md={8} sm={4}>
-              <Section>
-                <Section>
-                  <Heading>
-                    <FormattedMessage id="patient.label.modify" />
-                  </Heading>
-                </Section>
-              </Section>
-            </Column>
-          </Grid>
+  return (
+    <>
+      <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <Section>
+            <Section>
+              <Heading>
+                <FormattedMessage id="patient.label.modify" />
+              </Heading>
+            </Section>
+          </Section>
+        </Column>
+      </Grid>
 
-          <br></br>
-          <div className="orderLegendBody">
-            <Grid>
-              <Column lg={16} md={8} sm={4}>
-                <PatientEditByProjectForm />
-              </Column>
-            </Grid>
-          </div>
-      </>
+      <br></br>
+      <div className="orderLegendBody">
+        <Grid>
+          <Column lg={16} md={8} sm={4}>
+            <PatientEditByProjectForm />
+          </Column>
+        </Grid>
+      </div>
+    </>
   );
 }
 
