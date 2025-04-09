@@ -41,12 +41,12 @@ function PatientEditByProjext() {
   const [pageSize, setPageSize] = useState(100);
   const [loading, setLoading] = useState(false);
   const [url, setUrl] = useState("");
-  
+
   // Initial search form values
   const initialSearchFormValues = {
     searchType: "lastName",
     identifierType: "RTN",
-    searchValue: ""
+    searchValue: "",
   };
 
   const handlePatientImport = (patientId) => {
@@ -129,11 +129,11 @@ function PatientEditByProjext() {
 
   const handleSubmit = (values) => {
     setLoading(true);
-    
+
     // Construct the search endpoint based on the selected search type
     let searchEndPoint = "/rest/patient-search-results?";
-    
-    switch(values.searchType) {
+
+    switch (values.searchType) {
       case "lastName":
         searchEndPoint += "lastName=" + values.searchValue;
         break;
@@ -145,10 +145,15 @@ function PatientEditByProjext() {
         break;
       default:
         // For identifier types (RTN, EID, etc)
-        searchEndPoint += values.searchType + "=" + values.searchValue + "&identifierType=" + values.identifierType;
+        searchEndPoint +=
+          values.searchType +
+          "=" +
+          values.searchValue +
+          "&identifierType=" +
+          values.identifierType;
         break;
     }
-    
+
     getFromOpenElisServer(searchEndPoint, fetchPatientResults);
     setUrl(searchEndPoint);
   };
@@ -225,17 +230,22 @@ function PatientEditByProjext() {
                       id="search-type-select"
                       labelText="Search By"
                       defaultValue="lastName"
-                      onChange={(e) => setFieldValue("searchType", e.target.value)}
+                      onChange={(e) =>
+                        setFieldValue("searchType", e.target.value)
+                      }
                     >
                       <SelectItem value="firstName" text="First Name" />
                       <SelectItem value="lastName" text="Last Name" />
-                      <SelectItem value="patientIdentificationCode" text="Patient Identification Code" />
+                      <SelectItem
+                        value="patientIdentificationCode"
+                        text="Patient Identification Code"
+                      />
                       <SelectItem value="labNumber" text="Lab Number" />
                     </Select>
                   )}
                 </Field>
               </Column>
-              
+
               {values.searchType === "patientIdentificationCode" && (
                 <Column lg={8} md={8} sm={16}>
                   <Field name="identifierType">
@@ -244,21 +254,33 @@ function PatientEditByProjext() {
                         id="identifier-type-select"
                         labelText="Identifier Type"
                         defaultValue="initialARV"
-                        onChange={(e) => setFieldValue("identifierType", e.target.value)}
+                        onChange={(e) =>
+                          setFieldValue("identifierType", e.target.value)
+                        }
                       >
                         <SelectItem value="initialARV" text="Initial ARV" />
                         <SelectItem value="followUpARV" text="Follow-up ARV" />
                         <SelectItem value="RTN" text="RTN" />
-                        <SelectItem value="ARVViralLoad" text="ARV - Viral Load" />
+                        <SelectItem
+                          value="ARVViralLoad"
+                          text="ARV - Viral Load"
+                        />
                         <SelectItem value="EID" text="EID" />
-                        <SelectItem value="recencyTesting" text="Recency Testing" />
+                        <SelectItem
+                          value="recencyTesting"
+                          text="Recency Testing"
+                        />
                       </Select>
                     )}
                   </Field>
                 </Column>
               )}
-              
-              <Column lg={values.searchType === "patientIdentificationCode" ? 16 : 8} md={16} sm={16}>
+
+              <Column
+                lg={values.searchType === "patientIdentificationCode" ? 16 : 8}
+                md={16}
+                sm={16}
+              >
                 <Field name="searchValue">
                   {({ field }) => (
                     <TextInput
@@ -266,20 +288,22 @@ function PatientEditByProjext() {
                       value={values[field.name]}
                       placeholder={intl.formatMessage({
                         id: "input.placeholder.search",
-                        defaultMessage: "Type search here..."
+                        defaultMessage: "Type search here...",
                       })}
                       labelText="Search"
                       id={field.name}
-                      onChange={(e) => setFieldValue(field.name, e.target.value)}
+                      onChange={(e) =>
+                        setFieldValue(field.name, e.target.value)
+                      }
                     />
                   )}
                 </Field>
               </Column>
-              
+
               <Column lg={16} md={8} sm={4}>
                 <br />
               </Column>
-              
+
               <Column lg={4} md={4} sm={2}>
                 <Button
                   id="search_button"
@@ -287,10 +311,13 @@ function PatientEditByProjext() {
                   type="submit"
                   data-cy="searchPatientButton"
                 >
-                  <FormattedMessage id="label.button.search" defaultMessage="Search" />
+                  <FormattedMessage
+                    id="label.button.search"
+                    defaultMessage="Search"
+                  />
                 </Button>
               </Column>
-              
+
               <Column lg={16}>
                 <br />
                 <br />
@@ -299,7 +326,7 @@ function PatientEditByProjext() {
           </Form>
         )}
       </Formik>
-      
+
       <DataTable
         rows={patientSearchResults}
         headers={patientSearchHeaderData}
@@ -402,11 +429,17 @@ function PatientEditByProjext() {
         pageSize={pageSize}
         pageSizes={[10, 20, 30, 50, 100]}
         totalItems={patientSearchResults.length}
-        forwardText={intl.formatMessage({ id: "pagination.forward", defaultMessage: "Next" })}
-        backwardText={intl.formatMessage({ id: "pagination.backward", defaultMessage: "Previous" })}
+        forwardText={intl.formatMessage({
+          id: "pagination.forward",
+          defaultMessage: "Next",
+        })}
+        backwardText={intl.formatMessage({
+          id: "pagination.backward",
+          defaultMessage: "Previous",
+        })}
         itemsPerPageText={intl.formatMessage({
           id: "pagination.items-per-page",
-          defaultMessage: "Items per page:"
+          defaultMessage: "Items per page:",
         })}
       />
     </>
