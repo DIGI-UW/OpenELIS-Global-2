@@ -297,6 +297,7 @@ function OEHeader(props) {
   const hasActiveChildMenu = (menuItem) => {
     if (menuItem.menu.elementId === "menu_reports_routine") {
       console.log("reports");
+      return menuItem.childMenus.length == 0;
     }
     return (
       menuItem.childMenus.length >= 1 &&
