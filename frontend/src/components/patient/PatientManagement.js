@@ -59,6 +59,7 @@ function PatientManagement() {
               id="searchPatient"
               kind={searchPatientTab.kind}
               onClick={handleSearchPatientTab}
+              size="md"
             >
               <FormattedMessage
                 id="search.patient.label"
@@ -71,6 +72,7 @@ function PatientManagement() {
               id="newPatient"
               kind={newPatientTab.kind}
               onClick={handleNewPatientTab}
+              size="md"
             >
               <FormattedMessage
                 id="new.patient.label"
