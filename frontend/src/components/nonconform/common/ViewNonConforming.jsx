@@ -369,6 +369,7 @@ export const ViewNonConformingEvent = () => {
                           }}
                           labelText=""
                           id={row.id}
+                          data-cy="radio"
                         />
                       </TableCell>
 

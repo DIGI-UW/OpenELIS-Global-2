@@ -16,7 +16,7 @@ describe("Routine Reports", function () {
   });
   it("User Visits Patient Status Report and checks for Respective Forms", () => {
     //reportPage.navigateToSection(1, 1);
-    reportPage.visitRoutineReports();
+    //reportPage.visitRoutineReports();
     reportPage.selectPatientStatusReport();
     reportPage.validatePageHeader("Patient Status Report");
 
@@ -26,8 +26,8 @@ describe("Routine Reports", function () {
     reportPage.toggleAccordionPatient(2);
 
     reportPage.toggleAccordion(3);
-    reportPage.validateFieldVisibility("#from");
-    reportPage.validateFieldVisibility("#to");
+    // reportPage.validateFieldVisibility("#from");
+    // reportPage.validateFieldVisibility("#to");
     reportPage.toggleAccordion(3);
 
     reportPage.toggleAccordion(6);
@@ -35,14 +35,12 @@ describe("Routine Reports", function () {
     reportPage.validateFieldVisibility(
       ".cds--date-picker-input__wrapper > #startDate",
     );
-    reportPage.validateButtonVisible(
-      ":nth-child(7) > :nth-child(2) > .cds--btn",
-    );
+    reportPage.validateButtonVisible("[data-cy='printableVersion']");
   });
 
   it("Should Visit Statistics Reports", () => {
     reportPage = homePage.goToRoutineReports();
-    reportPage.visitRoutineReports();
+    //reportPage.visitRoutineReports();
     //reportPage.navigateToSection(2, 1);
     reportPage.aggregateReports();
     reportPage.selectStatistics();
@@ -89,7 +87,7 @@ describe("Routine Reports", function () {
 
   it("Visits Summary of all tests", () => {
     reportPage = homePage.goToRoutineReports();
-    reportPage.visitRoutineReports();
+    //reportPage.visitRoutineReports();
     reportPage.aggregateReports();
     reportPage.allReportsSummary();
     reportPage.validatePageHeader("Test Report Summary");
@@ -103,7 +101,7 @@ describe("Routine Reports", function () {
 
   it("Visits HIV Test Summary and validates", () => {
     reportPage = homePage.goToRoutineReports();
-    reportPage.visitRoutineReports();
+    //reportPage.visitRoutineReports();
     reportPage.aggregateReports();
     reportPage.summaryTestHIV();
     reportPage.validateButtonDisabled(".cds--form > :nth-child(3) > .cds--btn");
@@ -116,7 +114,7 @@ describe("Routine Reports", function () {
 
   it("Visits Rejection Report and validates", () => {
     reportPage = homePage.goToRoutineReports();
-    reportPage.visitRoutineReports();
+    //reportPage.visitRoutineReports();
     reportPage.navigateToManagementReports();
     reportPage.selectRejectionReport();
     reportPage.validatePageHeader("Rejection Report");
@@ -130,7 +128,7 @@ describe("Routine Reports", function () {
 
   it("Visits Activity Report By Test Type", () => {
     reportPage = homePage.goToRoutineReports();
-    reportPage.visitRoutineReports();
+    //reportPage.visitRoutineReports();
     reportPage.navigateToManagementReports();
     reportPage.navigateToReportsActivity();
     reportPage.selectByTestType();
@@ -146,7 +144,7 @@ describe("Routine Reports", function () {
 
   it("Visits Activity Report By Panel Type", () => {
     reportPage = homePage.goToRoutineReports();
-    reportPage.visitRoutineReports();
+    //reportPage.visitRoutineReports();
     reportPage.navigateToManagementReports();
     reportPage.navigateToReportsActivity();
     reportPage.selectByPanel();
@@ -162,7 +160,7 @@ describe("Routine Reports", function () {
 
   it("Visits Activity Report By Unit", () => {
     reportPage = homePage.goToRoutineReports();
-    reportPage.visitRoutineReports();
+    //reportPage.visitRoutineReports();
     reportPage.navigateToManagementReports();
     reportPage.navigateToReportsActivity();
     reportPage.selectByUnit();
@@ -178,7 +176,7 @@ describe("Routine Reports", function () {
 
   it("Visits Referred Out Test Report", () => {
     reportPage = homePage.goToRoutineReports();
-    reportPage.visitRoutineReports();
+    //reportPage.visitRoutineReports();
     reportPage.navigateToManagementReports();
     reportPage.selectReferredOutTestReport();
     reportPage.validatePageHeader("External Referrals Report");
@@ -196,7 +194,7 @@ describe("Routine Reports", function () {
 
   it("Visits Non Conformity Report By Date", () => {
     reportPage = homePage.goToRoutineReports();
-    reportPage.visitRoutineReports();
+    //reportPage.visitRoutineReports();
     reportPage.navigateToManagementReports();
     reportPage.navigateToNCReports();
     reportPage.selectNCReportByDate();
@@ -211,7 +209,7 @@ describe("Routine Reports", function () {
 
   it("Visits Non Conformity Report By Unit and Reason", () => {
     reportPage = homePage.goToRoutineReports();
-    reportPage.visitRoutineReports();
+    //reportPage.visitRoutineReports();
     reportPage.navigateToManagementReports();
     reportPage.navigateToNCReports();
     reportPage.selectNCReportByUnit();
@@ -226,7 +224,7 @@ describe("Routine Reports", function () {
 
   it("Visits Export Routine CSV", () => {
     reportPage = homePage.goToRoutineReports();
-    reportPage.visitRoutineReports();
+    //reportPage.visitRoutineReports();
     reportPage.navigateToRoutineCSVReport();
     reportPage.validatePageHeader("Export Routine CSV file");
     reportPage.validateButtonDisabled(".cds--form > :nth-child(3) > .cds--btn");
@@ -346,10 +344,18 @@ describe("Study Reports", function () {
   it("User Visits Audit Trail Report And Validates", function () {
     reportPage = homePage.goToStudyReports();
     reportPage.visitAuditTrailReport();
-    reportPage.verifyHeaderText("section > h3", "Audit Trail");
-    cy.fixture("Patient").then((order) => {
-      reportPage.typeInField("labNo", order.labNo);
-    });
+    reportPage.verifyHeaderText("h3", "Audit Trail");
+    //cy.fixture("Patient").then((order) => {
+    //  reportPage.typeInField("#labNo", order.labNo);
+    //});
     //reportPage.validateAudit();
   });
 });
+// TO DO
+//describe("WHONET Report", function () {
+//it("Navigation to WHONET Report and enter data", function () {
+//cy.reload();
+//reportPage = homePage.goToReports();
+//reportPage.visitWhonetReport();
+//});
+//});

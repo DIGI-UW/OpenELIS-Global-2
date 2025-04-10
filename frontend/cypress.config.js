@@ -13,6 +13,14 @@ module.exports = defineConfig({
       try {
         const e2eFolder = path.join(__dirname, "cypress/e2e");
 
+        // Define the first four prioritized tests
+        const prioritizedTests = [
+          "cypress/e2e/login.cy.js",
+          "cypress/e2e/home.cy.js",
+          "cypress/e2e/patientEntry.cy.js",
+          "cypress/e2e/orderEntity.cy.js",
+        ];
+
         const findTestFiles = (dir) => {
           let results = [];
           const files = fs.readdirSync(dir);
@@ -24,17 +32,23 @@ module.exports = defineConfig({
             if (stat.isDirectory()) {
               results = results.concat(findTestFiles(fullPath));
             } else if (file.endsWith(".cy.js")) {
-              results.push(fullPath.replace(__dirname + path.sep, ""));
+              const relativePath = fullPath.replace(__dirname + path.sep, "");
+              if (!prioritizedTests.includes(relativePath)) {
+                results.push(relativePath);
+              }
             }
           }
 
           return results;
         };
 
-        let testFiles = findTestFiles(e2eFolder);
-        testFiles.sort((a, b) => a.localeCompare(b));
-        config.specPattern = testFiles;
-        console.log("Ordered test files:", config.specPattern);
+        let remainingTests = findTestFiles(e2eFolder);
+        remainingTests.sort((a, b) => a.localeCompare(b));
+
+        // Combine the prioritized tests and dynamically detected tests
+        config.specPattern = [...prioritizedTests, ...remainingTests];
+
+        console.log("Running tests in custom order:", config.specPattern);
 
         return config;
       } catch (error) {
