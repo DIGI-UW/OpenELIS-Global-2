@@ -1,4 +1,4 @@
-import UserManagementPage from "../../pages/UserManagementPage";
+import UserManagementPage from "../../pages/UserManagement";
 
 describe("User Management E2E", () => {
   before(() => {
