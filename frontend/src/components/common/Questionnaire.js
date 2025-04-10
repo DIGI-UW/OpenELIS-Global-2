@@ -1,5 +1,6 @@
 import React from "react";
 import { useIntl } from "react-intl";
+import CustomDatePicker from "./CustomDatePicker";
 import {
   FilterableMultiSelect,
   Select,
@@ -159,12 +160,21 @@ const Questionnaire = ({
             />
           )}
           {item.type == "date" && (
-            <TextInput
+            <CustomDatePicker
               id={item.linkId}
               labelText={item.text}
-              onChange={onAnswerChange}
-              value={getAnswer(item.linkId)}
-              type="date"
+              onChange={(date) => {
+                try {
+                  if (date) {
+                    const e = { target: { id: item.linkId, value: date } };
+                    onAnswerChange(e);
+                  }
+                } catch (error) {
+                  console.error("Error in DatePicker onChange handler:", error);
+                }
+              }}
+              value={getAnswer(item.linkId) || ""}
+              updateStateValue={true}
             />
           )}
           {item.type == "time" && (
