@@ -586,7 +586,7 @@ const AddOrder = (props) => {
               {" "}
               &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
             </Column>
-            <Column lg={8} md={4} sm={4}>
+            <Column lg={12} md={8} sm={4}>
               <TimePicker
                 id="order_receivedTime"
                 labelText={intl.formatMessage({ id: "order.reception.time" })}
@@ -598,7 +598,7 @@ const AddOrder = (props) => {
                 }
               />
             </Column>
-            <Column lg={8} md={4} sm={4}>
+            <Column lg={12} md={8} sm={4}>
               <CustomDatePicker
                 id={"order_nextVisitDate"}
                 labelText={intl.formatMessage({
