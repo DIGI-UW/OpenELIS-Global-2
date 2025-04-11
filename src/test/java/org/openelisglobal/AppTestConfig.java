@@ -10,7 +10,6 @@ import lombok.NonNull;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.jasypt.util.text.TextEncryptor;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
-import org.openelisglobal.citystatezip.service.CityStateZipService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.common.util.Versioning;
@@ -70,8 +69,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.observationhistorytype", "org.openelisglobal.statusofsample", "org.openelisglobal.test",
         "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer", "org.openelisglobal.testanalyte",
         "org.openelisglobal.observationhistory", "org.openelisglobal.systemusersection",
-        "org.openelisglobal.typeofsample", "org.openelisglobal.siteinformation", "org.openelisglobal.config",
-        "org.openelisglobal.image", "org.openelisglobal.testresult" }, excludeFilters = {
+        "org.openelisglobal.citystatezip", "org.openelisglobal.typeofsample", "org.openelisglobal.siteinformation",
+        "org.openelisglobal.config", "org.openelisglobal.image", "org.openelisglobal.testresult" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
@@ -192,12 +191,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public ReferralResultService ReferralResultService() {
         return mock(ReferralResultService.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public CityStateZipService cityStateZipService() {
-        return mock(CityStateZipService.class);
     }
 
     @Bean()
