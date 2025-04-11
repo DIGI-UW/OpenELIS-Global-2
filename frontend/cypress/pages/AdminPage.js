@@ -5,7 +5,6 @@ import UserManagementPage from "./UserManagementPage";
 import ProgramEntryPage from "./ProgramEntryPage";
 import ProviderManagementPage from "./ProviderManagementPage";
 
-
 class AdminPage {
   constructor() {}
 
@@ -40,7 +39,7 @@ class AdminPage {
 
     return new GlobalMenuConfigPage();
   }
-  //User Management 
+  //User Management
   goToUserManagementPage() {
     // Click on the "User Management" menu option
     cy.contains("span", "User Management").click();
@@ -50,7 +49,8 @@ class AdminPage {
     cy.url().should("include", "#userManagement");
     cy.contains("User Management").should("be.visible");
 
-    return new UserManagementPage()
+    return new UserManagementPage();
+  }
 
   goToProgramEntry() {
     cy.get("[data-cy='programEntry']").should("be.visible");
