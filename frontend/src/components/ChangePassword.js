@@ -76,7 +76,7 @@ function ChangePassword() {
       });
   };
 
-  const LoginComlexityMessage = () => {
+  const LoginComplexityMessage = () => {
     return (
       <>
         <h5>
@@ -112,7 +112,7 @@ function ChangePassword() {
         {notificationVisible === true ? <AlertDialog /> : ""}
         <Grid fullWidth={true}>
           <Column lg={0} md={0} sm={4}>
-            <LoginComlexityMessage />
+            <LoginComplexityMessage />
           </Column>
           <Column lg={6} md={4} sm={4}>
             <Section>
@@ -148,18 +148,6 @@ function ChangePassword() {
                     .oneOf(
                       [Yup.ref("newPassword"), null],
                       "Passwords must match",
-                    )
-                    .min(7, "Password must be at least 7 characters")
-                    .matches(
-                      /^(?=.*[*$#!])(?=.*[A-Z])[A-Za-z0-9*$#!]{7,}$/,
-                      "Password must contain at least one special character",
-                    )
-                    .test(
-                      "not-same-as-old",
-                      "New password must not be the same as the old password",
-                      function (value) {
-                        return value !== this.parent.password; // compare newPassword to old password
-                      },
                     ),
                 })}
               >
@@ -265,7 +253,7 @@ function ChangePassword() {
             </Section>
           </Column>
           <Column lg={10} md={4} sm={0}>
-            <LoginComlexityMessage />
+            <LoginComplexityMessage />
           </Column>
         </Grid>
       </div>
