@@ -1,6 +1,7 @@
 //This handles all pages of the admin
 import LabNumberManagementPage from "./LabNumberManagementPage";
 import GlobalMenuConfigPage from "./GlobalMenuConfigPage";
+import UserManagementPage from "./UserManagementPage";
 
 class AdminPage {
   constructor() {}
@@ -32,6 +33,17 @@ class AdminPage {
     cy.contains("Global Menu Management").should("be.visible");
 
     return new GlobalMenuConfigPage();
+  }
+  goToUserManagementPage() {
+    // Click on the "User Management" menu option
+    cy.contains("span", "User Management").click();
+    // Wait for and click the actual menu button if needed
+    cy.get("[data-cy='userManagement']").should("be.visible").click();
+    // Verify we are on the correct page
+    cy.url().should("include", "#userManagement");
+    cy.contains("User Management").should("be.visible");
+
+    return new UserManagementPage();
   }
 }
 

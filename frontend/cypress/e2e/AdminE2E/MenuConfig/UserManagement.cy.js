@@ -1,43 +1,34 @@
 import LoginPage from "../../../pages/LoginPage";
 
-let loginPage = null;
-let homePage = null;
-let userManagementPage = null;
-let adminPage = null;
+let loginPage, homePage, adminPage, userManagementPage;
 
-before(() => {
-  // Initialize LoginPage object and navigate to Admin Page
-  loginPage = new LoginPage();
-  loginPage.visit();
-  homePage = loginPage.goToHomePage();
-  adminPage = homePage.goToAdminPage();
-});
-
-describe("User Management E2E", function () {
-  it("User opens and closes Add User modal", function () {
-    userManagementPage.openAddUserModal();
-    userManagementPage.verifyAddUserModalVisible();
-    userManagementPage.closeAddUserModal();
-    userManagementPage.verifyAddUserModalNotVisible();
+describe("User Management E2E", () => {
+  before(() => {
+    loginPage = new LoginPage();
+    loginPage.visit();
+    loginPage.login(users.admin.username, users.admin.password);
+    homePage = loginPage.goToHomePage();
+    adminPage = homePage.goToAdminPage();
+    userManagementPage = adminPage.goToUserManagementPage();
   });
 
-  it("User gets validation errors for empty fields", function () {
+  it("should open and close Add User modal", () => {
     userManagementPage.openAddUserModal();
-    userManagementPage.submitForm();
-    userManagementPage.verifyFormValidation();
+    cy.get('[aria-label="Add New User"]').should("be.visible");
     userManagementPage.closeAddUserModal();
+    cy.get('[aria-label="Add New User"]').should("not.exist");
   });
 
-  it("User successfully creates a new user", function () {
-    const newUser = {
-      username: "cypressuser1",
-      password: "Test@123",
-      role: "Technician",
-    };
-
+  it("should show error when submitting empty Add User form", () => {
     userManagementPage.openAddUserModal();
-    userManagementPage.fillUserForm(newUser);
-    userManagementPage.submitForm();
-    userManagementPage.confirmUserCreation(newUser.username);
+    userManagementPage.submitUserForm();
+    cy.get("#username").parent().should("contain", "This field is required");
+  });
+
+  it("should add a new user successfully", () => {
+    userManagementPage.openAddUserModal();
+    userManagementPage.fillAddUserForm(users.newUser);
+    userManagementPage.submitUserForm();
+    userManagementPage.assertUserAdded(users.newUser.username);
   });
 });
