@@ -54,33 +54,35 @@ function PatientManagement() {
       <br></br>
       <div className="orderLegendBody">
         <Grid>
-          <Column lg={4} md={3} sm={2}>
-            <Button
-              id="searchPatient"
-              kind={searchPatientTab.kind}
-              onClick={handleSearchPatientTab}
-              size="md"
-            >
-              <FormattedMessage
-                id="search.patient.label"
-                defaultMessage="Search for Patient"
-              />
-            </Button>
+          <Column lg={8} md={4} sm={4}>
+            <Grid fullWidth={true}>
+              <Column lg={2} md={1} sm={1}>
+                <Button
+                  id="searchPatient"
+                  kind={searchPatientTab.kind}
+                  onClick={handleSearchPatientTab}
+                >
+                  <FormattedMessage
+                    id="search.patient.label"
+                    defaultMessage="Search for Patient"
+                  />
+                </Button>
+              </Column>
+              <Column lg={2} md={1} sm={1}>
+                <Button
+                  id="newPatient"
+                  kind={newPatientTab.kind}
+                  onClick={handleNewPatientTab}
+                  style={{ marginLeft: "7rem" }}
+                >
+                  <FormattedMessage
+                    id="new.patient.label"
+                    defaultMessage="New Patient"
+                  />
+                </Button>
+              </Column>
+            </Grid>
           </Column>
-          <Column lg={4} md={3} sm={2}>
-            <Button
-              id="newPatient"
-              kind={newPatientTab.kind}
-              onClick={handleNewPatientTab}
-              size="md"
-            >
-              <FormattedMessage
-                id="new.patient.label"
-                defaultMessage="New Patient"
-              />
-            </Button>
-          </Column>
-
           {searchPatientTab.active && (
             <Column lg={16} md={8} sm={4}>
               <SearchPatientForm
