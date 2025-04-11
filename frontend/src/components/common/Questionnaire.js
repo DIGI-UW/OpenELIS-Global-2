@@ -8,6 +8,33 @@ import {
   TextInput,
 } from "@carbon/react";
 
+const convertToISODate = (dateString, locale) => {
+  if (!dateString) return "";
+  
+  try {
+    let parsedDate;
+    if (locale === "fr-FR") {
+      const parts = dateString.split('/');
+      if (parts.length === 3) {
+        parsedDate = new Date(parts[2], parts[1] - 1, parts[0]);
+      } else {
+        return dateString;
+      }
+    } else {
+      const parts = dateString.split('/');
+      if (parts.length === 3) {
+        parsedDate = new Date(parts[2], parts[0] - 1, parts[1]);
+      } else {
+        return dateString;
+      }
+    }
+    return parsedDate.toISOString().split('T')[0];
+  } catch (error) {
+    console.error("Error converting date format:", error);
+    return dateString;
+  }
+};
+
 const Questionnaire = ({
   questionnaire,
   onAnswerChange = () => {
@@ -166,7 +193,9 @@ const Questionnaire = ({
               onChange={(date) => {
                 try {
                   if (date) {
-                    const e = { target: { id: item.linkId, value: date } };
+                    const configLocale = window.configurationProperties?.DEFAULT_DATE_LOCALE || "en-US";
+                    const isoDate = convertToISODate(date, configLocale);
+                    const e = { target: { id: item.linkId, value: isoDate } };
                     onAnswerChange(e);
                   }
                 } catch (error) {
