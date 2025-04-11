@@ -180,7 +180,7 @@ function ProgramManagement() {
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <Grid fullWidth={true}>
-          <Column lg={16}>
+          <Column lg={16} md={8} sm={4}>
             <Section>
               <Heading>
                 <FormattedMessage id="edit.add.program.title" />
@@ -190,7 +190,7 @@ function ProgramManagement() {
         </Grid>
         <Form onSubmit={handleSubmit}>
           <Grid fullWidth={true}>
-            <Column lg={8}>
+            <Column lg={8} md={4} sm={2}>
               <Select
                 id="additionalQuestionsSelect"
                 labelText="Program"
@@ -212,11 +212,11 @@ function ProgramManagement() {
               </Select>
               {loading && <Loading />}
             </Column>
-            <Column lg={16}>
+            <Column lg={16} md={8} sm={4}>
               <br></br>
             </Column>
 
-            <Column lg={8}>
+            <Column lg={8} md={4} sm={2}>
               <input
                 type="hidden"
                 name="program.id"
@@ -232,7 +232,7 @@ function ProgramManagement() {
                 onChange={handleFieldChange}
               />
             </Column>
-            <Column lg={8}>
+            <Column lg={8} md={4} sm={2}>
               <TextInput
                 type="text"
                 name="program.questionnaireUUID"
@@ -243,10 +243,10 @@ function ProgramManagement() {
                 onChange={handleFieldChange}
               />
             </Column>
-            <Column lg={16}>
+            <Column lg={16} md={8} sm={4}>
               <br></br>
             </Column>
-            <Column lg={8}>
+            <Column lg={8} md={4} sm={2}>
               <TextInput
                 type="text"
                 name="program.code"
@@ -257,7 +257,7 @@ function ProgramManagement() {
                 onChange={handleFieldChange}
               />
             </Column>
-            <Column lg={8}>
+            <Column lg={8} md={4} sm={2}>
               <Select
                 id="test_section"
                 labelText={intl.formatMessage({ id: "test.section.label" })}
@@ -277,10 +277,10 @@ function ProgramManagement() {
                 })}
               </Select>
             </Column>
-            <Column lg={16}>
+            <Column lg={16} md={8} sm={4}>
               <br></br>
             </Column>
-            <Column lg={8}>
+            <Column lg={8} md={4} sm={2}>
               <TextArea
                 name="additionalOrderEntryQuestions"
                 id="additionalOrderEntryQuestions"
@@ -294,7 +294,7 @@ function ProgramManagement() {
                 invalidText={intl.formatMessage({ id: "invalid.json" })}
               />
             </Column>
-            <Column lg={8}>
+            <Column lg={8} md={4} sm={2}>
               {additionalOrderEntryQuestionsAreJson && (
                 <div>
                   <FormLabel>
@@ -310,11 +310,11 @@ function ProgramManagement() {
                 </div>
               )}
             </Column>
-            <Column lg={16}>
+            <Column lg={16} md={8} sm={4}>
               <br></br>
             </Column>
-            <Column lg={3}>
-              <Button type="submit">
+            <Column lg={3} md={2} sm={1}>
+              <Button id="submitProgram" type="submit">
                 <FormattedMessage id="label.button.submit" />
                 {isSubmitting && <Loading small={true} />}
               </Button>

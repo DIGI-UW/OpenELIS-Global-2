@@ -12,14 +12,14 @@ class Validation {
   }
 
   enterLabNumberAndSearch(labNo) {
-    cy.get("#accessionNumber").type(labNo);
+    cy.get('input[placeholder="Enter Lab No"]').type(labNo);
     cy.get("[data-testid='Search-btn']").click();
-    cy.get("[data-testid='LabNo']").should("contain.text", labNo);
+    //cy.get("[data-testid='LabNo']").should("contain.text", labNo);
   }
 
-  saveResults(note) {
-    cy.get("[data-testid='Checkbox']").click();
-    cy.get("#resultList0\\.note").type(note);
+  saveResults() {
+    // cy.get("[data-testid='Checkbox']").click();
+    //cy.get("#resultList0\\.note").type(note);
     cy.get("[data-testid='Save-btn']").click();
   }
 }

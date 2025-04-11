@@ -14,11 +14,11 @@ class NonConform {
   }
 
   enterSearchField(value) {
-    cy.get("#field\\.name").type(value);
+    cy.get("[data-cy='fieldName']").type(value);
   }
 
   clickSearchButton() {
-    cy.get("[data-testid='nce-search-button']").click();
+    cy.get("[data-testid='nce-search-button']").should("be.visible").click();
   }
 
   // Search results validation
@@ -44,20 +44,20 @@ class NonConform {
   // Checkbox and navigation
   clickCheckbox() {
     cy.get("[data-testid='nce-sample-checkbox']")
-      .first()
-      .click({ force: true });
+      .should("be.visible")
+      .check({ force: true });
   }
 
   clickGoToNceFormButton() {
-    cy.get("[data-testid='nce-goto-form-button']").click();
+    cy.get("[data-testid='nce-goto-form-button']").should("be.visible").click();
   }
 
   // Form fields (preserve original IDs)
   enterStartDate(date) {
-    cy.get(".cds--date-picker-input__wrapper > #startDate").type(date);
+    cy.get("input#startDate").type(date);
   }
 
-  enterReportingUnit(unit) {
+  selectReportingUnit(unit) {
     cy.get("#reportingUnits").select(unit);
   }
 
@@ -112,7 +112,9 @@ class NonConform {
   }
 
   enterProposedCorrectiveAction(action) {
-    cy.get("#text-area-corrective").type(action, { force: true });
+    cy.get("#text-area-corrective")
+      .should("not.be.disabled")
+      .type(action, { force: true });
   }
 
   enterDateCompleted(date) {
@@ -120,27 +122,29 @@ class NonConform {
   }
 
   selectActionType() {
-    cy.get("[data-testid='nce-action-checkbox']").click({ force: true });
+    cy.get(
+      "div.cds--sm\:col-span-3:nth-child(30) > div:nth-child(1) > input:nth-child(1)",
+    ).check({ force: true });
   }
 
-  selectResolution() {
-    cy.get(":nth-child(1) > .cds--radio-button__label").click();
+  checkResolution() {
+    cy.contains("#yes\\.option").click();
   }
 
   clickRadioButtonNCE() {
-    cy.get("[data-testid='Radio-button']")
-      .eq(0) // 0 for first, 1 for second, 2 for third, etc.
-      .should("be.visible")
+    cy.get(
+      "tbody:nth-child(2) > tr:nth-child(1) > td:nth-child(1) > div:nth-child(1) > label:nth-child(2) > span:nth-child(1)",
+    )
+      //.first()
       .click();
   }
+
   enterDateCompleted0(date) {
     cy.get(".cds--date-picker-input__wrapper > #dateCompleted-0").type(date);
   }
 
   clickSubmitButton() {
-    cy.get("[data-testid='nce-submit-button']")
-      .should("not.be.disabled")
-      .click();
+    cy.get("[data-testid='nce-submit-button']").should("be.visible").click();
   }
   // Data management
   getAndSaveNceNumber() {

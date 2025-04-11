@@ -2,7 +2,7 @@
 # Build Stage
 #
 FROM maven:3-eclipse-temurin-21 AS build
-ADD ./dataexport /build/dataexport
+COPY ./dataexport /build/dataexport
 ##
 # Build DataExport
 

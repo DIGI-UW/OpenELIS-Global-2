@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Dictionary Category data (needed for foreign key constraints) -->
+    <dictionary_category id="1" description="Urine"
+        local_abbrev="URINE" name="Urine Category"
+        lastupdated="2023-12-01 12:00:00" />
+    <dictionary_category id="2" description="Blood"
+        local_abbrev="BLOOD" name="Blood Category"
+        lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Test data with required fields -->
+    <test id="101" name="Blood Test"
+        description="Blood Test Description"
+        guid="bd7c32a1-2135-4c21-a542-8f11121e3210" is_active="Y"
+        is_reportable="Y" orderable="true" lastUpdated="2023-12-01 12:00:00" />
+    <test id="102" name="Urine Test"
+        description="Urine Test Description"
+        guid="fe9a45b7-8723-4d61-b8f5-3c29e7a82416" is_active="Y"
+        is_reportable="Y" orderable="true" lastUpdated="2023-12-01 12:00:00" />
+    <test id="103" name="Glucose Test"
+        description="Fasting Blood Glucose"
+        guid="a4d5e7c8-9f12-4b3e-8d67-1e23a4b5c6d7" is_active="Y"
+        is_reportable="Y" orderable="true" lastUpdated="2023-12-01 12:00:00" />
+
+    <!-- Test Dictionary data -->
+    <test_dictionary id="1" test_id="101"
+        dictionary_category_id="2" context="Blood Test Context"
+        lastUpdated="2023-12-01 12:00:00" />
+    <test_dictionary id="2" test_id="102"
+        dictionary_category_id="1" context="Urine Test Context"
+        lastUpdated="2023-12-01 12:00:00" />
+    <test_dictionary id="3" test_id="103"
+        dictionary_category_id="2" context="Glucose Test Context"
+        lastUpdated="2023-12-01 12:00:00" />
+
+    <!-- Dictionary Entries -->
+    <dictionary id="1" is_active="Y"
+        dict_entry="Dictionary Entry 1" local_Abbrev="DE1"
+        dictionary_category_id="1" sort_order="1"
+        lastUpdated="2023-12-01 12:00:00" />
+    <dictionary id="2" is_active="Y"
+        dict_entry="Dictionary Entry 2" local_Abbrev="DE2"
+        dictionary_category_id="2" sort_order="2"
+        lastUpdated="2023-12-01 12:00:00" />
+</dataset>

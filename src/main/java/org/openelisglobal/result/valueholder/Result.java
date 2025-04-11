@@ -229,7 +229,7 @@ public class Result extends EnumValueItemImpl {
         if (o == null || getClass() != o.getClass())
             return false;
         Result that = (Result) o;
-        return id.equals(that.id);
+        return Objects.equals(this.id, that.id);
     }
 
     @Override

@@ -306,6 +306,7 @@ export const ViewNonConformingEvent = () => {
                       value: e.target.value,
                     });
                   }}
+                  data-cy="fieldName"
                   id={`field.name`}
                 />
               </Column>
@@ -368,6 +369,7 @@ export const ViewNonConformingEvent = () => {
                           }}
                           labelText=""
                           id={row.id}
+                          data-cy="radio"
                         />
                       </TableCell>
 

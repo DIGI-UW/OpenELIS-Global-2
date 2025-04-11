@@ -167,7 +167,7 @@ function LabNumberManagement() {
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <Grid fullWidth={true}>
-          <Column lg={16}>
+          <Column lg={16} md={8} sm={4}>
             <Section>
               <Heading>
                 <FormattedMessage id="configure.labNumber.title" />
@@ -175,79 +175,81 @@ function LabNumberManagement() {
             </Section>
           </Column>
         </Grid>
-        <Form onSubmit={handleSubmit}>
-          <Grid fullWidth={true}>
-            <Column lg={8}>
-              <Select
-                id="lab_number_type"
-                labelText={intl.formatMessage({ id: "labNumber.type" })}
-                name="labNumberType"
-                value={labNumberValues.labNumberType}
-                onChange={handleFieldChange}
-              >
-                <SelectItem value="ALPHANUM" text="Alpha Numeric" />
-                <SelectItem value="SITEYEARNUM" text="Legacy" />
-              </Select>
-            </Column>
-            <Column lg={8}></Column>
-            <Column lg={16}>
-              {" "}
-              <br></br>
-            </Column>
-            {labNumberValues.labNumberType === "ALPHANUM" && (
-              <>
-                <Column lg={8}>
-                  <TextInput
-                    type="text"
-                    name="alphanumPrefix"
-                    id="alphanumPrefix"
-                    labelText={intl.formatMessage({ id: "labNumber.prefix" })}
-                    disabled={!labNumberValues.usePrefix}
-                    value={labNumberValues.alphanumPrefix}
-                    onChange={handleFieldChange}
-                    enableCounter={true}
-                    maxCount={5}
-                  />
-                </Column>
-                <Column lg={8}>
-                  <span className="middleAlignVertical">
-                    <Checkbox
-                      type="checkbox"
-                      name="usePrefix"
-                      id="usePrefix"
-                      labelText={intl.formatMessage({
-                        id: "labNumber.usePrefix",
-                      })}
-                      checked={labNumberValues.usePrefix}
-                      onClick={() => {
-                        const updatedValues = { ...labNumberValues };
-                        updatedValues.usePrefix = !labNumberValues.usePrefix;
-                        setLabNumberValues(updatedValues);
-                      }}
+        <div className="orderLegendBody">
+          <Form onSubmit={handleSubmit}>
+            <Grid fullWidth={true}>
+              <Column lg={8} md={4} sm={2}>
+                <Select
+                  id="lab_number_type"
+                  labelText={intl.formatMessage({ id: "labNumber.type" })}
+                  name="labNumberType"
+                  value={labNumberValues.labNumberType}
+                  onChange={handleFieldChange}
+                >
+                  <SelectItem value="ALPHANUM" text="Alpha Numeric" />
+                  <SelectItem value="SITEYEARNUM" text="Legacy" />
+                </Select>
+              </Column>
+              <Column lg={8} md={4} sm={2}></Column>
+              <Column lg={16} md={8} sm={4}>
+                {" "}
+                <br></br>
+              </Column>
+              {labNumberValues.labNumberType === "ALPHANUM" && (
+                <>
+                  <Column lg={8} md={4} sm={2}>
+                    <TextInput
+                      type="text"
+                      name="alphanumPrefix"
+                      id="alphanumPrefix"
+                      labelText={intl.formatMessage({ id: "labNumber.prefix" })}
+                      disabled={!labNumberValues.usePrefix}
+                      value={labNumberValues.alphanumPrefix}
+                      onChange={handleFieldChange}
+                      enableCounter={true}
+                      maxCount={5}
                     />
-                  </span>
-                </Column>
-              </>
-            )}
-            <br></br>
-            <Column lg={16}>
-              <FormattedMessage id="labNumber.format.current" />:{" "}
-              {currentLabNumForDisplay}
-            </Column>
-            <br></br>
-            <Column lg={16}>
-              <FormattedMessage id="labNumber.format.new" />:{" "}
-              {sampleLabNumForDisplay}
-            </Column>
-            <br></br>
-            <Column lg={16}>
-              <Button type="submit" data-testid="submit-button">
-                <FormattedMessage id="label.button.submit" />
-                {isSubmitting && <Loading small={true} />}
-              </Button>
-            </Column>
-          </Grid>
-        </Form>
+                  </Column>
+                  <Column lg={8} md={4} sm={2}>
+                    <span className="middleAlignVertical">
+                      <Checkbox
+                        type="checkbox"
+                        name="usePrefix"
+                        id="usePrefix"
+                        labelText={intl.formatMessage({
+                          id: "labNumber.usePrefix",
+                        })}
+                        checked={labNumberValues.usePrefix}
+                        onClick={() => {
+                          const updatedValues = { ...labNumberValues };
+                          updatedValues.usePrefix = !labNumberValues.usePrefix;
+                          setLabNumberValues(updatedValues);
+                        }}
+                      />
+                    </span>
+                  </Column>
+                </>
+              )}
+              <br></br>
+              <Column lg={16} md={8} sm={4}>
+                <FormattedMessage id="labNumber.format.current" />:{" "}
+                {currentLabNumForDisplay}
+              </Column>
+              <br></br>
+              <Column lg={16} md={8} sm={4}>
+                <FormattedMessage id="labNumber.format.new" />:{" "}
+                {sampleLabNumForDisplay}
+              </Column>
+              <br></br>
+              <Column lg={16} md={8} sm={4}>
+                <Button type="submit" data-testid="submit-button">
+                  <FormattedMessage id="label.button.submit" />
+                  {isSubmitting && <Loading small={true} />}
+                </Button>
+              </Column>
+            </Grid>
+          </Form>
+        </div>
       </div>
     </>
   );

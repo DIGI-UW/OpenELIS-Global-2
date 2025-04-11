@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <system_module id="1" name="Module 1"
+        description="Description for Module 1" has_select_flag="Y"
+        has_add_flag="Y" has_update_flag="Y" has_delete_flag="Y" />
+    <system_module id="2" name="Module 2"
+        description="Description for Module 2" has_select_flag="N"
+        has_add_flag="Y" has_update_flag="N" has_delete_flag="Y" />
+    <system_module id="3" name="Module 3"
+        description="Description for Module 3" has_select_flag="Y"
+        has_add_flag="N" has_update_flag="Y" has_delete_flag="N" />
+    <system_module id="4" name="Module 4"
+        description="Description for Module 4" has_select_flag="N"
+        has_add_flag="N" has_update_flag="N" has_delete_flag="N" />
+</dataset>
