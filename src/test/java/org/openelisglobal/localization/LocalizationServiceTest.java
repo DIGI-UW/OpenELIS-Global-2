@@ -122,4 +122,64 @@ public class LocalizationServiceTest extends BaseWebContextSensitiveTest {
 
     }
 
+    @Test
+    public void getFrench_shouldReturnValueForFranceLocale() {
+        Localization loc = new Localization();
+        loc.setLocalizedValue(Locale.FRANCE, "Bonjour FRANCE");
+        assertEquals("Bonjour FRANCE", loc.getFrench());
+    }
+
+    @Test
+    public void getFrench_shouldReturnValueForFrenchLocale() {
+        Localization loc = new Localization();
+        loc.setLocalizedValue(Locale.FRENCH, "Bonjour FRENCH");
+        assertEquals("Bonjour FRENCH", loc.getFrench());
+    }
+
+    @Test
+    public void getFrench_shouldReturnEmptyIfNoValue() {
+        Localization loc = new Localization();
+        assertEquals("", loc.getFrench());
+    }
+
+    @Test
+    public void getLocalizedValue_shouldReturnSecondaryLocaleValueIfPrimaryMissing() {
+        Localization loc = new Localization();
+        loc.setLocalizedValue(Locale.ENGLISH, "Hello");
+        assertEquals("Hello", loc.getLocalizedValue(Locale.UK));
+    }
+
+    @Test
+    public void getFrench_shouldReturnFranceValueIfAvailable() {
+        Localization loc = new Localization();
+        loc.setLocalizedValue(Locale.FRANCE, "Bonjour FRANCE");
+        assertEquals("Bonjour FRANCE", loc.getFrench());
+    }
+
+    @Test
+    public void getFrench_shouldFallbackToFrench() {
+        Localization loc = new Localization();
+        loc.setLocalizedValue(Locale.FRENCH, "Bonjour FRENCH");
+        assertEquals("Bonjour FRENCH", loc.getFrench());
+    }
+
+    @Test
+    public void getLocalizedValue_shouldReturnPrimaryLocaleValue() {
+        Localization loc = new Localization();
+        loc.setLocalizedValue(Locale.CANADA_FRENCH, "Salut");
+        assertEquals("Salut", loc.getLocalizedValue(Locale.CANADA_FRENCH));
+    }
+
+    @Test
+    public void getLocalizedValue_shouldFallbackToLanguageOnlyLocale() {
+        Localization loc = new Localization();
+        loc.setLocalizedValue(Locale.FRENCH, "Bonjour");
+        assertEquals("Bonjour", loc.getLocalizedValue(Locale.CANADA_FRENCH));
+    }
+
+    @Test
+    public void getLocalizedValue_shouldReturnEmptyIfNoValue() {
+        Localization loc = new Localization();
+        assertEquals("", loc.getLocalizedValue(Locale.CANADA_FRENCH));
+    }
 }
