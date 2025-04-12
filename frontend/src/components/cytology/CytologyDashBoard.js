@@ -331,7 +331,7 @@ function CytologyDashboard() {
           </Column>
           <Column lg={8} md={4} sm={4}>
             <Grid fullWidth={true}>
-              <Column lg={2} md={1} sm={1}>
+              <Column lg={1} md={1} sm={1}>
                 <div style={{ marginTop: "6px" }}>
                   <FormattedMessage id="filters.label" />
                 </div>
@@ -348,7 +348,7 @@ function CytologyDashboard() {
                   }
                 />
               </Column>
-              <Column lg={3} md={2} sm={2}>
+              <Column lg={4} md={2} sm={2}>
                 <Select
                   id="statusFilter"
                   name="statusFilter"
