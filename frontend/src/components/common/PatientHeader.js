@@ -53,7 +53,11 @@ const PatientHeader = (props) => {
                       />
                     </div>
                   </Column>
-                  <Column lg={10} md={5} sm={3}>
+                  <Column
+                    lg={{ span: 10, offset: 4 }}
+                    md={5}
+                    sm={{ span: 3, offset: 2 }}
+                  >
                     <div className="patient-name">
                       {patientName ? patientName : lastName + " " + firstName}
                     </div>
@@ -67,6 +71,7 @@ const PatientHeader = (props) => {
                       ) : (
                         <FormattedMessage id="patient.female" />
                       )}{" "}
+                      <br />
                       <Tag type="blue">
                         {age ? (
                           <FormattedMessage id="patient.label.age" />
@@ -76,21 +81,24 @@ const PatientHeader = (props) => {
                         :
                       </Tag>{" "}
                       {age ? age : dob}
+                      <br />
                     </div>
                     {nationalId && (
                       <div className="patient-id">
                         <Tag type="blue">
                           <FormattedMessage id="patient.natioanalid" /> :
-                        </Tag>
+                        </Tag>{" "}
                         {nationalId}
+                        <br />
                       </div>
                     )}
                     {subjectNumber && (
                       <div className="patient-id">
                         <Tag type="blue">
                           <FormattedMessage id="patient.subject.number" /> :
-                        </Tag>
-                        {subjectNumber}{" "}
+                        </Tag>{" "}
+                        {subjectNumber}
+                        <br />
                       </div>
                     )}
                     {accesionNumber && (
@@ -99,22 +107,22 @@ const PatientHeader = (props) => {
                           <FormattedMessage id="quick.entry.accession.number" />{" "}
                           :
                         </Tag>
-                        {accesionNumber}{" "}
+                        {accesionNumber}
+                        <br />
                       </div>
                     )}
                     {orderDate && (
                       <div className="patient-id">
-                        <div className="patient-id">
-                          <Tag type="blue">
-                            <FormattedMessage id="sample.label.orderdate" /> :
-                          </Tag>
-                          {orderDate}
-
-                          <Tag type="blue">
-                            <FormattedMessage id="sample.label.requester" />: :
-                          </Tag>
-                          {requester}
-                        </div>
+                        <Tag type="blue">
+                          <FormattedMessage id="sample.label.orderdate" /> :
+                        </Tag>
+                        {orderDate}
+                        <br />
+                        <Tag type="blue">
+                          <FormattedMessage id="sample.label.requester" />: :
+                        </Tag>
+                        {requester}
+                        <br />
                       </div>
                     )}
                     {referringFacility && (
@@ -122,11 +130,12 @@ const PatientHeader = (props) => {
                         <Tag type="blue">
                           <FormattedMessage id="sample.label.facility" />:
                         </Tag>
-                        {referringFacility}{" "}
+                        {referringFacility}
                         <Tag type="blue">
                           <FormattedMessage id="sample.label.dept" /> :
                         </Tag>{" "}
                         {department}
+                        <br />
                       </div>
                     )}
                   </Column>
