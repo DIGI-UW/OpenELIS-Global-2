@@ -332,11 +332,11 @@ function CytologyDashboard() {
           <Column lg={8} md={4} sm={4}>
             <Grid fullWidth={true}>
               <Column lg={1} md={1} sm={1}>
-                <div style={{ marginTop: "6px" }}>
+                <div style={{ marginTop: "9px" }}>
                   <FormattedMessage id="filters.label" />
                 </div>
               </Column>
-              <Column lg={2} md={1} sm={1}>
+              <div style={{ marginTop: "4px" }}>
                 <Checkbox
                   labelText={intl.formatMessage({
                     id: "label.filters.mycases",
@@ -347,7 +347,7 @@ function CytologyDashboard() {
                     setFilters({ ...filters, myCases: e.target.checked })
                   }
                 />
-              </Column>
+              </div>
               <Column lg={4} md={2} sm={2}>
                 <Select
                   id="statusFilter"
