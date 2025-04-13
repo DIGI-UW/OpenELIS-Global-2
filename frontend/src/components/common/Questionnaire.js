@@ -168,7 +168,12 @@ const Questionnaire = ({
                 try {
                   if (date) {
                     const isoDate = convertToISODate(date);
-                    console.log("Original date:", date, "Converted to ISO:", isoDate);
+                    console.log(
+                      "Original date:",
+                      date,
+                      "Converted to ISO:",
+                      isoDate,
+                    );
                     const e = { target: { id: item.linkId, value: isoDate } };
                     onAnswerChange(e);
                   }
