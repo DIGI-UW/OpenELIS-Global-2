@@ -1,8 +1,21 @@
 class NotificationConfigPage {
+  visit() {
+    cy.visit("/MasterListsPage#testNotificationConfigMenu");
+  }
+
   verifyPageLoaded() {
     cy.url().should("include", "testNotificationConfigMenu");
-    cy.get(".adminPageContent", { timeout: 10000 }).should("be.visible");
-    cy.contains("h1", "Test Notification Configuration").should("be.visible");
+    cy.get(".loading-spinner", { timeout: 10000 }).should("not.exist");
+    cy.get("body", { timeout: 10000 }).then(($body) => {
+      if ($body.find(".adminPageContent").length) {
+        cy.get(".adminPageContent").should("be.visible");
+      } else {
+        throw new Error("adminPageContent not found");
+      }
+    });
+    cy.contains("h1", "Test Notification Configuration", {
+      timeout: 10000,
+    }).should("be.visible");
   }
 
   clickEditButton() {
@@ -49,4 +62,4 @@ class NotificationConfigPage {
   }
 }
 
-export default new NotificationConfigPage();
+export default NotificationConfigPage;
