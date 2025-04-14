@@ -1,5 +1,5 @@
 import LoginPage from "../../pages/LoginPage";
-import NotificationConfigPage from "../../pages/TestNotification";
+import NotificationConfigPage from "../../pages/TestNotificationPage";
 
 let loginPage = null;
 let homePage = null;
@@ -17,7 +17,7 @@ before(() => {
     cy.url().should("include", "HomePage");
   });
 
-  // Init after login
+  // Post login navigation
   cy.visit("/HomePage");
   loginPage = new LoginPage();
   homePage = loginPage.goToHomePage();
