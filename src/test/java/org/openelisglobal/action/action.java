@@ -1,22 +1,19 @@
 package org.openelisglobal.action;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-
-import org.junit.jupiter.api.*;
-import org.openelisglobal.action.service.ActionService;
-import org.openelisglobal.action.valueholder.Action;
-import org.openelisglobal.BaseWebContextSensitiveTest;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Transactional;
-
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
+import javax.sql.DataSource;
+import org.junit.jupiter.api.*;
+import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.action.service.ActionService;
+import org.openelisglobal.action.valueholder.Action;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 @Transactional
 public class ActionServiceTest extends BaseWebContextSensitiveTest {
