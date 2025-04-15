@@ -17,10 +17,10 @@
         antimicrobial_resistance="true" name_localization_id="1" />
 
     <organization id="1" lastupdated="2024-03-01 00:00:00.0"
-        name="International Medical Diagnostics Center" city="Boston" zip_code="02118"
-        mls_sentinel_lab_flag="Y" short_name="IMDC" multiple_unit="Boston Main Lab"
-        street_address="456 MedTech Blvd" state="MA"
-        internet_address="www.imdc.org" clia_num="CLIA56789"
+        name="International Medical Diagnostics Center" city="Boston"
+        zip_code="02118" mls_sentinel_lab_flag="Y" short_name="IMDC"
+        multiple_unit="Boston Main Lab" street_address="456 MedTech Blvd"
+        state="MA" internet_address="www.imdc.org" clia_num="CLIA56789"
         pws_id="PWS987" mls_lab_flag="Y" is_active="Y" local_abbrev="IMDC"
         code="IMDC001" />
 
@@ -30,8 +30,9 @@
         display_key="sample.type.WholeBlood" />
 
     <test_section id="1" name="Microbiology"
-        description="Clinical Microbiology Section" name_localization_id="1" org_id="1"
-        lastupdated="2023-01-01 00:00:00" is_active="Y" sort_order="1" />
+        description="Clinical Microbiology Section" name_localization_id="1"
+        org_id="1" lastupdated="2023-01-01 00:00:00" is_active="Y"
+        sort_order="1" />
 
     <status_of_sample id="8" status_type="ANALYSIS"
         name="Finalized" description="Finalized Analysis" is_active="Y"
@@ -53,11 +54,12 @@
     <person id="1" first_name="John" last_name="Doe"
         lastupdated="2024-03-01 00:00:00" />
 
-    <patient id="1" person_id="1" national_id="PAT-2024001" gender="M"
-        birth_date="1985-05-12" entered_birth_date="1985-05-12" lastupdated="2024-03-01 00:00:00" />
+    <patient id="1" person_id="1" national_id="PAT-2024001"
+        gender="M" birth_date="1985-05-12" entered_birth_date="1985-05-12"
+        lastupdated="2024-03-01 00:00:00" />
 
     <sample_human id="1" samp_id="1" patient_id="1"
-    lastupdated="2024-03-02 10:00:00" />
+        lastupdated="2024-03-02 10:00:00" />
 
     <test_result id="1" test_id="44" sort_order="1"
         value="EQUALS" tst_rslt_type="D" significant_digits="0"

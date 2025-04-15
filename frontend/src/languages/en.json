@@ -1396,5 +1396,10 @@
   "uom.new.added": "New Unit of Measure will get added",
   "uom.create.heading.confirmation": "Confirmation",
   "uom.notification.save": "New Unit Of Measure has been saved.",
-  "uom.notification.duplicate": "Unit of Measure already exists"
+  "uom.notification.duplicate": "Unit of Measure already exists",
+  "instructions.test.activation.sort": "Display Order: Lists of sample types which have newly activated tests. Sort the tests to indicate how they will be displayed in the order entry screen. Sorting can be done by dragging items to the desired position.",
+  "label.test.activate": "The following tests will be activated:",
+  "label.test.deactivate": "The following tests will be deactivated:",
+  "label.sample.types.activate": "The following sample types will be activated:",
+  "label.sample.types.deactivate": "The following sample types will be deactivated because they have no tests:"
 }

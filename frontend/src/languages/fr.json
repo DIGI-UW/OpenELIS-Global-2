@@ -1395,5 +1395,10 @@
   "uom.new.added": "Une nouvelle unité de mesure sera ajoutée",
   "uom.create.heading.confirmation": "Confirmation",
   "uom.notification.save": "La nouvelle unité de mesure a été enregistrée.",
-  "uom.notification.duplicate": "L’unité de mesure existe déjà"
+  "uom.notification.duplicate": "L’unité de mesure existe déjà",
+  "instructions.test.activation.sort": "Ordre d'affichage : Listes des types d'échantillons avec des tests nouvellement activés. Triez les tests pour indiquer comment ils seront affichés dans l'écran de saisie des ordonnances. Le tri peut être effectué en faisant glisser les éléments à la position souhaitée.",
+  "label.test.activate": "Les tests suivants seront activés :",
+  "label.test.deactivate": "Les tests suivants seront désactivés :",
+  "label.sample.types.activate": "Les types d'échantillons suivants seront activés :",
+  "label.sample.types.deactivate": "Les types d'échantillons suivants seront désactivés car ils ne contiennent aucun test :"
 }

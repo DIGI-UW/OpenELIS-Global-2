@@ -71,25 +71,27 @@
         last_updated="2025-04-08 09:00:00" cytology_diagnosis_id="3" />
 
     <cytology_diagnosis_result_map id="1"
-        category="Category A" result_type="Type 1" results="Positive"
-        cytology_diagnosis_id="1" last_updated="2025-04-10 12:00:00" />
+        category="EPITHELIAL_CELL_ABNORMALITY" result_type="DICTIONARY"
+        results="Positive" cytology_diagnosis_id="1"
+        last_updated="2025-04-10 12:00:00" />
     <cytology_diagnosis_result_map id="2"
-        category="Category B" result_type="Type 2" results="Negative"
-        cytology_diagnosis_id="2" last_updated="2025-04-09 15:30:00" />
+        category="NON_NEOPLASTIC_CELLULAR_VARIATIONS" result_type="TEXT"
+        results="Negative" cytology_diagnosis_id="2"
+        last_updated="2025-04-09 15:30:00" />
     <cytology_diagnosis_result_map id="3"
-        category="Category C" result_type="Type 3" results="Indeterminate"
+        category="ORGANISMS" result_type="TEXT" results="Indeterminate"
         cytology_diagnosis_id="3" last_updated="2025-04-08 09:00:00" />
 
     <cytology_report id="1" cytology_sample_id="1"
-        report_type="Final"
+        report_type="CERVICAL_OR_VAGINAL_CYTOLOGY"
         image="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/wcAAgMBAQEBBQAAAA=="
         file_type="PDF" last_updated="2025-04-10 12:00:00" />
     <cytology_report id="2" cytology_sample_id="2"
-        report_type="Preliminary"
+        report_type="PAP_SMEAR"
         image="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/wcAAgMBAQEBBQAAAA=="
         file_type="DOCX" last_updated="2025-04-09 15:30:00" />
     <cytology_report id="3" cytology_sample_id="3"
-        report_type="Final"
+        report_type="CERVICAL_OR_VAGINAL_CYTOLOGY"
         image="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/wcAAgMBAQEBBQAAAA=="
         file_type="PDF" last_updated="2025-04-08 09:00:00" />
 
