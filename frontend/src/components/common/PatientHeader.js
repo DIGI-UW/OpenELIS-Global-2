@@ -115,12 +115,10 @@ const PatientHeader = (props) => {
                           <FormattedMessage id="sample.label.orderdate" /> :
                         </Tag>
                         {orderDate}
-                        <br />
                         <Tag type="blue">
                           <FormattedMessage id="sample.label.requester" />: :
                         </Tag>
                         {requester}
-                        <br />
                       </div>
                     )}
                     {referringFacility && (
@@ -128,12 +126,11 @@ const PatientHeader = (props) => {
                         <Tag type="blue">
                           <FormattedMessage id="sample.label.facility" />:
                         </Tag>
-                        {referringFacility}
+                        {referringFacility}{" "}
                         <Tag type="blue">
                           <FormattedMessage id="sample.label.dept" /> :
                         </Tag>{" "}
                         {department}
-                        <br />
                       </div>
                     )}
                   </Column>
