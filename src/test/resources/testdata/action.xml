@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <action id="A001" code="CODE1" description="Action One" type="TYPE1"/>
+    <action id="A002" code="CODE2" description="Action Two" type="TYPE2"/>
+    <action id="A003" code="CODE3" description="Action Three" type="TYPE3"/>
+    <action id="A004" code="CODE4" description="Action Four" type="TYPE4"/>
+</dataset>
