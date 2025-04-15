@@ -121,7 +121,16 @@ public class TestReflex extends EnumValueItemImpl {
     }
 
     public TestResult getTestResult() {
-        return (TestResult) this.testResult.getValue();
+        // Force initialization by accessing a simple property
+        if (this.testResult != null) {
+            TestResult result = (TestResult) this.testResult.getValue();
+            // Access a simple property to force initialization
+            if (result != null) {
+                String dummy = result.getValue();
+            }
+            return result;
+        }
+        return null;
     }
 
     protected ValueHolderInterface getTestResultHolder() {
