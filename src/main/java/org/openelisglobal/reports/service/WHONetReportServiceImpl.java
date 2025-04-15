@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -55,12 +56,12 @@ public class WHONetReportServiceImpl implements WHONetReportService {
                         statusService.getStatusID(AnalysisStatus.BiologistRejected),
                         statusService.getStatusID(AnalysisStatus.NonConforming_depricated),
                         statusService.getStatusID(AnalysisStatus.Finalized))
-                .stream().map(val -> Integer.parseInt(val)).collect(Collectors.toList());
+                .stream().filter(Objects::nonNull).map(val -> Integer.parseInt(val)).collect(Collectors.toList());
         SAMPLE_STATUS_IDS = Arrays
                 .asList(statusService.getStatusID(OrderStatus.Entered), statusService.getStatusID(OrderStatus.Started),
                         statusService.getStatusID(OrderStatus.Finished),
                         statusService.getStatusID(OrderStatus.NonConforming_depricated))
-                .stream().map(val -> Integer.parseInt(val)).collect(Collectors.toList());
+                .stream().filter(Objects::nonNull).map(val -> Integer.parseInt(val)).collect(Collectors.toList());
     }
 
     @Override
@@ -109,7 +110,7 @@ public class WHONetReportServiceImpl implements WHONetReportService {
                             if (testReflexUtil.isTestTriggeredByResult(potentialReflexAnalysis.getTest(),
                                     triggerResult)) {
                                 Analysis reflexAnalysis = potentialReflexAnalysis;
-                                // get the results from the the reflex test
+                                // get the results from the reflex test
                                 List<Result> reflexResults = resultService.getResultsByAnalysis(reflexAnalysis);
                                 if (reflexResults.size() == 0) {
                                     // if there's no results for the second test, we still need the info of the
