@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <analyte id="1" name="Staphylococcus aureus" is_active="Y"
+        external_id="BC_ORG" lastupdated="2024-03-01 00:00:00" />
+
+    <localization id="1" lastupdated="2024-10-10 08:30:00.0"
+        description="English Localization" english="Complete Blood Count"
+        french="Numération Globulaire Complète" />
+
+    <test id="44" description="Routine Hematology Panel" is_active="Y"
+        lastupdated="2024-01-01 00:00:00" name="Complete Blood Count"
+        guid="abc-123" antimicrobial_resistance="true"
+        name_localization_id="1" />
+
+    <test id="45" description="Routine Urinalysis Panel" is_active="Y"
+        lastupdated="2024-03-01 00:00:00" name="Urinalysis" guid="def-456"
+        antimicrobial_resistance="true" name_localization_id="1" />
+
+    <organization id="1" lastupdated="2024-03-01 00:00:00.0"
+        name="International Medical Diagnostics Center" city="Boston" zip_code="02118"
+        mls_sentinel_lab_flag="Y" short_name="IMDC" multiple_unit="Boston Main Lab"
+        street_address="456 MedTech Blvd" state="MA"
+        internet_address="www.imdc.org" clia_num="CLIA56789"
+        pws_id="PWS987" mls_lab_flag="Y" is_active="Y" local_abbrev="IMDC"
+        code="IMDC001" />
+
+    <type_of_sample id="1" description="Whole Blood Sample"
+        domain="H" lastupdated="2024-03-01 00:00:00" local_abbrev="blood"
+        is_active="true" sort_order="4" name_localization_id="1"
+        display_key="sample.type.WholeBlood" />
+
+    <test_section id="1" name="Microbiology"
+        description="Clinical Microbiology Section" name_localization_id="1" org_id="1"
+        lastupdated="2023-01-01 00:00:00" is_active="Y" sort_order="1" />
+
+    <status_of_sample id="8" status_type="ANALYSIS"
+        name="Finalized" description="Finalized Analysis" is_active="Y"
+        code="8" lastupdated="2024-03-01 00:00:00" />
+
+    <status_of_sample id="11" status_type="ORDER"
+        name="Finished" description="Finalized Order" is_active="Y" code="11"
+        lastupdated="2024-03-01 00:00:00" />
+
+    <sample id="1" accession_number="12345" status_id="11"
+        received_date="2023-01-01 00:00:00" entered_date="2023-01-01 00:00:00"
+        collection_date="2023-01-01 00:00:00"
+        lastupdated="2023-01-01 00:00:00" />
+
+    <sample_item id="1" sort_order="1" status_id="11"
+        samp_id="1" typeosamp_id="1" collection_date="2024-03-01 15:00:00"
+        lastupdated="2024-03-01 10:00:00" />
+
+    <person id="1" first_name="John" last_name="Doe"
+        lastupdated="2024-03-01 00:00:00" />
+
+    <patient id="1" person_id="1" national_id="PAT-2024001" gender="M"
+        birth_date="1985-05-12" entered_birth_date="1985-05-12" lastupdated="2024-03-01 00:00:00" />
+
+    <sample_human id="1" samp_id="1" patient_id="1"
+    lastupdated="2024-03-02 10:00:00" />
+
+    <test_result id="1" test_id="44" sort_order="1"
+        value="EQUALS" tst_rslt_type="D" significant_digits="0"
+        lastupdated="2024-03-01 10:10:00" />
+
+    <test_result id="2" test_id="45" sort_order="1"
+        value="EQUALS" tst_rslt_type="D" significant_digits="0"
+        lastupdated="2024-03-02 10:15:00" />
+
+    <analysis id="1" sampitem_id="1" test_id="44" test_sect_id="1"
+        status_id="8" lastupdated="2024-03-02 12:00:00" analysis_type="MANUAL"
+        revision="0" started_date="2024-03-02"
+        completed_date="2024-03-02 12:00:00" />
+
+    <analysis id="2" sampitem_id="1" test_id="45" test_sect_id="1"
+        status_id="8" parent_result_id="1" lastupdated="2024-03-02 12:05:00"
+        analysis_type="MANUAL" revision="0" started_date="2024-03-02"
+        completed_date="2024-03-02 12:10:00" />
+
+    <result id="1" analysis_id="1" test_result_id="1" analyte_id="1"
+        value="EQUALS" lastupdated="2024-03-02 12:00:00" />
+
+    <result id="2" analysis_id="2" test_result_id="2" analyte_id="1"
+        value="EQUALS" lastupdated="2024-03-02 12:00:00" />
+
+    <test_analyte id="1" test_id="44" analyte_id="1"
+        is_reportable="Y" sort_order="1" lastupdated="2024-03-02 12:10:00" />
+
+    <test_reflex id="1" test_id="44" add_test_id="45"
+        relation="EQUALS" test_analyte_id="1" tst_rslt_id="1"
+        lastupdated="2024-03-02 12:20:00" />
+</dataset>

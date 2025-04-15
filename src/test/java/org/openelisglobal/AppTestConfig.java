@@ -9,9 +9,11 @@ import java.util.List;
 import lombok.NonNull;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.jasypt.util.text.TextEncryptor;
+import org.mockito.Mockito;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.PluginAnalyzerService;
+import org.openelisglobal.common.services.StatusService;
 import org.openelisglobal.common.util.Versioning;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
@@ -27,7 +29,6 @@ import org.openelisglobal.organization.service.OrganizationTypeService;
 import org.openelisglobal.referral.service.ReferralResultService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.service.ReferralSetService;
-import org.openelisglobal.reports.service.WHONetReportServiceImpl;
 import org.openelisglobal.requester.service.RequesterTypeService;
 import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
@@ -70,7 +71,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer", "org.openelisglobal.testanalyte",
         "org.openelisglobal.observationhistory", "org.openelisglobal.systemusersection",
         "org.openelisglobal.citystatezip", "org.openelisglobal.typeofsample", "org.openelisglobal.siteinformation",
-        "org.openelisglobal.config", "org.openelisglobal.image", "org.openelisglobal.testresult" }, excludeFilters = {
+        "org.openelisglobal.config", "org.openelisglobal.image", "org.openelisglobal.testresult",
+        "org.openelisglobal.testreflex"}, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
@@ -80,8 +82,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.siteinformation.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.config.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.fhir.*"),
-                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.*.fhir.*"),
-                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = WHONetReportServiceImpl.class) })
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.*.fhir.*") })
 @EnableWebMvc
 public class AppTestConfig implements WebMvcConfigurer {
 
@@ -249,7 +250,27 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean()
     @Profile("test")
     public IStatusService iStatusService() {
-        return mock(IStatusService.class);
+        IStatusService mockStatusService = mock(IStatusService.class);
+
+        // Setup for ANALYSIS_STATUS_IDS
+        Mockito.when(mockStatusService.getStatusID(StatusService.AnalysisStatus.SampleRejected)).thenReturn("1");
+        Mockito.when(mockStatusService.getStatusID(StatusService.AnalysisStatus.NotStarted)).thenReturn("2");
+        Mockito.when(mockStatusService.getStatusID(StatusService.AnalysisStatus.Canceled)).thenReturn("3");
+        Mockito.when(mockStatusService.getStatusID(StatusService.AnalysisStatus.TechnicalAcceptance)).thenReturn("4");
+        Mockito.when(mockStatusService.getStatusID(StatusService.AnalysisStatus.TechnicalRejected)).thenReturn("5");
+        Mockito.when(mockStatusService.getStatusID(StatusService.AnalysisStatus.BiologistRejected)).thenReturn("6");
+        Mockito.when(mockStatusService.getStatusID(StatusService.AnalysisStatus.NonConforming_depricated))
+                .thenReturn("7");
+        Mockito.when(mockStatusService.getStatusID(StatusService.AnalysisStatus.Finalized)).thenReturn("8");
+
+        // Setup for SAMPLE_STATUS_IDS
+        Mockito.when(mockStatusService.getStatusID(StatusService.OrderStatus.Entered)).thenReturn("9");
+        Mockito.when(mockStatusService.getStatusID(StatusService.OrderStatus.Started)).thenReturn("10");
+        Mockito.when(mockStatusService.getStatusID(StatusService.OrderStatus.Finished)).thenReturn("11");
+        Mockito.when(mockStatusService.getStatusID(StatusService.OrderStatus.NonConforming_depricated))
+                .thenReturn("12");
+
+        return mockStatusService;
     }
 
     @Bean()
