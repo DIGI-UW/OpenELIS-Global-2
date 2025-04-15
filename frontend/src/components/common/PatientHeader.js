@@ -71,7 +71,6 @@ const PatientHeader = (props) => {
                       ) : (
                         <FormattedMessage id="patient.female" />
                       )}{" "}
-                      <br />
                       <Tag type="blue">
                         {age ? (
                           <FormattedMessage id="patient.label.age" />
