@@ -246,7 +246,8 @@ public class TestActivationRestController extends BaseController {
             JSONArray actionArray = (JSONArray) parser.parse(action);
 
             for (int i = 0; i < actionArray.size(); i++) {
-                list.add((String) ((JSONObject) actionArray.get(i)).get("id"));
+                Object idObj = ((JSONObject) actionArray.get(i)).get("id");
+                list.add(String.valueOf(idObj));
             }
         } catch (ParseException e) {
             LogEvent.logDebug(e);
