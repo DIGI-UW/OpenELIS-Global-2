@@ -289,9 +289,7 @@ function TestManagementConfigMenu() {
                 <ClickableTile>
                   <ListItem
                     onClick={() => {
-                      window.location.assign(
-                        "/api/OpenELIS-Global/TestActivation",
-                      );
+                      window.location.assign("/admin#TestActivation");
                     }}
                   >
                     <FormattedMessage id="configuration.test.activate" />
