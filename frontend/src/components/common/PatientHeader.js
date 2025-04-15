@@ -80,7 +80,6 @@ const PatientHeader = (props) => {
                         :
                       </Tag>{" "}
                       {age ? age : dob}
-                      <br />
                     </div>
                     {nationalId && (
                       <div className="patient-id">
