@@ -103,12 +103,6 @@ public class AppTestConfig implements WebMvcConfigurer {
         return mock(TextEncryptor.class);
     }
 
-    @Bean
-    @Profile("test")
-    public FhirReferralService fhirReferralService() {
-        return mock(FhirReferralService.class);
-    }
-
     @Bean()
     @Profile("test")
     public FhirPersistanceService fhirPesistence() {
