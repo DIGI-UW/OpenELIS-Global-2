@@ -354,7 +354,7 @@ function PathologyDashboard() {
                   }
                 />
               </div>
-              <Column lg={4} md={2} sm={2}>
+              <Column>
                 <Select
                   id="statusFilter"
                   name="statusFilter"
