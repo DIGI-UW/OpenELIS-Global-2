@@ -337,7 +337,7 @@ function PathologyDashboard() {
               })}
             />
           </Column>
-          <Column lg={8} md={4} sm={2}>
+          <Column lg={8} md={4} sm={4}>
             <Grid fullWidth={true}>
               <Column lg={1} md={1} sm={1}>
                 <div style={{ marginTop: "9px" }}>Filters:</div>
