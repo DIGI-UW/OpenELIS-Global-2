@@ -13,9 +13,10 @@ import {
   TableBody,
   TableCell,
   Pagination,
-  Column,
   TextInput,
   Checkbox,
+  Grid,
+  Column,
 } from "@carbon/react";
 import { Add } from "@carbon/react/icons";
 import { getFromOpenElisServer } from "../utils/Utils";
@@ -506,13 +507,15 @@ const EditSample = (props) => {
             );
           })}
           <Row>
-            <div className="inlineDiv">
-              <Button onClick={handleAddNewSample}>
-                {<FormattedMessage id="sample.add.action" />}
-                &nbsp; &nbsp;
-                <Add size={16} />
-              </Button>
-            </div>
+            <Grid>
+              <Column lg={16} md={8} sm={4}>
+                <Button onClick={handleAddNewSample}>
+                  {<FormattedMessage id="sample.add.action" />}
+                  &nbsp; &nbsp;
+                  <Add size={16} />
+                </Button>
+              </Column>
+            </Grid>
           </Row>
         </div>
       </Stack>
