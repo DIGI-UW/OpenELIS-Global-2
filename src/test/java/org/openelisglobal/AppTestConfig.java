@@ -9,10 +9,13 @@ import java.util.List;
 import lombok.NonNull;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.jasypt.util.text.TextEncryptor;
+import org.mockito.Mockito;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
-import org.openelisglobal.citystatezip.service.CityStateZipService;
+import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.PluginAnalyzerService;
+import org.openelisglobal.common.services.RequesterService;
+import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.Versioning;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
@@ -25,15 +28,9 @@ import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notification.service.AnalysisNotificationConfigService;
 import org.openelisglobal.notification.service.TestNotificationConfigService;
 import org.openelisglobal.organization.service.OrganizationTypeService;
-import org.openelisglobal.referral.service.ReferralResultService;
-import org.openelisglobal.referral.service.ReferralService;
-import org.openelisglobal.referral.service.ReferralSetService;
+import org.openelisglobal.referral.fhir.service.FhirReferralService;
 import org.openelisglobal.reports.service.WHONetReportServiceImpl;
 import org.openelisglobal.requester.service.RequesterTypeService;
-import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
-import org.openelisglobal.testresult.service.TestResultService;
-import org.openelisglobal.typeofsample.service.TypeOfSampleService;
-import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
@@ -70,11 +67,20 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.userrole", "org.openelisglobal.unitofmeasure", "org.openelisglobal.testtrailer",
         "org.openelisglobal.scriptlet", "org.openelisglobal.localization", "org.openelisglobal.systemuser",
         "org.openelisglobal.systemmodule", "org.openelisglobal.testdictionary", "org.openelisglobal.dictionarycategory",
+
+        "org.openelisglobal.sampleproject", "org.openelisglobal.observationhistorytype",
+        "org.openelisglobal.statusofsample", "org.openelisglobal.test", "org.openelisglobal.analyzerimport",
+        "org.openelisglobal.analyzer", "org.openelisglobal.systemusersection",
+
         "org.openelisglobal.observationhistorytype", "org.openelisglobal.statusofsample", "org.openelisglobal.test",
         "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer", "org.openelisglobal.testanalyte",
         "org.openelisglobal.observationhistory", "org.openelisglobal.systemusersection",
-        "org.openelisglobal.siteinformation", "org.openelisglobal.config",
-        "org.openelisglobal.image" }, excludeFilters = {
+        "org.openelisglobal.citystatezip", "org.openelisglobal.typeofsample", "org.openelisglobal.siteinformation",
+        "org.openelisglobal.config", "org.openelisglobal.image", "org.openelisglobal.testresult",
+        "org.openelisglobal.barcode", "org.openelisglobal.referral", "org.openelisglobal.qaevent",
+        "org.openelisglobal.sampleproject", "org.openelisglobal.project",
+        "org.openelisglobal.sampleqaevent" }, excludeFilters = {
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.barcode.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
@@ -157,12 +163,6 @@ public class AppTestConfig implements WebMvcConfigurer {
 
     @Bean()
     @Profile("test")
-    public SampleQaEventService sampleQaEventService() {
-        return mock(SampleQaEventService.class);
-    }
-
-    @Bean()
-    @Profile("test")
     public BasicAuthenticationDataService basicAuthenticationDataService() {
         return mock(BasicAuthenticationDataService.class);
     }
@@ -193,50 +193,32 @@ public class AppTestConfig implements WebMvcConfigurer {
 
     @Bean()
     @Profile("test")
-    public ReferralResultService ReferralResultService() {
-        return mock(ReferralResultService.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public CityStateZipService cityStateZipService() {
-        return mock(CityStateZipService.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public ReferralService referralService() {
-        return mock(ReferralService.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public ReferralSetService ReferralSetService() {
-        return mock(ReferralSetService.class);
-    }
-
-    @Bean()
-    @Profile("test")
     public AuditTrailService auditTrailService() {
         return mock(AuditTrailService.class);
     }
 
     @Bean()
     @Profile("test")
-    public TestResultService testResultService() {
-        return mock(TestResultService.class);
+    public DisplayListService displayListService() {
+        return mock(DisplayListService.class);
     }
 
     @Bean()
     @Profile("test")
-    public TypeOfSampleTestService typeOfSampleTestService() {
-        return mock(TypeOfSampleTestService.class);
+    public SampleOrderService sampleOrderService() {
+        return mock(SampleOrderService.class);
     }
 
     @Bean()
     @Profile("test")
-    public TypeOfSampleService typeOfSample() {
-        return mock(TypeOfSampleService.class);
+    public RequesterService requesterService() {
+        return mock(RequesterService.class);
+    }
+
+    @Bean
+    @Profile("test")
+    public FhirReferralService fhirReferralService() {
+        return Mockito.mock(FhirReferralService.class);
     }
 
     @Bean()

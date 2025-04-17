@@ -179,7 +179,7 @@ public class CityStateZipDAOImpl extends BaseDAOImpl<CityStateZip, String> imple
     public CityStateZip getCityStateZipByCityAndZipCode(CityStateZip cityStateZip) throws LIMSRuntimeException {
         CityStateZip csz = null;
         try {
-            String sql = "from CityStateZip csz where upper(csz.city)) = :param and csz.zipCode = :param2";
+            String sql = "from CityStateZip csz where upper(csz.city) = :param and csz.zipCode = :param2";
             Query<CityStateZip> query = entityManager.unwrap(Session.class).createQuery(sql, CityStateZip.class);
             query.setParameter("param", cityStateZip.getCity().trim().toUpperCase());
             query.setParameter("param2", cityStateZip.getZipCode());
@@ -289,7 +289,7 @@ public class CityStateZipDAOImpl extends BaseDAOImpl<CityStateZip, String> imple
                 // give the cityStateZip object an artificial id needed for
                 // autocomplete but not stored anywhere
                 cszip.setId(String.valueOf(i));
-                cszip.setCity(zipCode);
+                cszip.setZipCode(zipCode);
                 cityStateZips.add(cszip);
             }
 
@@ -604,9 +604,9 @@ public class CityStateZipDAOImpl extends BaseDAOImpl<CityStateZip, String> imple
     public String getCountyCodeByStateAndZipCode(CityStateZip cityStateZip) throws LIMSRuntimeException {
         String countyCode = null;
         try {
+            String hql = "SELECT csz.countyFips FROM CityStateZip csz WHERE upper(csz.state) = :param AND csz.zipCode = :param2";
 
-            List<?> list = entityManager.unwrap(Session.class)
-                    .getNamedQuery("cityStateZip.getCountyCodeByStateAndZipCode")
+            List<?> list = entityManager.unwrap(Session.class).createQuery(hql)
                     .setParameter("param", cityStateZip.getState().trim().toUpperCase())
                     .setParameter("param2", cityStateZip.getZipCode().trim()).list();
 

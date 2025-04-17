@@ -202,7 +202,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
     @GetMapping(value = "LogbookResults", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public LogbookResultsForm showReactLogbookResults(@RequestParam(required = false) String labNumber,
+    public LogbookResultsForm showRestLogbookResults(@RequestParam(required = false) String labNumber,
             @RequestParam(required = false) String patientPK, @RequestParam(required = false) String collectionDate,
             @RequestParam(required = false) String recievedDate, @RequestParam(required = false) String selectedTest,
             @RequestParam(required = false) String selectedSampleStatus,
