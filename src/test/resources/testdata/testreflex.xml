@@ -1,0 +1,52 @@
+<dataset>
+    <!-- Supporting system_user (formerly sys_user) -->
+    <system_user id="1" login_name="tuser" last_name="T"
+        first_name="U" is_active="Y" is_employee="Y"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <!-- Supporting samples -->
+    <sample id="5001" accession_number="SMP-001"
+        entered_date="2024-01-01 00:00:00" received_date="2024-01-01 00:00:00"
+        is_confirmation="N" lastupdated="2024-01-01 00:00:00" />
+    <sample id="5002" accession_number="SMP-002"
+        entered_date="2024-01-01 00:00:00" received_date="2024-01-01 00:00:00"
+        is_confirmation="N" lastupdated="2024-01-01 00:00:00" />
+    <sample id="5003" accession_number="SMP-003"
+        entered_date="2024-01-01 00:00:00" received_date="2024-01-01 00:00:00"
+        is_confirmation="N" lastupdated="2024-01-01 00:00:00" />
+
+    <!-- Fully populated test -->
+    <test id="401" method_id="1" uom_id="1"
+        description="Add-on Test A description" loinc="1234-5"
+        reporting_description="Add-on Test A Report" sticker_req_flag="N"
+        is_active="Y" active_begin="2024-01-01" active_end="2024-12-31"
+        is_reportable="Y" time_holding="30" time_wait="10"
+        time_ta_average="20" time_ta_warning="25" time_ta_max="40"
+        label_qty="1" lastupdated="2024-01-01 00:00:00" label_id="1001"
+        test_trailer_id="2001" test_section_id="3001" scriptlet_id="4001"
+        test_format_id="5001" local_code="ADDON_A" sort_order="10"
+        name="Add-on Test A" orderable="Y"
+        guid="123e4567-e89b-12d3-a456-426614174000" name_localization_id="1"
+        reporting_name_localization_id="2" default_test_result_id="6001"
+        notify_results="N" in_lab_only="N" antimicrobial_resistance="N" />
+
+    <!-- Conforming test_result rows -->
+
+    <test_result id="201" test_id="401" value="NEGATIVE"
+        flags="R" tst_rslt_type="D" is_quantifiable="false" is_active="true"
+        is_normal="true" lastupdated="2024-01-01 00:00:00" />
+    <test_result id="202" test_id="401" value="POSITIVE"
+        flags="P" tst_rslt_type="D" is_quantifiable="false" is_active="true"
+        is_normal="true" lastupdated="2024-01-01 00:00:00" />
+    <test_result id="203" test_id="401" value="HIGH" flags="H"
+        tst_rslt_type="N" is_quantifiable="true" is_active="true"
+        is_normal="false" lastupdated="2024-01-01 00:00:00" />
+
+    <!-- Test reflex entries -->
+    <test_reflex id="100" tst_rslt_id="201" add_test_id="401"
+        is_active="Y" lastupdated="2024-01-01 00:00:00" />
+    <test_reflex id="101" tst_rslt_id="202" add_test_id="401"
+        is_active="Y" lastupdated="2024-01-01 00:00:00" />
+    <test_reflex id="102" tst_rslt_id="203" add_test_id="401"
+        is_active="N" lastupdated="2024-01-01 00:00:00" />
+</dataset>
