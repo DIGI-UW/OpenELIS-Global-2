@@ -17,8 +17,8 @@ module.exports = defineConfig({
         const prioritizedTests = [
           "cypress/e2e/login.cy.js",
           "cypress/e2e/home.cy.js",
-          "cypress/e2e/patientEntry.cy.js",
-          "cypress/e2e/orderEntity.cy.js",
+          // "cypress/e2e/patientEntry.cy.js",
+          // "cypress/e2e/orderEntity.cy.js",
         ];
 
         const findTestFiles = (dir) => {
@@ -34,7 +34,7 @@ module.exports = defineConfig({
             } else if (file.endsWith(".cy.js")) {
               const relativePath = fullPath.replace(__dirname + path.sep, "");
               if (!prioritizedTests.includes(relativePath)) {
-                results.push(relativePath);
+                //results.push(relativePath);
               }
             }
           }

@@ -213,4 +213,48 @@ public class QaEventServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("1", qaEvent.getId());
     }
 
+    @Test
+    public void getTotalQaEventCount_shouldMatchListSize() {
+        List<QaEvent> list = qaEventService.getAll();
+        int count = qaEventService.getTotalQaEventCount();
+        assertEquals(list.size(), count);
+    }
+
+    @Test
+    public void getCountMatching() {
+        List<QaEvent> events = qaEventService.getAllMatching("isBillable", "Y");
+        int count = qaEventService.getCountMatching("isBillable", "Y");
+        assertEquals(events.size(), count);
+    }
+
+    @Test
+    public void getCountMatchingGivenMapping() {
+        Map<String, Object> mapping = Map.of("isBillable", "Y");
+        List<QaEvent> events = qaEventService.getAllMatching(mapping);
+        int count = qaEventService.getCountMatching(mapping);
+        assertEquals(events.size(), count);
+    }
+
+    @Test
+    public void getCountLike_shouldReturnCountLike() {
+        List<QaEvent> events = qaEventService.getAllMatching("isBillable", "Y");
+        int count = qaEventService.getCountLike("isBillable", "Y");
+        assertEquals(events.size(), count);
+    }
+
+    @Test
+    public void getCountLikeGivenMapping_shouldReturnCountLike() {
+        List<QaEvent> events = qaEventService.getAllMatching("isBillable", "Y");
+        Map<String, String> mapping = Map.of("isBillable", "Y");
+        int count = qaEventService.getCountLike(mapping);
+        assertEquals(events.size(), count);
+    }
+
+    @Test
+    public void getCount_shouldReturnTotalQaEvent() {
+        List<QaEvent> events = qaEventService.getAll();
+        int count = qaEventService.getCount();
+        assertEquals(events.size(), count);
+    }
+
 }
