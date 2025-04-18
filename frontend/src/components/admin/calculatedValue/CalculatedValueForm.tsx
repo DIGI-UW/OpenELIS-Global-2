@@ -920,7 +920,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                               <FormattedMessage id="testcalculation.label.finalresult" />
                             </h6>
                           </Column>
-                          <Column lg={4}>
+                          <Column lg={4} md={2} sm={4}>
                             <Select
                               id={index + "_sample"}
                               name="sampleId"
@@ -953,7 +953,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                               ))}
                             </Select>
                           </Column>
-                          <Column lg={4}>
+                          <Column lg={4} md={2} sm={4}>
                             <AutoComplete
                               id={index + "_finalresult"}
                               class="inputText"
@@ -968,7 +968,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                               }
                             ></AutoComplete>
                           </Column>
-                          <Column lg={4}>
+                          <Column lg={4} md={2} sm={4}>
                             {sampleTestList["FINAL_RESULT"][index] && (
                               <>
                                 {getResultInputByResultType(
@@ -981,7 +981,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                               </>
                             )}
                           </Column>
-                          <Column lg={4}>
+                          <Column lg={4} md={2} sm={4}>
                             <TextArea
                               name="note"
                               id={index + "_note"}
