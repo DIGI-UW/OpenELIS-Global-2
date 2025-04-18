@@ -22,6 +22,10 @@ const PatientHeader = (props) => {
     isOrderPage = false,
     className = "patient-header",
   } = props;
+
+  const tagStyle = {
+    fontSize: "0.8rem",
+  };
   return (
     <Grid fullWidth={true}>
       <Column lg={16} md={8} sm={4}>
@@ -30,105 +34,97 @@ const PatientHeader = (props) => {
             {id ? (
               <div className={className}>
                 <Grid>
-                  <Column lg={4} md={2} sm={1}>
-                    <div
-                      className={
-                        referringFacility ? "patientAvatar2" : "patientAvatar"
+                  <Column lg={1} md={2} sm={1}>
+                    <Avatar
+                      alt={"Patient avatar"}
+                      color="rgba(0,0,0,0)"
+                      name={
+                        patientName ? patientName : lastName + " " + firstName
                       }
-                      role="img"
-                    >
-                      <Avatar
-                        alt={"Patient avatar"}
-                        color="rgba(0,0,0,0)"
-                        name={
-                          patientName ? patientName : lastName + " " + firstName
-                        }
-                        src={""}
-                        size={referringFacility ? "150" : "120"}
-                        textSizeRatio={2}
-                        style={{
-                          backgroundImage: `url('/images/patient-background.svg')`,
-                          backgroundRepeat: "round",
-                        }}
-                      />
-                    </div>
+                      src={""}
+                      size="56"
+                      textSizeRatio={1}
+                      style={{
+                        backgroundImage: `url('/images/patient-background.svg')`,
+                        backgroundRepeat: "round",
+                      }}
+                    />
                   </Column>
-                  <Column lg={10} md={5} sm={3}>
-                    <div className="patient-name">
-                      {patientName ? patientName : lastName + " " + firstName}
-                    </div>
-                    <div className="patient-dob">
-                      {" "}
-                      <Tag type="blue">
-                        <FormattedMessage id="patient.label.sex" /> :
-                      </Tag>
-                      {gender === "M" ? (
-                        <FormattedMessage id="patient.male" />
-                      ) : (
-                        <FormattedMessage id="patient.female" />
-                      )}{" "}
-                      <Tag type="blue">
-                        {age ? (
-                          <FormattedMessage id="patient.label.age" />
+                  <Column lg={15} md={5} sm={3}>
+                    <div>
+                      <span className="patient-name">
+                        {patientName ? patientName : lastName + " " + firstName}
+                      </span>
+                      <span className="patient-dob">
+                        {" "}
+                        {gender === "M" ? (
+                          <>
+                            {" "}
+                            ♂
+                            <FormattedMessage id="patient.male" />
+                          </>
                         ) : (
-                          <FormattedMessage id="patient.dob" />
+                          <>
+                            {" "}
+                            ♀ <FormattedMessage id="patient.female" />
+                          </>
                         )}{" "}
-                        :
-                      </Tag>{" "}
-                      {age ? age : dob}
+                        {age ? age + " Yrs" : dob}
+                      </span>
                     </div>
-                    {nationalId && (
-                      <div className="patient-id">
-                        <Tag type="blue">
-                          <FormattedMessage id="patient.natioanalid" /> :
+                    {/* <br/> */}
+                    <div className="patient-id">
+                      {nationalId && (
+                        <Tag size="lg" type="" style={tagStyle}>
+                          <FormattedMessage id="patient.natioanalid" /> :{" "}
+                          <strong>{nationalId}</strong>
                         </Tag>
-                        {nationalId}
-                      </div>
-                    )}
-                    {subjectNumber && (
-                      <div className="patient-id">
-                        <Tag type="blue">
-                          <FormattedMessage id="patient.subject.number" /> :
+                      )}
+                      {subjectNumber && (
+                        <Tag size="lg" type="" style={tagStyle}>
+                          <FormattedMessage id="patient.subject.number" /> :{" "}
+                          <strong>{subjectNumber}</strong>
                         </Tag>
-                        {subjectNumber}{" "}
-                      </div>
-                    )}
-                    {accesionNumber && (
-                      <div className="patient-id">
-                        <Tag type="blue">
+                      )}
+                      {accesionNumber && (
+                        <Tag size="lg" type="" style={tagStyle}>
                           <FormattedMessage id="quick.entry.accession.number" />{" "}
-                          :
+                          : <strong>{accesionNumber}</strong>
                         </Tag>
-                        {accesionNumber}{" "}
-                      </div>
-                    )}
-                    {orderDate && (
-                      <div className="patient-id">
-                        <div className="patient-id">
-                          <Tag type="blue">
-                            <FormattedMessage id="sample.label.orderdate" /> :
+                      )}
+                      {orderDate && (
+                        <>
+                          <Tag size="lg" type="" style={tagStyle}>
+                            <FormattedMessage id="sample.label.orderdate" /> :{" "}
+                            <strong>{orderDate}</strong>
                           </Tag>
-                          {orderDate}
 
-                          <Tag type="blue">
-                            <FormattedMessage id="sample.label.requester" />: :
+                          <Tag
+                            size="lg"
+                            type=""
+                            style={{
+                              fontSize: "0.8rem",
+                            }}
+                          >
+                            <FormattedMessage id="sample.label.requester" />:{" "}
+                            <strong>{requester}</strong>
                           </Tag>
-                          {requester}
-                        </div>
-                      </div>
-                    )}
-                    {referringFacility && (
-                      <div className="patient-id">
-                        <Tag type="blue">
-                          <FormattedMessage id="sample.label.facility" />:
-                        </Tag>
-                        {referringFacility}{" "}
-                        <Tag type="blue">
-                          <FormattedMessage id="sample.label.dept" /> :
-                        </Tag>{" "}
-                        {department}
-                      </div>
-                    )}
+                        </>
+                      )}
+                      {referringFacility && (
+                        <>
+                          <Tag size="lg" type="" style={tagStyle}>
+                            <FormattedMessage id="sample.label.facility" />:{" "}
+                            <strong>{referringFacility}</strong>
+                          </Tag>
+
+                          <Tag size="lg" type="" style={tagStyle}>
+                            <FormattedMessage id="sample.label.dept" /> :{" "}
+                            <strong>{department}</strong>
+                          </Tag>
+                        </>
+                      )}
+                    </div>
                   </Column>
                 </Grid>
               </div>
@@ -141,7 +137,7 @@ const PatientHeader = (props) => {
                       color="rgba(0,0,0,0)"
                       name={"!"}
                       src={""}
-                      size={referringFacility ? "150" : "120"}
+                      size="56"
                       textSizeRatio={2}
                       style={{
                         backgroundImage: `url('/images/patient-background.svg')`,
