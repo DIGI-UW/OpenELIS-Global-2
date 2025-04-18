@@ -486,7 +486,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
       case "MATH_FUNCTION":
         return (
           <>
-            <Column lg={5}>
+            <Column lg={5} md={2} sm={4}>
               <Select
                 id={index + "_" + operationIndex + "_mathfunction"}
                 name="value"
@@ -511,7 +511,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
       case "INTEGER":
         return (
           <>
-            <Column lg={5}>
+            <Column lg={5} md={2} sm={4}>
               <TextInput
                 name="value"
                 type="number"
@@ -532,7 +532,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
       case "PATIENT_ATTRIBUTE":
         return (
           <>
-            <Column lg={5}>
+            <Column lg={5} md={2} sm={4}>
               <Select
                 id={index + "_" + operationIndex + "_patientattribute"}
                 name="value"
@@ -550,7 +550,9 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 <SelectItem text="Patient Weight(Kg)" value="WEIGHT" />
               </Select>
             </Column>
-            <Column lg={5}> </Column>
+            <Column lg={5} md={2} sm={4}>
+              {" "}
+            </Column>
           </>
         );
     }
