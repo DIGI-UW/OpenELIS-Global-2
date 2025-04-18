@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <qa_observation_type id="10"
+        name="Sample Verification"
+        description="Validation of collected sample"
+        lastupdated="2025-04-16 50:00:00" />
+    <qa_observation_type id="11" name="Result Check"
+        description="Review of result values"
+        lastupdated="2025-04-16 55:00:00" />
+    <qa_observation_type id="12" name="Instrument QA"
+        description="Instrument quality assessment"
+        lastupdated="2025-04-16 00:00:00" />
+    <qa_observation_type id="13"
+        name="Data Consistency" description="Cross-check data"
+        lastupdated="2025-04-16 05:00:00" />
+
+    <qa_observation id="1" observed_id="1001"
+        observed_type="SAMPLE" qa_observation_type_id="10" value_type="S"
+        value="Sample Validated" lastupdated="2025-04-16 30:00:00" />
+    <qa_observation id="2" observed_id="1002"
+        observed_type="ANALYSIS" qa_observation_type_id="11" value_type="N"
+        value="42" lastupdated="2025-04-16 00:00:00" />
+    <qa_observation id="3" observed_id="1003"
+        observed_type="SAMPLE" qa_observation_type_id="12" value_type="B"
+        value="true" lastupdated="2025-04-16 15:00:00" />
+    <qa_observation id="4" observed_id="1004"
+        observed_type="ANALYSIS" qa_observation_type_id="10" value_type="S"
+        value="Contaminated" lastupdated="2025-04-16 45:00:00" />
+    <qa_observation id="5" observed_id="1005"
+        observed_type="SAMPLE" qa_observation_type_id="13" value_type="N"
+        value="99" lastupdated="2025-04-16 20:00:00" />
+    <qa_observation id="6" observed_id="1006"
+        observed_type="ANALYSIS" qa_observation_type_id="11" value_type="S"
+        value="Rejected" lastupdated="2025-04-16 10:00:00" />
+</dataset>
