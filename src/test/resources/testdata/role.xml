@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- * The contents of this file are subject to the Mozilla Public License
+    * Version 1.1 (the "License"); you may not use this file except in * compliance
+    with the License. You may obtain a copy of the License at * http://www.mozilla.org/MPL/
+    * * Software distributed under the License is distributed on an "AS IS" *
+    basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the *
+    License for the specific language governing rights and limitations under
+    * the License. * * The Original Code is OpenELIS code. * * Copyright (C)
+    ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+<dataset>
+    <!-- role entries -->
+    <system_role id="1" name="Global Administrator"
+        description="Change tests panels etc." is_grouping_role="false"
+        display_key="role.maintenance" active="1" editable="false" />
+    <system_role id="2" name="Reception"
+        description="Attendee of personnel." is_grouping_role="false"
+        display_key="role.intake" active="1" editable="false" />
+    <system_role id="3" name="Inventory mgr"
+        description="tracks inventory." is_grouping_role="false"
+        display_key="role.inventory" active="1" editable="false" />
+    <system_role id="4" name="Results"
+        description="enter and review results." is_grouping_role="false"
+        display_key="role.results" active="0" editable="false" />
+    <system_role id="5" name="Reports"
+        description="generate reports." is_grouping_role="false"
+        display_key="role.reports" active="1" editable="false" />
+</dataset>
