@@ -1,11 +1,19 @@
 import React from "react";
 import { useIntl } from "react-intl";
+import CustomDatePicker from "./CustomDatePicker";
 import {
   FilterableMultiSelect,
   Select,
   SelectItem,
   TextInput,
 } from "@carbon/react";
+
+const convertToISODate = (date) => {
+  if (!(date instanceof Date)) {
+    throw new Error("Invalid date object");
+  }
+  return date.toISOString().split("T")[0];
+};
 
 const Questionnaire = ({
   questionnaire,
@@ -159,12 +167,28 @@ const Questionnaire = ({
             />
           )}
           {item.type == "date" && (
-            <TextInput
+            <CustomDatePicker
               id={item.linkId}
               labelText={item.text}
-              onChange={onAnswerChange}
-              value={getAnswer(item.linkId)}
-              type="date"
+              onChange={(date) => {
+                try {
+                  if (date) {
+                    const isoDate = convertToISODate(date);
+                    console.log(
+                      "Original date:",
+                      date,
+                      "Converted to ISO:",
+                      isoDate,
+                    );
+                    const e = { target: { id: item.linkId, value: isoDate } };
+                    onAnswerChange(e);
+                  }
+                } catch (error) {
+                  console.error("Error in DatePicker onChange handler:", error);
+                }
+              }}
+              value={getAnswer(item.linkId) || ""}
+              updateStateValue={true}
             />
           )}
           {item.type == "time" && (
