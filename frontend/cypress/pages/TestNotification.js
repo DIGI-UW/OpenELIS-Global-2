@@ -1,5 +1,4 @@
 class TestNotificationPage {
-  // Page verification methods
   verifyPageLoaded() {
     cy.get("h2").should("contain.text", "Notification Configuration");
   }

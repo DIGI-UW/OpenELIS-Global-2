@@ -48,7 +48,8 @@ class AdminPage {
   }
 
   goToTestNotificationPage() {
-    cy.get("[data-cy='test-notification-config']").should("be.visible").click();
+    cy.get("[data-cy='test-notification-config']").should("be.visible");
+    cy.get("[data-cy='test-notification-config']").click();
     return new TestNotificationPage();
   }
 }
