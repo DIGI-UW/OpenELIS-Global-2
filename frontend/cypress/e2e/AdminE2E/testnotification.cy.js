@@ -1,89 +1,103 @@
 import LoginPage from "../../pages/LoginPage";
-import NotificationConfigPage from "../../pages/TestNotificationPage";
 
-let loginPage = null;
 let homePage = null;
-let adminPage = null;
-let notificationConfigPage = null;
+let loginPage = null;
+let notificationPage = null;
 
-before(() => {
-  loginPage = new LoginPage();
-
-  cy.session("admin-login", () => {
-    loginPage.visit();
-    loginPage.fillUsername("admin");
-    loginPage.fillPassword("admin");
-    loginPage.submit();
-    cy.url().should("include", "HomePage");
-  });
-
-  // Post login navigation
-  cy.visit("/HomePage");
-  loginPage = new LoginPage();
+const navigateToNotificationConfigPage = () => {
   homePage = loginPage.goToHomePage();
-  adminPage = homePage.goToAdminPage();
+  notificationPage = adminPage.goToTestNotificationPage();
+};
+
+// before(() => {
+//   cy.fixture("TestNotification").as("notificationData");
+// });
+
+before("login", () => {
+  loginPage = new LoginPage();
+  loginPage.visit();
 });
 
-describe("Test Notification Configuration", () => {
-  it("Navigates to Notification Config Page", () => {
-    notificationConfigPage = adminPage.goToNotificationConfigPage();
-    notificationConfigPage.verifyPageLoaded();
+describe("Test Notification Configuration", function () {
+  before("navigate to Test Notification Page", function () {
+    navigateToNotificationConfigPage();
   });
 
-  it("Loads and Navigates to Edit Page", () => {
-    notificationConfigPage.clickEditButton();
-    cy.url().should("include", "TestNotificationConfigEdit");
-    notificationConfigPage.verifyEditPageLoaded();
+  it("User visits Notification Configuration Page", function () {
+    notificationPage.verifyPageLoaded();
   });
 
-  it("Toggles Notification", () => {
-    notificationConfigPage.clickEditButton();
-    notificationConfigPage.verifyEditPageLoaded();
-
-    notificationConfigPage.toggleNotificationOption("#patientEmail");
-    notificationConfigPage.verifyToggleStatus("#patientEmail", true);
-    notificationConfigPage.toggleNotificationOption("#patientEmail");
-    notificationConfigPage.verifyToggleStatus("#patientEmail", false);
+  it("User navigates to Edit Page", function () {
+    notificationPage.clickEditButton();
+    cy.url().should("include", "/TestNotificationConfigEdit");
+    notificationPage.verifyEditPageLoaded();
   });
 
-  it("Edits Subject and Message", () => {
-    notificationConfigPage.clickEditButton();
-    notificationConfigPage.verifyEditPageLoaded();
+  it("User toggles notification settings", function () {
+    notificationPage.clickEditButton();
+    notificationPage.verifyEditPageLoaded();
 
-    const subject = "Automated Subject";
-    const message = "Automated Message";
-    notificationConfigPage.editSubjectAndMessage(subject, message);
-    notificationConfigPage.verifySubjectAndMessage(subject, message);
+    // Make sure the element exists
+    cy.get("#patientEmail").should("exist");
+
+    // Enable and verify
+    notificationPage.toggleNotificationOption("#patientEmail");
+    notificationPage.verifyToggleStatus("#patientEmail", true);
+
+    // Disable and verify
+    notificationPage.toggleNotificationOption("#patientEmail");
+    notificationPage.verifyToggleStatus("#patientEmail", false);
   });
 
-  it("Saves the Configuration", () => {
-    cy.intercept("POST", "/rest/TestNotificationConfig").as("saveConfig");
+  it("User edits subject and message templates", function () {
+    notificationPage.clickEditButton();
+    notificationPage.verifyEditPageLoaded();
 
-    notificationConfigPage.clickEditButton();
-    notificationConfigPage.verifyEditPageLoaded();
-    notificationConfigPage.clickSaveButton();
-
-    cy.wait("@saveConfig").its("response.statusCode").should("eq", 200);
-    notificationConfigPage.verifySuccessNotification();
+    cy.fixture("TestNotification").then((notificationData) => {
+      notificationPage.editSubjectAndMessage(
+        notificationData.subject,
+        notificationData.message,
+      );
+      notificationPage.verifySubjectAndMessage(
+        notificationData.subject,
+        notificationData.message,
+      );
+    });
   });
 
-  it("Handles Save Errors", () => {
-    cy.intercept("POST", "/rest/TestNotificationConfig", {
+  it("User saves notification configuration", function () {
+    cy.intercept("POST", "**/rest/TestNotificationConfig").as("saveConfig");
+
+    notificationPage.clickEditButton();
+    notificationPage.verifyEditPageLoaded();
+    notificationPage.clickSaveButton();
+
+    cy.wait("@saveConfig", { timeout: 10000 })
+      .its("response.statusCode")
+      .should("eq", 200);
+    notificationPage.verifySuccessNotification();
+  });
+
+  it("System handles save errors correctly", function () {
+    cy.intercept("POST", "**/rest/TestNotificationConfig", {
       statusCode: 500,
-    }).as("saveError");
+      body: { error: "Server Error" },
+    }).as("saveConfigError");
 
-    notificationConfigPage.clickEditButton();
-    notificationConfigPage.verifyEditPageLoaded();
-    notificationConfigPage.clickSaveButton();
+    notificationPage.clickEditButton();
+    notificationPage.verifyEditPageLoaded();
+    notificationPage.clickSaveButton();
 
-    cy.wait("@saveError").its("response.statusCode").should("eq", 500);
-    notificationConfigPage.verifyErrorNotification();
+    cy.wait("@saveConfigError", { timeout: 10000 })
+      .its("response.statusCode")
+      .should("eq", 500);
+    notificationPage.verifyErrorNotification();
   });
 
-  it("Cancels and Returns to Menu", () => {
-    notificationConfigPage.clickEditButton();
-    notificationConfigPage.verifyEditPageLoaded();
-    notificationConfigPage.clickExitButton();
+  it("User cancels and returns to menu", function () {
+    notificationPage.clickEditButton();
+    notificationPage.verifyEditPageLoaded();
+    notificationPage.clickExitButton();
     cy.url().should("include", "testNotificationConfigMenu");
   });
 });

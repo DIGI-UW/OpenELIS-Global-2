@@ -3,6 +3,7 @@ import LabNumberManagementPage from "./LabNumberManagementPage";
 import GlobalMenuConfigPage from "./GlobalMenuConfigPage";
 import ProgramEntryPage from "./ProgramEntryPage";
 import ProviderManagementPage from "./ProviderManagementPage";
+import TestNotificationPage from "./TestNotification";
 
 class AdminPage {
   constructor() {}
@@ -44,6 +45,11 @@ class AdminPage {
     cy.get("[data-cy='programEntry']").click();
 
     return new ProgramEntryPage();
+  }
+
+  goToTestNotificationPage() {
+    cy.get("[data-cy='test-notification-config']").should("be.visible").click();
+    return new TestNotificationPage();
   }
 }
 
