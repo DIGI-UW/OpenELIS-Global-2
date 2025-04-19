@@ -7,7 +7,13 @@ import {
   SelectItem,
   TextInput,
 } from "@carbon/react";
-import { convertToISODate } from "../patient/resultsViewer/commons/utils/dateUtils";
+
+const convertToISODate = (date) => {
+  if (!(date instanceof Date)) {
+    throw new Error("Invalid date object");
+  }
+  return date.toISOString().split("T")[0];
+};
 
 const Questionnaire = ({
   questionnaire,
