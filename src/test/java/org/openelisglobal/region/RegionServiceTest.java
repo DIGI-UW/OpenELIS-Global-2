@@ -38,9 +38,9 @@ public class RegionServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void createRegion_shouldCreateNewRegion() throws Exception {
-        String regionName = "Midwest";
-        String regionId = "1";
-        Region region = createRegion(regionName, regionId);
+        cleanRowsInCurrentConnection(new String[] { "region" });
+        String regionName = "MidwestB";
+        Region region = createRegion(regionName);
 
         String savedRegionId = regionService.insert(region);
 
@@ -78,7 +78,7 @@ public class RegionServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals(4, regionService.getAll().size());
     }
 
-    private Region createRegion(String regionName, String regionId) {
+    private Region createRegion(String regionName) {
         Region region = new Region();
         region.setRegion(regionName);
         region.setLastupdated(new Timestamp(System.currentTimeMillis()));

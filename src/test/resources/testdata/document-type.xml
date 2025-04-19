@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <document_type id="1" name="Report Type 1"
+        description="Lab report type 1" lastupdated="2023-01-01 00:00:00" />
+    <document_type id="2" name="Report Type 2"
+        description="Lab report type 2" lastupdated="2023-01-01 00:00:00" />
+    <document_type id="3" name="Report Type 3"
+        description="Lab report type 3" lastupdated="2023-01-01 00:00:00" />
+</dataset>

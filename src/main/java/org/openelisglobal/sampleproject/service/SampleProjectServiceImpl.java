@@ -49,4 +49,5 @@ public class SampleProjectServiceImpl extends AuditableBaseObjectServiceImpl<Sam
         return getBaseObjectDAO().getByOrganizationProjectAndReceivedOnRange(organizationId, projectName, lowDate,
                 highDate);
     }
+
 }

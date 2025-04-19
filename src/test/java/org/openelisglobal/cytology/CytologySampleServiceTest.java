@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
 import org.junit.Before;
@@ -245,6 +246,23 @@ public class CytologySampleServiceTest extends BaseWebContextSensitiveTest {
         cytologySampleService.assignTechnician(2, systemUser);
         CytologySample cytologySample = cytologySampleService.get(2);
         assertEquals("1", cytologySample.getTechnician().getId());
+    }
+
+    @Test
+    public void assignCycoPathologist_shouldAssignCycoPathologistToCytologySample() {
+        SystemUser systemUser = systemUserService.get("1");
+        cytologySampleService.assignCytoPathologist(2, systemUser);
+        CytologySample cytologySample = cytologySampleService.get(2);
+        assertEquals("1", cytologySample.getCytoPathologist().getId());
+    }
+
+    @Test
+    public void getCountWithStatusesBetweenDates_shouldReturnCountOfCytologySamplesByStatusesBetweenDates() {
+        Timestamp from = Timestamp.valueOf("2024-01-01 09:00:00");
+        Timestamp to = Timestamp.valueOf("2025-04-10 12:00:00");
+        List<CytologyStatus> statuses = List.of(CytologyStatus.COMPLETED);
+        Long count = cytologySampleService.getCountWithStatusBetweenDates(statuses, from, to);
+        assertEquals(1, count.longValue());
     }
 
 }
