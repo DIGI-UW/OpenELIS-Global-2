@@ -1,0 +1,49 @@
+{
+  "methods": {
+    "valid": {
+      "name": "PCR Analysis",
+      "description": "Polymerase Chain Reaction method for DNA amplification",
+      "category": "Molecular"
+    },
+    "longName": {
+      "name": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "description": "Test with very long name",
+      "category": "Other"
+    },
+    "specialChars": {
+      "name": "Special-Chars!@#$%^&*()",
+      "description": "Method with special characters in name",
+      "category": "Chemical"
+    },
+    "noTests": {
+      "name": "No Test Method",
+      "description": "Method with no tests",
+      "category": "Other"
+    },
+    "temporary": {
+      "name": "Temporary Method For Navigation",
+      "description": "Testing navigation state persistence",
+      "category": "Other"
+    }
+  },
+  "tests": {
+    "valid": {
+      "name": "COVID-19 PCR",
+      "protocol": "Standard coronavirus detection protocol"
+    },
+    "duplicate": {
+      "name": "COVID-19 PCR",
+      "protocol": "Different protocol"
+    },
+    "navigation": {
+      "name": "Navigation Test",
+      "protocol": "Test protocol"
+    },
+    "noTestMethod": {
+      "name": "First Test for No Test Method",
+      "protocol": "Standard Protocol"
+    }
+  },
+  "categories": ["Molecular", "Chemical", "Biological", "Physical", "Other"],
+  "pageSizes": ["10", "25", "50", "100"]
+}
