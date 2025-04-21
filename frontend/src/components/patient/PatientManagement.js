@@ -36,6 +36,9 @@ function PatientManagement() {
     setNewPatientTab({ kind: "primary", active: true });
     setSearchPatientTab({ kind: "tertiary", active: false });
   };
+  const [changed, setChanged] = useState({
+    "patientProperties.nationalId": false,
+  });
 
   return (
     <>
@@ -93,6 +96,8 @@ function PatientManagement() {
               <CreatePatientForm
                 showActionsButton={true}
                 selectedPatient={selectedPatient}
+                changed={changed}
+                setChanged={setChanged}
               ></CreatePatientForm>
             </Column>
           )}
