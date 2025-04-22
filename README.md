@@ -82,8 +82,8 @@ speeds up the development process
 
     Note : For Reflecting Local changes in the Running Containers ;
 
-- Any Changes to the [Front-end](./frontend/) React Source Code will be directly
-  Hot Reloaded in the UI
+- Any Changes to the [Front-end](./frontend/) React source code will be directly
+  hot reloaded in the UI
 - For changes to the [Back-end](./src/) Java Source code
 
   - Run the maven build again to re-build the War file
