@@ -155,6 +155,7 @@ function Admin() {
             <FormattedMessage id="sidenav.label.admin.Listplugin" />
           </SideNavLink>
           <SideNavLink
+            data-cy="orgMgmnt"
             renderIcon={ContainerSoftware}
             href="#organizationManagement"
           >

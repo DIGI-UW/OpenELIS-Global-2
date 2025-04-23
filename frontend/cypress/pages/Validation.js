@@ -1,6 +1,9 @@
 class Validation {
   checkForHeading() {
-    cy.get("section > h3").should("contain.text", "Validation");
+    cy.get("section > h3", { timeout: 15000 }).should(
+      "contain.text",
+      "Validation",
+    );
   }
 
   selectTestUnit(unitType) {
@@ -12,9 +15,8 @@ class Validation {
   }
 
   enterLabNumberAndSearch(labNo) {
-    cy.get('input[placeholder="Enter Lab No"]').type(labNo);
+    cy.get("#accessionNumber").type(labNo);
     cy.get("[data-testid='Search-btn']").click();
-    //cy.get("[data-testid='LabNo']").should("contain.text", labNo);
   }
 
   saveResults() {

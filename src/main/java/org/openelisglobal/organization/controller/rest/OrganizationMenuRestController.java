@@ -64,7 +64,7 @@ public class OrganizationMenuRestController extends BaseMenuController<Organizat
             request.setAttribute("menuDefinition", "OrganizationMenuDefinition");
             addFlashMsgsToRequest(request);
             // return findForward(forward, form);
-            return ResponseEntity.ok(findForward(forward, form));
+            return ResponseEntity.ok(form);
         }
     }
 

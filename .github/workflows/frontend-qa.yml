@@ -6,6 +6,8 @@ on:
   pull_request:
     branches: [develop]
   workflow_dispatch:
+  release:
+    types: [published]
 
 env:
   DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-frontend
