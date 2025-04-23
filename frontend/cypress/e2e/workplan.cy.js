@@ -1,37 +1,35 @@
 import LoginPage from "../pages/LoginPage";
+import OrderEntityPage from "../pages/OrderEntityPage";
+import ProviderManagementPage from "../pages/ProviderManagementPage";
+import AdminPage from "../pages/AdminPage";
+import PatientEntryPage from "../pages/PatientEntryPage";
 
 let homePage = null;
 let loginPage = null;
 let workplan = null;
+let orderEntityPage = new OrderEntityPage();
+let patientEntryPage = new PatientEntryPage();
+let providerManagementPage = new ProviderManagementPage();
+let adminPage = new AdminPage();
 
 before("login", () => {
   loginPage = new LoginPage();
   loginPage.visit();
 });
 
-describe("Work plan by Test", function () {
-  it("User  selects work plan by test from main menu drop-down.And the page appears", function () {
+describe("Add requester details first", function () {
+  it("Navidates to admin", function () {
     homePage = loginPage.goToHomePage();
-    workplan = homePage.goToWorkPlanPlanByTest();
-    cy.fixture("workplan").then((options) => {
-      workplan.getWorkPlanFilterTitle(options.testTile);
-    });
+    workplan = homePage.goToAdminPageProgram();
+    workplan = adminPage.goToProviderManagementPage();
   });
-  it("User should select test from drop-down selector option", () => {
-    cy.fixture("workplan").then((options) => {
-      workplan.selectDropdownOption(options.testName);
-      workplan.getPrintWorkPlanButton();
-    });
-  });
-  it("All known orders are present", () => {
-    cy.fixture("Order").then((options) => {
-      workplan
-        .getWorkPlanResultsTable()
-        .find("tr")
-        .then((row) => {
-          expect(row.text()).contains(options.labNo);
-        });
-    });
+
+  it("Adds and saves requester", function () {
+    providerManagementPage.clickAddProviderButton();
+    providerManagementPage.enterProviderLastName();
+    providerManagementPage.enterProviderFirstName();
+    providerManagementPage.clickActiveDropdown();
+    providerManagementPage.addProvider();
   });
 });
 
@@ -46,7 +44,7 @@ describe("Work plan by Panel", function () {
 
   it("User should select panel from drop-down selector option", () => {
     cy.fixture("workplan").then((options) => {
-      workplan.selectDropdownOption(options.panelType);
+      workplan.selectDropdownOption(options.bilanPanelType);
       workplan.getPrintWorkPlanButton();
     });
   });

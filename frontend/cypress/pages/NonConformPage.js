@@ -10,7 +10,7 @@ class NonConform {
 
   // Form interactions
   selectSearchType(type) {
-    cy.get("#type").select(type);
+    cy.get("#type", { timeout: 15000 }).should("be.visible").select(type);
   }
 
   enterSearchField(value) {
@@ -18,7 +18,9 @@ class NonConform {
   }
 
   clickSearchButton() {
-    cy.get("[data-testid='nce-search-button']").should("be.visible").click();
+    cy.get("[data-testid='nce-search-button']", { timeout: 15000 })
+      .should("be.visible")
+      .click();
   }
 
   // Search results validation

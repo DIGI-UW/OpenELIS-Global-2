@@ -171,7 +171,7 @@ function OrganizationManagement() {
   useEffect(() => {
     if (organizationsManagmentList) {
       const newOrganizationsManagementList =
-        organizationsManagmentList.modelMap.form.menuList.map((item) => {
+        organizationsManagmentList.menuList.map((item) => {
           return {
             id: item.id,
             orgName: item.organizationName,
@@ -189,13 +189,9 @@ function OrganizationManagement() {
       const newOrganizationsManagementListArray = Object.values(
         newOrganizationsManagementList,
       );
-      setFromRecordCount(
-        organizationsManagmentList.modelMap.form.fromRecordCount,
-      );
-      setToRecordCount(organizationsManagmentList.modelMap.form.toRecordCount);
-      setTotalRecordCount(
-        organizationsManagmentList.modelMap.form.totalRecordCount,
-      );
+      setFromRecordCount(organizationsManagmentList.fromRecordCount);
+      setToRecordCount(organizationsManagmentList.toRecordCount);
+      setTotalRecordCount(organizationsManagmentList.totalRecordCount);
       setOrganizationsManagmentListShow(newOrganizationsManagementListArray);
     }
   }, [organizationsManagmentList]);
@@ -203,23 +199,21 @@ function OrganizationManagement() {
   useEffect(() => {
     if (searchedOrganizationManagamentList) {
       const newOrganizationsManagementList =
-        searchedOrganizationManagamentList.modelMap.form.menuList.map(
-          (item) => {
-            return {
-              id: item.id,
-              orgName: item.organizationName,
-              parentOrg: item.organization
-                ? item.organization.organizationName
-                : "",
-              orgPrefix: item.shortName || "",
-              active: item.isActive || "",
-              internetAddress: item.internetAddress || "",
-              streetAddress: item.streetAddress || "",
-              city: item.city || "",
-              cliaNumber: item.cliaNum || "",
-            };
-          },
-        );
+        searchedOrganizationManagamentList.menuList.map((item) => {
+          return {
+            id: item.id,
+            orgName: item.organizationName,
+            parentOrg: item.organization
+              ? item.organization.organizationName
+              : "",
+            orgPrefix: item.shortName || "",
+            active: item.isActive || "",
+            internetAddress: item.internetAddress || "",
+            streetAddress: item.streetAddress || "",
+            city: item.city || "",
+            cliaNumber: item.cliaNum || "",
+          };
+        });
       const newOrganizationsManagementListArray = Object.values(
         newOrganizationsManagementList,
       );
