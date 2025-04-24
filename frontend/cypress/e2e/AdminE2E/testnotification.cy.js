@@ -1,7 +1,6 @@
 import LoginPage from "../../pages/LoginPage";
 import adminPage from "../../pages/AdminPage";
 
-let homePage = null;
 let loginPage = null;
 let notificationPage = null;
 

@@ -7,7 +7,6 @@ class TestNotificationPage {
     cy.get("h2").should("contain.text", "Edit Notification Configuration");
   }
 
-  // Action methods
   clickEditButton() {
     cy.get("[data-testid='edit-button']").should("be.visible").click();
   }
