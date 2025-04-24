@@ -32,16 +32,20 @@ const HelpMenu = ({ helpOpen, handlePanelToggle }) => {
     });
   }, []);
 
-  // Close the help panel when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        helpOpen &&
-        panelRef.current &&
-        !panelRef.current.contains(event.target) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(event.target)
-      ) {
+      const target = event.target;
+      if (!helpOpen) return;
+
+      const isClickInsidePanel = panelRef.current?.contains(target);
+      const isClickOnHelpButton = buttonRef.current?.contains(target);
+
+      const globalActionClicked =
+        document.getElementById("search-Icon")?.contains(target) ||
+        document.getElementById("notification-Icon")?.contains(target) ||
+        document.getElementById("user-Icon")?.contains(target);
+
+      if (!isClickInsidePanel && !isClickOnHelpButton && !globalActionClicked) {
         handlePanelToggle("");
       }
     };

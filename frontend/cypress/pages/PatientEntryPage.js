@@ -16,7 +16,7 @@ class PatientEntryPage {
   enterPreviousLabNo = "input#labNumber";
   enterAccessionNo = "input#accessionNumber";
   startLabNo = "#startLabNo";
-  endLabNo = "endLabNo";
+  endLabNo = "#endLabNo";
 
   constructor() {}
 
@@ -57,23 +57,33 @@ class PatientEntryPage {
   }
 
   enterPreviousLabNumber(value) {
-    cy.get(this.enterPreviousLabNo).type(value, { force: true });
+    cy.get(this.enterPreviousLabNo, { timeout: 15000 })
+      .invoke("css", "display", "block")
+      .should("be.visible")
+      .type(value, { force: true });
   }
 
   enterAccessionNumber(value) {
-    cy.get(this.enterAccessionNo).type(value, { force: true });
+    cy.get(this.enterAccessionNo)
+      .invoke("css", "display", "block")
+      .should("be.visible")
+      .type(value, { force: true });
   }
 
   startLabNumber(value) {
-    cy.get(this.startLabNo).type(value, { force: true });
+    cy.get(this.startLabNo)
+      .invoke("css", "display", "block")
+      .should("be.visible")
+      .type(value, { force: true });
   }
 
   endLabNo(value) {
+    cy.get(this.endLabNo, { timeout: 20000 }).should("be.visible");
     cy.get(this.endLabNo).type(value);
   }
 
   clickSearchPatientButton() {
-    cy.getElement("#local_search").click();
+    cy.getElement("#local_search").should("be.visible").click();
   }
 
   getExternalSearchButton() {

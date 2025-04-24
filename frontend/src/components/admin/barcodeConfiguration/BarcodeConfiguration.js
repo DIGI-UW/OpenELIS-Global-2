@@ -774,6 +774,7 @@ function BarcodeConfiguration() {
                   style={{ display: "flex", gap: "10px" }}
                 >
                   <Button
+                    id="saveButton"
                     disabled={saveButton}
                     onClick={() => {
                       setNotificationVisible(true);

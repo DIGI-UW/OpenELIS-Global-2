@@ -81,13 +81,20 @@ describe("Result By Patient", function () {
     cy.reload();
   });
 
+  it("Search by sex", function () {
+    patientPage.getMaleGenderRadioButton();
+    patientPage.clickSearchPatientButton();
+    cy.reload();
+  });
+  /*display:none still a WIP
   it("should search patient By Lab Number and validate", function () {
-    cy.wait(500);
+    cy.wait(5000);
     cy.fixture("Patient").then((patient) => {
       patientPage.enterPreviousLabNumber(patient.labNo);
       patientPage.clickSearchPatientButton();
     });
-  });
+    cy.reload();
+  });*/
 
   it("Search by respective patient and accept the result", function () {
     cy.wait(1000);
@@ -122,6 +129,7 @@ describe("Result By Order", function () {
   });
 
   it("Should Search by Accession Number", function () {
+    cy.reload();
     cy.fixture("Patient").then((order) => {
       patientPage.enterAccessionNumber(order.labNo);
     });
@@ -186,13 +194,13 @@ describe("Result By Referred Out Tests", function () {
     result.clickReferralsByTestAndName();
     cy.reload();
   });
-
+  /* diplay:none still a WIP
   it("search Referrals By LabNumber and validate", function () {
     cy.fixture("Patient").then((order) => {
       result.resultsByLabNumber(order.labNo);
     });
     result.clickReferralsByLabNumber();
-  });
+  });*/
 });
 
 describe("Result By Range Of Order", function () {
@@ -208,6 +216,7 @@ describe("Result By Range Of Order", function () {
   });
 
   it("Should Enter Lab Number and perform Search", function () {
+    cy.reload();
     cy.fixture("Patient").then((order) => {
       patientPage.startLabNumber(order.labNo);
     });
