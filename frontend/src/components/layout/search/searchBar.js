@@ -83,69 +83,67 @@ const SearchBar = (props) => {
   };
 
   return (
-    <Layer className="main">
-      <Grid>
-        <Column sm={4} md={6} lg={8} xlg={12}>
-          <div className="search-bar-container">
-            <Search
-              size="sm"
-              placeholder={intl.formatMessage({ id: "label.button.search" })}
-              labelText={intl.formatMessage({ id: "label.button.search" })}
-              closeButtonLabelText={intl.formatMessage({
-                id: "label.button.clear",
-              })}
-              id="searchItem"
-              value={textValue}
-              onChange={handleChange}
-              onKeyDown={handleAutocompleteKeyDown}
-              onClear={handleClearSearch}
-              className="search-input"
-              autoComplete
-            />
-            <Button
-              id="patientSearch"
-              size="sm"
-              style={{ width: 50 }}
-              onClick={handleSearch}
-              aria-label={intl.formatMessage({ id: "label.button.search" })}
-            >
-              <FormattedMessage id="label.button.search" />
-            </Button>
-          </div>
-        </Column>
+    <Grid className="main">
+      <Column sm={4} md={8} lg={16}>
+        <div className="search-bar-container">
+          <Search
+            size="sm"
+            placeholder={intl.formatMessage({ id: "label.button.search" })}
+            labelText={intl.formatMessage({ id: "label.button.search" })}
+            closeButtonLabelText={intl.formatMessage({
+              id: "label.button.clear",
+            })}
+            id="searchItem"
+            value={textValue}
+            onChange={handleChange}
+            onKeyDown={handleAutocompleteKeyDown}
+            onClear={handleClearSearch}
+            className="search-input"
+            autoComplete
+          />
+          <Button
+            id="patientSearch"
+            size="sm"
+            style={{ width: 50 }}
+            onClick={handleSearch}
+            aria-label={intl.formatMessage({ id: "label.button.search" })}
+          >
+            <FormattedMessage id="label.button.search" />
+          </Button>
+        </div>
+      </Column>
 
-        <Column sm={4} md={6} lg={8} xlg={12}>
-          {(loading || patientData.length > 0) && (
-            <div className="patients">
-              {loading ? (
-                <Loading
-                  description={intl.formatMessage({ id: "label.loading" })}
-                  withOverlay={false}
-                />
-              ) : (
-                <>
-                  <div>
-                    <em
-                      style={{
-                        fontFamily: "serif",
-                        color: "#000",
-                        marginLeft: "10px",
-                      }}
-                    >
-                      <FormattedMessage id="sidenav.label.results" />:
-                    </em>{" "}
-                    <Tag size="sm" type="blue">
-                      {patientData.length}
-                    </Tag>
-                  </div>
-                  <SearchOutput loading={loading} patientData={patientData} />
-                </>
-              )}
-            </div>
-          )}
-        </Column>
-      </Grid>
-    </Layer>
+      <Column sm={4} md={8} lg={16}>
+        {(loading || patientData.length > 0) && (
+          <div className="patients">
+            {loading ? (
+              <Loading
+                description={intl.formatMessage({ id: "label.loading" })}
+                withOverlay={false}
+              />
+            ) : (
+              <>
+                <div>
+                  <em
+                    style={{
+                      fontFamily: "serif",
+                      color: "#000",
+                      marginLeft: "10px",
+                    }}
+                  >
+                    <FormattedMessage id="sidenav.label.results" />:
+                  </em>{" "}
+                  <Tag size="sm" type="blue">
+                    {patientData.length}
+                  </Tag>
+                </div>
+                <SearchOutput loading={loading} patientData={patientData} />
+              </>
+            )}
+          </div>
+        )}
+      </Column>
+    </Grid>
   );
 };
 

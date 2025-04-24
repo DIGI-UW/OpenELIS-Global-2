@@ -26,7 +26,7 @@ const navigateToProgramEntry = () => {
   loginPage = new LoginPage();
   loginPage.visit();
   homePage = loginPage.goToHomePage();
-  adminPage = homePage.goToAdminPage();
+  adminPage = homePage.goToAdminPageProgram();
   programEntry = adminPage.goToProgramEntry();
   programEntry.verifyPageLoads();
 };
