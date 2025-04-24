@@ -424,6 +424,9 @@ button {
 
 .cds--side-nav__link-text {
   width: 100%;
+  overflow: visible !important;
+  min-width: 40px !important;
+  display: inline-flex !important;
 }
 
 .custom-sidenav-button {
@@ -432,6 +435,7 @@ button {
   border: 0;
   cursor: pointer;
   display: flex;
+  visibility: visible !important;
   align-items: center;
   background-color: var(--cds-background-hover, #072655);
   color: var(--cds-text-secondary, #ffffff);

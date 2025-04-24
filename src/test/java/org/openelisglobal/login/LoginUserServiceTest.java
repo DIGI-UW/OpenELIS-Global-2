@@ -1,6 +1,8 @@
 package org.openelisglobal.login;
 
 import java.sql.Date;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import org.junit.Assert;
@@ -38,8 +40,10 @@ public class LoginUserServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getPasswordExpiredDayNo_shouldReturnPasswordExpiredDayNo() {
         LoginUser login = lUserService.get(4);
-
-        Assert.assertEquals(3643, lUserService.getPasswordExpiredDayNo(login));
+        LocalDate expiryDate = login.getPasswordExpiredDate().toLocalDate();
+        LocalDate today = LocalDate.now();
+        long expiryDays = ChronoUnit.DAYS.between(today, expiryDate);
+        Assert.assertEquals(expiryDays, lUserService.getPasswordExpiredDayNo(login));
     }
 
     @Test
