@@ -8,18 +8,25 @@ class ModifyOrderPage {
   enterAccessionNo(accessionNo) {
     cy.enterText("#labNumber", accessionNo);
   }
-
   clickSubmitButton() {
-    return cy
-      .getElement(
-        "div[class='cds--lg:col-span-2 cds--css-grid-column'] button[type='submit']",
-      )
+    cy.getElement("[data-cy='submit-order']")
       .should("be.visible")
-      .click();
+      .click({ force: true });
+  }
+  clickSubmitAccessionButton() {
+    cy.get("[data-cy='submit-button']").should("be.visible").click();
   }
 
   clickNextButton() {
-    return cy.get(".forwardButton").should("be.visible").click();
+    return cy.get("[data-cy='next-button']").should("be.visible").click();
+  }
+
+  selectSerumSample() {
+    cy.get("#sampleId_0").select("Serum");
+  }
+
+  checkRemeberSiteAndRequester() {
+    cy.contains("span", "Remember site and requester").click();
   }
 
   checkProgramButton() {
@@ -36,10 +43,10 @@ class ModifyOrderPage {
   }
 
   clickPrintBarcodeButton() {
-    return cy.get("[data-cy='printBarCode']").click();
+    return cy.get("[data-cy='printBarCode']").should("be.visible");
   }
   clickSearchPatientButton() {
-    return cy.get("[data-cy='searchPatientButton']").click({ force: true });
+    return cy.get("[data-cy='searchPatientButton']").click();
   }
 
   clickRespectivePatient() {

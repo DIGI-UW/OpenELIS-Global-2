@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useIntl } from "react-intl";
 import { HeaderGlobalAction, HeaderPanel } from "@carbon/react";
-import { Help } from "@carbon/icons-react";
+import { Close, Help } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../utils/Utils";
 
-const HelpMenu = () => {
+const HelpMenu = ({ helpOpen, handlePanelToggle }) => {
   const intl = useIntl();
-  const [isExpanded, setIsExpanded] = useState(false);
   const [helpUrls, setHelpUrls] = useState({
     manual: "",
     tutorials: "",
@@ -16,6 +15,7 @@ const HelpMenu = () => {
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
 
+  // Fetch help URLs on mount
   useEffect(() => {
     getFromOpenElisServer("/rest/properties", (properties, err) => {
       if (err) {
@@ -34,14 +34,19 @@ const HelpMenu = () => {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        isExpanded &&
-        panelRef.current &&
-        !panelRef.current.contains(event.target) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(event.target)
-      ) {
-        setIsExpanded(false);
+      const target = event.target;
+      if (!helpOpen) return;
+
+      const isClickInsidePanel = panelRef.current?.contains(target);
+      const isClickOnHelpButton = buttonRef.current?.contains(target);
+
+      const globalActionClicked =
+        document.getElementById("search-Icon")?.contains(target) ||
+        document.getElementById("notification-Icon")?.contains(target) ||
+        document.getElementById("user-Icon")?.contains(target);
+
+      if (!isClickInsidePanel && !isClickOnHelpButton && !globalActionClicked) {
+        handlePanelToggle("");
       }
     };
 
@@ -49,15 +54,14 @@ const HelpMenu = () => {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isExpanded]);
+  }, [helpOpen, handlePanelToggle]);
 
-  const togglePanel = () => setIsExpanded(!isExpanded);
-
+  // Opens the help URL in a new window and then closes the help panel
   const openHelp = (type) => {
     const url = helpUrls[type];
     if (url) {
       window.open(url, "_blank");
-      setIsExpanded(false);
+      handlePanelToggle("");
     }
   };
 
@@ -67,15 +71,17 @@ const HelpMenu = () => {
         ref={buttonRef}
         id="user-Help"
         aria-label="Help"
-        onClick={togglePanel}
-        isActive={isExpanded}
+        onClick={() => {
+          handlePanelToggle(helpOpen ? "" : "help");
+        }}
+        isActive={helpOpen}
       >
-        <Help size={20} />
+        {!helpOpen ? <Help size={20} /> : <Close size={20} />}
       </HeaderGlobalAction>
       <HeaderPanel
         ref={panelRef}
         aria-label="Help Panel"
-        expanded={isExpanded}
+        expanded={helpOpen}
         style={{ background: "#295785", color: "white" }}
       >
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>

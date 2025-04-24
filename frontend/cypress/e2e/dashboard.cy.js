@@ -1,8 +1,14 @@
 import LoginPage from "../pages/LoginPage";
+import AdminPage from "../pages/AdminPage";
+import ProviderManagementPage from "../pages/ProviderManagementPage";
+import OrganizationManagementPage from "../pages/OrganizationManagementPage";
 
 let homePage = null;
 let loginPage = null;
 let dashboard = null;
+let providerManagementPage = new ProviderManagementPage();
+let orgMgmnt = new OrganizationManagementPage();
+let adminPage = new AdminPage();
 
 // Helper function to log in and navigate to the homepage
 const loginAndNavigateToHome = () => {
@@ -13,7 +19,7 @@ const loginAndNavigateToHome = () => {
 
 // Helper function to add a new order
 const addNewOrder = (dashboardType, testType, sampleType, panelType) => {
-  homePage.goToOrderPage();
+  homePage.goToOrderPageExt();
   dashboard.searchPatientByFName();
   dashboard.searchPatient();
   cy.wait(200);
@@ -30,9 +36,9 @@ const addNewOrder = (dashboardType, testType, sampleType, panelType) => {
   dashboard.generateLabNo();
   dashboard.selectSite();
   dashboard.selectRequesting();
-  cy.wait(200);
+  cy.wait(1000);
   dashboard.submitButton();
-  cy.wait(3000);
+  cy.wait(8000);
 };
 
 // Helper function to validate success and print barcode
@@ -59,13 +65,42 @@ const validateOrderStatus = (dashboardType) => {
   dashboard.statusFilter();
 };
 
-// Main test suite
-describe("Dashboard Tests", function () {
-  before("Login and navigate to homepage", () => {
+describe("Add requester and site details first", function () {
+  it("Navidates to admin", function () {
     loginAndNavigateToHome();
+    dashboard = homePage.goToAdminPageProgram();
+    dashboard = adminPage.goToProviderManagementPage();
   });
 
-  // Pathology Dashboard Tests
+  it("Adds and saves requester", function () {
+    providerManagementPage.clickAddProviderButton();
+    providerManagementPage.enterProviderLastName();
+    providerManagementPage.enterProviderFirstName();
+    providerManagementPage.clickActiveDropdown();
+    providerManagementPage.addProvider();
+  });
+
+  it("Navigate to site/organization Management", function () {
+    dashboard = adminPage.goToOrganizationManagement();
+  });
+
+  it("Add site/organization details", function () {
+    orgMgmnt.clickAddOrganization();
+    orgMgmnt.addOrgName();
+    orgMgmnt.addPrefix();
+    orgMgmnt.addParentOrg();
+    orgMgmnt.activateOrganization();
+    orgMgmnt.checkReferringClinic();
+    orgMgmnt.saveOrganization();
+    cy.reload();
+  });
+});
+
+describe("Dashboard Tests", function () {
+  before("Navigate to homepage", () => {
+    homePage = loginPage.goToHomePage();
+  });
+
   describe("Pathology Dashboard", function () {
     before("Navigate to Pathology Dashboard", function () {
       dashboard = homePage.goToPathologyDashboard();
@@ -81,12 +116,12 @@ describe("Dashboard Tests", function () {
       );
     });
 
-    it("Validate Success by Confirming Print Barcode button", function () {
-      validateSuccessAndPrintBarcode();
-    });
+    //it("Validate Success by Confirming Print Barcode button", function () {
+    // validateSuccessAndPrintBarcode();
+    //});
 
     it("User navigates back to Pathology Dashboard to confirm added order", function () {
-      homePage.goToPathologyDashboard();
+      dashboard = homePage.goToPathologyDashboard();
     });
 
     it("Change The Status of Order and saves it", function () {

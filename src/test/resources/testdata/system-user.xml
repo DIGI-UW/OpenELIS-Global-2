@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <system_user id="1" external_id="EXT003" login_name="admin"
+        last_name="Doe" first_name="John" initials="JD" is_active="Y"
+        is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+    <system_user id="3" external_id="EXT003" login_name="jdoe"
+        last_name="Doe" first_name="John" initials="JD" is_active="Y"
+        is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+    <system_user id="4" external_id="EXT004"
+        login_name="asmith" last_name="Smith" first_name="Alice" initials="AS"
+        is_active="Y" is_employee="N" lastupdated="2025-03-08 12:00:00" />
+    <system_user id="5" external_id="EXT005"
+        login_name="bwhite" last_name="White" first_name="Bob" initials="BW"
+        is_active="N" is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+
+    <login_user id="1" login_name="admin"
+        password="$2a$10$C3tY6/gZxjALzvEOkV1N/.DQyKMOoq/voG91Of3lh1t3X.iZ/O9qC"
+        password_expired_dt="2030-04-09" account_locked="N"
+        account_disabled="N" is_admin="Y" user_time_out="220"
+        last_updated="2025-04-09 16:26:58" />
+    <login_user id="2" login_name="Mark"
+        password="$2a$10$8c4tLVKrl5CloSpa1ZlIN.5LWd/MtSz8oql5Tb2O4qxbA1ww3S1VC"
+        password_expired_dt="2026-04-09" account_locked="N"
+        account_disabled="N" is_admin="N" user_time_out="220"
+        last_updated="2025-04-09 16:26:58" />
+    <login_user id="3" login_name="Herman"
+        password="$2a$10$EpQil36o6e1elPuPZir23.g582HPTamgN1.udEqiTyP8GFmcH9MWC"
+        password_expired_dt="2029-04-09" account_locked="N"
+        account_disabled="N" is_admin="N" user_time_out="220"
+        last_updated="2025-04-09 16:26:58" />
+    <login_user id="4" login_name="Nalubulwa"
+        password="$2a$10$ggswDZDuGJzX2yo1ewGhbOmNRbnY7CgyzjaVpzzHNBZ2TBiP/.vra"
+        password_expired_dt="2935-04-09" account_locked="N"
+        account_disabled="N" is_admin="N" user_time_out="220"
+        last_updated="2025-04-09 16:26:58" />
+    <login_user id="5" login_name="Musa"
+        password="$2a$10$Z3VsgdE8nc2ZduAY2alZTel2DQybyuAxiFH.iAxPdXWCJGccbAZ0G"
+        password_expired_dt="2030-04-09" account_locked="N"
+        account_disabled="N" is_admin="N" user_time_out="220"
+        last_updated="2025-04-09 16:26:58" />
+    <login_user id="6" login_name="jdoe" password="password1"
+        password_expired_dt="2025-12-31" account_locked="N"
+        account_disabled="N" is_admin="Y" user_time_out="30"
+        last_updated="2025-03-16" />
+    <login_user id="7" login_name="asmith" password="password2"
+        password_expired_dt="2025-12-31" account_locked="N"
+        account_disabled="N" is_admin="N" user_time_out="30"
+        last_updated="2025-03-16" />
+    <login_user id="8" login_name="bwhite" password="password3"
+        password_expired_dt="2025-12-31" account_locked="N"
+        account_disabled="N" is_admin="N" user_time_out="30"
+        last_updated="2025-03-16" />
+
+    <system_role id="1" name="adminRole"
+        description="Administrator role" is_grouping_role="false"
+        grouping_parent="1" display_key="adminKey" active="true"
+        editable="true" />
+    <system_role id="2" name="adminRole"
+        description="User role" is_grouping_role="false" grouping_parent="1"
+        display_key="userKey" active="true" editable="true" />
+    <system_role id="3" name="demoRole"
+        description="This is a demo role" is_grouping_role="false"
+        grouping_parent="2" display_key="demoKey" active="true"
+        editable="false" />
+    <system_role id="4" name="adminRole"
+        description="Global Admin role" is_grouping_role="false"
+        grouping_parent="2" display_key="adminKey" active="true"
+        editable="true" />
+
+    <system_user_role system_user_id="3" role_id="1" />
+    <system_user_role system_user_id="4" role_id="2" />
+    <system_user_role system_user_id="5" role_id="3" />
+    <system_user_role system_user_id="1" role_id="4" />
+</dataset>

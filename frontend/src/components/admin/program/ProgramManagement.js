@@ -26,6 +26,7 @@ import {
 } from "../../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import EditAdditionalOrderEntryQuestions from "./EditAdditionalOrderEntryQuestions.js";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -128,17 +129,6 @@ function ProgramManagement() {
     }
   }
 
-  function isJson(item) {
-    let value = typeof item !== "string" ? JSON.stringify(item) : item;
-    try {
-      value = JSON.parse(value);
-    } catch (e) {
-      return false;
-    }
-
-    return typeof value === "object" && value !== null;
-  }
-
   function handleSubmit(event) {
     event.preventDefault();
     setIsSubmitting(true);
@@ -170,17 +160,13 @@ function ProgramManagement() {
     };
   }, []);
 
-  const additionalOrderEntryQuestionsAreJson = isJson(
-    programValues.additionalOrderEntryQuestions,
-  );
-
   return (
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <Grid fullWidth={true}>
-          <Column lg={16}>
+          <Column lg={16} md={8} sm={4}>
             <Section>
               <Heading>
                 <FormattedMessage id="edit.add.program.title" />
@@ -190,7 +176,7 @@ function ProgramManagement() {
         </Grid>
         <Form onSubmit={handleSubmit}>
           <Grid fullWidth={true}>
-            <Column lg={8}>
+            <Column lg={8} md={4} sm={2}>
               <Select
                 id="additionalQuestionsSelect"
                 labelText="Program"
@@ -212,11 +198,11 @@ function ProgramManagement() {
               </Select>
               {loading && <Loading />}
             </Column>
-            <Column lg={16}>
+            <Column lg={16} md={8} sm={4}>
               <br></br>
             </Column>
 
-            <Column lg={8}>
+            <Column lg={8} md={4} sm={2}>
               <input
                 type="hidden"
                 name="program.id"
@@ -232,7 +218,7 @@ function ProgramManagement() {
                 onChange={handleFieldChange}
               />
             </Column>
-            <Column lg={8}>
+            <Column lg={8} md={4} sm={2}>
               <TextInput
                 type="text"
                 name="program.questionnaireUUID"
@@ -243,10 +229,10 @@ function ProgramManagement() {
                 onChange={handleFieldChange}
               />
             </Column>
-            <Column lg={16}>
+            <Column lg={16} md={8} sm={4}>
               <br></br>
             </Column>
-            <Column lg={8}>
+            <Column lg={8} md={4} sm={2}>
               <TextInput
                 type="text"
                 name="program.code"
@@ -257,7 +243,7 @@ function ProgramManagement() {
                 onChange={handleFieldChange}
               />
             </Column>
-            <Column lg={8}>
+            <Column lg={8} md={4} sm={2}>
               <Select
                 id="test_section"
                 labelText={intl.formatMessage({ id: "test.section.label" })}
@@ -277,44 +263,20 @@ function ProgramManagement() {
                 })}
               </Select>
             </Column>
-            <Column lg={16}>
+            <Column lg={16} md={8} sm={4}>
               <br></br>
             </Column>
-            <Column lg={8}>
-              <TextArea
-                name="additionalOrderEntryQuestions"
-                id="additionalOrderEntryQuestions"
-                labelText="Questionnaire"
-                value={programValues.additionalOrderEntryQuestions || ""}
-                onChange={handleFieldChange}
-                invalid={
-                  !additionalOrderEntryQuestionsAreJson &&
-                  programValues.additionalOrderEntryQuestions !== ""
-                }
-                invalidText={intl.formatMessage({ id: "invalid.json" })}
-              />
-            </Column>
-            <Column lg={8}>
-              {additionalOrderEntryQuestionsAreJson && (
-                <div>
-                  <FormLabel>
-                    <FormattedMessage id="example" />
-                  </FormLabel>
-                  <div className="exampleDiv">
-                    <Questionnaire
-                      questionnaire={JSON.parse(
-                        programValues.additionalOrderEntryQuestions,
-                      )}
-                    />
-                  </div>
-                </div>
-              )}
-            </Column>
-            <Column lg={16}>
+            <EditAdditionalOrderEntryQuestions
+              additionalOrderEntryQuestions={
+                programValues.additionalOrderEntryQuestions
+              }
+              handleFieldChange={handleFieldChange}
+            />
+            <Column lg={16} md={8} sm={4}>
               <br></br>
             </Column>
-            <Column lg={3}>
-              <Button type="submit">
+            <Column lg={3} md={2} sm={1}>
+              <Button id="submitProgram" type="submit">
                 <FormattedMessage id="label.button.submit" />
                 {isSubmitting && <Loading small={true} />}
               </Button>

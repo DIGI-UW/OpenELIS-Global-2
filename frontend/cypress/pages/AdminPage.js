@@ -4,6 +4,7 @@ import GlobalMenuConfigPage from "./GlobalMenuConfigPage";
 import ProgramEntryPage from "./ProgramEntryPage";
 import ProviderManagementPage from "./ProviderManagementPage";
 import TestNotificationPage from "./TestNotification";
+import BarcodeConfigPage from "./BarcodeConfigPage";
 
 class AdminPage {
   constructor() {}
@@ -19,6 +20,16 @@ class AdminPage {
     cy.contains("Provider Management").should("be.visible");
     return new ProviderManagementPage();
   }
+  
+  goToOrganizationManagement() {
+    cy.get("[data-cy='orgMgmnt']").should("be.visible");
+    cy.get("[data-cy='orgMgmnt']").click();
+    cy.url().should("include", "#organizationManagement");
+    cy.contains("Organization Management").should("be.visible");
+
+    return new OrganizationManagementPage();
+  }
+
   //lab number management
   goToLabNumberManagementPage() {
     cy.get("[data-cy='labNumberMgmnt']").should("be.visible");
@@ -40,6 +51,13 @@ class AdminPage {
     return new GlobalMenuConfigPage();
   }
 
+
+  goToBarcodeConfigPage() {
+    cy.get("[data-cy='barcodeConfig']").should("be.visible").click();
+
+    return new BarcodeConfigPage();
+  }
+
   goToProgramEntry() {
     cy.get("[data-cy='programEntry']").should("be.visible");
     cy.get("[data-cy='programEntry']").click();
@@ -52,6 +70,7 @@ class AdminPage {
     cy.get("[data-cy='test-notification-config']").click();
     return new TestNotificationPage();
   }
+
 }
 
 export default AdminPage;

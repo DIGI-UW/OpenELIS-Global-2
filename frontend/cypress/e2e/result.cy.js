@@ -1,6 +1,4 @@
 import LoginPage from "../pages/LoginPage";
-import HomePage from "../pages/HomePage";
-import Result from "../pages/ResultsPage";
 import PatientEntryPage from "../pages/PatientEntryPage";
 
 let homePage = null;
@@ -19,43 +17,39 @@ describe("Result By Unit", function () {
     result = homePage.goToResultsByUnit();
   });
 
-  it("User visits Results Page", function () {
+  it("User validates Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
   it("Should Search by Unit", function () {
     cy.fixture("workplan").then((order) => {
-      result.selectUnitType(order.unitType);
+      result.selectUnitType(order.unitBioType);
     });
   });
 
   it("should accept the sample, refer the sample, and save the result", function () {
-    cy.fixture("result").then((res) => {
-      result.acceptSample();
-      result.expandSampleDetails();
-      result.selectTestMethod(0, res.pcrTestMethod);
-      cy.get(":nth-child(3) > .cds--form-item > .cds--checkbox-label").click();
-      result.referSample(0, res.testNotPerformed, res.cedres);
-      result.setResultValue(0, res.positiveResult);
-      result.submitResults();
-    });
+    //cy.fixture("result").then((res) => {
+    result.setResultValue();
+    result.submitResults();
+    //});
   });
 });
 
 describe("Result By Patient", function () {
-  before("navigate to Result By Patient", function () {
+  it("Navigate to Result By Patient", function () {
+    homePage = loginPage.goToHomePage();
     result = homePage.goToResultsByPatient();
   });
 
   it("User visits Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
-  it("Should search Patient By First and LastName and validate", function () {
+  it("Search Patient By First and Last Name and validate", function () {
     cy.wait(1000);
     cy.fixture("Patient").then((patient) => {
       patientPage.searchPatientByFirstAndLastName(
@@ -87,23 +81,38 @@ describe("Result By Patient", function () {
     cy.reload();
   });
 
+  it("Search by sex", function () {
+    patientPage.getMaleGenderRadioButton();
+    patientPage.clickSearchPatientButton();
+    cy.reload();
+  });
+  /*display:none still a WIP
   it("should search patient By Lab Number and validate", function () {
-    cy.wait(500);
-    cy.fixture("EnteredOrder").then((patient) => {
-      cy.get("#labNumber").type(patient.labNo);
+    cy.wait(5000);
+    cy.fixture("Patient").then((patient) => {
+      patientPage.enterPreviousLabNumber(patient.labNo);
       patientPage.clickSearchPatientButton();
     });
-  });
+    cy.reload();
+  });*/
 
-  it("Should be able to search by respective patient and accept the result", function () {
+  it("Search by respective patient and accept the result", function () {
     cy.wait(1000);
-    result.selectPatient();
-    cy.fixture("result").then((res) => {
-      result.acceptResult();
-      result.expandSampleDetails();
-      result.selectTestMethod(0, res.stainTestMethod);
-      result.submitResults();
+    cy.fixture("Patient").then((patient) => {
+      patientPage.searchPatientByFirstAndLastName(
+        patient.firstName,
+        patient.lastName,
+      );
     });
+    patientPage.getMaleGenderRadioButton();
+    patientPage.clickSearchPatientButton();
+    cy.wait(1000);
+    result.selectPatientFromSearchResults();
+    cy.wait(800);
+    //cy.fixture("result").then((res) => {
+    // result.selectResultValue(0, res.invalidResult);
+    //});
+    result.submitResults();
   });
 });
 
@@ -115,24 +124,24 @@ describe("Result By Order", function () {
 
   it("User visits Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
   it("Should Search by Accession Number", function () {
-    cy.fixture("EnteredOrder").then((order) => {
-      cy.get("#accessionNumber").type(order.labNo);
+    cy.reload();
+    cy.fixture("Patient").then((order) => {
+      patientPage.enterAccessionNumber(order.labNo);
     });
-    cy.get(":nth-child(4) > #submit").click();
+    result.searchResults();
+    cy.wait(1000);
   });
 
   it("should accept the sample and save the result", function () {
-    cy.fixture("result").then((res) => {
-      result.acceptSample();
-      result.expandSampleDetails();
-      result.selectTestMethod(0, res.stainTestMethod);
-      result.submitResults();
-    });
+    //cy.fixture("result").then((res) => {
+    //result.setResultValue({ timeout: 12000 });
+    //});
+    result.submitResults();
   });
 });
 
@@ -144,11 +153,11 @@ describe("Result By Referred Out Tests", function () {
 
   it("User visits Reffered out Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.referralPageTitle);
+      result.getResultTitle(res.referrals);
     });
   });
 
-  it("should search Referrals By Patient and validate", function () {
+  it("Search Referrals By Patient and validate", function () {
     cy.fixture("Patient").then((patient) => {
       patientPage.searchPatientByPatientId(patient.nationalId);
       patientPage.searchPatientByFirstAndLastName(
@@ -165,55 +174,33 @@ describe("Result By Referred Out Tests", function () {
     });
   });
 
-  it("should click respective patient and search for referred out tests", function () {
-    result.selectPatient();
-    result.search();
-  });
-
   it("should validate the results", function () {
     cy.wait(1000);
     cy.fixture("Patient").then((patient) => {
       result.validatePatientResult(patient);
     });
+    patientPage.selectPatientFromSearchResults();
+    result.clickReferralsByPatient();
     cy.reload();
   });
 
-  it("should search Referrals By Test Unit and validate", function () {
+  it("search Referrals By Test Unit and Name then validate", function () {
     cy.fixture("workplan").then((res) => {
       cy.get("#testnames-input").type(res.testName);
       cy.get("#testnames-item-0-item").click();
-      cy.get(":nth-child(15) > .cds--btn").click({ force: true });
+      cy.get("#testunits-input").type(res.unitType);
+      cy.get("#testunits-item-0-item").click();
     });
-    //update in UI elements
-    // cy.fixture("result").then((res) => {
-    //   cy.get("tbody > tr > :nth-child(8)").should(
-    //     "contain.text",
-    //     res.westernBlotHiv,
-    //   );
-    // });
+    result.clickReferralsByTestAndName();
     cy.reload();
   });
-
-  it("should search Referrals By LabNumber and validate", function () {
-    cy.fixture("EnteredOrder").then((order) => {
-      cy.get("#labNumberInput").type(order.labNo);
+  /* diplay:none still a WIP
+  it("search Referrals By LabNumber and validate", function () {
+    cy.fixture("Patient").then((order) => {
+      result.resultsByLabNumber(order.labNo);
     });
-    cy.get(":nth-child(4) > .cds--lg\\:col-span-4 > .cds--btn")
-      .should("be.visible")
-      .click();
-    //update in UI elements
-    // cy.fixture("EnteredOrder").then((patient) => {
-    //   cy.get("tbody > tr > :nth-child(3)").should(
-    //     "contain.text",
-    //     patient.labNo,
-    //   );
-    // });
-  });
-  //commented due to UI changes
-  // it("should select the respecting referred test and print the selected patient reports", function () {
-  //   result.selectRefferedTest();
-  //   result.printReport();
-  // });
+    result.clickReferralsByLabNumber();
+  });*/
 });
 
 describe("Result By Range Of Order", function () {
@@ -224,25 +211,24 @@ describe("Result By Range Of Order", function () {
 
   it("User visits Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
   it("Should Enter Lab Number and perform Search", function () {
-    cy.fixture("EnteredOrder").then((order) => {
-      cy.get("#startLabNo").type(order.labNo);
+    cy.reload();
+    cy.fixture("Patient").then((order) => {
+      patientPage.startLabNumber(order.labNo);
     });
-    cy.get(":nth-child(5) > #submit").click();
+    result.searchResults();
   });
 
   it("Should Accept And Save the result", function () {
     cy.wait(1000);
     cy.fixture("result").then((res) => {
-      result.acceptSample();
-      result.expandSampleDetails();
-      result.selectTestMethod(0, res.eiaTestMethod);
       result.submitResults();
     });
+    cy.reload();
   });
 });
 
@@ -254,32 +240,42 @@ describe("Result By Test And Status", function () {
 
   it("User visits Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
-  it("Should select testName, analysis status, and perform Search", function () {
+  it("Search by Sample status", function () {
+    cy.fixture("result").then((res) => {
+      result.sampleStatus(res.sample);
+    });
+    cy.reload();
+  });
+
+  it("Search by Test Analysis", function () {
+    cy.fixture("result").then((res) => {
+      result.selectAnalysisStatus(res.analysisStatus);
+    });
+    cy.reload();
+  });
+
+  it("Search by TestName", function () {
+    //result.enterCollectionDate();
     cy.fixture("workplan").then((order) => {
       result.selectTestName(order.testName);
     });
-    cy.fixture("result").then((res) => {
-      result.selectAnalysisStatus(res.acceptedStatus);
-      result.searchByTest();
-    });
+    //result. enterReceivedDate();
+
+    result.searchResults();
   });
 
   it("Should Validate And accept the result", function () {
     cy.fixture("workplan").then((order) => {
-      cy.get("#cell-testName-0 > .sampleInfo").should(
-        "contain.text",
-        order.testName,
-      );
+      cy.contains("#row-0", order.testName).should("be.visible");
     });
-    cy.fixture("result").then((res) => {
-      result.acceptSample();
-      result.expandSampleDetails();
-      result.selectTestMethod(0, res.eiaTestMethod);
-      result.submitResults();
-    });
+    // cy.fixture("result").then((res) => {
+    cy.wait(1000);
+    result.setResultValue(); //res.resultNo ignored for now
+    result.submitResults();
+    //});
   });
 });

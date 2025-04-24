@@ -1,40 +1,43 @@
 class Result {
-  getResultTitle() {
-    return cy.get("section > h3");
+  getResultTitle(title) {
+    cy.get("h3").contains(title).should("be.visible");
   }
 
   selectUnitType(unitType) {
-    cy.get("#unitType").select(unitType);
+    cy.get("#unitType", { timeout: 10000 })
+      .should("be.visible")
+      .select(unitType);
   }
 
-  acceptSample(index = 0) {
-    cy.get(`.cds--checkbox-label`).eq(index).click();
+  acceptSample(index = 1) {
+    return cy.get("[data-cy='checkTestResult']").eq(index).check();
   }
 
   acceptResult() {
     cy.get("#cell-accept-0 > .cds--form-item > .cds--checkbox-label").click();
   }
 
-  expandSampleDetails(index = 0) {
-    cy.get(`[data-testid="expander-button-${index}"]`).click();
+  expandSampleDetails() {
+    return cy
+      .get("[data-testid='expander-button-1']")
+      .should("be.visible")
+      .click({ force: true });
   }
 
-  selectTestMethod(index = 0, method) {
+  selectTestMethod(index = 1, method) {
     cy.get(`#testMethod${index}`).select(method);
   }
 
-  selectPatient() {
-    cy.get(
-      "tbody > :nth-child(1) > :nth-child(1) > .cds--radio-button-wrapper > .cds--radio-button__label > .cds--radio-button__appearance",
-    ).click();
+  searchResults() {
+    cy.get("#searchResults").should("be.visible").click();
   }
 
-  search() {
-    cy.get(":nth-child(1) > :nth-child(5) > .cds--btn").click();
+  enterCollectionDate() {
+    cy.get("#collectionDate").should("be.visible").type("24/03/2025");
   }
 
-  searchByTest() {
-    cy.get(":nth-child(8) > #submit").click();
+  enterReceivedDate() {
+    cy.get("#recievedDate").should("be.visible").type("26/03/2025");
   }
 
   validatePatientResult(patient) {
@@ -53,17 +56,31 @@ class Result {
     cy.get(`#institute${index}`).select(institute);
   }
 
+  referTests() {
+    cy.contains("span", "Refer test to a reference lab")
+      .should("be.visible")
+      .click();
+  }
+  selectPatientFromSearchResults() {
+    cy.get(
+      "tbody > :nth-child(1) > :nth-child(1) > .cds--radio-button-wrapper > .cds--radio-button__label > .cds--radio-button__appearance",
+    ).click();
+  }
+
   selectRefferedTest() {
     cy.get(
       "tbody > tr > .cds--table-column-checkbox > .cds--checkbox--inline > .cds--checkbox-label",
     ).click();
   }
 
+  sampleStatus(sample) {
+    cy.get("#sampleStatusType").should("be.visible").select(sample);
+  }
   selectAnalysisStatus(status) {
-    cy.get("#analysisStatus").select(status);
+    cy.get("#analysisStatus").should("be.visible").select(status);
   }
   selectTestName(testName) {
-    cy.get("#testName").select(testName);
+    cy.get("#testName").should("be.visible").select(testName);
   }
 
   printReport() {
@@ -72,12 +89,35 @@ class Result {
       .click();
   }
 
-  setResultValue(index = 0, value) {
-    cy.get(`#resultValue${index}`).select(value);
+  clickReferralsByPatient() {
+    cy.get("[data-cy='referralsByPatient']").should("be.visible").click();
+  }
+  clickReferralsByTestAndName() {
+    cy.get("[data-cy='byUnitsAndTests']").should("be.visible").click();
   }
 
+  resultsByLabNumber(number) {
+    cy.get("#labNumberInput", { timeout: 15000 })
+      .should("be.visible")
+      .type(number, { force: true });
+  }
+  clickReferralsByLabNumber() {
+    cy.get("[data-cy='byLabNumber']")
+      .should("be.visible")
+      .click({ force: true });
+  }
+
+  setResultValue() {
+    //(value) ignored for now
+    cy.get("#ResultValue0").should("be.visible");
+    //.type(value);
+  }
+
+  selectResultValue(index = 0, value) {
+    cy.get(`#ResultValue${index}`).select(value);
+  }
   submitResults() {
-    cy.get("#submit").click();
+    cy.get("#saveResults").should("be.visible").click({ force: true });
   }
 }
 
