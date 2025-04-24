@@ -176,25 +176,24 @@ describe("Routine Reports", function () {
 
   it("Visits Referred Out Test Report", () => {
     reportPage = homePage.goToRoutineReports();
-    //reportPage.visitRoutineReports();
     reportPage.navigateToManagementReports();
     reportPage.selectReferredOutTestReport();
     reportPage.validatePageHeader("External Referrals Report");
+    //reportPage.selectDropdownExt();
     reportPage.typeInDatePicker(
       ".cds--date-picker-input__wrapper > #startDate",
       "01/02/2023",
     );
+
     reportPage.typeInDatePicker(
       ".cds--date-picker-input__wrapper > #endDate",
       "02/02/2023",
     );
-    reportPage.selectDropdown("#locationcode", "CEDRES");
     reportPage.validateButtonVisible(":nth-child(4) > .cds--btn");
   });
 
   it("Visits Non Conformity Report By Date", () => {
     reportPage = homePage.goToRoutineReports();
-    //reportPage.visitRoutineReports();
     reportPage.navigateToManagementReports();
     reportPage.navigateToNCReports();
     reportPage.selectNCReportByDate();
@@ -209,7 +208,6 @@ describe("Routine Reports", function () {
 
   it("Visits Non Conformity Report By Unit and Reason", () => {
     reportPage = homePage.goToRoutineReports();
-    //reportPage.visitRoutineReports();
     reportPage.navigateToManagementReports();
     reportPage.navigateToNCReports();
     reportPage.selectNCReportByUnit();

@@ -4,7 +4,9 @@ class Result {
   }
 
   selectUnitType(unitType) {
-    cy.get("#unitType").select(unitType);
+    cy.get("#unitType", { timeout: 10000 })
+      .should("be.visible")
+      .select(unitType);
   }
 
   acceptSample(index = 1) {
@@ -27,15 +29,15 @@ class Result {
   }
 
   searchResults() {
-    cy.get("#searchResults").click();
+    cy.get("#searchResults").should("be.visible").click();
   }
 
   enterCollectionDate() {
-    cy.get("#collectionDate").type("24/03/2025");
+    cy.get("#collectionDate").should("be.visible").type("24/03/2025");
   }
 
   enterReceivedDate() {
-    cy.get("#recievedDate").type("26/03/2025");
+    cy.get("#recievedDate").should("be.visible").type("26/03/2025");
   }
 
   validatePatientResult(patient) {
@@ -72,13 +74,13 @@ class Result {
   }
 
   sampleStatus(sample) {
-    cy.get("#sampleStatusType").select(sample);
+    cy.get("#sampleStatusType").should("be.visible").select(sample);
   }
   selectAnalysisStatus(status) {
-    cy.get("#analysisStatus").select(status);
+    cy.get("#analysisStatus").should("be.visible").select(status);
   }
   selectTestName(testName) {
-    cy.get("#testName").select(testName);
+    cy.get("#testName").should("be.visible").select(testName);
   }
 
   printReport() {
@@ -95,7 +97,9 @@ class Result {
   }
 
   resultsByLabNumber(number) {
-    cy.get("#labNumberInput").type(number, { force: true });
+    cy.get("#labNumberInput", { timeout: 15000 })
+      .should("be.visible")
+      .type(number, { force: true });
   }
   clickReferralsByLabNumber() {
     cy.get("[data-cy='byLabNumber']")
