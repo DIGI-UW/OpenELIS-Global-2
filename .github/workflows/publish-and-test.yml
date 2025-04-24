@@ -6,11 +6,16 @@
 name: Publish Docker Images & Run E2E QA on Images
 
 on:
-  push:
-    branches: [develop]
-  release:
-    types: [published]
-  workflow_dispatch:
+  # push:
+  #   branches: [develop]
+  # release:
+  #   types: [published]
+  # workflow_dispatch:
+  workflow_run:
+    workflows: ["OpenELis Frontend QA framework workflow"]  
+    types:
+      - completed
+      
 
 env:
   REGISTRY: docker.io
@@ -20,7 +25,8 @@ env:
 
 jobs:
   build-and-push-test-image-backend:
-    if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
+    #if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
+    if : false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -64,7 +70,8 @@ jobs:
           build-args: SKIP_SPOTLESS=true
 
   build-and-push-test-image-frontend:
-    if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
+    #if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
+    if : false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -107,7 +114,8 @@ jobs:
           cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-frontend:buildcache,mode=max
 
   build-and-push-test-image-proxy:
-    if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
+    #if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
+    if : false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -149,7 +157,8 @@ jobs:
           cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-proxy:buildcache,mode=max
 
   build-and-push-test-image-fhir:
-    if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
+    #if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
+    if : false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -191,6 +200,7 @@ jobs:
           cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-fhir:buildcache,mode=max
 
   run-e2e-qa:
+    if : false
     needs:
       [build-and-push-test-image-backend, build-and-push-test-image-frontend]
     runs-on: ubuntu-latest
@@ -218,8 +228,15 @@ jobs:
           # Only show last 100 lines of each
           tail: "100"
 
+  run-condition :
+     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'pull_request' }}
+     runs-on: ubuntu-latest
+     steps:
+      - run: echo "📦 Publishing Docker Image"
+    
+
   build-and-push-image-backend:
-    needs: [run-e2e-qa]
+    needs: [run-condition]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -264,7 +281,7 @@ jobs:
           build-args: SKIP_SPOTLESS=true
 
   build-and-push-image-frontend:
-    needs: [run-e2e-qa]
+    needs: [run-condition]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -307,7 +324,7 @@ jobs:
           cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-frontend:buildcache,mode=max
 
   build-and-push-image-proxy:
-    if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
+    needs: [run-condition]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -349,7 +366,7 @@ jobs:
           cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-proxy:buildcache,mode=max
 
   build-and-push-image-fhir:
-    if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
+    needs: [run-condition]
     runs-on: ubuntu-latest
     permissions:
       contents: read
