@@ -481,6 +481,7 @@
   "patient.dob": "Date de naissance",
   "patient.male": "Mâle",
   "patient.female": "Femelle",
+  "patient.yrs": "ans",
   "patient.first.name": "Prénom",
   "patient.last.name": "Nom de famille",
   "patient.prev.lab.no": "Numéro de laboratoire précédent",

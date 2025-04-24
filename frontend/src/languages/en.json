@@ -499,6 +499,7 @@
   "patient.dob": "Date of Birth",
   "patient.male": "Male",
   "patient.female": "Female",
+  "patient.yrs": "yrs",
   "patient.first.name": "First Name",
   "patient.last.name": "Last Name",
   "patient.prev.lab.no": "Previous Lab Number",

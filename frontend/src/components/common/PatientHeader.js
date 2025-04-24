@@ -1,6 +1,6 @@
 import React from "react";
 import { Grid, Column, Section, Tag } from "@carbon/react";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import Avatar from "react-avatar";
 
 const PatientHeader = (props) => {
@@ -22,6 +22,7 @@ const PatientHeader = (props) => {
     isOrderPage = false,
     className = "patient-header",
   } = props;
+  const intl = useIntl();
 
   const tagStyle = {
     fontSize: "0.8rem",
@@ -69,43 +70,41 @@ const PatientHeader = (props) => {
                             ♀ <FormattedMessage id="patient.female" />
                           </>
                         )}{" "}
-                        {age ? age + " Yrs" : dob}
+                        {age
+                          ? age +
+                            " " +
+                            intl.formatMessage({ id: "patient.yrs" })
+                          : dob}
                       </span>
                     </div>
                     {/* <br/> */}
                     <div className="patient-id">
                       {nationalId && (
-                        <Tag size="lg" type="" style={tagStyle}>
+                        <Tag size="lg" type="blue" style={tagStyle}>
                           <FormattedMessage id="patient.natioanalid" /> :{" "}
                           <strong>{nationalId}</strong>
                         </Tag>
                       )}
                       {subjectNumber && (
-                        <Tag size="lg" type="" style={tagStyle}>
+                        <Tag size="lg" type="blue" style={tagStyle}>
                           <FormattedMessage id="patient.subject.number" /> :{" "}
                           <strong>{subjectNumber}</strong>
                         </Tag>
                       )}
                       {accesionNumber && (
-                        <Tag size="lg" type="" style={tagStyle}>
+                        <Tag size="lg" type="blue" style={tagStyle}>
                           <FormattedMessage id="quick.entry.accession.number" />{" "}
                           : <strong>{accesionNumber}</strong>
                         </Tag>
                       )}
                       {orderDate && (
                         <>
-                          <Tag size="lg" type="" style={tagStyle}>
+                          <Tag size="lg" type="blue" style={tagStyle}>
                             <FormattedMessage id="sample.label.orderdate" /> :{" "}
                             <strong>{orderDate}</strong>
                           </Tag>
 
-                          <Tag
-                            size="lg"
-                            type=""
-                            style={{
-                              fontSize: "0.8rem",
-                            }}
-                          >
+                          <Tag size="lg" type="blue" style={tagStyle}>
                             <FormattedMessage id="sample.label.requester" />:{" "}
                             <strong>{requester}</strong>
                           </Tag>
@@ -113,12 +112,12 @@ const PatientHeader = (props) => {
                       )}
                       {referringFacility && (
                         <>
-                          <Tag size="lg" type="" style={tagStyle}>
+                          <Tag size="lg" type="blue" style={tagStyle}>
                             <FormattedMessage id="sample.label.facility" />:{" "}
                             <strong>{referringFacility}</strong>
                           </Tag>
 
-                          <Tag size="lg" type="" style={tagStyle}>
+                          <Tag size="lg" type="blue" style={tagStyle}>
                             <FormattedMessage id="sample.label.dept" /> :{" "}
                             <strong>{department}</strong>
                           </Tag>

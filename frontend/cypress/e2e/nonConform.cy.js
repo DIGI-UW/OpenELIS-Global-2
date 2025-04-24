@@ -3,7 +3,6 @@ import LoginPage from "../pages/LoginPage";
 let homePage = null;
 let loginPage = null;
 let nonConform = null;
-//let skipBeforeEach = false;
 
 before("login", () => {
   loginPage = new LoginPage();
