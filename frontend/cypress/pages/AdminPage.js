@@ -1,8 +1,10 @@
 //This handles all pages of the admin
 import LabNumberManagementPage from "./LabNumberManagementPage";
 import GlobalMenuConfigPage from "./GlobalMenuConfigPage";
+import BarcodeConfigPage from "./BarcodeConfigPage";
 import ProgramEntryPage from "./ProgramEntryPage";
 import ProviderManagementPage from "./ProviderManagementPage";
+import OrganizationManagementPage from "./OrganizationManagementPage";
 
 class AdminPage {
   constructor() {}
@@ -18,6 +20,16 @@ class AdminPage {
     cy.contains("Provider Management").should("be.visible");
     return new ProviderManagementPage();
   }
+
+  goToOrganizationManagement() {
+    cy.get("[data-cy='orgMgmnt']").should("be.visible");
+    cy.get("[data-cy='orgMgmnt']").click();
+    cy.url().should("include", "#organizationManagement");
+    cy.contains("Organization Management").should("be.visible");
+
+    return new OrganizationManagementPage();
+  }
+
   //lab number management
   goToLabNumberManagementPage() {
     cy.get("[data-cy='labNumberMgmnt']").should("be.visible");
@@ -37,6 +49,12 @@ class AdminPage {
     cy.contains("Global Menu Management").should("be.visible");
 
     return new GlobalMenuConfigPage();
+  }
+
+  goToBarcodeConfigPage() {
+    cy.get("[data-cy='barcodeConfig']").should("be.visible").click();
+
+    return new BarcodeConfigPage();
   }
 
   goToProgramEntry() {
