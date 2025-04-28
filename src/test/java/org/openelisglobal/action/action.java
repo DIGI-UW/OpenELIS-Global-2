@@ -1,14 +1,11 @@
 package org.openelisglobal.action;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.List;
 import javax.sql.DataSource;
-import org.junit.jupiter.api.*;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.action.service.ActionService;
 import org.openelisglobal.action.valueholder.Action;
