@@ -1,3 +1,4 @@
+import './PatientInfo.css';
 import React, { useEffect, useRef, useState } from "react";
 import { Button, Stack, Grid, Column } from "@carbon/react";
 import SearchPatientForm from "../patient/SearchPatientForm";
@@ -95,12 +96,17 @@ const PatientInfo = (props) => {
               <Button
                 kind={searchPatientTab.kind}
                 onClick={handleSearchPatientTab}
+                className="responsive-button"
               >
                 <FormattedMessage id="search.patient.label" />
               </Button>
             </Column>
             <Column lg={4} md={4} sm={2}>
-              <Button kind={newPatientTab.kind} onClick={handleNewPatientTab}>
+              <Button
+                kind={newPatientTab.kind}
+                onClick={handleNewPatientTab}
+                className="responsive-button"
+              >
                 <FormattedMessage id="new.patient.label" />
               </Button>
             </Column>

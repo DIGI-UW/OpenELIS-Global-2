@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.openelisglobal</groupId>
     <artifactId>openelisglobal</artifactId>
@@ -110,18 +110,13 @@
         <!-- APACHE ASSORTED DEPENDENCIES -->
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.5.13</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.5.13</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpcore</artifactId>
             <version>4.4.16</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5.13</version>
         </dependency>
         <dependency>
             <groupId>org.apache.poi</groupId>
@@ -713,16 +708,14 @@
                 <version>3.3.1</version>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.0.0</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
-                <configuration>
-                    <!-- move to release when we compile in java versions >= 9 -->
-                    <release>${maven.java.release}</release>
-                    <parameters>true</parameters>
-                    <!-- legacy for java versions < 9 -->
-                    <!-- <source>${maven.compiler.source}</source> -->
-                    <!-- <target>${maven.compiler.target}</target> -->
-                </configuration>
+                <version>3.11.0</version>
             </plugin>
             <plugin>
                 <groupId>com.spotify</groupId>
@@ -952,16 +945,6 @@
                 <version>3.8.1</version>
                 <configuration>
                     <artifactItems>
-                        <artifactItem>
-                            <groupId>[ groupId ]</groupId>
-                            <artifactId>[ artifactId ]</artifactId>
-                            <version>[ version ]</version>
-                            <type>[ packaging ]</type>
-                            <classifier> [classifier - optional] </classifier>
-                            <overWrite>[ true or false ]</overWrite>
-                            <outputDirectory>[ output directory ]</outputDirectory>
-                            <destFileName>[ filename ]</destFileName>
-                        </artifactItem>
                     </artifactItems>
                     <!-- other configurations here -->
                 </configuration>

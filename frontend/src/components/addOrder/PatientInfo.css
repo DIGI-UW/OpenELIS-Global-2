@@ -1,0 +1,15 @@
+.responsive-button {
+  width: 100%; /* Full width on smaller screens */
+  padding: 10px 20px;
+  font-size: 1rem;
+  margin: 5px 0;
+  transition: all 0.3s ease;
+}
+
+@media (min-width: 768px) {
+  .responsive-button {
+    width: auto; /* Adjust to content size on larger screens */
+    font-size: 1.2rem;
+    margin: 0 10px;
+  }
+}
