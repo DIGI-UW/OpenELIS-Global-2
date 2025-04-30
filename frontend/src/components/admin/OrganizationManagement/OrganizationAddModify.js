@@ -820,6 +820,7 @@ function OrganizationAddModify() {
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
               <Button
+                id="saveButton"
                 disabled={saveButton}
                 onClick={submitAddUpdatedOrgInfo}
                 type="button"
