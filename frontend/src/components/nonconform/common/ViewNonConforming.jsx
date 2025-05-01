@@ -369,17 +369,19 @@ export const ViewNonConformingEvent = () => {
                           }}
                           labelText=""
                           id={row.id}
-                          data-cy="radio"
+                          data-cy={`row-${row.id}`}
                         />
                       </TableCell>
 
-                      <TableCell key={row.key + "date"}>
+                      <TableCell data-cy="row_prime" key={row.key + "date"}>
                         {new Date(row.reportDate).toDateString()}
                       </TableCell>
 
-                      <TableCell key={row.key + "1"}>{row.nceNumber}</TableCell>
+                      <TableCell data-cy="row_one" key={row.key + "1"}>
+                        {row.nceNumber}
+                      </TableCell>
 
-                      <TableCell key={row.key + "2"}>
+                      <TableCell data-cy="row_two" key={row.key + "2"}>
                         {
                           tData.reportingUnits.find(
                             (obj) => parseInt(obj.id) === row.reportingUnitId,
