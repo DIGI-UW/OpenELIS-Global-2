@@ -480,42 +480,34 @@ function OEHeader(props) {
                             )
                           }
                         >
-                          <div
-                            style={{
-                              position: "relative",
-                              display: "inline-block",
-                            }}
-                          >
-                            {!notificationsOpen ? (
-                              <Notification size={20} />
-                            ) : (
-                              <Close size={20} />
-                            )}
-                            {unReadNotifications?.length > 0 && (
-                              <span
-                                style={{
-                                  position: "absolute",
-                                  top: "-5px",
-                                  right: "-5px",
-                                  backgroundColor: "red",
-                                  color: "white",
-                                  borderRadius: "50%",
-                                  width: "22px",
-                                  height: "22px",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  fontSize: "12px",
-                                  animation: "pulse 5s infinite",
-                                  opacity: 1,
-                                  transition:
-                                    "background-color 0.3s ease-in-out",
-                                }}
-                              >
-                                {unReadNotifications.length}
-                              </span>
-                            )}
-                          </div>
+                          {!notificationsOpen ? (
+                            <Notification size={20} />
+                          ) : (
+                            <Close size={20} />
+                          )}
+                          {unReadNotifications?.length > 0 && (
+                            <span
+                              style={{
+                                position: "absolute",
+                                top: "-5px",
+                                right: "-5px",
+                                backgroundColor: "red",
+                                color: "white",
+                                borderRadius: "50%",
+                                width: "22px",
+                                height: "22px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "12px",
+                                animation: "pulse 5s infinite",
+                                opacity: 1,
+                                transition: "background-color 0.3s ease-in-out",
+                              }}
+                            >
+                              {unReadNotifications.length}
+                            </span>
+                          )}
                         </HeaderGlobalAction>
                       </>
                     )}
