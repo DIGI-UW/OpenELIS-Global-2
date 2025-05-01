@@ -36,9 +36,12 @@ public class ProviderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void providerInThDataBase() {
+    public void getAll() {
         List<Provider> providers = providerService.getAll();
-        providers.forEach(provider -> System.out.print(provider.getProviderType() + " "));
+        assertNotNull("should return providers", providers);
+        assertEquals("should return 2 providers", 2, providers.size());
+        assertEquals("provider1 should have an External id EXT123456", "EXT123456", providers.get(0).getExternalId());
+        assertEquals("provider2 should have an External id EXT123466", "EXT123466", providers.get(1).getExternalId());
     }
 
     @Test

@@ -25,12 +25,12 @@ public class TestAnalyteServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testDataInDataBase() {
+    public void getAll() {
         List<TestAnalyte> testAnalytes = testAnalyteService.getAll();
-        testAnalytes.forEach(testAnalyte -> {
-            System.out.print(testAnalyte.getId() + " - " + testAnalyte.getTest().getId() + " - "
-                    + testAnalyte.getAnalyte().getId() + " ");
-        });
+        assertNotNull(testAnalytes);
+        assertEquals(2, testAnalytes.size());
+        assertEquals("1", testAnalytes.get(0).getId());
+        assertEquals("2", testAnalytes.get(1).getId());
     }
 
     @Test

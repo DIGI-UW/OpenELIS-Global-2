@@ -1,6 +1,7 @@
 package org.openelisglobal.systemUserSection;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -24,11 +25,13 @@ public class SystemUserSectionServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testDataBase() {
+    public void getAll() {
         List<SystemUserSection> systemUserSections = systemUserSectionService.getAll();
-        systemUserSections.forEach(systemUserSection -> {
-            System.out.print(systemUserSection.getId() + " ");
-        });
+        assertNotNull(systemUserSections);
+        assertEquals(2, systemUserSections.size());
+        assertEquals("1", systemUserSections.get(0).getId());
+        assertEquals("2", systemUserSections.get(1).getId());
+
     }
 
     @Test
