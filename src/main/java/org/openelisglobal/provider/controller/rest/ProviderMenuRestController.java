@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Pattern;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.controller.BaseMenuController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.form.AdminOptionMenuForm;
@@ -73,7 +74,14 @@ public class ProviderMenuRestController extends BaseMenuController<Provider> {
             // return findForward(forward, form);
             List<Provider> providers = createMenuList(form, request);
             // return ResponseEntity.ok(providers);
-            form.setProviders(providers);
+            List<Provider> filtered = providers.stream().filter(p -> p.getActive()) // only include active
+                    .filter(p -> p.getFhirUuidAsString() != null && !p.getFhirUuidAsString().isBlank()) // and with real
+                                                                                                        // UUID
+                    .filter(p -> !p.getPerson().getLastName().equalsIgnoreCase("UNKNOWN_")) // exclude placeholders
+                    .collect(Collectors.toList());
+
+            form.setProviders(filtered);
+
             return ResponseEntity.ok(form);
         }
     }
