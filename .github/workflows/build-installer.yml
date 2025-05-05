@@ -1,7 +1,7 @@
 name: Build OpenELIS-Global-2 Installer
 on:
-  release:
-    types: [published] 
+  workflow_call: 
+
     
 jobs:
   build-installer-and-upload-installer:

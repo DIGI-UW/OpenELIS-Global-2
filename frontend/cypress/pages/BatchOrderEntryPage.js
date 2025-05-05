@@ -60,8 +60,8 @@ class BatchOrderEntry {
   }
 
   enterSiteName(siteName) {
-    cy.get("#siteName").type(siteName);
-    cy.get(".suggestion-active").should("be.visible").click();
+    cy.get("#siteName").should("be.visible").type(siteName);
+    cy.contains(".suggestion-active", siteName).click();
   }
 
   typeLabNumber(labNumber) {
