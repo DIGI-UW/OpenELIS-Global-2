@@ -43,6 +43,15 @@ const PatientInfo = (props) => {
     setNewPatientTab({ kind: "primary", active: true });
     setSearchPatientTab({ kind: "tertiary", active: false });
   };
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 672);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 672);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -92,18 +101,29 @@ const PatientInfo = (props) => {
                 <FormattedMessage id="banner.menu.patient" />
               </h3>
             </Column>
-            <Column lg={4} md={4} sm={2}>
-              <Button
-                kind={searchPatientTab.kind}
-                onClick={handleSearchPatientTab}
+            <Column lg={8} md={8} sm={4}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: isMobile ? "column" : "row",
+                  gap: "1rem",
+                }}
               >
-                <FormattedMessage id="search.patient.label" />
-              </Button>
-            </Column>
-            <Column lg={4} md={4} sm={2}>
-              <Button kind={newPatientTab.kind} onClick={handleNewPatientTab}>
-                <FormattedMessage id="new.patient.label" />
-              </Button>
+                <Button
+                  kind={searchPatientTab.kind}
+                  onClick={handleSearchPatientTab}
+                  style={{ width: isMobile ? "100%" : "auto" }}
+                >
+                  <FormattedMessage id="search.patient.label" />
+                </Button>
+                <Button
+                  kind={newPatientTab.kind}
+                  onClick={handleNewPatientTab}
+                  style={{ width: isMobile ? "100%" : "auto" }}
+                >
+                  <FormattedMessage id="new.patient.label" />
+                </Button>
+              </div>
             </Column>
             <Column lg={16} md={8} sm={4}>
               {searchPatientTab.active && (

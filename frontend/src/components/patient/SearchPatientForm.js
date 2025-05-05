@@ -60,6 +60,19 @@ function SearchPatientForm(props) {
   );
   const [prevfirstName, setPrevfirstName] = useState("");
   const [prevlastName, setPrevlastName] = useState("");
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+  const isMobile = windowWidth < 768;
 
   const handlePatientImport = (patientId) => {
     console.log("Import button clicked, patientId:", patientId);
@@ -455,21 +468,28 @@ function SearchPatientForm(props) {
                 </Field>
               </Column>
               <Column lg={16} md={8} sm={4}>
-                {" "}
-                <br />{" "}
+                <br />
               </Column>
-              <Column lg={4} md={4} sm={2}>
+              <Column
+                lg={8}
+                md={8}
+                sm={4}
+                style={{
+                  display: "flex",
+                  flexDirection: isMobile ? "column" : "row",
+                  gap: "8px",
+                }}
+              >
                 <Button
                   id="local_search"
                   kind="tertiary"
                   type="submit"
                   data-cy="searchPatientButton"
                   onClick={() => setFieldValue("suppressExternalSearch", true)}
+                  style={{ width: isMobile ? "100%" : "auto" }}
                 >
                   <FormattedMessage id="label.button.search" />
                 </Button>
-              </Column>
-              <Column lg={4} md={4} sm={2}>
                 <Button
                   id="external_search"
                   type="submit"
@@ -478,6 +498,7 @@ function SearchPatientForm(props) {
                   }
                   kind="tertiary"
                   onClick={() => setFieldValue("suppressExternalSearch", false)}
+                  style={{ width: isMobile ? "100%" : "auto" }}
                 >
                   <FormattedMessage
                     id="label.button.externalsearch"
