@@ -385,9 +385,7 @@ function TestManagementConfigMenu() {
                 <ClickableTile>
                   <ListItem
                     onClick={() => {
-                      window.location.assign(
-                        "/api/OpenELIS-Global/ResultSelectListAdd",
-                      );
+                      window.location.assign("/admin#ResultSelectListAdd");
                     }}
                   >
                     <FormattedMessage id="configuration.selectList.add" />

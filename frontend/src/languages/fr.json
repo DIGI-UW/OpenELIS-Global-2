@@ -1401,5 +1401,10 @@
   "label.test.activate": "Les tests suivants seront activés :",
   "label.test.deactivate": "Les tests suivants seront désactivés :",
   "label.sample.types.activate": "Les types d'échantillons suivants seront activés :",
-  "label.sample.types.deactivate": "Les types d'échantillons suivants seront désactivés car ils ne contiennent aucun test :"
+  "label.sample.types.deactivate": "Les types d'échantillons suivants seront désactivés car ils ne contiennent aucun test :",
+  "configuration.selectList.description": "Entrez en anglais et en français pour la nouvelle option de sélection. Si vous ne connaissez pas la traduction, le terme saisi sera utilisé pour les deux langues.",
+  "configuration.selectList.assign.description": "La nouvelle entrée peut être affectée aux tests ou être enregistrée sans affectation. Sélectionnez un ou plusieurs tests pour l’affectation, puis ajustez l’ordre d’affichage. Si la nouvelle entrée doit être la valeur normale du test sélectionné, cochez la case intitulée « Normal ». Si vous souhaitez que le technicien saisisse du texte avec la sélection du résultat pour qualifier davantage les résultats, cochez la case intitulée « Qualifiable ». Par exemple, si les options correspondent à une liste d’organismes et que la dernière option est « Autre », l’utilisateur pourra saisir un organisme qui ne figure pas dans la liste.",
+  "configuration.selectList.assign.header": "Affecter la nouvelle sélection de résultat au test",
+  "configuration.selectList.assign.new": "Nouvelle option de liste de sélection",
+  "configuration.selectList.confirmChange": "La valeur normale sera modifiée de %oldvalue% à %newvalue%. Voulez-vous vraiment continuer ?"
 }
