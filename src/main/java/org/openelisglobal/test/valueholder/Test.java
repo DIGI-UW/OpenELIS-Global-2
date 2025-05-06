@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.test.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.sql.Date;
 import java.util.Objects;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -108,6 +109,7 @@ public class Test extends EnumValueItemImpl {
 
     private String guid;
 
+    @JsonIgnore
     private ValueHolder defaultTestResult;
 
     private boolean inLabOnly;
