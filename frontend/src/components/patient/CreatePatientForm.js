@@ -54,6 +54,7 @@ function CreatePatientForm(props) {
   const [prevlastName, setPrevlastName] = useState("");
   const [prevfirstContactName, setPrevfirstContactName] = useState("");
   const [prevlastContactName, setPrevlastContactName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [formAction, setFormAction] = useState("ADD");
   const [dateOfBirthFormatter, setDateOfBirthFormatter] = useState({
     years: "",
@@ -222,6 +223,23 @@ function CreatePatientForm(props) {
     setPrevfirstName(event.target.value);
   }
 
+  function handlePhoneNumberChange(event) {
+    let inputValue = event.target.value;
+
+    if (inputValue.startsWith("+")) {
+      inputValue = "+" + inputValue.slice(1).replace(/[^0-9-]/g, "");
+    } else {
+      inputValue = inputValue.replace(/[^0-9-]/g, "");
+    }
+
+    if (event.target.value !== inputValue) {
+      event.target.value = inputValue;
+      return;
+    }
+
+    setPhoneNumber(inputValue);
+  }
+
   function handleLastNameChange(event) {
     const regexFlags = "iu";
     const regex = new RegExp(
@@ -386,37 +404,74 @@ function CreatePatientForm(props) {
     setHealthDistricts(districts);
   };
 
-  const handleSubmit = async (values, { resetForm }) => {
-    // Prevent multiple submissions.
-    if (isSubmitting) {
-      return;
-    }
+  const validatePhoneNumber = (phoneNumber, onSuccess) => {
+    const formattedPhone = phoneNumber.startsWith("+")
+      ? phoneNumber
+      : `+${phoneNumber}`;
+    const encodedPhone = encodeURIComponent(formattedPhone);
+    const phoneValidationUrl = `/rest/PhoneNumberValidationProvider?value=${encodedPhone}`;
 
-    setIsSubmitting(true);
-
-    if ("years" in values) {
-      delete values.years;
-    }
-    if ("months" in values) {
-      delete values.months;
-    }
-    if ("days" in values) {
-      delete values.days;
-    }
-    console.debug(JSON.stringify(values));
-    postToOpenElisServer(
-      "/rest/PatientManagement",
-      JSON.stringify(values),
-      (status) => {
-        handlePost(status);
-        resetForm({ values: CreatePatientFormValues });
-        setDateOfBirthFormatter({
-          years: "",
-          months: "",
-          days: "",
+    getFromOpenElisServer(
+      phoneValidationUrl,
+      (data) => {
+        if (!data.status) {
+          setNotificationVisible(true);
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: data.body || "Invalid phone number format",
+            kind: NotificationKinds.error,
+          });
+          setIsSubmitting(false);
+          return;
+        }
+        onSuccess(phoneNumber);
+      },
+      () => {
+        setNotificationVisible(true);
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: "Error validating phone number.",
+          kind: NotificationKinds.error,
         });
+        setIsSubmitting(false);
       },
     );
+  };
+
+  const handleSubmit = async (values, { resetForm }) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    // Validate phone number before proceeding
+    validatePhoneNumber(values.primaryPhone, (validatedPhone) => {
+      values.primaryPhone = validatedPhone;
+
+      // Remove unnecessary fields
+      ["years", "months", "days"].forEach((field) => delete values[field]);
+
+      console.debug(JSON.stringify(values));
+
+      // Submit patient data after validation
+      postToOpenElisServer(
+        "/rest/PatientManagement",
+        JSON.stringify(values),
+        (status) => {
+          handlePost(status);
+          resetForm({ values: CreatePatientFormValues });
+          setDateOfBirthFormatter({ years: "", months: "", days: "" });
+          setIsSubmitting(false);
+        },
+        () => {
+          setIsSubmitting(false);
+          setNotificationVisible(true);
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: "Error submitting patient data.",
+            kind: NotificationKinds.error,
+          });
+        },
+      );
+    });
   };
 
   const handlePost = (status) => {
@@ -614,7 +669,7 @@ function CreatePatientForm(props) {
                 <Field name="primaryPhone">
                   {({ field }) => (
                     <TextInput
-                      value={values.primaryPhone || ""}
+                      value={values.primaryPhone || phoneNumber}
                       name={field.name}
                       labelText={intl.formatMessage(
                         {
@@ -629,6 +684,7 @@ function CreatePatientForm(props) {
                       placeholder={intl.formatMessage({
                         id: "patient.information.primaryphone",
                       })}
+                      onChange={handlePhoneNumberChange}
                     />
                   )}
                 </Field>
