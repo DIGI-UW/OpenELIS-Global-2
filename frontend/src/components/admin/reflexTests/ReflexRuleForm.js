@@ -805,7 +805,7 @@ function ReflexRule() {
                                 <>
                                   <TextInput
                                     name="value"
-                                    type="text"
+                                    type="number"
                                     id={
                                       index + "_" + condition_index + "_value"
                                     }
