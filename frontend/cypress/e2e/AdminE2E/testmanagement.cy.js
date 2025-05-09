@@ -1,12 +1,24 @@
 import LoginPage from "../../pages/LoginPage";
+import TestManagementPage from "../../pages/TestManagement";
+import TestProperties from "../../common/TestProperties";
 
 let loginPage = null;
 let testManagementPage = null;
-let homePage = null;
+let testProperties = null;
 
 before("login", () => {
   loginPage = new LoginPage();
+  testManagementPage = new TestManagementPage();
+  testProperties = new TestProperties();
+  
+  // Visit login page and perform login
   loginPage.visit();
+  loginPage.enterUsername(testProperties.getUsername());
+  loginPage.enterPassword(testProperties.getPassword());
+  loginPage.signIn();
+  
+  // Wait for login to complete
+  cy.url().should('not.include', '/login');
 });
 
 describe("Method Management Tests", () => {
