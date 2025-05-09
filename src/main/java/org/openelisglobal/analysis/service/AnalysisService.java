@@ -24,10 +24,16 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     List<Analysis> getAnalysisByTestDescriptionAndCompletedDateRange(List<String> descriptions, Date sqlDayOne,
             Date sqlDayTwo);
 
+    // TODO: This method is currently non-functional or unimplemented — review or
+    // implement as needed
     List<Analysis> getMaxRevisionPendingAnalysesReadyForReportPreviewBySample(Sample sample);
 
+    // TODO: This method is currently non-functional or unimplemented — review or
+    // implement as needed
     List<Analysis> getMaxRevisionAnalysesReadyForReportPreviewBySample(List<String> accessionNumbers);
 
+    // TODO: This method is currently non-functional or unimplemented — review or
+    // implement as needed
     List<Analysis> getMaxRevisionPendingAnalysesReadyToBeReportedBySample(Sample sample);
 
     List<Analysis> getAnalysesBySampleIdExcludedByStatusId(String id, Set<Integer> statusIds);
@@ -37,12 +43,18 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     List<Analysis> getAnalysisByTestIdAndTestSectionIdsAndStartedInDateRange(Date lowDate, Date highDate, String testId,
             List<Integer> testScectionIds);
 
+    // TODO: This method is currently non-functional or unimplemented — review or
+    // implement as needed
     List<Analysis> getAllAnalysisByTestSectionAndStatus(String testSectionId, List<Integer> analysisStatusList,
             List<Integer> sampleStatusList);
 
+    // TODO: This method is currently non-functional or unimplemented — review or
+    // implement as needed
     List<Analysis> getAllAnalysisByTestSectionAndStatus(String testSectionId, List<Integer> statusIdList,
             boolean sortedByDateAndAccession);
 
+    // TODO: This method is currently non-functional or unimplemented — review or
+    // implement as needed
     List<Analysis> getMaxRevisionAnalysesBySampleIncludeCanceled(SampleItem sampleItem);
 
     List<Analysis> getAnalysisByTestNamesAndCompletedDateRange(List<String> testNames, Date lowDate, Date highDate);
@@ -50,6 +62,8 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     List<Analysis> getAnalysesBySampleIdTestIdAndStatusId(List<Integer> sampleIdList, List<Integer> testIdList,
             List<Integer> statusIdList);
 
+    // TODO: This method is currently non-functional or unimplemented — review or
+    // implement as needed
     List<Analysis> getMaxRevisionParentTestAnalysesBySample(SampleItem sampleItem);
 
     List<Analysis> getAnalysesBySampleItemsExcludingByStatusIds(SampleItem sampleItem, Set<Integer> statusIds);
@@ -74,13 +88,17 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
 
     List<Analysis> getAnalysisByTestSectionAndCompletedDateRange(String sectionID, Date lowDate, Date highDate);
 
+    // TODO: This method is currently non-functional or unimplemented — review or
+    // implement as needed
     List<Analysis> getMaxRevisionAnalysesReadyToBeReported();
 
     void getMaxRevisionAnalysisBySampleAndTest(Analysis analysis);
 
     List<Analysis> getAllAnalysisByTestAndExcludedStatus(String testId, List<Integer> statusIdList);
 
-    List<Analysis> getAnalysesAlreadyReportedBySample(Sample sample);
+    // TODO: This method is currently non-functional or unimplemented — review or
+    // implement as needed
+    List<Analysis> getAnalysesAlreadyReportedBySample(Sample sample);// 333
 
     List<Analysis> getRevisionHistoryOfAnalysesBySampleAndTest(SampleItem sampleItem, Test test,
             boolean includeLatestRevision);
@@ -101,6 +119,8 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
 
     List<Analysis> getAnalysesBySampleId(String id);
 
+    // TODO: This method is currently non-functional or unimplemented — review or
+    // implement as needed
     List<Analysis> getAnalysesReadyToBeReported();
 
     List<Analysis> getAnalysisBySampleAndTestIds(String sampleKey, List<Integer> testIds);
@@ -178,12 +198,18 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     List<Analysis> getAllAnalysisByTestsAndStatusAndCompletedDateRange(List<Integer> nfsTestIdList,
             List<Integer> analysisStatusList, List<Integer> sampleStatusList, Date lowDate, Date highDate);
 
+    // TODO: This method is currently non-functional or unimplemented — review or
+    // implement as needed
     List<Analysis> getPageAnalysisByTestSectionAndStatus(String testSectionId, List<Integer> analysisStatusList,
             List<Integer> sampleStatusList);
 
+    // TODO: This method is currently non-functional or unimplemented — review or
+    // implement as needed
     int getCountAnalysisByTestSectionAndStatus(String testSectionId, List<Integer> analysisStatusList,
             List<Integer> sampleStatusList);
 
+    // TODO: This method is currently non-functional or unimplemented — review or
+    // implement as needed
     List<Analysis> getPageAnalysisByTestSectionAndStatus(String sectionId, List<Integer> statusList,
             boolean sortedByDateAndAccession);
 

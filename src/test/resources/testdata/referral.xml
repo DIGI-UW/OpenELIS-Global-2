@@ -140,12 +140,12 @@
     <provider id="3" person_id="6" provider_type="C"
         lastdupated="2023-11-01 12:00:00" />
 
-    <sample id="1" accession_number="12345"
+    <sample id="1" accession_number="12345" status_id="1"
         received_date="2024-06-03 00:00:00.0"
         entered_date="2024-06-03 00:00:00.0"
         collection_date="2024-06-03 00:00:00.0"
         lastupdated="2023-11-01 12:00:00" />
-    <sample id="2" accession_number="13333"
+    <sample id="2" accession_number="13333" status_id="2"
         received_date="2024-06-04 00:00:00.0"
         entered_date="2024-06-03 00:00:00.0"
         collection_date="2024-06-03 00:00:00.0"
@@ -214,18 +214,36 @@
     <!-- Analysis -->
     <analysis id="1" sampitem_id="1" test_sect_id="1" test_id="1"
         revision="1" started_date="2023-11-15 12:00:00"
-        completed_date="2023-11-15 14:00:00"
+        completed_date="2023-11-15 14:00:00" status="1"
         released_date="2023-11-15 15:00:00" printed_date="2023-11-15 16:00:00"
         is_reportable="Y" status_id="1" parent_analysis_id="1"
         parent_result_id="1" entry_date="2023-11-15 12:00:00"
         analysis_type="ROUTINE" lastupdated="2023-12-01 12:00:00" />
     <analysis id="2" sampitem_id="2" test_sect_id="2" test_id="2"
         revision="2" started_date="2023-11-16 12:00:00"
-        completed_date="2023-11-16 14:00:00"
+        completed_date="2023-11-16 14:00:00" status="2"
         released_date="2023-11-16 15:00:00" printed_date="2023-11-16 16:00:00"
         is_reportable="N" status_id="2" parent_analysis_id="2"
         parent_result_id="2" entry_date="2023-11-16 12:00:00"
         analysis_type="CONFIRM" lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Result with Analysis FK -->
+    <result id="3" analysis_id="1" lastupdated="2023-12-01 12:00:00" />
+    <result id="4" analysis_id="2" lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Test Analyte -->
+    <test_analyte id="1" test_id="1" is_reportable="Y"
+        lastupdated="2023-12-01 12:00:00" />
+    <test_analyte id="2" test_id="2" is_reportable="N"
+        lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Analysis QA Event -->
+    <analysis_qaevent id="1" qa_event_id="1"
+        analysis_id="1" completed_date="2023-11-15 14:00:00"
+        lastupdated="2023-12-01 12:00:00" />
+    <analysis_qaevent id="2" qa_event_id="2"
+        analysis_id="2" completed_date="2023-11-16 14:00:00"
+        lastupdated="2023-12-01 12:00:00" />
 
     <referral_type id="1" name="Confirmation"
         description="Sent out to confirm result"
