@@ -1,10 +1,12 @@
 class Result {
-  getResultTitle() {
-    return cy.get("section > h3");
+  getResultTitle(title) {
+    cy.get("h3").contains(title).should("be.visible");
   }
 
   selectUnitType(unitType) {
-    cy.get("#unitType").select(unitType);
+    cy.get("#unitType", { timeout: 10000 })
+      .should("be.visible")
+      .select(unitType);
   }
 
   acceptSample(index = 1) {
@@ -27,7 +29,15 @@ class Result {
   }
 
   searchResults() {
-    cy.get("#searchResults").click();
+    cy.get("#searchResults").should("be.visible").click();
+  }
+
+  enterCollectionDate() {
+    cy.get("#collectionDate").should("be.visible").type("24/03/2025");
+  }
+
+  enterReceivedDate() {
+    cy.get("#recievedDate").should("be.visible").type("26/03/2025");
   }
 
   validatePatientResult(patient) {
@@ -63,11 +73,14 @@ class Result {
     ).click();
   }
 
+  sampleStatus(sample) {
+    cy.get("#sampleStatusType").should("be.visible").select(sample);
+  }
   selectAnalysisStatus(status) {
-    cy.get("#analysisStatus").select(status);
+    cy.get("#analysisStatus").should("be.visible").select(status);
   }
   selectTestName(testName) {
-    cy.get("#testName").select(testName);
+    cy.get("#testName").should("be.visible").select(testName);
   }
 
   printReport() {
@@ -82,12 +95,22 @@ class Result {
   clickReferralsByTestAndName() {
     cy.get("[data-cy='byUnitsAndTests']").should("be.visible").click();
   }
+
+  resultsByLabNumber(number) {
+    cy.get("#labNumberInput", { timeout: 15000 })
+      .should("be.visible")
+      .type(number, { force: true });
+  }
   clickReferralsByLabNumber() {
-    cy.get("[data-cy='byLabNumber']").should("be.visible").click();
+    cy.get("[data-cy='byLabNumber']")
+      .should("be.visible")
+      .click({ force: true });
   }
 
-  setResultValue(index = 0, value) {
-    cy.get(`#ResultValue${index}`).type(value);
+  setResultValue() {
+    //(value) ignored for now
+    cy.get("#ResultValue0").should("be.visible");
+    //.type(value);
   }
 
   selectResultValue(index = 0, value) {

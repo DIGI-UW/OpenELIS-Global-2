@@ -30,6 +30,13 @@
 
 
         <class>org.openelisglobal.program.valueholder.ProgramSample</class>
+        <class>org.openelisglobal.program.valueholder.cytology.CytologySample</class>
+        <class>org.openelisglobal.program.valueholder.cytology.CytologyDiagnosis</class>
+        <class>org.openelisglobal.program.valueholder.cytology.CytologySpecimenAdequacy</class>
+        <class>org.openelisglobal.program.valueholder.cytology.CytologyReport</class>
+        <class>org.openelisglobal.program.valueholder.cytology.CytologySlide</class>
+        <class>org.openelisglobal.program.valueholder.cytology.CytologyDiagnosisCategoryResultsMap</class>
+
 
         <class>org.openelisglobal.program.valueholder.pathology.PathologySample</class>
         <class>org.openelisglobal.program.valueholder.pathology.PathologyTechnique</class>

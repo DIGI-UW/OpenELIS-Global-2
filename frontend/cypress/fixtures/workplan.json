@@ -1,5 +1,6 @@
 {
   "testName": "Amylase(Serum)",
+  "bilanPanelType": "Bilan Biochimique",
   "panelType": "Serologie VIH",
   "unitBioType": "Biochemistry",
   "unitType": "Serology-Immunology",

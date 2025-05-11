@@ -4,6 +4,7 @@ import GlobalMenuConfigPage from "./GlobalMenuConfigPage";
 import ProviderMenuPage from "./ProviderMenu";
 import ProgramEntryPage from "./ProgramEntryPage";
 import ProviderManagementPage from "./ProviderManagementPage";
+import OrganizationManagementPage from "./OrganizationManagementPage";
 
 class AdminPage {
   constructor() {}
@@ -19,6 +20,16 @@ class AdminPage {
     cy.contains("Provider Management").should("be.visible");
     return new ProviderManagementPage();
   }
+
+  goToOrganizationManagement() {
+    cy.get("[data-cy='orgMgmnt']").should("be.visible");
+    cy.get("[data-cy='orgMgmnt']").click();
+    cy.url().should("include", "#organizationManagement");
+    cy.contains("Organization Management").should("be.visible");
+
+    return new OrganizationManagementPage();
+  }
+
   //lab number management
   goToLabNumberManagementPage() {
     cy.get("[data-cy='labNumberMgmnt']").should("be.visible");
