@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+
+    <system_user id="1" external_id="ext-001"
+        login_name="admin" last_name="Admin" first_name="System" initials="SA"
+        is_active="Y" is_employee="Y" lastupdated="2024-01-01 00:00:00.000000" />
+
+    <scriptlet id="1" name="Integration Test Scriptlet" />
+
+    <project id="101" name="Integration Test Project"
+        sys_user_id="1" description="Used for integration test"
+        started_date="2023-01-01 00:00:00"
+        completed_date="2023-12-31 00:00:00" is_active="Y"
+        reference_to="REF-101" program_code="PG101"
+        lastupdated="2024-01-01 00:00:00" scriptlet_id="1" local_abbrev="1001"
+        display_key="project.integration.test" />
+
+    <organization id="3" name="Org 3"
+        mls_sentinel_lab_flag="N" />
+    <organization id="7" name="Org 7"
+        mls_sentinel_lab_flag="N" />
+    <organization id="1329" name="Org 1329"
+        mls_sentinel_lab_flag="N" />
+
+    <project_parameter id="3001" param_name="Param1"
+        value="SomeValue" operation="IN" projparam_type="A" project_id="101" />
+
+    <sample id="101" accession_number="ACC101"
+        is_confirmation="true" entered_date="2025-05-02 10:00:00"
+        received_date="2025-05-02 09:00:00" />
+
+    <sample_projects samp_id="101" proj_id="101"
+        is_permanent="Y" id="1001" />
+</dataset>
