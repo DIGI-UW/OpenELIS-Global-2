@@ -149,7 +149,7 @@ class HomePage {
 
   goToResultsByOrder() {
     cy.get("[data-cy='menuButton']").click();
-    cy.get("span#menu_results_dropdown").click();
+    cy.get("span#menu_results").click();
     cy.get("#menu_results_accession_nav").click();
 
     return new Result();
@@ -157,8 +157,8 @@ class HomePage {
 
   goToResultsByPatient() {
     this.openNavigationMenu();
-    cy.contains("span", "Results").click();
-    cy.contains("span", "By Patient").click();
+    cy.get("span#menu_results").click();
+    cy.get("#menu_results_patient").click();
 
     return new Result();
   }
