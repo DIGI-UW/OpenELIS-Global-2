@@ -932,9 +932,9 @@ function TestActivation() {
       ...(changedTestActivationData?.activeTestList?.flatMap(
         (sample) => sample.activeTests,
       ) || []),
-      // ...(changedTestActivationData?.activeTestList?.flatMap(
-      //   (sample) => sample.inactiveTests,
-      // ) || []),
+      ...(changedTestActivationData?.activeTestList?.flatMap(
+        (sample) => sample.inactiveTests,
+      ) || []),
       ...(changedTestActivationData?.inactiveTestList?.flatMap(
         (sample) => sample.activeTests,
       ) || []),
@@ -1283,6 +1283,26 @@ function TestActivation() {
                         const newArrangement = [...prev];
                         newArrangement[index] = updatedTests;
                         return newArrangement;
+                      });
+                      setJsonChangeList((prev) => {
+                        const updatedActivateTest = prev.activateTest.map(
+                          (test) => {
+                            const matchIndex = updatedTests.findIndex(
+                              (t) => t.id === test.id,
+                            );
+                            if (matchIndex !== -1) {
+                              return {
+                                ...test,
+                                sortOrder: matchIndex,
+                              };
+                            }
+                            return test;
+                          },
+                        );
+                        return {
+                          ...prev,
+                          activateTest: updatedActivateTest,
+                        };
                       });
                     }}
                   />

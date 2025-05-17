@@ -9,6 +9,7 @@
   "label.button.clear": "Effacer",
   "label.button.confirm": "Confirmer",
   "label.button.previous": "Précédent",
+  "accept.action.button": "Accepter",
   "reject.action.button": "Rejeter",
   "label.button.confirmAction": "Confirmer l'action",
   "label.button.confirmTitle": "Es-tu sûr ?",
@@ -1406,5 +1407,10 @@
   "configuration.selectList.assign.description": "La nouvelle entrée peut être affectée aux tests ou être enregistrée sans affectation. Sélectionnez un ou plusieurs tests pour l’affectation, puis ajustez l’ordre d’affichage. Si la nouvelle entrée doit être la valeur normale du test sélectionné, cochez la case intitulée « Normal ». Si vous souhaitez que le technicien saisisse du texte avec la sélection du résultat pour qualifier davantage les résultats, cochez la case intitulée « Qualifiable ». Par exemple, si les options correspondent à une liste d’organismes et que la dernière option est « Autre », l’utilisateur pourra saisir un organisme qui ne figure pas dans la liste.",
   "configuration.selectList.assign.header": "Affecter la nouvelle sélection de résultat au test",
   "configuration.selectList.assign.new": "Nouvelle option de liste de sélection",
-  "configuration.selectList.confirmChange": "La valeur normale sera modifiée de %oldvalue% à %newvalue%. Voulez-vous vraiment continuer ?"
+  "configuration.selectList.confirmChange": "La valeur normale sera modifiée de %oldvalue% à %newvalue%. Voulez-vous vraiment continuer ?",
+  "panel.new": "Nouveau panneau",
+  "panel.existing": "Panneaux existants",
+  "panel.existing.inactive": "Panneaux inactifs (Attribuer des tests pour activer)",
+  "configuration.panel.confirmation.explain": "Ce panneau ne sera pas actif tant qu'au moins un test ne lui aura pas été attribué.",
+  "input.error.same.panel.type": "Un panneau existant avec le même nom a été trouvé. Veuillez annuler ou utiliser un nom différent."
 }
