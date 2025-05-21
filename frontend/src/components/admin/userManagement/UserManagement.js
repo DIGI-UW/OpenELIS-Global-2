@@ -1,8 +1,6 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import {
-  Form,
   Heading,
-  Button,
   Loading,
   Grid,
   Column,
@@ -21,13 +19,9 @@ import {
   Search,
   Select,
   SelectItem,
-  Stack,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
-  postToOpenElisServerFormData,
-  postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
 import { NotificationContext } from "../../layout/Layout.js";

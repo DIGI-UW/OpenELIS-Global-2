@@ -1,9 +1,7 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import {
   Form,
-  FormLabel,
   Heading,
-  TextArea,
   TextInput,
   Select,
   SelectItem,
@@ -18,7 +16,6 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
-import Questionnaire from "../../common/Questionnaire";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,

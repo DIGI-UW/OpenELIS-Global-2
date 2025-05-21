@@ -4,18 +4,11 @@ import {
   Column,
   Section,
   Heading,
-  Form,
-  TextInput,
-  UnorderedList,
-  ListItem,
-  RadioButton,
   Button,
   Loading,
   Select,
   SelectItem,
-  PasswordInput,
   Checkbox,
-  FormGroup,
   Tag,
 } from "@carbon/react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
@@ -30,7 +23,6 @@ import {
 } from "../../layout/Layout.js";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
 

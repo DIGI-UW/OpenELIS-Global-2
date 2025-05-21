@@ -7,8 +7,6 @@ import {
   Form,
   Grid,
   Pagination,
-  Select,
-  SelectItem,
   TextArea,
   TextInput,
 } from "@carbon/react";
@@ -19,10 +17,8 @@ import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSe
 import { NotificationKinds } from "../common/CustomNotification";
 import { postToOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
-import { getFromOpenElisServer } from "../utils/Utils";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
-import ActionPaginationButtonType from "../common/ActionPaginationButtonType";
 import config from "../../config.json";
 
 const AnalyserResults = (props) => {

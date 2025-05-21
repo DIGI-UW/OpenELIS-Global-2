@@ -1,7 +1,6 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import {
   Heading,
-  Button,
   Loading,
   Grid,
   Column,
@@ -36,7 +35,6 @@ import {
 } from "../../common/CustomNotification.js";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
-import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
 
 let breadcrumbs = [

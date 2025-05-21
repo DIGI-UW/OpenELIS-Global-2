@@ -15,9 +15,7 @@ import {
   TextArea,
   TextInput,
   Table,
-  RadioButton,
   UnorderedList,
-  ListItem,
   Checkbox,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -31,7 +29,6 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
 import CustomDatePicker from "../../common/CustomDatePicker";
-import { sampleObject } from "../../addOrder/Index";
 
 const initialReportFormValues = {
   type: undefined,

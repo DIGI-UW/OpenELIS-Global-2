@@ -19,7 +19,7 @@ const usePatientResultsData = (patientUuid: string): LoadingState => {
     let unmounted = false;
     if (patientUuid) {
       const [data, reloadedDataPromise] = loadPatientData(patientUuid);
-      if (!!data) setState({ sortedObs: data, loaded: true, error: undefined });
+      if (data) setState({ sortedObs: data, loaded: true, error: undefined });
       reloadedDataPromise.then((reloadedData) => {
         if (reloadedData !== data && !unmounted)
           setState({ sortedObs: reloadedData, loaded: true, error: undefined });

@@ -1,8 +1,8 @@
 import React, { useContext, useState, useEffect } from "react";
 import { AlertDialog } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
-import { Heading, Grid, Column, Section, Loading } from "@carbon/react";
-import { injectIntl, FormattedMessage, useIntl } from "react-intl";
+import { Loading } from "@carbon/react";
+import { injectIntl, useIntl } from "react-intl";
 import PatientStatusReport from "../common/PatientStatusReport";
 import StatisticsReport from "./StatisticsReport";
 import ReferredOut from "./ReferredOut";

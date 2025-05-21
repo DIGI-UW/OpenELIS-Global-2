@@ -1,36 +1,17 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import {
-  Form,
   Heading,
   Button,
   Loading,
   Grid,
   Column,
   Section,
-  DataTable,
-  Table,
-  TableHead,
-  TableRow,
-  TableBody,
-  TableHeader,
-  TableCell,
-  TableSelectRow,
-  TableSelectAll,
-  TableContainer,
-  Pagination,
-  Search,
-  Select,
-  SelectItem,
-  Stack,
   TextInput,
   Checkbox,
   Modal,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
-  postToOpenElisServerFormData,
-  postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
 import { NotificationContext } from "../../layout/Layout.js";

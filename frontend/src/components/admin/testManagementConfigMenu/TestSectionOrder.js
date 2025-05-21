@@ -1,33 +1,7 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
-import {
-  Form,
-  Heading,
-  Button,
-  Loading,
-  Grid,
-  Column,
-  Section,
-  DataTable,
-  Table,
-  TableHead,
-  TableRow,
-  TableBody,
-  TableHeader,
-  TableCell,
-  TableSelectRow,
-  TableSelectAll,
-  TableContainer,
-  Pagination,
-  Search,
-  Select,
-  SelectItem,
-  Stack,
-} from "@carbon/react";
+import { Heading, Button, Loading, Grid, Column, Section } from "@carbon/react";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
-  postToOpenElisServerFormData,
-  postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
 import { NotificationContext } from "../../layout/Layout.js";
@@ -37,8 +11,6 @@ import {
 } from "../../common/CustomNotification.js";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
-import CustomCheckBox from "../../common/CustomCheckBox.js";
-import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
 import { CustomCommonSortableOrderList } from "./sortableListComponent/SortableList.js";
 
 let breadcrumbs = [

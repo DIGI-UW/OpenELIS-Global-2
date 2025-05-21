@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect, useRef } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { ConfigurationContext } from "../layout/Layout";
 import { Route } from "react-router-dom";

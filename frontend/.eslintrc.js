@@ -1,5 +1,5 @@
 module.exports = {
-  plugins: ["react", "react-hooks", "prettier"],
+  plugins: ["react", "react-hooks", "prettier", "unused-imports"],
   extends: [
     "prettier",
     "eslint:recommended",
@@ -23,7 +23,16 @@ module.exports = {
     "react/react-in-jsx-scope": "off",
     "react/no-unescaped-entities": "warn",
     "react-hooks/exhaustive-deps": "off",
-    "no-unused-vars": "warn",
+    "unused-imports/no-unused-imports": "error",
+    "unused-imports/no-unused-vars": [
+      "warn",
+      {
+        vars: "all",
+        varsIgnorePattern: "^_",
+        args: "after-used",
+        argsIgnorePattern: "^_",
+      },
+    ],
     "@typescript-eslint/no-empty-function": "warn",
     "prettier/prettier": ["warn"],
   },
@@ -31,13 +40,13 @@ module.exports = {
     {
       files: ["*.ts", "*.tsx"],
       parser: "@typescript-eslint/parser",
-      plugins: ["@typescript-eslint"],
+      plugins: ["@typescript-eslint", "unused-imports"],
       extends: [
         "plugin:react/recommended",
         "plugin:@typescript-eslint/recommended",
       ],
       parserOptions: {
-        ecmaversion: 2018,
+        ecmaVersion: 2018,
         sourceType: "module",
         ecmaFeatures: {
           jsx: true,
@@ -48,10 +57,6 @@ module.exports = {
           version: "detect",
         },
       },
-
-      /**
-       * Typescript Rules
-       */
       rules: {
         "react/prop-types": "warn",
         "react/react-in-jsx-scope": "off",
@@ -59,6 +64,16 @@ module.exports = {
         "@typescript-eslint/no-empty-interface": "warn",
         "no-case-declarations": "off",
         "react/display-name": "off",
+        "unused-imports/no-unused-imports": "error",
+        "unused-imports/no-unused-vars": [
+          "warn",
+          {
+            vars: "all",
+            varsIgnorePattern: "^_",
+            args: "after-used",
+            argsIgnorePattern: "^_",
+          },
+        ],
       },
     },
   ],

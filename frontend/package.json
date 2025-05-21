@@ -56,7 +56,11 @@
     "cy:run": "cypress run --headless --browser chrome",
     "cy:open": "cypress open --browser chrome",
     "format": "prettier ./ --write",
-    "check-format": "prettier ./ --check"
+    "check-format": "prettier ./ --check",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
+    "validate": "npm run lint && npm run check-format",
+    "cleanup": "npm run lint:fix && npm run format"
   },
   "eslintConfig": {
     "extends": [
@@ -84,9 +88,11 @@
     "cypress-xpath": "^2.0.1",
     "eslint": "^8.48.0",
     "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-cypress": "^2.13.3",
     "eslint-plugin-prettier": "^5.0.0",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-unused-imports": "^4.1.4",
     "prettier": "^3.4.2",
     "sass": "^1.57.1"
   }

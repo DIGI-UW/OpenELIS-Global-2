@@ -7,10 +7,7 @@ import {
   Form,
   Grid,
   Pagination,
-  Select,
-  SelectItem,
   TextArea,
-  TextInput,
 } from "@carbon/react";
 import { Copy } from "@carbon/icons-react";
 import DataTable from "react-data-table-component";
@@ -19,7 +16,6 @@ import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSe
 import { NotificationKinds } from "../common/CustomNotification";
 import { postToOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
-import { getFromOpenElisServer } from "../utils/Utils";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import config from "../../config.json";

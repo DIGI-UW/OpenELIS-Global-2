@@ -1,5 +1,5 @@
 import React from "react";
-import { Grid, Column, Section, Tag, Tile } from "@carbon/react";
+import { Grid, Column, Section, Tag } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import Avatar from "react-avatar";
 import { openPatientResults } from "./searchService";

@@ -17,13 +17,11 @@ import {
   getFromOpenElisServer,
   postToOpenElisServer,
   postToOpenElisServerFormData,
-  postToOpenElisServerFullResponse,
 } from "../../../utils/Utils.js";
 import {
   AlertDialog,
   NotificationKinds,
 } from "../../../common/CustomNotification.js";
-import config from "../../../../config.json";
 import { NotificationContext } from "../../../layout/Layout.js";
 
 import { FormattedMessage, useIntl } from "react-intl";

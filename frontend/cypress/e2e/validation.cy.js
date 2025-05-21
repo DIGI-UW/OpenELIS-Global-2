@@ -1,7 +1,5 @@
 import LoginPage from "../pages/LoginPage";
-import HomePage from "../pages/HomePage";
 import PatientEntryPage from "../pages/PatientEntryPage";
-import Validation from "../pages/Validation";
 
 let homePage = null;
 let loginPage = null;

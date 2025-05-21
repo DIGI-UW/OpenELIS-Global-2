@@ -114,8 +114,9 @@ accessing any of these links, simply follow these steps:
 1.  After making UI changes to the [frontend](./frontend/) directory , run the
     formatter to properly format the Frontend code
 
-        cd frontend
-        npm run format
+    - **cd frontend**
+    - **npm run cleanup** - Cleans up code (removes unused imports/variables) and formats it
+    - **npm run validate** - Validates code meets all standards and formatting rules
 
 2.  After making changes to the [backend](./src/) directory, run the formatter
     to properly format the Java code

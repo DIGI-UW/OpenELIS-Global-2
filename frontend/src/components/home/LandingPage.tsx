@@ -1,14 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
-import {
-  Grid,
-  Column,
-  TextInput,
-  Button,
-  Checkbox,
-  Tile,
-  Form,
-} from "@carbon/react";
-import { FormattedMessage, useIntl } from "react-intl";
+import { Grid, Column, TextInput, Button, Tile, Form } from "@carbon/react";
+import { useIntl } from "react-intl";
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
 import { ConfigurationContext } from "../layout/Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";

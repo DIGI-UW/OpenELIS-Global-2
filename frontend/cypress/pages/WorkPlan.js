@@ -1,5 +1,3 @@
-import HomePage from "./HomePage";
-
 class WorkPlan {
   constructor() {}
 

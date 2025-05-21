@@ -29,7 +29,6 @@ import {
 } from "../../layout/Layout.js";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
 import CustomDatePicker from "../../common/CustomDatePicker.js";

@@ -19,7 +19,6 @@ import {
   Tab,
   Tabs,
   TabList,
-  Tag,
 } from "@carbon/react";
 import "./Dashboard.css";
 import { Minimize, Maximize, ArrowLeft, ArrowRight } from "@carbon/react/icons";

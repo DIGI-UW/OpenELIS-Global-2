@@ -1,20 +1,16 @@
 import React, { useState } from "react";
 import {
-  Form,
   FormLabel,
-  Heading,
   TextArea,
   TextInput,
   Select,
   SelectItem,
   Button,
-  Loading,
   Grid,
   Column,
-  Section,
   Toggle,
 } from "@carbon/react";
-import { TrashCan, Save, AddAlt, QX } from "@carbon/icons-react";
+import { TrashCan, Save, AddAlt } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import Questionnaire from "../../common/Questionnaire";
 
