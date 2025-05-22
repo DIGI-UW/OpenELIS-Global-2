@@ -1,5 +1,6 @@
 import LoginPage from "../pages/LoginPage";
 import ProviderManagementPage from "../pages/ProviderManagementPage";
+import OrganizationManagementPage from "../pages/OrganizationManagementPage";
 import AdminPage from "../pages/AdminPage";
 
 let homePage = null;
@@ -8,16 +9,17 @@ let adminPage = new AdminPage();
 let orderEntityPage = null;
 let patientEntryPage = null;
 let providerManagementPage = new ProviderManagementPage();
+let orgMgmnt = new OrganizationManagementPage();
 
 before("login", () => {
   loginPage = new LoginPage();
   loginPage.visit();
 });
 
-describe("Add requester details first", function () {
-  it("Navidates to admin", function () {
+describe("Add requester, institute and site first", function () {
+  it("Navidates to Admin", function () {
     homePage = loginPage.goToHomePage();
-    orderEntityPage = homePage.goToAdminPage();
+    orderEntityPage = homePage.goToAdminPageProgram();
     orderEntityPage = adminPage.goToProviderManagementPage();
   });
 
@@ -27,16 +29,53 @@ describe("Add requester details first", function () {
     providerManagementPage.enterProviderFirstName();
     providerManagementPage.clickActiveDropdown();
     providerManagementPage.addProvider();
+    cy.reload();
+  });
+
+  it("Navidate to organisation Management", function () {
+    orderEntityPage = adminPage.goToOrganizationManagement();
+  });
+
+  it("Add organisation/site details", function () {
+    orgMgmnt.clickAddOrganization();
+    orgMgmnt.addOrgName();
+    orgMgmnt.activateOrganization();
+    orgMgmnt.addPrefix();
+    orgMgmnt.addParentOrg();
+    orgMgmnt.checkReferringClinic();
+    orgMgmnt.saveOrganization();
+  });
+
+  it("Validates the added site/organization", function () {
+    orderEntityPage = adminPage.goToOrganizationManagement();
+    orgMgmnt.searchOrganzation();
+    orgMgmnt.confirmOrganization();
+  });
+
+  it("Add institute details", function () {
+    orgMgmnt.clickAddOrganization();
+    orgMgmnt.addInstituteName();
+    orgMgmnt.activateOrganization();
+    //orgMgmnt.addInstitutePrefix();
+    orgMgmnt.addParentOrg();
+    orgMgmnt.checkReferalLab();
+    orgMgmnt.saveOrganization();
+  });
+
+  it("Validates the added institute", function () {
+    orderEntityPage = adminPage.goToOrganizationManagement();
+    orgMgmnt.searchInstitute();
+    orgMgmnt.confirmInstitute();
   });
 });
 
 describe("Order Entity", function () {
-  it("User Visits Home Page and goes to Order entity Page ", function () {
+  it("Navigate to Home Page then to Order entity Page ", function () {
     homePage = loginPage.goToHomePage();
     orderEntityPage = homePage.goToOrderPage();
   });
 
-  it("Should search patient in the search box", function () {
+  it("Search patient in the search box", function () {
     patientEntryPage = orderEntityPage.getPatientPage();
     cy.wait(1000);
     cy.fixture("Patient").then((patient) => {
@@ -57,50 +96,44 @@ describe("Order Entity", function () {
     orderEntityPage.clickNextButton();
   });
 
-  it("User goes to program selection", function () {
+  it("Navigate to program selection", function () {
     orderEntityPage.selectCytology();
     cy.wait(200);
     orderEntityPage.clickNextButton();
   });
 
-  it("User should select sample type option", function () {
+  it("Select sample type", function () {
     cy.fixture("Order").then((order) => {
       order.samples.forEach((sample) => {
         orderEntityPage.selectSampleTypeOption(sample.sampleType);
         orderEntityPage.checkPanelCheckBoxField();
+        orderEntityPage.collectionDate(sample.collectionDate);
       });
     });
-    cy.wait(1000);
+    orderEntityPage.referTest();
+    orderEntityPage.selectReferralReason();
+    orderEntityPage.selectInstitute();
     orderEntityPage.clickNextButton();
   });
 
-  it("Should do a validation check for labNo and then click generate Lab Order Number and store it in a fixture", function () {
+  it("Generate Lab Order Number, Request and Received Dates", function () {
     cy.fixture("Order").then((order) => {
-      orderEntityPage.validateAcessionNumber(order.invalidLabNo);
-    });
-
-    orderEntityPage.generateLabOrderNumber();
-
-    cy.get("#labNo").then(($input) => {
-      const generatedOrderNumber = $input.val();
-
-      cy.fixture("Order").then((order) => {
-        order.labNo = generatedOrderNumber;
-        cy.writeFile("cypress/fixtures/EnteredOrder.json", order);
+      order.samples.forEach((sample) => {
+        orderEntityPage.requestDate(sample.receivedDate);
+        orderEntityPage.receivedDate(sample.receivedDate);
       });
     });
-    cy.wait(1000);
+    orderEntityPage.generateLabOrderNumber();
   });
 
-  it("should Enter or select site name", function () {
-    cy.scrollTo("top");
+  it("Select site name", function () {
     cy.wait(1000);
     cy.fixture("Order").then((order) => {
       orderEntityPage.enterSiteName(order.siteName);
     });
   });
 
-  it("should enter requester first and last name's", function () {
+  it("Enter requester first and last names", function () {
     cy.fixture("Order").then((order) => {
       orderEntityPage.enterRequesterLastAndFirstName(
         order.requester.fullName,

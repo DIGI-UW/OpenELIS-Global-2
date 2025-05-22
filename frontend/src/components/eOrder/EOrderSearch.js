@@ -121,7 +121,7 @@ const EOrderSearch = ({
           <Column lg={16} md={8} sm={4}>
             <br></br>
           </Column>
-          <Column lg={8} md={4} sm={4}>
+          <Column lg={9} md={4} sm={4}>
             <TextInput
               id="searchValue"
               labelText={intl.formatMessage({ id: "eorder.searchValue" })}
@@ -148,7 +148,7 @@ const EOrderSearch = ({
               />
             </div>
           </Column>
-          <Column lg={2}></Column>
+          <Column lg={1}></Column>
           <Column lg={4}>
             <Button onClick={searchByIdentifier}>
               <FormattedMessage id="label.button.search" />
@@ -164,7 +164,7 @@ const EOrderSearch = ({
           <Column lg={16} md={8} sm={4}>
             <br></br>
           </Column>
-          <Column lg={2} md={2} sm={2}>
+          <Column lg={3} md={2} sm={2}>
             <CustomDatePicker
               id={"eOrder_startDate"}
               labelText={intl.formatMessage({ id: "eorder.date.start" })}
@@ -173,7 +173,7 @@ const EOrderSearch = ({
               onChange={(date) => setStartDate(date)}
             />
           </Column>
-          <Column lg={2} md={2} sm={2}>
+          <Column lg={3} md={2} sm={2}>
             <CustomDatePicker
               id={"eOrder_startDate"}
               labelText={intl.formatMessage({ id: "eorder.date.end" })}
@@ -182,7 +182,7 @@ const EOrderSearch = ({
               onChange={(date) => setEndDate(date)}
             />
           </Column>
-          <Column lg={4} md={2} sm={2}>
+          <Column lg={3} md={2} sm={2}>
             <Select
               id="statusId"
               labelText={intl.formatMessage({ id: "eorder.status" })}
@@ -215,7 +215,7 @@ const EOrderSearch = ({
               />
             </div>
           </Column>
-          <Column lg={2}></Column>
+          <Column lg={1}></Column>
           <Column lg={4} md={4} sm={2}>
             <Button onClick={searchByDateAndStatus}>
               <FormattedMessage id="label.button.search" />

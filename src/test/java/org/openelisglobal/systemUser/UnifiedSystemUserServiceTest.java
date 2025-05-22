@@ -37,9 +37,9 @@ public class UnifiedSystemUserServiceTest extends BaseWebContextSensitiveTest {
         // showing exiting system users
         List<SystemUser> systemUsers = systemUserService.getAll();
 
-        assertEquals("John", systemUsers.get(0).getFirstName());
-        assertEquals("Alice", systemUsers.get(1).getFirstName());
-        assertEquals("Bob", systemUsers.get(2).getFirstName());
+        assertEquals("John", systemUsers.get(1).getFirstName());
+        assertEquals("Alice", systemUsers.get(2).getFirstName());
+        assertEquals("Bob", systemUsers.get(3).getFirstName());
 
         // showing existing user roles
         List<UserRole> userRoles = userRoleService.getAll();
@@ -50,9 +50,9 @@ public class UnifiedSystemUserServiceTest extends BaseWebContextSensitiveTest {
 
         // showing existing login users
         List<LoginUser> loginUsers = loginUserService.getAll();
-        assertEquals("jdoe", loginUsers.get(0).getLoginName());
-        assertEquals("asmith", loginUsers.get(1).getLoginName());
-        assertEquals("bwhite", loginUsers.get(2).getLoginName());
+        assertEquals("jdoe", loginUsers.get(5).getLoginName());
+        assertEquals("asmith", loginUsers.get(6).getLoginName());
+        assertEquals("bwhite", loginUsers.get(7).getLoginName());
 
         /*
          * unifiedSytemUser service method deleting a system user this deletes all
@@ -66,9 +66,9 @@ public class UnifiedSystemUserServiceTest extends BaseWebContextSensitiveTest {
             System.out.print(user.getLoginName() + " ");
         });
 
-        assertEquals("John", systemUsersd.get(0).getFirstName());
-        assertEquals("Alice", systemUsersd.get(1).getFirstName());
-        assertEquals("Bob", systemUsersd.get(2).getFirstName());
+        assertEquals("John", systemUsersd.get(1).getFirstName());
+        assertEquals("Alice", systemUsersd.get(2).getFirstName());
+        assertEquals("Bob", systemUsersd.get(3).getFirstName());
 
         // expect no exiting user after method invocation
         List<UserRole> userRolesd = userRoleService.getAll();

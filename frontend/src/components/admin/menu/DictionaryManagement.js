@@ -1,5 +1,4 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import "../../Style.css";
+import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import {
   Button,
   Column,
@@ -8,7 +7,6 @@ import {
   Form,
   Grid,
   Heading,
-  Link,
   Modal,
   Pagination,
   Search,
@@ -23,19 +21,20 @@ import {
   TableSelectRow,
   TextInput,
 } from "@carbon/react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
+import {
+  AlertDialog,
+  NotificationKinds,
+} from "../../common/CustomNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
+import "../../Style.css";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
-import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
-import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
 
 function DictionaryManagement() {
   const intl = useIntl();
@@ -65,6 +64,7 @@ function DictionaryManagement() {
 
   const [selectedRowId, setSelectedRowId] = useState(null);
   const [modifyButton, setModifyButton] = useState(true);
+  const [deactivateButton, setDeactivateButton] = useState(true);
   const [editMode, setEditMode] = useState(true);
 
   const [paging, setPaging] = useState(null);
@@ -72,6 +72,14 @@ function DictionaryManagement() {
   const [isSearching, setIsSearching] = useState(false);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
   const [searchedMenuList, setSearchedMenuList] = useState([]);
+
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 530);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 530);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -293,8 +301,19 @@ function DictionaryManagement() {
           name="selectRowRadio"
           ariaLabel="selectRow"
           onSelect={() => {
+            const isActiveCell = row.cells.find((cell) =>
+              cell.id.endsWith(":isActive"),
+            );
+
+            let isActiveValue = "";
+            if (isActiveCell) {
+              isActiveValue = isActiveCell.value;
+            }
+
             setModifyButton(false);
             setSelectedRowId(row.id);
+
+            setDeactivateButton(isActiveValue !== "Y");
           }}
         />
       );
@@ -410,7 +429,7 @@ function DictionaryManagement() {
         ]}
       />
       <Grid fullWidth={true}>
-        <Column lg={16}>
+        <Column lg={16} md={8} sm={4}>
           <Section>
             <Heading>
               <FormattedMessage id="dictionary.label.modify" />
@@ -421,28 +440,42 @@ function DictionaryManagement() {
             <Form
               style={{
                 display: "flex",
+                flexDirection: isMobile ? "column" : "row",
+                gap: isMobile ? "1rem" : "2rem",
                 justifyContent: "space-between",
-                alignItems: "center",
+                alignItems: isMobile ? "stretch" : "center",
+                flexWrap: "wrap",
               }}
             >
               <Column
                 lg={16}
                 md={8}
                 sm={4}
-                style={{ display: "flex", gap: "10px" }}
+                style={{
+                  display: "flex",
+                  gap: isMobile ? "0.75rem" : "0.5rem",
+                  flexDirection: isMobile ? "column" : "row",
+                  width: isMobile ? "100%" : "auto",
+                  margin: "0",
+                }}
               >
-                <Button disabled={!editMode} onClick={() => setOpen(true)}>
+                <Button
+                  style={{ width: isMobile ? "100%" : "auto" }}
+                  disabled={!editMode}
+                  onClick={() => setOpen(true)}
+                >
                   {intl.formatMessage({
                     id: "admin.page.configuration.formEntryConfigMenu.button.add",
                   })}
-                </Button>{" "}
+                </Button>
                 <Button
+                  style={{ width: isMobile ? "100%" : "auto" }}
                   disabled={modifyButton}
                   type="submit"
                   onClick={handleOnClickOnModification}
                 >
                   <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.modify" />
-                </Button>{" "}
+                </Button>
                 <Modal
                   open={open}
                   size="sm"
@@ -516,7 +549,8 @@ function DictionaryManagement() {
                   />
                 </Modal>
                 <Button
-                  disabled={modifyButton}
+                  style={{ width: isMobile ? "100%" : "auto" }}
+                  disabled={modifyButton || deactivateButton}
                   onClick={handleDeactivation}
                   type="submit"
                 >
@@ -529,17 +563,36 @@ function DictionaryManagement() {
                 sm={4}
                 style={{
                   display: "flex",
-                  flexDirection: "column",
+                  flexDirection: isMobile ? "column" : "row",
                   alignItems: "center",
-                  gap: "10px",
+                  justifyContent: "center",
+                  gap: isMobile ? "0.75rem" : "0.5rem",
                 }}
               >
-                <Link>
+                <h4
+                  style={{
+                    margin: 0,
+                    fontSize: isMobile ? "1.2rem" : "1.2rem",
+                    textAlign: isMobile ? "center" : "left",
+                  }}
+                >
                   Showing {fromRecordCount} - {toRecordCount} of{" "}
                   {totalRecordCount}
-                </Link>
-                <div style={{ display: "flex", gap: "10px" }}>
+                </h4>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "0.5rem",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
                   <Button
+                    style={{
+                      minWidth: isMobile ? "2rem" : "2.5rem",
+                      minHeight: isMobile ? "2rem" : "2.5rem",
+                      padding: "0.5rem",
+                    }}
                     hasIconOnly
                     iconDescription="previous"
                     disabled={parseInt(fromRecordCount) <= 1}
@@ -547,13 +600,18 @@ function DictionaryManagement() {
                     renderIcon={ArrowLeft}
                   />
                   <Button
+                    style={{
+                      minWidth: isMobile ? "2rem" : "2.5rem",
+                      minHeight: isMobile ? "2rem" : "2.5rem",
+                      padding: "0.5rem",
+                    }}
                     hasIconOnly
                     iconDescription="next"
+                    renderIcon={ArrowRight}
+                    onClick={handleNextPage}
                     disabled={
                       parseInt(toRecordCount) >= parseInt(totalRecordCount)
                     }
-                    renderIcon={ArrowRight}
-                    onClick={handleNextPage}
                   />
                 </div>
               </Column>

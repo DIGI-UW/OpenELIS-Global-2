@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -22,18 +23,19 @@ public class SystemUserServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
-    @Test
     public void testDataInDataBase() {
         List<SystemUser> systemUsers = systemUserService.getAll();
-        systemUsers.forEach(systemUser -> {
-            System.out.print(systemUser.getLastName() + " ");
-        });
+        Assert.assertFalse("The system_users table should not be empty!", systemUsers.isEmpty());
+        for (SystemUser systemUser : systemUsers) {
+            Assert.assertNotNull("System user last name should not be null!", systemUser.getLastName());
+            Assert.assertFalse("System user last name should not be empty!", systemUser.getLastName().trim().isEmpty());
+        }
     }
 
     @Test
     public void getAllSystemUsers_shouldReturnAllSystemUsers() {
         List<SystemUser> systemUsers = systemUserService.getAllSystemUsers();
-        assertTrue(systemUsers.size() == 3);
+        assertTrue(systemUsers.size() == 4);
     }
 
     @Test
@@ -55,7 +57,7 @@ public class SystemUserServiceTest extends BaseWebContextSensitiveTest {
         systemUser.setIsEmployee("Y");
         systemUserService.save(systemUser);
         List<SystemUser> systemUsers = systemUserService.getAllSystemUsers();
-        assertTrue(systemUsers.size() == 4);
+        assertTrue(systemUsers.size() == 5);
 
     }
 
@@ -92,13 +94,13 @@ public class SystemUserServiceTest extends BaseWebContextSensitiveTest {
         systemUser.setIsEmployee("Y");
         systemUserService.insert(systemUser);
         List<SystemUser> systemUsers = systemUserService.getAllSystemUsers();
-        assertTrue(systemUsers.size() == 4);
+        assertTrue(systemUsers.size() == 5);
     }
 
     @Test
     public void getTotalSystemUserCount_shouldReturnTotalSystemUserCount() {
         Integer count = systemUserService.getTotalSystemUserCount();
-        assertEquals(3, count.intValue());
+        assertEquals(4, count.intValue());
     }
 
     @Test
@@ -138,6 +140,6 @@ public class SystemUserServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getTotalSearchedUserCount_shouldReturnTotalSearchedUserCount() {
         Integer count = systemUserService.getTotalSearchedUserCount("John");
-        assertEquals(1, count.intValue());
+        assertEquals(2, count.intValue());
     }
 }

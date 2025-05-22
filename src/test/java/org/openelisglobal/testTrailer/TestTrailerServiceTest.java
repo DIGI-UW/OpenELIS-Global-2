@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -25,10 +26,12 @@ public class TestTrailerServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getDatabaseData() {
         List<TestTrailer> testTrailers = testTrailerService.getAll();
-        testTrailers.forEach(testTrailer -> {
-            System.out.print(testTrailer.getTestTrailerName() + " ");
-        });
 
+        Assert.assertFalse("The test_trailer table should not be empty!", testTrailers.isEmpty());
+
+        for (TestTrailer testTrailer : testTrailers) {
+            Assert.assertNotNull("Test trailer name should not be null", testTrailer.getTestTrailerName());
+        }
     }
 
     @Test

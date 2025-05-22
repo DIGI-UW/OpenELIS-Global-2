@@ -57,10 +57,10 @@ function SearchOrder() {
                 labelText={<FormattedMessage id="search.label.accession" />}
               />
             </Column>
-            <Column lg={16}>
+            <Column lg={16} md={8} sm={4}>
               <br></br>
             </Column>
-            <Column lg={2}>
+            <Column lg={16} md={8} sm={4}>
               <Button data-cy="submit-button" type="submit">
                 <FormattedMessage id="label.button.submit" />
               </Button>

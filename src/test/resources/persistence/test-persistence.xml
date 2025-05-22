@@ -15,6 +15,7 @@
         <class>org.openelisglobal.security.converter.EncryptionConverter</class>
 
         <!-- entities -->
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerExperiment</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
@@ -29,6 +30,13 @@
 
 
         <class>org.openelisglobal.program.valueholder.ProgramSample</class>
+        <class>org.openelisglobal.program.valueholder.cytology.CytologySample</class>
+        <class>org.openelisglobal.program.valueholder.cytology.CytologyDiagnosis</class>
+        <class>org.openelisglobal.program.valueholder.cytology.CytologySpecimenAdequacy</class>
+        <class>org.openelisglobal.program.valueholder.cytology.CytologyReport</class>
+        <class>org.openelisglobal.program.valueholder.cytology.CytologySlide</class>
+        <class>org.openelisglobal.program.valueholder.cytology.CytologyDiagnosisCategoryResultsMap</class>
+
 
         <class>org.openelisglobal.program.valueholder.pathology.PathologySample</class>
         <class>org.openelisglobal.program.valueholder.pathology.PathologyTechnique</class>

@@ -628,6 +628,7 @@ function ReferredOutTests(props) {
               disabled={selectedRowIds.length === 0}
               kind="tertiary"
               type="button"
+              data-cy="print-report"
               onClick={handleReferredOutPatientPrint}
             >
               <FormattedMessage
@@ -642,6 +643,7 @@ function ReferredOutTests(props) {
                 disabled={selectedRowIds.length === responseDataShow.length}
                 kind="tertiary"
                 type="button"
+                data-cy="select-all-button"
                 onClick={() => {
                   const currentPageIndexes = responseDataShow
                     .slice((page - 1) * pageSize, page * pageSize)
@@ -663,6 +665,7 @@ function ReferredOutTests(props) {
               disabled={selectedRowIds.length === 0}
               kind="tertiary"
               type="button"
+              data-cy="select-none-button"
               onClick={() => setSelectedRowIds([])}
             >
               <FormattedMessage

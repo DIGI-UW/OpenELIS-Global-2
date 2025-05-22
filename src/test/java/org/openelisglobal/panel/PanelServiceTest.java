@@ -27,9 +27,15 @@ public class PanelServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void verifyTestData() {
         List<Panel> panels = panelService.getAllActivePanels();
-        System.out.println("Panels in DB: " + panels.size());
-        panels.forEach(panel -> System.out
-                .println(panel.getId() + " - " + panel.getPanelName() + " - " + panel.getDescription()));
+
+        assertNotNull("Panel list should not be null", panels);
+        assertFalse("Panel list should not be empty", panels.isEmpty());
+
+        panels.forEach(panel -> {
+            assertNotNull("Panel ID should not be null", panel.getId());
+            assertNotNull("Panel name should not be null", panel.getPanelName());
+            assertNotNull("Panel description should not be null", panel.getDescription());
+        });
     }
 
     @Test

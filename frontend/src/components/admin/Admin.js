@@ -134,7 +134,11 @@ function Admin() {
           >
             <FormattedMessage id="sidenav.label.admin.labNumber" />
           </SideNavLink>
-          <SideNavLink renderIcon={ChartBubble} href="#program">
+          <SideNavLink
+            data-cy="programEntry"
+            renderIcon={ChartBubble}
+            href="#program"
+          >
             <FormattedMessage id="sidenav.label.admin.program" />
           </SideNavLink>
           <SideNavLink
@@ -144,13 +148,18 @@ function Admin() {
           >
             <FormattedMessage id="provider.browse.title" />
           </SideNavLink>
-          <SideNavLink renderIcon={QrCode} href="#barcodeConfiguration">
+          <SideNavLink
+            data-cy="barcodeConfig"
+            renderIcon={QrCode}
+            href="#barcodeConfiguration"
+          >
             <FormattedMessage id="sidenav.label.admin.barcodeconfiguration" />
           </SideNavLink>
           <SideNavLink href="#PluginFile" renderIcon={BootVolumeAlt}>
             <FormattedMessage id="sidenav.label.admin.Listplugin" />
           </SideNavLink>
           <SideNavLink
+            data-cy="orgMgmnt"
             renderIcon={ContainerSoftware}
             href="#organizationManagement"
           >

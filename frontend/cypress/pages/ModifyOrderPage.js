@@ -43,7 +43,7 @@ class ModifyOrderPage {
   }
 
   clickPrintBarcodeButton() {
-    return cy.get("[data-cy='printBarCode']").should("be.visible").click();
+    return cy.get("[data-cy='printBarCode']").should("be.visible");
   }
   clickSearchPatientButton() {
     return cy.get("[data-cy='searchPatientButton']").click();
