@@ -1,9 +1,0 @@
-[main]
-host = https://app.transifex.com
-
-[openelis-global2.openelis.demo-resource]
-file_filter = frontend/src/languages/<lang>.json
-source_file = frontend/src/languages/en.json
-source_lang = en
-type = KEYVALUEJSON
-
