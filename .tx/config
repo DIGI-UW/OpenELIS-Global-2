@@ -1,0 +1,12 @@
+
+[main]
+host = https://www.transifex.com
+
+[o:openmrs:p:openelis-1:r:enjson]
+file_filter            = frontend/src/languages/<lang>.json
+source_file            = frontend/src/languages/en.json
+source_lang            = en
+type                   = KEYVALUEJSON
+replace_edited_strings = false
+keep_translations      = true
+

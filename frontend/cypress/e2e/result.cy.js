@@ -287,7 +287,8 @@ describe("Result By Range Of Order", function () {
 });
 
 describe("Result By Test And Status", function () {
-  before("navigate to Result By Test And Status", function () {
+  // This will run before every test case
+  beforeEach("Navigate to Results page", function () {
     homePage = loginPage.goToHomePage();
     result = homePage.goToResultsByTestAndStatus();
   });
@@ -296,6 +297,18 @@ describe("Result By Test And Status", function () {
     cy.fixture("result").then((res) => {
       result.getResultTitle(res.pageTitle);
     });
+  });
+
+  it("Search by TestName", function () {
+    cy.fixture("workplan").then((order) => {
+      result.selectTestName(order.testName);
+      result.searchResults();
+      result.expandSampleDetails();
+    });
+    cy.fixture("result").then((res) => {
+      result.selectTestMethod(res.pcrTestMethod);
+    });
+    result.submitResults();
   });
 
   it("Search by Collection Date", function () {
@@ -307,7 +320,6 @@ describe("Result By Test And Status", function () {
       result.selectTestMethod(res.pcrTestMethod);
     });
     result.submitResults();
-    cy.reload();
   });
 
   it("Search by Received Date", function () {
@@ -318,7 +330,6 @@ describe("Result By Test And Status", function () {
       result.selectTestMethod(res.pcrTestMethod);
     });
     result.submitResults();
-    cy.reload();
   });
 
   it("Search by Sample status", function () {
@@ -329,7 +340,6 @@ describe("Result By Test And Status", function () {
       result.selectTestMethod(res.pcrTestMethod);
     });
     result.submitResults();
-    cy.reload();
   });
 
   it("Search by Test Analysis", function () {
@@ -337,19 +347,6 @@ describe("Result By Test And Status", function () {
       result.selectAnalysisStatus(res.analysisStatus);
       result.searchResults();
       result.expandSampleDetails();
-      result.selectTestMethod(res.pcrTestMethod);
-    });
-    result.submitResults();
-  });
-
-  it("Search by TestName", function () {
-    cy.reload();
-    cy.fixture("workplan").then((order) => {
-      result.selectTestName(order.testName);
-      result.searchResults();
-      result.expandSampleDetails();
-    });
-    cy.fixture("result").then((res) => {
       result.selectTestMethod(res.pcrTestMethod);
     });
     result.submitResults();

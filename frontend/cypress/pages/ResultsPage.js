@@ -75,7 +75,7 @@ class Result {
 
   searchResults() {
     cy.get(this.selectors.searchResults).should("be.visible").click();
-    cy.wait(5000);
+    cy.wait(900);
   }
 
   enterCollectionDate() {
