@@ -89,7 +89,7 @@ function TestSectionManagement() {
                   id="TestSectionCreate"
                   href="/MasterListsPage#TestSectionCreate"
                 >
-                  <FormattedMessage id="configuration.method.create" />
+                  <FormattedMessage id="configuration.testUnit.create" />
                 </ClickableTile>
                 <br />
                 <ClickableTile
