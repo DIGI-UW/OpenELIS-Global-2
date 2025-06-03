@@ -82,7 +82,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.sampleproject", "org.openelisglobal.project", "org.openelisglobal.sampleqaevent",
         "org.openelisglobal.patientrelation", "org.openelisglobal.inventory", "org.openelisglobal.testcodes",
         "org.openelisglobal.datasubmission", "org.openelisglobal.label" }, excludeFilters = {
-                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.barcode.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
