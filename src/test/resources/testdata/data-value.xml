@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<dataset>
+    <data_resource id="1" name="FacilityA"
+        collection_name="Collection1" header_key="header.facilityA"
+        level="national" lastupdated="2025-05-01 10:00:00" />
+    <data_resource id="2" name="FacilityB"
+        collection_name="Collection2" header_key="header.facilityB"
+        level="regional" lastupdated="2025-05-01 10:05:00" />
+    <data_resource id="3" name="FacilityC"
+        collection_name="Collection3" header_key="header.facilityC"
+        level="district" lastupdated="2025-05-01 10:10:00" />
+    <data_resource id="4" name="FacilityD"
+        collection_name="Collection4" header_key="header.facilityD"
+        level="local" lastupdated="2025-05-01 10:15:00" />
+
+    <data_value id="1" data_resource_id="1" index="1"
+        column_name="cases" value="25" display_key="cases.display"
+        visible="true" lastupdated="2025-05-01 10:00:00" />
+    <data_value id="2" data_resource_id="2" index="2"
+        column_name="tests" value="100" display_key="tests.display"
+        visible="true" lastupdated="2025-05-01 10:05:00" />
+    <data_value id="3" data_resource_id="3" index="3"
+        column_name="deaths" value="2" display_key="deaths.display"
+        visible="false" lastupdated="2025-05-01 10:10:00" />
+    <data_value id="4" data_resource_id="4" index="4"
+        column_name="recovered" value="20" display_key="recovered.display"
+        visible="true" lastupdated="2025-05-01 10:15:00" />
+
+</dataset>

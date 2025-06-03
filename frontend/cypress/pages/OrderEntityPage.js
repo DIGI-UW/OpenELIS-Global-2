@@ -24,11 +24,33 @@ class OrderEntityPage {
   selectSampleTypeOption(sampleType) {
     cy.getElement("select#sampleId_0").select(sampleType);
   }
+
+  collectionDate(value) {
+    cy.get("input#collectionDate_0").type(value);
+  }
+
+  requestDate(value) {
+    cy.get("input#order_requestDate").type(value);
+  }
+  receivedDate(value) {
+    cy.get("input#order_receivedDate").type(value);
+  }
   checkPanelCheckBoxField() {
     cy.contains("span", "Bilan Biochimique").click();
     cy.contains("span", "Serologie VIH").click();
   }
 
+  referTest() {
+    cy.contains("span", "Refer test to a reference lab").click();
+  }
+
+  selectInstitute() {
+    cy.get("#referredInstituteId_0_1").select("CEDRES");
+  }
+
+  selectReferralReason() {
+    cy.get("#referralReasonId_0_1").select("Test not performed");
+  }
   generateLabOrderNumber() {
     cy.get("[data-cy='generate-labNumber']").click();
   }

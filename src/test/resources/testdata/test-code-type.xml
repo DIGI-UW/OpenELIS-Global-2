@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <test_code_type id="1" schema_name="chemistry"
+        lastupdated="2025-01-01 10:00:00" />
+    <test_code_type id="2" schema_name="hematology"
+        lastupdated="2025-02-01 12:30:00" />
+    <test_code_type id="3" schema_name="virology"
+        lastupdated="2025-03-15 09:15:00" />
+    <test_code_type id="4" schema_name="immunology"
+        lastupdated="2025-03-15 09:15:00" />
+</dataset>

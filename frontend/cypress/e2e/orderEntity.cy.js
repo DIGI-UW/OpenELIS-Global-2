@@ -16,8 +16,8 @@ before("login", () => {
   loginPage.visit();
 });
 
-describe("Add requester and site details first", function () {
-  it("Navidates to admin", function () {
+describe("Add requester, institute and site first", function () {
+  it("Navidates to Admin", function () {
     homePage = loginPage.goToHomePage();
     orderEntityPage = homePage.goToAdminPageProgram();
     orderEntityPage = adminPage.goToProviderManagementPage();
@@ -50,6 +50,22 @@ describe("Add requester and site details first", function () {
     orderEntityPage = adminPage.goToOrganizationManagement();
     orgMgmnt.searchOrganzation();
     orgMgmnt.confirmOrganization();
+  });
+
+  it("Add institute details", function () {
+    orgMgmnt.clickAddOrganization();
+    orgMgmnt.addInstituteName();
+    orgMgmnt.activateOrganization();
+    //orgMgmnt.addInstitutePrefix();
+    orgMgmnt.addParentOrg();
+    orgMgmnt.checkReferalLab();
+    orgMgmnt.saveOrganization();
+  });
+
+  it("Validates the added institute", function () {
+    orderEntityPage = adminPage.goToOrganizationManagement();
+    orgMgmnt.searchInstitute();
+    orgMgmnt.confirmInstitute();
   });
 });
 
@@ -91,13 +107,22 @@ describe("Order Entity", function () {
       order.samples.forEach((sample) => {
         orderEntityPage.selectSampleTypeOption(sample.sampleType);
         orderEntityPage.checkPanelCheckBoxField();
+        orderEntityPage.collectionDate(sample.collectionDate);
       });
     });
-    cy.wait(1000);
+    orderEntityPage.referTest();
+    orderEntityPage.selectReferralReason();
+    orderEntityPage.selectInstitute();
     orderEntityPage.clickNextButton();
   });
 
-  it("Generate Lab Order Number", function () {
+  it("Generate Lab Order Number, Request and Received Dates", function () {
+    cy.fixture("Order").then((order) => {
+      order.samples.forEach((sample) => {
+        orderEntityPage.requestDate(sample.receivedDate);
+        orderEntityPage.receivedDate(sample.receivedDate);
+      });
+    });
     orderEntityPage.generateLabOrderNumber();
   });
 

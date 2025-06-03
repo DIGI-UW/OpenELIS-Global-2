@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <data_resource id="1" name="FacilityA"
+        collection_name="Collection1" header_key="header.facilityA"
+        level="national" lastupdated="2025-05-01 10:00:00" />
+    <data_resource id="2" name="FacilityB"
+        collection_name="Collection2" header_key="header.facilityB"
+        level="regional" lastupdated="2025-05-01 10:05:00" />
+    <data_resource id="3" name="FacilityC"
+        collection_name="Collection3" header_key="header.facilityC"
+        level="district" lastupdated="2025-05-01 10:10:00" />
+    <data_resource id="4" name="FacilityD"
+        collection_name="Collection4" header_key="header.facilityD"
+        level="local" lastupdated="2025-05-01 10:15:00" />
+
+</dataset>

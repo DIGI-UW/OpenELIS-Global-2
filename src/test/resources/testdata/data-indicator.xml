@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <type_of_data_indicator id="1" name="Cases"
+        name_key="indicator.cases" description="Number of cases"
+        description_key="desc.cases" lastupdated="2025-05-01 10:00:00" />
+    <type_of_data_indicator id="2" name="Tests"
+        name_key="indicator.tests" description="Number of tests"
+        description_key="desc.tests" lastupdated="2025-05-01 10:05:00" />
+    <type_of_data_indicator id="3" name="Deaths"
+        name_key="indicator.deaths" description="Number of deaths"
+        description_key="desc.deaths" lastupdated="2025-05-01 10:10:00" />
+    <type_of_data_indicator id="4" name="Recovered"
+        name_key="indicator.recovered"
+        description="Number of recovered patients"
+        description_key="desc.recovered" lastupdated="2025-05-01 10:15:00" />
+
+    <data_resource id="1" name="FacilityA"
+        collection_name="Collection1" header_key="header.facilityA"
+        level="national" lastupdated="2025-05-01 10:00:00" />
+    <data_resource id="2" name="FacilityB"
+        collection_name="Collection2" header_key="header.facilityB"
+        level="regional" lastupdated="2025-05-01 10:05:00" />
+    <data_resource id="3" name="FacilityC"
+        collection_name="Collection3" header_key="header.facilityC"
+        level="district" lastupdated="2025-05-01 10:10:00" />
+    <data_resource id="4" name="FacilityD"
+        collection_name="Collection4" header_key="header.facilityD"
+        level="local" lastupdated="2025-05-01 10:15:00" />
+
+    <data_value id="1" data_resource_id="1" index="1"
+        column_name="cases" value="25" display_key="cases.display"
+        visible="true" lastupdated="2025-05-01 10:00:00" />
+    <data_value id="2" data_resource_id="2" index="2"
+        column_name="tests" value="100" display_key="tests.display"
+        visible="true" lastupdated="2025-05-01 10:05:00" />
+    <data_value id="3" data_resource_id="3" index="3"
+        column_name="deaths" value="2" display_key="deaths.display"
+        visible="false" lastupdated="2025-05-01 10:10:00" />
+    <data_value id="4" data_resource_id="4" index="4"
+        column_name="recovered" value="20" display_key="recovered.display"
+        visible="true" lastupdated="2025-05-01 10:15:00" />
+
+
+    <data_indicator id="1" data_value_id="1" year="2023"
+        month="1" type_of_indicator_id="1" status="SENT"
+        lastupdated="2023-01-15 12:00:00" />
+    <data_indicator id="2" data_value_id="2" year="2023"
+        month="2" type_of_indicator_id="2" status="RECEIVED"
+        lastupdated="2023-02-15 13:00:00" />
+    <data_indicator id="3" data_value_id="3" year="2023"
+        month="3" type_of_indicator_id="3" status="FAILED"
+        lastupdated="2023-03-15 14:00:00" />
+    <data_indicator id="4" data_value_id="4" year="2023"
+        month="4" type_of_indicator_id="4" status="UNSAVED"
+        lastupdated="2023-04-15 15:00:00" />
+</dataset>
