@@ -244,7 +244,11 @@ function Admin() {
           <SideNavLink href="#testNotificationConfigMenu" renderIcon={Popup}>
             <FormattedMessage id="testnotificationconfig.browse.title" />
           </SideNavLink>
-          <SideNavLink href="#DictionaryMenu" renderIcon={CharacterWholeNumber}>
+          <SideNavLink
+            data-cy="dictMenu"
+            href="#DictionaryMenu"
+            renderIcon={CharacterWholeNumber}
+          >
             <FormattedMessage id="dictionary.label.modify" />
           </SideNavLink>
           <SideNavLink href="#NotifyUser" renderIcon={Bullhorn}>

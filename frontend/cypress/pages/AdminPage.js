@@ -5,6 +5,7 @@ import BarcodeConfigPage from "./BarcodeConfigPage";
 import ProgramEntryPage from "./ProgramEntryPage";
 import ProviderManagementPage from "./ProviderManagementPage";
 import OrganizationManagementPage from "./OrganizationManagementPage";
+import DictionaryManagement from "../../src/components/admin/menu/DictionaryManagement";
 
 class AdminPage {
   constructor() {}
@@ -62,6 +63,12 @@ class AdminPage {
     cy.get("[data-cy='programEntry']").click();
 
     return new ProgramEntryPage();
+  }
+
+  goToDictionaryMenuPage() {
+    cy.get("[data-cy='dictMenu']").should("be.visible").click();
+
+    return new DictionaryMenuPage();
   }
 }
 
