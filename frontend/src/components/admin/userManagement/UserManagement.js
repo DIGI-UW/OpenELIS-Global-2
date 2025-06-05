@@ -22,6 +22,7 @@ import {
   Select,
   SelectItem,
   Stack,
+  RadioButton,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
@@ -288,33 +289,44 @@ function UserManagement() {
     }
   }, [selectedRowIds]);
 
+  useEffect(() => {
+    if (selectedRowIds.length === 0) {
+      setDeactivateButton(true);
+    } else {
+      const currentList = isSearching
+        ? searchedUserManagementListShow
+        : userManagementListShow;
+      const hasActiveUser = selectedRowIds.some((id) => {
+        const row = currentList.find((item) => item && item.id === id);
+        return row && row.active === "Y";
+      });
+      setDeactivateButton(!hasActiveUser);
+    }
+  }, [selectedRowIds, userManagementListShow, searchedUserManagementListShow, isSearching]);
+
   const renderCell = (cell, row) => {
     if (cell.info.header === "select") {
       return (
-        <TableSelectRow
-          key={cell.id}
-          id={cell.id}
+               <TableCell key={cell.id} style={{ textAlign: 'center' }}>
+        <RadioButton
+          id={`radio-${row.id}`}
+          name="user-radio-group"
           checked={selectedRowIds.includes(row.id)}
-          name="selectRowCheckbox"
-          ariaLabel="selectRows"
-          onSelect={() => {
+          onChange={() => {
+            setSelectedRowIds([row.id]);
             const isActiveCell = row.cells.find((cell) =>
               cell.id.endsWith(":active"),
             );
-
             let isActiveValue = "";
             if (isActiveCell) {
               isActiveValue = isActiveCell.value;
             }
-
             setDeactivateButton(isActiveValue !== "Y");
-            if (selectedRowIds.includes(row.id)) {
-              setSelectedRowIds(selectedRowIds.filter((id) => id !== row.id));
-            } else {
-              setSelectedRowIds([...selectedRowIds, row.id]);
-            }
           }}
+          labelText=""
+                      style={{ margin: '0 auto' }}
         />
+      </TableCell>
       );
     } else {
       return <TableCell key={cell.id}>{cell.value}</TableCell>;
@@ -337,12 +349,6 @@ function UserManagement() {
       setStartingRecNo(1);
     }
   }, [isSearching, panelSearchTerm]);
-
-  useEffect(() => {
-    if (selectedRowIds.length === 0) {
-      setDeactivateButton(true);
-    }
-  }, [selectedRowIds]);
 
   function handleTestSectionsSelectChange(e) {
     setTestSectionsSelect(e.target.value);
@@ -567,64 +573,12 @@ function UserManagement() {
                       headers,
                       getHeaderProps,
                       getTableProps,
-                      getSelectionProps,
                     }) => (
                       <TableContainer>
                         <Table {...getTableProps()}>
                           <TableHead>
                             <TableRow>
-                              <TableSelectAll
-                                id="table-select-all"
-                                {...getSelectionProps()}
-                                checked={
-                                  selectedRowIds.length === pageSize &&
-                                  searchedUserManagementListShow
-                                    .slice(
-                                      (page - 1) * pageSize,
-                                      page * pageSize,
-                                    )
-                                    .filter(
-                                      (row) =>
-                                        !row.disabled &&
-                                        selectedRowIds.includes(row.id),
-                                    ).length === pageSize
-                                }
-                                indeterminate={
-                                  selectedRowIds.length > 0 &&
-                                  selectedRowIds.length <
-                                    searchedUserManagementListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled).length
-                                }
-                                onSelect={() => {
-                                  setDeactivateButton(false);
-                                  const currentPageIds =
-                                    searchedUserManagementListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled)
-                                      .map((row) => row.id);
-                                  if (
-                                    selectedRowIds.length === pageSize &&
-                                    currentPageIds.every((id) =>
-                                      selectedRowIds.includes(id),
-                                    )
-                                  ) {
-                                    setSelectedRowIds([]);
-                                  } else {
-                                    setSelectedRowIds(
-                                      currentPageIds.filter(
-                                        (id) => !selectedRowIds.includes(id),
-                                      ),
-                                    );
-                                  }
-                                }}
-                              />
+                              <TableHeader />
                               {headers.map(
                                 (header) =>
                                   header.key !== "select" && (
@@ -643,24 +597,6 @@ function UserManagement() {
                               {rows.map((row) => (
                                 <TableRow
                                   key={row.id}
-                                  onClick={() => {
-                                    const id = row.id;
-                                    const CombinedUserID = row.combinedUserID;
-                                    const isSelected =
-                                      selectedRowIds.includes(id);
-                                    if (isSelected) {
-                                      setSelectedRowIds(
-                                        selectedRowIds.filter(
-                                          (selectedId) => selectedId !== id,
-                                        ),
-                                      );
-                                    } else {
-                                      setSelectedRowIds([
-                                        ...selectedRowIds,
-                                        id,
-                                      ]);
-                                    }
-                                  }}
                                 >
                                   {row.cells.map((cell) =>
                                     renderCell(cell, row),
@@ -791,63 +727,12 @@ function UserManagement() {
                       headers,
                       getHeaderProps,
                       getTableProps,
-                      getSelectionProps,
                     }) => (
                       <TableContainer>
                         <Table {...getTableProps()}>
                           <TableHead>
                             <TableRow>
-                              <TableSelectAll
-                                id="table-select-all"
-                                {...getSelectionProps()}
-                                checked={
-                                  selectedRowIds.length === pageSize &&
-                                  userManagementListShow
-                                    .slice(
-                                      (page - 1) * pageSize,
-                                      page * pageSize,
-                                    )
-                                    .filter(
-                                      (row) =>
-                                        !row.disabled &&
-                                        selectedRowIds.includes(row.id),
-                                    ).length === pageSize
-                                }
-                                indeterminate={
-                                  selectedRowIds.length > 0 &&
-                                  selectedRowIds.length <
-                                    userManagementListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled).length
-                                }
-                                onSelect={() => {
-                                  setDeactivateButton(false);
-                                  const currentPageIds = userManagementListShow
-                                    .slice(
-                                      (page - 1) * pageSize,
-                                      page * pageSize,
-                                    )
-                                    .filter((row) => !row.disabled)
-                                    .map((row) => row.id);
-                                  if (
-                                    selectedRowIds.length === pageSize &&
-                                    currentPageIds.every((id) =>
-                                      selectedRowIds.includes(id),
-                                    )
-                                  ) {
-                                    setSelectedRowIds([]);
-                                  } else {
-                                    setSelectedRowIds(
-                                      currentPageIds.filter(
-                                        (id) => !selectedRowIds.includes(id),
-                                      ),
-                                    );
-                                  }
-                                }}
-                              />
+                              <TableHeader />
                               {headers.map(
                                 (header) =>
                                   header.key !== "select" && (
@@ -866,24 +751,6 @@ function UserManagement() {
                               {rows.map((row) => (
                                 <TableRow
                                   key={row.id}
-                                  onClick={() => {
-                                    const id = row.id;
-                                    const CombinedUserID = row.combinedUserID;
-                                    const isSelected =
-                                      selectedRowIds.includes(id);
-                                    if (isSelected) {
-                                      setSelectedRowIds(
-                                        selectedRowIds.filter(
-                                          (selectedId) => selectedId !== id,
-                                        ),
-                                      );
-                                    } else {
-                                      setSelectedRowIds([
-                                        ...selectedRowIds,
-                                        id,
-                                      ]);
-                                    }
-                                  }}
                                 >
                                   {row.cells.map((cell) =>
                                     renderCell(cell, row),
