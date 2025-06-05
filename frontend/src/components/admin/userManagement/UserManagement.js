@@ -15,12 +15,14 @@ import {
   TableHeader,
   TableCell,
   TableSelectRow,
+  TableSelectAll,
   TableContainer,
   Pagination,
   Search,
   Select,
   SelectItem,
   Stack,
+  RadioButton,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
@@ -285,16 +287,20 @@ function UserManagement() {
     } else {
       setModifyButton(true);
     }
+  }, [selectedRowIds]);
+
+  useEffect(() => {
     if (selectedRowIds.length === 0) {
       setDeactivateButton(true);
     } else {
       const currentList = isSearching
         ? searchedUserManagementListShow
         : userManagementListShow;
-      const selectedRow = currentList.find(
-        (item) => item && item.id === selectedRowIds[0],
-      );
-      setDeactivateButton(!(selectedRow && selectedRow.active === "Y"));
+      const hasActiveUser = selectedRowIds.some((id) => {
+        const row = currentList.find((item) => item && item.id === id);
+        return row && row.active === "Y";
+      });
+      setDeactivateButton(!hasActiveUser);
     }
   }, [
     selectedRowIds,
@@ -306,17 +312,24 @@ function UserManagement() {
   const renderCell = (cell, row) => {
     if (cell.info.header === "select") {
       return (
-        <TableCell key={cell.id}>
-          <input
-            type="radio"
-            id={cell.id}
-            name="selectRowRadio"
+        <TableCell key={cell.id} style={{ textAlign: "center" }}>
+          <RadioButton
+            id={`radio-${row.id}`}
+            name="user-radio-group"
             checked={selectedRowIds.includes(row.id)}
-            disabled={row.disabled === "Y"}
             onChange={() => {
               setSelectedRowIds([row.id]);
+              const isActiveCell = row.cells.find((cell) =>
+                cell.id.endsWith(":active"),
+              );
+              let isActiveValue = "";
+              if (isActiveCell) {
+                isActiveValue = isActiveCell.value;
+              }
+              setDeactivateButton(isActiveValue !== "Y");
             }}
-            aria-label="selectRow"
+            labelText=""
+            style={{ margin: "0 auto" }}
           />
         </TableCell>
       );
@@ -565,25 +578,24 @@ function UserManagement() {
                         <Table {...getTableProps()}>
                           <TableHead>
                             <TableRow>
-                              {headers.map((header) => (
-                                <TableHeader
-                                  key={header.key}
-                                  {...getHeaderProps({ header })}
-                                >
-                                  {header.header}
-                                </TableHeader>
-                              ))}
+                              <TableHeader />
+                              {headers.map(
+                                (header) =>
+                                  header.key !== "select" && (
+                                    <TableHeader
+                                      key={header.key}
+                                      {...getHeaderProps({ header })}
+                                    >
+                                      {header.header}
+                                    </TableHeader>
+                                  ),
+                              )}
                             </TableRow>
                           </TableHead>
                           <TableBody>
                             <>
                               {rows.map((row) => (
-                                <TableRow
-                                  key={row.id}
-                                  onClick={() => {
-                                    setSelectedRowIds([row.id]);
-                                  }}
-                                >
+                                <TableRow key={row.id}>
                                   {row.cells.map((cell) =>
                                     renderCell(cell, row),
                                   )}
@@ -713,25 +725,24 @@ function UserManagement() {
                         <Table {...getTableProps()}>
                           <TableHead>
                             <TableRow>
-                              {headers.map((header) => (
-                                <TableHeader
-                                  key={header.key}
-                                  {...getHeaderProps({ header })}
-                                >
-                                  {header.header}
-                                </TableHeader>
-                              ))}
+                              <TableHeader />
+                              {headers.map(
+                                (header) =>
+                                  header.key !== "select" && (
+                                    <TableHeader
+                                      key={header.key}
+                                      {...getHeaderProps({ header })}
+                                    >
+                                      {header.header}
+                                    </TableHeader>
+                                  ),
+                              )}
                             </TableRow>
                           </TableHead>
                           <TableBody>
                             <>
                               {rows.map((row) => (
-                                <TableRow
-                                  key={row.id}
-                                  onClick={() => {
-                                    setSelectedRowIds([row.id]);
-                                  }}
-                                >
+                                <TableRow key={row.id}>
                                   {row.cells.map((cell) =>
                                     renderCell(cell, row),
                                   )}
