@@ -13,11 +13,10 @@ import {
   TableBody,
   TableHeader,
   TableCell,
-  TableSelectRow,
-  TableSelectAll,
   TableContainer,
   Pagination,
   Search,
+  RadioButton,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
@@ -250,30 +249,26 @@ function OrganizationManagement() {
   const renderCell = (cell, row) => {
     if (cell.info.header === "select") {
       return (
-        <TableSelectRow
-          key={cell.id}
-          id={cell.id}
-          checked={selectedRowIds.includes(row.id)}
-          name="selectRowCheckbox"
-          ariaLabel="selectRows"
-          onSelect={() => {
-            const isActiveCell = row.cells.find((cell) =>
-              cell.id.endsWith(":active"),
-            );
-
-            let isActiveValue = "";
-            if (isActiveCell) {
-              isActiveValue = isActiveCell.value;
-            }
-
-            setDeactivateButton(isActiveValue !== "Y");
-            if (selectedRowIds.includes(row.id)) {
-              setSelectedRowIds(selectedRowIds.filter((id) => id !== row.id));
-            } else {
-              setSelectedRowIds([...selectedRowIds, row.id]);
-            }
-          }}
-        />
+        <TableCell key={cell.id} style={{ textAlign: "center" }}>
+          <RadioButton
+            id={`radio-${row.id}`}
+            name="organization-radio-group"
+            checked={selectedRowIds.includes(row.id)}
+            onChange={() => {
+              setSelectedRowIds([row.id]);
+              const isActiveCell = row.cells.find((cell) =>
+                cell.id.endsWith(":active"),
+              );
+              let isActiveValue = "";
+              if (isActiveCell) {
+                isActiveValue = isActiveCell.value;
+              }
+              setDeactivateButton(isActiveValue !== "Y");
+            }}
+            labelText=""
+            style={{ margin: "0 auto" }}
+          />
+        </TableCell>
       );
     } else if (cell.info.header === "active") {
       return <TableCell key={cell.id}>{cell.value.toString()}</TableCell>;
@@ -370,14 +365,12 @@ function OrganizationManagement() {
                           id: "organization.organizationName",
                         }),
                       },
-
                       {
                         key: "parentOrg",
                         header: intl.formatMessage({
                           id: "organization.parent",
                         }),
                       },
-
                       {
                         key: "orgPrefix",
                         header: intl.formatMessage({
@@ -416,69 +409,12 @@ function OrganizationManagement() {
                       },
                     ]}
                   >
-                    {({
-                      rows,
-                      headers,
-                      getHeaderProps,
-                      getTableProps,
-                      getSelectionProps,
-                    }) => (
+                    {({ rows, headers, getHeaderProps, getTableProps }) => (
                       <TableContainer>
                         <Table {...getTableProps()}>
                           <TableHead>
                             <TableRow>
-                              <TableSelectAll
-                                id="table-select-all"
-                                {...getSelectionProps()}
-                                checked={
-                                  selectedRowIds.length === pageSize &&
-                                  searchedOrganizationManagamentListShow
-                                    .slice(
-                                      (page - 1) * pageSize,
-                                      page * pageSize,
-                                    )
-                                    .filter(
-                                      (row) =>
-                                        !row.disabled &&
-                                        selectedRowIds.includes(row.id),
-                                    ).length === pageSize
-                                }
-                                indeterminate={
-                                  selectedRowIds.length > 0 &&
-                                  selectedRowIds.length <
-                                    searchedOrganizationManagamentListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled).length
-                                }
-                                onSelect={() => {
-                                  setDeactivateButton(false);
-                                  const currentPageIds =
-                                    searchedOrganizationManagamentListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled)
-                                      .map((row) => row.id);
-                                  if (
-                                    selectedRowIds.length === pageSize &&
-                                    currentPageIds.every((id) =>
-                                      selectedRowIds.includes(id),
-                                    )
-                                  ) {
-                                    setSelectedRowIds([]);
-                                  } else {
-                                    setSelectedRowIds(
-                                      currentPageIds.filter(
-                                        (id) => !selectedRowIds.includes(id),
-                                      ),
-                                    );
-                                  }
-                                }}
-                              />
+                              <TableHeader />
                               {headers.map(
                                 (header) =>
                                   header.key !== "select" && (
@@ -495,26 +431,7 @@ function OrganizationManagement() {
                           <TableBody>
                             <>
                               {rows.map((row) => (
-                                <TableRow
-                                  key={row.id}
-                                  onClick={() => {
-                                    const id = row.id;
-                                    const isSelected =
-                                      selectedRowIds.includes(id);
-                                    if (isSelected) {
-                                      setSelectedRowIds(
-                                        selectedRowIds.filter(
-                                          (selectedId) => selectedId !== id,
-                                        ),
-                                      );
-                                    } else {
-                                      setSelectedRowIds([
-                                        ...selectedRowIds,
-                                        id,
-                                      ]);
-                                    }
-                                  }}
-                                >
+                                <TableRow key={row.id}>
                                   {row.cells.map((cell) =>
                                     renderCell(cell, row),
                                   )}
@@ -595,14 +512,12 @@ function OrganizationManagement() {
                           id: "organization.organizationName",
                         }),
                       },
-
                       {
                         key: "parentOrg",
                         header: intl.formatMessage({
                           id: "organization.parent",
                         }),
                       },
-
                       {
                         key: "orgPrefix",
                         header: intl.formatMessage({
@@ -641,69 +556,12 @@ function OrganizationManagement() {
                       },
                     ]}
                   >
-                    {({
-                      rows,
-                      headers,
-                      getHeaderProps,
-                      getTableProps,
-                      getSelectionProps,
-                    }) => (
+                    {({ rows, headers, getHeaderProps, getTableProps }) => (
                       <TableContainer>
                         <Table {...getTableProps()}>
                           <TableHead>
                             <TableRow>
-                              <TableSelectAll
-                                id="table-select-all"
-                                {...getSelectionProps()}
-                                checked={
-                                  selectedRowIds.length === pageSize &&
-                                  organizationsManagmentListShow
-                                    .slice(
-                                      (page - 1) * pageSize,
-                                      page * pageSize,
-                                    )
-                                    .filter(
-                                      (row) =>
-                                        !row.disabled &&
-                                        selectedRowIds.includes(row.id),
-                                    ).length === pageSize
-                                }
-                                indeterminate={
-                                  selectedRowIds.length > 0 &&
-                                  selectedRowIds.length <
-                                    organizationsManagmentListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled).length
-                                }
-                                onSelect={() => {
-                                  setDeactivateButton(false);
-                                  const currentPageIds =
-                                    organizationsManagmentListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled)
-                                      .map((row) => row.id);
-                                  if (
-                                    selectedRowIds.length === pageSize &&
-                                    currentPageIds.every((id) =>
-                                      selectedRowIds.includes(id),
-                                    )
-                                  ) {
-                                    setSelectedRowIds([]);
-                                  } else {
-                                    setSelectedRowIds(
-                                      currentPageIds.filter(
-                                        (id) => !selectedRowIds.includes(id),
-                                      ),
-                                    );
-                                  }
-                                }}
-                              />
+                              <TableHeader />
                               {headers.map(
                                 (header) =>
                                   header.key !== "select" && (
@@ -720,26 +578,7 @@ function OrganizationManagement() {
                           <TableBody>
                             <>
                               {rows.map((row) => (
-                                <TableRow
-                                  key={row.id}
-                                  onClick={() => {
-                                    const id = row.id;
-                                    const isSelected =
-                                      selectedRowIds.includes(id);
-                                    if (isSelected) {
-                                      setSelectedRowIds(
-                                        selectedRowIds.filter(
-                                          (selectedId) => selectedId !== id,
-                                        ),
-                                      );
-                                    } else {
-                                      setSelectedRowIds([
-                                        ...selectedRowIds,
-                                        id,
-                                      ]);
-                                    }
-                                  }}
-                                >
+                                <TableRow key={row.id}>
                                   {row.cells.map((cell) =>
                                     renderCell(cell, row),
                                   )}
