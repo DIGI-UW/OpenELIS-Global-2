@@ -13,14 +13,13 @@ import {
   TableBody,
   TableHeader,
   TableCell,
-  TableSelectRow,
-  TableSelectAll,
   TableContainer,
   Pagination,
   Search,
   Modal,
   TextInput,
   Dropdown,
+  RadioButton,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
@@ -47,6 +46,7 @@ let breadcrumbs = [
     link: "/MasterListsPage#providerMenu",
   },
 ];
+
 function ProviderMenu() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -183,6 +183,25 @@ function ProviderMenu() {
       setDeactivateButton(false);
     }
   }, [selectedRowIds]);
+  useEffect(() => {
+    if (selectedRowIds.length === 0) {
+      setDeactivateButton(true);
+    } else {
+      const currentList = isSearching
+        ? serachedProviderMenuListShow
+        : providerMenuListShow;
+      const hasActiveProvider = selectedRowIds.some((id) => {
+        const row = currentList.find((item) => item && item.id === id);
+        return row && row.active === true;
+      });
+      setDeactivateButton(!hasActiveProvider);
+    }
+  }, [
+    selectedRowIds,
+    providerMenuListShow,
+    serachedProviderMenuListShow,
+    isSearching,
+  ]);
 
   async function displayStatus(res) {
     setNotificationVisible(true);
@@ -346,37 +365,21 @@ function ProviderMenu() {
     return currentList.slice((page - 1) * pageSize, page * pageSize);
   };
 
-  const handleSelectAll = (checked) => {
-    const visibleRows = getVisibleRows();
-    if (checked) {
-      const newSelectedIds = [
-        ...new Set([...selectedRowIds, ...visibleRows.map((row) => row.id)]),
-      ];
-      setSelectedRowIds(newSelectedIds);
-    } else {
-      const visibleIds = new Set(visibleRows.map((row) => row.id));
-      setSelectedRowIds(selectedRowIds.filter((id) => !visibleIds.has(id)));
-    }
-  };
-
   const renderCell = (cell, row) => {
     if (cell.info.header === "select") {
       return (
-        <TableSelectRow
-          key={cell.id}
-          id={cell.id}
-          checked={selectedRowIds.includes(row.id)}
-          name="selectRowCheckbox"
-          ariaLabel="selectRows"
-          onSelect={(e) => {
-            e.stopPropagation();
-            if (selectedRowIds.includes(row.id)) {
-              setSelectedRowIds(selectedRowIds.filter((id) => id !== row.id));
-            } else {
-              setSelectedRowIds([...selectedRowIds, row.id]);
-            }
-          }}
-        />
+        <TableCell key={cell.id} style={{ textAlign: "center" }}>
+          <RadioButton
+            id={`radio-${row.id}`}
+            name="provider-radio-group"
+            checked={selectedRowIds.includes(row.id)}
+            onChange={() => {
+              setSelectedRowIds([row.id]);
+            }}
+            labelText=""
+            style={{ margin: "0 auto" }}
+          />
+        </TableCell>
       );
     } else if (cell.info.header === "active") {
       return <TableCell key={cell.id}>{cell.value.toString()}</TableCell>;
@@ -587,39 +590,17 @@ function ProviderMenu() {
                       },
                     ]}
                   >
-                    {({
+                    {({ 
                       rows,
-                      headers,
+                     headers,
                       getHeaderProps,
-                      getTableProps,
-                      getSelectionProps,
-                    }) => (
+                       getTableProps,
+                      }) => (
                       <TableContainer>
                         <Table {...getTableProps()}>
                           <TableHead>
                             <TableRow>
-                              <TableSelectAll
-                                id="table-select-all"
-                                {...getSelectionProps()}
-                                checked={
-                                  getVisibleRows().length > 0 &&
-                                  getVisibleRows().every((row) =>
-                                    selectedRowIds.includes(row.id),
-                                  )
-                                }
-                                indeterminate={
-                                  getVisibleRows().some((row) =>
-                                    selectedRowIds.includes(row.id),
-                                  ) &&
-                                  !getVisibleRows().every((row) =>
-                                    selectedRowIds.includes(row.id),
-                                  )
-                                }
-                                onSelect={(e) => {
-                                  const checked = e.target.checked;
-                                  handleSelectAll(checked);
-                                }}
-                              />
+                              <TableHeader />
                               {headers.map(
                                 (header) =>
                                   header.key !== "select" && (
@@ -636,19 +617,7 @@ function ProviderMenu() {
                           <TableBody>
                             <>
                               {rows.map((row) => (
-                                <TableRow
-                                  key={row.id}
-                                  onClick={() => {
-                                    const id = row.id;
-                                    setSelectedRowIds(
-                                      selectedRowIds.includes(id)
-                                        ? selectedRowIds.filter(
-                                            (selectedId) => selectedId !== id,
-                                          )
-                                        : [...selectedRowIds, id],
-                                    );
-                                  }}
-                                >
+                                <TableRow key={row.id}>
                                   {row.cells.map((cell) =>
                                     renderCell(cell, row),
                                   )}
@@ -755,39 +724,17 @@ function ProviderMenu() {
                       },
                     ]}
                   >
-                    {({
+                    {({ 
                       rows,
-                      headers,
-                      getHeaderProps,
-                      getTableProps,
-                      getSelectionProps,
-                    }) => (
+                       headers,
+                        getHeaderProps, 
+                        getTableProps
+                       }) => (
                       <TableContainer>
                         <Table {...getTableProps()}>
                           <TableHead>
                             <TableRow>
-                              <TableSelectAll
-                                id="table-select-all"
-                                {...getSelectionProps()}
-                                checked={
-                                  getVisibleRows().length > 0 &&
-                                  getVisibleRows().every((row) =>
-                                    selectedRowIds.includes(row.id),
-                                  )
-                                }
-                                indeterminate={
-                                  getVisibleRows().some((row) =>
-                                    selectedRowIds.includes(row.id),
-                                  ) &&
-                                  !getVisibleRows().every((row) =>
-                                    selectedRowIds.includes(row.id),
-                                  )
-                                }
-                                onSelect={(e) => {
-                                  const checked = e.target.checked;
-                                  handleSelectAll(checked);
-                                }}
-                              />
+                              <TableHeader />
                               {headers.map(
                                 (header) =>
                                   header.key !== "select" && (
@@ -804,19 +751,7 @@ function ProviderMenu() {
                           <TableBody>
                             <>
                               {rows.map((row) => (
-                                <TableRow
-                                  key={row.id}
-                                  onClick={() => {
-                                    const id = row.id;
-                                    setSelectedRowIds(
-                                      selectedRowIds.includes(id)
-                                        ? selectedRowIds.filter(
-                                            (selectedId) => selectedId !== id,
-                                          )
-                                        : [...selectedRowIds, id],
-                                    );
-                                  }}
-                                >
+                                <TableRow key={row.id}>
                                   {row.cells.map((cell) =>
                                     renderCell(cell, row),
                                   )}
