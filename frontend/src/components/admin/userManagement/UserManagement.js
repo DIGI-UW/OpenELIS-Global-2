@@ -302,31 +302,36 @@ function UserManagement() {
       });
       setDeactivateButton(!hasActiveUser);
     }
-  }, [selectedRowIds, userManagementListShow, searchedUserManagementListShow, isSearching]);
+  }, [
+    selectedRowIds,
+    userManagementListShow,
+    searchedUserManagementListShow,
+    isSearching,
+  ]);
 
   const renderCell = (cell, row) => {
     if (cell.info.header === "select") {
       return (
-               <TableCell key={cell.id} style={{ textAlign: 'center' }}>
-        <RadioButton
-          id={`radio-${row.id}`}
-          name="user-radio-group"
-          checked={selectedRowIds.includes(row.id)}
-          onChange={() => {
-            setSelectedRowIds([row.id]);
-            const isActiveCell = row.cells.find((cell) =>
-              cell.id.endsWith(":active"),
-            );
-            let isActiveValue = "";
-            if (isActiveCell) {
-              isActiveValue = isActiveCell.value;
-            }
-            setDeactivateButton(isActiveValue !== "Y");
-          }}
-          labelText=""
-                      style={{ margin: '0 auto' }}
-        />
-      </TableCell>
+        <TableCell key={cell.id} style={{ textAlign: "center" }}>
+          <RadioButton
+            id={`radio-${row.id}`}
+            name="user-radio-group"
+            checked={selectedRowIds.includes(row.id)}
+            onChange={() => {
+              setSelectedRowIds([row.id]);
+              const isActiveCell = row.cells.find((cell) =>
+                cell.id.endsWith(":active"),
+              );
+              let isActiveValue = "";
+              if (isActiveCell) {
+                isActiveValue = isActiveCell.value;
+              }
+              setDeactivateButton(isActiveValue !== "Y");
+            }}
+            labelText=""
+            style={{ margin: "0 auto" }}
+          />
+        </TableCell>
       );
     } else {
       return <TableCell key={cell.id}>{cell.value}</TableCell>;
@@ -568,12 +573,7 @@ function UserManagement() {
                       },
                     ]}
                   >
-                    {({
-                      rows,
-                      headers,
-                      getHeaderProps,
-                      getTableProps,
-                    }) => (
+                    {({ rows, headers, getHeaderProps, getTableProps }) => (
                       <TableContainer>
                         <Table {...getTableProps()}>
                           <TableHead>
@@ -595,9 +595,7 @@ function UserManagement() {
                           <TableBody>
                             <>
                               {rows.map((row) => (
-                                <TableRow
-                                  key={row.id}
-                                >
+                                <TableRow key={row.id}>
                                   {row.cells.map((cell) =>
                                     renderCell(cell, row),
                                   )}
@@ -722,12 +720,7 @@ function UserManagement() {
                       },
                     ]}
                   >
-                    {({
-                      rows,
-                      headers,
-                      getHeaderProps,
-                      getTableProps,
-                    }) => (
+                    {({ rows, headers, getHeaderProps, getTableProps }) => (
                       <TableContainer>
                         <Table {...getTableProps()}>
                           <TableHead>
@@ -749,9 +742,7 @@ function UserManagement() {
                           <TableBody>
                             <>
                               {rows.map((row) => (
-                                <TableRow
-                                  key={row.id}
-                                >
+                                <TableRow key={row.id}>
                                   {row.cells.map((cell) =>
                                     renderCell(cell, row),
                                   )}
