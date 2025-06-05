@@ -42,25 +42,68 @@ describe("Dictionary Menu", function () {
     });
   });
   describe("Add Dictionary and Add", function () {
-    it("Add Dictionary", function () {
+    it("Add First Dictionary", function () {
       dictMenu.clickAddButton();
       dictMenu.validateModal();
     });
 
     it("Enter details", function () {
       dictMenu.dictNumberDisabled();
-      dictMenu.dictCategory(usersData.cG);
-      dictMenu.dictEntry(usersData.dictionaryEntry);
-      dictMenu.isActive(usersData.yes);
-      dictMenu.localAbbreviation(usersData.abbrev);
+      dictMenu.dictCategory(usersData[0].cG);
+      dictMenu.dictEntry(usersData[0].dictionaryEntry);
+      dictMenu.isActive(usersData[0].no);
+      dictMenu.localAbbreviation(usersData[0].abbrev);
+      dictMenu.clickAddButton();
+    });
+
+    it("Add Second Dictionary", function () {
+      dictMenu.clickAddButton();
+      dictMenu.validateModal();
+    });
+
+    it("Enter details", function () {
+      dictMenu.dictNumberDisabled();
+      dictMenu.dictCategory(usersData[1].cG);
+      dictMenu.dictEntry(usersData[1].dictionaryEntry);
+      dictMenu.isActive(usersData[0].yes);
+      dictMenu.localAbbreviation(usersData[1].abbrev);
       dictMenu.clickAddButton();
     });
   });
 
   describe("Validate Added Dictionary", function () {
     it("Search By Dictionary Entry", function () {
-      dictMenu.searchByDictionaryEntry(usersData.dictEntry);
-      dictMenu.validateDictEntry(usersData.dictEntry);
+      dictMenu.searchByDictionaryEntry(usersData[0].dictEntry);
+      dictMenu.validateDictEntry(usersData[0].dictEntry);
+      dictMenu.searchByDictionaryEntry(usersData[1].dictEntry);
+      dictMenu.validateDictEntry(usersData[1].dictEntry);
+      dictMenu.clearSearch();
+    });
+  });
+
+  describe("Modify Dictionary", function () {
+    it("Check and Modify First Dictionary", () => {
+      dictMenu.checkFirstDict();
+      dictMenu.clickModifyButton();
+      dictMenu.isActive(usersData[0].yes);
+      dictMenu.clickUpdateButton();
+    });
+
+    it("Validate Modified Dictionary", () => {
+      dictMenu.searchByDictionaryEntry(usersData[0].dictEntry);
+      dictMenu.validateDictEntry(usersData[0].yes);
+    });
+  });
+
+  describe("Deactivate Dictionary", function () {
+    it("Check and Deactivate Second Dictionary", () => {
+      dictMenu.checkSecDict(usersData[1].cG);
+      dictMenu.clickDeactivateButton();
+    });
+
+    it("Validate Deactivated Dictionary", () => {
+      dictMenu.searchByDictionaryEntry(usersData[1].dictEntry);
+      dictMenu.validateDictEntry(usersData[1].no);
     });
   });
 });

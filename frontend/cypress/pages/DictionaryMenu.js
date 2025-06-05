@@ -12,8 +12,11 @@ class DictionaryMenuPage {
       searchByDictEntry: "#dictionary-entry-search",
       cancelButton: ".cds--btn--secondary",
       addButton: ".cds--btn--primary",
+      updateButton: ".cds--btn--primary",
       modify: "[data-cy='modifyButton']",
       deactivate: "[data-cy='deactivateButton']",
+      firstRadioButton: "[for='1:select']",
+      secondRadioButton: "[for='2:select']",
     };
   }
 
@@ -23,6 +26,18 @@ class DictionaryMenuPage {
 
   clickAddButton() {
     cy.get(this.selectors.add).click();
+  }
+
+  clickModifyButton() {
+    cy.get(this.selectors.modify).click();
+  }
+
+  clickUpdateButton() {
+    cy.contains(this.selectors.updateButton, "Update").click();
+  }
+
+  clickDeactivateButton() {
+    cy.get(this.selectors.deactivate).click();
   }
 
   validateModal() {
@@ -58,11 +73,23 @@ class DictionaryMenuPage {
   }
 
   searchByDictionaryEntry(value) {
-    cy.get(this.selectors.searchByDictEntry).type(value);
+    cy.get(this.selectors.searchByDictEntry).clear().type(value);
+  }
+
+  clearSearch() {
+    cy.get(this.selectors.searchByDictEntry).clear();
   }
 
   validateDictEntry(value) {
     cy.contains("td", value);
+  }
+
+  checkFirstDict() {
+    cy.get(this.selectors.firstRadioButton).click();
+  }
+
+  checkSecDict() {
+    cy.get(this.selectors.secondRadioButton).click();
   }
 }
 

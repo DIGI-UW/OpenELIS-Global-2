@@ -1,7 +1,14 @@
-{
-  "cG": "CLINICAL GENERAL",
-  "dictionaryEntry": "TEST",
-  "yes": "Y",
-  "no": "N",
-  "abbrev": "CG"
-}
+[
+  {
+    "cG": "CLINICAL GENERAL",
+    "dictionaryEntry": "TEST",
+    "yes": "Y",
+    "no": "N",
+    "abbrev": "CG"
+  },
+  {
+    "cG": "Haiti Lab",
+    "dictionaryEntry": "SAMPLE",
+    "abbrev": "HL"
+  }
+]
