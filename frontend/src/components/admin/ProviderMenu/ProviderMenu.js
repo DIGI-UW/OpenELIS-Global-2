@@ -590,12 +590,7 @@ function ProviderMenu() {
                       },
                     ]}
                   >
-                    {({ 
-                      rows,
-                     headers,
-                      getHeaderProps,
-                       getTableProps,
-                      }) => (
+                    {({ rows, headers, getHeaderProps, getTableProps }) => (
                       <TableContainer>
                         <Table {...getTableProps()}>
                           <TableHead>
@@ -724,12 +719,7 @@ function ProviderMenu() {
                       },
                     ]}
                   >
-                    {({ 
-                      rows,
-                       headers,
-                        getHeaderProps, 
-                        getTableProps
-                       }) => (
+                    {({ rows, headers, getHeaderProps, getTableProps }) => (
                       <TableContainer>
                         <Table {...getTableProps()}>
                           <TableHead>
