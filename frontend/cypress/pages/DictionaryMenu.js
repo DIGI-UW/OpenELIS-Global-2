@@ -57,11 +57,11 @@ class DictionaryMenuPage {
     cy.contains(this.selectors.addButton, "Add").click();
   }
 
-  searchByDictionaryEntry(value){
+  searchByDictionaryEntry(value) {
     cy.get(this.selectors.searchByDictEntry).type(value);
   }
 
-  validateDictEntry(value){
+  validateDictEntry(value) {
     cy.contains("td", value);
   }
 }

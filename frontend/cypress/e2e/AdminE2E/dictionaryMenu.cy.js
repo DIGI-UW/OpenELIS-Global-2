@@ -57,10 +57,10 @@ describe("Dictionary Menu", function () {
     });
   });
 
-  describe("Validate Added Dictionary", function(){
-    it("Search By Dictionary Entry", function(){
-        dictMenu.searchByDictionaryEntry(usersData.dictEntry);
-        dictMenu.validateDictEntry(usersData.dictEntry);
+  describe("Validate Added Dictionary", function () {
+    it("Search By Dictionary Entry", function () {
+      dictMenu.searchByDictionaryEntry(usersData.dictEntry);
+      dictMenu.validateDictEntry(usersData.dictEntry);
     });
   });
 });
