@@ -43,10 +43,10 @@ class DictionaryMenuPage {
     cy.get(this.selectors.deactivate).click();
   }
 
-  addButton(){
+  addButton() {
     cy.get(this.selectors.addbutton).click();
   }
-  
+
   validateModal() {
     cy.get(this.selectors.modal).should("be.visible");
   }
@@ -69,7 +69,7 @@ class DictionaryMenuPage {
     cy.contains(this.selectors.dictValue, value).click();
   }
 
-  notActive(value){
+  notActive(value) {
     cy.get(this.selectors.isActive).click();
     cy.contains(this.selectors.notActive, value).click();
   }
