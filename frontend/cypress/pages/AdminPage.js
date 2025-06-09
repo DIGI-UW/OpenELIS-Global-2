@@ -5,7 +5,7 @@ import BarcodeConfigPage from "./BarcodeConfigPage";
 import ProgramEntryPage from "./ProgramEntryPage";
 import ProviderManagementPage from "./ProviderManagementPage";
 import OrganizationManagementPage from "./OrganizationManagementPage";
-import DictionaryManagement from "../../src/components/admin/menu/DictionaryManagement";
+import DictionaryMenuPage from "./DictionaryMenu";
 
 class AdminPage {
   constructor() {}
