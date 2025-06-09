@@ -34,10 +34,10 @@ describe("Dictionary Menu", function () {
 
     it("Enter details", function () {
       dictMenu.dictNumberDisabled();
-      dictMenu.dictCategory(usersData.cG);
-      dictMenu.dictEntry(usersData.dictionaryEntry);
-      dictMenu.isActive(usersData.yes);
-      dictMenu.localAbbreviation(usersData.abbrev);
+      dictMenu.dictCategory(usersData[0].cG);
+      dictMenu.dictEntry(usersData[0].dictionaryEntry);
+      dictMenu.isActive(usersData[0].yes);
+      dictMenu.localAbbreviation(usersData[0].abbrev);
       dictMenu.clickCancelButton();
     });
   });
@@ -51,9 +51,9 @@ describe("Dictionary Menu", function () {
       dictMenu.dictNumberDisabled();
       dictMenu.dictCategory(usersData[0].cG);
       dictMenu.dictEntry(usersData[0].dictionaryEntry);
-      dictMenu.isActive(usersData[0].no);
+      dictMenu.notActive(usersData[0].no);
       dictMenu.localAbbreviation(usersData[0].abbrev);
-      dictMenu.clickAddButton();
+      dictMenu.addButton();
     });
 
     it("Add Second Dictionary", function () {
@@ -67,7 +67,7 @@ describe("Dictionary Menu", function () {
       dictMenu.dictEntry(usersData[1].dictionaryEntry);
       dictMenu.isActive(usersData[0].yes);
       dictMenu.localAbbreviation(usersData[1].abbrev);
-      dictMenu.clickAddButton();
+      dictMenu.addButton();
     });
   });
 
@@ -90,7 +90,7 @@ describe("Dictionary Menu", function () {
     });
 
     it("Validate Modified Dictionary", () => {
-      dictMenu.searchByDictionaryEntry(usersData[0].dictEntry);
+      dictMenu.searchByDictionaryEntry(usersData[0].dictionaryEntry);
       dictMenu.validateDictEntry(usersData[0].yes);
     });
   });
@@ -102,7 +102,7 @@ describe("Dictionary Menu", function () {
     });
 
     it("Validate Deactivated Dictionary", () => {
-      dictMenu.searchByDictionaryEntry(usersData[1].dictEntry);
+      dictMenu.searchByDictionaryEntry(usersData[1].dictionaryEntry);
       dictMenu.validateDictEntry(usersData[1].no);
     });
   });

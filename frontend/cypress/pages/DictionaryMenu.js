@@ -2,17 +2,20 @@ class DictionaryMenuPage {
   constructor() {
     this.selectors = {
       title: "h2",
-      modal: ".cds--modal--container",
+      modal: ".cds--modal-container",
       add: "[data-cy='addButton']",
-      dictCategory: "#downshift-1-toggle-button",
+      dictCategory: "#description",
       dictNumber: "#dictNumber",
       dictEntry: "#dictEntry",
-      isActive: "#downshift-3-toggle-button",
+      dictValue: "div",
+      notActive: "#downshift-3-item-1",
+      isActive: "#isActive",
       localAbbreviation: "#localAbbrev",
       searchByDictEntry: "#dictionary-entry-search",
       cancelButton: ".cds--btn--secondary",
-      addButton: ".cds--btn--primary",
+      addButton: "[data-cy='addButton']",
       updateButton: ".cds--btn--primary",
+      addbutton: "div.cds--btn-set > button.cds--btn--primary",
       modify: "[data-cy='modifyButton']",
       deactivate: "[data-cy='deactivateButton']",
       firstRadioButton: "[for='1:select']",
@@ -40,6 +43,10 @@ class DictionaryMenuPage {
     cy.get(this.selectors.deactivate).click();
   }
 
+  addButton(){
+    cy.get(this.selectors.addbutton).click();
+  }
+  
   validateModal() {
     cy.get(this.selectors.modal).should("be.visible");
   }
@@ -49,19 +56,26 @@ class DictionaryMenuPage {
   }
 
   dictCategory(value) {
-    cy.get(this.selectors.dictCategory).select(value);
+    cy.get(this.selectors.dictCategory).click();
+    cy.contains(this.selectors.dictValue, value).click();
   }
 
   dictEntry(value) {
-    cy.get(this.selectors.dictEntry).type(value);
+    cy.get(this.selectors.dictEntry).clear().type(value);
   }
 
   isActive(value) {
-    cy.get(this.selectors.isActive).select(value);
+    cy.get(this.selectors.isActive).click();
+    cy.contains(this.selectors.dictValue, value).click();
+  }
+
+  notActive(value){
+    cy.get(this.selectors.isActive).click();
+    cy.contains(this.selectors.notActive, value).click();
   }
 
   localAbbreviation(value) {
-    cy.get(this.selectors.localAbbreviation).type(value);
+    cy.get(this.selectors.localAbbreviation).clear().type(value);
   }
 
   clickCancelButton() {
