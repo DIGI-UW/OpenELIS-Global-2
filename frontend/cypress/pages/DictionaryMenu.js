@@ -9,6 +9,7 @@ class DictionaryMenuPage {
       dictEntry: "#dictEntry",
       dictValue: "div",
       notActive: "#downshift-3-item-1",
+      active: "#downshift-3-item-0",
       isActive: "#isActive",
       localAbbreviation: "#localAbbrev",
       searchByDictEntry: "#dictionary-entry-search",
@@ -64,7 +65,7 @@ class DictionaryMenuPage {
 
   isActive(value) {
     cy.get(this.selectors.isActive).click();
-    cy.contains(this.selectors.dictValue, value).click();
+    cy.contains(this.selectors.active, value).click();
   }
 
   notActive(value) {
