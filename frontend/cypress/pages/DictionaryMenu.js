@@ -13,13 +13,11 @@ class DictionaryMenuPage {
       localAbbreviation: "#localAbbrev",
       searchByDictEntry: "#dictionary-entry-search",
       cancelButton: ".cds--btn--secondary",
-      addButton: "[data-cy='addButton']",
       updateButton: ".cds--btn--primary",
       addbutton: "div.cds--btn-set > button.cds--btn--primary",
       modify: "[data-cy='modifyButton']",
       deactivate: "[data-cy='deactivateButton']",
-      firstRadioButton: "[for='1:select']",
-      secondRadioButton: "[for='2:select']",
+      radioButton: "td.cds--table-column-checkbox.cds--table-column-radio",
     };
   }
 
@@ -83,7 +81,7 @@ class DictionaryMenuPage {
   }
 
   clickAddButton() {
-    cy.contains(this.selectors.addButton, "Add").click();
+    cy.contains(this.selectors.add, "Add").click();
   }
 
   searchByDictionaryEntry(value) {
@@ -99,11 +97,7 @@ class DictionaryMenuPage {
   }
 
   checkFirstDict() {
-    cy.get(this.selectors.firstRadioButton).click();
-  }
-
-  checkSecDict() {
-    cy.get(this.selectors.secondRadioButton).click();
+    cy.get(this.selectors.radioButton).click({ multiple: true });
   }
 }
 

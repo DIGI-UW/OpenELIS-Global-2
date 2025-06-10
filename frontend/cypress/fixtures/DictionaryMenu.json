@@ -1,14 +1,14 @@
 [
   {
-    "cG": "CLINICAL GENERAL",
-    "dictionaryEntry": "TEST",
+    "cG": "VIROLOGY",
+    "dictionaryEntry": "TESTS",
     "yes": "Y",
     "no": "N",
-    "abbrev": "CG"
+    "abbrev": "V"
   },
   {
-    "cG": "Haiti Lab",
-    "dictionaryEntry": "SAMPLE",
-    "abbrev": "HL"
+    "cG": "MOLECULAR EPI",
+    "dictionaryEntry": "SAMPLES",
+    "abbrev": "ME"
   }
 ]

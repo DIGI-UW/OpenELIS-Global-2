@@ -41,6 +41,7 @@ describe("Dictionary Menu", function () {
       dictMenu.clickCancelButton();
     });
   });
+
   describe("Add Dictionary and Add", function () {
     it("Add First Dictionary", function () {
       dictMenu.clickAddButton();
@@ -73,16 +74,17 @@ describe("Dictionary Menu", function () {
 
   describe("Validate Added Dictionary", function () {
     it("Search By Dictionary Entry", function () {
-      dictMenu.searchByDictionaryEntry(usersData[0].dictEntry);
-      dictMenu.validateDictEntry(usersData[0].dictEntry);
-      dictMenu.searchByDictionaryEntry(usersData[1].dictEntry);
-      dictMenu.validateDictEntry(usersData[1].dictEntry);
+      dictMenu.searchByDictionaryEntry(usersData[0].dictionaryEntry);
+      dictMenu.validateDictEntry(usersData[0].dictionaryEntry);
+      dictMenu.searchByDictionaryEntry(usersData[1].dictionaryEntry);
+      dictMenu.validateDictEntry(usersData[1].dictionaryEntry);
       dictMenu.clearSearch();
     });
   });
 
   describe("Modify Dictionary", function () {
     it("Check and Modify First Dictionary", () => {
+      dictMenu.searchByDictionaryEntry(usersData[0].dictionaryEntry);
       dictMenu.checkFirstDict();
       dictMenu.clickModifyButton();
       dictMenu.isActive(usersData[0].yes);
@@ -97,13 +99,14 @@ describe("Dictionary Menu", function () {
 
   describe("Deactivate Dictionary", function () {
     it("Check and Deactivate Second Dictionary", () => {
-      dictMenu.checkSecDict(usersData[1].cG);
+      dictMenu.searchByDictionaryEntry(usersData[1].dictionaryEntry);
+      dictMenu.checkFirstDict();
       dictMenu.clickDeactivateButton();
     });
 
     it("Validate Deactivated Dictionary", () => {
       dictMenu.searchByDictionaryEntry(usersData[1].dictionaryEntry);
-      dictMenu.validateDictEntry(usersData[1].no);
+      dictMenu.validateDictEntry(usersData[0].no);
     });
   });
 });
