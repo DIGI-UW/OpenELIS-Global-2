@@ -54,7 +54,9 @@ describe("Barcode configuration", function () {
       cy.fixture("Order").then((order) => {
         barcodePage = orderEntityPage.enterSiteName(order.siteName);
         order.samples.forEach((sample) => {
-          barcodePage = orderEntityPage.selectSampleTypeOption(sample.sampleType);
+          barcodePage = orderEntityPage.selectSampleTypeOption(
+            sample.sampleType,
+          );
         });
       });
       barcodePage = orderEntityPage.checkPanelCheckBoxField();
