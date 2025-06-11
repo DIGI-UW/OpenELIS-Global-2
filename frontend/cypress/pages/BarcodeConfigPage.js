@@ -19,9 +19,9 @@ class BarcodeConfigPage {
       widthBlock: "#width-block",
       widthSlide: "#width-slide",
       saveButton: "button:contains('Save')",
-      sampleType: "sample#selectSampleType",
-      prePrint: "[data-cy='pre-Print']",
-      submit: "[data-cy='submitButton']",
+      sampleType: "select#selectSampleType",
+      prePrintButton: "button[data-cy='pre-Print']",
+      submitButton: "button[data-cy='submitButton']",
     };
   }
 
@@ -131,16 +131,16 @@ class BarcodeConfigPage {
     cy.contains("h3", "Print Bar Code Labels");
   }
 
-  selectSampleTypeOption(sampleType) {
-    cy.get(this.selectors.sampleType).select(sampleType);
+  selectSampleTypeOption(value) {
+    cy.get(this.selectors.sampleType).select(value);
   }
 
-  prePrint() {
-    cy.get(this.selectors.prePrint).should("be.enabled");
+  clickPrePrintButton() {
+    cy.get(this.selectors.prePrintButton).should("be.enabled");
   }
 
-  submitButton() {
-    cy.get(this.selectors.submit).should("be.enabled").click();
+  clickSubmitButton() {
+    cy.get(this.selectors.submitButton).should("be.enabled").click();
   }
 }
 

@@ -1,11 +1,12 @@
 import LoginPage from "../../pages/LoginPage";
 import OrderEntityPage from "../../pages/OrderEntityPage";
 import ModifyOrderPage from "../../pages/ModifyOrderPage";
+import BarcodeConfigPage from "../../pages/BarcodeConfigPage";
 
 let loginPage = null;
 let homePage = null;
 let adminPage = null;
-let barcodePage = null;
+let barcodePage = new BarcodeConfigPage();
 let orderEntityPage = new OrderEntityPage();
 let modifyOrderPage = new ModifyOrderPage();
 
@@ -49,27 +50,27 @@ describe("Barcode configuration", function () {
     barcodePage.saveChanges();
   });
 
-  describe("Navigate to Home Page", () => {
-    it("Add Site Name and Sample", () => {
-      barcodePage = homePage.goToBarcode();
-      barcodePage.validatePage();
-      cy.fixture("Order").then((order) => {
-        barcodePage = orderEntityPage.enterSiteName(order.siteName);
-        order.samples.forEach((sample) => {
-          barcodePage = orderEntityPage.selectSampleTypeOption(
-            sample.sampleType,
-          );
-        });
-      });
-      barcodePage = orderEntityPage.checkPanelCheckBoxField();
-      barcodePage.prePrint();
-    });
+  it("Navigate to Barcode Page", function () {
+    barcodePage = homePage.goToBarcode();
+    barcodePage.validatePage();
+  });
 
-    it("Add Accession Number and Submit", () => {
-      cy.fixture("Patient").then((patient) => {
-        barcodePage = modifyOrderPage.enterAccessionNo(patient.labNo);
-      });
-      barcodePage.submitButton();
+  it("Add Site Name and Sample", function () {
+    cy.fixture("Order").then((order) => {
+      barcodePage = orderEntityPage.enterSiteName(order.siteName);
     });
+    barcodePage.selectSampleTypeOption("Serum");
+  });
+
+  it("Check Panels and Pre-Print Labels", function () {
+    barcodePage = orderEntityPage.checkPanelCheckBoxField();
+    barcodePage.clickPrePrintButton();
+  });
+
+  it("Add Accession Number and Submit", () => {
+    cy.fixture("Patient").then((patient) => {
+      barcodePage = modifyOrderPage.enterAccessionNo(patient.labNo);
+    });
+    barcodePage.clickSubmitButton();
   });
 });
