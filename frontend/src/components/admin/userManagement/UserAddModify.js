@@ -84,6 +84,7 @@ function UserAddModify() {
     userPassword: false,
     confirmPassword: false,
   });
+  const [isCurrentPassCorrect, setIsCurrentPassCorrect] = useState(false);
 
   const ID = (() => {
     const hash = window.location.hash;
@@ -483,6 +484,15 @@ function UserAddModify() {
     }));
   }
 
+  function handleCurrentPasswordChange(e) {
+    const value = e.target.value;
+
+    setUserDataShow((prevUserData) => ({
+      ...prevUserData,
+      currentPassword: value,
+    }));
+  }
+
   function handleUserFirstNameChange(e) {
     const value = e.target.value;
     const isValid = nameRegex.test(value);
@@ -763,6 +773,16 @@ function UserAddModify() {
     }
   };
 
+  useEffect(() => {
+    if (!userDataShow.currentPassword || !userDataShow.userPassword) {
+      setIsCurrentPassCorrect(false);
+    } else if (userDataShow.currentPassword !== userDataShow.userPassword) {
+      setIsCurrentPassCorrect(false);
+    } else {
+      setIsCurrentPassCorrect(true);
+    }
+  }, [userDataShow.currentPassword]);
+
   if (!isLoading) {
     return (
       <>
@@ -799,6 +819,43 @@ function UserAddModify() {
               // onChange={setSaveButton(false)}
               // onBlur={handleBlur}
               >
+                {!(ID === "0") && (
+                  <Grid fullWidth={true}>
+                    <Column lg={8} md={4} sm={4}>
+                      <>
+                        <FormattedMessage id="login.login.current.password" />
+                        <span className="requiredlabel">*</span> :
+                      </>
+                    </Column>
+                    <Column lg={8} md={4} sm={4}>
+                      <TextInput
+                        id="current-password"
+                        className="defalut"
+                        type="password"
+                        labelText=""
+                        placeholder={intl.formatMessage({
+                          id: "login.login.current.password",
+                        })}
+                        // invalidText={errors.order}
+                        required={true}
+                        invalid={
+                          userDataShow &&
+                          userDataShow.currentPassword &&
+                          !passwordPatternRegex.test(
+                            userDataShow.currentPassword,
+                          )
+                        }
+                        value={
+                          userDataShow && userDataShow.currentPassword
+                            ? userDataShow.currentPassword
+                            : ""
+                        }
+                        onChange={(e) => handleCurrentPasswordChange(e)}
+                      />
+                    </Column>
+                  </Grid>
+                )}
+                <br />
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
                     <>
@@ -815,6 +872,7 @@ function UserAddModify() {
                       placeholder={intl.formatMessage({
                         id: "login.login.name",
                       })}
+                      disabled={ID === "0" ? false : !isCurrentPassCorrect}
                       invalid={
                         userDataShow &&
                         userDataShow.userLoginName &&
@@ -875,6 +933,7 @@ function UserAddModify() {
                         id: "login.login.password",
                       })}
                       required={true}
+                      disabled={ID === "0" ? false : !isCurrentPassCorrect}
                       invalid={
                         passwordTouched.userPassword &&
                         userDataShow &&
@@ -909,6 +968,7 @@ function UserAddModify() {
                         id: "login.login.repeat.password",
                       })}
                       required={true}
+                      disabled={ID === "0" ? false : !isCurrentPassCorrect}
                       invalid={
                         (passwordTouched.confirmPassword &&
                           userDataShow &&
