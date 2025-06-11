@@ -19,6 +19,9 @@ class BarcodeConfigPage {
       widthBlock: "#width-block",
       widthSlide: "#width-slide",
       saveButton: "button:contains('Save')",
+      sampleType: "sample#selectSampleType",
+      prePrint: "[data-cy='pre-Print']",
+      submit: "[data-cy='submitButton']",
     };
   }
 
@@ -122,6 +125,22 @@ class BarcodeConfigPage {
    */
   verifySaveSuccess() {
     cy.contains("BarCode Configurations has been saved").should("be.visible");
+  }
+
+  validatePage(){
+    cy.contains("h3", "Print Bar Code Labels");
+  }
+
+  selectSampleTypeOption(sampleType) {
+    cy.get(this.selectors.sampleType).select(sampleType);
+  }
+
+  prePrint(){
+    cy.get(this.selectors.prePrint).should("be.enabled");
+  }
+
+  submitButton(){
+    cy.get(this.selectors.submit).should("be.enabled").click();
   }
 }
 

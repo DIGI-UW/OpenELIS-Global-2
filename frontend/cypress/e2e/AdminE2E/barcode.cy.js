@@ -4,6 +4,8 @@ let loginPage = null;
 let homePage = null;
 let adminPage = null;
 let barcodePage = null;
+let orderEntityPage = null;
+let modifyOrderPage = null;
 
 before(() => {
   // Initialize LoginPage object and navigate to Admin Page
@@ -43,5 +45,27 @@ describe("Barcode configuration", function () {
 
   it("Save Changes", function () {
     barcodePage.saveChanges();
+  });
+
+  describe("Navigate to Home Page", ()=>{
+    it("Add Site Name and Sample",()=>{
+      barcode = homePage.goToBarcode();
+      barcode.validatePage();
+      cy.fixture("Order").then((order) => {
+      barcode = orderEntityPage.enterSiteName(order.siteName);
+      order.samples.forEach((sample) => {
+      barcode = orderEntityPage.selectSampleTypeOption(sample.sampleType);
+      });
+    });
+    barcodePage = orderEntityPage.checkPanelCheckBoxField();
+    barcode.prePrint();
+    });
+
+    it("Add Accession Number and Submit",()=>{
+      cy.fixture("Patient").then((patient) => {
+      barcode = modifyOrderPage.enterAccessionNo(patient.labNo);
+    });
+    barcode.submitButton();
+    });
   });
 });
