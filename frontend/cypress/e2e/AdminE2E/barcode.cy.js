@@ -47,25 +47,25 @@ describe("Barcode configuration", function () {
     barcodePage.saveChanges();
   });
 
-  describe("Navigate to Home Page", ()=>{
-    it("Add Site Name and Sample",()=>{
+  describe("Navigate to Home Page", () => {
+    it("Add Site Name and Sample", () => {
       barcode = homePage.goToBarcode();
       barcode.validatePage();
       cy.fixture("Order").then((order) => {
-      barcode = orderEntityPage.enterSiteName(order.siteName);
-      order.samples.forEach((sample) => {
-      barcode = orderEntityPage.selectSampleTypeOption(sample.sampleType);
+        barcode = orderEntityPage.enterSiteName(order.siteName);
+        order.samples.forEach((sample) => {
+          barcode = orderEntityPage.selectSampleTypeOption(sample.sampleType);
+        });
       });
-    });
-    barcodePage = orderEntityPage.checkPanelCheckBoxField();
-    barcode.prePrint();
+      barcodePage = orderEntityPage.checkPanelCheckBoxField();
+      barcode.prePrint();
     });
 
-    it("Add Accession Number and Submit",()=>{
+    it("Add Accession Number and Submit", () => {
       cy.fixture("Patient").then((patient) => {
-      barcode = modifyOrderPage.enterAccessionNo(patient.labNo);
-    });
-    barcode.submitButton();
+        barcode = modifyOrderPage.enterAccessionNo(patient.labNo);
+      });
+      barcode.submitButton();
     });
   });
 });

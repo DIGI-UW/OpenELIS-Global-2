@@ -127,7 +127,7 @@ class BarcodeConfigPage {
     cy.contains("BarCode Configurations has been saved").should("be.visible");
   }
 
-  validatePage(){
+  validatePage() {
     cy.contains("h3", "Print Bar Code Labels");
   }
 
@@ -135,11 +135,11 @@ class BarcodeConfigPage {
     cy.get(this.selectors.sampleType).select(sampleType);
   }
 
-  prePrint(){
+  prePrint() {
     cy.get(this.selectors.prePrint).should("be.enabled");
   }
 
-  submitButton(){
+  submitButton() {
     cy.get(this.selectors.submit).should("be.enabled").click();
   }
 }
