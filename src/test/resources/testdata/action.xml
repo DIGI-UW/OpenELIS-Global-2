@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <action id="1" code="ACT001"
+        description="Initial patient registration" type="REG"
+        lastupdated="2024-06-10 09:00:00" />
+    <action id="2" code="ACT002"
+        description="Sample collected for analysis" type="SAMPLE"
+        lastupdated="2024-06-10 10:30:00" />
+
+    <action id="3" code="ACT003"
+        description="Lab results reviewed by supervisor" type="REVIEW"
+        lastupdated="2024-06-10 11:45:00" />
+
+    <action id="4" code="ACT004"
+        description="Final report sent to clinician" type="REPORT"
+        lastupdated="2024-06-10 12:15:00" />
+</dataset>
