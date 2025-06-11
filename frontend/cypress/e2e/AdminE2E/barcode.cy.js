@@ -49,23 +49,23 @@ describe("Barcode configuration", function () {
 
   describe("Navigate to Home Page", () => {
     it("Add Site Name and Sample", () => {
-      barcode = homePage.goToBarcode();
-      barcode.validatePage();
+      barcodePage = homePage.goToBarcode();
+      barcodePage.validatePage();
       cy.fixture("Order").then((order) => {
-        barcode = orderEntityPage.enterSiteName(order.siteName);
+        barcodePage = orderEntityPage.enterSiteName(order.siteName);
         order.samples.forEach((sample) => {
-          barcode = orderEntityPage.selectSampleTypeOption(sample.sampleType);
+          barcodePage = orderEntityPage.selectSampleTypeOption(sample.sampleType);
         });
       });
       barcodePage = orderEntityPage.checkPanelCheckBoxField();
-      barcode.prePrint();
+      barcodePage.prePrint();
     });
 
     it("Add Accession Number and Submit", () => {
       cy.fixture("Patient").then((patient) => {
-        barcode = modifyOrderPage.enterAccessionNo(patient.labNo);
+        barcodePage = modifyOrderPage.enterAccessionNo(patient.labNo);
       });
-      barcode.submitButton();
+      barcodePage.submitButton();
     });
   });
 });
