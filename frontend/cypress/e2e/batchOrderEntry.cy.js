@@ -1,8 +1,12 @@
 import LoginPage from "../pages/LoginPage";
+import OrganizationManagementPage from "../pages/OrganizationManagementPage";
+import AdminPage from "../pages/AdminPage";
 
 let homePage = null;
 let loginPage = null;
 let batchOrder = null;
+let adminPage = new AdminPage();
+let orgMgmnt = new OrganizationManagementPage();
 
 const navigateToBatchOrderEntryPage = () => {
   homePage = loginPage.goToHomePage();

@@ -148,13 +148,18 @@ function Admin() {
           >
             <FormattedMessage id="provider.browse.title" />
           </SideNavLink>
-          <SideNavLink renderIcon={QrCode} href="#barcodeConfiguration">
+          <SideNavLink
+            data-cy="barcodeConfig"
+            renderIcon={QrCode}
+            href="#barcodeConfiguration"
+          >
             <FormattedMessage id="sidenav.label.admin.barcodeconfiguration" />
           </SideNavLink>
           <SideNavLink href="#PluginFile" renderIcon={BootVolumeAlt}>
             <FormattedMessage id="sidenav.label.admin.Listplugin" />
           </SideNavLink>
           <SideNavLink
+            data-cy="orgMgmnt"
             renderIcon={ContainerSoftware}
             href="#organizationManagement"
           >

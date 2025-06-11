@@ -24,6 +24,7 @@ import {
   Stack,
   UnorderedList,
   ListItem,
+  ClickableTile,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
@@ -68,49 +69,46 @@ function TestSectionManagement() {
       {notificationVisible === true ? <AlertDialog /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
-        <Grid fullWidth={true}>
-          <Column lg={16} md={8} sm={4}>
-            <Section>
-              <Heading>
-                <FormattedMessage id="configuration.sampleType.manage" />
-              </Heading>
-            </Section>
-          </Column>
-        </Grid>
-        <br />
-        <hr />
-        <br />
-        <Grid fullWidth={true}>
-          <Column lg={16} md={8} sm={4}>
-            <UnorderedList>
-              <ListItem
-                onClick={() => {
-                  window.location.assign("/MasterListsPage#SampleTypeCreate");
-                }}
-              >
-                <FormattedMessage id="configuration.sampleType.create" />
-              </ListItem>
-              <br />
-              <ListItem
-                onClick={() => {
-                  window.location.assign("/MasterListsPage#SampleTypeOrder");
-                }}
-              >
-                <FormattedMessage id="configuration.sampleType.order" />
-              </ListItem>
-              <br />
-              <ListItem
-                onClick={() => {
-                  window.location.assign(
-                    "/MasterListsPage#SampleTypeTestAssign",
-                  );
-                }}
-              >
-                <FormattedMessage id="configuration.panel.assign" />
-              </ListItem>
-            </UnorderedList>
-          </Column>
-        </Grid>
+        <div className="orderLegendBody">
+          <Grid fullWidth={true}>
+            <Column lg={16} md={8} sm={4}>
+              <Section>
+                <Heading>
+                  <FormattedMessage id="configuration.sampleType.manage" />
+                </Heading>
+              </Section>
+            </Column>
+          </Grid>
+          <br />
+          <hr />
+          <br />
+          <Grid fullWidth={true}>
+            <Column lg={16} md={8} sm={4}>
+              <UnorderedList>
+                <ClickableTile
+                  href="/MasterListsPage#SampleTypeCreate"
+                  id="SampleTypeCreate"
+                >
+                  <FormattedMessage id="configuration.sampleType.create" />
+                </ClickableTile>
+                <br />
+                <ClickableTile
+                  href="/MasterListsPage#SampleTypeOrder"
+                  id="SampleTypeOrder"
+                >
+                  <FormattedMessage id="configuration.sampleType.order" />
+                </ClickableTile>
+                <br />
+                <ClickableTile
+                  href="/MasterListsPage#SampleTypeTestAssign"
+                  id="SampleTypeTestAssign"
+                >
+                  <FormattedMessage id="configuration.panel.assign" />
+                </ClickableTile>
+              </UnorderedList>
+            </Column>
+          </Grid>
+        </div>
       </div>
     </>
   );

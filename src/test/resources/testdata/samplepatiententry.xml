@@ -1,0 +1,77 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- Localization Entries -->
+    <localization id="1" english="Immunology"
+        french="Immunologie" />
+    <localization id="2" english="HIV Test" french="Test VIH" />
+    <localization id="3" english="Not Started"
+        french="Pas commencé" />
+    <localization id="4" english="Serum" french="Sérum" />
+    <localization id="5" english="Test Org"
+        french="Organisation Test" />
+
+    <!-- Type of Sample Entries -->
+    <type_of_sample id="1" name_localization_id="4"
+        description="Serum" is_active="true" lastupdated="2024-01-01 00:00:00" />
+    <type_of_sample id="2" name_localization_id="1"
+        description="Immunology" is_active="true"
+        lastupdated="2024-01-01 00:00:00" />
+    <type_of_sample id="3" name_localization_id="2"
+        description="HIV Test" is_active="true"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <!-- Test Section Entries -->
+    <test_section id="1" name="Immunology"
+        description="Immunology Section" name_localization_id="1"
+        lastupdated="2023-11-01 12:00:00" is_active="Y" sort_order="1" />
+
+    <!-- Test Entries -->
+    <test id="1" guid="550e8400-e29b-41d4-a716-446655440000"
+        name="HIV Test" description="HIV Test" is_reportable="Y"
+        loinc="12345-6" lastupdated="2023-11-01 12:00:00" is_active="Y"
+        local_code="HIV-1" sort_order="1" test_section_id="1" orderable="true"
+        notify_results="true" name_localization_id="2" />
+
+    <!-- Status of Sample Entries -->
+    <status_of_sample id="1" code="1" is_active="1"
+        status_type="Pending" description="Awaiting testing"
+        lastupdated="2024-01-01 00:00:00" name="Pending"
+        display_key="status.pending" />
+
+    <!-- Sample Entries -->
+    <sample id="1" accession_number="TEST001" domain="H"
+        entered_date="2023-11-01 10:00:00" received_date="2023-11-01 11:00:00"
+        lastupdated="2023-11-01 12:00:00" status_id="1" />
+
+    <!-- Organization Entries -->
+    <organization id="1" name="Test Org" short_name="TO"
+        lastupdated="2023-11-01 12:00:00" is_active="Y" />
+
+    <!-- Sample Item Entries -->
+    <sample_item id="1" sort_order="1" samp_id="1"
+        typeosamp_id="2" status_id="1" />
+    <sample_item id="2" sort_order="10" sampitem_id="1"
+        samp_id="1" source_id="1" typeosamp_id="2" uom_id="1"
+        source_other="Source" quantity="10" lastupdated="2023-11-01 12:00:00"
+        external_id="ext-id-123" collection_date="2023-11-01 12:00:00"
+        status_id="1" collector="Collector Name" />
+
+    <!-- Person Entries -->
+    <person id="4" last_name="Doe" first_name="John"
+        middle_name="Middle" street_address="123 Main St" city="Test City"
+        state="TS" zip_code="12345" country="Test Country"
+        work_phone="123-456-7890" home_phone="123-456-7891"
+        cell_phone="123-456-7892" fax="123-456-7893"
+        email="john.doe@example.com" lastupdated="2023-11-01 12:00:00"
+        primary_phone="123-456-7890" />
+
+    <!-- Patient Entries -->
+    <patient id="1" person_id="4" lastupdated="2023-11-01 12:00:00"
+        national_id="TEST123" external_id="PAT001"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440001" />
+
+    <!-- Sample human Entries -->
+
+    <sample_human id="1" samp_id="1" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+</dataset>

@@ -435,7 +435,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
       case "TEST_RESULT":
         return (
           <>
-            <Column lg={16} md={8} sm={4}>
+            <Column lg={5} md={2} sm={1}>
               <Select
                 id={index + "_" + operationIndex + "_sample"}
                 name="sampleId"
@@ -463,8 +463,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 ))}
               </Select>
             </Column>
-            <br />
-            <Column lg={16} md={8} sm={4}>
+            <Column lg={5} md={2} sm={1}>
               <AutoComplete
                 id={index + "_" + operationIndex + "_testresult"}
                 label={
@@ -847,8 +846,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                 operation.type,
                                 operation,
                               )}
-                              <br />
-                              <Column lg={16} md={8} sm={4}>
+                              <Column lg={2}>
                                 {operation.type !== "" && (
                                   <IconButton
                                     renderIcon={Subtract}
@@ -862,8 +860,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                   />
                                 )}
                               </Column>
-                              <br />
-                              <Column lg={16} md={8} sm={4}>
+                              <Column lg={4} md={2} sm={1}>
                                 <Select
                                   id={
                                     index +
@@ -915,13 +912,13 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         )}
                       </div>
                       <div className="section">
-                        <div className="inlineDiv">
-                          <h6>
-                            <FormattedMessage id="testcalculation.label.finalresult" />
-                          </h6>
-                        </div>
-                        <div className="inlineDiv">
-                          <div>
+                        <Grid>
+                          <Column lg={16}>
+                            <h6>
+                              <FormattedMessage id="testcalculation.label.finalresult" />
+                            </h6>
+                          </Column>
+                          <Column lg={4}>
                             <Select
                               id={index + "_sample"}
                               name="sampleId"
@@ -953,8 +950,8 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                 />
                               ))}
                             </Select>
-                          </div>
-                          <div>
+                          </Column>
+                          <Column lg={4}>
                             <AutoComplete
                               id={index + "_finalresult"}
                               class="inputText"
@@ -968,21 +965,21 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                   : []
                               }
                             ></AutoComplete>
-                          </div>
-                          <div>&nbsp; &nbsp;</div>
-                          {sampleTestList["FINAL_RESULT"][index] && (
-                            <>
-                              {getResultInputByResultType(
-                                sampleTestList["FINAL_RESULT"][index].filter(
-                                  (test) => test.id == calculation.testId,
-                                )[0]?.resultType,
-                                index,
-                                calculation,
-                              )}
-                            </>
-                          )}
-                          <div>&nbsp; &nbsp;</div>
-                          <div>
+                          </Column>
+                          <Column lg={4}>
+                            {sampleTestList["FINAL_RESULT"][index] && (
+                              <>
+                                {getResultInputByResultType(
+                                  sampleTestList["FINAL_RESULT"][index].filter(
+                                    (test) => test.id == calculation.testId,
+                                  )[0]?.resultType,
+                                  index,
+                                  calculation,
+                                )}
+                              </>
+                            )}
+                          </Column>
+                          <Column lg={4}>
                             <TextArea
                               name="note"
                               id={index + "_note"}
@@ -995,8 +992,8 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                 handleCalculationFieldChange(e, index);
                               }}
                             />
-                          </div>
-                        </div>
+                          </Column>
+                        </Grid>
                       </div>
                       <Button
                         renderIcon={Save}

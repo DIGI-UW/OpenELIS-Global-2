@@ -84,7 +84,7 @@ public class CityStateZipServiceTest extends BaseWebContextSensitiveTest {
         List<CityStateZip> cityStateZips = cService.getCitiesByZipCode(cityStateZip);
 
         Assert.assertEquals(4, cityStateZips.size());
-        Assert.assertEquals("TIMES SQUARE", cityStateZips.get(0).getCity());
+        Assert.assertEquals("BROADWAY", cityStateZips.get(0).getCity());
         Assert.assertEquals("CAPITOL HILL", cityStateZips.get(1).getCity());
     }
 

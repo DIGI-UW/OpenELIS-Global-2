@@ -31,17 +31,17 @@ public class UnifiedSystemUserRestControllerTest extends BaseWebContextSensitive
         List<Map<String, Object>> users = objectMapper.readValue(results,
                 new TypeReference<List<Map<String, Object>>>() {
                 });
-        assertEquals(3, users.size());
+        assertEquals(4, users.size());
 
-        Map<String, Object> user1 = users.get(0);
+        Map<String, Object> user1 = users.get(1);
         assertEquals("3", user1.get("id"));
         assertEquals("Doe,John", user1.get("value"));
 
-        Map<String, Object> user2 = users.get(1);
+        Map<String, Object> user2 = users.get(2);
         assertEquals("4", user2.get("id"));
         assertEquals("Smith,Alice", user2.get("value"));
 
-        Map<String, Object> user3 = users.get(2);
+        Map<String, Object> user3 = users.get(3);
         assertEquals("5", user3.get("id"));
         assertEquals("White,Bob", user3.get("value"));
     }
@@ -55,13 +55,13 @@ public class UnifiedSystemUserRestControllerTest extends BaseWebContextSensitive
         List<Map<String, Object>> users = objectMapper.readValue(results,
                 new TypeReference<List<Map<String, Object>>>() {
                 });
-        assertEquals(2, users.size());
+        assertEquals(3, users.size());
 
-        Map<String, Object> user1 = users.get(0);
+        Map<String, Object> user1 = users.get(1);
         assertEquals("3", user1.get("id"));
         assertEquals("Doe,John", user1.get("value"));
 
-        Map<String, Object> user2 = users.get(1);
+        Map<String, Object> user2 = users.get(2);
         assertEquals("4", user2.get("id"));
         assertEquals("Smith,Alice", user2.get("value"));
     }

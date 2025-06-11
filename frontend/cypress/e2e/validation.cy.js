@@ -44,7 +44,7 @@ describe("Validation By Order", function () {
     validation.checkForHeading();
   });
 
-  it("Should Enter Lab Number, make a search and validate", function () {
+  it("Enter Lab Number, search and validate", function () {
     cy.fixture("Patient").then((order) => {
       validation.enterLabNumberAndSearch(order.labNo);
     });

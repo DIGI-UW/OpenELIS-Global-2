@@ -100,7 +100,7 @@ public class ImmunohistochemistryDisplayServiceImpl implements Immunohistochemis
         if (StringUtils.isNotBlank(sampleItem.getReferringSiteDepartmentId())) {
             Organization org = organizationService.get(sampleItem.getReferringSiteDepartmentId());
             if (org != null) {
-                displayItem.setDepartment(org.getLocalizedName());
+                displayItem.setDepartment(org.getOrganizationName());
             }
         }
         displayItem.setRequester(sampleItem.getProviderLastName() + " " + sampleItem.getProviderFirstName());
