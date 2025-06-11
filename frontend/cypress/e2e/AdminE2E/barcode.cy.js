@@ -1,11 +1,13 @@
 import LoginPage from "../../pages/LoginPage";
+import OrderEntityPage from "../../pages/OrderEntityPage";
+import ModifyOrderPage from "../../pages/ModifyOrderPage";
 
 let loginPage = null;
 let homePage = null;
 let adminPage = null;
 let barcodePage = null;
-let orderEntityPage = null;
-let modifyOrderPage = null;
+let orderEntityPage = new OrderEntityPage();
+let modifyOrderPage = new ModifyOrderPage();
 
 before(() => {
   // Initialize LoginPage object and navigate to Admin Page
