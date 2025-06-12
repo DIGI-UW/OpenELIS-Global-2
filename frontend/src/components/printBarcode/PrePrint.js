@@ -363,6 +363,7 @@ const PrePrint = () => {
           </Column>
           <Column lg={8} md={8} sm={4}>
             <Button
+              data-cy="pre-Print"
               disabled={selectedTests.length == 0}
               onClick={prePrintLabels}
             >
