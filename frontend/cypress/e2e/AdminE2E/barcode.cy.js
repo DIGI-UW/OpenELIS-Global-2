@@ -57,19 +57,19 @@ describe("Barcode configuration", function () {
 
   it("Add Site Name and Sample", function () {
     cy.fixture("Order").then((order) => {
-      barcodePage = orderEntityPage.enterSiteName(order.siteName);
+      orderEntityPage.enterSiteName(order.siteName);
     });
     barcodePage.selectSampleTypeOption("Serum");
   });
 
   it("Check Panels and Pre-Print Labels", function () {
-    barcodePage = orderEntityPage.checkPanelCheckBoxField();
+    orderEntityPage.checkPanelCheckBoxField();
     barcodePage.clickPrePrintButton();
   });
 
-  it("Add Accession Number and Submit", () => {
+  it("Add Accession Number and Submit", function () {
     cy.fixture("Patient").then((patient) => {
-      barcodePage = modifyOrderPage.enterAccessionNo(patient.labNo);
+      modifyOrderPage.enterAccessionNo(patient.labNo);
     });
     barcodePage.clickSubmitButton();
   });
