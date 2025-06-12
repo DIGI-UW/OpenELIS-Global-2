@@ -120,7 +120,7 @@ const ExistingOrder = () => {
             </Column>
             <div className="tabsLayout">
               <Column lg={16} md={8} sm={4}>
-                <Button type="submit" className="btn">
+                <Button data-cy="submitButton" type="submit" className="btn">
                   <FormattedMessage id="label.button.submit" />
                 </Button>
               </Column>
