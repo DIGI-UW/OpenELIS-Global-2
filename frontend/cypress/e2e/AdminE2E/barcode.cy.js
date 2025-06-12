@@ -11,7 +11,6 @@ let orderEntityPage = new OrderEntityPage();
 let modifyOrderPage = new ModifyOrderPage();
 
 before(() => {
-  // Initialize LoginPage object and navigate to Admin Page
   loginPage = new LoginPage();
   loginPage.visit();
 
