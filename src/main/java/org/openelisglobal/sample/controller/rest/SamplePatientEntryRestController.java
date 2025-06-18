@@ -28,6 +28,8 @@ import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
+import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
+import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
@@ -45,7 +47,6 @@ import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.controller.BaseSampleEntryController;
-import org.openelisglobal.sample.event.SamplePatientUpdateDataCreatedEvent;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.service.PatientManagementUpdate;
 import org.openelisglobal.sample.service.SamplePatientEntryService;
@@ -60,7 +61,6 @@ import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
@@ -172,9 +172,6 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
     @Autowired
     private SampleService sampleService;
 
-    @Autowired
-    private ApplicationEventPublisher eventPublisher;
-
     @InitBinder
     public void initBinder(WebDataBinder binder) {
         binder.setAllowedFields(ALLOWED_FIELDS);
@@ -282,10 +279,9 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         try {
             samplePatientService.persistData(updateData, patientUpdate, patientInfo, form, request);
             try {
-                SamplePatientUpdateDataCreatedEvent event = new SamplePatientUpdateDataCreatedEvent(this, updateData,
-                        patientInfo, form);
-                eventPublisher.publishEvent(event);
-            } catch (Exception e) {
+                fhirTransformService.transformPersistOrderEntryFhirObjects(updateData, patientInfo,
+                        form.getUseReferral(), form.getReferralItems());
+            } catch (FhirTransformationException | FhirPersistanceException e) {
                 LogEvent.logError(e);
             }
 
