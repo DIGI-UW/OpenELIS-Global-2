@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Scriptlet table data -->
+    <scriptlet id="1" name="default_scriptlet" code_type="D"
+        code_source="default" lastupdated="2023-01-01 00:00:00" />
+    <scriptlet id="2" name="new_scriptlet" code_type="N"
+        code_source="new" lastupdated="2023-01-01 00:00:00" />
+    <scriptlet id="3" name="updated_scriptlet" code_type="U"
+        code_source="updated" lastupdated="2023-01-01 00:00:00" />
+
+    <!-- Label table data - null scriptlet_id by omitting the attribute -->
+    <label id="1" name="Default Label"
+        description="Main printer label" printer_type="Z"
+        lastupdated="2023-01-01 00:00:00" />
+</dataset>

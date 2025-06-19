@@ -5,6 +5,9 @@ import ProgramEntryPage from "./ProgramEntryPage";
 import ProviderManagementPage from "./ProviderManagementPage";
 import TestNotificationPage from "./TestNotification";
 import BarcodeConfigPage from "./BarcodeConfigPage";
+import OrganizationManagementPage from "./OrganizationManagementPage";
+import DictionaryMenuPage from "./DictionaryMenu";
+
 
 class AdminPage {
   constructor() {}
@@ -69,6 +72,12 @@ class AdminPage {
     cy.get("[data-cy='test-notification-config']").should("be.visible");
     cy.get("[data-cy='test-notification-config']").click();
     return new TestNotificationPage();
+  }
+
+  goToDictionaryMenuPage() {
+    cy.get("[data-cy='dictMenu']").should("be.visible").click();
+
+    return new DictionaryMenuPage();
   }
 
 }

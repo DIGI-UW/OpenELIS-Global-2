@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <unit_of_measure id="1" name="mg/dL"
+        description="Milligrams per deciliter" />
+    <unit_of_measure id="2" name="g/L"
+        description="Grams per liter" />
+    <unit_of_measure id="3" name="mmol/L"
+        description="Millimoles per liter" />
+
+    <inventory_item id="1" uom_id="1" name="Gloves"
+        description="Latex gloves - medium size" quantity_min_level="50"
+        quantity_max_level="200" quantity_to_reorder="100" is_reorder_auto="Y"
+        is_lot_maintained="Y" is_active="Y" average_lead_time="5"
+        average_cost="0.15" average_daily_use="20" />
+    <inventory_item id="2" uom_id="2" name="Tubes"
+        description="Blood collection tubes" quantity_min_level="100"
+        quantity_max_level="500" quantity_to_reorder="300" is_reorder_auto="N"
+        is_lot_maintained="N" is_active="Y" average_lead_time="10"
+        average_cost="0.25" average_daily_use="50" />
+    <inventory_item id="3" uom_id="3" name="ReagentA"
+        description="Reagent for test A" quantity_min_level="10"
+        quantity_max_level="100" quantity_to_reorder="40" is_reorder_auto="Y"
+        is_lot_maintained="Y" is_active="N" average_lead_time="7"
+        average_cost="1.50" average_daily_use="5" />
+</dataset>

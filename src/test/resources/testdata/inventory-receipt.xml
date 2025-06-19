@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <unit_of_measure id="1" name="mg/dL"
+        description="Milligrams per deciliter" />
+    <unit_of_measure id="2" name="g/L"
+        description="Grams per liter" />
+
+
+    <inventory_item id="1" uom_id="1" name="Gloves"
+        description="Latex gloves - medium size" quantity_min_level="50"
+        quantity_max_level="200" quantity_to_reorder="100" is_reorder_auto="Y"
+        is_lot_maintained="Y" is_active="Y" average_lead_time="5"
+        average_cost="0.15" average_daily_use="20" />
+    <inventory_item id="2" uom_id="2" name="Tubes"
+        description="Blood collection tubes" quantity_min_level="100"
+        quantity_max_level="500" quantity_to_reorder="300" is_reorder_auto="N"
+        is_lot_maintained="N" is_active="Y" average_lead_time="10"
+        average_cost="0.25" average_daily_use="50" />
+
+    <organization id="3" lastupdated="2024-06-03 12:00:00.0"
+        name="Global Health Org" city="New York" zip_code="10001"
+        mls_sentinel_lab_flag="Y" short_name="GHG" multiple_unit="NYC Unit"
+        street_address="123 Health St" state="NY" org_id="3"
+        internet_address="www.globalhealth.org" clia_num="CLIA12345"
+        pws_id="PWS123" mls_lab_flag="Y" is_active="Y" local_abbrev="1"
+        code="GHG001" fhir_uuid="f2cdeff8-8d5b-4023-bd7c-932b4b98b6d3" />
+    <organization id="4" lastupdated="2024-06-04 13:00:00.0"
+        name="Health Services Inc" city="Los Angeles" zip_code="90001"
+        mls_sentinel_lab_flag="N" short_name="HSI" multiple_unit="LA Unit"
+        street_address="456 Wellness Ave" state="CA" org_id="3"
+        internet_address="www.healthservices.org" clia_num="CLIA67890"
+        pws_id="PWS456" mls_lab_flag="N" is_active="Y" local_abbrev="2"
+        code="HSI002" fhir_uuid="a3bdeff8-8d5b-4023-bd7c-932b4b98b6d4" />
+
+    <inventory_receipt id="1" invitem_id="1"
+        received_date="2025-05-15 09:30:00" quantity_received="100"
+        unit_cost="2.50" qc_reference="QC20250515A"
+        external_reference="EXT12345" org_id="3" />
+    <inventory_receipt id="2" invitem_id="2"
+        received_date="2025-05-16 11:00:00" quantity_received="200"
+        unit_cost="0.75" qc_reference="QC20250516B"
+        external_reference="EXT67890" org_id="4" />
+</dataset>

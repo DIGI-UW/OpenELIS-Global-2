@@ -3,7 +3,7 @@ services:
     certs:
         container_name: oe-certs 
         image: itechuw/certgen:main
-        # platform: linux/amd64
+        platform: linux/amd64
         restart: always
         environment:
             - KEYSTORE_PW="kspass"
@@ -42,7 +42,7 @@ services:
         #     context: .
         #     dockerfile: Dockerfile.dev
         image: itechuw/openelis-global-2-dev:develop 
-        # platform: linux/amd64
+        platform: linux/amd64
         depends_on:
             - database
             - certs
@@ -75,7 +75,7 @@ services:
     fhir.openelis.org:
         container_name: external-fhir-api
         image: itechuw/openelis-global-2-fhir:develop
-        # platform: linux/amd64
+        platform: linux/amd64
         depends_on:
             - database
             - certs
@@ -106,7 +106,7 @@ services:
     frontend.openelis.org:
         image: itechuw/openelis-global-2-frontend-dev:develop
         container_name: openelisglobal-front-end
-        # platform: linux/amd64
+        platform: linux/amd64
         networks:
             - default
         volumes:
@@ -119,7 +119,7 @@ services:
     proxy:
         image: itechuw/openelis-global-2-proxy:develop
         container_name: openelisglobal-proxy
-        # platform: linux/amd64
+        platform: linux/amd64
         ports:
             - 80:80
             - 443:443

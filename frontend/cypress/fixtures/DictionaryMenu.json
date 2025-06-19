@@ -1,0 +1,14 @@
+[
+  {
+    "cG": "VIROLOGY",
+    "dictionaryEntry": "TESTS",
+    "yes": "Y",
+    "no": "N",
+    "abbrev": "V"
+  },
+  {
+    "cG": "MOLECULAR EPI",
+    "dictionaryEntry": "SAMPLES",
+    "abbrev": "ME"
+  }
+]

@@ -1,12 +1,16 @@
 import LoginPage from "../../pages/LoginPage";
+import OrderEntityPage from "../../pages/OrderEntityPage";
+import ModifyOrderPage from "../../pages/ModifyOrderPage";
+import BarcodeConfigPage from "../../pages/BarcodeConfigPage";
 
 let loginPage = null;
 let homePage = null;
 let adminPage = null;
-let barcodePage = null;
+let barcodePage = new BarcodeConfigPage();
+let orderEntityPage = new OrderEntityPage();
+let modifyOrderPage = new ModifyOrderPage();
 
 before(() => {
-  // Initialize LoginPage object and navigate to Admin Page
   loginPage = new LoginPage();
   loginPage.visit();
 
@@ -43,5 +47,29 @@ describe("Barcode configuration", function () {
 
   it("Save Changes", function () {
     barcodePage.saveChanges();
+  });
+
+  it("Navigate to Barcode Page", function () {
+    barcodePage = homePage.goToBarcode();
+    barcodePage.validatePage();
+  });
+
+  it("Add Site Name and Sample", function () {
+    cy.fixture("Order").then((order) => {
+      orderEntityPage.enterSiteName(order.siteName);
+    });
+    barcodePage.selectSampleTypeOption("Serum");
+  });
+
+  it("Check Panels and Pre-Print Labels", function () {
+    orderEntityPage.checkPanelCheckBoxField();
+    barcodePage.clickPrePrintButton();
+  });
+
+  it("Add Accession Number and Submit", function () {
+    cy.fixture("Patient").then((patient) => {
+      modifyOrderPage.enterAccessionNo(patient.labNo);
+    });
+    barcodePage.clickSubmitButton();
   });
 });
