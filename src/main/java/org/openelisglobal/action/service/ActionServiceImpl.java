@@ -8,11 +8,13 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class ActionServiceImpl extends AuditableBaseObjectServiceImpl<Action, String> implements ActionService {
-    @Autowired
-    protected ActionDAO baseObjectDAO;
 
-    ActionServiceImpl() {
+    private final ActionDAO baseObjectDAO;
+
+    @Autowired
+    public ActionServiceImpl(ActionDAO baseObjectDAO) {
         super(Action.class);
+        this.baseObjectDAO = baseObjectDAO;
     }
 
     @Override
