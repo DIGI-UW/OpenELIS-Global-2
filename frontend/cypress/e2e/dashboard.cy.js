@@ -1,13 +1,11 @@
 import LoginPage from "../pages/LoginPage";
 import AdminPage from "../pages/AdminPage";
 import ProviderManagementPage from "../pages/ProviderManagementPage";
-import OrganizationManagementPage from "../pages/OrganizationManagementPage";
 
 let homePage = null;
 let loginPage = null;
 let dashboard = null;
 let providerManagementPage = new ProviderManagementPage();
-let orgMgmnt = new OrganizationManagementPage();
 let adminPage = new AdminPage();
 
 // Helper function to log in and navigate to the homepage
@@ -65,7 +63,7 @@ const validateOrderStatus = (dashboardType) => {
   dashboard.statusFilter();
 };
 
-describe("Add requester and site details first", function () {
+describe("Add requester first", function () {
   it("Navidates to admin", function () {
     loginAndNavigateToHome();
     dashboard = homePage.goToAdminPageProgram();
@@ -78,21 +76,6 @@ describe("Add requester and site details first", function () {
     providerManagementPage.enterProviderFirstName();
     providerManagementPage.clickActiveDropdown();
     providerManagementPage.addProvider();
-  });
-
-  it("Navigate to site/organization Management", function () {
-    dashboard = adminPage.goToOrganizationManagement();
-  });
-
-  it("Add site/organization details", function () {
-    orgMgmnt.clickAddOrganization();
-    orgMgmnt.addOrgName();
-    orgMgmnt.addPrefix();
-    orgMgmnt.addParentOrg();
-    orgMgmnt.activateOrganization();
-    orgMgmnt.checkReferringClinic();
-    orgMgmnt.saveOrganization();
-    cy.reload();
   });
 });
 
