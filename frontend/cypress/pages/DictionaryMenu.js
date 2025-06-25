@@ -40,7 +40,6 @@ class DictionaryMenuPage {
 
   clickDeactivateButton() {
     cy.get(this.selectors.deactivate).should("be.enabled").click();
-    cy.reload();
   }
 
   addButton() {
