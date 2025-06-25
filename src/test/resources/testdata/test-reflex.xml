@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+
+    <analyte id="4001" analyte_id="4001" name="Glucose"
+        is_active="Y" external_id="EXT123" lastupdated="2025-03-07 12:00:00"
+        local_abbrev="GLU" />
+    <analyte id="4002" analyte_id="4002" name="Hemoglobin"
+        is_active="N" external_id="EXT124" lastupdated="2025-03-06 14:30:00"
+        local_abbrev="HGB" />
+    <analyte id="4003" analyte_id="4003" name="Cholesterol"
+        is_active="Y" external_id="EXT125" lastupdated="2025-03-05 09:45:00"
+        local_abbrev="CHOL" />
+
+    <method id="101" name="ELISA"
+        description="Enzyme-Linked Immunosorbent Assay"
+        reporting_description="ELISA Method" is_active="Y"
+        active_begin="2023-01-01 09:00:00" active_end="2026-01-01 09:00:00"
+        lastupdated="2024-06-10 08:30:00" />
+    <method id="102" name="PCR"
+        description="Polymerase Chain Reaction"
+        reporting_description="PCR Method" is_active="Y"
+        active_begin="2023-05-01 08:00:00" active_end="2025-05-01 08:00:00"
+        lastupdated="2024-06-10 08:35:00" />
+    <method id="103" name="Microscopy"
+        description="Light Microscopy Examination"
+        reporting_description="Microscopy" is_active="N"
+        active_begin="2022-01-01 08:00:00" active_end="2023-12-31 08:00:00"
+        lastupdated="2024-06-10 08:40:00" />
+
+    <scriptlet id="201" name="Malaria Init" code_type="S"
+        code_source="console.log('Run Malaria Init');"
+        lastupdated="2024-06-10 09:00:00" />
+
+    <scriptlet id="202" name="HIV Tracker" code_type="S"
+        code_source="console.log('HIV logic');"
+        lastupdated="2024-06-10 09:10:00" />
+
+    <scriptlet id="203" name="COVID Tracker" code_type="S"
+        code_source="console.log('COVID19 logic');"
+        lastupdated="2024-06-10 09:20:00" />
+
+    <test id="2001" method_id="101" description="Complete Blood Count"
+        loinc="1234-5" reporting_description="CBC Report" sticker_req_flag="Y"
+        is_active="Y" active_begin="2024-01-01 08:00:00"
+        active_end="2025-01-01 08:00:00" is_reportable="Y" time_holding="15"
+        time_wait="5" time_ta_average="20" time_ta_warning="30"
+        time_ta_max="45" label_qty="2" lastupdated="2024-06-10 10:20:00"
+        scriptlet_id="201" local_code="CBC001" sort_order="1" name="CBC"
+        orderable="true" guid="abc123-test-guid-001" />
+    <test id="2002" method_id="102" description="Glucose Test"
+        loinc="2345-6" reporting_description="Glucose Level Report"
+        sticker_req_flag="N" is_active="Y" active_begin="2024-02-01 08:00:00"
+        active_end="2025-02-01 08:00:00" is_reportable="Y" time_holding="10"
+        time_wait="3" time_ta_average="15" time_ta_warning="20"
+        time_ta_max="30" label_qty="1" lastupdated="2024-06-10 10:25:00"
+        scriptlet_id="202" local_code="GLU001" sort_order="2" name="Glucose"
+        orderable="true" guid="abc123-test-guid-002" />
+    <test id="2003" method_id="103" description="Liver Function Panel"
+        loinc="3456-7" reporting_description="Liver Function Report"
+        sticker_req_flag="Y" is_active="N" active_begin="2023-01-01 08:00:00"
+        active_end="2024-01-01 08:00:00" is_reportable="N" time_holding="20"
+        time_wait="4" time_ta_average="25" time_ta_warning="35"
+        time_ta_max="50" label_qty="3" lastupdated="2024-06-10 10:30:00"
+        scriptlet_id="203" local_code="LFP001" sort_order="3"
+        name="Liver Panel" orderable="false" guid="abc123-test-guid-003" />
+
+    <test_result id="5001" test_id="2001" result_group="1"
+        flags="N" tst_rslt_type="Q" value="4.5" significant_digits="2"
+        lastupdated="2024-06-10 15:00:00" scriptlet_id="201" sort_order="1"
+        is_quantifiable="true" is_active="true" is_normal="true" />
+    <test_result id="5002" test_id="2002" result_group="1"
+        flags="H" tst_rslt_type="Q" value="12.3" significant_digits="2"
+        lastupdated="2024-06-10 15:05:00" scriptlet_id="202" sort_order="2"
+        is_quantifiable="true" is_active="true" is_normal="false" />
+    <test_result id="5003" test_id="2003" result_group="2"
+        flags="L" tst_rslt_type="C" value="Negative" significant_digits="0"
+        lastupdated="2024-06-10 15:10:00" scriptlet_id="203" sort_order="3"
+        is_quantifiable="false" is_active="true" is_normal="true" />
+
+    <test_analyte id="3001" test_id="2001" analyte_id="4001"
+        result_group="1" sort_order="1" testalyt_type="Q"
+        lastupdated="2024-06-10 10:00:00" is_reportable="Y" />
+    <test_analyte id="3002" test_id="2002" analyte_id="4002"
+        result_group="1" sort_order="2" testalyt_type="C"
+        lastupdated="2024-06-10 10:05:00" is_reportable="N" />
+    <test_analyte id="3003" test_id="2003" analyte_id="4003"
+        result_group="2" sort_order="1" testalyt_type="Q"
+        lastupdated="2024-06-10 10:10:00" is_reportable="Y" />
+
+    <test_reflex id="1001" tst_rslt_id="5001" flags="AUTO"
+        lastupdated="2024-06-10 09:00:00" test_analyte_id="3001"
+        test_id="2001" scriptlet_id="201" />
+    <test_reflex id="1002" tst_rslt_id="5002" flags="MANUAL"
+        lastupdated="2024-06-10 09:05:00" test_analyte_id="3002"
+        test_id="2002" scriptlet_id="202" />
+    <test_reflex id="1003" tst_rslt_id="5003" flags="AUTO"
+        lastupdated="2024-06-10 09:10:00" test_analyte_id="3003"
+        test_id="2003" scriptlet_id="203" />
+</dataset>
