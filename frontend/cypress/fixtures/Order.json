@@ -1,7 +1,9 @@
 {
   "samples": [
     {
-      "sampleType": "Serum"
+      "sampleType": "Serum",
+      "collectionDate": "30/04/2025",
+      "receivedDate": "01/05/2025"
     }
   ],
   "siteName": "CAMES MAN",

@@ -289,3 +289,85 @@ export const SortableResultSelectionOptionList = ({
     </div>
   );
 };
+
+export const CustomCommonSortableOrderList = ({
+  test,
+  onSort,
+  disableSorting,
+}) => {
+  const [tests, setTests] = useState(test);
+
+  const handleDragStart = (e, index) => {
+    e.dataTransfer.setData("dragIndex", index);
+  };
+
+  const handleDragOver = (e) => e.preventDefault();
+
+  const handleDrop = (e, dropIndex) => {
+    const dragIndex = e.dataTransfer.getData("dragIndex");
+    if (dragIndex === dropIndex) return;
+
+    const newItems = [...tests];
+    const [draggedItem] = newItems.splice(dragIndex, 1);
+    newItems.splice(dropIndex, 0, draggedItem);
+    const updatedItems = newItems.map((item, index) => ({
+      ...item,
+      sortOrder: index,
+    }));
+
+    setTests(updatedItems);
+    onSort(updatedItems);
+  };
+
+  useEffect(() => {
+    const alreadySorted = test?.every(
+      (item, index) => item.sortOrder === index,
+    );
+
+    if (!alreadySorted) {
+      const initialized = test.map((item, index) => ({
+        ...item,
+        sortOrder: index,
+      }));
+      setTests(initialized);
+      onSort(initialized);
+    } else {
+      setTests(test);
+    }
+  }, [test]);
+
+  return (
+    <div
+      style={{
+        width: "300px",
+        border: "1px solid #ccc",
+        padding: "10px",
+        margin: "10px",
+      }}
+    >
+      {tests.map((test, index) => (
+        <div
+          key={test.id}
+          draggable={!disableSorting}
+          onDragStart={
+            disableSorting ? undefined : (e) => handleDragStart(e, index)
+          }
+          onDragOver={disableSorting ? undefined : handleDragOver}
+          onDrop={disableSorting ? undefined : (e) => handleDrop(e, index)}
+          style={{
+            padding: "10px",
+            margin: "5px 0",
+            background: "#eee",
+            display: "flex",
+            alignItems: "center",
+            cursor: "grab",
+            border: "1px solid #bbb",
+          }}
+        >
+          <Draggable aria-label="sample-type-list-draggable" size={24} />
+          {test.value}
+        </div>
+      ))}
+    </div>
+  );
+};

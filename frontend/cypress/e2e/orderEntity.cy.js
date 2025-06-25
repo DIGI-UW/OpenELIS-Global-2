@@ -1,6 +1,5 @@
 import LoginPage from "../pages/LoginPage";
 import ProviderManagementPage from "../pages/ProviderManagementPage";
-import OrganizationManagementPage from "../pages/OrganizationManagementPage";
 import AdminPage from "../pages/AdminPage";
 
 let homePage = null;
@@ -9,15 +8,14 @@ let adminPage = new AdminPage();
 let orderEntityPage = null;
 let patientEntryPage = null;
 let providerManagementPage = new ProviderManagementPage();
-let orgMgmnt = new OrganizationManagementPage();
 
 before("login", () => {
   loginPage = new LoginPage();
   loginPage.visit();
 });
 
-describe("Add requester and site details first", function () {
-  it("Navidates to admin", function () {
+describe("Add requester first", function () {
+  it("Navidates to Admin", function () {
     homePage = loginPage.goToHomePage();
     orderEntityPage = homePage.goToAdminPageProgram();
     orderEntityPage = adminPage.goToProviderManagementPage();
@@ -30,26 +28,6 @@ describe("Add requester and site details first", function () {
     providerManagementPage.clickActiveDropdown();
     providerManagementPage.addProvider();
     cy.reload();
-  });
-
-  it("Navidate to organisation Management", function () {
-    orderEntityPage = adminPage.goToOrganizationManagement();
-  });
-
-  it("Add organisation/site details", function () {
-    orgMgmnt.clickAddOrganization();
-    orgMgmnt.addOrgName();
-    orgMgmnt.activateOrganization();
-    orgMgmnt.addPrefix();
-    orgMgmnt.addParentOrg();
-    orgMgmnt.checkReferringClinic();
-    orgMgmnt.saveOrganization();
-  });
-
-  it("Validates the added site/organization", function () {
-    orderEntityPage = adminPage.goToOrganizationManagement();
-    orgMgmnt.searchOrganzation();
-    orgMgmnt.confirmOrganization();
   });
 });
 
@@ -91,13 +69,22 @@ describe("Order Entity", function () {
       order.samples.forEach((sample) => {
         orderEntityPage.selectSampleTypeOption(sample.sampleType);
         orderEntityPage.checkPanelCheckBoxField();
+        orderEntityPage.collectionDate(sample.collectionDate);
       });
     });
-    cy.wait(1000);
+    orderEntityPage.referTest();
+    orderEntityPage.selectReferralReason();
+    orderEntityPage.selectInstitute();
     orderEntityPage.clickNextButton();
   });
 
-  it("Generate Lab Order Number", function () {
+  it("Generate Lab Order Number, Request and Received Dates", function () {
+    cy.fixture("Order").then((order) => {
+      order.samples.forEach((sample) => {
+        orderEntityPage.requestDate(sample.receivedDate);
+        orderEntityPage.receivedDate(sample.receivedDate);
+      });
+    });
     orderEntityPage.generateLabOrderNumber();
   });
 

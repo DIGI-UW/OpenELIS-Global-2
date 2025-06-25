@@ -6,6 +6,7 @@ import WorkPlan from "./WorkPlan";
 import NonConform from "./NonConformPage";
 import Result from "./ResultsPage";
 import Validation from "./Validation";
+import BarcodeConfigPage from "./BarcodeConfigPage";
 import BatchOrderEntry from "./BatchOrderEntryPage";
 import RoutineReportPage from "./RoutineReportPage";
 import StudyReportPage from "./StudyReportPage";
@@ -52,6 +53,13 @@ class HomePage {
     cy.contains("span", "Order").click();
     cy.get("#menu_sample_batch_entry").click();
     return new BatchOrderEntry();
+  }
+
+  goToBarcode() {
+    this.openNavigationMenu();
+    cy.get("#menu_sample").click();
+    cy.get("[data-cy='menu_sample_print_barcode']").click();
+    return new BarcodeConfigPage();
   }
 
   // Patient Entry related functions
@@ -149,7 +157,7 @@ class HomePage {
 
   goToResultsByOrder() {
     cy.get("[data-cy='menuButton']").click();
-    cy.get("span#menu_results_dropdown").click();
+    cy.get("span#menu_results").click();
     cy.get("#menu_results_accession_nav").click();
 
     return new Result();
@@ -157,8 +165,8 @@ class HomePage {
 
   goToResultsByPatient() {
     this.openNavigationMenu();
-    cy.contains("span", "Results").click();
-    cy.contains("span", "By Patient").click();
+    cy.get("span#menu_results").click();
+    cy.get("#menu_results_patient").click();
 
     return new Result();
   }

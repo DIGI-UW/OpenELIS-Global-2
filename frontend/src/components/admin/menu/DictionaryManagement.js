@@ -460,6 +460,7 @@ function DictionaryManagement() {
                 }}
               >
                 <Button
+                  data-cy="addButton"
                   style={{ width: isMobile ? "100%" : "auto" }}
                   disabled={!editMode}
                   onClick={() => setOpen(true)}
@@ -469,6 +470,7 @@ function DictionaryManagement() {
                   })}
                 </Button>
                 <Button
+                  data-cy="modifyButton"
                   style={{ width: isMobile ? "100%" : "auto" }}
                   disabled={modifyButton}
                   type="submit"
@@ -549,6 +551,7 @@ function DictionaryManagement() {
                   />
                 </Modal>
                 <Button
+                  data-cy="deactivateButton"
                   style={{ width: isMobile ? "100%" : "auto" }}
                   disabled={modifyButton || deactivateButton}
                   onClick={handleDeactivation}

@@ -19,6 +19,9 @@ class BarcodeConfigPage {
       widthBlock: "#width-block",
       widthSlide: "#width-slide",
       saveButton: "button:contains('Save')",
+      sampleType: "select#selectSampleType",
+      prePrintButton: "button[data-cy='pre-Print']",
+      submitButton: "button[data-cy='submitButton']",
     };
   }
 
@@ -73,9 +76,6 @@ class BarcodeConfigPage {
       .should(check ? "be.checked" : "not.be.checked");
   }
 
-  /**
-   * Checks all checkboxes.
-   */
   checkCheckBoxes() {
     this.toggleCheckbox(this.selectors.collectionDateCheck, true);
     this.toggleCheckbox(this.selectors.collectedBy, true);
@@ -84,9 +84,6 @@ class BarcodeConfigPage {
     this.toggleCheckbox(this.selectors.checkBox, true);
   }
 
-  /**
-   * Unchecks all checkboxes.
-   */
   uncheckCheckBoxes() {
     this.toggleCheckbox(this.selectors.collectionDateCheck, false);
     this.toggleCheckbox(this.selectors.collectedBy, false);
@@ -95,9 +92,6 @@ class BarcodeConfigPage {
     this.toggleCheckbox(this.selectors.checkBox, false);
   }
 
-  /**
-   * Sets dimensions for barcode labels.
-   */
   dimensionsBarCodeLabel() {
     cy.get(this.selectors.heightOrder).clear().type("25.4");
     cy.get(this.selectors.heightSpecimen).clear().type("25.4");
@@ -109,19 +103,29 @@ class BarcodeConfigPage {
     cy.get(this.selectors.widthSlide).clear().type("76.4");
   }
 
-  /**
-   * Saves changes by clicking the Save button.
-   */
   saveChanges() {
     cy.log("Saving changes");
     cy.get(this.selectors.saveButton).should("be.visible").click();
   }
 
-  /**
-   * Verifies that changes were saved successfully.
-   */
   verifySaveSuccess() {
     cy.contains("BarCode Configurations has been saved").should("be.visible");
+  }
+
+  validatePage() {
+    cy.contains("h3", "Print Bar Code Labels");
+  }
+
+  selectSampleTypeOption(value) {
+    cy.get(this.selectors.sampleType).select(value);
+  }
+
+  clickPrePrintButton() {
+    cy.get(this.selectors.prePrintButton).should("be.enabled");
+  }
+
+  clickSubmitButton() {
+    cy.get(this.selectors.submitButton).should("be.enabled").click();
   }
 }
 

@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -54,17 +55,22 @@ public class PanelTestAssignRestController extends BaseController {
     }
 
     @GetMapping(value = "/PanelTestAssign")
-    public PanelTestAssignForm showPanelTestAssign(@Valid @RequestBody PanelTestAssignForm oldForm,
-            BindingResult result, HttpServletRequest request) {
+    public PanelTestAssignForm showPanelTestAssign(@RequestParam(name = "panelId", required = false) String panelId,
+            HttpServletRequest request) {
         PanelTestAssignForm form = new PanelTestAssignForm();
 
-        if (!result.hasFieldErrors("panelId")) {
-            String panelId = oldForm.getPanelId();
-            if (panelId == null) {
-                panelId = "";
-            }
-            form.setPanelId(panelId);
+        // if (!result.hasFieldErrors("panelId")) {
+        // String panelId = oldForm.getPanelId();
+        // if (panelId == null) {
+        // panelId = "";
+        // }
+        // form.setPanelId(panelId);
+        // }
+
+        if (panelId == null) {
+            panelId = "";
         }
+        form.setPanelId(panelId);
 
         setupDisplayItems(form);
 

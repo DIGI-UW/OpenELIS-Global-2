@@ -3,6 +3,8 @@ package org.openelisglobal.barcode;
 import static org.junit.Assert.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,16 +30,42 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
 
         String formJson = urlResult.getResponse().getContentAsString();
 
-        if (formJson == null || formJson.trim().isEmpty() || !formJson.trim().startsWith("{")) {
-            return;
-        }
-
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, Object> formMap = objectMapper.readValue(formJson, new TypeReference<Map<String, Object>>() {
         });
         assertEquals("BarcodeConfigurationForm", formMap.get("formName"));
         assertEquals("MasterListsPage", formMap.get("cancelAction"));
         assertEquals("POST", formMap.get("cancelMethod"));
+    }
+
+    @Test
+    public void barcodeConfigurationPartialUpdate() throws Exception {
+
+        BarcodeConfigurationForm initialForm = new BarcodeConfigurationForm();
+        initialForm.setNumMaxOrderLabels(100);
+        initialForm.setNumMaxSpecimenLabels(200);
+        initialForm.setPrePrintAltAccessionPrefix("INITIAL");
+
+        String initialJson = new ObjectMapper().writeValueAsString(initialForm);
+        super.mockMvc.perform(
+                post("/rest/BarcodeConfiguration").contentType(MediaType.APPLICATION_JSON_VALUE).content(initialJson));
+
+        BarcodeConfigurationForm updateForm = new BarcodeConfigurationForm();
+        updateForm.setNumMaxOrderLabels(150);
+        updateForm.setNumMaxSpecimenLabels(200);
+        updateForm.setPrePrintAltAccessionPrefix("INITIAL");
+
+        String updateJson = new ObjectMapper().writeValueAsString(updateForm);
+        super.mockMvc.perform(
+                post("/rest/BarcodeConfiguration").contentType(MediaType.APPLICATION_JSON_VALUE).content(updateJson));
+
+        MvcResult result = super.mockMvc.perform(get("/rest/BarcodeConfiguration")).andReturn();
+        BarcodeConfigurationForm retrievedForm = new ObjectMapper().readValue(result.getResponse().getContentAsString(),
+                BarcodeConfigurationForm.class);
+
+        assertEquals(150, retrievedForm.getNumMaxOrderLabels());
+        assertEquals(200, retrievedForm.getNumMaxSpecimenLabels());
+        assertEquals("INITIAL", retrievedForm.getPrePrintAltAccessionPrefix());
     }
 
     @Test
@@ -74,12 +102,68 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
                 .accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
 
         String formJson = urlResults.getResponse().getContentAsString();
+
         ObjectMapper objectMapper = new ObjectMapper();
         BarcodeConfigurationForm retrievedForm = objectMapper.readValue(formJson, BarcodeConfigurationForm.class);
 
-        // ASSERT 3: verify fields match what we POSTed
         assertEquals(100, retrievedForm.getNumMaxOrderLabels());
         assertEquals(200, retrievedForm.getNumMaxSpecimenLabels());
         assertEquals("ABCD", retrievedForm.getPrePrintAltAccessionPrefix());
+    }
+
+    @Test
+    public void saveBarcodeConfiguration_ShouldRejectEmptyAltAccessionWhenRequired() throws Exception {
+        BarcodeConfigurationForm form = new BarcodeConfigurationForm();
+        form.setPrePrintDontUseAltAccession(false);
+        form.setPrePrintAltAccessionPrefix("");
+
+        mockMvc.perform(post("/rest/BarcodeConfiguration").contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(form))).andExpect(status().isOk()) // this is now correct
+                .andExpect(model().attributeHasFieldErrorCode("barcodeConfigurationForm", "prePrintAltAccessionPrefix",
+                        "error.altaccession.required"));
+    }
+
+    @Test
+    public void saveBarcodeConfiguration_ShouldAcceptNegativeNumbers_WhenNoValidationExists() throws Exception {
+        BarcodeConfigurationForm form = new BarcodeConfigurationForm();
+        form.setNumMaxOrderLabels(-1);
+
+        mockMvc.perform(post("/rest/BarcodeConfiguration").contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(form))).andExpect(status().isOk());
+    }
+
+    @Test
+    public void saveBarcodeConfiguration_ShouldRedirectOnSuccess() throws Exception {
+        BarcodeConfigurationForm form = new BarcodeConfigurationForm();
+        form.setHeightOrderLabels(10.0f);
+        form.setPrePrintDontUseAltAccession(true);
+
+        mockMvc.perform(post("/rest/BarcodeConfiguration").contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(form))).andExpect(status().isFound())
+                .andExpect(redirectedUrl("/rest/BarcodeConfiguration"));
+    }
+
+    @Test
+    public void saveBarcodeConfiguration_ShouldStoreDefault_WhenNegativeNumberProvided() throws Exception {
+        BarcodeConfigurationForm form = new BarcodeConfigurationForm();
+        form.setNumMaxOrderLabels(-1);
+
+        mockMvc.perform(post("/rest/BarcodeConfiguration").contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(form))).andExpect(status().isOk());
+
+        BarcodeConfigurationForm saved = new ObjectMapper().readValue(
+                mockMvc.perform(get("/rest/BarcodeConfiguration")).andReturn().getResponse().getContentAsString(),
+                BarcodeConfigurationForm.class);
+
+        assertEquals("System overrides invalid input with default", 10, saved.getNumMaxOrderLabels());
+    }
+
+    @Test
+    public void barcodeConfigurationEndpoints_ShouldBeAccessibleWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/rest/BarcodeConfiguration")).andExpect(status().isOk());
+
+        mockMvc.perform(post("/rest/BarcodeConfiguration").contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(new BarcodeConfigurationForm())))
+                .andExpect(status().isOk());
     }
 }
