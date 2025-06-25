@@ -1,10 +1,12 @@
 package org.openelisglobal.testconfiguration.form;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import java.util.List;
 import org.openelisglobal.common.form.BaseForm;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class TestAddForm extends BaseForm {
 
     // additional in validator

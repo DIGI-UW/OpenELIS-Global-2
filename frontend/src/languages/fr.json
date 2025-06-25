@@ -1430,5 +1430,8 @@
   "configuration.panel.assign.explain": "Select tests to re-assign to a different panel by clicking the test name; they are displayed under their currently assigned panel.",
   "configuration.sampleType.assign.explain": "Select tests to re-assign to a different sample type by clicking the test name; they are displayed under their currently assigned sample type.",
   "configuration.testUnit.assign.new.unit": "Assign to test section",
-  "configuration.sampleType.assign.new.type": "Assign to sample type"
+  "configuration.sampleType.assign.new.type": "Assign to sample type",
+  "process.testAdd.pressNext.selectGroupDictionary": "Appuyez sur Suivant — l'étape de sélection du dictionnaire de groupe n'est pas requise !",
+  "process.testAdd.pressNext.ageRangeSelectiong": "Appuyez sur Suivant — l'étape de sélection de la tranche d'âge n'est pas requise !",
+  "add.age.range": "Ajouter une autre tranche d'âge +"
 }
