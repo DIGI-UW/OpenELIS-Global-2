@@ -468,6 +468,19 @@ public class UnifiedSystemUserRestController extends BaseController {
         return response;
     }
 
+    @PostMapping(value = "/validateCurrentPassword")
+    public Map<String, Boolean> validateCurrentPassword(@RequestBody Map<String, String> body) {
+        String loginName = body.get("loginName");
+        String currentPassword = body.get("currentPassword");
+        boolean valid = false;
+        if (loginName != null && currentPassword != null) {
+            valid = loginService.getValidatedLogin(loginName, currentPassword).isPresent();
+        }
+        Map<String, Boolean> response = new HashMap<>();
+        response.put("valid", valid);
+        return response;
+    }
+
     private String validateAndUpdateSystemUser(HttpServletRequest request, UnifiedSystemUserForm form) {
         String loginUserId = form.getLoginUserId();
         String systemUserId = form.getSystemUserId();

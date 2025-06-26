@@ -74,6 +74,8 @@ function UserAddModify() {
   const [userData, setUserData] = useState(null);
   const [userDataShow, setUserDataShow] = useState({});
   const [userDataPost, setUserDataPost] = useState(null);
+  const [currentPasswordValidationPost, setcurrentPasswordValidationPost] =
+    useState({});
   const [selectedGlobalLabUnitRoles, setSelectedGlobalLabUnitRoles] = useState(
     [],
   );
@@ -376,6 +378,53 @@ function UserAddModify() {
       }, 200);
     }
   }
+  function validateCurrentPassPostCall() {
+    setIsLoading(false);
+    postToOpenElisServerJsonResponse(
+      `/rest/validateCurrentPassword`,
+      JSON.stringify(currentPasswordValidationPost),
+      (res) => {
+        validateCurrentPassPostCallback(res);
+      },
+    );
+  }
+
+  function validateCurrentPassPostCallback(res) {
+    if (res) {
+      setIsLoading(true);
+      if (res.valid) {
+        addNotification({
+          title: intl.formatMessage({
+            id: "notification.title",
+          }),
+          message: intl.formatMessage({
+            id: "notification.validate.currentPassword.success",
+          }),
+          kind: NotificationKinds.success,
+        });
+        setNotificationVisible(true);
+      } else {
+        addNotification({
+          title: intl.formatMessage({
+            id: "notification.title",
+          }),
+          message: intl.formatMessage({
+            id: "notification.validate.currentPassword.fail",
+          }),
+          kind: NotificationKinds.error,
+        });
+        setNotificationVisible(true);
+      }
+      setIsCurrentPassCorrect(res.valid);
+    } else {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "server.error.msg" }),
+      });
+      setNotificationVisible(true);
+    }
+  }
 
   function handleUserLoginNameChange(e) {
     const value = e.target.value.trim();
@@ -486,9 +535,9 @@ function UserAddModify() {
 
   function handleCurrentPasswordChange(e) {
     const value = e.target.value;
-
-    setUserDataShow((prevUserData) => ({
-      ...prevUserData,
+    setcurrentPasswordValidationPost((prevData) => ({
+      ...prevData,
+      loginName: userDataShow.userLoginName,
       currentPassword: value,
     }));
   }
@@ -773,16 +822,6 @@ function UserAddModify() {
     }
   };
 
-  useEffect(() => {
-    if (!userDataShow.currentPassword || !userDataShow.userPassword) {
-      setIsCurrentPassCorrect(false);
-    } else if (userDataShow.currentPassword !== userDataShow.userPassword) {
-      setIsCurrentPassCorrect(false);
-    } else {
-      setIsCurrentPassCorrect(true);
-    }
-  }, [userDataShow.currentPassword]);
-
   if (!isLoading) {
     return (
       <>
@@ -819,41 +858,58 @@ function UserAddModify() {
               // onChange={setSaveButton(false)}
               // onBlur={handleBlur}
               >
-                {!(ID === "0") && (
-                  <Grid fullWidth={true}>
-                    <Column lg={8} md={4} sm={4}>
-                      <>
-                        <FormattedMessage id="login.login.current.password" />
-                        <span className="requiredlabel">*</span> :
-                      </>
-                    </Column>
-                    <Column lg={8} md={4} sm={4}>
-                      <TextInput
-                        id="current-password"
-                        className="defalut"
-                        type="password"
-                        labelText=""
-                        placeholder={intl.formatMessage({
-                          id: "login.login.current.password",
-                        })}
-                        // invalidText={errors.order}
-                        required={true}
-                        invalid={
-                          userDataShow &&
-                          userDataShow.currentPassword &&
-                          !passwordPatternRegex.test(
-                            userDataShow.currentPassword,
-                          )
-                        }
-                        value={
-                          userDataShow && userDataShow.currentPassword
-                            ? userDataShow.currentPassword
-                            : ""
-                        }
-                        onChange={(e) => handleCurrentPasswordChange(e)}
-                      />
-                    </Column>
-                  </Grid>
+                {!(ID === "0") && !isCurrentPassCorrect && (
+                  <>
+                    <Grid fullWidth={true}>
+                      <Column lg={8} md={4} sm={4}>
+                        <>
+                          <FormattedMessage id="login.login.current.password" />
+                          <span className="requiredlabel">*</span> :
+                        </>
+                      </Column>
+                      <Column lg={8} md={4} sm={4}>
+                        <TextInput
+                          id="current-password"
+                          className="defalut"
+                          type="password"
+                          labelText=""
+                          placeholder={intl.formatMessage({
+                            id: "login.login.current.password",
+                          })}
+                          required={true}
+                          invalid={
+                            userDataShow &&
+                            currentPasswordValidationPost.currentPassword &&
+                            !passwordPatternRegex.test(
+                              currentPasswordValidationPost.currentPassword,
+                            )
+                          }
+                          value={
+                            userDataShow &&
+                            currentPasswordValidationPost &&
+                            currentPasswordValidationPost.currentPassword
+                              ? currentPasswordValidationPost.currentPassword
+                              : ""
+                          }
+                          onChange={(e) => handleCurrentPasswordChange(e)}
+                        />
+                      </Column>
+                    </Grid>
+                    <Grid fullWidth={true}>
+                      <Column lg={16} md={8} sm={4}>
+                        <Button
+                          disabled={
+                            !currentPasswordValidationPost.currentPassword
+                          }
+                          onClick={() => validateCurrentPassPostCall()}
+                          kind="tertiary"
+                          type="button"
+                        >
+                          <FormattedMessage id="label.button.verifypassword" />
+                        </Button>
+                      </Column>
+                    </Grid>
+                  </>
                 )}
                 <br />
                 <Grid fullWidth={true}>
