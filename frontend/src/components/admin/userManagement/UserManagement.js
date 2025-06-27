@@ -77,10 +77,6 @@ function UserManagement() {
   const [paging, setPaging] = useState(1);
   const [fromRecordCount, setFromRecordCount] = useState("");
   const [toRecordCount, setToRecordCount] = useState("");
-  const [searchedUserManagementList, setSearchedUserManagementList] =
-    useState();
-  const [searchedUserManagementListShow, setSearchedUserManagementListShow] =
-    useState([]);
   const [userManagementList, setUserManagementList] = useState();
   const [userManagementListShow, setUserManagementListShow] = useState([]);
   const [testSectionsSelect, setTestSectionsSelect] = useState("");
@@ -103,11 +99,13 @@ function UserManagement() {
   const handleNextPage = () => {
     setPaging((pager) => Math.max(pager, 2));
     setStartingRecNo(fromRecordCount);
+    setSelectedRowIds([]);
   };
 
   const handlePreviousPage = () => {
     setPaging((pager) => Math.max(pager - 1, 1));
     setStartingRecNo(Math.max(fromRecordCount, 1));
+    setSelectedRowIds([]);
   };
 
   useEffect(() => {
@@ -189,7 +187,7 @@ function UserManagement() {
     if (!res) {
       setLoading(true);
     } else {
-      setSearchedUserManagementList(res);
+      setUserManagementList(res);
     }
   };
 
@@ -258,33 +256,15 @@ function UserManagement() {
   }, [userManagementList]);
 
   useEffect(() => {
-    if (searchedUserManagementList) {
-      const newUserManagementList = searchedUserManagementList.menuList.map(
-        (item) => {
-          return {
-            id: item.systemUserId,
-            combinedUserID: item.combinedUserID,
-            firstName: item.firstName,
-            lastName: item.lastName,
-            loginName: item.loginName,
-            expDate: item.expDate,
-            locked: item.locked,
-            disabled: item.disabled,
-            active: item.active,
-            timeout: item.timeout,
-          };
-        },
-      );
-      const newUserManagementListArray = Object.values(newUserManagementList);
-      setSearchedUserManagementListShow(newUserManagementListArray);
-    }
-  }, [searchedUserManagementList]);
-
-  useEffect(() => {
     if (selectedRowIds.length === 1) {
       setModifyButton(false);
     } else {
       setModifyButton(true);
+    }
+    if (selectedRowIds.length === 0) {
+      setDeactivateButton(true);
+    } else {
+      setDeactivateButton(false);
     }
   }, [selectedRowIds]);
 
@@ -302,12 +282,6 @@ function UserManagement() {
               cell.id.endsWith(":active"),
             );
 
-            let isActiveValue = "";
-            if (isActiveCell) {
-              isActiveValue = isActiveCell.value;
-            }
-
-            setDeactivateButton(isActiveValue !== "Y");
             if (selectedRowIds.includes(row.id)) {
               setSelectedRowIds(selectedRowIds.filter((id) => id !== row.id));
             } else {
@@ -337,12 +311,6 @@ function UserManagement() {
       setStartingRecNo(1);
     }
   }, [isSearching, panelSearchTerm]);
-
-  useEffect(() => {
-    if (selectedRowIds.length === 0) {
-      setDeactivateButton(true);
-    }
-  }, [selectedRowIds]);
 
   function handleTestSectionsSelectChange(e) {
     setTestSectionsSelect(e.target.value);
@@ -495,454 +463,168 @@ function UserManagement() {
             </Column>
           </Grid>
           <br />
-          {isSearching ? (
-            <>
-              <Grid fullWidth={true} className="gridBoundary">
-                <Column lg={16} md={8} sm={4}>
-                  <br />
-                  <DataTable
-                    rows={searchedUserManagementListShow.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )}
-                    headers={[
-                      {
-                        key: "select",
-                        header: intl.formatMessage({
-                          id: "unifiedSystemUser.select",
-                        }),
-                      },
-                      {
-                        key: "firstName",
-                        header: intl.formatMessage({
-                          id: "systemuser.firstName",
-                        }),
-                      },
-                      {
-                        key: "lastName",
-                        header: intl.formatMessage({
-                          id: "systemuser.lastName",
-                        }),
-                      },
-                      {
-                        key: "loginName",
-                        header: intl.formatMessage({
-                          id: "systemuser.loginName",
-                        }),
-                      },
-                      {
-                        key: "expDate",
-                        header: intl.formatMessage({
-                          id: "login.password.expired.date",
-                        }),
-                      },
-                      {
-                        key: "locked",
-                        header: intl.formatMessage({
-                          id: "login.account.locked",
-                        }),
-                      },
-                      {
-                        key: "disabled",
-                        header: intl.formatMessage({
-                          id: "login.account.disabled",
-                        }),
-                      },
-                      {
-                        key: "active",
-                        header: intl.formatMessage({
-                          id: "systemuser.isActive",
-                        }),
-                      },
-                      {
-                        key: "timeout",
-                        header: intl.formatMessage({
-                          id: "login.timeout",
-                        }),
-                      },
-                    ]}
-                  >
-                    {({
-                      rows,
-                      headers,
-                      getHeaderProps,
-                      getTableProps,
-                      getSelectionProps,
-                    }) => (
-                      <TableContainer>
-                        <Table {...getTableProps()}>
-                          <TableHead>
-                            <TableRow>
-                              <TableSelectAll
-                                id="table-select-all"
-                                {...getSelectionProps()}
-                                checked={
-                                  selectedRowIds.length === pageSize &&
-                                  searchedUserManagementListShow
-                                    .slice(
-                                      (page - 1) * pageSize,
-                                      page * pageSize,
-                                    )
-                                    .filter(
-                                      (row) =>
-                                        !row.disabled &&
-                                        selectedRowIds.includes(row.id),
-                                    ).length === pageSize
-                                }
-                                indeterminate={
-                                  selectedRowIds.length > 0 &&
-                                  selectedRowIds.length <
-                                    searchedUserManagementListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled).length
-                                }
-                                onSelect={() => {
-                                  setDeactivateButton(false);
-                                  const currentPageIds =
-                                    searchedUserManagementListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled)
-                                      .map((row) => row.id);
-                                  if (
-                                    selectedRowIds.length === pageSize &&
-                                    currentPageIds.every((id) =>
-                                      selectedRowIds.includes(id),
-                                    )
-                                  ) {
-                                    setSelectedRowIds([]);
-                                  } else {
+          <>
+            <Grid fullWidth={true} className="gridBoundary">
+              <Column lg={16} md={8} sm={4}>
+                <DataTable
+                  rows={userManagementListShow.slice(
+                    (page - 1) * pageSize,
+                    page * pageSize,
+                  )}
+                  headers={[
+                    {
+                      key: "select",
+                      header: intl.formatMessage({
+                        id: "unifiedSystemUser.select",
+                      }),
+                    },
+                    {
+                      key: "firstName",
+                      header: intl.formatMessage({
+                        id: "systemuser.firstName",
+                      }),
+                    },
+                    {
+                      key: "lastName",
+                      header: intl.formatMessage({
+                        id: "systemuser.lastName",
+                      }),
+                    },
+                    {
+                      key: "loginName",
+                      header: intl.formatMessage({
+                        id: "systemuser.loginName",
+                      }),
+                    },
+                    {
+                      key: "expDate",
+                      header: intl.formatMessage({
+                        id: "login.password.expired.date",
+                      }),
+                    },
+                    {
+                      key: "locked",
+                      header: intl.formatMessage({
+                        id: "login.account.locked",
+                      }),
+                    },
+                    {
+                      key: "disabled",
+                      header: intl.formatMessage({
+                        id: "login.account.disabled",
+                      }),
+                    },
+                    {
+                      key: "active",
+                      header: intl.formatMessage({
+                        id: "systemuser.isActive",
+                      }),
+                    },
+                    {
+                      key: "timeout",
+                      header: intl.formatMessage({
+                        id: "login.timeout",
+                      }),
+                    },
+                  ]}
+                >
+                  {({
+                    rows,
+                    headers,
+                    getHeaderProps,
+                    getTableProps,
+                    getSelectionProps,
+                  }) => (
+                    <TableContainer>
+                      <Table {...getTableProps()}>
+                        <TableHead>
+                          <TableRow>
+                            {headers.map((header) => (
+                              <TableHeader
+                                key={header.key}
+                                {...getHeaderProps({ header })}
+                              >
+                                {header.header}
+                              </TableHeader>
+                            ))}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          <>
+                            {rows.map((row) => (
+                              <TableRow
+                                key={row.id}
+                                onClick={() => {
+                                  const id = row.id;
+                                  const CombinedUserID = row.combinedUserID;
+                                  const isSelected =
+                                    selectedRowIds.includes(id);
+                                  if (isSelected) {
                                     setSelectedRowIds(
-                                      currentPageIds.filter(
-                                        (id) => !selectedRowIds.includes(id),
+                                      selectedRowIds.filter(
+                                        (selectedId) => selectedId !== id,
                                       ),
                                     );
-                                  }
-                                }}
-                              />
-                              {headers.map(
-                                (header) =>
-                                  header.key !== "select" && (
-                                    <TableHeader
-                                      key={header.key}
-                                      {...getHeaderProps({ header })}
-                                    >
-                                      {header.header}
-                                    </TableHeader>
-                                  ),
-                              )}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            <>
-                              {rows.map((row) => (
-                                <TableRow
-                                  key={row.id}
-                                  onClick={() => {
-                                    const id = row.id;
-                                    const CombinedUserID = row.combinedUserID;
-                                    const isSelected =
-                                      selectedRowIds.includes(id);
-                                    if (isSelected) {
-                                      setSelectedRowIds(
-                                        selectedRowIds.filter(
-                                          (selectedId) => selectedId !== id,
-                                        ),
-                                      );
-                                    } else {
-                                      setSelectedRowIds([
-                                        ...selectedRowIds,
-                                        id,
-                                      ]);
-                                    }
-                                  }}
-                                >
-                                  {row.cells.map((cell) =>
-                                    renderCell(cell, row),
-                                  )}
-                                </TableRow>
-                              ))}
-                            </>
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    )}
-                  </DataTable>
-                  <Pagination
-                    onChange={handlePageChange}
-                    page={page}
-                    pageSize={pageSize}
-                    pageSizes={[5, 10, 15, 20]}
-                    totalItems={searchedUserManagementListShow.length}
-                    forwardText={intl.formatMessage({
-                      id: "pagination.forward",
-                    })}
-                    backwardText={intl.formatMessage({
-                      id: "pagination.backward",
-                    })}
-                    itemRangeText={(min, max, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.item-range" },
-                        { min: min, max: max, total: total },
-                      )
-                    }
-                    itemsPerPageText={intl.formatMessage({
-                      id: "pagination.items-per-page",
-                    })}
-                    itemText={(min, max) =>
-                      intl.formatMessage(
-                        { id: "pagination.item" },
-                        { min: min, max: max },
-                      )
-                    }
-                    pageNumberText={intl.formatMessage({
-                      id: "pagination.page-number",
-                    })}
-                    pageRangeText={(_current, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.page-range" },
-                        { total: total },
-                      )
-                    }
-                    pageText={(page, pagesUnknown) =>
-                      intl.formatMessage(
-                        { id: "pagination.page" },
-                        { page: pagesUnknown ? "" : page },
-                      )
-                    }
-                  />
-                  <br />
-                </Column>
-              </Grid>
-            </>
-          ) : (
-            <>
-              <Grid fullWidth={true} className="gridBoundary">
-                <Column lg={16} md={8} sm={4}>
-                  <DataTable
-                    rows={userManagementListShow.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )}
-                    headers={[
-                      {
-                        key: "select",
-                        header: intl.formatMessage({
-                          id: "unifiedSystemUser.select",
-                        }),
-                      },
-                      {
-                        key: "firstName",
-                        header: intl.formatMessage({
-                          id: "systemuser.firstName",
-                        }),
-                      },
-                      {
-                        key: "lastName",
-                        header: intl.formatMessage({
-                          id: "systemuser.lastName",
-                        }),
-                      },
-                      {
-                        key: "loginName",
-                        header: intl.formatMessage({
-                          id: "systemuser.loginName",
-                        }),
-                      },
-                      {
-                        key: "expDate",
-                        header: intl.formatMessage({
-                          id: "login.password.expired.date",
-                        }),
-                      },
-                      {
-                        key: "locked",
-                        header: intl.formatMessage({
-                          id: "login.account.locked",
-                        }),
-                      },
-                      {
-                        key: "disabled",
-                        header: intl.formatMessage({
-                          id: "login.account.disabled",
-                        }),
-                      },
-                      {
-                        key: "active",
-                        header: intl.formatMessage({
-                          id: "systemuser.isActive",
-                        }),
-                      },
-                      {
-                        key: "timeout",
-                        header: intl.formatMessage({
-                          id: "login.timeout",
-                        }),
-                      },
-                    ]}
-                  >
-                    {({
-                      rows,
-                      headers,
-                      getHeaderProps,
-                      getTableProps,
-                      getSelectionProps,
-                    }) => (
-                      <TableContainer>
-                        <Table {...getTableProps()}>
-                          <TableHead>
-                            <TableRow>
-                              <TableSelectAll
-                                id="table-select-all"
-                                {...getSelectionProps()}
-                                checked={
-                                  selectedRowIds.length === pageSize &&
-                                  userManagementListShow
-                                    .slice(
-                                      (page - 1) * pageSize,
-                                      page * pageSize,
-                                    )
-                                    .filter(
-                                      (row) =>
-                                        !row.disabled &&
-                                        selectedRowIds.includes(row.id),
-                                    ).length === pageSize
-                                }
-                                indeterminate={
-                                  selectedRowIds.length > 0 &&
-                                  selectedRowIds.length <
-                                    userManagementListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled).length
-                                }
-                                onSelect={() => {
-                                  setDeactivateButton(false);
-                                  const currentPageIds = userManagementListShow
-                                    .slice(
-                                      (page - 1) * pageSize,
-                                      page * pageSize,
-                                    )
-                                    .filter((row) => !row.disabled)
-                                    .map((row) => row.id);
-                                  if (
-                                    selectedRowIds.length === pageSize &&
-                                    currentPageIds.every((id) =>
-                                      selectedRowIds.includes(id),
-                                    )
-                                  ) {
-                                    setSelectedRowIds([]);
                                   } else {
-                                    setSelectedRowIds(
-                                      currentPageIds.filter(
-                                        (id) => !selectedRowIds.includes(id),
-                                      ),
-                                    );
+                                    setSelectedRowIds([...selectedRowIds, id]);
                                   }
                                 }}
-                              />
-                              {headers.map(
-                                (header) =>
-                                  header.key !== "select" && (
-                                    <TableHeader
-                                      key={header.key}
-                                      {...getHeaderProps({ header })}
-                                    >
-                                      {header.header}
-                                    </TableHeader>
-                                  ),
-                              )}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            <>
-                              {rows.map((row) => (
-                                <TableRow
-                                  key={row.id}
-                                  onClick={() => {
-                                    const id = row.id;
-                                    const CombinedUserID = row.combinedUserID;
-                                    const isSelected =
-                                      selectedRowIds.includes(id);
-                                    if (isSelected) {
-                                      setSelectedRowIds(
-                                        selectedRowIds.filter(
-                                          (selectedId) => selectedId !== id,
-                                        ),
-                                      );
-                                    } else {
-                                      setSelectedRowIds([
-                                        ...selectedRowIds,
-                                        id,
-                                      ]);
-                                    }
-                                  }}
-                                >
-                                  {row.cells.map((cell) =>
-                                    renderCell(cell, row),
-                                  )}
-                                </TableRow>
-                              ))}
-                            </>
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    )}
-                  </DataTable>
-                  <Pagination
-                    onChange={handlePageChange}
-                    page={page}
-                    pageSize={pageSize}
-                    pageSizes={[10, 20]}
-                    totalItems={userManagementListShow.length}
-                    forwardText={intl.formatMessage({
-                      id: "pagination.forward",
-                    })}
-                    backwardText={intl.formatMessage({
-                      id: "pagination.backward",
-                    })}
-                    itemRangeText={(min, max, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.item-range" },
-                        { min: min, max: max, total: total },
-                      )
-                    }
-                    itemsPerPageText={intl.formatMessage({
-                      id: "pagination.items-per-page",
-                    })}
-                    itemText={(min, max) =>
-                      intl.formatMessage(
-                        { id: "pagination.item" },
-                        { min: min, max: max },
-                      )
-                    }
-                    pageNumberText={intl.formatMessage({
-                      id: "pagination.page-number",
-                    })}
-                    pageRangeText={(_current, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.page-range" },
-                        { total: total },
-                      )
-                    }
-                    pageText={(page, pagesUnknown) =>
-                      intl.formatMessage(
-                        { id: "pagination.page" },
-                        { page: pagesUnknown ? "" : page },
-                      )
-                    }
-                  />
-                </Column>
-              </Grid>
-            </>
-          )}
+                              >
+                                {row.cells.map((cell) => renderCell(cell, row))}
+                              </TableRow>
+                            ))}
+                          </>
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </DataTable>
+                <Pagination
+                  onChange={handlePageChange}
+                  page={page}
+                  pageSize={pageSize}
+                  pageSizes={[10, 20]}
+                  totalItems={userManagementListShow.length}
+                  forwardText={intl.formatMessage({
+                    id: "pagination.forward",
+                  })}
+                  backwardText={intl.formatMessage({
+                    id: "pagination.backward",
+                  })}
+                  itemRangeText={(min, max, total) =>
+                    intl.formatMessage(
+                      { id: "pagination.item-range" },
+                      { min: min, max: max, total: total },
+                    )
+                  }
+                  itemsPerPageText={intl.formatMessage({
+                    id: "pagination.items-per-page",
+                  })}
+                  itemText={(min, max) =>
+                    intl.formatMessage(
+                      { id: "pagination.item" },
+                      { min: min, max: max },
+                    )
+                  }
+                  pageNumberText={intl.formatMessage({
+                    id: "pagination.page-number",
+                  })}
+                  pageRangeText={(_current, total) =>
+                    intl.formatMessage(
+                      { id: "pagination.page-range" },
+                      { total: total },
+                    )
+                  }
+                  pageText={(page, pagesUnknown) =>
+                    intl.formatMessage(
+                      { id: "pagination.page" },
+                      { page: pagesUnknown ? "" : page },
+                    )
+                  }
+                />
+              </Column>
+            </Grid>
+          </>
         </div>
       </div>
     </>

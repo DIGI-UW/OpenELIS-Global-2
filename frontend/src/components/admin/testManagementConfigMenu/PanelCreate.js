@@ -84,6 +84,7 @@ function PanelCreate() {
     englishLangPost,
     frenchLangPost,
     selectedSampleTypeId,
+    loincPost,
   }) => {
     postToOpenElisServerJsonResponse(
       "/rest/PanelCreate",
@@ -91,6 +92,7 @@ function PanelCreate() {
         panelEnglishName: englishLangPost,
         panelFrenchName: frenchLangPost,
         sampleTypeId: selectedSampleTypeId,
+        panelLoinc: loincPost,
       }),
       (res) => {
         handlePostPanelCreateListCallBack(res);
@@ -143,6 +145,13 @@ function PanelCreate() {
         (value) => !validatePanelType(value),
       )
       .trim(),
+    loincPost: Yup.string()
+      .required("fill this field")
+      .trim()
+      .matches(
+        /^(?!-)(?:\d+-)*\d+$/,
+        "Invalid format. Use digits separated by single dashes (e.g. 1-2-3)",
+      ),
   });
 
   const allPanels = [
@@ -228,7 +237,8 @@ function PanelCreate() {
             initialValues={{
               englishLangPost: "",
               frenchLangPost: "",
-              selectedSampleTypeId: "32",
+              selectedSampleTypeId: "",
+              loincPost: "",
             }}
             validationSchema={validationSchema}
             onSubmit={(values, actions) => {
@@ -327,6 +337,7 @@ function PanelCreate() {
                       }
                       required
                     >
+                      <SelectItem value={"0"} text={"Select Sample Type"} />
                       {panelCreateList?.existingSampleTypeList?.map(
                         (st, index) => (
                           <SelectItem
@@ -337,6 +348,27 @@ function PanelCreate() {
                         ),
                       )}
                     </Select>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <>
+                      <FormattedMessage id="field.loinc" />
+                      <span className="requiredlabel">*</span> :
+                    </>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <TextInput
+                      id={`loincPost`}
+                      name="loincPost"
+                      labelText=""
+                      hideLabel
+                      disabled={bothFilled}
+                      value={values.loincPost}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      required
+                      invalid={touched.loincPost && !!errors.loincPost}
+                      invalidText={touched.loincPost && errors.loincPost}
+                    />
                   </Column>
                 </Grid>
                 {bothFilled && (
