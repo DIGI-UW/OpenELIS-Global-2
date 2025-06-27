@@ -859,7 +859,6 @@ function UserAddModify() {
               // onBlur={handleBlur}
               >
                 {!(ID === "0") && !isCurrentPassCorrect && (
-                  <>
                     <Grid fullWidth={true}>
                       <Column lg={8} md={4} sm={4}>
                         <>
@@ -867,7 +866,7 @@ function UserAddModify() {
                           <span className="requiredlabel">*</span> :
                         </>
                       </Column>
-                      <Column lg={8} md={4} sm={4}>
+                      <Column lg={4} md={2} sm={2}>
                         <TextInput
                           id="current-password"
                           className="defalut"
@@ -894,9 +893,7 @@ function UserAddModify() {
                           onChange={(e) => handleCurrentPasswordChange(e)}
                         />
                       </Column>
-                    </Grid>
-                    <Grid fullWidth={true}>
-                      <Column lg={16} md={8} sm={4}>
+                      <Column lg={4} md={1} sm={2}>
                         <Button
                           disabled={
                             !currentPasswordValidationPost.currentPassword
@@ -909,7 +906,6 @@ function UserAddModify() {
                         </Button>
                       </Column>
                     </Grid>
-                  </>
                 )}
                 <br />
                 <Grid fullWidth={true}>
