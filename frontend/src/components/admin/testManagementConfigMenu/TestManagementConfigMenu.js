@@ -221,7 +221,7 @@ function TestManagementConfigMenu() {
                   </UnorderedList>
                 </ClickableTile>
                 <br />
-                <ClickableTile href="/api/OpenELIS-Global/TestAdd" id="TestAdd">
+                <ClickableTile href="/admin#TestAdd" id="TestAdd">
                   <FormattedMessage id="configuration.test.add" />
                   <UnorderedList nested>
                     <ListItem>

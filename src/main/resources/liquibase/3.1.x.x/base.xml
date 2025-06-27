@@ -6,4 +6,5 @@
 
   <include relativeToChangelogFile="true" file="panel_loinc.xml" />
   <include relativeToChangelogFile="true" file="bar_code_config.xml" />
+  <include relativeToChangelogFile="true" file="dictionary-loinc.xml"/>
 </databaseChangeLog>

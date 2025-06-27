@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <report_queue_type id="1" name="DailyReports"
+        description="Queue for daily report generation" />
+
+    <report_queue_type id="2" name="WeeklySummary"
+        description="Queue for weekly summaries" />
+
+    <report_queue_type id="3" name="CriticalAlerts"
+        description="Queue for handling urgent alerts" />
+</dataset>

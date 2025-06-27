@@ -114,13 +114,14 @@ function Admin() {
       >
         <SideNavItems className="adminSideNav">
           <SideNavMenu
+            data-cy="reflexTestsConfig"
             renderIcon={Microscope}
             title={intl.formatMessage({ id: "sidenav.label.admin.testmgt" })}
           >
-            <SideNavMenuItem href="#reflex">
+            <SideNavMenuItem data-cy="reflex" href="#reflex">
               <FormattedMessage id="sidenav.label.admin.testmgt.reflex" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#calculatedValue">
+            <SideNavMenuItem data-cy="calculatedValue" href="#calculatedValue">
               <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
             </SideNavMenuItem>
           </SideNavMenu>
@@ -188,16 +189,28 @@ function Admin() {
             >
               <FormattedMessage id="sidenav.label.admin.menu.global" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#billingMenuManagement">
+            <SideNavMenuItem
+              data-cy="billingMenuMgmnt"
+              href="#billingMenuManagement"
+            >
               <FormattedMessage id="sidenav.label.admin.menu.billing" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#nonConformityMenuManagement">
+            <SideNavMenuItem
+              data-cy="nonConformMenuMgmnt"
+              href="#nonConformityMenuManagement"
+            >
               <FormattedMessage id="sidenav.label.admin.menu.nonconform" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#patientMenuManagement">
+            <SideNavMenuItem
+              data-cy="patientMenuMgmnt"
+              href="#patientMenuManagement"
+            >
               <FormattedMessage id="sidenav.label.admin.menu.patient" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#studyMenuManagement">
+            <SideNavMenuItem
+              data-cy="studyMenuMgmnt"
+              href="#studyMenuManagement"
+            >
               <FormattedMessage id="sidenav.label.admin.menu.study" />
             </SideNavMenuItem>
           </SideNavMenu>

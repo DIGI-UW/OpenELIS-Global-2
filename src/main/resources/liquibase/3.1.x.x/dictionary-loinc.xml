@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog/1.9"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog/1.9 http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-1.9.xsd">
+
+    <changeSet id="add-dictionary-loinc-code" author="agaba-derrick">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists columnName="loinc_code" schemaName="clinlims"
+                              tableName="dictionary"/>
+            </not>
+        </preConditions>
+        <comment>Adds LOINC code column to dictionary for result mappings</comment>
+        <addColumn tableName="dictionary">
+            <column name="loinc_code" type="VARCHAR(10)"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

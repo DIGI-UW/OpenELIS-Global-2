@@ -36,7 +36,6 @@ import {
 } from "../../common/CustomNotification.js";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
-import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
 
 let breadcrumbs = [
@@ -63,10 +62,7 @@ function ProviderMenu() {
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
-  const [searchedProviderMenuList, setSearchedProviderMenuList] = useState([]);
-  const [serachedProviderMenuListShow, setSearchedProviderMenuListShow] =
-    useState([]);
-  const [startingRecNo, setStartingRecNo] = useState(21);
+  const [startingRecNo, setStartingRecNo] = useState(1);
   const [providerMenuList, setProviderMenuList] = useState({});
   const [providerMenuListShow, setProviderMenuListShow] = useState([]);
   const [fromRecordCount, setFromRecordCount] = useState("");
@@ -111,7 +107,7 @@ function ProviderMenu() {
 
   const handleSearchedProviderMenuList = (res) => {
     if (res) {
-      setSearchedProviderMenuList(res);
+      setProviderMenuList(res);
     }
   };
 
@@ -143,28 +139,15 @@ function ProviderMenu() {
   }, [providerMenuList]);
 
   useEffect(() => {
-    if (searchedProviderMenuList.providers) {
-      const newProviderMenuList = searchedProviderMenuList.providers.map(
-        (item) => {
-          return {
-            id: item.id,
-            lastName: item.person.lastName,
-            firstName: item.person.firstName,
-            active: item.active,
-            telephone: item.person.workPhone,
-            fax: item.person.fax,
-          };
-        },
-      );
-      setSearchedProviderMenuListShow(newProviderMenuList);
-    }
-  }, [searchedProviderMenuList]);
-
-  useEffect(() => {
     if (selectedRowIds.length === 1) {
       setModifyButton(false);
     } else {
       setModifyButton(true);
+    }
+    if (selectedRowIds.length === 0) {
+      setDeactivateButton(true);
+    } else {
+      setDeactivateButton(false);
     }
   }, [selectedRowIds]);
 
@@ -175,14 +158,6 @@ function ProviderMenu() {
       setStartingRecNo(1);
     }
   }, [isSearching, panelSearchTerm]);
-
-  useEffect(() => {
-    if (selectedRowIds.length === 0) {
-      setDeactivateButton(true);
-    } else {
-      setDeactivateButton(false);
-    }
-  }, [selectedRowIds]);
 
   async function displayStatus(res) {
     setNotificationVisible(true);
@@ -206,12 +181,12 @@ function ProviderMenu() {
     event.preventDefault();
     setLoading(true);
     postToOpenElisServerFullResponse(
-      `/DeleteProvider?ID=${selectedRowIds.join(",")}&${startingRecNo}=1`,
-      serachedProviderMenuListShow || providerMenuListShow,
+      `/rest/DeleteProvider?ID=${selectedRowIds.join(",")}&${startingRecNo}=1`,
+      providerMenuListShow,
       setLoading(false),
       setTimeout(() => {
         window.location.reload();
-      }, 1000),
+      }, 1),
     );
   }
 
@@ -224,11 +199,13 @@ function ProviderMenu() {
   const handleNextPage = () => {
     setPaging((pager) => Math.max(pager, 2));
     setStartingRecNo(fromRecordCount);
+    setSelectedRowIds([]);
   };
 
   const handlePreviousPage = () => {
     setPaging((pager) => Math.max(pager - 1, 1));
     setStartingRecNo(Math.max(fromRecordCount, 1));
+    setSelectedRowIds([]);
   };
 
   const handlePanelSearchChange = (event) => {
@@ -336,26 +313,6 @@ function ProviderMenu() {
     const value = event.target.value;
     if (value === "" || (/^\d+$/.test(value) && value.length <= 10)) {
       setFax(value);
-    }
-  };
-
-  const getVisibleRows = () => {
-    const currentList = isSearching
-      ? serachedProviderMenuListShow
-      : providerMenuListShow;
-    return currentList.slice((page - 1) * pageSize, page * pageSize);
-  };
-
-  const handleSelectAll = (checked) => {
-    const visibleRows = getVisibleRows();
-    if (checked) {
-      const newSelectedIds = [
-        ...new Set([...selectedRowIds, ...visibleRows.map((row) => row.id)]),
-      ];
-      setSelectedRowIds(newSelectedIds);
-    } else {
-      const visibleIds = new Set(visibleRows.map((row) => row.id));
-      setSelectedRowIds(selectedRowIds.filter((id) => !visibleIds.has(id)));
     }
   };
 
@@ -538,343 +495,146 @@ function ProviderMenu() {
             </Column>
           </Grid>
           <br />
-          {isSearching ? (
-            <>
-              <Grid fullWidth={true} className="gridBoundary">
-                <Column lg={16} md={8} sm={4}>
-                  <DataTable
-                    rows={serachedProviderMenuListShow.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )}
-                    headers={[
-                      {
-                        key: "select",
-                        header: intl.formatMessage({
-                          id: "provider.select",
-                        }),
-                      },
-                      {
-                        key: "lastName",
-                        header: intl.formatMessage({
-                          id: "provider.providerLastName",
-                        }),
-                      },
+          <>
+            <Grid fullWidth={true} className="gridBoundary">
+              <Column lg={16} md={8} sm={4}>
+                <DataTable
+                  rows={providerMenuListShow.slice(
+                    (page - 1) * pageSize,
+                    page * pageSize,
+                  )}
+                  headers={[
+                    {
+                      key: "select",
+                      header: intl.formatMessage({
+                        id: "provider.select",
+                      }),
+                    },
+                    {
+                      key: "lastName",
+                      header: intl.formatMessage({
+                        id: "provider.providerLastName",
+                      }),
+                    },
 
-                      {
-                        key: "firstName",
-                        header: intl.formatMessage({
-                          id: "provider.providerFirstName",
-                        }),
-                      },
-                      {
-                        key: "active",
-                        header: intl.formatMessage({
-                          id: "provider.isActive",
-                        }),
-                      },
-                      {
-                        key: "telephone",
-                        header: intl.formatMessage({
-                          id: "provider.telephone",
-                        }),
-                      },
-                      {
-                        key: "fax",
-                        header: intl.formatMessage({
-                          id: "provider.fax",
-                        }),
-                      },
-                    ]}
-                  >
-                    {({
-                      rows,
-                      headers,
-                      getHeaderProps,
-                      getTableProps,
-                      getSelectionProps,
-                    }) => (
-                      <TableContainer>
-                        <Table {...getTableProps()}>
-                          <TableHead>
-                            <TableRow>
-                              <TableSelectAll
-                                id="table-select-all"
-                                {...getSelectionProps()}
-                                checked={
-                                  getVisibleRows().length > 0 &&
-                                  getVisibleRows().every((row) =>
-                                    selectedRowIds.includes(row.id),
-                                  )
-                                }
-                                indeterminate={
-                                  getVisibleRows().some((row) =>
-                                    selectedRowIds.includes(row.id),
-                                  ) &&
-                                  !getVisibleRows().every((row) =>
-                                    selectedRowIds.includes(row.id),
-                                  )
-                                }
-                                onSelect={(e) => {
-                                  const checked = e.target.checked;
-                                  handleSelectAll(checked);
+                    {
+                      key: "firstName",
+                      header: intl.formatMessage({
+                        id: "provider.providerFirstName",
+                      }),
+                    },
+                    {
+                      key: "active",
+                      header: intl.formatMessage({
+                        id: "provider.isActive",
+                      }),
+                    },
+                    {
+                      key: "telephone",
+                      header: intl.formatMessage({
+                        id: "provider.telephone",
+                      }),
+                    },
+                    {
+                      key: "fax",
+                      header: intl.formatMessage({
+                        id: "provider.fax",
+                      }),
+                    },
+                  ]}
+                >
+                  {({
+                    rows,
+                    headers,
+                    getHeaderProps,
+                    getTableProps,
+                    getSelectionProps,
+                  }) => (
+                    <TableContainer>
+                      <Table {...getTableProps()}>
+                        <TableHead>
+                          <TableRow>
+                            {headers.map((header) => (
+                              <TableHeader
+                                key={header.key}
+                                {...getHeaderProps({ header })}
+                              >
+                                {header.header}
+                              </TableHeader>
+                            ))}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          <>
+                            {rows.map((row) => (
+                              <TableRow
+                                key={row.id}
+                                onClick={() => {
+                                  const id = row.id;
+                                  setSelectedRowIds(
+                                    selectedRowIds.includes(id)
+                                      ? selectedRowIds.filter(
+                                          (selectedId) => selectedId !== id,
+                                        )
+                                      : [...selectedRowIds, id],
+                                  );
                                 }}
-                              />
-                              {headers.map(
-                                (header) =>
-                                  header.key !== "select" && (
-                                    <TableHeader
-                                      key={header.key}
-                                      {...getHeaderProps({ header })}
-                                    >
-                                      {header.header}
-                                    </TableHeader>
-                                  ),
-                              )}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            <>
-                              {rows.map((row) => (
-                                <TableRow
-                                  key={row.id}
-                                  onClick={() => {
-                                    const id = row.id;
-                                    setSelectedRowIds(
-                                      selectedRowIds.includes(id)
-                                        ? selectedRowIds.filter(
-                                            (selectedId) => selectedId !== id,
-                                          )
-                                        : [...selectedRowIds, id],
-                                    );
-                                  }}
-                                >
-                                  {row.cells.map((cell) =>
-                                    renderCell(cell, row),
-                                  )}
-                                </TableRow>
-                              ))}
-                            </>
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    )}
-                  </DataTable>
-                  <Pagination
-                    onChange={handlePageChange}
-                    page={page}
-                    pageSize={pageSize}
-                    pageSizes={[10, 20]}
-                    totalItems={serachedProviderMenuListShow.length}
-                    forwardText={intl.formatMessage({
-                      id: "pagination.forward",
-                    })}
-                    backwardText={intl.formatMessage({
-                      id: "pagination.backward",
-                    })}
-                    itemRangeText={(min, max, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.item-range" },
-                        { min: min, max: max, total: total },
-                      )
-                    }
-                    itemsPerPageText={intl.formatMessage({
-                      id: "pagination.items-per-page",
-                    })}
-                    itemText={(min, max) =>
-                      intl.formatMessage(
-                        { id: "pagination.item" },
-                        { min: min, max: max },
-                      )
-                    }
-                    pageNumberText={intl.formatMessage({
-                      id: "pagination.page-number",
-                    })}
-                    pageRangeText={(_current, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.page-range" },
-                        { total: total },
-                      )
-                    }
-                    pageText={(page, pagesUnknown) =>
-                      intl.formatMessage(
-                        { id: "pagination.page" },
-                        { page: pagesUnknown ? "" : page },
-                      )
-                    }
-                  />
-                </Column>
-              </Grid>
-            </>
-          ) : (
-            <>
-              <Grid fullWidth={true} className="gridBoundary">
-                <Column lg={16} md={8} sm={4}>
-                  <DataTable
-                    rows={providerMenuListShow.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )}
-                    headers={[
-                      {
-                        key: "select",
-                        header: intl.formatMessage({
-                          id: "provider.select",
-                        }),
-                      },
-                      {
-                        key: "lastName",
-                        header: intl.formatMessage({
-                          id: "provider.providerLastName",
-                        }),
-                      },
-
-                      {
-                        key: "firstName",
-                        header: intl.formatMessage({
-                          id: "provider.providerFirstName",
-                        }),
-                      },
-                      {
-                        key: "active",
-                        header: intl.formatMessage({
-                          id: "provider.isActive",
-                        }),
-                      },
-                      {
-                        key: "telephone",
-                        header: intl.formatMessage({
-                          id: "provider.telephone",
-                        }),
-                      },
-                      {
-                        key: "fax",
-                        header: intl.formatMessage({
-                          id: "provider.fax",
-                        }),
-                      },
-                    ]}
-                  >
-                    {({
-                      rows,
-                      headers,
-                      getHeaderProps,
-                      getTableProps,
-                      getSelectionProps,
-                    }) => (
-                      <TableContainer>
-                        <Table {...getTableProps()}>
-                          <TableHead>
-                            <TableRow>
-                              <TableSelectAll
-                                id="table-select-all"
-                                {...getSelectionProps()}
-                                checked={
-                                  getVisibleRows().length > 0 &&
-                                  getVisibleRows().every((row) =>
-                                    selectedRowIds.includes(row.id),
-                                  )
-                                }
-                                indeterminate={
-                                  getVisibleRows().some((row) =>
-                                    selectedRowIds.includes(row.id),
-                                  ) &&
-                                  !getVisibleRows().every((row) =>
-                                    selectedRowIds.includes(row.id),
-                                  )
-                                }
-                                onSelect={(e) => {
-                                  const checked = e.target.checked;
-                                  handleSelectAll(checked);
-                                }}
-                              />
-                              {headers.map(
-                                (header) =>
-                                  header.key !== "select" && (
-                                    <TableHeader
-                                      key={header.key}
-                                      {...getHeaderProps({ header })}
-                                    >
-                                      {header.header}
-                                    </TableHeader>
-                                  ),
-                              )}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            <>
-                              {rows.map((row) => (
-                                <TableRow
-                                  key={row.id}
-                                  onClick={() => {
-                                    const id = row.id;
-                                    setSelectedRowIds(
-                                      selectedRowIds.includes(id)
-                                        ? selectedRowIds.filter(
-                                            (selectedId) => selectedId !== id,
-                                          )
-                                        : [...selectedRowIds, id],
-                                    );
-                                  }}
-                                >
-                                  {row.cells.map((cell) =>
-                                    renderCell(cell, row),
-                                  )}
-                                </TableRow>
-                              ))}
-                            </>
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    )}
-                  </DataTable>
-                  <Pagination
-                    onChange={handlePageChange}
-                    page={page}
-                    pageSize={pageSize}
-                    pageSizes={[10, 20]}
-                    totalItems={providerMenuListShow.length}
-                    forwardText={intl.formatMessage({
-                      id: "pagination.forward",
-                    })}
-                    backwardText={intl.formatMessage({
-                      id: "pagination.backward",
-                    })}
-                    itemRangeText={(min, max, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.item-range" },
-                        { min: min, max: max, total: total },
-                      )
-                    }
-                    itemsPerPageText={intl.formatMessage({
-                      id: "pagination.items-per-page",
-                    })}
-                    itemText={(min, max) =>
-                      intl.formatMessage(
-                        { id: "pagination.item" },
-                        { min: min, max: max },
-                      )
-                    }
-                    pageNumberText={intl.formatMessage({
-                      id: "pagination.page-number",
-                    })}
-                    pageRangeText={(_current, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.page-range" },
-                        { total: total },
-                      )
-                    }
-                    pageText={(page, pagesUnknown) =>
-                      intl.formatMessage(
-                        { id: "pagination.page" },
-                        { page: pagesUnknown ? "" : page },
-                      )
-                    }
-                  />
-                </Column>
-              </Grid>
-            </>
-          )}
+                              >
+                                {row.cells.map((cell) => renderCell(cell, row))}
+                              </TableRow>
+                            ))}
+                          </>
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </DataTable>
+                <Pagination
+                  onChange={handlePageChange}
+                  page={page}
+                  pageSize={pageSize}
+                  pageSizes={[10, 20]}
+                  totalItems={providerMenuListShow.length}
+                  forwardText={intl.formatMessage({
+                    id: "pagination.forward",
+                  })}
+                  backwardText={intl.formatMessage({
+                    id: "pagination.backward",
+                  })}
+                  itemRangeText={(min, max, total) =>
+                    intl.formatMessage(
+                      { id: "pagination.item-range" },
+                      { min: min, max: max, total: total },
+                    )
+                  }
+                  itemsPerPageText={intl.formatMessage({
+                    id: "pagination.items-per-page",
+                  })}
+                  itemText={(min, max) =>
+                    intl.formatMessage(
+                      { id: "pagination.item" },
+                      { min: min, max: max },
+                    )
+                  }
+                  pageNumberText={intl.formatMessage({
+                    id: "pagination.page-number",
+                  })}
+                  pageRangeText={(_current, total) =>
+                    intl.formatMessage(
+                      { id: "pagination.page-range" },
+                      { total: total },
+                    )
+                  }
+                  pageText={(page, pagesUnknown) =>
+                    intl.formatMessage(
+                      { id: "pagination.page" },
+                      { page: pagesUnknown ? "" : page },
+                    )
+                  }
+                />
+              </Column>
+            </Grid>
+          </>
         </div>
       </div>
     </>

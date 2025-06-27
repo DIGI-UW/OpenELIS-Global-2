@@ -92,8 +92,9 @@ describe("Dictionary Menu", function () {
     });
 
     it("Validate Modified Dictionary", () => {
+      cy.reload();
       dictMenu.searchByDictionaryEntry(usersData[0].dictionaryEntry);
-      dictMenu.validateDictEntry(usersData[0].yes);
+      dictMenu.validateDictStatus(usersData[0].yes);
     });
   });
 
@@ -105,8 +106,9 @@ describe("Dictionary Menu", function () {
     });
 
     it("Validate Deactivated Dictionary", () => {
+      cy.reload();
       dictMenu.searchByDictionaryEntry(usersData[1].dictionaryEntry);
-      dictMenu.validateDictEntry(usersData[0].no);
+      dictMenu.validateDictStatus(usersData[0].no);
     });
   });
 });
