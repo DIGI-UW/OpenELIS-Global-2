@@ -18,6 +18,7 @@ module.exports = defineConfig({
           "cypress/e2e/login.cy.js",
           "cypress/e2e/home.cy.js",
           "cypress/e2e/AdminE2E/organizationManagement.cy.js",
+          "cypress/e2e/AdminE2E/providerManagement.cy.js",
           "cypress/e2e/patientEntry.cy.js",
           "cypress/e2e/orderEntity.cy.js",
         ];

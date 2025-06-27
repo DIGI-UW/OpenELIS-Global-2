@@ -1,6 +1,5 @@
 import LoginPage from "../pages/LoginPage";
 import OrderEntityPage from "../pages/OrderEntityPage";
-import ProviderManagementPage from "../pages/ProviderManagementPage";
 import AdminPage from "../pages/AdminPage";
 import PatientEntryPage from "../pages/PatientEntryPage";
 
@@ -9,28 +8,11 @@ let loginPage = null;
 let workplan = null;
 let orderEntityPage = new OrderEntityPage();
 let patientEntryPage = new PatientEntryPage();
-let providerManagementPage = new ProviderManagementPage();
 let adminPage = new AdminPage();
 
 before("login", () => {
   loginPage = new LoginPage();
   loginPage.visit();
-});
-
-describe("Add requester details first", function () {
-  it("Navidates to admin", function () {
-    homePage = loginPage.goToHomePage();
-    workplan = homePage.goToAdminPageProgram();
-    workplan = adminPage.goToProviderManagementPage();
-  });
-
-  it("Adds and saves requester", function () {
-    providerManagementPage.clickAddProviderButton();
-    providerManagementPage.enterProviderLastName();
-    providerManagementPage.enterProviderFirstName();
-    providerManagementPage.clickActiveDropdown();
-    providerManagementPage.addProvider();
-  });
 });
 
 describe("Work plan by Panel", function () {

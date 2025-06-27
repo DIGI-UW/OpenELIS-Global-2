@@ -1,5 +1,4 @@
 import LoginPage from "../pages/LoginPage";
-import ProviderManagementPage from "../pages/ProviderManagementPage";
 import AdminPage from "../pages/AdminPage";
 
 let homePage = null;
@@ -7,28 +6,10 @@ let loginPage = null;
 let adminPage = new AdminPage();
 let orderEntityPage = null;
 let patientEntryPage = null;
-let providerManagementPage = new ProviderManagementPage();
 
 before("login", () => {
   loginPage = new LoginPage();
   loginPage.visit();
-});
-
-describe("Add requester first", function () {
-  it("Navidates to Admin", function () {
-    homePage = loginPage.goToHomePage();
-    orderEntityPage = homePage.goToAdminPageProgram();
-    orderEntityPage = adminPage.goToProviderManagementPage();
-  });
-
-  it("Adds and saves requester", function () {
-    providerManagementPage.clickAddProviderButton();
-    providerManagementPage.enterProviderLastName();
-    providerManagementPage.enterProviderFirstName();
-    providerManagementPage.clickActiveDropdown();
-    providerManagementPage.addProvider();
-    cy.reload();
-  });
 });
 
 describe("Order Entity", function () {

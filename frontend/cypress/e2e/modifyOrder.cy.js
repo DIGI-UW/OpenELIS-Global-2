@@ -1,37 +1,18 @@
 import LoginPage from "../pages/LoginPage";
 import PatientEntryPage from "../pages/PatientEntryPage";
 import OrderEntityPage from "../pages/OrderEntityPage";
-import ProviderManagementPage from "../pages/ProviderManagementPage";
 import AdminPage from "../pages/AdminPage";
 
 let homePage = null;
 let loginPage = null;
 let modifyOrderPage = null;
 let adminPage = new AdminPage();
-let providerManagementPage = new ProviderManagementPage();
 let orderEntityPage = new OrderEntityPage();
 let patientPage = new PatientEntryPage();
 
 before("login", () => {
   loginPage = new LoginPage();
   loginPage.visit();
-});
-
-describe("Add requester details first", function () {
-  it("Navidates to admin", function () {
-    homePage = loginPage.goToHomePage();
-    modifyOrderPage = homePage.goToAdminPage();
-    modifyOrderPage = adminPage.goToProviderManagementPage();
-  });
-
-  it("Adds and saves requester", function () {
-    providerManagementPage.clickAddProviderButton();
-    providerManagementPage.enterProviderLastName();
-    providerManagementPage.enterProviderFirstName();
-    providerManagementPage.clickActiveDropdown();
-    providerManagementPage.addProvider();
-  });
-  //cy.reload();
 });
 
 describe("Add New Patient", function () {
