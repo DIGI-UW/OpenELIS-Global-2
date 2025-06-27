@@ -27,9 +27,15 @@ public class TestAnalyteServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void testDataInDataBase() {
         List<TestAnalyte> testAnalytes = testAnalyteService.getAll();
+        assertNotNull("Expected testAnalytes to be not null", testAnalytes);
+        assertFalse("Expected testAnalytes to not be empty", testAnalytes.isEmpty());
+
         testAnalytes.forEach(testAnalyte -> {
-            System.out.print(testAnalyte.getId() + " - " + testAnalyte.getTest().getId() + " - "
-                    + testAnalyte.getAnalyte().getId() + " ");
+            assertNotNull("TestAnalyte ID should not be null", testAnalyte.getId());
+            assertNotNull("Test object in TestAnalyte should not be null", testAnalyte.getTest());
+            assertNotNull("Test ID should not be null", testAnalyte.getTest().getId());
+            assertNotNull("Analyte object in TestAnalyte should not be null", testAnalyte.getAnalyte());
+            assertNotNull("Analyte ID should not be null", testAnalyte.getAnalyte().getId());
         });
     }
 
@@ -54,10 +60,8 @@ public class TestAnalyteServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllTestAnalytesPerTest_shouldReturnAllAnalytesForTest() {
-        // Use fully qualified name to avoid ambiguity with JUnit's Test
         org.openelisglobal.test.valueholder.Test labTest = new org.openelisglobal.test.valueholder.Test();
         labTest.setId("1");
-
         List<TestAnalyte> testAnalytes = testAnalyteService.getAllTestAnalytesPerTest(labTest);
 
         assertEquals(1, testAnalytes.size());
@@ -81,21 +85,12 @@ public class TestAnalyteServiceTest extends BaseWebContextSensitiveTest {
     // TODO: need to convert to hibernate ( not in use??? )
     @Test
     public void getTestAnalytes_withFilter_shouldReturnFilteredTestAnalytes() {
-        // Filter by "Blood" which should match "Blood Test"
         List<TestAnalyte> testAnalytes = testAnalyteService.getTestAnalytes("Blood");
 
-        // assertEquals(1, testAnalytes.size());
-        // for (TestAnalyte ta : testAnalytes) {
-        // assertEquals("1", ta.getTest().getId());
-        // }
         assertNull(testAnalytes);
 
-        // Filter by "Glucose" which should match the analyte name
         testAnalytes = testAnalyteService.getTestAnalytes("Glucose");
-        // assertEquals(1, testAnalytes.size());
-        // for (TestAnalyte ta : testAnalytes) {
-        // assertEquals("1", ta.getAnalyte().getId());
-        // }
+
         assertNull(testAnalytes);
     }
 
@@ -114,12 +109,10 @@ public class TestAnalyteServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getPageOfTestAnalytes_shouldReturnPagedResults() {
-        // Starting from the first record
-        List<TestAnalyte> testAnalytes = testAnalyteService.getPageOfTestAnalytes(1);
 
-        // Check if we got some results
+        List<TestAnalyte> testAnalytes = testAnalyteService.getPageOfTestAnalytes(1);
         assertTrue(testAnalytes.size() > 0);
-        // The actual number depends on your paging implementation
+
     }
 
     @Test
