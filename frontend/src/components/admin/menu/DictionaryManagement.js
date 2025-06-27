@@ -61,8 +61,7 @@ function DictionaryManagement() {
   const [fromRecordCount, setFromRecordCount] = useState("1");
   const [toRecordCount, setToRecordCount] = useState("");
   const [totalRecordCount, setTotalRecordCount] = useState("");
-
-  const [selectedRowId, setSelectedRowId] = useState(null);
+  const [selectedRowIds, setSelectedRowIds] = useState([]);
   const [modifyButton, setModifyButton] = useState(true);
   const [deactivateButton, setDeactivateButton] = useState(true);
   const [editMode, setEditMode] = useState(true);
@@ -72,6 +71,14 @@ function DictionaryManagement() {
   const [isSearching, setIsSearching] = useState(false);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
   const [searchedMenuList, setSearchedMenuList] = useState([]);
+
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 530);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 530);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -84,14 +91,29 @@ function DictionaryManagement() {
     };
   }, [paging, startingRecNo]);
 
+  useEffect(() => {
+    if (selectedRowIds.length === 1) {
+      setModifyButton(false);
+    } else {
+      setModifyButton(true);
+    }
+    if (selectedRowIds.length === 0) {
+      setDeactivateButton(true);
+    } else {
+      setDeactivateButton(false);
+    }
+  }, [selectedRowIds]);
+
   const handleNextPage = () => {
     setPaging((pager) => Math.max(pager, 2));
     setStartingRecNo(fromRecordCount);
+    setSelectedRowIds([]);
   };
 
   const handlePreviousPage = () => {
     setPaging((pager) => Math.max(pager - 1, 1));
     setStartingRecNo(Math.max(fromRecordCount, 1));
+    setSelectedRowIds([]);
   };
 
   const yesOrNo = [
@@ -232,7 +254,7 @@ function DictionaryManagement() {
         message: intl.formatMessage({ id: "error.add.edited.msg" }),
       });
     }
-    reloadConfiguration();
+    window.location.reload();
   }
 
   const handleSubmitModal = (e) => {
@@ -275,7 +297,7 @@ function DictionaryManagement() {
     };
 
     postToOpenElisServerFullResponse(
-      `/rest/Dictionary?ID=${selectedRowId}&startingRecNo=${startingRecNo}`,
+      `/rest/Dictionary?ID=${selectedRowIds[0]}&startingRecNo=${startingRecNo}`,
       JSON.stringify(updateData),
       displayStatus,
     );
@@ -288,24 +310,16 @@ function DictionaryManagement() {
         <TableSelectRow
           key={cell.id}
           id={cell.id}
-          radio={true}
-          checked={selectedRowId === row.id}
+          checked={selectedRowIds.includes(row.id)}
           name="selectRowRadio"
           ariaLabel="selectRow"
-          onSelect={() => {
-            const isActiveCell = row.cells.find((cell) =>
-              cell.id.endsWith(":isActive"),
-            );
-
-            let isActiveValue = "";
-            if (isActiveCell) {
-              isActiveValue = isActiveCell.value;
+          onSelect={(e) => {
+            e.stopPropagation();
+            if (selectedRowIds.includes(row.id)) {
+              setSelectedRowIds(selectedRowIds.filter((id) => id !== row.id));
+            } else {
+              setSelectedRowIds([...selectedRowIds, row.id]);
             }
-
-            setModifyButton(false);
-            setSelectedRowId(row.id);
-
-            setDeactivateButton(isActiveValue !== "Y");
           }}
         />
       );
@@ -339,9 +353,9 @@ function DictionaryManagement() {
 
   const handleOnClickOnModification = async (event) => {
     event.preventDefault();
-    if (selectedRowId) {
+    if (selectedRowIds.length == 1) {
       const selectedItem = dictionaryMenuList.find(
-        (item) => item.id === selectedRowId,
+        (item) => item.id === selectedRowIds[0],
       );
 
       if (selectedItem) {
@@ -355,7 +369,7 @@ function DictionaryManagement() {
       }
 
       getFromOpenElisServer(
-        `/rest/Dictionary?ID=${selectedRowId}&startingRecNo=${startingRecNo}`,
+        `/rest/Dictionary?ID=${selectedRowIds[0]}&startingRecNo=${startingRecNo}`,
         handleDictionaryMenuItems,
       );
       setOpen(true);
@@ -365,12 +379,9 @@ function DictionaryManagement() {
 
   const handleDeactivation = async (event) => {
     event.preventDefault();
-    const list = [...dictionaryMenuList];
-    list.splice(selectedRowId, 1);
-    setDictionaryMenuList(list);
-    if (selectedRowId) {
+    if (selectedRowIds) {
       postToOpenElisServer(
-        `/rest/delete-dictionary?selectedIDs=${selectedRowId}`,
+        `/rest/DeleteDictionary?ID=${selectedRowIds.join(",")}`,
         {},
         handleDelete,
       );
@@ -395,6 +406,7 @@ function DictionaryManagement() {
         message: intl.formatMessage({ id: "dictionary.menu.deactivate.fail" }),
       });
     }
+    window.location.reload();
   };
 
   const handlePanelSearchChange = (event) => {
@@ -432,10 +444,11 @@ function DictionaryManagement() {
             <Form
               style={{
                 display: "flex",
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-                gap: window.innerWidth < 768 ? "1rem" : "2rem",
+                flexDirection: isMobile ? "column" : "row",
+                gap: isMobile ? "1rem" : "2rem",
                 justifyContent: "space-between",
-                alignItems: "center",
+                alignItems: isMobile ? "stretch" : "center",
+                flexWrap: "wrap",
               }}
             >
               <Column
@@ -444,21 +457,31 @@ function DictionaryManagement() {
                 sm={4}
                 style={{
                   display: "flex",
-                  gap: "0.4rem",
+                  gap: isMobile ? "0.75rem" : "0.5rem",
+                  flexDirection: isMobile ? "column" : "row",
+                  width: isMobile ? "100%" : "auto",
+                  margin: "0",
                 }}
               >
-                <Button disabled={!editMode} onClick={() => setOpen(true)}>
+                <Button
+                  data-cy="addButton"
+                  style={{ width: isMobile ? "100%" : "auto" }}
+                  disabled={!editMode}
+                  onClick={() => setOpen(true)}
+                >
                   {intl.formatMessage({
                     id: "admin.page.configuration.formEntryConfigMenu.button.add",
                   })}
-                </Button>{" "}
+                </Button>
                 <Button
+                  data-cy="modifyButton"
+                  style={{ width: isMobile ? "100%" : "auto" }}
                   disabled={modifyButton}
                   type="submit"
                   onClick={handleOnClickOnModification}
                 >
                   <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.modify" />
-                </Button>{" "}
+                </Button>
                 <Modal
                   open={open}
                   size="sm"
@@ -532,7 +555,9 @@ function DictionaryManagement() {
                   />
                 </Modal>
                 <Button
-                  disabled={modifyButton || deactivateButton}
+                  data-cy="deactivateButton"
+                  style={{ width: isMobile ? "100%" : "auto" }}
+                  disabled={deactivateButton}
                   onClick={handleDeactivation}
                   type="submit"
                 >
@@ -545,23 +570,36 @@ function DictionaryManagement() {
                 sm={4}
                 style={{
                   display: "flex",
-                  flexDirection: "column",
+                  flexDirection: isMobile ? "column" : "row",
                   alignItems: "center",
-                  gap: "10px",
+                  justifyContent: "center",
+                  gap: isMobile ? "0.75rem" : "0.5rem",
                 }}
               >
                 <h4
                   style={{
                     margin: 0,
-                    fontSize: window.innerWidth < 768 ? "0.875rem" : "1rem",
-                    whiteSpace: "nowrap",
+                    fontSize: isMobile ? "1.2rem" : "1.2rem",
+                    textAlign: isMobile ? "center" : "left",
                   }}
                 >
                   Showing {fromRecordCount} - {toRecordCount} of{" "}
                   {totalRecordCount}
                 </h4>
-                <div style={{ display: "flex", gap: "10px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "0.5rem",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
                   <Button
+                    style={{
+                      minWidth: isMobile ? "2rem" : "2.5rem",
+                      minHeight: isMobile ? "2rem" : "2.5rem",
+                      padding: "0.5rem",
+                    }}
                     hasIconOnly
                     iconDescription="previous"
                     disabled={parseInt(fromRecordCount) <= 1}
@@ -569,13 +607,18 @@ function DictionaryManagement() {
                     renderIcon={ArrowLeft}
                   />
                   <Button
+                    style={{
+                      minWidth: isMobile ? "2rem" : "2.5rem",
+                      minHeight: isMobile ? "2rem" : "2.5rem",
+                      padding: "0.5rem",
+                    }}
                     hasIconOnly
                     iconDescription="next"
+                    renderIcon={ArrowRight}
+                    onClick={handleNextPage}
                     disabled={
                       parseInt(toRecordCount) >= parseInt(totalRecordCount)
                     }
-                    renderIcon={ArrowRight}
-                    onClick={handleNextPage}
                   />
                 </div>
               </Column>

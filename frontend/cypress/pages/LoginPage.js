@@ -1,6 +1,15 @@
 import HomePage from "./HomePage";
 import TestProperties from "../common/TestProperties";
 
+const SELECTORS = {
+  USERNAME: "#loginName",
+  PASSWORD: "#password",
+  LOGIN_BUTTON: "[data-cy='loginButton']",
+  USER_ICON: "#user-Icon",
+  LOGOUT: "[data-cy='logOut']",
+  CHANGE_PASSWORD: "[data-cy='changePassword']",
+  CURRENT_PASSWORD: "#current-password",
+};
 class LoginPage {
   testProperties = new TestProperties();
 
@@ -9,45 +18,48 @@ class LoginPage {
   }
 
   getUsernameElement() {
-    return cy.get("#loginName");
+    return cy.get(SELECTORS.USERNAME);
   }
 
   getPasswordElement() {
-    return cy.get("#password");
+    return cy.get(SELECTORS.PASSWORD);
   }
 
   enterUsername(value) {
+    cy.wait(3000);
     this.getUsernameElement().should("be.visible");
     this.getUsernameElement().type(value);
+    this.getUsernameElement().should("have.value", value);
   }
 
   enterPassword(value) {
     this.getPasswordElement().should("be.visible");
     this.getPasswordElement().type(value);
+    this.getPasswordElement().should("have.value", value);
   }
 
   signIn() {
-    cy.get("[data-cy='loginButton']").should("be.visible");
-    cy.get("[data-cy='loginButton']").click();
+    cy.get(SELECTORS.LOGIN_BUTTON).should("be.visible");
+    cy.get(SELECTORS.LOGIN_BUTTON).click();
   }
 
   signOut() {
-    cy.get("#user-Icon").should("be.visible");
-    cy.get("#user-Icon").click();
+    cy.get(SELECTORS.USER_ICON).should("be.visible");
+    cy.get(SELECTORS.USER_ICON).click();
     cy.wait(200);
-    cy.get("[data-cy='logOut']").should("be.visible");
-    cy.get("[data-cy='logOut']").click();
+    cy.get(SELECTORS.LOGOUT).should("be.visible");
+    cy.get(SELECTORS.LOGOUT).click();
     cy.wait(1000);
   }
 
   changingPassword() {
-    cy.get("[data-cy='changePassword']").click();
+    cy.get(SELECTORS.CHANGE_PASSWORD).click();
     cy.wait(500);
   }
 
   enterCurrentPassword(value) {
-    cy.get("#current-password").should("be.visible");
-    cy.get("#current-password").type(value);
+    cy.get(SELECTORS.CURRENT_PASSWORD).should("be.visible");
+    cy.get(SELECTORS.CURRENT_PASSWORD).type(value);
   }
 
   enterNewPassword(value) {
@@ -86,6 +98,7 @@ class LoginPage {
         this.signIn();
       }
     });
+    cy.wait(5000);
     return new HomePage();
   }
 }

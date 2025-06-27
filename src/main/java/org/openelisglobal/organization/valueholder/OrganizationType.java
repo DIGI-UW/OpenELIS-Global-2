@@ -15,6 +15,7 @@
  */
 package org.openelisglobal.organization.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.Set;
 import org.openelisglobal.common.valueholder.BaseObject;
 
@@ -25,6 +26,7 @@ public class OrganizationType extends BaseObject<String> {
     private String id;
     private String name;
     private String description;
+    @JsonIgnore
     private Set<Organization> organizations;
 
     public String getId() {

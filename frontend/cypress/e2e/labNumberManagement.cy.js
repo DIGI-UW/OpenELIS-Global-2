@@ -11,7 +11,7 @@ before(() => {
   loginPage.visit();
 
   homePage = loginPage.goToHomePage();
-  adminPage = homePage.goToAdminPage();
+  adminPage = homePage.goToAdminPageProgram();
 });
 
 beforeEach(() => {
@@ -42,6 +42,16 @@ describe("Lab Number Management", function () {
       labNumMgtPage.selectLabNumber(labNumberManagementData.alphaLabNumberType);
       labNumMgtPage.checkPrefixCheckBox();
       labNumMgtPage.typePrefix(labNumberManagementData.userPrefix);
+      labNumMgtPage.clickSubmitButton();
+    });
+  });
+
+  //Back to default type
+  it("Navigate back to legacy lab number type", function () {
+    cy.get("@labNMData").then((labNumberManagementData) => {
+      labNumMgtPage.selectLabNumber(
+        labNumberManagementData.legacyLabNumberType,
+      );
       labNumMgtPage.clickSubmitButton();
     });
   });

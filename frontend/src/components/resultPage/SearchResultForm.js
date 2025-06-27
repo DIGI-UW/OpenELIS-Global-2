@@ -466,6 +466,7 @@ export function SearchResultForm(props) {
                             placeholder="Enter Accession No."
                             name={field.name}
                             id={field.name}
+                            data-cy="enterAccession"
                             value={values[field.name]}
                             labelText={
                               <FormattedMessage id="search.label.accession" />
@@ -490,6 +491,7 @@ export function SearchResultForm(props) {
                             placeholder="Enter Accession No."
                             name={field.name}
                             id={field.name}
+                            data-cy="startAccession"
                             value={values[field.name]}
                             labelText={
                               <FormattedMessage id="search.label.fromaccession" />
@@ -508,6 +510,7 @@ export function SearchResultForm(props) {
                             placeholder="Enter Accession No."
                             name={field.name}
                             id={field.name}
+                            data-cy="endAccession"
                             value={values[field.name]}
                             labelText={
                               <FormattedMessage id="search.label.toaccession" />

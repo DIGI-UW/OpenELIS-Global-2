@@ -46,4 +46,16 @@
         dict_entry="Dictionary Entry 3" local_Abbrev="DE3"
         dictionary_category_id="3" sort_order="3"
         lastUpdated="2023-10-01 12:00:00" />
+    <dictionary id="4" is_active="Y" dict_entry="Positive"
+        local_Abbrev="POS" dictionary_category_id="1" sort_order="4"
+        loinc_code="LA9663-1" lastUpdated="2023-11-02 12:00:00" />
+
+    <dictionary id="5" is_active="Y" dict_entry="Negative"
+        local_Abbrev="NEG" dictionary_category_id="1" sort_order="5"
+        loinc_code="LA9664-9" lastUpdated="2023-11-02 12:00:00" />
+
+    <dictionary id="6" is_active="Y" dict_entry="Invalid"
+        local_Abbrev="INV" dictionary_category_id="1" sort_order="6"
+        lastUpdated="2023-11-02 12:00:00" />
+
 </dataset>

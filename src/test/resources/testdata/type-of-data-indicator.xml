@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <type_of_data_indicator id="1" name="Cases"
+        name_key="indicator.cases" description="Number of cases"
+        description_key="desc.cases" lastupdated="2025-05-01 10:00:00" />
+    <type_of_data_indicator id="2" name="Tests"
+        name_key="indicator.tests" description="Number of tests"
+        description_key="desc.tests" lastupdated="2025-05-01 10:05:00" />
+    <type_of_data_indicator id="3" name="Deaths"
+        name_key="indicator.deaths" description="Number of deaths"
+        description_key="desc.deaths" lastupdated="2025-05-01 10:10:00" />
+    <type_of_data_indicator id="4" name="Recovered"
+        name_key="indicator.recovered"
+        description="Number of recovered patients"
+        description_key="desc.recovered" lastupdated="2025-05-01 10:15:00" />
+</dataset>
