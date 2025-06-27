@@ -30,7 +30,7 @@ public class ResultSaveBean {
     private String reportable;
     private Double lowerNormalRange;
     private Double upperNormalRange;
-    private int significantDigits;
+    private int significantDigits = 0;
 
     public boolean isHasQualifiedResult() {
         return hasQualifiedResult;

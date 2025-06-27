@@ -115,9 +115,17 @@ public class ResultSelectListServiceImpl implements ResultSelectListService {
 
         JSONParser parser = new JSONParser();
         try {
-            JSONObject obj = (JSONObject) parser.parse(s);
-            String testsStr = (String) obj.get("tests");
-            JSONArray tests = (JSONArray) parser.parse(testsStr);
+            Object parsed = parser.parse(s);
+            JSONArray tests;
+            if (parsed instanceof JSONArray) {
+                tests = (JSONArray) parsed;
+            } else if (parsed instanceof JSONObject) {
+                JSONObject obj = (JSONObject) parsed;
+                String testsStr = (String) obj.get("tests");
+                tests = (JSONArray) parser.parse(testsStr);
+            } else {
+                throw new IllegalArgumentException("Invalid testSelectListJson format");
+            }
             for (int j = 0; j < tests.size(); j++) {
                 JSONObject testObject = (JSONObject) tests.get(j);
 

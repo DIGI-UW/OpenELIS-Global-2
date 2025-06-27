@@ -1,10 +1,10 @@
-name: OpenELis Frontend QA framework workflow
+name: OpenELIS Frontend QA framework workflow
+
 on:
-  push:
-    branches: [develop]
   pull_request:
     branches: [develop]
   workflow_dispatch:
+  workflow_call: 
 
 env:
   DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-frontend
@@ -61,20 +61,34 @@ jobs:
         run: npm install react-scripts@5.0.1 -g
         working-directory: frontend
 
+      - name: Install Google Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
       - name: Check Format
         run: npx prettier ./ --check
         working-directory: frontend  
 
       - name: Build OpenELIS Images and Run containers
-        run: docker compose -f build.docker-compose.yml up -d  --build --wait --wait-timeout 600
-   
-      - name: Run Frontend Qa Workflow
-        run: npx cypress run –headless
+        run: docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600
+
+      - name: Run Frontend QA Workflow (Headless Chrome)
+        run: npx cypress run --browser chrome --headless
         working-directory: frontend
+
+      # In case of failure, uncomment this action and turn video: false to true in cypress.config.js
+      # - name: Upload Cypress videos on failure
+      #   if: failure()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: cypress-videos
+      #     path: frontend/cypress/videos/*.mp4
 
       - name: Dump docker logs on failure
         if: failure()
         uses: jwalton/gh-docker-logs@v2
         with:
-          # Only show last 100 lines of each
+        # Only show last 100 lines of each
           tail: "100"
+          

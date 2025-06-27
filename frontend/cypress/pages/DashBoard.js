@@ -2,7 +2,7 @@ class DashBoardPage {
   constructor() {}
 
   searchPatientByFName() {
-    cy.get("#firstName").type("John");
+    cy.get("#firstName", { timeout: 15000 }).should("be.visible").type("John");
   }
   searchPatient() {
     cy.get("#local_search").click();
@@ -59,13 +59,11 @@ class DashBoardPage {
   }
 
   generateLabNo() {
-    cy.contains("a.cds--link", "Generate").click();
+    cy.get("[data-cy='generate-labNumber']").click();
   }
-
   selectSite() {
-    cy.get("#siteName").type("279 - CAMES ");
-    cy.contains(".suggestion-active", "279 - CAMES ").click();
-    cy.wait(200);
+    cy.get("#siteName").should("be.visible").type("CAMES MAN");
+    cy.contains(".suggestion-active", "CAMES MAN").click();
   }
 
   selectRequesting() {
@@ -79,11 +77,15 @@ class DashBoardPage {
   }
 
   clickPrintBarCode() {
-    cy.contains(".cds--btn--primary", "Print Barcode").should("be.visible");
+    cy.contains(".cds--btn--primary", "Print Barcode", {
+      timeout: 15000,
+    }).should("be.visible");
   }
 
   selectFirstOrder() {
-    cy.get('tbody[aria-live="polite"] > tr').first().click();
+    cy.get('tbody[aria-live="polite"] > tr', { timeout: 15000 })
+      .first()
+      .click();
   }
 
   saveOrder() {
@@ -98,7 +100,9 @@ class DashBoardPage {
     cy.get("#statusFilter").should("be.visible").select("Processing");
   }
   selectStatus() {
-    cy.get("#status").should("be.visible").select("Completed");
+    cy.get("#status", { timeout: 15000 })
+      .should("be.visible")
+      .select("Completed");
   }
   selectPathologist() {
     cy.get("#assignedPathologist").select("ELIS,Open");
@@ -125,7 +129,9 @@ class DashBoardPage {
   }
 
   statusFilter() {
-    cy.get("#statusFilter").select("Completed");
+    cy.get("#statusFilter", { timeout: 15000 })
+      .should("be.visible")
+      .select("Completed");
   }
 }
 

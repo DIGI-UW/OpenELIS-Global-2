@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+
+    <localization id="201" description="Test Description 1"
+        english="TB" french="TB" />
+
+    <localization id="202" description="Test Description 2"
+        english="Urinalysis" french="Urinalysis" />
+
+    <localization id="203" description="Test Description 3"
+        english="blood test" french="Merci" />
+
+    <organization id="1001" name="Central Health Lab"
+        city="Algiers" zip_code="16000" mls_sentinel_lab_flag="Y"
+        short_name="CHL" multiple_unit="Unit A" street_address="123 Lab St"
+        state="AG" internet_address="chl.dz" clia_num="CLIA12345678"
+        pws_id="PWS12345" lastupdated="2024-06-10 08:00:00" mls_lab_flag="Y"
+        is_active="Y" local_abbrev="CHL01" code="CHL-CODE"
+        datim_org_code="DATIM-CHL" datim_org_name="DATIM Central Health Lab" />
+
+    <organization id="1002" name="East Regional Lab"
+        city="Constantine" zip_code="25000" mls_sentinel_lab_flag="N"
+        short_name="ERL" multiple_unit="Unit B" street_address="45 Test Rd"
+        state="CO" internet_address="erl.dz" clia_num="CLIA23456789"
+        pws_id="PWS23456" lastupdated="2024-06-10 08:10:00" mls_lab_flag="N"
+        is_active="Y" local_abbrev="ERL01" code="ERL-CODE"
+        datim_org_code="DATIM-ERL" datim_org_name="DATIM East Regional Lab" />
+
+    <organization id="1003" name="West Diagnostic Center"
+        city="Oran" zip_code="31000" mls_sentinel_lab_flag="Y"
+        short_name="WDC" multiple_unit="Unit C"
+        street_address="78 Health Blvd" state="OR" internet_address="wdc.dz"
+        clia_num="CLIA34567890" pws_id="PWS34567"
+        lastupdated="2024-06-10 08:20:00" mls_lab_flag="Y" is_active="N"
+        local_abbrev="WDC01" code="WDC-CODE" datim_org_code="DATIM-WDC"
+        datim_org_name="DATIM West Diagnostic Center" />
+
+    <test_section id="1" name="Hematology"
+        description="Blood-related tests" org_id="1001" is_external="N"
+        lastupdated="2025-06-10 10:00:00" sort_order="1" is_active="Y"
+        name_localization_id="201" display_key="section.hematology" />
+
+    <test_section id="2" name="Microbiology"
+        description="Infectious diseases" org_id="1002" is_external="N"
+        lastupdated="2025-06-10 10:15:00" sort_order="2" is_active="Y"
+        name_localization_id="202" display_key="section.microbiology" />
+
+    <test_section id="3" name="Toxicology"
+        description="Toxic substances analysis" org_id="1003" is_external="Y"
+        lastupdated="2025-06-10 10:30:00" sort_order="3" is_active="Y"
+        name_localization_id="203" display_key="section.toxicology" />
+
+</dataset>

@@ -1,0 +1,10 @@
+<dataset>
+    <person id="1001" first_name="John" last_name="Doe" />
+    <person id="1002" first_name="Jane" last_name="Doe" />
+
+    <patient id="2001" person_id="1001" />
+    <patient id="2002" person_id="1002" />
+
+    <patient_relations id="1" pat_id_source="2001"
+        pat_id="2002" relation="F" />
+</dataset>

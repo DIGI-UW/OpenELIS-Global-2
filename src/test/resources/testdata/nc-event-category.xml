@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <nce_category id="1" name="General"
+        display_key="nce.category.general" active="true"
+        last_updated="2025-04-01 10:00:00" />
+    <nce_category id="2" name="Order"
+        display_key="nce.category.order" active="true"
+        last_updated="2025-04-02 11:30:00" />
+    <nce_category id="3" name="Sample"
+        display_key="nce.category.sample" active="true"
+        last_updated="2025-04-03 09:15:00" />
+</dataset>

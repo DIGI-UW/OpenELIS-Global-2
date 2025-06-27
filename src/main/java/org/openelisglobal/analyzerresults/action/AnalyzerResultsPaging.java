@@ -55,10 +55,11 @@ public class AnalyzerResultsPaging {
         }
 
         request.getSession().setAttribute(IActionConstants.SAVE_DISABLED, IActionConstants.FALSE);
-        List<AnalyzerResultItem> clientTests = form.getResultList();
-        PagingBean bean = form.getPaging();
+        // List<AnalyzerResultItem> clientTests = form.getResultList();
+        // PagingBean bean = form.getPaging();
 
-        paging.updatePagedResults(request.getSession(), clientTests, bean, pagingHelper);
+        // paging.updatePagedResults(request.getSession(), clientTests, bean,
+        // pagingHelper);
 
         List<AnalyzerResultItem> resultPage = paging.getPage(newPage, request.getSession());
         if (resultPage != null) {

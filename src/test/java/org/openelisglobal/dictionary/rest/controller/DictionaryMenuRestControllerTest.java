@@ -80,7 +80,7 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
         String idToBeDeleted = menuList.get(0).getMenuList().get(2).getId();
 
         // deleting the selected ID
-        MvcResult mvcResult = super.mockMvc.perform(post("/rest/delete-dictionary").param("selectedIDs", idToBeDeleted))
+        MvcResult mvcResult = super.mockMvc.perform(post("/rest/DeleteDictionary").param("ID", idToBeDeleted))
                 .andReturn();
 
         status = mvcResult.getResponse().getStatus();

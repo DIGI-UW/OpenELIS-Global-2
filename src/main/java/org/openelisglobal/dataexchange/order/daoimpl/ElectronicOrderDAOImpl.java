@@ -65,8 +65,14 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
             if (order.equals(ElectronicOrder.SortOrder.LAST_UPDATED_DESC)) {
                 String sql = "from ElectronicOrder eo order by lastupdated desc";
                 list = entityManager.unwrap(Session.class).createQuery(sql, ElectronicOrder.class).list();
+            } else if (order.equals(ElectronicOrder.SortOrder.LAST_UPDATED_ASC)) {
+                String sql = "from ElectronicOrder eo order by lastupdated asc";
+                list = entityManager.unwrap(Session.class).createQuery(sql, ElectronicOrder.class).list();
+            } else if (order.equals(SortOrder.STATUS_ID)) {
+                String sql = "from ElectronicOrder eo order by status_id";
+                list = entityManager.unwrap(Session.class).createQuery(sql, ElectronicOrder.class).list();
             } else {
-                String sql = "from ElectronicOrder eo order by " + order.getValue() + "asc, lastupdated desc";
+                String sql = "from ElectronicOrder eo order by external_id";
                 list = entityManager.unwrap(Session.class).createQuery(sql, ElectronicOrder.class).list();
             }
         } catch (RuntimeException e) {
@@ -330,10 +336,10 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
             hql += "ORDER BY eo.statusId asc ";
             break;
         case LAST_UPDATED_ASC:
-            hql += "ORDER BY eo.lastUpdated asc ";
+            hql += "ORDER BY eo.lastupdated asc ";
             break;
         case LAST_UPDATED_DESC:
-            hql += "ORDER BY eo.lastUpdated desc ";
+            hql += "ORDER BY eo.lastupdated desc ";
             break;
         case EXTERNAL_ID:
             hql += "ORDER BY eo.externalId asc ";
@@ -375,10 +381,10 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
             hql += "ORDER BY eo.statusId asc ";
             break;
         case LAST_UPDATED_ASC:
-            hql += "ORDER BY eo.lastUpdated asc ";
+            hql += "ORDER BY eo.lastupdated asc ";
             break;
         case LAST_UPDATED_DESC:
-            hql += "ORDER BY eo.lastUpdated desc ";
+            hql += "ORDER BY eo.lastupdated desc ";
             break;
         case EXTERNAL_ID:
             hql += "ORDER BY eo.externalId asc ";
@@ -493,10 +499,10 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
             hql += "ORDER BY eo.statusId asc ";
             break;
         case LAST_UPDATED_ASC:
-            hql += "ORDER BY eo.lastUpdated asc ";
+            hql += "ORDER BY eo.lastupdated asc ";
             break;
         case LAST_UPDATED_DESC:
-            hql += "ORDER BY eo.lastUpdated desc ";
+            hql += "ORDER BY eo.lastupdated desc ";
             break;
         case EXTERNAL_ID:
             hql += "ORDER BY eo.externalId asc ";
