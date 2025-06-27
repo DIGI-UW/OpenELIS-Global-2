@@ -859,53 +859,53 @@ function UserAddModify() {
               // onBlur={handleBlur}
               >
                 {!(ID === "0") && !isCurrentPassCorrect && (
-                    <Grid fullWidth={true}>
-                      <Column lg={8} md={4} sm={4}>
-                        <>
-                          <FormattedMessage id="login.login.current.password" />
-                          <span className="requiredlabel">*</span> :
-                        </>
-                      </Column>
-                      <Column lg={4} md={2} sm={2}>
-                        <TextInput
-                          id="current-password"
-                          className="defalut"
-                          type="password"
-                          labelText=""
-                          placeholder={intl.formatMessage({
-                            id: "login.login.current.password",
-                          })}
-                          required={true}
-                          invalid={
-                            userDataShow &&
-                            currentPasswordValidationPost.currentPassword &&
-                            !passwordPatternRegex.test(
-                              currentPasswordValidationPost.currentPassword,
-                            )
-                          }
-                          value={
-                            userDataShow &&
-                            currentPasswordValidationPost &&
-                            currentPasswordValidationPost.currentPassword
-                              ? currentPasswordValidationPost.currentPassword
-                              : ""
-                          }
-                          onChange={(e) => handleCurrentPasswordChange(e)}
-                        />
-                      </Column>
-                      <Column lg={4} md={1} sm={2}>
-                        <Button
-                          disabled={
-                            !currentPasswordValidationPost.currentPassword
-                          }
-                          onClick={() => validateCurrentPassPostCall()}
-                          kind="tertiary"
-                          type="button"
-                        >
-                          <FormattedMessage id="label.button.verifypassword" />
-                        </Button>
-                      </Column>
-                    </Grid>
+                  <Grid fullWidth={true}>
+                    <Column lg={8} md={4} sm={4}>
+                      <>
+                        <FormattedMessage id="login.login.current.password" />
+                        <span className="requiredlabel">*</span> :
+                      </>
+                    </Column>
+                    <Column lg={4} md={2} sm={2}>
+                      <TextInput
+                        id="current-password"
+                        className="defalut"
+                        type="password"
+                        labelText=""
+                        placeholder={intl.formatMessage({
+                          id: "login.login.current.password",
+                        })}
+                        required={true}
+                        invalid={
+                          userDataShow &&
+                          currentPasswordValidationPost.currentPassword &&
+                          !passwordPatternRegex.test(
+                            currentPasswordValidationPost.currentPassword,
+                          )
+                        }
+                        value={
+                          userDataShow &&
+                          currentPasswordValidationPost &&
+                          currentPasswordValidationPost.currentPassword
+                            ? currentPasswordValidationPost.currentPassword
+                            : ""
+                        }
+                        onChange={(e) => handleCurrentPasswordChange(e)}
+                      />
+                    </Column>
+                    <Column lg={4} md={1} sm={1}>
+                      <Button
+                        disabled={
+                          !currentPasswordValidationPost.currentPassword
+                        }
+                        onClick={() => validateCurrentPassPostCall()}
+                        kind="tertiary"
+                        type="button"
+                      >
+                        <FormattedMessage id="label.button.verifypassword" />
+                      </Button>
+                    </Column>
+                  </Grid>
                 )}
                 <br />
                 <Grid fullWidth={true}>
