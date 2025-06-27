@@ -22,7 +22,6 @@ import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
-import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.externalconnections.service.BasicAuthenticationDataService;
 import org.openelisglobal.externalconnections.service.ExternalConnectionService;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -80,8 +79,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.sampleproject", "org.openelisglobal.project", "org.openelisglobal.sampleqaevent",
         "org.openelisglobal.patientrelation", "org.openelisglobal.inventory", "org.openelisglobal.testcodes",
         "org.openelisglobal.datasubmission", "org.openelisglobal.label", "org.openelisglobal.renametestsection",
-        "org.openelisglobal.action", "org.openelisglobal.analysisqaevent",
-        "org.openelisglobal.analysisqaeventaction", "org.openelisglobal.testreflex" }, excludeFilters = {
+        "org.openelisglobal.action", "org.openelisglobal.analysisqaevent", "org.openelisglobal.analysisqaeventaction",
+        "org.openelisglobal.dataexchange", "org.openelisglobal.testreflex" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
@@ -179,12 +178,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public UnsatisfiedDependencyException unsatisfiedDependencyException() {
         return mock(UnsatisfiedDependencyException.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public ElectronicOrderService electronicOrderService() {
-        return mock(ElectronicOrderService.class);
     }
 
     @Bean()
