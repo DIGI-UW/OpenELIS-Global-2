@@ -30,6 +30,8 @@ public class PanelCreateForm extends BaseForm {
     // for display
     private String existingFrenchNames;
 
+    private String existingLoinc;
+
     @NotBlank
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String panelEnglishName;
@@ -40,6 +42,10 @@ public class PanelCreateForm extends BaseForm {
     @NotBlank
     @Pattern(regexp = ValidationHelper.ID_REGEX)
     private String sampleTypeId;
+
+    @NotBlank
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String panelLoinc;
 
     public PanelCreateForm() {
         setFormName("panelCreateForm");
@@ -123,5 +129,21 @@ public class PanelCreateForm extends BaseForm {
 
     public void setSampleTypeId(String sampleTypeId) {
         this.sampleTypeId = sampleTypeId;
+    }
+
+    public String getExistingLoinc() {
+        return existingLoinc;
+    }
+
+    public void setExistingLoinc(String existingLoinc) {
+        this.existingLoinc = existingLoinc;
+    }
+
+    public String getPanelLoinc() {
+        return panelLoinc;
+    }
+
+    public void setPanelLoinc(String panelLoinc) {
+        this.panelLoinc = panelLoinc;
     }
 }

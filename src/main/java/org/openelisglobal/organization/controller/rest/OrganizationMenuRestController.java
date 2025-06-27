@@ -165,7 +165,7 @@ public class OrganizationMenuRestController extends BaseMenuController<Organizat
     // gnr: Deactivate not Delete
     @PostMapping(value = "/DeleteOrganization")
     public ResponseEntity<Object> showDeleteOrganization(HttpServletRequest request,
-            @RequestParam(value = ID, required = false) @Pattern(regexp = "[a-zA-Z0-9 -]*") String id,
+            @RequestParam(value = ID, required = false) @Pattern(regexp = "[a-zA-Z0-9, -]*") String id,
             @RequestBody OrganizationMenuForm form, BindingResult result) throws LIMSRuntimeException {
         if (result.hasErrors()) {
             // redirectAttributes.addFlashAttribute(Constants.REQUEST_ERRORS, result);

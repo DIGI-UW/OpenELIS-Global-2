@@ -27,6 +27,8 @@ public class Dictionary extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
+    private String loincCode;
+
     public class ComparatorLocalizedName implements Comparator<Dictionary> {
         @Override
         public int compare(Dictionary o1, Dictionary o2) {
@@ -152,4 +154,13 @@ public class Dictionary extends BaseObject<String> {
     public String toString() {
         return "Dictionary [id=" + id + ", localAbbreviation=" + localAbbreviation + ", nameKey=" + getNameKey() + "]";
     }
+
+    public String getLoincCode() {
+        return loincCode;
+    }
+
+    public void setLoincCode(String loincCode) {
+        this.loincCode = loincCode;
+    }
+
 }

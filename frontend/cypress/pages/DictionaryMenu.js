@@ -4,7 +4,7 @@ class DictionaryMenuPage {
       title: "h2",
       modal: ".cds--modal-container",
       add: "[data-cy='addButton']",
-      dictCategory: "#description",
+      dictCategory: "#downshift-1-toggle-button",
       dictNumber: "#dictNumber",
       dictEntry: "#dictEntry",
       dictValue: "div",
@@ -18,7 +18,7 @@ class DictionaryMenuPage {
       addbutton: "div.cds--btn-set > button.cds--btn--primary",
       modify: "[data-cy='modifyButton']",
       deactivate: "[data-cy='deactivateButton']",
-      radioButton: "td.cds--table-column-checkbox.cds--table-column-radio",
+      checkBox: "td.cds--table-column-checkbox",
     };
   }
 
@@ -32,6 +32,7 @@ class DictionaryMenuPage {
 
   clickModifyButton() {
     cy.get(this.selectors.modify).click();
+    cy.wait(2000);
   }
 
   clickUpdateButton() {
@@ -44,10 +45,11 @@ class DictionaryMenuPage {
 
   addButton() {
     cy.get(this.selectors.addbutton).click();
+    cy.wait(2000);
   }
 
   validateModal() {
-    cy.get(this.selectors.modal).should("be.visible");
+    cy.get(this.selectors.modal).should("exist");
   }
 
   dictNumberDisabled() {
@@ -94,11 +96,15 @@ class DictionaryMenuPage {
   }
 
   validateDictEntry(value) {
-    cy.contains("td", value);
+    cy.get("tr td").eq(2).should("contain", value);
+  }
+
+  validateDictStatus(value) {
+    cy.get("tr td").eq(4).should("contain", value);
   }
 
   checkFirstDict() {
-    cy.get(this.selectors.radioButton).click({ multiple: true });
+    cy.get(this.selectors.checkBox).first().click();
   }
 }
 

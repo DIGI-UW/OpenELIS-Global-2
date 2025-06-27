@@ -52,7 +52,7 @@ class MenuConfigPage {
   }
 
   validateNonConformOn() {
-    cy.get(this.selectors.nonConformMenu).should("exist").click();
+    cy.get(this.selectors.nonConformMenu).click();
     cy.get(this.selectors.nonConformReport).should("exist");
     cy.get(this.selectors.nonConformView).should("exist");
     cy.get(this.selectors.correctiveAction).should("exist");
@@ -67,7 +67,7 @@ class MenuConfigPage {
   }
 
   validatePatientMenuOn() {
-    cy.get(this.selectors.patientMenu).should("exist").click();
+    cy.get(this.selectors.patientMenu).click();
     cy.get(this.selectors.addEditPatient).should("exist");
     cy.get(this.selectors.patientHistory).should("exist");
     cy.get(this.selectors.studyPatient).should("exist");
