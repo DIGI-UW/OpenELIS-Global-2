@@ -25,7 +25,7 @@ public class CommonPropertiesController {
                 MapPropertySource mapPropertySource = (MapPropertySource) propertySource;
                 Arrays.stream(mapPropertySource.getPropertyNames()).forEach(propertyName -> {
                     // Filter properties with prefix starting "org.openelis"
-                    if (propertyName.startsWith("org.openelisglobal")) {
+                    if (propertyName.startsWith("org.openelisglobal") && !propertyName.contains("password")) {
                         properties.put(propertyName, mapPropertySource.getProperty(propertyName).toString());
                     }
                 });

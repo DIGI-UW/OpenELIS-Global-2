@@ -1,7 +1,6 @@
 package org.openelisglobal.dictionary.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,13 +20,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.InitBinder;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -73,16 +71,15 @@ public class DictionaryMenuRestController extends BaseMenuController<Dictionary>
         return dictionaryCategoryService.getAll();
     }
 
-    @RequestMapping(value = "/delete-dictionary", method = RequestMethod.POST)
+    @RequestMapping(value = "/DeleteDictionary", method = RequestMethod.POST)
     public ResponseEntity<?> showDeleteDictionary(HttpServletRequest request,
-            @ModelAttribute("form") @Valid DictionaryMenuForm form, BindingResult result,
-            RedirectAttributes redirectAttributes) {
-        if (result.hasErrors()) {
-            saveErrors(result);
-            return ResponseEntity.badRequest().body(result.getAllErrors());
-        }
+            @RequestParam(value = ID, required = false) String id) {
 
-        List<String> selectedIDs = form.getSelectedIDs();
+        String[] IDs = id.split(",");
+        List<String> selectedIDs = new ArrayList<>();
+        for (int i = 0; i < IDs.length; i++) {
+            selectedIDs.add(IDs[i]);
+        }
 
         List<Dictionary> dictionaries = new ArrayList<>();
         for (int i = 0; i < selectedIDs.size(); i++) {
@@ -97,15 +94,14 @@ public class DictionaryMenuRestController extends BaseMenuController<Dictionary>
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e);
             if (e.getCause() instanceof org.hibernate.StaleObjectStateException) {
-                result.reject("errors.OptimisticLockException");
+
             } else {
-                result.reject("errors.DeleteException");
+
             }
-            redirectAttributes.addFlashAttribute(Constants.REQUEST_ERRORS, result);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result.getAllErrors());
+            return new ResponseEntity<>("Dictionary Menu Failed to deleted successfully",
+                    HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
-        redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
         return new ResponseEntity<>("Dictionary Menu deleted successfully", HttpStatus.OK);
     }
 

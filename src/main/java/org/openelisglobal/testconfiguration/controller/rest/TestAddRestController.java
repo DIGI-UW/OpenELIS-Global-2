@@ -129,7 +129,7 @@ public class TestAddRestController extends BaseController {
         if (result.hasErrors()) {
             saveErrors(result);
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            // return form;
         }
 
         String currentUserId = getSysUserId(request);
@@ -370,20 +370,19 @@ public class TestAddRestController extends BaseController {
             testAddParams.inLabOnly = (String) obj.get("inLabOnly");
             testAddParams.antimicrobialResistance = (String) obj.get("antimicrobialResistance");
             if (TypeOfTestResultServiceImpl.ResultType.isNumericById(testAddParams.resultTypeId)) {
-                testAddParams.lowValid = (String) obj.get("lowValid");
-                testAddParams.highValid = (String) obj.get("highValid");
-                testAddParams.lowReportingRange = (String) obj.get("lowReportingRange");
-                testAddParams.highReportingRange = (String) obj.get("highReportingRange");
-                testAddParams.lowCritical = (String) obj.get("lowCritical");
-                testAddParams.highCritical = (String) obj.get("highCritical");
-                testAddParams.significantDigits = (String) obj.get("significantDigits");
+                testAddParams.lowValid = obj.get("lowValid").toString();
+                testAddParams.highValid = obj.get("highValid").toString();
+                testAddParams.lowReportingRange = obj.get("lowReportingRange").toString();
+                testAddParams.highReportingRange = obj.get("highReportingRange").toString();
+                testAddParams.lowCritical = obj.get("lowCritical").toString();
+                testAddParams.highCritical = obj.get("highCritical").toString();
+                testAddParams.significantDigits = obj.get("significantDigits").toString();
                 extractLimits(obj, parser, testAddParams);
             } else if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVarientById(testAddParams.resultTypeId)) {
-                String dictionary = (String) obj.get("dictionary");
-                JSONArray dictionaryArray = (JSONArray) parser.parse(dictionary);
+                JSONArray dictionaryArray = (JSONArray) obj.get("dictionary");
                 for (int i = 0; i < dictionaryArray.size(); i++) {
                     DictionaryParams params = new DictionaryParams();
-                    params.dictionaryId = (String) ((JSONObject) dictionaryArray.get(i)).get("value");
+                    params.dictionaryId = (String) ((JSONObject) dictionaryArray.get(i)).get("id");
                     params.isQuantifiable = "Y".equals(((JSONObject) dictionaryArray.get(i)).get("qualified"));
                     params.isDefault = params.dictionaryId.equals(obj.get("defaultTestResult"));
                     testAddParams.dictionaryParamList.add(params);
@@ -399,20 +398,30 @@ public class TestAddRestController extends BaseController {
 
     private void extractLimits(JSONObject obj, JSONParser parser, TestAddParams testAddParams) throws ParseException {
         String lowAge = "0";
-        String limits = (String) obj.get("resultLimits");
-        JSONArray limitArray = (JSONArray) parser.parse(limits);
+        JSONArray limitArray = (JSONArray) obj.get("resultLimits");
+        String globalLowCritical = obj.get("lowCritical").toString();
+        String globalHighCritical = obj.get("highCritical").toString();
+        String globalLowReporting = obj.get("lowReportingRange").toString();
+        String globalHighReporting = obj.get("highReportingRange").toString();
+        String globalReportingRange = globalLowReporting + " - " + globalHighReporting;
         for (int i = 0; i < limitArray.size(); i++) {
             ResultLimitParams params = new ResultLimitParams();
             Boolean gender = (Boolean) ((JSONObject) limitArray.get(i)).get("gender");
             if (gender) {
                 params.gender = "M";
             }
-            String highAge = (String) (((JSONObject) limitArray.get(i)).get("highAgeRange"));
-            params.displayRange = (String) (((JSONObject) limitArray.get(i)).get("reportingRange"));
-            params.lowNormalLimit = (String) (((JSONObject) limitArray.get(i)).get("lowNormal"));
-            params.highNormalLimit = (String) (((JSONObject) limitArray.get(i)).get("highNormal"));
-            params.lowCritical = (String) (((JSONObject) limitArray.get(i)).get("lowCritical"));
-            params.highCritical = (String) (((JSONObject) limitArray.get(i)).get("highCritical"));
+            String highAge = (((JSONObject) limitArray.get(i)).get("highAgeRange")).toString();
+            // params.displayRange = (((JSONObject)
+            // limitArray.get(i)).get("reportingRange")).toString();
+            params.displayRange = globalReportingRange;
+            params.lowNormalLimit = (((JSONObject) limitArray.get(i)).get("lowNormal")).toString();
+            params.highNormalLimit = (((JSONObject) limitArray.get(i)).get("highNormal")).toString();
+            // params.lowCritical = (((JSONObject)
+            // limitArray.get(i)).get("lowCritical")).toString();
+            // params.highCritical = (((JSONObject)
+            // limitArray.get(i)).get("highCritical")).toString();
+            params.lowCritical = globalLowCritical;
+            params.highCritical = globalHighCritical;
             params.lowAge = lowAge;
             params.highAge = highAge;
             testAddParams.limits.add(params);
@@ -420,8 +429,8 @@ public class TestAddRestController extends BaseController {
             if (gender) {
                 params = new ResultLimitParams();
                 params.gender = "F";
-                params.lowNormalLimit = (String) (((JSONObject) limitArray.get(i)).get("lowNormalFemale"));
-                params.highNormalLimit = (String) (((JSONObject) limitArray.get(i)).get("highNormalFemale"));
+                params.lowNormalLimit = (((JSONObject) limitArray.get(i)).get("lowNormalFemale")).toString();
+                params.highNormalLimit = (((JSONObject) limitArray.get(i)).get("highNormalFemale")).toString();
                 params.lowAge = lowAge;
                 params.highAge = highAge;
                 testAddParams.limits.add(params);
@@ -432,8 +441,7 @@ public class TestAddRestController extends BaseController {
     }
 
     private void extractPanels(JSONObject obj, JSONParser parser, TestAddParams testAddParams) throws ParseException {
-        String panels = (String) obj.get("panels");
-        JSONArray panelArray = (JSONArray) parser.parse(panels);
+        JSONArray panelArray = (JSONArray) obj.get("panels");
 
         for (int i = 0; i < panelArray.size(); i++) {
             testAddParams.panelList.add((String) (((JSONObject) panelArray.get(i)).get("id")));
@@ -442,8 +450,7 @@ public class TestAddRestController extends BaseController {
 
     private void extractSampleTypes(JSONObject obj, JSONParser parser, TestAddParams testAddParams)
             throws ParseException {
-        String sampleTypes = (String) obj.get("sampleTypes");
-        JSONArray sampleTypeArray = (JSONArray) parser.parse(sampleTypes);
+        JSONArray sampleTypeArray = (JSONArray) obj.get("sampleTypes");
 
         for (int i = 0; i < sampleTypeArray.size(); i++) {
             SampleTypeListAndTestOrder sampleTypeTests = new SampleTypeListAndTestOrder();

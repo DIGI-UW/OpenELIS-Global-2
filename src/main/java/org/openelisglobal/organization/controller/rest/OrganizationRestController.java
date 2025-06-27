@@ -264,6 +264,7 @@ public class OrganizationRestController extends BaseController {
             newForm.setSelectedTypes(selectedList);
         }
 
+        handleSelfReferencingParentOrg(newForm.getOrganization());
         // return findForward(FWD_SUCCESS, newForm);
         return ResponseEntity.ok(newForm);
     }
@@ -315,6 +316,7 @@ public class OrganizationRestController extends BaseController {
     public ResponseEntity<Organization> getOrganization(@PathVariable("id") String id) {
         Organization organization = organizationService.get(id);
         if (organization != null) {
+            handleSelfReferencingParentOrg(organization);
             return ResponseEntity.ok(organization);
         } else {
             return ResponseEntity.notFound().build();
@@ -572,5 +574,16 @@ public class OrganizationRestController extends BaseController {
     @Override
     protected String getPageSubtitleKey() {
         return (String) request.getAttribute("key");
+    }
+
+    public static void handleSelfReferencingParentOrg(Organization childOrg) {
+        if (childOrg != null && childOrg.getOrganization() != null
+                && childOrg.getOrganization().getId().equals(childOrg.getId())) {
+            Organization newParent = new Organization();
+            newParent.setOrganizationName(childOrg.getOrganizationName());
+            newParent.setId(childOrg.getId());
+            childOrg.setOrganization(newParent);
+        }
+
     }
 }

@@ -33,3 +33,5 @@ Patient/*
 volume/database/data/*
 tools/Liquibase-Outdated
 volume/tomcat/*
+volume/database/data/*
+volume/logs/*

@@ -85,14 +85,8 @@ function UomManagement() {
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
               <UnorderedList>
-                <ClickableTile>
-                  <ListItem
-                    onClick={() => {
-                      window.location.assign("/MasterListsPage#UomCreate");
-                    }}
-                  >
-                    <FormattedMessage id="configuration.uom.create" />
-                  </ListItem>
+                <ClickableTile href="/MasterListsPage#UomCreate" id="UomCreate">
+                  <FormattedMessage id="configuration.uom.create" />
                 </ClickableTile>
               </UnorderedList>
             </Column>

@@ -6,7 +6,7 @@ class ModifyOrderPage {
   }
 
   enterAccessionNo(accessionNo) {
-    cy.enterText("#display_labNumber", accessionNo);
+    cy.enterText("#labNumber", accessionNo);
   }
   clickSubmitButton() {
     cy.getElement("[data-cy='submit-order']")

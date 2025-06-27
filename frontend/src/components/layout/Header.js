@@ -585,7 +585,9 @@ function OEHeader(props) {
                           value={props.intl.locale}
                         >
                           <SelectItem text="English" value="en" />
-                          <SelectItem text="French" value="fr" />
+                          <SelectItem text="Français" value="fr" />
+                          <SelectItem text="Español" value="es" />
+                          <SelectItem text="Indonesia" value="id" />
                         </Select>
                       </li>
                       <li className="userDetails">

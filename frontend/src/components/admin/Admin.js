@@ -114,13 +114,14 @@ function Admin() {
       >
         <SideNavItems className="adminSideNav">
           <SideNavMenu
+            data-cy="reflexTestsConfig"
             renderIcon={Microscope}
             title={intl.formatMessage({ id: "sidenav.label.admin.testmgt" })}
           >
-            <SideNavMenuItem href="#reflex">
+            <SideNavMenuItem data-cy="reflex" href="#reflex">
               <FormattedMessage id="sidenav.label.admin.testmgt.reflex" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#calculatedValue">
+            <SideNavMenuItem data-cy="calculatedValue" href="#calculatedValue">
               <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
             </SideNavMenuItem>
           </SideNavMenu>
@@ -148,13 +149,18 @@ function Admin() {
           >
             <FormattedMessage id="provider.browse.title" />
           </SideNavLink>
-          <SideNavLink renderIcon={QrCode} href="#barcodeConfiguration">
+          <SideNavLink
+            data-cy="barcodeConfig"
+            renderIcon={QrCode}
+            href="#barcodeConfiguration"
+          >
             <FormattedMessage id="sidenav.label.admin.barcodeconfiguration" />
           </SideNavLink>
           <SideNavLink href="#PluginFile" renderIcon={BootVolumeAlt}>
             <FormattedMessage id="sidenav.label.admin.Listplugin" />
           </SideNavLink>
           <SideNavLink
+            data-cy="orgMgmnt"
             renderIcon={ContainerSoftware}
             href="#organizationManagement"
           >
@@ -183,16 +189,28 @@ function Admin() {
             >
               <FormattedMessage id="sidenav.label.admin.menu.global" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#billingMenuManagement">
+            <SideNavMenuItem
+              data-cy="billingMenuMgmnt"
+              href="#billingMenuManagement"
+            >
               <FormattedMessage id="sidenav.label.admin.menu.billing" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#nonConformityMenuManagement">
+            <SideNavMenuItem
+              data-cy="nonConformMenuMgmnt"
+              href="#nonConformityMenuManagement"
+            >
               <FormattedMessage id="sidenav.label.admin.menu.nonconform" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#patientMenuManagement">
+            <SideNavMenuItem
+              data-cy="patientMenuMgmnt"
+              href="#patientMenuManagement"
+            >
               <FormattedMessage id="sidenav.label.admin.menu.patient" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#studyMenuManagement">
+            <SideNavMenuItem
+              data-cy="studyMenuMgmnt"
+              href="#studyMenuManagement"
+            >
               <FormattedMessage id="sidenav.label.admin.menu.study" />
             </SideNavMenuItem>
           </SideNavMenu>
@@ -239,7 +257,11 @@ function Admin() {
           <SideNavLink href="#testNotificationConfigMenu" renderIcon={Popup}>
             <FormattedMessage id="testnotificationconfig.browse.title" />
           </SideNavLink>
-          <SideNavLink href="#DictionaryMenu" renderIcon={CharacterWholeNumber}>
+          <SideNavLink
+            data-cy="dictMenu"
+            href="#DictionaryMenu"
+            renderIcon={CharacterWholeNumber}
+          >
             <FormattedMessage id="dictionary.label.modify" />
           </SideNavLink>
           <SideNavLink href="#NotifyUser" renderIcon={Bullhorn}>

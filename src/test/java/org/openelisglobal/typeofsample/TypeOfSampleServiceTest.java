@@ -22,6 +22,7 @@ public class TypeOfSampleServiceTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void init() throws Exception {
+        tosSample.clearCache();
         executeDataSetWithStateManagement("testdata/typeofsample.xml");
     }
 
