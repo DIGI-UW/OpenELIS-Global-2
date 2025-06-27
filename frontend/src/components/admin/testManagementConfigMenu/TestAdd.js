@@ -201,7 +201,7 @@ function TestAdd() {
     highReportingRange: "Infinity",
     lowCritical: "-Infinity",
     highCritical: "Infinity",
-    significantDigits: "",
+    significantDigits: "0",
     resultLimits: [
       {
         ageRange: "0",
@@ -232,7 +232,11 @@ function TestAdd() {
 
     setCurrentStep((prev) => {
       if (prev === 3) {
-        if (["1", "4", "5"].includes(selectedResultTypeId)) {
+        if (["1", "5"].includes(selectedResultTypeId)) {
+          return prev + 3;
+        }
+
+        if (["4"].includes(selectedResultTypeId)) {
           return prev + 2;
         }
 
@@ -258,37 +262,27 @@ function TestAdd() {
     const selectedResultTypeId = newData?.resultType || formData.resultType;
 
     setCurrentStep((prevStep) => {
-      if (
-        prevStep === 5 &&
-        (selectedResultTypeId === "1" ||
-          selectedResultTypeId === "4" ||
-          selectedResultTypeId === "5")
-      ) {
-        return prevStep - 2;
+      if (prevStep === 6) {
+        if (["1", "5"].includes(selectedResultTypeId)) {
+          return prevStep - 3;
+        }
+
+        if (["2", "6", "7"].includes(selectedResultTypeId)) {
+          return prevStep - 2;
+        }
+
+        if (selectedResultTypeId === "4") {
+          return prevStep - 1;
+        }
       }
 
-      if (
-        prevStep === 6 &&
-        (selectedResultTypeId === "2" ||
-          selectedResultTypeId === "6" ||
-          selectedResultTypeId === "7")
-      ) {
+      if (prevStep === 5 && selectedResultTypeId === "4") {
         return prevStep - 2;
-      }
-
-      if (
-        prevStep === 6 &&
-        (selectedResultTypeId === "1" ||
-          selectedResultTypeId === "4" ||
-          selectedResultTypeId === "5")
-      ) {
-        return prevStep - 3;
       }
 
       return prevStep - 1;
     });
   };
-
   const validationSchema = Yup.object({
     testSection: Yup.string()
       .required("Test section is required")
@@ -2968,6 +2962,7 @@ const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                                   return updated;
                                 });
                               }}
+                              required
                             >
                               <RadioButton
                                 labelText={"Y"}
@@ -3034,6 +3029,7 @@ const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                               // max={1000}
                               // step={1}
                               // value={values.resultLimits?.[index]?.highAgeRange}
+                              required
                               value={String(ageRanges[index]?.raw) || "0"}
                               invalid={
                                 touched?.resultLimits?.[index]?.highAgeRange &&

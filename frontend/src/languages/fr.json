@@ -1433,5 +1433,15 @@
   "configuration.sampleType.assign.new.type": "Assign to sample type",
   "process.testAdd.pressNext.selectGroupDictionary": "Appuyez sur Suivant — l'étape de sélection du dictionnaire de groupe n'est pas requise !",
   "process.testAdd.pressNext.ageRangeSelectiong": "Appuyez sur Suivant — l'étape de sélection de la tranche d'âge n'est pas requise !",
-  "add.age.range": "Ajouter une autre tranche d'âge +"
+  "add.age.range": "Ajouter une autre tranche d'âge +",
+  "test.description.name": "Le nom du test tel qu'il apparaîtra dans OpenELIS. L'anglais et le français sont requis",
+  "test.description.reportName": "Le nom du test tel qu'il apparaîtra dans les rapports. L'anglais et le français sont requis. Si le nom et le nom du rapport sont identiques, cliquez sur le bouton pour copier le nom",
+  "field.testSection": "Section du test",
+  "test.description.testSection": "La section du test dans laquelle le test sera effectué",
+  "test.description.panel": "Si ce test fait partie d’un panel de tests, il peut être ajouté ici. Il est possible, mais inhabituel, qu’un test appartienne à plusieurs panels",
+  "test.description.uom": "Unité de mesure pour le test. Cela s’applique généralement uniquement aux types de résultats numériques ou alphanumériques",
+  "test.field.active": "Actif",
+  "test.description.active": "Si le test est actif, il peut être demandé sur le formulaire de commande ou dans le cadre d’un algorithme de test. S’il n’est pas actif, il ne peut pas être demandé ni faire partie d’un algorithme de test",
+  "test.field.orderable": "Commandable",
+  "test.description.orderable": "Si un test est actif et commandable, il peut être demandé sur un formulaire de commande. S’il est actif mais non commandable, il ne sera effectué que s’il est déclenché automatiquement par un autre test"
 }

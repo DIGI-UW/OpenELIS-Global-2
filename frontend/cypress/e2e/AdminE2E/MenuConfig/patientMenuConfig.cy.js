@@ -24,10 +24,10 @@ describe("Patient Menu Configuration", function () {
       menuConfigPage.validateToggleStatus("Off");
       menuConfigPage.uncheckPatientMenu();
       menuConfigPage.submitButton();
-      cy.reload();
     });
 
     it("Validate Patient is Deactivated", () => {
+      cy.reload();
       menuConfigPage.navigateToMainMenu();
       menuConfigPage.validatePatientMenuOff();
     });

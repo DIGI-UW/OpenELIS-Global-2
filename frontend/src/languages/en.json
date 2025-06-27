@@ -1433,5 +1433,15 @@
   "configuration.sampleType.assign.new.type": "Assign to sample type",
   "process.testAdd.pressNext.selectGroupDictionary": "Press Next button Selecting Group Dictionary List step is not required !",
   "process.testAdd.pressNext.ageRangeSelectiong": "Press Next button Age Range Selection step is not required !",
-  "add.age.range": "Add Another Age Range +"
+  "add.age.range": "Add Another Age Range +",
+  "test.description.name": "The name of the test as it will appear within openELIS. Both English and French are required",
+  "test.description.reportName": "The name of the test as it will appear in reports. Both English and French are required.If the Name and reporting name are the same click on the button to copy the name",
+  "field.testSection": "Test Section",
+  "test.description.testSection": "The test section in which the test will be done",
+  "test.description.panel": "If this test is part of a test panel then the panel can be added here.It is possible, but not usual, for a test to be in more then one panel",
+  "test.description.uom": "Unit of measure for the test. This usually only applies to numeric or alphanumeric result types",
+  "test.field.active": "Active",
+  "test.description.active": "If the test is active it can be ordered on the order form or as part of a test algorithm.If it is not active it can not be ordered or be part of a test algorithm",
+  "test.field.orderable": "Orderable",
+  "test.description.orderable": "If a test is active and orderable then it can be ordered on an order form. If it is active but not orderable then it will only be done if it is reflexed from another test"
 }

@@ -26,10 +26,10 @@ describe("Billing Menu Configuration", function () {
         "https://united-nations-development-programme.odoo.com/odoo/accounting",
       );
       menuConfigPage.submitButton();
-      cy.reload();
     });
 
     it("Validate Billing is Deactivated", () => {
+      cy.reload();
       menuConfigPage.navigateToMainMenu();
       menuConfigPage.validateBillingMenuOff();
     });
