@@ -71,6 +71,7 @@
 	<field name="labOrderType" class="java.lang.String"/>
 	<field name="results" class="java.util.List"/>
 	<field name="textConclusion" class="java.lang.String"/>
+	<field name="codedConclusion" class="java.util.List"/>
 	<field name="contactTracingIndexName" class="java.lang.String"/>
 	<field name="contactTracingIndexRecordNumber" class="java.lang.String"/>
 	<group name="person" isStartNewPage="true" isResetPageNumber="true" footerPosition="ForceAtBottom">
@@ -888,15 +889,15 @@
                 <subreportExpression class = "java.lang.String"><![CDATA[$P{SUBREPORT_DIR} + "PatientImmunoChemistryResults.jasper"]]></subreportExpression>	
             </subreport>
 		</band>		
-		<band height="50" splitType="Prevent">	
+		<band height="110" splitType="Prevent">	
 		<rectangle>
-				<reportElement x="0" y="0" width="550" height="50" mode="Opaque"/>
+				<reportElement x="0" y="0" width="550" height="110" mode="Opaque"/>
 				<graphicElement>
 					<pen lineWidth="0.5" lineColor="#071e26"/>
 				</graphicElement>
 			</rectangle>
 			<textField>
-				<reportElement x="0" y="0" width="550" height="20" uuid="3f4df96a-83c1-4216-92a3-2018447ad5a0"/>
+				<reportElement x="0" y="0" width="550" height="20" uuid="4db3d469-99a4-414e-aaa6-129b2a5c5ff4"/>
 				<box leftPadding="5">
 						<topPen lineWidth="0.25" lineStyle="Solid"/>
 						<leftPen lineWidth="0.25" lineStyle="Solid"/>
@@ -908,8 +909,29 @@
 				</textElement>
 				<textFieldExpression><![CDATA[$R{pathology.label.conclusion}]]></textFieldExpression>
 			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true" isStretchWithOverflow="false">
+				<reportElement stretchType="RelativeToTallestObject" x="0" y="20" width="540" height="40" uuid="0287bf57-8501-4703-b420-e60f5aae8ead"/>
+				<textElement textAlignment="Left" verticalAlignment="Top" markup="styled">
+					<font fontName="SansSerif" size="9" isBold="false" isItalic="false" isUnderline="false" pdfFontName="Helvetica" isPdfEmbedded="true"/>
+					<paragraph lineSpacing="Single"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{codedConclusion}.stream().map(s -> "• " + s).collect(java.util.stream.Collectors.joining("  "))]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="60" width="550" height="20" uuid="3f4df96a-83c1-4216-92a3-2018447ad5a0"/>
+				<box leftPadding="5">
+						<topPen lineWidth="0.25" lineStyle="Solid"/>
+						<leftPen lineWidth="0.25" lineStyle="Solid"/>
+						<bottomPen lineWidth="0.25" lineStyle="Solid"/>
+						<rightPen lineWidth="0.5" lineStyle="Solid"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="styled">
+					<font size="10" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$R{pathology.label.textconclusion}]]></textFieldExpression>
+			</textField>
 			<textField  isBlankWhenNull="true">
-				<reportElement stretchType="RelativeToTallestObject" x="3" y="20" width="550" height="30" uuid="57152e13-27fb-4b80-a518-c3dd78d93fdf"/>
+				<reportElement stretchType="RelativeToTallestObject" x="3" y="80" width="550" height="30" uuid="57152e13-27fb-4b80-a518-c3dd78d93fdf"/>
 				<textElement textAlignment="Left" verticalAlignment="Middle" markup="styled">
 					<font fontName="SansSerif" size="9" isBold="false" isItalic="false" isUnderline="false" pdfFontName="Helvetica" isPdfEmbedded="true"/>
 				</textElement>

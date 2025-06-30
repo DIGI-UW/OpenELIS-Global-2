@@ -22,7 +22,14 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 
-let breadcrumbs = [{ label: "home.label", link: "/" }];
+let breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+  {
+    label: "Non Conformity Menu Management",
+    link: "/MasterListsPage#nonConformityMenuManagement",
+  },
+];
 function NonConformityMenuManagement() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -86,7 +93,7 @@ function NonConformityMenuManagement() {
       {loading && <Loading />}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
-        <Grid>
+        <Grid fullWidth={true}>
           <Column lg={16}>
             <Section>
               <Heading>

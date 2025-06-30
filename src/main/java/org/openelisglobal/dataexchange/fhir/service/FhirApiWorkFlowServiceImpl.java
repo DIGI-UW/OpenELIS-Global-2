@@ -81,11 +81,8 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
     @Value("${org.openelisglobal.remote.source.updateStatus}")
     private Optional<Boolean> remoteStoreUpdateStatus;
 
-    @Value("${org.openelisglobal.remote.source.identifier:}#{T(java.util.Collections).emptyList()}")
-    private List<String> remoteStoreIdentifier;
-
-    @Scheduled(initialDelay = 10 * 1000, fixedRate = 2 * 60 * 1000)
     @Override
+    @Scheduled(initialDelay = 10 * 1000, fixedRateString = "${org.openelisglobal.remote.poll.frequency:120000}")
     public void pollForRemoteTasks() {
         processWorkflow(ResourceType.Task);
     }
@@ -127,7 +124,7 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
     }
 
     private void beginTaskCheckIfAcceptedPath(String remoteStorePath) throws FhirLocalPersistingException {
-        if (remoteStoreIdentifier.isEmpty()) {
+        if (fhirConfig.getRemoteStoreIdentifier().isEmpty()) {
             return;
         }
 
@@ -208,7 +205,7 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
     }
 
     private void beginTaskImportResultsPath(String remoteStorePath) {
-        if (remoteStoreIdentifier.isEmpty()) {
+        if (fhirConfig.getRemoteStoreIdentifier().isEmpty()) {
             return;
         }
 
@@ -261,6 +258,7 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
                             .where(ServiceRequest.BASED_ON
                                     .hasAnyOfIds(originalReferralObjectsByServiceRequest.keySet()));
                     originalTasksBundle = searchQuery.execute();
+
                     Map<String, ReferralResultsImportObjects> resultImportByServiceRequest = new HashMap<>();
                     for (BundleEntryComponent bundleEntry : originalTasksBundle.getEntry()) {
                         if (bundleEntry.hasResource()) {
@@ -369,7 +367,7 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
     }
 
     private void beginTaskImportOrderPath(String remoteStorePath) {
-        if (remoteStoreIdentifier.isEmpty()) {
+        if (fhirConfig.getRemoteStoreIdentifier().isEmpty()) {
             return;
         }
 
@@ -383,7 +381,7 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
                 // .include(Task.INCLUDE_PATIENT)//
                 // .include(Task.INCLUDE_BASED_ON)//
                 .where(Task.STATUS.exactly().code(TaskStatus.REQUESTED.toCode())) //
-                .where(Task.OWNER.hasAnyOfIds(remoteStoreIdentifier));
+                .where(Task.OWNER.hasAnyOfIds(fhirConfig.getRemoteStoreIdentifier()));
         Bundle importBundle = searchQuery.execute();
         importBundles.add(importBundle);
         if (importBundle.hasEntry()) {
@@ -475,7 +473,7 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
                 remoteTask.setStatus(taskStatus);
                 sourceFhirClient.update().resource(remoteTask).execute();
             }
-            IGenericClient localFhirClient = fhirContext.newRestfulGenericClient(localFhirStorePath);
+            IGenericClient localFhirClient = fhirUtil.getFhirClient(localFhirStorePath);
             localFhirClient.update().resource(localObjects.task).execute();
             // taskBasedOnRemoteTask.setStatus(taskStatus);
             // localFhirClient.update().resource(taskBasedOnRemoteTask).execute();
@@ -716,8 +714,8 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
     private Optional<Practitioner> getProviderWithSameIdentifier(Practitioner provider, String remoteStorePath) {
         IGenericClient localFhirClient = fhirUtil.getFhirClient(localFhirStorePath);
         Bundle localBundle = localFhirClient.search() //
-                .forResource(Specimen.class) //
-                .where(Specimen.IDENTIFIER.exactly().systemAndIdentifier(remoteStorePath,
+                .forResource(Practitioner.class) //
+                .where(Practitioner.IDENTIFIER.exactly().systemAndIdentifier(remoteStorePath,
                         provider.getIdElement().getIdPart())) //
                 .returnBundle(Bundle.class).execute();
         for (BundleEntryComponent entry : localBundle.getEntry()) {

@@ -41,7 +41,7 @@ export default function Workplan(props) {
   const [selectedValue, setSelectedValue] = useState("");
   const [selectedLabel, setSelectedLabel] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(100);
 
   const type = props.type;
   let title = "";
@@ -127,7 +127,7 @@ export default function Workplan(props) {
       delete form.testSectionId;
     }
     postToOpenElisServerForPDF(
-      "/rest/printWorkplanReport",
+      "/rest/PrintWorkplanReport",
       JSON.stringify(form),
       reportStatus,
     );
@@ -233,7 +233,7 @@ export default function Workplan(props) {
             <Grid fullWidth={true}>
               <Column sm={4} md={8} lg={16}>
                 <>
-                  <Table size={"sm"}>
+                  <Table size={"sm"} data-cy="workplanResultsTable">
                     <TableHead>
                       <TableRow>
                         <TableHeader>
@@ -366,7 +366,7 @@ export default function Workplan(props) {
                     onChange={handlePageChange}
                     page={page}
                     pageSize={pageSize}
-                    pageSizes={[10, 20, 50, 100]}
+                    pageSizes={[10, 20, 30, 50, 100]}
                     totalItems={testsList.length}
                     forwardText={intl.formatMessage({
                       id: "pagination.forward",

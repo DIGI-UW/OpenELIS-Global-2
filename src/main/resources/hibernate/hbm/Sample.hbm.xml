@@ -85,8 +85,8 @@
             column="clinical_order_id" />
         <property name="isConfirmation" column="is_confirmation"
             type="java.lang.Boolean" />
-        <property name="fhirUuid"
-            column="fhir_uuid" type="java.util.UUID" />
+        <property name="fhirUuid" column="fhir_uuid"
+            type="java.util.UUID" />
         <!-- <set name="sampleOrganizations" inverse="true"> <key> <column name="SAMP_ID"
             precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.sampleorganization.valueholder.SampleOrganization"
             /> </set> <set name="sampleEnvironmentals" inverse="true"> <key> <column

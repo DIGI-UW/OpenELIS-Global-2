@@ -13,14 +13,25 @@
  */
 package org.openelisglobal.common.paging;
 
+import jakarta.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.http.HttpSession;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.common.util.IdValuePair;
 
 public class PagingUtility<E> {
     private int totalPages = 0;
+    private String sessionCache = IActionConstants.RESULTS_SESSION_CACHE;
+    private String mappingsessionCache = IActionConstants.RESULTS_PAGE_MAPPING_SESSION_CACHE;
+
+    public PagingUtility(String sessionCache, String mappingsessionCache) {
+        this.sessionCache = sessionCache;
+        this.mappingsessionCache = mappingsessionCache;
+    }
+
+    public PagingUtility() {
+    }
 
     /**
      * @param session the Session for the current HttpRequest
@@ -31,9 +42,9 @@ public class PagingUtility<E> {
 
         List<E> pagedResults = new ArrayList<>();
         divider.createPages(items, pagedResults);
-        session.setAttribute(IActionConstants.RESULTS_SESSION_CACHE, pagedResults);
+        session.setAttribute(getSessionCache(), pagedResults);
         List<IdValuePair> searchPageMapping = divider.createSearchToPageMapping(pagedResults);
-        session.setAttribute(IActionConstants.RESULTS_PAGE_MAPPING_SESSION_CACHE, searchPageMapping);
+        session.setAttribute(getMappingsessionCache(), searchPageMapping);
         totalPages = pagedResults.size();
     }
 
@@ -45,7 +56,7 @@ public class PagingUtility<E> {
      */
     public E getPage(int page, HttpSession session) {
         if (page > 0) {
-            List<E> pagedResults = (List<E>) session.getAttribute(IActionConstants.RESULTS_SESSION_CACHE);
+            List<E> pagedResults = (List<E>) session.getAttribute(getSessionCache());
             totalPages = pagedResults.size();
             if (pagedResults != null && pagedResults.size() >= page) {
                 return pagedResults.get(page - 1);
@@ -63,7 +74,7 @@ public class PagingUtility<E> {
      */
     @SuppressWarnings("unchecked")
     public void updatePagedResults(HttpSession session, E clientItems, PagingBean paging, IPageUpdater<E> updater) {
-        List<E> pagedResults = (List<E>) session.getAttribute(IActionConstants.RESULTS_SESSION_CACHE);
+        List<E> pagedResults = (List<E>) session.getAttribute(getSessionCache());
 
         if (pagedResults != null) {
             updateSessionResultCache(pagedResults, clientItems, paging, updater);
@@ -113,7 +124,9 @@ public class PagingUtility<E> {
         PagingBean paging = new PagingBean();
         paging.setCurrentPage(String.valueOf(currentPage));
         paging.setTotalPages(String.valueOf(totalPages));
-        paging.setSearchTermToPage(getPageMapping(session));
+        if (!ControllerUtills.isRestCall()) {
+            paging.setSearchTermToPage(getPageMapping(session));
+        }
 
         return paging;
     }
@@ -124,17 +137,24 @@ public class PagingUtility<E> {
      */
     @SuppressWarnings("unchecked")
     public List<E> getAllPages(HttpSession session) {
-        return (List<E>) session.getAttribute(IActionConstants.RESULTS_SESSION_CACHE);
+        return (List<E>) session.getAttribute(getSessionCache());
     }
 
     @SuppressWarnings("unchecked")
     public List<IdValuePair> getPageMapping(HttpSession session) {
-        List<IdValuePair> pairList = (List<IdValuePair>) session
-                .getAttribute(IActionConstants.RESULTS_PAGE_MAPPING_SESSION_CACHE);
+        List<IdValuePair> pairList = (List<IdValuePair>) session.getAttribute(getMappingsessionCache());
         if (pairList == null) {
             pairList = new ArrayList<>();
         }
 
         return pairList;
+    }
+
+    private String getSessionCache() {
+        return sessionCache;
+    }
+
+    private String getMappingsessionCache() {
+        return mappingsessionCache;
     }
 }

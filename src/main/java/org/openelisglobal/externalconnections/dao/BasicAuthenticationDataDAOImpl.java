@@ -21,6 +21,9 @@ public class BasicAuthenticationDataDAOImpl extends BaseDAOImpl<BasicAuthenticat
 
     @Override
     public Optional<BasicAuthenticationData> getByExternalConnection(Integer externalConnectionId) {
+        if (externalConnectionId == null) {
+            return Optional.empty();
+        }
         BasicAuthenticationData data;
         try {
             String sql = "from BasicAuthenticationData as cad where cad.externalConnection.id ="

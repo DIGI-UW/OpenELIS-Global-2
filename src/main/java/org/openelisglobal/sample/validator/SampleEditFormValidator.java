@@ -9,7 +9,6 @@ import org.dom4j.Element;
 import org.openelisglobal.common.provider.validation.IAccessionNumberValidator.ValidationResults;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.sample.form.SampleEditForm;
@@ -41,7 +40,7 @@ public class SampleEditFormValidator implements Validator {
         validateSampleXML(form.getSampleXML(), errors);
 
         ValidationHelper.validateOptionField(form.getIdSeparator(), "idSeperator", errors,
-                new String[] { SystemConfiguration.getInstance().getDefaultIdSeparator() });
+                new String[] { ConfigurationProperties.getInstance().getPropertyValue("default.idSeparator") });
 
         ValidationHelper.validateOptionField(form.getAccessionFormat(), "accessionFormat", errors,
                 new String[] { ConfigurationProperties.getInstance().getPropertyValue(Property.AccessionFormat) });

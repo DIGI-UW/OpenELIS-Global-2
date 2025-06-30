@@ -1,5 +1,6 @@
 package org.openelisglobal.externalconnections.controller;
 
+import jakarta.validation.Valid;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.KeyStoreException;
@@ -12,7 +13,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.validation.Valid;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -129,7 +129,7 @@ public class ExternalConnectionController extends BaseController {
             externalConnectionService.updateExternalConnection(externalConnectionAuthData, externalConnectionContacts,
                     externalConnection);
         }
-        ConfigurationProperties.forceReload();
+        ConfigurationProperties.loadDBValuesIntoConfiguration();
         return findForward(FWD_SUCCESS_INSERT, form);
     }
 

@@ -1,9 +1,13 @@
 import LoginPage from "../pages/LoginPage";
 import PatientEntryPage from "../pages/PatientEntryPage";
+import OrderEntityPage from "../pages/OrderEntityPage";
+import AdminPage from "../pages/AdminPage";
 
 let homePage = null;
 let loginPage = null;
 let modifyOrderPage = null;
+let adminPage = new AdminPage();
+let orderEntityPage = new OrderEntityPage();
 let patientPage = new PatientEntryPage();
 
 before("login", () => {
@@ -11,44 +15,49 @@ before("login", () => {
   loginPage.visit();
 });
 
-describe("Modify Order search by accession Number", function () {
-  it("User Visits Home Page and goes to Modify Order Page ", function () {
+describe("Add New Patient", function () {
+  it("User Visits Home Page and goes to Add Add|Modify Patient Page", () => {
     homePage = loginPage.goToHomePage();
-    modifyOrderPage = homePage.goToModifyOrderPage();
+    patientPage = homePage.goToPatientEntry();
   });
 
-  it("User searches with accession number", () => {
-    cy.wait(1000);
-    cy.fixture("EnteredOrder").then((order) => {
-      modifyOrderPage.enterAccessionNo(order.labNo);
-      modifyOrderPage.clickSubmitButton();
+  it("Navigate to create Patient tab", function () {
+    patientPage.clickNewPatientTab();
+    patientPage.getSubmitButton().should("be.visible");
+  });
+
+  it("Enter patient Information and clear", function () {
+    cy.fixture("Patient").then((patient) => {
+      patientPage.enterPatientInfo(
+        patient.firstName,
+        patient.lastName,
+        patient.subjectNumber,
+        patient.nationalId,
+        patient.DOB,
+      );
     });
   });
 
-  it("should check for program selection button and go to next page ", function () {
-    modifyOrderPage.checkProgramButton();
-    modifyOrderPage.clickNextButton();
+  it("Clear new patient information", function () {
+    patientPage.clearPatientInfo();
   });
 
-  it("should be able to record", function () {
-    modifyOrderPage.assignValues();
-  });
-
-  it("User should click next to go add order page and submit the order", function () {
-    modifyOrderPage.clickNextButton();
-    cy.wait(1000);
-    modifyOrderPage.clickNextButton();
-  });
-
-  it("should be able to print barcode", function () {
-    cy.window().then((win) => {
-      cy.spy(win, "open").as("windowOpen");
+  it("Enter patient Information and save", function () {
+    cy.fixture("Patient").then((patient) => {
+      patientPage.enterPatientInfo(
+        patient.firstName,
+        patient.lastName,
+        patient.subjectNumber,
+        patient.nationalId,
+        patient.DOB,
+      );
     });
-    modifyOrderPage.clickPrintBarcodeButton();
-    cy.get("@windowOpen").should(
-      "be.calledWithMatch",
-      "/api/OpenELIS-Global/LabelMakerServlet?labNo=",
-    );
+  });
+  it("Save new patient information button", function () {
+    patientPage.clickSavePatientButton();
+    cy.wait(1000);
+    cy.get("div[role='status']").should("be.visible");
+    cy.wait(200).reload();
   });
 });
 
@@ -106,9 +115,9 @@ describe("Modify Order search by patient ", function () {
   it("Should be able to search by respective patient ", function () {
     cy.wait(1000);
     modifyOrderPage.clickRespectivePatient();
-  });
-  it("should check for program selection button and go to next page ", function () {
     cy.wait(1000);
+  });
+  it("Validate program dropdown button not visible and click next", function () {
     modifyOrderPage.checkProgramButton();
     modifyOrderPage.clickNextButton();
   });
@@ -118,20 +127,65 @@ describe("Modify Order search by patient ", function () {
     modifyOrderPage.assignValues();
   });
 
-  it("User should click next to go add order page and submit the order", function () {
+  it("Click next, go add order page then submit order", function () {
     modifyOrderPage.clickNextButton();
     cy.wait(1000);
+    orderEntityPage.rememberSiteAndRequester();
+    modifyOrderPage.clickSubmitButton();
+  });
+  //TO DO
+  //it("User validates barcode is visible", function () {
+  //cy.window().then((win) => {
+  // cy.stub(win, "open").as("windowOpen");
+  //});
+
+  // modifyOrderPage.clickPrintBarcodeButton();
+
+  // cy.get("@windowOpen").should(
+  // "be.calledWithMatch",
+  // /\/api\/OpenELIS-Global\/LabelMakerServlet\?labNo=/,
+  // );
+  // });
+});
+
+describe("Modify Order search by accession Number", function () {
+  it("User Visits Home Page and goes to Modify Order Page ", function () {
+    homePage = loginPage.goToHomePage();
+    modifyOrderPage = homePage.goToModifyOrderPage();
+  });
+
+  it("Searche with accession number and submit", () => {
+    cy.wait(200);
+    cy.fixture("Patient").then((patient) => {
+      modifyOrderPage.enterAccessionNo(patient.labNo);
+      modifyOrderPage.clickSubmitAccessionButton();
+    });
+    cy.wait(10000);
+  });
+
+  it("Validate program dropdown button not visible and click next", function () {
+    modifyOrderPage.checkProgramButton();
     modifyOrderPage.clickNextButton();
   });
 
-  it("should be able to print barcode", function () {
-    cy.window().then((win) => {
-      cy.spy(win, "open").as("windowOpen");
+  it("Add Sample", function () {
+    modifyOrderPage.selectSerumSample();
+    orderEntityPage.checkPanelCheckBoxField();
+    modifyOrderPage.clickNextButton();
+  });
+
+  it("Add Order", function () {
+    orderEntityPage.generateLabOrderNumber();
+    cy.fixture("Order").then((order) => {
+      orderEntityPage.enterSiteName(order.siteName);
+      orderEntityPage.enterRequesterLastAndFirstName(
+        order.requester.fullName,
+        order.requester.firstName,
+        order.requester.lastName,
+      );
     });
-    modifyOrderPage.clickPrintBarcodeButton();
-    cy.get("@windowOpen").should(
-      "be.calledWithMatch",
-      "/api/OpenELIS-Global/LabelMakerServlet?labNo=",
-    );
+    orderEntityPage.rememberSiteAndRequester();
+    modifyOrderPage.clickSubmitButton();
+    cy.wait(1000);
   });
 });

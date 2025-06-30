@@ -26,10 +26,10 @@
             <column name="TYPE" length="10" not-null="true" />
         </property>
     </class>
-<!-- 	<query name="action.getNext"> -->
-<!-- 		from Action act order by act.type, act.code -->
-<!-- 	</query> -->
-<!-- 	<query name="action.getPrevious"> -->
-<!-- 		from Action act order by act.type desc, act.code desc -->
-<!-- 	</query> -->
+    <!-- <query name="action.getNext"> -->
+    <!-- from Action act order by act.type, act.code -->
+    <!-- </query> -->
+    <!-- <query name="action.getPrevious"> -->
+    <!-- from Action act order by act.type desc, act.code desc -->
+    <!-- </query> -->
 </hibernate-mapping>

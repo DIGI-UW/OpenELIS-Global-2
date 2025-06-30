@@ -36,6 +36,8 @@ echo "This is technically secure, but it is recommended to change the password o
 
 echo "Output location: ${resourcesDir}"
 
+mkdir -p  ${resourcesDir};
+
 if [ $cli_flag == true ]
 then
   htpasswd -bcBC 12 ${resourcesDir}/adminPassword.txt admin ${pw}

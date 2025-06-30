@@ -1,0 +1,32 @@
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="create_notification_subscriptions_table" author="clinlims">
+        <createTable tableName="notification_subscriptions">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="pf_endpoint" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="pf_p256dh" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="pf_auth" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="notification_subscriptions"
+                                 baseColumnNames="user_id"
+                                 referencedTableName="system_user"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_notification_subscriptions_user_id"/>
+    </changeSet>
+
+</databaseChangeLog>

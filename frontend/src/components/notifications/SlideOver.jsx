@@ -87,7 +87,7 @@ const SlideOver = ({
                   onCloseClick && onCloseClick();
                 }}
               >
-                &larr;
+                &rarr;
               </button>
               <div className="slide-over-title">{title}</div>
             </div>

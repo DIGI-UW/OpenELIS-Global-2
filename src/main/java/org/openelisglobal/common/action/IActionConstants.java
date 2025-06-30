@@ -256,6 +256,9 @@ public interface IActionConstants {
     String RESULTS_SESSION_CACHE = "ResultsSessionCache";
     String RESULTS_PAGE_MAPPING_SESSION_CACHE = "ResultsPageMappingSessionCache";
 
+    String DISPLAY_LIST_SESSION_CACHE = "DisplayListSessionCache";
+    String DISPLAY_LIST_MAPPING_SESSION_CACHE = "DisplayListPageMappingSessionCache";
+
     /**
      * The system_module name used to determine if the current user is allowed to
      * edit primary patient IDs (subject number & site subject number).

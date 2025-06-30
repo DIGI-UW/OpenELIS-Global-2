@@ -13,29 +13,16 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.sql.SQLException;
-import java.text.ParseException;
-import org.apache.commons.validator.GenericValidator;
 import org.jfree.util.Log;
-import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.project.service.ProjectService;
-import org.openelisglobal.reports.action.implementation.reportBeans.WHONETRoutineColumnBuilder;
+import org.openelisglobal.reports.action.implementation.reportBeans.WHONETCSVRoutineColumnBuilder;
 import org.openelisglobal.reports.form.ReportForm;
 import org.openelisglobal.spring.util.SpringContext;
 
-/**
- * @author Paul A. Hill (pahill@uw.edu)
- * @since Jan 26, 2011
- */
-public class WHONETExportRoutineByDate extends WHONETCSVRoutineSampleExportReport
-        implements IReportParameterSetter, IReportCreator {
+public class WHONETExportRoutineByDate extends WHONETCSVRoutineSampleExportReport implements IReportParameterSetter {
     protected final ProjectService projectService = SpringContext.getBean(ProjectService.class);
-    // private String projectStr;
-    // private Project project;
 
     @Override
     protected String reportFileName() {
@@ -48,8 +35,6 @@ public class WHONETExportRoutineByDate extends WHONETCSVRoutineSampleExportRepor
             form.setReportName(getReportNameForParameterPage());
             form.setUseLowerDateRange(Boolean.TRUE);
             form.setUseUpperDateRange(Boolean.TRUE);
-            // form.setUseProjectCode(Boolean.TRUE);
-            // form.setProjectCodeList(getProjectList());
         } catch (RuntimeException e) {
             Log.error("Error in ExportRoutineByDate.setRequestParemeters: ", e);
         }
@@ -59,11 +44,6 @@ public class WHONETExportRoutineByDate extends WHONETCSVRoutineSampleExportRepor
         return MessageUtil.getMessage("reports.label.project.export") + " "
                 + MessageUtil.getContextualMessage("sample.collectionDate");
     }
-    /*
-     * protected void createReportParameters() { super.createReportParameters();
-     * reportParameters.put("studyName", (project == null) ? null :
-     * project.getLocalizedName()); }
-     */
 
     @Override
     public void initializeReport(ReportForm form) {
@@ -72,7 +52,6 @@ public class WHONETExportRoutineByDate extends WHONETCSVRoutineSampleExportRepor
 
         lowDateStr = form.getLowerDateRange();
         highDateStr = form.getUpperDateRange();
-        // projectStr = form.getProjectCode();
         dateRange = new DateRange(lowDateStr, highDateStr);
 
         createReportParameters();
@@ -91,23 +70,6 @@ public class WHONETExportRoutineByDate extends WHONETCSVRoutineSampleExportRepor
         return dateRange.validateHighLowDate("report.error.message.date.received.missing");
     }
 
-    // -------------------------------
-
-    /**
-     * @return true, if location is not blank or "0" is is found in the DB; false
-     *         otherwise
-     */
-    // --------------------------
-    /*
-     * private boolean validateProject() { if (isBlankOrNull(projectStr) ||
-     * "0".equals(Integer.getInteger(projectStr))) {
-     * add1LineErrorMessage("report.error.message.project.missing"); return false; }
-     * ProjectService Service = new ProjectServiceImpl(); project =
-     * Service.getProjectById(projectStr); if (project == null) {
-     * add1LineErrorMessage("report.error.message.project.missing"); return false; }
-     * return true; }
-     */
-    // -------------------------
     /** creating the list for generation to the report */
     private void createReportItems() {
         try {
@@ -119,75 +81,8 @@ public class WHONETExportRoutineByDate extends WHONETCSVRoutineSampleExportRepor
         }
     }
 
-    @Override
-    protected void writeResultsToBuffer(ByteArrayOutputStream buffer)
-            throws IOException, UnsupportedEncodingException, SQLException, ParseException {
-
-        String currentAccessionNumber = null;
-        String[] splitBase = null;
-        while (WHONETcsvRoutineColumnBuilder.next()) {
-            String line = WHONETcsvRoutineColumnBuilder.nextLine();
-            String[] splitLine = StringUtil.separateCSVWithMixedEmbededQuotes(line);
-
-            if (splitLine[0].equals(currentAccessionNumber)) {
-                merge(splitBase, splitLine);
-            } else {
-                if (currentAccessionNumber != null) {
-                    writeConsolidatedBaseToBuffer(buffer, splitBase);
-                }
-                splitBase = splitLine;
-                currentAccessionNumber = splitBase[0];
-            }
-        }
-
-        writeConsolidatedBaseToBuffer(buffer, splitBase);
+    private WHONETCSVRoutineColumnBuilder getColumnBuilder() {
+        return new WHONETCSVRoutineColumnBuilder(dateRange);
     }
 
-    private void merge(String[] base, String[] line) {
-        for (int i = 0; i < base.length; ++i) {
-            if (GenericValidator.isBlankOrNull(base[i])) {
-                base[i] = line[i];
-            }
-        }
-    }
-
-    protected void writeConsolidatedBaseToBuffer(ByteArrayOutputStream buffer, String[] splitBase)
-            throws IOException, UnsupportedEncodingException {
-
-        if (splitBase != null) {
-            StringBuffer consolidatedLine = new StringBuffer();
-            for (String value : splitBase) {
-                consolidatedLine.append(value);
-                consolidatedLine.append(",");
-            }
-
-            consolidatedLine.deleteCharAt(consolidatedLine.lastIndexOf(","));
-            buffer.write(consolidatedLine.toString().getBytes("windows-1252"));
-        }
-    }
-
-    private WHONETRoutineColumnBuilder getColumnBuilder() {
-        return new WHONETRoutineColumnBuilder(dateRange);
-    }
-
-    /**
-     * @return a list of the correct projects for display
-     */
-    /*
-     * protected List<Project> getProjectList() { List<Project> projects = new
-     * ArrayList<Project>(); Project project = new Project();
-     * project.setProjectName("Antiretroviral Study");
-     * projects.add(projectService.getProjectByName(project, false, false));
-     * project.setProjectName("Antiretroviral Followup Study");
-     * projects.add(projectService.getProjectByName(project, false, false));
-     * project.setProjectName("Routine HIV Testing");
-     * projects.add(projectService.getProjectByName(project, false, false));
-     * project.setProjectName("Early Infant Diagnosis for HIV Study");
-     * projects.add(projectService.getProjectByName(project, false, false));
-     * project.setProjectName("Viral Load Results");
-     * projects.add(projectService.getProjectByName(project, false, false));
-     * project.setProjectName("Indeterminate Results");
-     * projects.add(projectService.getProjectByName(project, false, false)); return
-     * projects; }
-     */
 }

@@ -15,13 +15,13 @@
  */
 package org.openelisglobal.sample.util.CI;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import javax.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.dictionary.ObservationHistoryList;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
@@ -385,7 +385,7 @@ public abstract class BaseProjectFormMapper implements IProjectFormMapper {
     /**
      * ?type=xxxxx specifies how we are using a study form.
      *
-     * @see org.openelisglobal.sample.util.CI.IProjectFormMapper#isSecondEntry(javax.servlet.http.HttpServletRequest)
+     * @see org.openelisglobal.sample.util.CI.IProjectFormMapper#isSecondEntry(jakarta.servlet.http.HttpServletRequest)
      */
     @Override
     public boolean isSecondEntry(HttpServletRequest request) {

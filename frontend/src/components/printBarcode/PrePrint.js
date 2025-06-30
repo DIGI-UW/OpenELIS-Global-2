@@ -64,9 +64,9 @@ const PrePrint = () => {
     setSampleTypeTests({ ...sampleTypeTests, tests: tests });
   }
 
-  const triggerPanelCheckBoxChange = (isChecked, testMaps) => {
-    const testIds = testMaps.split(",").map((id) => id.trim());
-    testIds.map((testId) => {
+  const triggerPanelCheckBoxChange = (isChecked, testIds) => {
+    const testIdsList = testIds.split(",").map((id) => id.trim());
+    testIdsList.map((testId) => {
       let testIndex = findTestIndex(testId);
       let test = findTestById(testId);
       if (testIndex !== -1) {
@@ -85,18 +85,16 @@ const PrePrint = () => {
   const addPanelToSelectedPanels = (panel) => {
     setSelectedPanels([
       ...selectedPanels,
-      { id: panel.panelId, name: panel.name, testMaps: panel.testMaps },
+      { id: panel.id, name: panel.name, testIds: panel.testIds },
     ]);
-    triggerPanelCheckBoxChange(true, panel.testMaps);
+    triggerPanelCheckBoxChange(true, panel.testIds);
   };
 
   const removePanelFromSelectedPanels = (panel) => {
     let index = 0;
-    let panelId = panel.id !== undefined ? panel.id : panel.panelId;
-
     for (let i in selectedPanels) {
-      if (selectedPanels[i].id === panelId) {
-        triggerPanelCheckBoxChange(false, selectedPanels[i].testMaps);
+      if (selectedPanels[i].id === panel.id) {
+        triggerPanelCheckBoxChange(false, selectedPanels[i].testIds);
         const newPanels = selectedPanels;
         newPanels.splice(index, 1);
         setSelectedPanels([...newPanels]);
@@ -318,10 +316,10 @@ const PrePrint = () => {
                   <Checkbox
                     onChange={(e) => handlePanelCheckbox(e, panel)}
                     labelText={panel.name}
-                    id={"panel_" + panel.panelId}
-                    key={panel.panelId}
+                    id={"panel_" + panel.id}
+                    key={panel.id}
                     checked={
-                      selectedPanels.filter((item) => item.id === panel.panelId)
+                      selectedPanels.filter((item) => item.id === panel.id)
                         .length > 0
                     }
                   />
@@ -365,6 +363,7 @@ const PrePrint = () => {
           </Column>
           <Column lg={8} md={8} sm={4}>
             <Button
+              data-cy="pre-Print"
               disabled={selectedTests.length == 0}
               onClick={prePrintLabels}
             >

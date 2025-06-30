@@ -25,6 +25,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.LabelValuePair;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.util.XMLUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.history.service.HistoryService;
@@ -63,7 +64,8 @@ public class AuditTrailServiceImpl implements AuditTrailService {
         // if logging failes an exception should be thrown so that INSERT/UPDATE is
         // rolled back
         if (referenceTable == null) {
-            LogEvent.logError("AuditTrailDAOImpl", "saveNewHistory()", "NO CHANGES: REF TABLE IS NULL");
+            LogEvent.logError("AuditTrailDAOImpl", "saveNewHistory()",
+                    "NO CHANGES: REF TABLE IS NULL tableName: " + tableName);
             throw new LIMSRuntimeException("Reference Table is null in AuditTrailDAOImpl saveNewHistory()");
         }
 
@@ -118,7 +120,8 @@ public class AuditTrailServiceImpl implements AuditTrailService {
         }
         if (rt == null) {
             // bugzilla 2154
-            LogEvent.logError("AuditTrailDAOImpl", "saveHistory()", "NO CHANGES: REF TABLE IS NULL");
+            LogEvent.logError("AuditTrailDAOImpl", "saveHistory()",
+                    "NO CHANGES: REF TABLE IS NULL" + "tableName: " + tableName);
             // bugzilla 1926
             throw new LIMSRuntimeException("Reference Table is null in AuditTrailDAOImpl saveHistory()");
         }
@@ -247,6 +250,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
         // Iterate through all the fields in the object
         fieldIteration: for (int ii = 0; ii < fields.length; ii++) {
+            LogEvent.logTrace(this.getClass().getName(), "getChanges", "field: " + fields[ii].getName());
 
             // make private fields accessible so we can access their values.
             // This is discouraged as it can introduce security vulnerabilities so care
@@ -258,6 +262,12 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             // these modifiers are v.unlikely to be part of the data model.
             if (Modifier.isTransient(fields[ii].getModifiers()) || Modifier.isFinal(fields[ii].getModifiers())
                     || Modifier.isStatic(fields[ii].getModifiers())) {
+                LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                        fields[ii].getName() + " transient: " + Modifier.isTransient(fields[ii].getModifiers()));
+                LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                        fields[ii].getName() + " final: " + Modifier.isFinal(fields[ii].getModifiers()));
+                LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                        fields[ii].getName() + " static: " + Modifier.isStatic(fields[ii].getModifiers()));
                 continue fieldIteration;
             }
 
@@ -271,9 +281,12 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                 // && (!fieldName.equals("collectionDateForDisplay"))
                 // && (!fieldName.equals("collectionTimeForDisplay")) ) {
                 Class interfaces[] = fields[ii].getType().getInterfaces();
+                String auditFunctionName = "get" + StringUtil.capitalize(fieldName) + "_Audit";
                 for (int i = 0; i < interfaces.length;) {
                     if (interfaces[i].equals(java.util.Collection.class)) {
-                        continue fieldIteration;
+                        if (!methodExists(objectClass, auditFunctionName)) { // check if separate audit field exists
+                            continue fieldIteration;
+                        }
                     }
                     i++;
                 }
@@ -290,6 +303,34 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                         } else {
                             propertyNewState = "";
                         }
+
+                        try {
+                            LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                                    "does " + auditFunctionName + " exist in newObject");
+
+                            if (methodExists(newObject.getClass(), auditFunctionName)) {
+                                LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                                        auditFunctionName + " exists in newObject");
+
+                                Method m2 = newObject.getClass().getMethod(auditFunctionName, new Class[0]);
+                                Object o2 = m2.invoke(newObject, (Object[]) new Class[0]);
+
+                                String o2Value;
+
+                                if (o2 != null) {
+                                    o2Value = o2.toString();
+                                } else {
+                                    o2Value = "";
+                                }
+
+                                propertyNewState = o2Value;
+                            }
+                        } catch (RuntimeException | NoSuchMethodException | IllegalAccessException
+                                | InvocationTargetException e) {
+                            // buzilla 2154
+                            LogEvent.logError(e);
+                            throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
+                        }
                     } else {
                         propertyNewState = "";
                     }
@@ -298,21 +339,55 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     LogEvent.logError(e);
                     propertyNewState = "";
                 }
+                LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                        "field: " + fields[ii].getName() + " propertyNewState: " + propertyNewState);
 
                 try {
                     Object objPreUpdateState = fields[ii].get(existingObject);
                     if (objPreUpdateState != null) {
                         propertyPreUpdateState = objPreUpdateState.toString();
+
                     } else {
                         propertyPreUpdateState = "";
                     }
+
+                    try {
+                        LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                                "does " + auditFunctionName + " exists in existingObject");
+
+                        if (methodExists(existingObject.getClass(), auditFunctionName)) {
+                            LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                                    auditFunctionName + " exists in existingObject");
+                            Method m2 = existingObject.getClass().getMethod(auditFunctionName, new Class[0]);
+                            Object o2 = m2.invoke(existingObject, (Object[]) new Class[0]);
+
+                            String o2Value;
+
+                            if (o2 != null) {
+                                o2Value = o2.toString();
+                            } else {
+                                o2Value = "";
+                            }
+
+                            propertyPreUpdateState = o2Value;
+
+                        }
+                    } catch (RuntimeException | NoSuchMethodException | IllegalAccessException
+                            | InvocationTargetException e) {
+                        // buzilla 2154
+                        LogEvent.logError(e);
+                        throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
+                    }
                 } catch (IllegalArgumentException e) {
+                    LogEvent.logError(e);
                     propertyPreUpdateState = "";
                 } catch (IllegalAccessException e) {
                     // buzilla 2154
                     LogEvent.logError(e);
                     propertyPreUpdateState = "";
                 }
+                LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                        "field: " + fields[ii].getName() + " propertyPreUpdateState: " + propertyPreUpdateState);
 
                 // bugzilla 2134 fixed the analysis_qaevent completed date problem
                 // bugzilla 2122 fixed the sample collection date problem
@@ -342,6 +417,11 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     // LogEvent.logInfo("AuditTrailDAOImpl","getChanges","NEW UPDATE: " +
                     // propertyNewState);
                     // LogEvent.logInfo("","","\n");
+
+                    LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                            "field compare: " + fields[ii].getName() + " propertyNewState: " + propertyNewState);
+                    LogEvent.logTrace(this.getClass().getName(), "getChanges", "field compare: " + fields[ii].getName()
+                            + " propertyPreUpdateState: " + propertyPreUpdateState);
 
                     // Now we have the two property values - compare them
                     if (propertyNewState.equals(propertyPreUpdateState)) {
@@ -449,6 +529,17 @@ public class AuditTrailServiceImpl implements AuditTrailService {
         return lvb;
     }
 
+    public static boolean methodExists(Class clazz, String methodName) {
+        boolean result = false;
+        for (Method method : clazz.getDeclaredMethods()) {
+            if (method.getName().equals(methodName)) {
+                result = true;
+                break;
+            }
+        }
+        return result;
+    }
+
     /**
      * Process and compare the child value objects using java reflection
      *
@@ -462,7 +553,8 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             Object newObject) {
 
         LabelValuePair lvb = null;
-        if (propertyPreUpdateState.startsWith("{org.openelisglobal")) {
+        if (propertyPreUpdateState != null && fieldName != null
+                && propertyPreUpdateState.startsWith("{org.openelisglobal")) {
             if (fieldName.equals("test")) {
                 try {
                     Method m1 = existingObject.getClass().getMethod("getTest", new Class[0]);
@@ -1183,6 +1275,9 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                 lvb = new LabelValuePair();
                 lvb.setLabel(fieldName);
                 lvb.setValue(propertyPreUpdateState);
+                LogEvent.logTrace(this.getClass().getName(), "processLabelValue",
+                        "lvb field: " + fieldName + " propertyPreUpdateState: " + propertyPreUpdateState);
+
             }
         }
 

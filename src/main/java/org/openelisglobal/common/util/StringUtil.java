@@ -674,10 +674,29 @@ public class StringUtil {
         if (actualValue.startsWith("<") || actualValue.startsWith(">")) {
             actualValue = actualValue.replaceAll("<|>", "");
         }
-        return actualValue;
+        if (isNumeric(actualValue)) {
+            return actualValue;
+        } else {
+            return "NaN";
+        }
     }
 
     public static String repeat(String s, int times) {
         return IntStream.range(0, times).mapToObj(i -> s).collect(Collectors.joining(""));
+    }
+
+    public static String capitalize(String s) {
+        return s.substring(0, 1).toUpperCase() + s.substring(1); // J + avatpoint
+    }
+
+    public static boolean isNumeric(String str) {
+        if (str == null)
+            return false;
+        try {
+            Double.parseDouble(str);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 }

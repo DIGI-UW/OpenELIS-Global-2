@@ -33,19 +33,22 @@
         <property name="nameKey" type="java.lang.String">
             <column name="display_key" length="60" not-null="false" />
         </property>
+        <property name="loincCode" type="java.lang.String">
+            <column name="LOINC_CODE" length="10" />
+        </property>
         <property name="sortOrder" column="sort_order"
             type="java.lang.Integer" />
         <many-to-one name="localizedDictionaryName"
-                     class="org.openelisglobal.localization.valueholder.Localization"
-                     fetch="select" lazy="false">
+            class="org.openelisglobal.localization.valueholder.Localization"
+            fetch="select" lazy="false">
             <column name="name_localization_id" precision="10" scale="0" />
         </many-to-one>
     </class>
-<!-- 	<query name="dictionary.getNext"> -->
-<!-- 		from Dictionary d order by d.dictionaryCategory.categoryName, d.dictEntry -->
-<!-- 	</query> -->
-<!-- 	<query name="dictionary.getPrevious"> -->
-<!-- 		from Dictionary d order by d.dictionaryCategory.categoryName desc, -->
-<!-- 		d.dictEntry desc -->
-<!-- 	</query> -->
+    <!-- <query name="dictionary.getNext"> -->
+    <!-- from Dictionary d order by d.dictionaryCategory.categoryName, d.dictEntry -->
+    <!-- </query> -->
+    <!-- <query name="dictionary.getPrevious"> -->
+    <!-- from Dictionary d order by d.dictionaryCategory.categoryName desc, -->
+    <!-- d.dictEntry desc -->
+    <!-- </query> -->
 </hibernate-mapping>

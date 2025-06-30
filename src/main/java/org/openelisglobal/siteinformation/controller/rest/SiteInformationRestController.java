@@ -1,13 +1,13 @@
 package org.openelisglobal.siteinformation.controller.rest;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import javax.annotation.PostConstruct;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.validation.Valid;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.common.controller.BaseController;
@@ -265,7 +265,7 @@ public class SiteInformationRestController extends BaseController {
             forward = validateAndUpdateSiteInformation(request, response, form, isNew);
         }
         // makes the changes take effect immediately
-        ConfigurationProperties.forceReload();
+        ConfigurationProperties.loadDBValuesIntoConfiguration();
         DisplayListService.getInstance().refreshLists();
         if (FWD_SUCCESS_INSERT.equals(forward)) {
             redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
@@ -333,7 +333,7 @@ public class SiteInformationRestController extends BaseController {
         }
         try {
             siteInformationService.persistData(siteInformation, newSiteInformation);
-            if (siteInformation.getName().equals(Property.DEFAULT_LANG_LOCALE.getName())) {
+            if (siteInformation.getName().equals(Property.DEFAULT_LANG_LOCALE.getDBName())) {
                 localeResolver.setLocale(request, response, Locale.forLanguageTag(siteInformation.getValue()));
             }
         } catch (LIMSRuntimeException e) {

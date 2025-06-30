@@ -39,7 +39,7 @@ export const MenuCheckBox = (props) => {
           style={{ marginLeft: 2 * depth + "rem" }}
         >
           <Checkbox
-            id={curMenuItem?.menu.elementId}
+            id={curMenuItem?.menu.elementId + "_checkbox"}
             labelText={intl.formatMessage({
               id: labelKey
                 ? labelKey
@@ -47,6 +47,7 @@ export const MenuCheckBox = (props) => {
                   ? curMenuItem.menu.displayKey
                   : "missing display key",
             })}
+            disabled={curMenuItem.menu.elementId === "menu_sidenav"}
             checked={curMenuItem?.menu.isActive}
             onChange={(_, { checked }) => {
               if (path === "$" || !path) {

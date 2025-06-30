@@ -14,6 +14,7 @@ public class ProgramSampleServiceImpl extends AuditableBaseObjectServiceImpl<Pro
 
     ProgramSampleServiceImpl() {
         super(ProgramSample.class);
+        this.auditTrailLog = true;
     }
 
     @Override

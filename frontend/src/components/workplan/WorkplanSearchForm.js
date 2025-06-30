@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Column, Form, Grid, Section, Button } from "@carbon/react";
+import { Column, Form, Grid, Section, Button, Link } from "@carbon/react";
+import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import { FormattedMessage } from "react-intl";
 import "../Style.css";
 import TestSectionSelectForm from "./TestSectionSelectForm";
@@ -16,6 +17,8 @@ export default function WorkplanSearchForm(props) {
   const [nextPage, setNextPage] = useState(null);
   const [previousPage, setPreviousPage] = useState(null);
   const [pagination, setPagination] = useState(false);
+  const [currentApiPage, setCurrentApiPage] = useState(null);
+  const [totalApiPages, setTotalApiPages] = useState(null);
   const [url, setUrl] = useState("");
 
   let title = "";
@@ -24,19 +27,19 @@ export default function WorkplanSearchForm(props) {
   switch (type) {
     case "test":
       title = <FormattedMessage id="workplan.test.types" />;
-      urlToPost = "/rest/workplan-by-test?test_id=";
+      urlToPost = "/rest/WorkPlanByTest?test_id=";
       break;
     case "panel":
       title = <FormattedMessage id="workplan.panel.types" />;
-      urlToPost = "/rest/workplan-by-panel?panel_id=";
+      urlToPost = "/rest/WorkPlanByPanel?panel_id=";
       break;
     case "unit":
       title = <FormattedMessage id="workplan.unit.types" />;
-      urlToPost = "/rest/workplan-by-test-section?test_section_id=";
+      urlToPost = "/rest/WorkPlanByTestSection?test_section_id=";
       break;
     case "priority":
       title = <FormattedMessage id="workplan.priority.list" />;
-      urlToPost = "/rest/workplan-by-priority?priority=";
+      urlToPost = "/rest/WorkPlanByPriority?priority=";
       break;
     default:
       title = "";
@@ -58,6 +61,8 @@ export default function WorkplanSearchForm(props) {
         var { totalPages, currentPage } = res.paging;
         if (totalPages > 1) {
           setPagination(true);
+          setCurrentApiPage(currentPage);
+          setTotalApiPages(totalPages);
           if (parseInt(currentPage) < parseInt(totalPages)) {
             setNextPage(parseInt(currentPage) + 1);
           } else {
@@ -160,26 +165,38 @@ export default function WorkplanSearchForm(props) {
       <>
         {pagination && (
           <Grid>
-            <Column sm={4} md={8} lg={11} />
-            <Column sm={2} md={2} lg={2}>
-              <Button
-                type=""
-                id="loadpreviousresults"
-                onClick={loadPreviousResultsPage}
-                disabled={previousPage != null ? false : true}
-              >
-                <FormattedMessage id="button.label.loadprevious" />
-              </Button>
-            </Column>
-            <Column sm={2} md={2} lg={2}>
-              <Button
-                type=""
-                id="loadnextresults"
-                disabled={nextPage != null ? false : true}
-                onClick={loadNextResultsPage}
-              >
-                <FormattedMessage id="button.label.loadnext" />
-              </Button>
+            <Column lg={14} />
+            <Column
+              lg={2}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "10px",
+                width: "110%",
+              }}
+            >
+              <Link>
+                {currentApiPage} / {totalApiPages}
+              </Link>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <Button
+                  hasIconOnly
+                  id="loadpreviousresults"
+                  onClick={loadPreviousResultsPage}
+                  disabled={previousPage != null ? false : true}
+                  renderIcon={ArrowLeft}
+                  iconDescription="previous"
+                ></Button>
+                <Button
+                  hasIconOnly
+                  id="loadnextresults"
+                  onClick={loadNextResultsPage}
+                  disabled={nextPage != null ? false : true}
+                  renderIcon={ArrowRight}
+                  iconDescription="next"
+                ></Button>
+              </div>
             </Column>
           </Grid>
         )}

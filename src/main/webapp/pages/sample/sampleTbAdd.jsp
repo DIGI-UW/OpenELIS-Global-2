@@ -1,4 +1,3 @@
-<%@page import="org.openelisglobal.common.util.SystemConfiguration"%>
 <%@page import="org.openelisglobal.common.action.IActionConstants"%>
 <%@ page language="java" contentType="text/html; charset=UTF-8"
 	import="org.openelisglobal.common.formfields.FormFields,
@@ -13,9 +12,9 @@
 <%@ page isELIgnored="false"%>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags"%>
+
 
 <c:set var="formName" value="${form.formName}" />
 <c:set var="entryDate" value="${form.currentDate}" />
@@ -147,7 +146,7 @@ function /*void*/setSaveButton() {
 
 			year = date.getFullYear();
 
-			var datePattern = '<%=SystemConfiguration.getInstance().getPatternForDateLocale() %>';
+			var datePattern = '<%=DateUtil.getDateFormat() %>';
 			var splitPattern = datePattern.split("/");
 
 			var DOB = "";

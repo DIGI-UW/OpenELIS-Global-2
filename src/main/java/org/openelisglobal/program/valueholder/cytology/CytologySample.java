@@ -1,17 +1,19 @@
 package org.openelisglobal.program.valueholder.cytology;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.JoinColumn;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
-import javax.persistence.Table;
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
+import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
@@ -69,6 +71,14 @@ public class CytologySample extends ProgramSample {
         return technician;
     }
 
+    public String getTechnician_Audit() {
+        if (technician == null) {
+            return null;
+        } else {
+            return technician.getDisplayName();
+        }
+    }
+
     public void setTechnician(SystemUser technician) {
         this.technician = technician;
     }
@@ -85,12 +95,30 @@ public class CytologySample extends ProgramSample {
         return slides;
     }
 
+    public String getSlides_Audit() {
+        if (slides == null) {
+            return null;
+        } else {
+            return StringUtils
+                    .join(slides.stream().map(e -> "File Type: " + e.getFileType() + ", Location: " + e.getLocation())
+                            .collect(Collectors.toList()), "; ");
+        }
+    }
+
     public void setSlides(List<CytologySlide> slides) {
         this.slides = slides;
     }
 
     public SystemUser getCytoPathologist() {
         return cytoPathologist;
+    }
+
+    public String getCytoPathologist_Audit() {
+        if (cytoPathologist == null) {
+            return null;
+        } else {
+            return cytoPathologist.getDisplayName();
+        }
     }
 
     public void setCytoPathologist(SystemUser cytoPathologist) {
@@ -101,6 +129,15 @@ public class CytologySample extends ProgramSample {
         return specimenAdequacy;
     }
 
+    public String getSpecimenAdequacy_Audit() {
+        if (specimenAdequacy == null) {
+            return null;
+        } else {
+            return "Result Type: " + specimenAdequacy.getResultType() + ", Satisfaction: "
+                    + specimenAdequacy.getSatisfaction() == null ? "" : specimenAdequacy.getSatisfaction().getDisplay();
+        }
+    }
+
     public void setSpecimenAdequacy(CytologySpecimenAdequacy specimenAdequacy) {
         this.specimenAdequacy = specimenAdequacy;
     }
@@ -109,12 +146,31 @@ public class CytologySample extends ProgramSample {
         return diagnosis;
     }
 
+    public String getDiagnosis_Audit() {
+        if (diagnosis == null) {
+            return null;
+        } else {
+            return "Negative Diagnosis: " + diagnosis.getNegativeDiagnosis();
+        }
+    }
+
     public void setDiagnosis(CytologyDiagnosis diagnosis) {
         this.diagnosis = diagnosis;
     }
 
     public List<CytologyReport> getReports() {
         return reports;
+    }
+
+    public String getReports_Audit() {
+        if (reports == null) {
+            return null;
+        } else {
+            return StringUtils.join(reports.stream()
+                    .map(e -> "File Type: " + e.getFileType() + ", Report Type: "
+                            + (e.getReportType() == null ? "" : e.getReportType().getDisplay()))
+                    .collect(Collectors.toList()), "; ");
+        }
     }
 
     public void setReports(List<CytologyReport> reports) {

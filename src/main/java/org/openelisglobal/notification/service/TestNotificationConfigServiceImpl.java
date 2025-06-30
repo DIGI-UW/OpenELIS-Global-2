@@ -137,8 +137,8 @@ public class TestNotificationConfigServiceImpl extends AuditableBaseObjectServic
                 } else {
                     oldPayloadTemplate.setSubjectTemplate(newPayloadTemplate.getSubjectTemplate());
                     oldPayloadTemplate.setMessageTemplate(newPayloadTemplate.getMessageTemplate());
+                    oldPayloadTemplate.setSysUserId(sysUserId);
                 }
-                oldPayloadTemplate.setSysUserId(sysUserId);
             }
         } else {
             oldConfig = newTestNotificationConfig;

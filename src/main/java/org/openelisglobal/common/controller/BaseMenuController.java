@@ -1,14 +1,14 @@
 package org.openelisglobal.common.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.form.AdminOptionMenuForm;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.menu.service.AdminMenuItemService;
 import org.openelisglobal.spring.util.SpringContext;
 
@@ -21,7 +21,7 @@ public abstract class BaseMenuController<T> extends BaseController {
     protected static final int NONE = -1;
 
     protected int getPageSize() {
-        return SystemConfiguration.getInstance().getDefaultPageSize();
+        return Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
     }
 
     protected String performMenuAction(AdminOptionMenuForm<T> form, HttpServletRequest request)
@@ -52,8 +52,9 @@ public abstract class BaseMenuController<T> extends BaseController {
         }
 
         form.setMenuList(menuList);
-        form.setAdminMenuItems(SpringContext.getBean(AdminMenuItemService.class).getActiveItemsSorted());
-
+        if (!isRestCall()) {
+            form.setAdminMenuItems(SpringContext.getBean(AdminMenuItemService.class).getActiveItemsSorted());
+        }
         request.setAttribute(DEACTIVATE_DISABLED, getDeactivateDisabled());
         request.setAttribute(ADD_DISABLED, getAddDisabled());
         request.setAttribute(EDIT_DISABLED, getEditDisabled());

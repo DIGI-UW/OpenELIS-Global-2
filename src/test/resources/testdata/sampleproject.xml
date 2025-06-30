@@ -1,0 +1,10 @@
+<dataset>
+    <sample id="1" accession_number="12345"
+        entered_date="2023-10-01 00:00:00" received_date="2023-10-01 00:00:00"
+        is_confirmation="false" />
+
+    <project id="1" name="Test Project" />
+
+    <sample_projects id="1" proj_id="1" samp_id="1"
+        is_permanent="Y" lastupdated="2023-10-01 00:00:00" />
+</dataset>

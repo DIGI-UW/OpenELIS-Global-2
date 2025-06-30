@@ -15,6 +15,7 @@
  */
 package org.openelisglobal.result.action.util;
 
+import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -24,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import javax.annotation.PostConstruct;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -703,8 +703,8 @@ public class ResultsLoadUtility {
         testItem.setUnitsOfMeasure(uom);
         testItem.setTestDate(testDate);
         testItem.setResultDisplayType(resultDisplayType);
-        testItem.setTestMethod(testMethodName);
         testItem.setAnalysisMethod(analysisService.getAnalysisType(analysis));
+        testItem.setTestMethod(analysisService.getMethodId(analysis));
         testItem.setResult(result);
         testItem.setResultValue(getFormattedResultValue(result));
         testItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));

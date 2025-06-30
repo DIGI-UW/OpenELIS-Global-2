@@ -81,7 +81,16 @@ export default function PushNotificationPage() {
   return (
     <div className="adminPageContent">
       {notificationVisible === true ? <AlertDialog /> : ""}
-      <PageBreadCrumb breadcrumbs={[{ label: "home.label", link: "/" }]} />
+      <PageBreadCrumb
+        breadcrumbs={[
+          { label: "home.label", link: "/" },
+          { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+          {
+            label: "notify.main.title",
+            link: "/MasterListsPage#NotifyUser",
+          },
+        ]}
+      />
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <Section>

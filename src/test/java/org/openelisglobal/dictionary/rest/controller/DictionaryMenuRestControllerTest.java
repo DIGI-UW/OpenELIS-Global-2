@@ -20,8 +20,10 @@ import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.test.annotation.Rollback;
 import org.springframework.test.web.servlet.MvcResult;
 
+@Rollback
 public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTest {
 
     @Autowired
@@ -32,8 +34,9 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
 
     @Before
     @Override
-    public void setUp() {
+    public void setUp() throws Exception {
         super.setUp();
+        executeDataSetWithStateManagement("testdata/dictionary.xml");
     }
 
     @Test
@@ -47,9 +50,10 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
         List<DictionaryMenuForm> menuList = Arrays.asList(super.mapFromJson(content, DictionaryMenuForm[].class));
         assertThat(menuList.get(0).getMenuList().get(0).getId(), is("1"));
         assertThat(menuList.get(0).getMenuList().get(0).getIsActive(), is("Y"));
-        assertThat(menuList.get(0).getMenuList().get(0).getDictEntry(), is("INFLUENZA VIRUS A RNA DETECTED"));
-        assertThat(menuList.get(0).getMenuList().get(0).getSortOrder(), is(100));
-        assertThat(menuList.get(0).getMenuList().get(0).getDictionaryCategory().getCategoryName(), is("CG"));
+        assertThat(menuList.get(0).getMenuList().get(0).getDictEntry(), is("Dictionary Entry 1"));
+        assertThat(menuList.get(0).getMenuList().get(0).getSortOrder(), is(1));
+        assertThat(menuList.get(0).getMenuList().get(0).getDictionaryCategory().getCategoryName(),
+                is("Category Name 1"));
     }
 
     @Test
@@ -64,26 +68,6 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
         assertThat(menuList, notNullValue());
     }
 
-    // TODO: To be looked into later
-
-    // @Test
-    // public void createDictionary_shouldSuccessfullyCreateDictionary() throws
-    // Exception {
-    // Dictionary dictionary = createDictionaryObject();
-    // String toJson = super.mapToJson(dictionary);
-    //
-    // MvcResult mvcResult = super.mockMvc.perform(
-    // post("/rest/dictionary")
-    // .accept(MediaType.APPLICATION_JSON_VALUE)
-    // .contentType(MediaType.APPLICATION_JSON_VALUE)
-    // .content(toJson)).andReturn();
-    //
-    // int status = mvcResult.getResponse().getStatus();
-    // assertEquals(201, status);
-    // String content = mvcResult.getResponse().getContentAsString();
-    // assertEquals(content, "Dictionary created successfully");
-    // }
-
     @Test
     public void showDeleteDictionary_shouldSuccessfullyDeleteDictionary() throws Exception {
         MvcResult getMenu = super.mockMvc.perform(get("/rest/DictionaryMenu").accept(MediaType.APPLICATION_JSON_VALUE)
@@ -93,10 +77,10 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
         assertEquals(200, status);
         String content = getMenu.getResponse().getContentAsString();
         List<DictionaryMenuForm> menuList = Arrays.asList(super.mapFromJson(content, DictionaryMenuForm[].class));
-        String idToBeDeleted = menuList.get(0).getMenuList().get(10).getId();
+        String idToBeDeleted = menuList.get(0).getMenuList().get(2).getId();
 
         // deleting the selected ID
-        MvcResult mvcResult = super.mockMvc.perform(post("/rest/delete-dictionary").param("selectedIDs", idToBeDeleted))
+        MvcResult mvcResult = super.mockMvc.perform(post("/rest/DeleteDictionary").param("ID", idToBeDeleted))
                 .andReturn();
 
         status = mvcResult.getResponse().getStatus();

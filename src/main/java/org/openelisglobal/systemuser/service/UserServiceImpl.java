@@ -1,5 +1,7 @@
 package org.openelisglobal.systemuser.service;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -9,11 +11,16 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.program.service.ProgramService;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.role.service.RoleService;
@@ -31,8 +38,18 @@ import org.openelisglobal.userrole.valueholder.LabUnitRoleMap;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
 import org.openelisglobal.userrole.valueholder.UserRole;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
+import org.springframework.security.saml2.provider.service.authentication.DefaultSaml2AuthenticatedPrincipal;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -53,6 +70,8 @@ public class UserServiceImpl implements UserService {
     private TestService testService;
     @Autowired
     private TestSectionService testSectionService;
+    @Autowired
+    private HttpSession session;
 
     @Override
     @Transactional
@@ -156,23 +175,102 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<IdValuePair> getUserTestSections(String systemUserId, String roleId) {
-        List<String> userLabUnits = new ArrayList<>();
-        UserLabUnitRoles userLabRoles = getUserLabUnitRoles(systemUserId);
-        if (userLabRoles != null) {
-            userLabRoles.getLabUnitRoleMap().forEach(roles -> {
-                if (roles.getRoles().contains(roleId)) {
-                    userLabUnits.add(roles.getLabUnit());
-                }
-            });
-        }
-        List<IdValuePair> allTestSections = DisplayListService.getInstance().getList(ListType.TEST_SECTION_ACTIVE);
-        if (userLabUnits.contains(UnifiedSystemUserController.ALL_LAB_UNITS)) {
-            return allTestSections;
+        Authentication authentication = null;
+        // see filter org.openelisglobal.security.AjaxFilter to handle
+        // RequestContextHolder for Ajax calls via servlets
+        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
+
+        HttpServletRequest request = null;
+        if (requestAttributes instanceof ServletRequestAttributes) {
+            request = ((ServletRequestAttributes) requestAttributes).getRequest();
+
+            Object sc = request.getSession()
+                    .getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+            if (!(sc instanceof SecurityContext)) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "getUserLogin",
+                        "security context is not of type SecurityContext");
+            } else {
+                authentication = ((SecurityContext) sc).getAuthentication();
+            }
         } else {
-            List<IdValuePair> userTestSections = allTestSections.stream()
-                    .filter(testSection -> userLabUnits.contains(testSection.getId())).collect(Collectors.toList());
-            return userTestSections;
+            LogEvent.logWarn(this.getClass().getSimpleName(), "getUserLogin",
+                    "requestAttributes is not of type ServletRequestAttributes");
         }
+        if (authentication != null) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserDetails) {
+                List<IdValuePair> userTestSections = new ArrayList<>();
+                Boolean requireLabUnitAtLogin = ConfigurationProperties.getInstance()
+                        .getPropertyValue(Property.REQUIRE_LAB_UNIT_AT_LOGIN).equals("true");
+                UserSessionData usd = (UserSessionData) session.getAttribute("userSessionData");
+                String adminRoleId = roleService.getRoleByName(Constants.ROLE_GLOBAL_ADMIN).getId();
+                Boolean isadmin = userRoleService.getRoleIdsForUser(systemUserId).contains(adminRoleId);
+                TestSection logintestSection = null;
+                if (requireLabUnitAtLogin && !isadmin) {
+                    if (usd.getLoginLabUnit() != 0) {
+                        logintestSection = testSectionService.getTestSectionById(String.valueOf(usd.getLoginLabUnit()));
+                        if (logintestSection != null) {
+                            userTestSections.add(
+                                    new IdValuePair(logintestSection.getId(), logintestSection.getLocalizedName()));
+                            return userTestSections;
+                        }
+                    }
+
+                }
+
+                List<String> userLabUnits = new ArrayList<>();
+                UserLabUnitRoles userLabRoles = getUserLabUnitRoles(systemUserId);
+                if (userLabRoles != null) {
+                    userLabRoles.getLabUnitRoleMap().forEach(roles -> {
+                        if (roleId == null) {
+                            userLabUnits.add(roles.getLabUnit());
+                        } else {
+                            if (roles.getRoles().contains(roleId)) {
+                                userLabUnits.add(roles.getLabUnit());
+                            }
+                        }
+
+                    });
+                }
+                List<IdValuePair> allTestSections = DisplayListService.getInstance()
+                        .getList(ListType.TEST_SECTION_ACTIVE);
+                if (userLabUnits.contains(UnifiedSystemUserController.ALL_LAB_UNITS)) {
+                    return allTestSections;
+                } else {
+                    userTestSections = allTestSections.stream()
+                            .filter(testSection -> userLabUnits.contains(testSection.getId()))
+                            .collect(Collectors.toList());
+                    return userTestSections;
+                }
+            } else if (principal instanceof DefaultSaml2AuthenticatedPrincipal
+                    || principal instanceof DefaultOAuth2User) {
+                List<IdValuePair> testSections = new ArrayList<>();
+
+                for (GrantedAuthority authority : authentication.getAuthorities()) {
+                    String[] authorityExplode = authority.getAuthority().split("-");
+                    if (authorityExplode.length == 3) {
+                        if (roleId == null || roleService.get(roleId).getName().trim().equals(authorityExplode[1])) {
+                            List<IdValuePair> allTestSections = DisplayListService.getInstance()
+                                    .getList(ListType.TEST_SECTION_ACTIVE);
+                            if (UnifiedSystemUserController.ALL_LAB_UNITS.equals(authorityExplode[2])) {
+                                return allTestSections;
+                            } else {
+                                List<IdValuePair> userTestSections = allTestSections.stream()
+                                        .filter(testSection -> testSection.getValue().equals(authorityExplode[2]))
+                                        .collect(Collectors.toList());
+                                testSections.addAll(userTestSections);
+                            }
+
+                        }
+                    }
+                }
+                return testSections;
+            }
+        }
+        LogEvent.logWarn(this.getClass().getSimpleName(), "getUserTestSections",
+                "no principal object in spring security context. Could not get tests belonging to user");
+        return new ArrayList<>();
+
     }
 
     @Override
@@ -343,4 +441,5 @@ public class UserServiceImpl implements UserService {
                         || testUnitIds.contains(programService.get(p.getId()).getTestSection().getId()))
                 .collect(Collectors.toList());
     }
+
 }

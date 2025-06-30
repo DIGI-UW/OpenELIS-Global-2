@@ -1,12 +1,12 @@
 package org.openelisglobal.program.controller.pathology;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.program.bean.PathologyDashBoardCount;
 import org.openelisglobal.program.service.PathologyDisplayService;
@@ -70,7 +70,7 @@ public class PathologyController extends BaseRestController {
     public ResponseEntity<String> assignTechnician(@RequestParam Integer pathologySampleId,
             HttpServletRequest request) {
         String currentUserId = getSysUserId(request);
-        pathologySampleService.assignTechnician(pathologySampleId, systemUserService.get(currentUserId));
+        pathologySampleService.assignTechnician(pathologySampleId, systemUserService.get(currentUserId), currentUserId);
         return ResponseEntity.ok("ok");
     }
 
@@ -79,7 +79,8 @@ public class PathologyController extends BaseRestController {
     public ResponseEntity<String> assignPathologist(@RequestParam Integer pathologySampleId,
             HttpServletRequest request) {
         String currentUserId = getSysUserId(request);
-        pathologySampleService.assignPathologist(pathologySampleId, systemUserService.get(currentUserId));
+        pathologySampleService.assignPathologist(pathologySampleId, systemUserService.get(currentUserId),
+                currentUserId);
         return ResponseEntity.ok("ok");
     }
 

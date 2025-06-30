@@ -1,12 +1,12 @@
 package org.openelisglobal.siteinformation.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
 import org.apache.commons.validator.GenericValidator;
 import org.jasypt.util.text.TextEncryptor;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;

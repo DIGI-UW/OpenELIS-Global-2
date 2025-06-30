@@ -1,12 +1,12 @@
 package org.openelisglobal.qaevent.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.ObjectUtils;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
@@ -20,7 +20,6 @@ import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.project.service.ProjectService;
@@ -179,7 +178,7 @@ public class RejectionController extends BaseController {
                     DateUtil.convertStringDateToTruncatedTimestamp(form.getCollectionDateForDisplay()));
             rejectedSample.setEnteredDate(DateUtil.getNowAsSqlDate());
             rejectedSample.setPriority(OrderPriority.ROUTINE);
-            rejectedSample.setDomain(SystemConfiguration.getInstance().getHumanDomain());
+            rejectedSample.setDomain(ConfigurationProperties.getInstance().getPropertyValue("domain.human"));
             rejectedSample.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Entered));
             rejectedSample.setReceivedTimestamp(
                     DateUtil.convertStringDateToTruncatedTimestamp(form.getReceptionDateForDisplay()));

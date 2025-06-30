@@ -15,7 +15,6 @@ import org.openelisglobal.common.rest.provider.bean.patientHistory.ResultTree;
 import org.openelisglobal.common.rest.provider.bean.patientHistory.TestDisplay;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
-import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -23,6 +22,7 @@ import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
@@ -57,50 +57,52 @@ public class ResultsTreeProviderRestController {
         });
 
         List<Analysis> analyses = new ArrayList<>();
-        Map<Panel, Set<Result>> panelResultMap = new HashMap<>();
-        Map<TestSection, Set<Panel>> testSectionPanelMap = new HashMap<>();
-
-        Set<Panel> filteredPanels;
-        Set<Result> filteredResults;
-        TestSection testSection = null;
-        Panel panel = null;
+        Map<TypeOfSample, Map<TestSection, Set<Result>>> sampleResultMap = new HashMap<>();
+        Map<TestSection, Set<TypeOfSample>> testSectionPanelMap = new HashMap<>();
 
         for (Result result : results) {
             analyses.add(result.getAnalysis());
-            testSection = result.getAnalysis().getTestSection();
-            panel = result.getAnalysis().getPanel() != null ? result.getAnalysis().getPanel()
-                    : createDummyPanel(result.getAnalysis().getTestSection().getId());
-
+            TestSection testSection = result.getAnalysis().getTest().getTestSection();
+            TypeOfSample sampleType = result.getAnalysis().getSampleItem().getTypeOfSample();
             if (testSectionPanelMap.containsKey(testSection)) {
-                testSectionPanelMap.get(testSection).add(panel);
+                testSectionPanelMap.get(testSection).add(sampleType);
             } else {
-                filteredPanels = new HashSet<>();
-                filteredPanels.add(panel);
-                testSectionPanelMap.put(testSection, filteredPanels);
+                Set<TypeOfSample> filteredSamples = new HashSet<>();
+                filteredSamples.add(sampleType);
+                testSectionPanelMap.put(testSection, filteredSamples);
             }
 
-            if (panelResultMap.containsKey(panel)) {
-                panelResultMap.get(panel).add(result);
+            if (sampleResultMap.containsKey(sampleType)) {
+                if (sampleResultMap.get(sampleType).containsKey(testSection)) {
+                    sampleResultMap.get(sampleType).get(testSection).add(result);
+                } else {
+                    Set<Result> filteredResults = new HashSet<>();
+                    filteredResults.add(result);
+                    sampleResultMap.get(sampleType).put(testSection, filteredResults);
+                }
             } else {
-                filteredResults = new HashSet<>();
+                Map<TestSection, Set<Result>> unitResultMap = new HashMap<>();
+                Set<Result> filteredResults = new HashSet<>();
                 filteredResults.add(result);
-                panelResultMap.put(panel, filteredResults);
+                unitResultMap.put(testSection, filteredResults);
+                sampleResultMap.put(sampleType, unitResultMap);
             }
         }
 
         List<ResultTree> resultTrees = new ArrayList<>();
 
-        for (Map.Entry<TestSection, Set<Panel>> entry : testSectionPanelMap.entrySet()) {
+        for (Map.Entry<TestSection, Set<TypeOfSample>> entry : testSectionPanelMap.entrySet()) {
             List<PanelDisplay> panelDisplays = new ArrayList<>();
 
-            for (Panel panelEntry : entry.getValue()) {
+            for (TypeOfSample sampleEntry : entry.getValue()) {
                 Map<Test, Set<Result>> testResultMap = new HashMap<>();
 
-                for (Result resultEntry : panelResultMap.get(panelEntry)) {
+                for (Result resultEntry : sampleResultMap.get(sampleEntry).get(entry.getKey())) {
+
                     Test test = resultEntry.getAnalysis().getTest();
 
                     if (!testResultMap.containsKey(test)) {
-                        filteredResults = new HashSet<>();
+                        Set<Result> filteredResults = new HashSet<>();
                         filteredResults.add(resultEntry);
                         testResultMap.put(test, filteredResults);
                     } else {
@@ -156,7 +158,7 @@ public class ResultsTreeProviderRestController {
                 }
 
                 PanelDisplay panelDisplay = new PanelDisplay();
-                panelDisplay.setDisplay(panelEntry.getPanelName().contains("NEW") ? "" : panelEntry.getLocalizedName());
+                panelDisplay.setDisplay(sampleEntry.getLocalizedName());
                 panelDisplay.setSubSets(testDisplays);
                 panelDisplays.add(panelDisplay);
             }
@@ -168,13 +170,6 @@ public class ResultsTreeProviderRestController {
         }
 
         return resultTrees;
-    }
-
-    private Panel createDummyPanel(String id) {
-        Panel panel = new Panel();
-        panel.setId("NEW" + id);
-        panel.setPanelName("NEW" + id);
-        return panel;
     }
 
     @GetMapping(value = "test-result-tree", produces = MediaType.APPLICATION_JSON_VALUE)

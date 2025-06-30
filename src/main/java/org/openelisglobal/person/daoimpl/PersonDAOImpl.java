@@ -25,7 +25,7 @@ import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.person.dao.PersonDAO;
 import org.openelisglobal.person.valueholder.Person;
 import org.springframework.stereotype.Component;
@@ -83,7 +83,9 @@ public class PersonDAOImpl extends BaseDAOImpl<Person, String> implements Person
         List<Person> list = new Vector<>();
         try {
             // calculate maxRow to be one more than the page size
-            int endingRecNo = startingRecNo + (SystemConfiguration.getInstance().getDefaultPageSize() + 1);
+            int endingRecNo = startingRecNo
+                    + (Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
+                            + 1);
 
             String sql = "from Person t order by t.id";
             Query<Person> query = entityManager.unwrap(Session.class).createQuery(sql, Person.class);

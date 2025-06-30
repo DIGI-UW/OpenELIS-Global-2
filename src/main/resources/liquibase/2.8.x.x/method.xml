@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql" />
+
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="analysis" columnName="method_id" />
+            </not>
+        </preConditions>
+        <comment>Add Method to analysis</comment>
+        <addColumn schemaName="clinlims" tableName="analysis">
+            <column name="method_id" type="NUMERIC(10)" />
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

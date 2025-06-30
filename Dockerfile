@@ -1,7 +1,7 @@
 ##
 # Build Stage
 #
-FROM maven:3-jdk-11 as build
+FROM maven:3-eclipse-temurin-21 AS build
 
 RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     --mount=target=/var/cache/apt,type=cache,sharing=locked \
@@ -10,24 +10,17 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     && apt-get -y --no-install-recommends install \
     git apache2-utils nodejs npm
 
-##
-# Copy Source Code
-#
-ADD ./pom.xml /build/pom.xml
-ADD ./tools /build/tools
-ADD ./src /build/src
-ADD ./dataexport /build/dataexport
-
-WORKDIR /build
 
 # OE Default Password
 ARG DEFAULT_PW="adminADMIN!"
-ADD ./install/createDefaultPassword.sh /build/install/createDefaultPassword.sh
+COPY ./install/createDefaultPassword.sh /build/install/createDefaultPassword.sh
+WORKDIR /build
 RUN ./install/createDefaultPassword.sh -c -p ${DEFAULT_PW}
 
 ##
 # Build DataExport
 #
+COPY ./dataexport /build/dataexport
 WORKDIR /build/dataexport/dataexport-core
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn dependency:go-offline 
@@ -39,21 +32,26 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn clean install -DskipTests
 
+##
+# Build the Project
+#  
 WORKDIR /build
 
+COPY ./pom.xml /build/pom.xml
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn dependency:go-offline 
 
 ARG SKIP_SPOTLESS="false"
+COPY ./src /build/src
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn clean install -DskipTests -Dspotless.check.skip=${SKIP_SPOTLESS}
 
 ##
 # Run Stage
 #
-FROM tomcat:8.5-jdk11
+FROM tomcat:10-jre21
 
-ADD install/createDefaultPassword.sh ./
+COPY install/createDefaultPassword.sh ./
 
 
 #Clean out unneccessary files from tomcat (especially pre-existing applications) 
@@ -61,7 +59,7 @@ RUN rm -rf /usr/local/tomcat/webapps/* \
     /usr/local/tomcat/conf/Catalina/localhost/manager.xml
 
 #Deploy the war into tomcat image and point root to it
-ADD install/tomcat-resources/ROOT.war /usr/local/tomcat/webapps/ROOT.war
+COPY install/tomcat-resources/ROOT.war /usr/local/tomcat/webapps/ROOT.war
 COPY --from=build /build/target/OpenELIS-Global.war /usr/local/tomcat/webapps/OpenELIS-Global.war
 
 #rewrite cataline.properties with our catalina.properties so it contains:
@@ -70,12 +68,12 @@ COPY --from=build /build/target/OpenELIS-Global.war /usr/local/tomcat/webapps/Op
 #    org.apache.catalina.connector.CoyoteAdapter.ALLOW_BACKSLASH=false
 #    org.apache.tomcat.util.buf.UDecoder.ALLOW_ENCODED_SLASH=false
 #    org.apache.coyote.USE_CUSTOM_STATUS_MSG_IN_HEADER=false
-ADD install/tomcat-resources/catalina.properties /usr/local/tomcat/conf/catalina.properties
-ADD install/tomcat-resources/logging.properties /usr/local/tomcat/conf/logging.properties
+COPY install/tomcat-resources/catalina.properties /usr/local/tomcat/conf/catalina.properties
+COPY install/tomcat-resources/logging.properties /usr/local/tomcat/conf/logging.properties
 
 #replace ServerInfo.properties with a less informative one
 RUN mkdir -p /usr/local/tomcat/lib/org/apache/catalina/util
-ADD install/tomcat-resources/ServerInfo.properties /usr/local/tomcat/lib/org/apache/catalina/util/ServerInfo.properties 
+COPY install/tomcat-resources/ServerInfo.properties /usr/local/tomcat/lib/org/apache/catalina/util/ServerInfo.properties 
 
 #restrict files
 #GID AND UID must be kept the same as setupTomcat.sh (if using default certificate group)
@@ -96,13 +94,18 @@ RUN groupadd tomcat; \
     chmod g-w,o-rwx $CATALINA_HOME/conf/logging.properties; \
     chmod g-w,o-rwx $CATALINA_HOME/conf/server.xml; \
     chmod g-w,o-rwx $CATALINA_HOME/conf/tomcat-users.xml; \
-    chmod g-w,o-rwx $CATALINA_HOME/conf/web.xml
+    chmod g-w,o-rwx $CATALINA_HOME/conf/web.xml; \
+    mkdir -p /var/lib/openelis-global/logs/; \
+    chown -R tomcat_admin:tomcat /var/lib/openelis-global/logs/;\
+    mkdir -p /var/lib/openelis-global/properties/; \
+    chown -R tomcat_admin:tomcat /var/lib/openelis-global/properties/;
 
-ADD install/openelis_healthcheck.sh /healthcheck.sh
+
+COPY install/openelis_healthcheck.sh /healthcheck.sh
 RUN chown tomcat_admin:tomcat /healthcheck.sh; \
     chmod 770 /healthcheck.sh;  
 
-ADD install/docker-entrypoint.sh /docker-entrypoint.sh
+COPY install/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chown tomcat_admin:tomcat /docker-entrypoint.sh; \
     chmod 770 /docker-entrypoint.sh;
 

@@ -215,4 +215,6 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     int getCountOfAnalysisCompletedOnByStatusId(Date completedDate, List<Integer> statusIds);
 
     int getCountOfAnalysisStartedOnByStatusId(Date startedDate, List<Integer> statusIds);
+
+    String getMethodId(Analysis analysis);
 }

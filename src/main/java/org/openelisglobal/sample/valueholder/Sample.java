@@ -19,8 +19,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.common.valueholder.EnumValueItemImpl;
 import org.openelisglobal.common.valueholder.ValueHolder;
 import org.openelisglobal.common.valueholder.ValueHolderInterface;
@@ -292,7 +293,7 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
     public void setReleasedDateForDisplay(String releasedDateForDisplay) {
         this.releasedDateForDisplay = releasedDateForDisplay;
         // also update the java.sql.Date
-        String locale = SystemConfiguration.getInstance().getDefaultLocale().toString();
+        String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
         releasedDate = DateUtil.convertStringDateToSqlDate(releasedDateForDisplay, locale);
     }
 
@@ -306,7 +307,7 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
     public void setTransmissionDateForDisplay(String transmissionDateForDisplay) {
         this.transmissionDateForDisplay = transmissionDateForDisplay;
         // also update the java.sql.Date
-        String locale = SystemConfiguration.getInstance().getDefaultLocale().toString();
+        String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
         transmissionDate = DateUtil.convertStringDateToSqlDate(transmissionDateForDisplay, locale);
     }
 

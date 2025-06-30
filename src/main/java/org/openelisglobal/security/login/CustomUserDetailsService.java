@@ -24,7 +24,6 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String loginName) {
-
         LoginUser user = loginService.getMatch("loginName", loginName).orElseThrow(() -> new UsernameNotFoundException(
                 "Unique Username not found, could be duplicates in database or it doesn't" + " exist"));
 
@@ -35,6 +34,9 @@ public class CustomUserDetailsService implements UserDetailsService {
                 !disabled, true, !credentialsExpired, !locked, getGrantedAuthorities(user));
     }
 
+    // TODO flesh this out so we can do permissions solely through granted
+    // authorities
+    // for sso and form login methods
     private List<GrantedAuthority> getGrantedAuthorities(LoginUser user) {
         List<GrantedAuthority> authorities = new ArrayList<>();
         return authorities;

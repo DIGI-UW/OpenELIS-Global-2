@@ -1,22 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-    <include relativeToChangelogFile="true" file="reflex_rule.xml" />
-    <include relativeToChangelogFile="true" file="desynchronous_objects.xml" />
-    <include relativeToChangelogFile="true" file="pathology.xml" />
-    <include relativeToChangelogFile="true" file="calculated_value.xml" />
-    <include relativeToChangelogFile="true" file="immunohistochemistry.xml" />
-    <include relativeToChangelogFile="true" file="cytology.xml" />
-    <include relativeToChangelogFile="true" file="sample_types.xml" />
-    <include relativeToChangelogFile="true" file="add_antimicrobial_resistance_test_column.xml" />
-    <include relativeToChangelogFile="true" file="lab_number_alphanum_update.xml" />
-    <include relativeToChangelogFile="true" file="menu.xml" />
-    <include relativeToChangelogFile="true" file="panel_item_fix.xml" />
-    <include relativeToChangelogFile="true" file="update_default_setting.xml" />
-    <include relativeToChangelogFile="true" file="rename_test_for_csv_export.xml"/>
-    <include relativeToChangelogFile="true" file="loinc.xml"/>
-    <include relativeToChangelogFile="true" file="notifications.xml"/>
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <include relativeToChangelogFile="true" file="reflex_rule.xml" />
+  <include relativeToChangelogFile="true" file="desynchronous_objects.xml" />
+  <include relativeToChangelogFile="true" file="pathology.xml" />
+  <include relativeToChangelogFile="true" file="calculated_value.xml" />
+  <include relativeToChangelogFile="true" file="immunohistochemistry.xml" />
+  <include relativeToChangelogFile="true" file="cytology.xml" />
+  <include relativeToChangelogFile="true" file="sample_types.xml" />
+  <include relativeToChangelogFile="true" file="add_antimicrobial_resistance_test_column.xml" />
+  <include relativeToChangelogFile="true" file="lab_number_alphanum_update.xml" />
+  <include relativeToChangelogFile="true" file="menu.xml" />
+  <include relativeToChangelogFile="true" file="panel_item_fix.xml" />
+  <include relativeToChangelogFile="true" file="update_default_setting.xml" />
+  <include relativeToChangelogFile="true" file="rename_test_for_csv_export.xml" />
+  <include relativeToChangelogFile="true" file="loinc.xml" />
+  <include relativeToChangelogFile="true" file="notifications.xml" />
+  <include relativeToChangelogFile="true" file="sample_program_audit_trail.xml" />
+  <include relativeToChangelogFile="true" file="notification_subscriptions.xml" />
+  <include relativeToChangelogFile="true" file="method.xml" />
+  <include relativeToChangelogFile="true" file="landing_page_config.xml" />
+  <include relativeToChangelogFile="true" file="enable_client_registry_search.xml" />
 </databaseChangeLog>

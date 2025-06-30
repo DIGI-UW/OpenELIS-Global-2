@@ -26,7 +26,7 @@
             <column name="manually_changed" length="1" not-null="true" />
         </property>
         <property name="questionnaireUUID" type="java.util.UUID">
-            <column name="questionnaire_fhir_uuid"/>
+            <column name="questionnaire_fhir_uuid" />
         </property>
         <many-to-one name="testSection"
             class="org.openelisglobal.test.valueholder.TestSection"

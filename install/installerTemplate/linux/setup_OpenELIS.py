@@ -82,6 +82,7 @@ DOCKER_OE_CONTAINER_NAME = "openelisglobal-webapp"
 DOCKER_FHIR_API_CONTAINER_NAME = "external-fhir-api"
 DOCKER_NGINX_CONTAINER_NAME = "openelisglobal-proxy"
 DOCKER_FRONTEND_CONTAINER_NAME = "openelisglobal-frontend"
+DOCKER_ASTM_BRIDGE_CONTAINER_NAME = "astm-http-bridge"
 DOCKER_AUTOHEAL_CONTAINER_NAME = "autoheal-oe"
 DOCKER_DB_CONTAINER_NAME = "openelisglobal-database" 
 DOCKER_DB_BACKUPS_DIR = "/backups/"  # path in docker container
@@ -870,6 +871,11 @@ def uninstall_docker_images():
     log("removing frontend image...", PRINT_TO_CONSOLE)
     cmd = 'docker rm $(docker stop $(docker ps -a -q --filter="name=' + DOCKER_FRONTEND_CONTAINER_NAME + '" --format="{{.ID}}"))'
     os.system(cmd)
+    
+    if ASTM_PROXY:
+        log("removing astm-bridge image...", PRINT_TO_CONSOLE)
+        cmd = 'docker rm $(docker stop $(docker ps -a -q --filter="name=' + DOCKER_ASTM_BRIDGE_CONTAINER_NAME + '" --format="{{.ID}}"))'
+        os.system(cmd)
     
     log("removing autoheal image...", PRINT_TO_CONSOLE)
     cmd = 'docker rm $(docker stop $(docker ps -a -q --filter="name=' + DOCKER_AUTOHEAL_CONTAINER_NAME + '" --format="{{.ID}}"))'

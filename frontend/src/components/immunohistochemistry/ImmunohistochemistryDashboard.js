@@ -61,7 +61,7 @@ function ImmunohistochemistryDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(100);
 
   function formatDateToDDMMYYYY(date) {
     var day = date.getDate();
@@ -439,7 +439,7 @@ function ImmunohistochemistryDashboard() {
               onChange={handlePageChange}
               page={page}
               pageSize={pageSize}
-              pageSizes={[10, 20, 30]}
+              pageSizes={[10, 20, 30, 50, 100]}
               totalItems={immunohistochemistryEntries.length}
               forwardText={intl.formatMessage({ id: "pagination.forward" })}
               backwardText={intl.formatMessage({ id: "pagination.backward" })}

@@ -72,4 +72,9 @@ public class UserRoleServiceImpl extends AuditableBaseObjectServiceImpl<UserRole
     public List<UserLabUnitRoles> getAllUserLabUnitRoles() {
         return userLabUnitRolesDAO.getAll();
     }
+
+    @Override
+    public List<String> getUserIdsForRole(String roleName) {
+        return baseObjectDAO.getUserIdsForRole(roleName);
+    }
 }

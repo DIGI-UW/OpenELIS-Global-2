@@ -13,6 +13,19 @@
  */
 package org.openelisglobal.common.daoimpl;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaBuilder.In;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.From;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Order;
+import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,19 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
-import javax.persistence.TypedQuery;
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaBuilder.In;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.From;
-import javax.persistence.criteria.Join;
-import javax.persistence.criteria.JoinType;
-import javax.persistence.criteria.Order;
-import javax.persistence.criteria.Path;
-import javax.persistence.criteria.Predicate;
-import javax.persistence.criteria.Root;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.persister.entity.AbstractEntityPersister;
@@ -40,9 +40,10 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,6 +52,7 @@ import org.springframework.transaction.annotation.Transactional;
  * @param <T>
  */
 @Component
+@DependsOn({ "defaultConfigurationProperties", "springContext" })
 @Transactional
 public abstract class BaseDAOImpl<T extends BaseObject<PK>, PK extends Serializable>
         implements BaseDAO<T, PK>, IActionConstants {
@@ -58,8 +60,6 @@ public abstract class BaseDAOImpl<T extends BaseObject<PK>, PK extends Serializa
     private enum DBComparison {
         EQ, LIKE, IN
     }
-
-    protected static final int DEFAULT_PAGE_SIZE = SystemConfiguration.getInstance().getDefaultPageSize();
 
     private final Class<T> classType;
 
@@ -399,7 +399,9 @@ public abstract class BaseDAOImpl<T extends BaseObject<PK>, PK extends Serializa
 
             TypedQuery<T> typedQuery = entityManager.createQuery(criteriaQuery);
             typedQuery.setFirstResult(startingRecNo - 1);
-            typedQuery.setMaxResults(DEFAULT_PAGE_SIZE + 1);
+            typedQuery.setMaxResults(
+                    Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
+                            + 1);
             return typedQuery.getResultList();
 
             // Map<String, String> aliases = new HashMap<>();
@@ -412,7 +414,8 @@ public abstract class BaseDAOImpl<T extends BaseObject<PK>, PK extends Serializa
             // addOrder(criteria, orderProperty, descending, aliases);
             // }
             // criteria.setFirstResult(startingRecNo - 1);
-            // criteria.setMaxResults(DEFAULT_PAGE_SIZE + 1);
+            // criteria.setMaxResults(Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
+            // + 1);
             // return criteria.list();
         } catch (HibernateException e) {
             LogEvent.logError(e);
@@ -478,7 +481,9 @@ public abstract class BaseDAOImpl<T extends BaseObject<PK>, PK extends Serializa
 
             TypedQuery<T> typedQuery = entityManager.createQuery(criteriaQuery);
             typedQuery.setFirstResult(startingRecNo - 1);
-            typedQuery.setMaxResults(DEFAULT_PAGE_SIZE + 1);
+            typedQuery.setMaxResults(
+                    Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
+                            + 1);
             return typedQuery.getResultList();
 
             // Map<String, String> aliases = new HashMap<>();
@@ -492,7 +497,8 @@ public abstract class BaseDAOImpl<T extends BaseObject<PK>, PK extends Serializa
             // addOrder(criteria, orderProperty, descending, aliases);
             // }
             // criteria.setFirstResult(startingRecNo - 1);
-            // criteria.setMaxResults(DEFAULT_PAGE_SIZE + 1);
+            // criteria.setMaxResults(Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
+            // + 1);
             // return criteria.list();
         } catch (HibernateException e) {
             LogEvent.logError(e);

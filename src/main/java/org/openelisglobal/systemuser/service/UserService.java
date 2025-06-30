@@ -23,7 +23,7 @@ public interface UserService {
 
     List<UserLabUnitRoles> getAllUserLabUnitRoles();
 
-    List<IdValuePair> getUserTestSections(String systemUserId, String userRole);
+    List<IdValuePair> getUserTestSections(String systemUserId, String roleId);
 
     List<IdValuePair> getUserSampleTypes(String systemUserId, String userRole);
 

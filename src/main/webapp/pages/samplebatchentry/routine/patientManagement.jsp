@@ -4,13 +4,14 @@
                  org.openelisglobal.common.formfields.FormFields.Field,
                  org.openelisglobal.patient.action.bean.PatientManagementInfo,
                  org.openelisglobal.common.util.*, org.openelisglobal.internationalization.MessageUtil" %>
+				 <%@page import="org.openelisglobal.common.util.DateUtil"%>
 
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
 <script type="text/javascript" src="scripts/ajaxCalls.js?"></script>
 <script type="text/javascript" src="scripts/utilities.js?" ></script>
@@ -291,7 +292,7 @@ function /*void*/ checkValidAgeDate(dateElement) {
 function /*void*/ updatePatientAge(DOB) {
 	var date = String(DOB.value);
 
-	var datePattern = '<%=SystemConfiguration.getInstance().getPatternForDateLocale() %>';
+	var datePattern = '<%=DateUtil.getDateFormat()%>';
 	var splitPattern = datePattern.split("/");
 	var dayIndex = 0;
 	var monthIndex = 1;
@@ -421,7 +422,7 @@ function  /*void*/ pt_updateDOB( ageYears, ageMonths, ageDays )
 		}
 		year = date.getFullYear();
 
-		var datePattern = '<%=SystemConfiguration.getInstance().getPatternForDateLocale() %>';
+		var datePattern = '<%=DateUtil.getDateFormat() %>';
 		var splitPattern = datePattern.split("/");
 
 		var DOB = "";

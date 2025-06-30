@@ -1,17 +1,19 @@
 package org.openelisglobal.program.valueholder.immunohistochemistry;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.JoinColumn;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
-import javax.persistence.Table;
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
+import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -74,6 +76,14 @@ public class ImmunohistochemistrySample extends ProgramSample {
         return technician;
     }
 
+    public String getTechnician_Audit() {
+        if (technician == null) {
+            return null;
+        } else {
+            return technician.getDisplayName();
+        }
+    }
+
     public void setTechnician(SystemUser technician) {
         this.technician = technician;
     }
@@ -82,12 +92,31 @@ public class ImmunohistochemistrySample extends ProgramSample {
         return pathologist;
     }
 
+    public String getPathologist_Audit() {
+        if (pathologist == null) {
+            return null;
+        } else {
+            return pathologist.getDisplayName();
+        }
+    }
+
     public void setPathologist(SystemUser pathologist) {
         this.pathologist = pathologist;
     }
 
     public List<ImmunohistochemistrySampleReport> getReports() {
         return reports;
+    }
+
+    public String getReports_Audit() {
+        if (reports == null) {
+            return null;
+        } else {
+            return StringUtils.join(reports.stream()
+                    .map(e -> "File Type: " + e.getFileType() + ", Report Type: "
+                            + (e.getReportType() == null ? "" : e.getReportType().getDisplay()))
+                    .collect(Collectors.toList()), "; ");
+        }
     }
 
     public void setReports(List<ImmunohistochemistrySampleReport> reports) {

@@ -14,16 +14,15 @@
           		org.openelisglobal.common.util.IdValuePair,
           		org.openelisglobal.internationalization.MessageUtil,
           		org.openelisglobal.common.util.Versioning,
-          		org.openelisglobal.common.util.SystemConfiguration,
           		org.openelisglobal.testconfiguration.action.SampleTypePanel" %>
 
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
+<%@ taglib uri="jakarta.tags.functions" prefix="fn" %>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
 <script>
     var normalConfirmAlert = '<spring:message code="configuration.selectList.confirmChange" />';

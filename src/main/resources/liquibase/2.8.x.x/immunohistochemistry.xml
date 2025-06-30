@@ -2444,5 +2444,32 @@
             <column name="name" value="ihc_breast_cancer_report_molecular_subtype" />
         </insert>
   </changeSet>
-
+  <changeSet author="mozzymutesa" id="8">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">select count(*) from clinlims.dictionary where dict_entry = 'Strong';
+        </sqlCheck>
+    </preConditions>
+    <comment>add default IHC Intensity Options in Dictionary</comment>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Strong" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'ihc_breast_cancer_report_intensity' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Weak" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'ihc_breast_cancer_report_intensity' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="No" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'ihc_breast_cancer_report_intensity' limit 1)" />
+        </insert>
+     </changeSet>
 </databaseChangeLog>

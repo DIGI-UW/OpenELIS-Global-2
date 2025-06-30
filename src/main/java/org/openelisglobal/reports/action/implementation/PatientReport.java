@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
+import jakarta.annotation.PostConstruct;
 import java.sql.Date;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -25,9 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.annotation.PostConstruct;
-import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.service.PersonAddressService;
@@ -144,6 +144,7 @@ public abstract class PatientReport extends Report {
     protected String completionDate;
     protected Sample currentSample;
     protected Patient currentPatient;
+    protected Boolean onlyResultsForReportBySite = false;
 
     protected static final NoteType[] FILTER = { NoteType.EXTERNAL, NoteType.REJECTION_REASON,
             NoteType.NON_CONFORMITY };
@@ -249,6 +250,7 @@ public abstract class PatientReport extends Report {
             }
             if (!GenericValidator.isBlankOrNull(form.getUpperDateRange())
                     && !GenericValidator.isBlankOrNull(form.getLowerDateRange())) {
+                onlyResultsForReportBySite = form.isOnlyResults();
                 reportSampleList = findReportSamplesForSite(form.getReferringSiteId(),
                         form.getReferringSiteDepartmentId(), form.isOnlyResults(), form.getDateType(),
                         form.getLowerDateRange(), form.getUpperDateRange());
@@ -313,14 +315,8 @@ public abstract class PatientReport extends Report {
 
         if (onlyResults) {
             Set<Integer> analysisStatusIds = new HashSet<>();
-            analysisStatusIds.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected)));
             analysisStatusIds.add(Integer
                     .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)));
-            analysisStatusIds.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
-            analysisStatusIds.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
             sampleList = sampleList.stream().filter(
                     e -> (analysisService.getAnalysesBySampleIdAndStatusId(e.getId(), analysisStatusIds).size() > 0))
                     .collect(Collectors.toList());
@@ -894,7 +890,7 @@ public abstract class PatientReport extends Report {
             testName = getTestName(hasParent);
             // Not sure if it is a bug in escapeHtml but the wrong markup is
             // generated
-            testName = StringEscapeUtils.escapeHtml(testName).replace("&mu", "&micro");
+            testName = StringEscapeUtils.escapeHtml4(testName).replace("&mu", "&micro");
         }
 
         if (FormFields.getInstance().useField(Field.SampleEntryUseReceptionHour)) {

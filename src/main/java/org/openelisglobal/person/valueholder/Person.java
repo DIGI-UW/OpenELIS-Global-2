@@ -13,10 +13,11 @@
  */
 package org.openelisglobal.person.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Pattern;
 import java.util.HashSet;
 import java.util.Set;
-import javax.validation.constraints.Email;
-import javax.validation.constraints.Pattern;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.AssociationInverseSide;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.ObjectPath;
@@ -70,6 +71,7 @@ public class Person extends BaseObject<String> {
     @Email
     private String email;
 
+    @JsonIgnore
     @AssociationInverseSide(inversePath = @ObjectPath(@PropertyValue(propertyName = "person")))
     private Set<Patient> patients = new HashSet<>(0);
 

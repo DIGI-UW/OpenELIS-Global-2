@@ -1,6 +1,10 @@
 package org.openelisglobal.reports.controller.rest;
 
-import com.lowagie.text.DocumentException;
+import com.itextpdf.text.DocumentException;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -9,10 +13,6 @@ import java.net.URLDecoder;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.HashMap;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import net.sf.jasperreports.engine.JRException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;

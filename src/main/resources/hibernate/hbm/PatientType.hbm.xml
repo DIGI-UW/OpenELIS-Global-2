@@ -24,10 +24,10 @@
             <column name="lastupdated" length="4" />
         </property>
     </class>
-<!-- 	<query name="patienttype.getNext"> -->
-<!-- 		from PatientType g order by g.type -->
-<!-- 	</query> -->
-<!-- 	<query name="patienttype.getPrevious"> -->
-<!-- 		from PatientType g order by g.type desc -->
-<!-- 	</query> -->
+    <!-- <query name="patienttype.getNext"> -->
+    <!-- from PatientType g order by g.type -->
+    <!-- </query> -->
+    <!-- <query name="patienttype.getPrevious"> -->
+    <!-- from PatientType g order by g.type desc -->
+    <!-- </query> -->
 </hibernate-mapping>

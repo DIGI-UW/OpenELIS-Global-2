@@ -1,5 +1,7 @@
 package org.openelisglobal.test.service;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -8,8 +10,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Vector;
-import javax.annotation.PostConstruct;
-import javax.servlet.http.HttpServletRequest;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -17,7 +18,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.LocaleChangeListener;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.internationalization.GlobalLocaleResolver;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.method.valueholder.Method;
@@ -33,6 +34,7 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testreflex.action.util.TestReflexUtil;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -43,6 +45,7 @@ import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.LocaleResolver;
 
 @Service
 @DependsOn({ "springContext" })
@@ -74,7 +77,10 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
 
     @PostConstruct
     private void initialize() {
-        SystemConfiguration.getInstance().addLocalChangeListener(this);
+        LocaleResolver localeResolver = SpringContext.getBean(LocaleResolver.class);
+        if (localeResolver instanceof GlobalLocaleResolver) {
+            ((GlobalLocaleResolver) localeResolver).addLocalChangeListener(this);
+        }
     }
 
     private synchronized void initializeGlobalVariables() {
@@ -741,5 +747,11 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     @Override
     public List<Panel> getTbPanelsByMethod(String method) {
         return getBaseObjectDAO().getTbPanelsByMethod(method);
+    }
+
+    @Override
+    public List<Test> getTriggeringAntimicrobialResistanceTests() {
+        return getAllMatching("antimicrobialResistance", Boolean.TRUE).stream()
+                .filter(e -> TestReflexUtil.isTriggeringReflexTestId(e.getId())).collect(Collectors.toList());
     }
 }

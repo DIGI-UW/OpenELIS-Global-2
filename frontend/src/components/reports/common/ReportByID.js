@@ -84,7 +84,12 @@ function ReportByID(props) {
         <Grid fullWidth={true}>
           <Column lg={16}>
             <Section>
-              <Button type="button" onClick={handleSubmit}>
+              <Button
+                data-cy="printableVersion"
+                type="button"
+                onClick={handleSubmit}
+                disabled={!nationalId}
+              >
                 <FormattedMessage id="label.button.generatePrintableVersion" />
               </Button>
             </Section>

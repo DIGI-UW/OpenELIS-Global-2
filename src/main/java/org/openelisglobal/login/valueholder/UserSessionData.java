@@ -28,6 +28,7 @@ public class UserSessionData implements Serializable {
     private int systemUserId;
     private String loginName;
     private boolean isAdmin;
+    private int loginLabUnit;
 
     public void setElisUserName(String elisUserName) {
         this.elisUserName = elisUserName;
@@ -67,5 +68,13 @@ public class UserSessionData implements Serializable {
 
     public void setAdmin(boolean isAdmin) {
         this.isAdmin = isAdmin;
+    }
+
+    public int getLoginLabUnit() {
+        return loginLabUnit;
+    }
+
+    public void setLoginLabUnit(int loginLabUnit) {
+        this.loginLabUnit = loginLabUnit;
     }
 }

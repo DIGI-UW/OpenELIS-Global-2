@@ -14,21 +14,45 @@ class OrderEntityPage {
   }
 
   clickNextButton() {
-    cy.getElement(".cds--btn.cds--btn--primary.forwardButton").click();
+    cy.contains("button", "Next").click();
+  }
+
+  selectCytology() {
+    cy.get("#additionalQuestionsSelect").select("Cytology");
   }
 
   selectSampleTypeOption(sampleType) {
     cy.getElement("select#sampleId_0").select(sampleType);
   }
+
+  collectionDate(value) {
+    cy.get("input#collectionDate_0").type(value);
+  }
+
+  requestDate(value) {
+    cy.get("input#order_requestDate").type(value);
+  }
+  receivedDate(value) {
+    cy.get("input#order_receivedDate").type(value);
+  }
   checkPanelCheckBoxField() {
-    cy.get(
-      ".testPanels .cds--checkbox-wrapper:nth-child(5) .cds--checkbox",
-    ).check({ force: true });
+    cy.contains("span", "Bilan Biochimique").click();
+    cy.contains("span", "Serologie VIH").click();
+  }
+
+  referTest() {
+    cy.contains("span", "Refer test to a reference lab").click();
+  }
+
+  selectInstitute() {
+    cy.get("#referredInstituteId_0_1").select("CEDRES");
+  }
+
+  selectReferralReason() {
+    cy.get("#referralReasonId_0_1").select("Test not performed");
   }
   generateLabOrderNumber() {
-    cy.getElement(
-      ":nth-child(2) > :nth-child(1) > :nth-child(2) > .cds--link",
-    ).click();
+    cy.get("[data-cy='generate-labNumber']").click();
   }
 
   validateAcessionNumber(order) {
@@ -39,21 +63,31 @@ class OrderEntityPage {
 
     cy.wait("@accessionNoValidation").then((interception) => {
       const responseBody = interception.response.body;
+
       console.log(responseBody);
+
       expect(responseBody.status).to.be.false;
     });
   }
   enterSiteName(siteName) {
-    cy.enterText("input#siteName", siteName);
+    cy.get("input#siteName").clear().type(siteName);
+    cy.contains(".suggestion-active", siteName).should("be.visible").click();
   }
-  enterRequesterLastAndFirstName(requesterFirstName, requesterLastName) {
-    cy.enterText("input#requesterFirstName", requesterFirstName);
-    cy.enterText("input#requesterLastName", requesterLastName);
+  enterRequesterLastAndFirstName(
+    fullName,
+    requesterFirstName,
+    requesterLastName,
+  ) {
+    cy.get("#requesterId").clear().type(fullName);
+    cy.contains(".suggestion-active", fullName).click();
+    cy.get("input#requesterFirstName").clear().type(requesterFirstName);
+    cy.get("input#requesterLastName").clear().type(requesterLastName);
+  }
+  rememberSiteAndRequester() {
+    cy.contains("span", "Remember site and requester").click();
   }
   clickSubmitOrderButton() {
-    cy.getElement(
-      ".navigationButtonsLayout [type='button']:nth-of-type(2)",
-    ).click();
+    cy.contains("button", "Submit").click();
   }
 }
 

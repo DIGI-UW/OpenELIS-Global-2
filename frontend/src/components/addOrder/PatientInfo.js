@@ -68,9 +68,10 @@ const PatientInfo = (props) => {
         "guid=" +
         orderFormValues.patientProperties.guid;
       getFromOpenElisServer(searchEndPoint, (searchPatients) => {
-        if (searchPatients.length > 0) {
+        if (searchPatients.patientSearchResults.length > 0) {
           const searchEndPoint =
-            "/rest/patient-details?patientID=" + searchPatients[0].patientID;
+            "/rest/patient-details?patientID=" +
+            searchPatients.patientSearchResults[0].patientID;
           getFromOpenElisServer(searchEndPoint, (patientDetails) => {
             getSelectedPatient(patientDetails);
             handleNewPatientTab();

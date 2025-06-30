@@ -2,9 +2,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
 
 <%@ page import="org.openelisglobal.common.action.IActionConstants,
@@ -115,7 +115,7 @@ jQuery(document).ready(function() {
 			<input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/> 
 			</div></form>
 			<c:if test="${sessionScope.samlSession}">
-				<spring:url value="/logout?useSAML=true" var="logoutSAMLUrl"/>
+				<spring:url value="/Logout?useSAML=true" var="logoutSAMLUrl"/>
 				</br>
 				<form id="logout-form-saml" method="post" action="${logoutSAMLUrl}">
 				<input type="submit" value="<spring:message code="homePage.menu.logOut.saml"/>" class="btn-link"/>

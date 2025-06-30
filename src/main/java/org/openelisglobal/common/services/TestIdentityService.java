@@ -13,9 +13,10 @@
  */
 package org.openelisglobal.common.services;
 
+import jakarta.annotation.PostConstruct;
 import java.util.List;
 import java.util.Locale;
-import javax.annotation.PostConstruct;
+import java.util.Objects;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.test.service.TestService;
@@ -125,5 +126,10 @@ public class TestIdentityService implements ITestIdentityService {
     public boolean doesActiveTestExistForLoinc(String loincCode) {
         return testService.getActiveTestsByLoinc(loincCode) != null
                 && testService.getActiveTestsByLoinc(loincCode).size() > 0;
+    }
+
+    @Override
+    public boolean doesActivePanelExistForLoinc(String loincCode) {
+        return panelService.getAllActivePanels().stream().anyMatch(e -> Objects.equals(e.getLoinc(), loincCode));
     }
 }

@@ -7,8 +7,10 @@ import {
   Notification,
   Search,
   UserAvatarFilledAlt,
+  LocationFilled,
 } from "@carbon/icons-react";
 import { Select, SelectItem } from "@carbon/react";
+import HelpMenu from "./HelpMenu";
 import React, {
   createRef,
   useContext,
@@ -40,7 +42,7 @@ import {
 } from "@carbon/react";
 import SlideOverNotifications from "../notifications/SlideOverNotifications";
 import { getFromOpenElisServer, putToOpenElisServer } from "../utils/Utils";
-
+import SearchBar from "./search/searchBar";
 function OEHeader(props) {
   const { configurationProperties } = useContext(ConfigurationContext);
   const { userSessionDetails, logout } = useContext(UserSessionDetailsContext);
@@ -58,22 +60,26 @@ function OEHeader(props) {
     menu_billing: { menu: {}, childMenus: [] },
     menu_nonconformity: { menu: {}, childMenus: [] },
   });
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showRead, setShowRead] = useState(false);
   const [unReadNotifications, setUnReadNotifications] = useState([]);
   const [readNotifications, setReadNotifications] = useState([]);
-
+  const [searchBar, setSearchBar] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   scrollRef.current = window.scrollY;
   useLayoutEffect(() => {
     window.scrollTo(0, scrollRef.current);
   }, []);
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/menu", (res) => {
-      handleMenuItems("menu", res);
-    });
-  }, []);
+    userSessionDetails.authenticated
+      ? getFromOpenElisServer("/rest/menu", (res) => {
+          handleMenuItems("menu", res);
+        })
+      : console.log("User not authenticated, not getting menu");
+  }, [userSessionDetails.authenticated]);
 
   const panelSwitchLabel = () => {
     return userSessionDetails.authenticated ? "User" : "Lang";
@@ -87,12 +93,11 @@ function OEHeader(props) {
     }
   };
 
-  const toggleSlideOver = () => {
-    setIsOpen(!isOpen);
-  };
-
-  const clickPanelSwitch = () => {
-    setSwitchCollapsed(!switchCollapsed);
+  const handlePanelToggle = (panel) => {
+    setSearchBar(panel === "search");
+    setNotificationsOpen(panel === "notifications");
+    setSwitchCollapsed(panel !== "user");
+    setHelpOpen(panel === "help");
   };
 
   const getNotifications = async () => {
@@ -101,7 +106,7 @@ function OEHeader(props) {
       getFromOpenElisServer("/rest/notifications", (data) => {
         setReadNotifications([]);
         setUnReadNotifications([]);
-        data.forEach((element) => {
+        data?.forEach((element) => {
           if (element.readAt) {
             setReadNotifications((prev) => [...prev, element]);
           } else {
@@ -177,18 +182,19 @@ function OEHeader(props) {
       </>
     );
   };
-
   const generateMenuItems = (menuItem, index, level, path) => {
     if (menuItem.menu.isActive) {
       if (level === 0 && menuItem.childMenus.length > 0) {
         return (
-          <React.Fragment key={path}>
+          <span id={menuItem.menu.elementId} key={path}>
             <span
+              id={menuItem.menu.elementId + "_dropdown"}
               onClick={(e) => {
                 setMenuItemExpanded(e, menuItem, path);
               }}
             >
               <SideNavMenu
+                className="top-level-menu-item"
                 aria-label={intl.formatMessage({
                   id: menuItem.menu.displayKey,
                 })}
@@ -197,34 +203,56 @@ function OEHeader(props) {
                 })}
                 key={"menu_" + index + "_" + level}
                 defaultExpanded={menuItem.expanded}
+                // onClick={(e) => { // not supported yet, but if it becomes so we can simplify the functionality here by having this here and not have a span around it
+                //   setMenuItemExpanded(e, menuItem, path);
+                // }}
               >
-                {menuItem.childMenus.map((childMenuItem, index) => {
-                  return generateMenuItems(
-                    childMenuItem,
-                    index,
-                    level + 1,
-                    path + ".childMenus[" + index + "]",
-                  );
-                })}
+                <span
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                >
+                  {menuItem.childMenus.map((childMenuItem, index) => {
+                    return generateMenuItems(
+                      childMenuItem,
+                      index,
+                      level + 1,
+                      path + ".childMenus[" + index + "]",
+                    );
+                  })}
+                </span>
               </SideNavMenu>
             </span>
-          </React.Fragment>
+          </span>
         );
       } else if (level === 0) {
         return (
-          <React.Fragment key={path}>
+          <span key={path} id={menuItem.menu.elementId}>
             <SideNavMenuItem
+              id={menuItem.menu.elementId + "_nav"}
               href={menuItem.menu.actionURL}
               target={menuItem.menu.openInNewWindow ? "_blank" : ""}
+              className="top-level-menu-item"
             >
               {renderSideNavMenuItemLabel(menuItem, level)}
             </SideNavMenuItem>
-          </React.Fragment>
+          </span>
         );
       } else {
         return (
-          <React.Fragment key={path}>
-            <SideNavMenuItem className="reduced-padding-nav-menu-item">
+          <span
+            data-cy={`${menuItem.menu.elementId.replace(/[^\w\s]/gi, "_")}`}
+            id={menuItem.menu.elementId}
+            key={path}
+          >
+            <SideNavMenuItem
+              className="reduced-padding-nav-menu-item"
+              href={menuItem.menu.actionURL}
+              target={menuItem.menu.openInNewWindow ? "_blank" : ""}
+              style={{ width: "100%" }}
+              rel="noreferrer"
+            >
               <span style={{ display: "flex", width: "100%" }}>
                 {!menuItem.menu.actionURL &&
                   !hasActiveChildMenu(menuItem) &&
@@ -254,7 +282,7 @@ function OEHeader(props) {
                 </span>
               );
             })}
-          </React.Fragment>
+          </span>
         );
       }
     } else {
@@ -278,8 +306,10 @@ function OEHeader(props) {
     const marginValue = (level - 1) * 0.5 + "rem";
     return (
       <button
+        data-cy="single-sidenav-button"
         className={"custom-sidenav-button"}
-        style={{ marginLeft: marginValue }}
+        style={{ width: "100%", marginLeft: marginValue }}
+        id={menuItem.menu.elementId + "_nav"}
         onClick={() => {
           if (menuItem.menu.openInNewWindow) {
             window.open(menuItem.menu.actionURL);
@@ -297,6 +327,8 @@ function OEHeader(props) {
     const marginValue = (level - 1) * 0.5 + "rem";
     return (
       <button
+        data-cy="sidenav-button"
+        id={menuItem.menu.displayKey + "_dropdown"}
         className={"custom-sidenav-button"}
         style={{ marginLeft: marginValue }}
         onClick={(e) => {
@@ -314,6 +346,7 @@ function OEHeader(props) {
     return (
       <>
         <button
+          id={menuItem.menu.elementId + "_nav"}
           className={
             menuItem.menu.actionURL
               ? "custom-sidenav-button"
@@ -332,6 +365,8 @@ function OEHeader(props) {
         </button>
         {menuItem.childMenus.length > 0 && (
           <button
+            data-cy={`sidenav-button-${menuItem.menu.elementId}`}
+            id={menuItem.menu.displayKey + "_dropdown"}
             className="custom-sidenav-button"
             onClick={(e) => {
               onClickSideNavItem(e, menuItem, path);
@@ -400,6 +435,7 @@ function OEHeader(props) {
                 <Header id="mainHeader" className="mainHeader" aria-label="">
                   {userSessionDetails.authenticated && (
                     <HeaderMenuButton
+                      data-cy="menuButton"
                       aria-label={
                         isSideNavExpanded ? "Close menu" : "Open menu"
                       }
@@ -421,17 +457,28 @@ function OEHeader(props) {
                   <HeaderGlobalBar>
                     {userSessionDetails.authenticated && (
                       <>
+                        {searchBar && <SearchBar />}
                         <HeaderGlobalAction
+                          id="search-Icon"
                           aria-label="Search"
-                          onClick={() => {
-                            /*TODO add search functionality*/
-                          }}
+                          onClick={() =>
+                            handlePanelToggle(searchBar ? "" : "search")
+                          }
                         >
-                          <Search size={20} />
+                          {!searchBar ? (
+                            <Search size={20} />
+                          ) : (
+                            <Close size={20} />
+                          )}
                         </HeaderGlobalAction>
                         <HeaderGlobalAction
+                          id="notification-Icon"
                           aria-label="Notifications"
-                          onClick={toggleSlideOver}
+                          onClick={() =>
+                            handlePanelToggle(
+                              notificationsOpen ? "" : "notifications",
+                            )
+                          }
                         >
                           <div
                             style={{
@@ -439,29 +486,33 @@ function OEHeader(props) {
                               display: "inline-block",
                             }}
                           >
-                            <Notification size={20} />
+                            {!notificationsOpen ? (
+                              <Notification size={20} />
+                            ) : (
+                              <Close size={20} />
+                            )}
                             {unReadNotifications?.length > 0 && (
                               <span
                                 style={{
                                   position: "absolute",
                                   top: "-5px",
                                   right: "-5px",
-                                  backgroundColor: "#3A6B8D",
+                                  backgroundColor: "red",
                                   color: "white",
                                   borderRadius: "50%",
-                                  width: "16px",
-                                  height: "16px",
+                                  width: "22px",
+                                  height: "22px",
                                   display: "flex",
                                   alignItems: "center",
                                   justifyContent: "center",
-                                  fontSize: "10px",
+                                  fontSize: "12px",
                                   animation: "pulse 5s infinite",
                                   opacity: 1,
                                   transition:
                                     "background-color 0.3s ease-in-out",
                                 }}
                               >
-                                {unReadNotifications?.length}
+                                {unReadNotifications.length}
                               </span>
                             )}
                           </div>
@@ -469,12 +520,19 @@ function OEHeader(props) {
                       </>
                     )}
                     <HeaderGlobalAction
+                      id="user-Icon"
                       aria-label={panelSwitchLabel()}
-                      onClick={clickPanelSwitch}
+                      onClick={() =>
+                        handlePanelToggle(switchCollapsed ? "user" : "")
+                      }
                       ref={userSwitchRef}
                     >
                       {panelSwitchIcon()}
                     </HeaderGlobalAction>
+                    <HelpMenu
+                      helpOpen={helpOpen}
+                      handlePanelToggle={handlePanelToggle}
+                    />
                   </HeaderGlobalBar>
                   <HeaderPanel
                     aria-label="Header Panel"
@@ -493,14 +551,21 @@ function OEHeader(props) {
                             {userSessionDetails.firstName}{" "}
                             {userSessionDetails.lastName}
                           </li>
+                          {userSessionDetails.loginLabUnit && (
+                            <li className="userDetails">
+                              <LocationFilled
+                                size={18}
+                                style={{ marginRight: "4px" }}
+                              />
+                              {userSessionDetails.loginLabUnit}{" "}
+                            </li>
+                          )}
                           <li
+                            data-cy="logOut"
                             className="userDetails clickableUserDetails"
                             onClick={logout}
                           >
-                            <Logout
-                              id="sign-out"
-                              style={{ marginRight: "3px" }}
-                            />
+                            <Logout style={{ marginRight: "3px" }} />
                             <FormattedMessage id="header.label.logout" />
                           </li>
                         </>
@@ -520,7 +585,9 @@ function OEHeader(props) {
                           value={props.intl.locale}
                         >
                           <SelectItem text="English" value="en" />
-                          <SelectItem text="French" value="fr" />
+                          <SelectItem text="Français" value="fr" />
+                          <SelectItem text="Español" value="es" />
+                          <SelectItem text="Indonesia" value="id" />
                         </Select>
                       </li>
                       <li className="userDetails">
@@ -541,15 +608,12 @@ function OEHeader(props) {
                       >
                         <SideNavItems>
                           {menus["menu"].map((childMenuItem, index) => {
-                            // ignore the Home Menu in the new UI
-                            if (childMenuItem.menu.elementId != "menu_home") {
-                              return generateMenuItems(
-                                childMenuItem,
-                                index,
-                                0,
-                                "$.menu[" + index + "]",
-                              );
-                            }
+                            return generateMenuItems(
+                              childMenuItem,
+                              index,
+                              0,
+                              "$.menu[" + index + "]",
+                            );
                           })}
                         </SideNavItems>
                       </SideNav>
@@ -560,8 +624,8 @@ function OEHeader(props) {
             />
             <div style={{ flex: 1 }}>
               <SlideOver
-                open={isOpen}
-                setOpen={setIsOpen}
+                open={notificationsOpen}
+                setOpen={(open) => setNotificationsOpen(open)}
                 slideFrom="right"
                 title="Notifications"
               >

@@ -36,4 +36,8 @@ public class ProgramSampleDAOImpl extends BaseDAOImpl<ProgramSample, Integer> im
         ProgramSample programme = (ProgramSample) query.uniqueResult();
         return programme;
     }
+
+    public String getTableName() {
+        return "program_sample";
+    }
 }

@@ -1,21 +1,22 @@
 package org.openelisglobal.provider.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-import javax.validation.constraints.Pattern;
 import org.openelisglobal.common.controller.BaseMenuController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.form.AdminOptionMenuForm;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.provider.form.ProviderMenuForm;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -53,7 +54,7 @@ public class ProviderMenuRestController extends BaseMenuController<Provider> {
         binder.setAllowedFields(ALLOWED_FIELDS);
     }
 
-    @GetMapping(value = { "/ProviderMenu", "/SearchProviderMenu" })
+    @GetMapping(value = { "/ProviderMenu", "/SearchProviderMenu" }, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ProviderMenuForm> showProviderMenu(HttpServletRequest request)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
         ProviderMenuForm form = new ProviderMenuForm();
@@ -106,8 +107,10 @@ public class ProviderMenuRestController extends BaseMenuController<Provider> {
         request.setAttribute(MENU_FROM_RECORD, String.valueOf(startingRecNo));
         int numOfRecs = 0;
         if (providers != null) {
-            if (providers.size() > SystemConfiguration.getInstance().getDefaultPageSize()) {
-                numOfRecs = SystemConfiguration.getInstance().getDefaultPageSize();
+            if (providers.size() > Integer
+                    .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))) {
+                numOfRecs = Integer
+                        .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
             } else {
                 numOfRecs = providers.size();
             }
@@ -151,13 +154,13 @@ public class ProviderMenuRestController extends BaseMenuController<Provider> {
 
     @Override
     protected int getPageSize() {
-        return SystemConfiguration.getInstance().getDefaultPageSize();
+        return Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
     }
 
     // gnr: Deactivate not Delete
-    @PostMapping(value = "/DeleteProvider")
+    @PostMapping(value = "/DeleteProvider", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> showDeleteProvider(HttpServletRequest request,
-            @RequestParam(value = ID, required = false) @Pattern(regexp = "[a-zA-Z0-9 -]*") String id,
+            @RequestParam(value = ID, required = false) @Pattern(regexp = "[a-zA-Z0-9, -]*") String id,
             @Valid @ModelAttribute("form") ProviderMenuForm form, BindingResult result)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
         if (result.hasErrors()) {

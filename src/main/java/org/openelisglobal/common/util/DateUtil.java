@@ -71,13 +71,14 @@ public class DateUtil {
     }
 
     public static java.sql.Date convertStringDateToSqlDate(String date) {
-        String stringLocale = SystemConfiguration.getInstance().getDefaultLocale().toString();
+        String stringLocale = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
 
         return convertStringDateToSqlDate(date, stringLocale);
     }
 
     public static LocalDate convertStringDateToLocalDate(String date) {
-        Locale locale = SystemConfiguration.getInstance().getDefaultLocale();
+        Locale locale = Locale
+                .forLanguageTag(ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE));
 
         return convertStringDateToLocalDate(date, locale);
     }
@@ -172,7 +173,8 @@ public class DateUtil {
 
     public static Timestamp convertStringDateToTimestampWithPattern(String date, String pattern)
             throws LIMSRuntimeException {
-        Locale locale = SystemConfiguration.getInstance().getDefaultLocale();
+        Locale locale = Locale
+                .forLanguageTag(ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE));
         SimpleDateFormat format = new SimpleDateFormat(pattern, locale);
 
         Timestamp returnTimestamp = null;
@@ -674,8 +676,8 @@ public class DateUtil {
     }
 
     public static Locale getDateFormatLocale() {
-        return SystemConfiguration.getInstance().getLocaleByLocalString(
-                ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE));
+        return Locale
+                .forLanguageTag(ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE));
     }
 
     public static String getTimeUserPrompt() {
@@ -714,6 +716,9 @@ public class DateUtil {
     }
 
     public static String formatStringDate(String dateStr, String outputFormat) {
+        if (dateStr == null) {
+            return "";
+        }
         // Define the input date formats
         DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("MM/dd/yyyy");
         DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("dd/MM/yyyy");

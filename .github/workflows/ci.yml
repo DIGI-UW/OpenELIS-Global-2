@@ -10,12 +10,12 @@ jobs:
   checkFormat-build-unitTest-and-run:
     runs-on: ubuntu-latest
     steps:
-      - name: Set up JDK 11
+      - name: Set up JDK 21
         uses: actions/setup-java@v1
         with:
-          java-version: 11
+          java-version: 21
       - name: Cache local Maven repository
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -40,3 +40,25 @@ jobs:
       - name: Build OpenELIS-Global2
         run: mvn clean install -Dspotless.check.skip=true
 
+      - name: Generate JaCoCo Badge
+        if: github.event_name == 'push'
+        uses: cicirello/jacoco-badge-generator@v2
+        with:
+          jacoco-csv-file: target/site/jacoco/jacoco.csv
+          badges-directory: target/html/badges
+
+      - name: Fix permissions
+        if: github.event_name == 'push'
+        run: |
+              sudo chown -R $(whoami):$(whoami) target/html
+              sudo chmod -R 755 target/html  # Read-write for owner, read for others
+
+      - name: Check coverage report exists
+        if: github.event_name == 'push'
+        run: ls -lah target/html || echo "Coverage report not found!"     
+
+      - name: Publish coverage report to GitHub Pages
+        if: github.event_name == 'push'
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: target/html/

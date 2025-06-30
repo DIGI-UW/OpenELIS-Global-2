@@ -2,6 +2,7 @@ package org.openelisglobal.reports.action.implementation;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.program.service.ImmunohistochemistrySampleService;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample;
@@ -36,6 +37,11 @@ public class PatientImmunoChemistryReport extends PatientProgramReport {
             resultsData.add(resultData);
         });
         data.setResults(resultsData);
+        if (form.getCodedConclusions() != null) {
+            List<String> codedConclusions = form.getCodedConclusions().stream()
+                    .map(e -> dictionaryService.get(e).getLocalizedName()).collect(Collectors.toList());
+            data.setCodedConclusion(codedConclusions);
+        }
         data.setTextConclusion(form.getConclusion());
     }
 

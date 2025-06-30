@@ -38,10 +38,10 @@
             <column name="SYSTEM_MODULE_ID" precision="10" scale="0" />
         </many-to-one>
     </class>
-<!-- 	<query name="systemusermodule.getNext"> -->
-<!-- 		from SystemUserModule s -->
-<!-- 	</query> -->
-<!-- 	<query name="systemusermodule.getPrevious"> -->
-<!-- 		from SystemUserModule s -->
-<!-- 	</query> -->
+    <!-- <query name="systemusermodule.getNext"> -->
+    <!-- from SystemUserModule s -->
+    <!-- </query> -->
+    <!-- <query name="systemusermodule.getPrevious"> -->
+    <!-- from SystemUserModule s -->
+    <!-- </query> -->
 </hibernate-mapping>

@@ -1,11 +1,11 @@
 package org.openelisglobal.workplan.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -77,7 +77,7 @@ public class WorkplanByPanelRestController extends WorkplanRestController {
     @Autowired
     private UserService userService;
 
-    @GetMapping(value = "/rest/workplan-by-panel", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/rest/WorkPlanByPanel", produces = MediaType.APPLICATION_JSON_VALUE)
     public WorkplanForm showWorkPlanByPanel(HttpServletRequest request,
             @RequestParam(name = "panel_id", defaultValue = "0") String panelID)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {

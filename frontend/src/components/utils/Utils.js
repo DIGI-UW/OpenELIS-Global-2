@@ -216,6 +216,20 @@ export const hasRole = (userSessionDetails, role) => {
 
 // this is complicated to enable it to format "smartly" as a person types
 // possible rework could allow it to only format completed numbers
+
+export const getFromOpenElisServerV2 = (url) => {
+  return new Promise((resolve, reject) => {
+    // Simulating the original callback-based function
+    getFromOpenElisServer(url, (res) => {
+      if (res) {
+        resolve(res);
+      } else {
+        reject("Failed to fetch Subscription data");
+      }
+    });
+  });
+};
+
 export const convertAlphaNumLabNumForDisplay = (labNumber) => {
   if (!labNumber) {
     return labNumber;
@@ -328,3 +342,30 @@ export function formatTimestamp(timestamp) {
   // Combine and return the formatted string
   return `${formattedHours}:${formattedMinutes} ${ampm}; ${formattedDay}/${formattedMonth}/${year}`;
 }
+
+// Helper function to convert a URL-safe base64 string to a Uint8Array
+export function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+export const Roles = {
+  GLOBAL_ADMIN: "Global Administrator",
+  USER_ACCOUNT_ADMIN: "User Account Administrator",
+  AUDIT_TRAIL: "Audit Trail",
+  ANALYSER_IMPORT: "Analyser Import",
+  CYTOPATHOLOGIST: "Cytopathologist",
+  PATHOLOGIST: "Pathologist",
+  RECEPTION: "Reception",
+  RESULTS: "Results",
+  VALIDATION: "Validation",
+  REPORTS: "Reports",
+};

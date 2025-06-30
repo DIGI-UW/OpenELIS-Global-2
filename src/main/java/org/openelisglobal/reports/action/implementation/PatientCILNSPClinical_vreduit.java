@@ -51,12 +51,14 @@ import org.openelisglobal.test.valueholder.Test;
 public class PatientCILNSPClinical_vreduit extends PatientReport implements IReportCreator, IReportParameterSetter {
 
     private static Set<Integer> analysisStatusIds;
+    private static Set<Integer> validatedAnalysisStatusIds;
     protected List<ClinicalPatientData> clinicalReportItems;
     private ImageService imageService = SpringContext.getBean(ImageService.class);
     private SiteInformationService siteInformationService = SpringContext.getBean(SiteInformationService.class);
 
     static {
         analysisStatusIds = new HashSet<>();
+        validatedAnalysisStatusIds = new HashSet<>();
         analysisStatusIds.add(Integer
                 .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected)));
         analysisStatusIds.add(
@@ -71,6 +73,8 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
                 Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)));
         analysisStatusIds.add(Integer
                 .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+        validatedAnalysisStatusIds.add(
+                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)));
     }
 
     static final String configName = ConfigurationProperties.getInstance().getPropertyValue(Property.configurationName);
@@ -125,6 +129,10 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
         boolean isConfirmationSample = sampleService.isConfirmationSample(currentSample);
         List<Analysis> analysisList = analysisService
                 .getAnalysesBySampleIdAndStatusId(sampleService.getId(currentSample), analysisStatusIds);
+        if (onlyResultsForReportBySite) {
+            analysisList = analysisService.getAnalysesBySampleIdAndStatusId(sampleService.getId(currentSample),
+                    validatedAnalysisStatusIds);
+        }
 
         List<Analysis> filteredAnalysisList = userService.filterAnalysesByLabUnitRoles(systemUserId, analysisList,
                 Constants.ROLE_REPORTS);

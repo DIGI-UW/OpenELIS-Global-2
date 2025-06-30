@@ -1,0 +1,64 @@
+.search-input {
+  width: 100%;
+}
+
+.search-bar-container {
+  display: flex;
+  top: 10%;
+  width: 65%;
+  margin-top: 5px;
+  margin-left: 37%;
+}
+
+.patients {
+  overflow-y: auto;
+  width: 65%;
+  max-height: 250px;
+  background-color: #f0e7e7;
+  top: 89px;
+  right: -1px;
+  box-shadow: 0em 0.1em 0.5em #ccc;
+  margin-left: 37%;
+}
+
+.patientHead {
+  position: relative;
+  border-bottom: 2px solid #eee3e3;
+  background-color: #fcfbfb;
+  right: -1px;
+  box-shadow: 0em 0.01em 0.05em #ccc;
+  max-height: 150px;
+  width: 99%;
+}
+
+.patientHead:hover {
+  background-color: #bbadad;
+  cursor: pointer;
+}
+
+.patient-name-search {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 1400px) {
+  .main {
+    position: absolute;
+  }
+
+  .search-bar-container {
+    margin-top: 48px;
+    width: 100%;
+    margin-left: 0%;
+  }
+
+  .patients {
+    position: absolute;
+    top: 80px;
+    width: 100%;
+  }
+  .tags {
+    margin-left: -5%;
+  }
+}

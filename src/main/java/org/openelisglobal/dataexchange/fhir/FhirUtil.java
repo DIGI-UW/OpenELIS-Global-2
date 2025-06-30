@@ -33,8 +33,7 @@ public class FhirUtil implements FhirClientFetcher {
     @Override
     public IGenericClient getFhirClient(String fhirStorePath) {
         IGenericClient fhirClient = fhirContext.newRestfulGenericClient(fhirStorePath);
-        if (!GenericValidator.isBlankOrNull(fhirConfig.getUsername())
-                && !fhirConfig.getLocalFhirStorePath().equals(fhirStorePath)) {
+        if (!GenericValidator.isBlankOrNull(fhirConfig.getUsername())) {
             IClientInterceptor authInterceptor = new BasicAuthInterceptor(fhirConfig.getUsername(),
                     fhirConfig.getPassword());
             fhirClient.registerInterceptor(authInterceptor);
@@ -45,6 +44,11 @@ public class FhirUtil implements FhirClientFetcher {
 
     public IGenericClient getLocalFhirClient() {
         IGenericClient fhirClient = fhirContext.newRestfulGenericClient(fhirConfig.getLocalFhirStorePath());
+        if (!GenericValidator.isBlankOrNull(fhirConfig.getUsername())) {
+            IClientInterceptor authInterceptor = new BasicAuthInterceptor(fhirConfig.getUsername(),
+                    fhirConfig.getPassword());
+            fhirClient.registerInterceptor(authInterceptor);
+        }
         return fhirClient;
     }
 

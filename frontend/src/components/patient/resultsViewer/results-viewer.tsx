@@ -88,7 +88,7 @@ const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
       <>
         <Loading></Loading>
         <Grid fullWidth={true}>
-          <Column lg={16}>
+          <Column lg={16} md={8} sm={4}>
             <EmptyState
               headerTitle={intl.formatMessage({ id: "label.test.results" })}
               displayText={intl.formatMessage({
@@ -104,7 +104,7 @@ const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
   return (
     <>
       <Grid fullWidth={true}>
-        <Column lg={16}>
+        <Column lg={16} md={8} sm={4}>
           <Breadcrumb>
             <BreadcrumbItem href="/">
               {intl.formatMessage({ id: "home.label" })}
@@ -115,43 +115,55 @@ const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
           </Breadcrumb>
         </Column>
       </Grid>
-      <PatientHeader
-        id={patient.patientPK}
-        lastName={patient.lastName}
-        firstName={patient.firstName}
-        gender={patient.gender}
-        dob={patient.birthDateForDisplay}
-        subjectNumber={patient.subjectNumber}
-        nationalId={patient.nationalId}
-      >
-        {" "}
-      </PatientHeader>
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <Section>
+            <Section>
+              <Heading>
+                <FormattedMessage id="label.page.patientHistory" />
+              </Heading>
+            </Section>
+          </Section>
+        </Column>
+      </Grid>
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <PatientHeader
+            id={patient.patientPK}
+            lastName={patient.lastName}
+            firstName={patient.firstName}
+            gender={patient.gender}
+            dob={patient.birthDateForDisplay}
+            subjectNumber={patient.subjectNumber}
+            nationalId={patient.nationalId}
+            className="patient-header2"
+          >
+            {" "}
+          </PatientHeader>
+        </Column>
+      </Grid>
 
       {roots?.length ? (
-        <Grid fullWidth={true}>
-          <Column lg={16}>
-            <div className="orderLegendBody">
-              <FilterProvider roots={loading ? roots : []}>
-                <ResultsViewer
-                  patientId={patientId}
-                  basePath={config.serverBaseUrl}
-                  loading={loading}
-                />
-              </FilterProvider>
-            </div>
+        <Grid fullWidth={true} className="orderLegendBody">
+          <Column lg={16} md={8} sm={4}>
+            <FilterProvider roots={loading ? roots : []}>
+              <ResultsViewer
+                patientId={patientId}
+                basePath={config.serverBaseUrl}
+                loading={loading}
+              />
+            </FilterProvider>
           </Column>
         </Grid>
       ) : (
-        <Grid fullWidth={true}>
+        <Grid fullWidth={true} className="orderLegendBody">
           <Column lg={16}>
-            <div className="orderLegendBody">
-              <EmptyState
-                headerTitle={intl.formatMessage({ id: "label.test.results" })}
-                displayText={intl.formatMessage({
-                  id: "label.test.resultsData",
-                })}
-              />
-            </div>
+            <EmptyState
+              headerTitle={intl.formatMessage({ id: "label.test.results" })}
+              displayText={intl.formatMessage({
+                id: "label.test.resultsData",
+              })}
+            />
           </Column>
         </Grid>
       )}

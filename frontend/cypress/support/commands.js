@@ -37,10 +37,11 @@ Cypress.Commands.add("getElement", (selector) => {
 });
 
 Cypress.Commands.add("enterText", (selector, value) => {
-  const field = cy.getElement(selector);
-  if (field != null) {
-    field.clear();
-    field.type(value);
-    return field;
-  }
+  return cy
+    .get(selector)
+    .should("exist")
+    .and("be.visible")
+    .clear()
+    .type(value)
+    .should("have.value", value);
 });

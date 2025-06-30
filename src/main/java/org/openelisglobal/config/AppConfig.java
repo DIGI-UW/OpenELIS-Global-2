@@ -3,13 +3,12 @@ package org.openelisglobal.config;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.datatype.hibernate5.Hibernate5Module;
+import com.fasterxml.jackson.datatype.hibernate5.jakarta.Hibernate5JakartaModule;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
-import java.util.Locale;
 import java.util.Properties;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.Questionnaire;
@@ -34,14 +33,13 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.context.annotation.Scope;
-import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
-import org.springframework.web.multipart.commons.CommonsMultipartResolver;
+import org.springframework.web.multipart.support.StandardServletMultipartResolver;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.ViewResolver;
@@ -58,6 +56,9 @@ import org.springframework.web.servlet.view.InternalResourceViewResolver;
 @PropertySource("classpath:application.properties")
 @PropertySource("file:/run/secrets/common.properties")
 @PropertySource(value = "file:/run/secrets/extra.properties", ignoreResourceNotFound = true)
+@PropertySource(value = "classpath:SystemConfiguration.properties", ignoreResourceNotFound = true)
+@PropertySource(value = "file:/var/lib/openelis-global/properties/TotalSystemConfiguration.properties", ignoreResourceNotFound = true)
+@PropertySource(value = "file:/var/lib/openelis-global/properties/SystemConfiguration.properties", ignoreResourceNotFound = true)
 @ComponentScan(basePackages = { "spring", "org.openelisglobal", "org.itech", "org.ozeki.sms", "oe.plugin" })
 public class AppConfig implements WebMvcConfigurer {
 
@@ -84,10 +85,8 @@ public class AppConfig implements WebMvcConfigurer {
     }
 
     @Bean(name = "filterMultipartResolver")
-    public CommonsMultipartResolver multipartResolver() {
-        CommonsMultipartResolver multipartResolver = new CommonsMultipartResolver();
-        multipartResolver.setDefaultEncoding("utf-8");
-        multipartResolver.setMaxUploadSize(20848820);
+    public StandardServletMultipartResolver multipartResolver() {
+        StandardServletMultipartResolver multipartResolver = new StandardServletMultipartResolver();
         multipartResolver.setResolveLazily(false);
         return multipartResolver;
     }
@@ -99,9 +98,9 @@ public class AppConfig implements WebMvcConfigurer {
                 .excludePathPatterns(SecurityConfig.OPEN_PAGES) //
                 .excludePathPatterns(SecurityConfig.LOGIN_PAGES) //
                 .excludePathPatterns(SecurityConfig.RESOURCE_PAGES) //
-                .excludePathPatterns(SecurityConfig.AUTH_OPEN_PAGES)
-                // TO DO ,we need to have a better way to handle user roles for rest controllers
-                .excludePathPatterns(SecurityConfig.REST_CONTROLLERS);
+                .excludePathPatterns(SecurityConfig.AUTH_OPEN_PAGES);
+        // TO DO ,we need to have a better way to handle user roles for rest controllers
+        // .excludePathPatterns(SecurityConfig.REST_CONTROLLERS);
         // .excludePathPatterns(SecurityConfig.CLIENT_CERTIFICATE_PAGES);
         registry.addInterceptor(urlLocatedErrorsInterceptor).addPathPatterns("/**");
         registry.addInterceptor(pageAttributesInterceptor).addPathPatterns("/**");
@@ -161,9 +160,6 @@ public class AppConfig implements WebMvcConfigurer {
     // functionality
     public LocaleResolver localeResolver() {
         GlobalLocaleResolver localeResolver = new GlobalLocaleResolver();
-        String localeName = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
-        localeResolver.setDefaultLocale(Locale.forLanguageTag(localeName));
-        LocaleContextHolder.setDefaultLocale(Locale.forLanguageTag(localeName));
         return localeResolver;
     }
 
@@ -179,7 +175,7 @@ public class AppConfig implements WebMvcConfigurer {
         ObjectMapper mapper = new ObjectMapper();
         // Registering Hibernate4Module to support lazy objects
         mapper.registerModule(new JavaTimeModule());
-        mapper.registerModule(new Hibernate5Module());
+        mapper.registerModule(new Hibernate5JakartaModule());
         mapper.registerModule(new Jdk8Module());
         mapper.setSerializationInclusion(Include.NON_NULL);
 

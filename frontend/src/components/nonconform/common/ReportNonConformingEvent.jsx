@@ -58,12 +58,32 @@ export const ReportNonConformingEvent = () => {
   );
   const [ldata, setLData] = useState(null);
   const [selectedSample, setSelectedSample] = useState(initialSelected);
-  const [nceForm, setnceForm] = useState(initialNCEForm);
+  // const [nceForm, setnceForm] = useState(initialNCEForm);
   const [orderSampleMap, setOrderSampleMap] = useState({});
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
   const intl = useIntl();
+
+  const [nceForm, setnceForm] = useState({
+    data: {
+      reporterName: "",
+      dateOfEvent: null,
+      reportingUnit: "",
+      description: "",
+      suspectedCauses: "",
+      proposedAction: "",
+      reportingUnits: [],
+    },
+    errors: {
+      reporterName: "",
+      dateOfEvent: "",
+      reportingUnit: "",
+      description: "",
+      suspectedCauses: "",
+      proposedAction: "",
+    },
+  });
 
   const handleSubmit = () => {
     if (reportFormValues.type === undefined || reportFormValues.value === "") {
@@ -85,9 +105,19 @@ export const ReportNonConformingEvent = () => {
       getFromOpenElisServer(
         `/rest/nonconformevents?${reportFormValues.type}=${reportFormValues.value}`,
         (data) => {
-          setReportFormValues(initialReportFormValues);
           if (data) {
-            setLData(data);
+            if (data.length > 0) {
+              setLData(data);
+            } else {
+              setLData(null);
+              setReportFormValues({
+                ...reportFormValues,
+                error: intl.formatMessage({
+                  id: "error.nonconform.report.data.found",
+                  defaultMessage: "No data found",
+                }),
+              });
+            }
           } else {
             setReportFormValues({
               ...reportFormValues,
@@ -160,60 +190,71 @@ export const ReportNonConformingEvent = () => {
 
   const handleNCEFormSubmit = () => {
     console.log("nceForm.data", nceForm.data);
-
+    const newErrors = {};
     if (!nceForm.data.dateOfEvent) {
-      setnceForm({
-        ...nceForm,
-        error: intl.formatMessage({
-          id: "error.nonconform.report.data.found",
-          defaultMessage: "Please select a date",
-        }),
-      });
-      return;
+      newErrors.dateOfEvent = "Date of event is required";
     }
+    if (!nceForm.data.reportingUnit) {
+      newErrors.reportingUnit = "Reporting unit is required";
+    }
+    if (!nceForm.data.description) {
+      newErrors.description = "Description is required";
+    }
+    if (!nceForm.data.suspectedCauses) {
+      newErrors.suspectedCauses = "Suspected causes are required";
+    }
+    if (!nceForm.data.proposedAction) {
+      newErrors.proposedAction = "Proposed action is required";
+    }
+    if (Object.keys(newErrors).length > 0) {
+      setnceForm((prev) => ({
+        ...prev,
+        errors: newErrors,
+      }));
+    } else {
+      let body = {
+        currentUserId: parseInt(nceForm.data.currentUserId),
+        id: parseInt(nceForm.data.id),
+        reportDate: nceForm.data.reportDate,
+        name: nceForm.data.name,
+        reporterName: nceForm.data.reporterName,
+        dateOfEvent: nceForm.data.dateOfEvent,
+        labOrderNumber: nceForm.data.labOrderNumber,
+        prescriberName: nceForm.data.prescriberName,
+        site: nceForm.data.site,
+        reportingUnit: nceForm.data.reportingUnit,
+        description: nceForm.data.description,
+        suspectedCauses: nceForm.data.suspectedCauses,
+        proposedAction: nceForm.data.proposedAction,
+      };
+      postToOpenElisServerJsonResponse(
+        "/rest/reportnonconformingevent",
+        JSON.stringify(body),
+        (data) => {
+          setNotificationVisible(true);
+          setReportFormValues(initialReportFormValues);
+          setLData(null);
+          setSelectedSample(initialSelected);
+          setnceForm(initialNCEForm);
 
-    let body = {
-      currentUserId: parseInt(nceForm.data.currentUserId),
-      id: parseInt(nceForm.data.id),
-      reportDate: nceForm.data.reportDate,
-      name: nceForm.data.name,
-      reporterName: nceForm.data.reporterName,
-      dateOfEvent: nceForm.data.dateOfEvent,
-      labOrderNumber: nceForm.data.labOrderNumber,
-      prescriberName: nceForm.data.prescriberName,
-      site: nceForm.data.site,
-      reportingUnit: nceForm.data.reportingUnit,
-      description: nceForm.data.description,
-      suspectedCauses: nceForm.data.suspectedCauses,
-      proposedAction: nceForm.data.proposedAction,
-    };
-    postToOpenElisServerJsonResponse(
-      "/rest/reportnonconformingevent",
-      JSON.stringify(body),
-      (data) => {
-        setNotificationVisible(true);
-        setReportFormValues(initialReportFormValues);
-        setLData(null);
-        setSelectedSample(initialSelected);
-        setnceForm(initialNCEForm);
-
-        if (data.success) {
-          addNotification({
-            kind: NotificationKinds.success,
-            title: intl.formatMessage({ id: "notification.title" }),
-            message: intl.formatMessage({
-              id: "nonconform.order.save.success",
-            }),
-          });
-        } else {
-          addNotification({
-            kind: NotificationKinds.error,
-            title: intl.formatMessage({ id: "notification.title" }),
-            message: intl.formatMessage({ id: "nonconform.order.save.fail" }),
-          });
-        }
-      },
-    );
+          if (data.success) {
+            addNotification({
+              kind: NotificationKinds.success,
+              title: intl.formatMessage({ id: "notification.title" }),
+              message: intl.formatMessage({
+                id: "nonconform.order.save.success",
+              }),
+            });
+          } else {
+            addNotification({
+              kind: NotificationKinds.error,
+              title: intl.formatMessage({ id: "notification.title" }),
+              message: intl.formatMessage({ id: "nonconform.order.save.fail" }),
+            });
+          }
+        },
+      );
+    }
   };
 
   return (
@@ -264,6 +305,7 @@ export const ReportNonConformingEvent = () => {
                       value: e.target.value,
                     });
                   }}
+                  data-cy="fieldName"
                   id={`field.name`}
                 />
               </Column>
@@ -271,7 +313,11 @@ export const ReportNonConformingEvent = () => {
                 <br></br>
               </Column>
               <Column lg={16} md={8} sm={4}>
-                <Button type="button" onClick={handleSubmit}>
+                <Button
+                  type="button"
+                  data-testid="nce-search-button"
+                  onClick={handleSubmit}
+                >
                   <FormattedMessage id="label.button.search" />
                 </Button>
               </Column>
@@ -310,12 +356,16 @@ export const ReportNonConformingEvent = () => {
                   <TableRow key={row.id}>
                     <TableCell key={`${row.id}-checkbox`}></TableCell>
                     {headers.map((header) => (
-                      <TableCell key={header.key}>
+                      <TableCell
+                        key={header.key}
+                        data-testid="nce-search-result"
+                      >
                         <UnorderedList>
                           {header.key === "type"
                             ? row.sampleItems.map((item) => (
                                 <Checkbox
                                   id={row.labOrderNumber + "-" + item.number}
+                                  data-testid="nce-sample-checkbox"
                                   key={item.id}
                                   labelText={
                                     item.type +
@@ -382,6 +432,7 @@ export const ReportNonConformingEvent = () => {
                   });
                 }
               }}
+              data-testid="nce-goto-form-button"
             >
               <FormattedMessage id="nonconform.goToNceForm" />
             </Button>
@@ -416,7 +467,12 @@ export const ReportNonConformingEvent = () => {
                 <FormattedMessage id="nonconform.nce.number" />
               </span>
             </div>
-            <div style={{ marginBottom: "10px" }}>{nceForm.data.nceNumber}</div>
+            <div
+              style={{ marginBottom: "10px" }}
+              data-testid="nce-number-result"
+            >
+              {nceForm.data.nceNumber}
+            </div>
           </Column>
 
           <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
@@ -449,13 +505,13 @@ export const ReportNonConformingEvent = () => {
               }
               value={nceForm.data.reporterName}
               onChange={(e) => {
-                setnceForm({
-                  ...nceForm,
+                setnceForm((prev) => ({
+                  ...prev,
                   data: {
-                    ...nceForm.data,
+                    ...prev.data,
                     reporterName: e.target.value,
                   },
-                });
+                }));
               }}
               id={`field.name`}
             />
@@ -470,19 +526,23 @@ export const ReportNonConformingEvent = () => {
               autofillDate={true}
               value={nceForm.data.dateOfEvent}
               onChange={(date) =>
-                setnceForm({
-                  ...nceForm,
+                setnceForm((prev) => ({
+                  ...prev,
                   data: {
-                    ...nceForm.data,
+                    ...prev.data,
                     dateOfEvent: date,
                   },
-                })
+                  errors: {
+                    ...prev.errors,
+                    dateOfEvent: "",
+                  },
+                }))
               }
+              invalid={!!nceForm.errors.dateOfEvent}
+              invalidText={nceForm.errors.dateOfEvent}
             />
           </Column>
-          <Column lg={16} md={8} sm={4}>
-            <br></br>
-          </Column>
+
           <Column lg={8} md={4} sm={4}>
             <Select
               labelText={
@@ -491,14 +551,20 @@ export const ReportNonConformingEvent = () => {
               id="reportingUnits"
               value={nceForm.data.reportingUnit}
               onChange={(e) => {
-                setnceForm({
-                  ...nceForm,
+                setnceForm((prev) => ({
+                  ...prev,
                   data: {
-                    ...nceForm.data,
+                    ...prev.data,
                     reportingUnit: e.target.value,
                   },
-                });
+                  errors: {
+                    ...prev.errors,
+                    reportingUnit: "",
+                  },
+                }));
               }}
+              invalid={!!nceForm.errors.reportingUnit}
+              invalidText={nceForm.errors.reportingUnit}
             >
               <SelectItem key={"emptyselect"} value={""} text={""} />
               {nceForm.data.reportingUnits.map((option) => (
@@ -510,26 +576,31 @@ export const ReportNonConformingEvent = () => {
               ))}
             </Select>
           </Column>
+
           <Column lg={8} md={4} sm={4}>
             <TextArea
               labelText={<FormattedMessage id="nonconform.description.nce" />}
               value={nceForm.data.description}
               onChange={(e) => {
-                setnceForm({
-                  ...nceForm,
+                setnceForm((prev) => ({
+                  ...prev,
                   data: {
-                    ...nceForm.data,
+                    ...prev.data,
                     description: e.target.value,
                   },
-                });
+                  errors: {
+                    ...prev.errors,
+                    description: "",
+                  },
+                }));
               }}
               rows={2}
               id="text-area-1"
+              invalid={!!nceForm.errors.description}
+              invalidText={nceForm.errors.description}
             />
           </Column>
-          <Column lg={16} md={8} sm={4}>
-            <br></br>
-          </Column>
+
           <Column lg={8} md={4} sm={4}>
             <TextArea
               labelText={
@@ -537,18 +608,25 @@ export const ReportNonConformingEvent = () => {
               }
               value={nceForm.data.suspectedCauses}
               onChange={(e) => {
-                setnceForm({
-                  ...nceForm,
+                setnceForm((prev) => ({
+                  ...prev,
                   data: {
-                    ...nceForm.data,
+                    ...prev.data,
                     suspectedCauses: e.target.value,
                   },
-                });
+                  errors: {
+                    ...prev.errors,
+                    suspectedCauses: "",
+                  },
+                }));
               }}
               rows={2}
-              id="text-area-1"
+              id="text-area-2"
+              invalid={!!nceForm.errors.suspectedCauses}
+              invalidText={nceForm.errors.suspectedCauses}
             />
           </Column>
+
           <Column lg={8} md={4} sm={4}>
             <TextArea
               labelText={
@@ -556,18 +634,25 @@ export const ReportNonConformingEvent = () => {
               }
               value={nceForm.data.proposedAction}
               onChange={(e) => {
-                setnceForm({
-                  ...nceForm,
+                setnceForm((prev) => ({
+                  ...prev,
                   data: {
-                    ...nceForm.data,
+                    ...prev.data,
                     proposedAction: e.target.value,
                   },
-                });
+                  errors: {
+                    ...prev.errors,
+                    proposedAction: "",
+                  },
+                }));
               }}
               rows={2}
-              id="text-area-1"
+              id="text-area-3"
+              invalid={!!nceForm.errors.proposedAction}
+              invalidText={nceForm.errors.proposedAction}
             />
           </Column>
+
           <Column lg={16} md={8} sm={4}>
             <br></br>
           </Column>
@@ -575,7 +660,11 @@ export const ReportNonConformingEvent = () => {
             {!!nceForm.error && (
               <div style={{ color: "#c62828", margin: 4 }}>{nceForm.error}</div>
             )}
-            <Button type="button" onClick={() => handleNCEFormSubmit()}>
+            <Button
+              type="button"
+              data-testid="nce-submit-button"
+              onClick={() => handleNCEFormSubmit()}
+            >
               <FormattedMessage id="label.button.submit" />
             </Button>
           </Column>

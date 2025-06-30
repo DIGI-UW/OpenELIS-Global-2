@@ -54,7 +54,12 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
   }
 
   function editOrder(externalOrderId, labNumber) {
-    window.open("AddOrder?ID=" + externalOrderId + "&labNumber=" + labNumber);
+    window.open(
+      "SamplePatientEntry?ID=" +
+        externalOrderId +
+        "&labNumber=" +
+        (labNumber || ""),
+    );
   }
 
   const handleLabNoGeneration = (e, index) => {

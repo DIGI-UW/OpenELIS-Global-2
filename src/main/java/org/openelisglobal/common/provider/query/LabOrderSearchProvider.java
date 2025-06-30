@@ -15,6 +15,9 @@ package org.openelisglobal.common.provider.query;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -23,9 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
@@ -231,18 +231,36 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                 }
             }
 
-            if (!GenericValidator.isBlankOrNull(serviceRequest.getRequester().getReferenceElement().getIdPart())
-                    && serviceRequest.getRequester().getReference().contains(ResourceType.Practitioner.toString())) {
+            if (!GenericValidator.isBlankOrNull(task.getOwner().getReferenceElement().getIdPart())
+                    && task.getOwner().getReference().contains(ResourceType.Practitioner.toString())) {
                 try {
                     requesterPerson = localFhirClient.read() //
                             .resource(Practitioner.class) //
-                            .withId(serviceRequest.getRequester().getReferenceElement().getIdPart()) //
+                            .withId(task.getOwner().getReferenceElement().getIdPart()) //
                             .execute();
                     LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest",
                             "found matching requester " + requesterPerson.getIdElement().getIdPart());
                 } catch (ResourceNotFoundException e) {
                     LogEvent.logWarn(this.getClass().getSimpleName(), "processRequest", "no matching requester");
                 }
+            }
+
+            if (requesterPerson == null) {
+                if (!GenericValidator.isBlankOrNull(serviceRequest.getRequester().getReferenceElement().getIdPart())
+                        && serviceRequest.getRequester().getReference()
+                                .contains(ResourceType.Practitioner.toString())) {
+                    try {
+                        requesterPerson = localFhirClient.read() //
+                                .resource(Practitioner.class) //
+                                .withId(serviceRequest.getRequester().getReferenceElement().getIdPart()) //
+                                .execute();
+                        LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest",
+                                "found matching requester " + requesterPerson.getIdElement().getIdPart());
+                    } catch (ResourceNotFoundException e) {
+                        LogEvent.logWarn(this.getClass().getSimpleName(), "processRequest", "no matching requester");
+                    }
+                }
+
             }
 
             if (specimen != null && !GenericValidator
@@ -338,11 +356,20 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
 
     private void addRequestingOrg(StringBuilder xml) {
         xml.append("<requestingOrg>");
+        org.openelisglobal.organization.valueholder.Organization organization = null;
         if (referringOrganization != null) {
-            org.openelisglobal.organization.valueholder.Organization organization = organizationService
+            organization = organizationService
                     .getOrganizationByFhirId(referringOrganization.getIdElement().getIdPart());
-            XMLUtil.appendKeyValue("fhir-id", referringOrganization.getIdElement().getIdPart(), xml);
+        }
+        if (organization == null && task.getLocation() != null) {
+            organization = organizationService
+                    .getOrganizationByFhirId(task.getLocation().getReferenceElement().getIdPart());
+        }
+
+        if (organization != null) {
+            XMLUtil.appendKeyValue("fhir-id", organization.getFhirUuidAsString(), xml);
             XMLUtil.appendKeyValue("id", organization.getId(), xml);
+            XMLUtil.appendKeyValue("name", organization.getOrganizationName(), xml);
         }
         xml.append("</requestingOrg>");
     }
@@ -380,6 +407,14 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
             }
             requesterValuesMap.put(PROVIDER_LAST_NAME, requesterPerson.getNameFirstRep().getFamily());
             requesterValuesMap.put(PROVIDER_FIRST_NAME, requesterPerson.getNameFirstRep().getGivenAsSingleString());
+        } else {
+            Provider provider = providerService
+                    .getProviderByFhirId(UUID.fromString(task.getOwner().getReferenceElement().getIdPart()));
+            if (provider != null) {
+                requesterValuesMap.put(PROVIDER_ID, provider.getId());
+                requesterValuesMap.put(PROVIDER_PERSON_ID, provider.getPerson().getId());
+            }
+
         }
         xml.append("<requester>");
         XMLUtil.appendKeyValue(PROVIDER_ID, requesterValuesMap.get(PROVIDER_ID), xml);
@@ -417,7 +452,7 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
             }
         }
 
-        addToTestOrPanel(tests, loinc, sampleTypeAbbreviation);
+        addToTestOrPanel(tests, panels, loinc, sampleTypeAbbreviation);
     }
 
     // private List<ServiceRequest> getBasedOnServiceRequestFromBundle(Bundle
@@ -445,8 +480,10 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
     //
     // }
 
-    private void addToTestOrPanel(List<Request> tests, String loinc, String sampleTypeAbbreviation) {
+    private void addToTestOrPanel(List<Request> tests, List<Request> panels, String loinc,
+            String sampleTypeAbbreviation) {
         Test test = null;
+        Panel panel = null;
         TypeOfSample typeOfSample = null;
         if (!GenericValidator.isBlankOrNull(sampleTypeAbbreviation)) {
             String typeOfSampleId = typeOfSampleService.getTypeOfSampleIdForLocalAbbreviation(sampleTypeAbbreviation);
@@ -458,12 +495,32 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
             }
         }
         if (test == null) {
-            test = testService.getActiveTestsByLoinc(loinc).get(0);
+            List<Test> alltests = testService.getActiveTestsByLoinc(loinc);
+            if (alltests != null && alltests.size() > 0) {
+                test = alltests.get(0);
+            }
         }
-        if (typeOfSample == null) {
-            typeOfSample = typeOfSampleService.getTypeOfSampleForTest(test.getId()).get(0);
+        if (test != null) {
+            if (typeOfSample == null) {
+                typeOfSample = typeOfSampleService.getTypeOfSampleForTest(test.getId()).get(0);
+            }
+            tests.add(new Request(test.getName(), loinc, typeOfSample.getLocalizedName()));
+            return;
         }
-        tests.add(new Request(test.getName(), loinc, typeOfSample.getLocalizedName()));
+        panel = panelService.getPanelByLoincCode(loinc);
+        if (panel != null) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), "addToTestOrPanel",
+                    "panel matching loinc is: " + panel.getDescription());
+
+            if (typeOfSample == null) {
+                typeOfSample = typeOfSampleService.getTypeOfSampleForPanelId(panel.getId()).get(0);
+                LogEvent.logDebug(this.getClass().getSimpleName(), "addToTestOrPanel",
+                        "typeOfSample matching for panel is: " + typeOfSample.getDescription());
+
+            }
+            panels.add(new Request(panel.getPanelName(), loinc, typeOfSample.getLocalizedName()));
+        }
+
     }
 
     private void createMaps(List<Request> testRequests, List<Request> panelNames) {
@@ -537,7 +594,13 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
 
     private void createMapsForPanels(List<Request> panelRequests) {
         for (Request panelRequest : panelRequests) {
-            Panel panel = panelService.getPanelByName(panelRequest.getName());
+            Panel panel = null;
+            if (!GenericValidator.isBlankOrNull(panelRequest.getLoinc())) {
+                panel = panelService.getPanelByLoincCode(panelRequest.getLoinc());
+            }
+            if (panel == null && !GenericValidator.isBlankOrNull(panelRequest.getName())) {
+                panel = panelService.getPanelByName(panelRequest.getName());
+            }
 
             if (panel != null) {
                 List<TypeOfSample> typeOfSamples = typeOfSampleService.getTypeOfSampleForPanelId(panel.getId());

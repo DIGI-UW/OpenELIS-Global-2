@@ -22,7 +22,7 @@ import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.provider.dao.ProviderDAO;
 import org.openelisglobal.provider.valueholder.Provider;
@@ -80,7 +80,9 @@ public class ProviderDAOImpl extends BaseDAOImpl<Provider, String> implements Pr
         List<Provider> list = new Vector<>();
         try {
             // calculate maxRow to be one more than the page size
-            int endingRecNo = startingRecNo + (SystemConfiguration.getInstance().getDefaultPageSize() + 1);
+            int endingRecNo = startingRecNo
+                    + (Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
+                            + 1);
 
             String sql = "from Provider p order by p.id";
             Query<Provider> query = entityManager.unwrap(Session.class).createQuery(sql, Provider.class);
@@ -157,7 +159,9 @@ public class ProviderDAOImpl extends BaseDAOImpl<Provider, String> implements Pr
         List<Provider> list = new Vector<>();
         try {
             // calculate maxRow to be one more than the page size
-            int endingRecNo = startingRecNo + (SystemConfiguration.getInstance().getDefaultPageSize() + 1);
+            int endingRecNo = startingRecNo
+                    + (Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
+                            + 1);
 
             String sql = "from Provider p where lower(p.person.firstName) like concat('%', lower(:searchValue),"
                     + " '%') or lower(p.person.lastName) like concat('%', lower(:searchValue), '%') or"

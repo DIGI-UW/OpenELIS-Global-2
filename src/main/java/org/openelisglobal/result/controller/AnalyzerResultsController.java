@@ -1,5 +1,7 @@
 package org.openelisglobal.result.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Date;
 import java.util.ArrayList;
@@ -9,8 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -80,6 +80,7 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.owasp.encoder.Encode;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
@@ -87,8 +88,11 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -216,6 +220,48 @@ public class AnalyzerResultsController extends BaseController {
 
         addFlashMsgsToRequest(request);
         return findForward(FWD_SUCCESS, form);
+    }
+
+    @RequestMapping(value = "/rest/AnalyzerResults", produces = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.GET)
+    @ResponseBody
+    public AnalyzerResultsForm showRestAnalyzerResults(@RequestParam(required = false) String type,
+            HttpServletRequest request)
+            throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+        AnalyzerResultsForm form = new AnalyzerResultsForm();
+
+        request.getSession().setAttribute(SAVE_DISABLED, TRUE);
+
+        form.setType(type);
+        if (GenericValidator.isBlankOrNull(type)) {
+            return form;
+        }
+
+        AnalyzerImporterPlugin analyzerPlugin = pluginAnalyzerService.getPluginByAnalyzerId(
+                AnalyzerTestNameCache.getInstance().getAnalyzerIdForName(getAnalyzerNameFromRequest()));
+        if (analyzerPlugin instanceof BidirectionalAnalyzer) {
+            BidirectionalAnalyzer bidirectionalAnalyzer = (BidirectionalAnalyzer) analyzerPlugin;
+            form.setSupportedLISActions(bidirectionalAnalyzer.getSupportedLISActions());
+        }
+
+        AnalyzerResultsPaging paging = new AnalyzerResultsPaging();
+        List<AnalyzerResults> analyzerResultsList = getAnalyzerResults();
+        if (GenericValidator.isBlankOrNull(request.getParameter("page"))) {
+            // get list of AnalyzerData from table based on analyzer type
+            if (analyzerResultsList.isEmpty()) {
+                form.setResultList(new ArrayList<AnalyzerResultItem>());
+                form.setDisplayNotFoundMsg(true);
+                paging.setEmptyPageBean(request, form);
+
+            } else {
+                paging.setDatabaseResults(request, form, getAnalyzerResultItemList(analyzerResultsList, form));
+            }
+        } else {
+            paging.setDatabaseResults(request, form, getAnalyzerResultItemList(analyzerResultsList, form));
+            paging.page(request, form, Integer.parseInt(request.getParameter("page")));
+        }
+
+        addFlashMsgsToRequest(request);
+        return form;
     }
 
     private List<AnalyzerResultItem> getAnalyzerResultItemList(List<AnalyzerResults> analyzerResultsList,
@@ -661,6 +707,41 @@ public class AnalyzerResultsController extends BaseController {
 
     public List<SampleQaEvent> getSampleQaEvents(Sample sample) {
         return sampleQaEventService.getSampleQaEventsBySample(sample);
+    }
+
+    @RequestMapping(value = "/rest/AnalyzerResults", method = RequestMethod.POST)
+    @ResponseBody
+    public void showRestAnalyzerResultsSave(HttpServletRequest request, @Validated({ Paging.class,
+            AnalyzerResultsForm.AnalyzerResuts.class }) @RequestBody AnalyzerResultsForm form) {
+
+        AnalyzerResultsPaging paging = new AnalyzerResultsPaging();
+        paging.updatePagedResults(request, form);
+        List<AnalyzerResultItem> resultItemList = paging.getResults(request);
+
+        List<AnalyzerResultItem> actionableResults = extractActionableResult(resultItemList);
+
+        if (actionableResults.isEmpty()) {
+            return;
+        }
+
+        List<SampleGrouping> sampleGroupList = new ArrayList<>();
+
+        resultItemList.removeAll(actionableResults);
+        List<AnalyzerResultItem> childlessControls = extractChildlessControls(resultItemList);
+        List<AnalyzerResults> deletableAnalyzerResults = getRemovableAnalyzerResults(actionableResults,
+                childlessControls);
+
+        createResultsFromItems(actionableResults, sampleGroupList);
+
+        try {
+            analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupList,
+                    getSysUserId(request));
+
+        } catch (LIMSRuntimeException e) {
+            LogEvent.logError(e.getMessage(), e);
+
+        }
+
     }
 
     @RequestMapping(value = "/AnalyzerResults", method = RequestMethod.POST)

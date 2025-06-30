@@ -72,38 +72,34 @@ function OrganizationAddModify() {
   const [saveButton, setSaveButton] = useState(true);
   const [typeOfActivity, setTypeOfActivity] = useState();
   const [typeOfActivityShow, setTypeOfActivityShow] = useState([]);
-  const [id, setId] = useState(null);
 
-  useEffect(() => {
-    const getIdFromUrl = () => {
-      const hash = window.location.hash;
-      if (hash.includes("?")) {
-        const queryParams = hash.split("?")[1];
-        const urlParams = new URLSearchParams(queryParams);
-        const id = urlParams.get("ID");
-
-        return id;
-      }
-      return null;
-    };
-
-    const extractedId = getIdFromUrl();
-    setId(extractedId);
-  }, []);
+  const ID = (() => {
+    const hash = window.location.hash;
+    if (hash.includes("?")) {
+      const queryParams = hash.split("?")[1];
+      const urlParams = new URLSearchParams(queryParams);
+      return urlParams.get("ID");
+    }
+    return "0";
+  })();
 
   useEffect(() => {
     componentMounted.current = true;
     setLoading(true);
-    if (id) {
+    if (ID) {
       getFromOpenElisServer(
-        `/rest/Organization?ID=${id}&startingRecNo=1`,
+        `/rest/Organization?ID=${ID}&startingRecNo=1`,
         handleMenuItems,
       );
+    } else {
+      setTimeout(() => {
+        window.location.assign("/MasterListsPage#organizationManagement");
+      }, 1000);
     }
     return () => {
       componentMounted.current = false;
     };
-  }, [id]);
+  }, [ID]);
 
   const handleMenuItems = (res) => {
     if (!res) {
@@ -151,6 +147,9 @@ function OrganizationAddModify() {
         isActive: typeOfActivity.isActive,
         internetAddress: typeOfActivity.internetAddress,
         selectedTypes: typeOfActivity.selectedTypes,
+        cliaNum: typeOfActivity.cliaNum,
+        streetAddress: typeOfActivity.streetAddress,
+        city: typeOfActivity.city,
       };
 
       const organizationsManagementIdInfoPost = {
@@ -173,12 +172,15 @@ function OrganizationAddModify() {
         internetAddress: typeOfActivity.internetAddress,
         selectedTypes: typeOfActivity.selectedTypes,
         organization: typeOfActivity.organization,
+        cliaNum: typeOfActivity.cliaNum,
+        streetAddress: typeOfActivity.streetAddress,
+        city: typeOfActivity.city,
       };
       setOrgInfo(organizationsManagementIdInfo);
       setOrgInfoPost(organizationsManagementIdInfoPost);
       setSelectedRowIds(typeOfActivity.selectedTypes);
 
-      if (id !== "0") {
+      if (ID !== "0") {
         const organizationSelectedTypeOfActivity =
           typeOfActivity.selectedTypes.map((item) => {
             return {
@@ -195,7 +197,7 @@ function OrganizationAddModify() {
         setOrgSelectedTypeOfActivity([]);
       }
     }
-  }, [typeOfActivity, id]);
+  }, [typeOfActivity, ID]);
 
   useEffect(() => {
     setOrgInfoPost((prevOrgInfoPost) => ({
@@ -231,6 +233,42 @@ function OrganizationAddModify() {
     setOrgInfo((prevOrgInfo) => ({
       ...prevOrgInfo,
       shortName: e.target.value,
+    }));
+  }
+
+  function handleStreetAddressChange(e) {
+    setSaveButton(false);
+    setOrgInfoPost((prevOrgInfoPost) => ({
+      ...prevOrgInfoPost,
+      streetAddress: e.target.value,
+    }));
+    setOrgInfo((prevOrgInfo) => ({
+      ...prevOrgInfo,
+      streetAddress: e.target.value,
+    }));
+  }
+
+  function handleCityChange(e) {
+    setSaveButton(false);
+    setOrgInfoPost((prevOrgInfoPost) => ({
+      ...prevOrgInfoPost,
+      city: e.target.value,
+    }));
+    setOrgInfo((prevOrgInfo) => ({
+      ...prevOrgInfo,
+      city: e.target.value,
+    }));
+  }
+
+  function handleCliaNumberChange(e) {
+    setSaveButton(false);
+    setOrgInfoPost((prevOrgInfoPost) => ({
+      ...prevOrgInfoPost,
+      cliaNum: e.target.value,
+    }));
+    setOrgInfo((prevOrgInfo) => ({
+      ...prevOrgInfo,
+      cliaNum: e.target.value,
     }));
   }
 
@@ -331,7 +369,7 @@ function OrganizationAddModify() {
   function submitAddUpdatedOrgInfo() {
     setLoading(true);
     postToOpenElisServerJsonResponse(
-      `/rest/Organization?ID=${id}&startingRecNo=1`,
+      `/rest/Organization?ID=${ID}&startingRecNo=1`,
       JSON.stringify(orgInfoPost),
       () => {
         submitAddUpdatedOrgInfoCallback();
@@ -352,7 +390,7 @@ function OrganizationAddModify() {
     });
     setTimeout(() => {
       window.location.assign("/MasterListsPage#organizationManagement");
-    }, 2000);
+    }, 200);
     setNotificationVisible(true);
   };
 
@@ -399,7 +437,7 @@ function OrganizationAddModify() {
           <Column lg={16} md={8} sm={4}>
             <Section>
               <Heading>
-                {id === "0" ? (
+                {ID === "0" ? (
                   <FormattedMessage id="organization.add.title" />
                 ) : (
                   <FormattedMessage id="organization.edit.title" />
@@ -505,7 +543,7 @@ function OrganizationAddModify() {
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
-                      id="internet-address"
+                      id="org-internet-address"
                       className="defalut"
                       type="text"
                       labelText=""
@@ -520,6 +558,80 @@ function OrganizationAddModify() {
                           : ""
                       }
                       onChange={(e) => handleInternetAddressChange(e)}
+                    />
+                  </Column>
+                </Grid>
+                <Grid fullWidth={true}>
+                  <Column lg={8} md={4} sm={4}>
+                    <>
+                      <FormattedMessage id="organization.streetAddress" /> :
+                    </>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <TextInput
+                      id="org-street-address"
+                      className="defalut"
+                      type="text"
+                      labelText=""
+                      maxLength={15}
+                      placeholder={intl.formatMessage({
+                        id: "organization.add.placeholder",
+                      })}
+                      // invalid={errors.order && touched.order}
+                      // invalidText={errors.order}
+                      // required={true}
+                      value={
+                        orgInfo && orgInfo.streetAddress
+                          ? orgInfo.streetAddress
+                          : ""
+                      }
+                      onChange={(e) => handleStreetAddressChange(e)}
+                    />
+                  </Column>
+                </Grid>
+                <Grid fullWidth={true}>
+                  <Column lg={8} md={4} sm={4}>
+                    <>
+                      <FormattedMessage id="organization.city" /> :
+                    </>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <TextInput
+                      id="org-city"
+                      className="defalut"
+                      type="text"
+                      labelText=""
+                      maxLength={15}
+                      placeholder={intl.formatMessage({
+                        id: "organization.add.placeholder",
+                      })}
+                      // invalid={errors.order && touched.order}
+                      // invalidText={errors.order}
+                      // required={true}
+                      value={orgInfo && orgInfo.city ? orgInfo.city : ""}
+                      onChange={(e) => handleCityChange(e)}
+                    />
+                  </Column>
+                </Grid>
+                <Grid fullWidth={true}>
+                  <Column lg={8} md={4} sm={4}>
+                    <>
+                      <FormattedMessage id="organization.clia.number" /> :
+                    </>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <TextInput
+                      id="org-clia-number"
+                      className="defalut"
+                      type="text"
+                      placeholder={intl.formatMessage({
+                        id: "organization.add.placeholder",
+                      })}
+                      // invalid={errors.order && touched.order}
+                      // invalidText={errors.order}
+                      // required={true}
+                      value={orgInfo && orgInfo.cliaNum ? orgInfo.cliaNum : ""}
+                      onChange={(e) => handleCliaNumberChange(e)}
                     />
                   </Column>
                 </Grid>
@@ -627,16 +739,10 @@ function OrganizationAddModify() {
                           <TableSelectAll
                             id="table-select-all"
                             {...getSelectionProps()}
-                            checked={
-                              selectedRowIds.length === pageSize &&
-                              typeOfActivityShow
-                                .slice((page - 1) * pageSize, page * pageSize)
-                                .filter(
-                                  (row) =>
-                                    !row.disabled &&
-                                    selectedRowIds.includes(row.id),
-                                ).length === pageSize
-                            }
+                            checked={typeOfActivityShow
+                              .slice((page - 1) * pageSize, page * pageSize)
+                              .filter((row) => !row.disabled)
+                              .every((row) => selectedRowIds.includes(row.id))}
                             indeterminate={
                               selectedRowIds.length > 0 &&
                               selectedRowIds.length <
@@ -707,49 +813,6 @@ function OrganizationAddModify() {
                   </TableContainer>
                 )}
               </DataTable>
-              {/* <Pagination
-                onChange={handlePageChange}
-                page={page}
-                pageSize={pageSize}
-                pageSizes={[5, 10, 20]}
-                totalItems={typeOfActivityShow.length}
-                forwardText={intl.formatMessage({
-                  id: "pagination.forward",
-                })}
-                backwardText={intl.formatMessage({
-                  id: "pagination.backward",
-                })}
-                itemRangeText={(min, max, total) =>
-                  intl.formatMessage(
-                    { id: "pagination.item-range" },
-                    { min: min, max: max, total: total },
-                  )
-                }
-                itemsPerPageText={intl.formatMessage({
-                  id: "pagination.items-per-page",
-                })}
-                itemText={(min, max) =>
-                  intl.formatMessage(
-                    { id: "pagination.item" },
-                    { min: min, max: max },
-                  )
-                }
-                pageNumberText={intl.formatMessage({
-                  id: "pagination.page-number",
-                })}
-                pageRangeText={(_current, total) =>
-                  intl.formatMessage(
-                    { id: "pagination.page-range" },
-                    { total: total },
-                  )
-                }
-                pageText={(page, pagesUnknown) =>
-                  intl.formatMessage(
-                    { id: "pagination.page" },
-                    { page: pagesUnknown ? "" : page },
-                  )
-                }
-              /> */}
               <br />
             </Column>
           </Grid>
@@ -757,6 +820,7 @@ function OrganizationAddModify() {
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
               <Button
+                id="saveButton"
                 disabled={saveButton}
                 onClick={submitAddUpdatedOrgInfo}
                 type="button"

@@ -1,20 +1,21 @@
 package org.openelisglobal.menu.service;
 
+import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import javax.annotation.PostConstruct;
 import org.openelisglobal.common.formfields.AdminFormFields;
 import org.openelisglobal.common.formfields.AdminFormFields.Field;
 import org.openelisglobal.common.util.ConfigurationListener;
 import org.openelisglobal.common.util.ConfigurationProperties;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.menu.valueholder.AdminMenuItem;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 
 @Service
+@DependsOn({ "springContext", "defaultConfigurationProperties" })
 public class AdminMenuItemServiceImpl implements AdminMenuItemService, ConfigurationListener {
 
     List<AdminMenuItem> adminMenuItems;
@@ -22,7 +23,7 @@ public class AdminMenuItemServiceImpl implements AdminMenuItemService, Configura
     @PostConstruct
     public synchronized void createActiveList() {
         adminMenuItems = new ArrayList<>();
-        String permissionBase = SystemConfiguration.getInstance().getPermissionAgent();
+        String permissionBase = ConfigurationProperties.getInstance().getPropertyValue("permissions.agent");
         AdminFormFields adminFields = AdminFormFields.getInstance();
         AdminMenuItem curItem;
 
@@ -170,7 +171,7 @@ public class AdminMenuItemServiceImpl implements AdminMenuItemService, Configura
         curItem.setMessageKey("plugin.menu.list.plugins");
         adminMenuItems.add(curItem);
 
-        if (permissionBase.equals("ROLE")) {
+        if (permissionBase.equalsIgnoreCase("ROLE")) {
             curItem = new AdminMenuItem();
             curItem.setPath("/UnifiedSystemUserMenu");
             curItem.setMessageKey("unifiedSystemUser.browser.title");

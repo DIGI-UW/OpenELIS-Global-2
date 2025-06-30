@@ -22,8 +22,8 @@ import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.scriptlet.dao.ScriptletDAO;
 import org.openelisglobal.scriptlet.valueholder.Scriptlet;
 import org.springframework.stereotype.Component;
@@ -82,7 +82,9 @@ public class ScriptletDAOImpl extends BaseDAOImpl<Scriptlet, String> implements 
         List<Scriptlet> list;
         try {
             // calculate maxRow to be one more than the page size
-            int endingRecNo = startingRecNo + (SystemConfiguration.getInstance().getDefaultPageSize() + 1);
+            int endingRecNo = startingRecNo
+                    + (Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
+                            + 1);
 
             // bugzilla 1399
             String sql = "from Scriptlet s order by s.scriptletName";

@@ -13,6 +13,10 @@
  */
 package org.openelisglobal.common.provider.reports;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -25,10 +29,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
-import javax.servlet.ServletException;
-import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JRParameter;
 import net.sf.jasperreports.engine.JasperReport;
@@ -42,9 +42,9 @@ import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSResultsReportHasNoDataException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
@@ -134,8 +134,8 @@ public class ResultsReportProvider extends BaseReportsProvider {
      * (non-Javadoc)
      *
      * @see org.openelisglobal.common.provider.reports.BaseReportsProvider#
-     * processRequest(java.util.Map, javax.servlet.http.HttpServletRequest,
-     * javax.servlet.http.HttpServletResponse)
+     * processRequest(java.util.Map, jakarta.servlet.http.HttpServletRequest,
+     * jakarta.servlet.http.HttpServletResponse)
      */
     @Override
     public boolean processRequest(Map parameters, HttpServletRequest request, HttpServletResponse response)
@@ -732,7 +732,8 @@ public class ResultsReportProvider extends BaseReportsProvider {
                 reportAnalyteResult.setAnalyte(analyte);
                 reportAnalyteResult.setComponentName(analyte.getAnalyteName());
                 String resultValue = "";
-                if (result.getResultType().equals(SystemConfiguration.getInstance().getDictionaryType())) {
+                if (result.getResultType()
+                        .equals(ConfigurationProperties.getInstance().getPropertyValue("dictionaryType"))) {
                     Dictionary dictionary = new Dictionary();
                     dictionary.setId(result.getValue());
                     dictionaryService.getData(dictionary);

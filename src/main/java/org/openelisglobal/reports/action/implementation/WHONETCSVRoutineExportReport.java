@@ -18,10 +18,6 @@ import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JRField;
 import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 
-/**
- * @author pahill (pahill@uw.edu)
- * @since Mar 17, 2011
- */
 public abstract class WHONETCSVRoutineExportReport extends Report implements JRDataSource {
 
     /**

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Column, Grid, Select, SelectItem } from "@carbon/react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import "../Style.css";
-import { getFromOpenElisServer } from "../utils/Utils";
+import { getFromOpenElisServer, Roles } from "../utils/Utils";
 
 function TestSectionSelectForm(props) {
   const mounted = useRef(false);
@@ -28,18 +28,21 @@ function TestSectionSelectForm(props) {
       "testSectionId",
     );
     testSectionId = testSectionId ? testSectionId : "";
-    getFromOpenElisServer("/rest/user-test-sections", (fetchedTestSections) => {
-      let testSection = fetchedTestSections.find(
-        (testSection) => testSection.id === testSectionId,
-      );
-      let testSectionLabel = testSection
-        ? testSection.value
-        : intl.formatMessage({ id: "input.placeholder.selectTestSection" });
-      setDefaultTestSectionId(testSectionId);
-      setDefaultTestSectionLabel(testSectionLabel);
-      props.value(testSectionId, testSectionLabel);
-      getTestUnits(fetchedTestSections);
-    });
+    getFromOpenElisServer(
+      "/rest/user-test-sections/" + Roles.RESULTS,
+      (fetchedTestSections) => {
+        let testSection = fetchedTestSections.find(
+          (testSection) => testSection.id === testSectionId,
+        );
+        let testSectionLabel = testSection
+          ? testSection.value
+          : intl.formatMessage({ id: "input.placeholder.selectTestSection" });
+        setDefaultTestSectionId(testSectionId);
+        setDefaultTestSectionLabel(testSectionLabel);
+        props.value(testSectionId, testSectionLabel);
+        getTestUnits(fetchedTestSections);
+      },
+    );
     return () => {
       mounted.current = false;
     };

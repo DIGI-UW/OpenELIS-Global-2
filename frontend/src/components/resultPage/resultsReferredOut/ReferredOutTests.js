@@ -1,7 +1,7 @@
 import React, { useContext, useState, useRef, useEffect } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import "../../Style.css";
-import { encodeDate, getFromOpenElisServer } from "../../utils/Utils";
+import { encodeDate, getFromOpenElisServer, Roles } from "../../utils/Utils";
 import {
   Form,
   Dropdown,
@@ -239,14 +239,17 @@ function ReferredOutTests(props) {
       "testSectionId",
     );
     testSectionId = testSectionId ? testSectionId : "";
-    getFromOpenElisServer("/rest/user-test-sections", (fetchedTestSections) => {
-      let testSection = fetchedTestSections.find(
-        (testSection) => testSection.id === testSectionId,
-      );
-      let testSectionLabel = testSection ? testSection.value : "";
-      setTestNames(testSectionLabel);
-      fetchTestSections(fetchedTestSections);
-    });
+    getFromOpenElisServer(
+      "/rest/user-test-sections/" + Roles.RESULTS,
+      (fetchedTestSections) => {
+        let testSection = fetchedTestSections.find(
+          (testSection) => testSection.id === testSectionId,
+        );
+        let testSectionLabel = testSection ? testSection.value : "";
+        setTestNames(testSectionLabel);
+        fetchTestSections(fetchedTestSections);
+      },
+    );
   }, []);
 
   useEffect(() => {
@@ -345,6 +348,7 @@ function ReferredOutTests(props) {
           <br></br>
           <Column lg={16} md={8} sm={4}>
             <Button
+              data-cy="referralsByPatient"
               type="button"
               disabled={searchByPatient}
               onClick={handleReferredOutPatient}
@@ -545,6 +549,7 @@ function ReferredOutTests(props) {
 
                 <Column lg={4} md={8} sm={4}>
                   <Button
+                    data-cy="byUnitsAndTests"
                     type="button"
                     disabled={searchByUnit}
                     onClick={handleReferredOutPatient}
@@ -595,6 +600,7 @@ function ReferredOutTests(props) {
 
                 <Column lg={4} md={8} sm={4}>
                   <Button
+                    data-cy="byLabNumber"
                     type="button"
                     disabled={searchByLabNumber}
                     onClick={handleReferredOutPatient}
@@ -622,6 +628,7 @@ function ReferredOutTests(props) {
               disabled={selectedRowIds.length === 0}
               kind="tertiary"
               type="button"
+              data-cy="print-report"
               onClick={handleReferredOutPatientPrint}
             >
               <FormattedMessage
@@ -636,6 +643,7 @@ function ReferredOutTests(props) {
                 disabled={selectedRowIds.length === responseDataShow.length}
                 kind="tertiary"
                 type="button"
+                data-cy="select-all-button"
                 onClick={() => {
                   const currentPageIndexes = responseDataShow
                     .slice((page - 1) * pageSize, page * pageSize)
@@ -657,6 +665,7 @@ function ReferredOutTests(props) {
               disabled={selectedRowIds.length === 0}
               kind="tertiary"
               type="button"
+              data-cy="select-none-button"
               onClick={() => setSelectedRowIds([])}
             >
               <FormattedMessage

@@ -18,10 +18,10 @@
 /** Value Object for transfer from UI table of QaEvents to Action classes(s). */
 package org.openelisglobal.qaevent.valueholder.retroCI;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.groups.Default;
 import java.io.Serializable;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Pattern;
-import javax.validation.groups.Default;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.qaevent.form.NonConformityForm;
 import org.openelisglobal.validation.annotations.SafeHtml;

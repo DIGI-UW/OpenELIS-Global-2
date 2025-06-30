@@ -1,7 +1,7 @@
 package org.openelisglobal.reports.form;
 
+import jakarta.validation.constraints.Pattern;
 import java.util.List;
-import javax.validation.constraints.Pattern;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.validator.ValidationHelper;
@@ -197,6 +197,8 @@ public class ReportForm extends BaseForm {
     private String averageHer2;
 
     private String numberOfcancerNuclei;
+
+    private List<String> codedConclusions;
 
     // for display
     private List<IdValuePair> priorityList;
@@ -846,4 +848,13 @@ public class ReportForm extends BaseForm {
     public void setArvOrganizationList(List<Organization> arvOrganizationList) {
         this.arvOrganizationList = arvOrganizationList;
     }
+
+    public List<String> getCodedConclusions() {
+        return codedConclusions;
+    }
+
+    public void setCodedConclusions(List<String> codedConclusions) {
+        this.codedConclusions = codedConclusions;
+    }
+
 }

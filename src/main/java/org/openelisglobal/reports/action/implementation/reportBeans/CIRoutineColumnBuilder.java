@@ -120,6 +120,7 @@ public abstract class CIRoutineColumnBuilder extends CSVRoutineColumnBuilder {
 
     protected void defineBasicColumns() {
         add("accession_number", "LABNO", NONE);
+        add("lab_unit", "LAB_UNIT", NONE);
         add("national_id", "IDENTIFIER", NONE);
         add("gender", "SEX", NONE);
         add("birth_date", "BIRTHDATE", DATE);

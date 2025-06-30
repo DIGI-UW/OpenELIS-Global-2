@@ -1,7 +1,7 @@
 package org.openelisglobal.systemmodule.service;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.systemmodule.valueholder.SystemModuleUrl;
 

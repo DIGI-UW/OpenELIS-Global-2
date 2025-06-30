@@ -164,8 +164,11 @@ public abstract class AbstractHistoryService {
 
     protected void simpleChange(Map<String, String> changeMap, String changesString, String attribute) {
         String value = extractSimple(changesString, attribute);
+
         if (value != null) {
             changeMap.put(attribute, value);
+            // TODO should we call something to trigger addInsertion here if the value is
+            // null?
         }
     }
 
@@ -188,7 +191,7 @@ public abstract class AbstractHistoryService {
 
     protected String getViewableValue(String value, Result result) {
         if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())
-                && !GenericValidator.isBlankOrNull(value) && org.apache.commons.lang.StringUtils.isNumeric(value)) {
+                && !GenericValidator.isBlankOrNull(value) && org.apache.commons.lang3.StringUtils.isNumeric(value)) {
             Dictionary dictionaryValue = dictionaryService.getDictionaryById(value);
             value = dictionaryValue != null ? dictionaryValue.getDictEntry()
                     : MessageUtil.getMessage("result.undefined");

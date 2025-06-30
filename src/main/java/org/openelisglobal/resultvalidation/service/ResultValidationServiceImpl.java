@@ -116,10 +116,7 @@ public class ResultValidationServiceImpl implements ResultValidationService {
         boolean sampleFinished = true;
         List<Integer> sampleFinishedStatus = getSampleFinishedStatuses();
 
-        // System.out.println("checkIfSamplesFinished:");
         for (AnalysisItem analysisItem : resultItemList) {
-            // System.out.println("checkIfSamplesFinished:" +
-            // analysisItem.getAccessionNumber());
             String analysisSampleId = sampleService.getSampleByAccessionNumber(analysisItem.getAccessionNumber())
                     .getId();
             if (!analysisSampleId.equals(currentSampleId)) {

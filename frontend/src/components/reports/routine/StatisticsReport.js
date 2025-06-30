@@ -11,7 +11,7 @@ import {
   Heading,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { getFromOpenElisServer, Roles } from "../../utils/Utils";
 import "../../Style.css";
 import { AlertDialog } from "../../common/CustomNotification";
 import config from "../../../config.json";
@@ -44,9 +44,12 @@ const StatisticsReport = () => {
   const [notificationVisible, setNotificationVisible] = useState(false);
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/user-test-sections", (fetchedTestSections) => {
-      setLabUnits(fetchedTestSections);
-    });
+    getFromOpenElisServer(
+      "/rest/user-test-sections/" + Roles.REPORTS,
+      (fetchedTestSections) => {
+        setLabUnits(fetchedTestSections);
+      },
+    );
     getFromOpenElisServer("/rest/priorities", (fetchedPriorities) => {
       setPriorities(fetchedPriorities);
     });
@@ -285,7 +288,11 @@ const StatisticsReport = () => {
             <br />
             <Section>
               <br />
-              <Button type="button" onClick={handleSubmit}>
+              <Button
+                data-cy="printableVersion"
+                type="button"
+                onClick={handleSubmit}
+              >
                 <FormattedMessage
                   id="label.button.generatePrintableVersion"
                   defaultMessage="Generate printable version"

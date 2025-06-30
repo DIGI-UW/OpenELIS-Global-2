@@ -13,15 +13,15 @@
  */
 package org.openelisglobal.common.provider.selectdropdown;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.spring.util.SpringContext;
@@ -53,8 +53,8 @@ public class TestAnalyteTestResultSelectDropDownProvider extends BaseSelectDropD
     protected TestResultService testResultService = SpringContext.getBean(TestResultService.class);
 
     /**
-     * @see org.ajaxtags.demo.servlet.BaseAjaxServlet#getXmlContent(javax.servlet.http.HttpServletRequest,
-     *      javax.servlet.http.HttpServletResponse)
+     * @see org.ajaxtags.demo.servlet.BaseAjaxServlet#getXmlContent(jakarta.servlet.http.HttpServletRequest,
+     *      jakarta.servlet.http.HttpServletResponse)
      */
     @Override
     public List processRequest(HttpServletRequest request, HttpServletResponse response)
@@ -95,7 +95,8 @@ public class TestAnalyteTestResultSelectDropDownProvider extends BaseSelectDropD
             for (int i = 0; i < listOfTestResults.size(); i++) {
                 TestResult tr = new TestResult();
                 tr = (TestResult) listOfTestResults.get(i);
-                if (tr.getTestResultType().equals(SystemConfiguration.getInstance().getDictionaryType())) {
+                if (tr.getTestResultType()
+                        .equals(ConfigurationProperties.getInstance().getPropertyValue("dictionaryType"))) {
                     // get from dictionary
                     Dictionary dictionary = new Dictionary();
                     dictionary.setId(tr.getValue());

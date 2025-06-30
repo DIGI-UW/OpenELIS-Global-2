@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import "../Style.css";
-import { getFromOpenElisServer } from "../utils/Utils";
+import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
 import {
   Form,
   TextInput,
@@ -20,7 +20,11 @@ import {
   TableCell,
   Pagination,
   Loading,
+  Toggle,
+  Tag,
+  Link,
 } from "@carbon/react";
+import { Person, ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { patientSearchHeaderData } from "../data/PatientResultsTableHeaders";
 import { Formik, Field } from "formik";
@@ -29,6 +33,7 @@ import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { ConfigurationContext } from "../layout/Layout";
+import CreatePatientFormValues from "../formModel/innitialValues/CreatePatientFormValues";
 
 function SearchPatientForm(props) {
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -39,20 +44,108 @@ function SearchPatientForm(props) {
 
   const [dob, setDob] = useState("");
   const [patientSearchResults, setPatientSearchResults] = useState([]);
+  const [importStatus, setImportStatus] = useState({});
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(100);
   const [loading, setLoading] = useState(false);
   const [nextPage, setNextPage] = useState(null);
+  const [isToggled, setIsToggled] = useState(false);
   const [previousPage, setPreviousPage] = useState(null);
   const [pagination, setPagination] = useState(false);
+  const [currentApiPage, setCurrentApiPage] = useState(null);
+  const [totalApiPages, setTotalApiPages] = useState(null);
   const [url, setUrl] = useState("");
   const [searchFormValues, setSearchFormValues] = useState(
     SearchPatientFormValues,
   );
+  const [prevfirstName, setPrevfirstName] = useState("");
+  const [prevlastName, setPrevlastName] = useState("");
+
+  const handlePatientImport = (patientId) => {
+    console.log("Import button clicked, patientId:", patientId);
+
+    const patientSelected = patientSearchResults.find(
+      (patient) => patient.patientID === patientId,
+    );
+    console.log("Patient selected:", patientSelected);
+
+    if (!patientSelected) {
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "error.no.patient.data" }),
+        kind: NotificationKinds.error,
+      });
+      return;
+    }
+
+    const dataToSend = {
+      ...CreatePatientFormValues,
+      patientPK: "",
+      nationalId: patientSelected.nationalId || "",
+      subjectNumber: "",
+      lastName: patientSelected.lastName || "",
+      firstName: patientSelected.firstName || "",
+      streetAddress: patientSelected.address?.street || "",
+      city: patientSelected.address?.city || "",
+      primaryPhone: patientSelected.contactPhone || "",
+      gender: patientSelected.gender || "",
+      birthDateForDisplay: patientSelected.birthdate || "",
+      commune: patientSelected.commune || "",
+      education: patientSelected.education || "",
+      maritialStatus: patientSelected.maritalStatus || "",
+      nationality: patientSelected.nationality || "",
+      healthDistrict: patientSelected.healthDistrict || "",
+      healthRegion: patientSelected.healthRegion || "",
+      otherNationality: patientSelected.otherNationality || "",
+      patientContact: {
+        person: {
+          firstName: patientSelected.contact?.firstName || "",
+          lastName: patientSelected.contact?.lastName || "",
+          primaryPhone: patientSelected.contact?.primaryPhone || "",
+          email: patientSelected.contact?.email || "",
+        },
+      },
+    };
+
+    console.log("Data to send:", dataToSend);
+
+    postToOpenElisServer(
+      "/rest/PatientManagement",
+      JSON.stringify(dataToSend),
+      (status) => {
+        handlePost(status, patientId);
+      },
+    );
+  };
+
+  const handlePost = (status, patientId) => {
+    setNotificationVisible(true);
+    if (status === 200) {
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "success.import.patient" }),
+        kind: NotificationKinds.success,
+      });
+      setImportStatus((prevStatus) => ({
+        ...prevStatus,
+        [patientId]: true,
+      }));
+    } else {
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "error.import.patient" }),
+        kind: NotificationKinds.error,
+      });
+    }
+  };
+
   const handleSubmit = (values) => {
+    setNextPage(null);
+    setPreviousPage(null);
+    setPagination(false);
     setLoading(true);
     values.dateOfBirth = dob;
-    const searchEndPoint =
+    let searchEndPoint =
       "/rest/patient-search-results?" +
       "lastName=" +
       values.lastName +
@@ -74,9 +167,15 @@ function SearchPatientForm(props) {
       values.gender +
       "&suppressExternalSearch=" +
       values.suppressExternalSearch;
+
+    if (values.crSearch === true) {
+      searchEndPoint += "&crSearch=true";
+    }
+
     getFromOpenElisServer(searchEndPoint, fetchPatientResults);
     setUrl(searchEndPoint);
   };
+
   const loadNextResultsPage = () => {
     setLoading(true);
     getFromOpenElisServer(url + "&page=" + nextPage, fetchPatientResults);
@@ -85,6 +184,10 @@ function SearchPatientForm(props) {
   const loadPreviousResultsPage = () => {
     setLoading(true);
     getFromOpenElisServer(url + "&page=" + previousPage, fetchPatientResults);
+  };
+
+  const toggle = () => {
+    setIsToggled((prev) => !prev);
   };
 
   const fetchPatientResults = (res) => {
@@ -105,6 +208,8 @@ function SearchPatientForm(props) {
       var { totalPages, currentPage } = res.paging;
       if (totalPages > 1) {
         setPagination(true);
+        setCurrentApiPage(currentPage);
+        setTotalApiPages(totalPages);
         if (parseInt(currentPage) < parseInt(totalPages)) {
           setNextPage(parseInt(currentPage) + 1);
         } else {
@@ -127,6 +232,32 @@ function SearchPatientForm(props) {
   const handleDatePickerChange = (date) => {
     setDob(date);
   };
+
+  function handleFirstNameChange(event) {
+    const regexFlags = "iu";
+    const regex = new RegExp(
+      configurationProperties.FIRST_NAME_REGEX,
+      regexFlags,
+    );
+    const value = event.target.value;
+    if (!regex.test(value)) {
+      event.target.value = prevfirstName;
+    }
+    setPrevfirstName(event.target.value);
+  }
+
+  function handleLastNameChange(event) {
+    const regexFlags = "iu";
+    const regex = new RegExp(
+      configurationProperties.LAST_NAME_REGEX,
+      regexFlags,
+    );
+    const value = event.target.value;
+    if (!regex.test(value)) {
+      event.target.value = prevlastName;
+    }
+    setPrevlastName(event.target.value);
+  }
 
   const patientSelected = (e) => {
     const patientSelected = patientSearchResults.find((patient) => {
@@ -246,6 +377,7 @@ function SearchPatientForm(props) {
                         defaultMessage: "Last Name",
                       })}
                       id={field.name}
+                      onChange={(e) => handleLastNameChange(e)}
                     />
                   )}
                 </Field>
@@ -263,6 +395,7 @@ function SearchPatientForm(props) {
                         defaultMessage: "First Name",
                       })}
                       id={field.name}
+                      onChange={(e) => handleFirstNameChange(e)}
                     />
                   )}
                 </Field>
@@ -330,6 +463,7 @@ function SearchPatientForm(props) {
                   id="local_search"
                   kind="tertiary"
                   type="submit"
+                  data-cy="searchPatientButton"
                   onClick={() => setFieldValue("suppressExternalSearch", true)}
                 >
                   <FormattedMessage id="label.button.search" />
@@ -351,41 +485,71 @@ function SearchPatientForm(props) {
                   />
                 </Button>
               </Column>
+              {configurationProperties.ENABLE_CLIENT_REGISTRY === "true" && (
+                <Column lg={4} md={4} sm={2}>
+                  <Toggle
+                    labelText="Client Registry Search"
+                    labelA="false"
+                    labelB="true"
+                    id="toggle-cr"
+                    toggled={isToggled}
+                    onClick={() => {
+                      toggle();
+                      setFieldValue("crSearch", !isToggled);
+                    }}
+                  />
+                </Column>
+              )}
+              <Column lg={16}>
+                {" "}
+                <br />
+                <br />
+              </Column>
             </Grid>
           </Form>
         )}
       </Formik>
-      <Column lg={16}>
-        {" "}
-        <br />{" "}
-      </Column>
-      <Column lg={16}>
-        {pagination && (
-          <Grid>
-            <Column lg={11} />
-            <Column lg={2}>
+      {pagination && (
+        <Grid>
+          <Column lg={8}>
+            {" "}
+            <div></div>
+          </Column>
+          <Column lg={14} />
+          <Column
+            lg={2}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "10px",
+              width: "110%",
+            }}
+          >
+            <Link>
+              {currentApiPage} / {totalApiPages}
+            </Link>
+            <div style={{ display: "flex", gap: "10px" }}>
               <Button
-                type=""
+                hasIconOnly
                 id="loadpreviousresults"
                 onClick={loadPreviousResultsPage}
                 disabled={previousPage != null ? false : true}
-              >
-                <FormattedMessage id="button.label.loadprevious" />
-              </Button>
-            </Column>
-            <Column lg={2}>
+                renderIcon={ArrowLeft}
+                iconDescription="previous"
+              ></Button>
               <Button
-                type=""
+                hasIconOnly
                 id="loadnextresults"
-                disabled={nextPage != null ? false : true}
                 onClick={loadNextResultsPage}
-              >
-                <FormattedMessage id="button.label.loadnext" />
-              </Button>
-            </Column>
-          </Grid>
-        )}
-      </Column>
+                disabled={nextPage != null ? false : true}
+                renderIcon={ArrowRight}
+                iconDescription="next"
+              ></Button>
+            </div>
+          </Column>
+        </Grid>
+      )}
       <DataTable
         rows={patientSearchResults}
         headers={patientSearchHeaderData}
@@ -396,7 +560,7 @@ function SearchPatientForm(props) {
             <Table {...getTableProps()}>
               <TableHead>
                 <TableRow>
-                  <TableHeader></TableHeader>
+                  <TableHeader />
                   {headers.map((header) => (
                     <TableHeader
                       key={header.key}
@@ -408,27 +572,75 @@ function SearchPatientForm(props) {
                 </TableRow>
               </TableHead>
               <TableBody>
-                <>
-                  {rows
-                    .slice((page - 1) * pageSize)
-                    .slice(0, pageSize)
-                    .map((row) => (
+                {rows
+                  .slice((page - 1) * pageSize, page * pageSize)
+                  .map((row) => {
+                    const dataSourceName = row.cells.find(
+                      (cell) => cell.info.header === "dataSourceName",
+                    )?.value;
+
+                    return (
                       <TableRow key={row.id}>
                         <TableCell>
-                          {" "}
-                          <RadioButton
-                            name="radio-group"
-                            onClick={patientSelected}
-                            labelText=""
-                            id={row.id}
-                          />
+                          {dataSourceName === "OpenElis" ? (
+                            <RadioButton
+                              data-cy="radioButton"
+                              name="radio-group"
+                              onClick={patientSelected}
+                              labelText=""
+                              id={row.id}
+                            />
+                          ) : (
+                            <span></span>
+                          )}
                         </TableCell>
+
                         {row.cells.map((cell) => (
-                          <TableCell key={cell.id}>{cell.value}</TableCell>
+                          <TableCell key={cell.id}>
+                            {cell.info.header === "dataSourceName" ? (
+                              <>
+                                <Tag
+                                  type={
+                                    cell.value === "OpenElis"
+                                      ? "red"
+                                      : cell.value === "Open Client Registry"
+                                        ? "green"
+                                        : "gray"
+                                  }
+                                >
+                                  {cell.value}
+                                </Tag>
+                                &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;
+                                {dataSourceName === "Open Client Registry" ? (
+                                  <Button
+                                    id={row.id}
+                                    kind="tertiary"
+                                    onClick={() => handlePatientImport(row.id)}
+                                    size="md"
+                                    disabled={importStatus[row.id]}
+                                  >
+                                    <Person size={16} />
+                                    {importStatus[row.id] ? (
+                                      <span>
+                                        &nbsp;&nbsp;Patient Imported
+                                        Successfully
+                                      </span>
+                                    ) : (
+                                      <span>&nbsp;&nbsp;Import Patient</span>
+                                    )}
+                                  </Button>
+                                ) : (
+                                  <span></span>
+                                )}
+                              </>
+                            ) : (
+                              cell.value
+                            )}
+                          </TableCell>
                         ))}
                       </TableRow>
-                    ))}
-                </>
+                    );
+                  })}
               </TableBody>
             </Table>
           </TableContainer>
@@ -438,7 +650,7 @@ function SearchPatientForm(props) {
         onChange={handlePageChange}
         page={page}
         pageSize={pageSize}
-        pageSizes={[5, 10, 20, 30]}
+        pageSizes={[10, 20, 30, 50, 100]}
         totalItems={patientSearchResults.length}
         forwardText={intl.formatMessage({ id: "pagination.forward" })}
         backwardText={intl.formatMessage({ id: "pagination.backward" })}

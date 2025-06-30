@@ -87,6 +87,7 @@ function ReflexRule() {
   }); //{field :{index :{field_index:[]}}}
   const [counter, setCounter] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -340,6 +341,7 @@ function ReflexRule() {
   };
 
   const handleSubmited = (status, index) => {
+    setIsSubmitting(false);
     setNotificationVisible(true);
     if (status == "200") {
       const element = document.getElementById("submit_" + index);
@@ -360,6 +362,10 @@ function ReflexRule() {
 
   const handleSubmit = (event, index) => {
     event.preventDefault();
+    if (isSubmitting) {
+      return;
+    }
+    setIsSubmitting(true);
     console.debug(JSON.stringify(ruleList[index]));
     postToOpenElisServer(
       "/rest/reflexrule",
@@ -552,6 +558,7 @@ function ReflexRule() {
                           <Grid key={index + "_" + condition_index}>
                             <Column lg={3} sm={4}>
                               <Select
+                                data-cy="addSample"
                                 id={index + "_" + condition_index + "_sample"}
                                 name="sampleId"
                                 labelText={
@@ -737,7 +744,13 @@ function ReflexRule() {
                                     <>
                                       <TextInput
                                         name="value"
-                                        type="text"
+                                        type={
+                                          testResultList[index][
+                                            condition_index
+                                          ]["type"] === "N"
+                                            ? "number"
+                                            : "text"
+                                        }
                                         id={
                                           index +
                                           "_" +
@@ -939,6 +952,7 @@ function ReflexRule() {
                           <Grid key={index + "_" + action_index}>
                             <Column lg={3} sm={4}>
                               <Select
+                                data-cy="selectSample"
                                 id={index + "_" + action_index + "_sample"}
                                 name="sampleId"
                                 labelText={
@@ -1137,9 +1151,7 @@ function ReflexRule() {
                       </div>
                       <Button
                         id={"submit_" + index}
-                        disabled={
-                          Object.keys(errors).length === 0 ? false : true
-                        }
+                        disabled={isSubmitting}
                         type="submit"
                         kind="tertiary"
                         size="sm"
@@ -1153,10 +1165,12 @@ function ReflexRule() {
             </Form>
             {ruleList.length - 1 === index && (
               <IconButton
+                data-cy="rule"
                 onClick={handleRuleAdd}
                 label={intl.formatMessage({ id: "rulebuilder.label.addRule" })}
                 size="md"
                 kind="tertiary"
+                style={{ marginLeft: "30px" }}
               >
                 <Add size={16} />
                 <span>

@@ -38,7 +38,14 @@ import {
 } from "../../common/CustomNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
-const breadcrumbs = [{ label: "home.label", link: "/" }];
+const breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+  {
+    label: "sidenav.label.admin.testmgt.calculated",
+    link: "/MasterListsPage#calculatedValue",
+  },
+];
 interface CalculatedValueProps {}
 
 type TestListField = "TEST_RESULT" | "FINAL_RESULT";
@@ -88,6 +95,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   const [sampleList, setSampleList] = useState([]);
   const [sampleTestList, setSampleTestList] = useState(TestListObj);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext<NotificationContextType>(NotificationContext);
   const [mathFunctions, setMathFunctions] = useState([mathFunction]);
@@ -342,6 +350,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   };
 
   const handleCalculationSubmited = (status, index) => {
+    setIsSubmitting(false);
     setNotificationVisible(true);
     if (status == "200") {
       const element = document.getElementById(
@@ -373,6 +382,10 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
 
   const handleSubmit = (event: any, index: number) => {
     event.preventDefault();
+    if (isSubmitting) {
+      return;
+    }
+    setIsSubmitting(true);
     let mathematicalOperation = "";
     calculationList[index]["operations"].forEach(
       (operation, operationIndex) => {
@@ -422,8 +435,9 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
       case "TEST_RESULT":
         return (
           <>
-            <Column lg={5}>
+            <Column lg={5} md={2} sm={1}>
               <Select
+                data-cy="add-sample"
                 id={index + "_" + operationIndex + "_sample"}
                 name="sampleId"
                 labelText={
@@ -450,7 +464,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 ))}
               </Select>
             </Column>
-            <Column lg={5}>
+            <Column lg={5} md={2} sm={1}>
               <AutoComplete
                 id={index + "_" + operationIndex + "_testresult"}
                 label={
@@ -617,7 +631,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   return (
     <div className="adminPageContent">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
-      <Grid>
+      <Grid fullWidth={true}>
         <Column lg={16}>
           <Section>
             <Heading>
@@ -679,10 +693,27 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                   </div>
                   {calculation.toggled && (
                     <>
-                      <div className="inlineDiv">
+                      <div
+                        className="inlineDiv"
+                        style={{
+                          display: "flex",
+                          flexDirection:
+                            window.innerWidth < 768 ? "column" : "row",
+                        }}
+                      >
                         <FormattedMessage id="label.button.add" /> &nbsp; &nbsp;
                         <div>
                           <Button
+                            style={{
+                              marginTop: window.innerWidth < 768 && "0.5rem",
+                              marginLeft:
+                                window.innerWidth > 500 &&
+                                window.innerWidth < 1800
+                                  ? "0.3rem"
+                                  : "0.5rem",
+                              marginRight:
+                                window.innerWidth < 768 ? "0.3rem" : "0.5rem",
+                            }}
                             renderIcon={Add}
                             id={index + "_testresult"}
                             kind="tertiary"
@@ -695,6 +726,15 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         <div>&nbsp; &nbsp;</div>
                         <div>
                           <Button
+                            style={{
+                              marginLeft:
+                                window.innerWidth > 500 &&
+                                window.innerWidth < 1800
+                                  ? "0.3rem"
+                                  : "0.5rem",
+                              marginRight:
+                                window.innerWidth < 768 ? "0.3rem" : "0.5rem",
+                            }}
                             renderIcon={Add}
                             id={index + "_mathfunction"}
                             kind="tertiary"
@@ -707,6 +747,15 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         <div>&nbsp; &nbsp;</div>
                         <div>
                           <Button
+                            style={{
+                              marginLeft:
+                                window.innerWidth > 500 &&
+                                window.innerWidth < 1800
+                                  ? "0.3rem"
+                                  : "0.5rem",
+                              marginRight:
+                                window.innerWidth < 768 ? "0.3rem" : "0.5rem",
+                            }}
                             renderIcon={Add}
                             id={index + "_integer"}
                             kind="tertiary"
@@ -719,6 +768,16 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         <div>&nbsp; &nbsp;</div>
                         <div>
                           <Button
+                            style={{
+                              marginLeft:
+                                window.innerWidth > 500 &&
+                                window.innerWidth < 1800
+                                  ? "0.3rem"
+                                  : "0.5rem",
+                              marginRight:
+                                window.innerWidth < 768 ? "0.3rem" : "0.5rem",
+                              width: window.innerWidth < 1200 && "7rem",
+                            }}
                             renderIcon={Add}
                             id={index + "_patientattribute"}
                             kind="tertiary"
@@ -760,7 +819,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                 </div>
                               ),
                             )}{" "}
-                            {<b style={{ color: "red" }}>{" => "}</b>} &nbsp;{" "}
+                            {<b style={{ color: "red" }}>{" ⟶ "}</b>} &nbsp;{" "}
                             {calculation.testId ? "'" : ""}
                             {sampleTestList["FINAL_RESULT"][index]
                               ? sampleTestList["FINAL_RESULT"][index]?.filter(
@@ -770,7 +829,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                           </div>
                         </div>
                         <Grid>
-                          <Column lg={16}>
+                          <Column lg={16} md={8} sm={4}>
                             {" "}
                             &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
                           </Column>
@@ -802,13 +861,13 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                   />
                                 )}
                               </Column>
-                              <Column lg={4}>
+                              <Column lg={4} md={2} sm={1}>
                                 <Select
                                   id={
                                     index +
                                     "_" +
                                     operation_index +
-                                    "_addopeartion"
+                                    "_addoperation"
                                   }
                                   name="addoperation"
                                   labelText={
@@ -841,11 +900,11 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                 </Select>
                                 {/* )} */}
                               </Column>
-                              <Column lg={16}>
+                              <Column lg={16} md={8} sm={4}>
                                 {" "}
                                 &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
                               </Column>
-                              <Column lg={16}>
+                              <Column lg={16} md={8} sm={4}>
                                 {" "}
                                 &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
                               </Column>
@@ -854,14 +913,15 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         )}
                       </div>
                       <div className="section">
-                        <div className="inlineDiv">
-                          <h6>
-                            <FormattedMessage id="testcalculation.label.finalresult" />
-                          </h6>
-                        </div>
-                        <div className="inlineDiv">
-                          <div>
+                        <Grid>
+                          <Column lg={16}>
+                            <h6>
+                              <FormattedMessage id="testcalculation.label.finalresult" />
+                            </h6>
+                          </Column>
+                          <Column lg={4}>
                             <Select
+                              data-cy="calc-sample"
                               id={index + "_sample"}
                               name="sampleId"
                               labelText={
@@ -892,8 +952,8 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                 />
                               ))}
                             </Select>
-                          </div>
-                          <div>
+                          </Column>
+                          <Column lg={4}>
                             <AutoComplete
                               id={index + "_finalresult"}
                               class="inputText"
@@ -907,21 +967,21 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                   : []
                               }
                             ></AutoComplete>
-                          </div>
-                          <div>&nbsp; &nbsp;</div>
-                          {sampleTestList["FINAL_RESULT"][index] && (
-                            <>
-                              {getResultInputByResultType(
-                                sampleTestList["FINAL_RESULT"][index].filter(
-                                  (test) => test.id == calculation.testId,
-                                )[0]?.resultType,
-                                index,
-                                calculation,
-                              )}
-                            </>
-                          )}
-                          <div>&nbsp; &nbsp;</div>
-                          <div>
+                          </Column>
+                          <Column lg={4}>
+                            {sampleTestList["FINAL_RESULT"][index] && (
+                              <>
+                                {getResultInputByResultType(
+                                  sampleTestList["FINAL_RESULT"][index].filter(
+                                    (test) => test.id == calculation.testId,
+                                  )[0]?.resultType,
+                                  index,
+                                  calculation,
+                                )}
+                              </>
+                            )}
+                          </Column>
+                          <Column lg={4}>
                             <TextArea
                               name="note"
                               id={index + "_note"}
@@ -934,8 +994,8 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                 handleCalculationFieldChange(e, index);
                               }}
                             />
-                          </div>
-                        </div>
+                          </Column>
+                        </Grid>
                       </div>
                       <Button
                         renderIcon={Save}
@@ -943,6 +1003,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         type="submit"
                         kind="primary"
                         size="sm"
+                        disabled={isSubmitting}
                       >
                         <FormattedMessage id="label.button.submit" />
                       </Button>
@@ -953,10 +1014,12 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
             </Form>
             {calculationList.length - 1 === index && (
               <IconButton
+                data-cy="calcRule"
                 onClick={handleRuleAdd}
                 label={<FormattedMessage id="rulebuilder.label.addRule" />}
                 size="md"
                 kind="tertiary"
+                style={{ marginLeft: "30px" }}
               >
                 <Add size={16} />
                 <span>

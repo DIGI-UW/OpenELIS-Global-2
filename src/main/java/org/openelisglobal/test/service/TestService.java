@@ -1,9 +1,9 @@
 package org.openelisglobal.test.service;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import javax.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.method.valueholder.Method;
@@ -132,4 +132,6 @@ public interface TestService extends BaseObjectService<Test, String> {
     void activateTests(List<String> testNames);
 
     void activateTestsAndDeactivateOthers(List<String> asList);
+
+    List<Test> getTriggeringAntimicrobialResistanceTests();
 }

@@ -21,8 +21,8 @@ import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.statusofsample.dao.StatusOfSampleDAO;
 import org.openelisglobal.statusofsample.valueholder.StatusOfSample;
 import org.springframework.stereotype.Component;
@@ -46,7 +46,7 @@ public class StatusOfSampleDAOImpl extends BaseDAOImpl<StatusOfSample, String> i
 
         try {
             // AIS - bugzilla 1546 - Used Upper
-            String sql = "from StatusOfSample ss where UPPER(ss.statusType) = UPPER(:param) and ss.code = :param2";
+            String sql = "from StatusOfSample ss where UPPER(ss.statusType) = UPPER(:param) and CAST(ss.code AS varchar) = :param2";
             Query<StatusOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, StatusOfSample.class);
             query.setParameter("param", statusofsample.getStatusType());
             query.setParameter("param2", statusofsample.getCode());
@@ -129,7 +129,9 @@ public class StatusOfSampleDAOImpl extends BaseDAOImpl<StatusOfSample, String> i
         List<StatusOfSample> list;
         try {
             // calculate maxRow to be one more than the page size
-            int endingRecNo = startingRecNo + (SystemConfiguration.getInstance().getDefaultPageSize() + 1);
+            int endingRecNo = startingRecNo
+                    + (Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
+                            + 1);
 
             // bugzilla 1399
             String sql = "from StatusOfSample s order by s.statusType, s.code";

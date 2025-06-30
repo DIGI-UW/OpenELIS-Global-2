@@ -729,12 +729,17 @@ const SampleBatchEntrySetup = () => {
                         !orderFormValues.tests?.length > 0 ||
                         !orderFormValues.method
                       }
+                      data-testid="next-button-BatchOrderEntry"
                     >
                       <FormattedMessage id="next.action.button" />
                     </Button>
                   </Column>
                   <Column lg={4} md={2} sm={2}>
-                    <Button onClick={() => history.push("/")} kind="secondary">
+                    <Button
+                      data-testid="cancel-button-BatchOrderEntry"
+                      onClick={() => history.push("/")}
+                      kind="secondary"
+                    >
                       <FormattedMessage id="label.button.cancel" />
                     </Button>
                   </Column>

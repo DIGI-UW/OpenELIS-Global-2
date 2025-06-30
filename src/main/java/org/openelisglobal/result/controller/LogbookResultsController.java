@@ -1,8 +1,9 @@
 package org.openelisglobal.result.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Timestamp;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -11,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.StaleObjectStateException;
 import org.json.simple.JSONArray;
@@ -26,6 +26,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
@@ -47,9 +48,12 @@ import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.inventory.action.InventoryUtility;
 import org.openelisglobal.inventory.form.InventoryKitItem;
+import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
+import org.openelisglobal.notifications.dao.NotificationDAO;
+import org.openelisglobal.notifications.entity.Notification;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
@@ -76,14 +80,17 @@ import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.statusofsample.util.StatusRules;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
+import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
@@ -143,6 +150,14 @@ public class LogbookResultsController extends LogbookResultsBaseController {
     private UserService userService;
     @Autowired
     private RoleService roleService;
+    @Autowired
+    private MethodService methodService;
+    @Autowired
+    private NotificationDAO notificationDAO;
+    @Autowired
+    private SystemUserService systemUserService;
+    @Autowired
+    private UserRoleService userRoleService;
 
     private final String RESULT_SUBJECT = "Result Note";
     private final String REFERRAL_CONFORMATION_ID;
@@ -335,10 +350,6 @@ public class LogbookResultsController extends LogbookResultsBaseController {
         boolean supportReferrals = FormFields.getInstance().useField(Field.ResultsReferral);
         String statusRuleSet = ConfigurationProperties.getInstance().getPropertyValueUpperCase(Property.StatusRules);
 
-        ObjectMapper mapper = new ObjectMapper();
-        String jsonForm = "";
-        List<TestResultItem> testResultItemList = form.getTestResult();
-
         // load testSections for drop down
         String resultsRoleId = roleService.getRoleByName(Constants.ROLE_RESULTS).getId();
         List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), resultsRoleId);
@@ -412,6 +423,36 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             } catch (FhirTransformationException | FhirPersistanceException e) {
                 LogEvent.logError(e);
             }
+            List<Analysis> newResultAnalyses = actionDataSet.getNewResults().stream().map(a -> a.result.getAnalysis())
+                    .collect(Collectors.toList());
+            List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_VALIDATION);
+            String message = MessageUtil.getMessage("notification.result.stat");
+            StringBuffer sb = new StringBuffer(message);
+            for (String userId : systemUserIds) {
+                List<Analysis> userAnalyses = userService
+                        .filterAnalysesByLabUnitRoles(userId, newResultAnalyses, Constants.ROLE_VALIDATION).stream()
+                        .filter(a -> a.getSampleItem().getSample().getPriority().equals(OrderPriority.STAT))
+                        .collect(Collectors.toList());
+
+                if (userAnalyses != null && !userAnalyses.isEmpty()) {
+                    List<String> userTests = userAnalyses.stream()
+                            .map(a -> AlphanumAccessionValidator
+                                    .convertAlphaNumLabNumForDisplay(a.getSampleItem().getSample().getAccessionNumber())
+                                    + " - " + a.getTest().getLocalizedName())
+                            .collect(Collectors.toList());
+                    String testString = String.join(", ", userTests);
+                    sb.append(testString);
+                    try {
+                        Notification notification = new Notification();
+                        notification.setMessage(sb.toString());
+                        notification.setUser(systemUserService.getUserById(userId));
+                        notification.setCreatedDate(OffsetDateTime.now());
+                        notification.setReadAt(null);
+                        notificationDAO.save(notification);
+                    } catch (Exception e) {
+                    }
+                }
+            }
         } catch (LIMSRuntimeException e) {
             String errorMsg;
             if (e.getCause() instanceof StaleObjectStateException) {
@@ -455,6 +496,9 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             if (testResultItem.getAnalysisMethod() != null) {
                 analysis.setAnalysisType(testResultItem.getAnalysisMethod());
             }
+            if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
+                analysis.setMethod(methodService.get(testResultItem.getTestMethod()));
+            }
             actionDataSet.getModifiedAnalysis().add(analysis);
         }
     }
@@ -467,6 +511,9 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
             analysis.setStatusId(getStatusForTestResult(testResultItem, alwaysValidate));
             analysis.setSysUserId(getSysUserId(request));
+            if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
+                analysis.setMethod(methodService.get(testResultItem.getTestMethod()));
+            }
             actionDataSet.getModifiedAnalysis().add(analysis);
 
             actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.INTERNAL,

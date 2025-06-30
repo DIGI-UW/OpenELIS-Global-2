@@ -33,14 +33,23 @@ const EOrderSearch = ({
   const [statusId, setStatusId] = useState("");
   const [statusOptions, setStatusOptions] = useState([]);
   const [allInfo, setAllInfo] = useState(false);
+  const [allInfo2, setAllInfo2] = useState(false);
   const [searchCompleted, setSearchCompleted] = useState(false);
 
   useEffect(() => {
     getFromOpenElisServer("/rest/ElectronicOrders", handleElectronicOrders);
+    getFromOpenElisServer(
+      "/rest/displayList/ELECTRONIC_ORDER_STATUSES",
+      handleOrderStatus,
+    );
   }, []);
 
   const handleElectronicOrders = (response) => {
     console.log(response);
+  };
+
+  const handleOrderStatus = (response) => {
+    setStatusOptions(response);
   };
 
   function searchByIdentifier() {
@@ -62,7 +71,7 @@ const EOrderSearch = ({
       startDate: startDate,
       endDate: endDate,
       statusId: statusId,
-      useAllInfo: allInfo,
+      useAllInfo: allInfo2,
     });
     getFromOpenElisServer(
       "/rest/ElectronicOrders?" + params.toString(),
@@ -105,101 +114,121 @@ const EOrderSearch = ({
       </Grid>
       <br></br>
       <div className="orderLegendBody">
-        <FormattedMessage id="eorder.search1.text" />
-        <br></br>
-        <div className="formInlineDiv">
-          <TextInput
-            id="searchValue"
-            labelText={intl.formatMessage({ id: "eorder.searchValue" })}
-            value={searchValue}
-            onChange={(e) => {
-              setSearchValue(e.target.value);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                searchByIdentifier();
-              }
-            }}
-          />
-          <div className="formInlineDiv bottomAlign">
-            <Checkbox
-              id="allInfo1"
-              labelText={intl.formatMessage({ id: "eorder.allInfo" })}
-              checked={allInfo}
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <FormattedMessage id="eorder.search1.text" />
+          </Column>
+          <Column lg={16} md={8} sm={4}>
+            <br></br>
+          </Column>
+          <Column lg={9} md={4} sm={4}>
+            <TextInput
+              id="searchValue"
+              labelText={intl.formatMessage({ id: "eorder.searchValue" })}
+              value={searchValue}
               onChange={(e) => {
-                setAllInfo(e.currentTarget.checked);
+                setSearchValue(e.target.value);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  searchByIdentifier();
+                }
               }}
             />
-            <div className="formInlineDiv">
-              <div></div>
-              <Button onClick={searchByIdentifier}>
-                <FormattedMessage id="label.button.search" />
-              </Button>
+          </Column>
+          <Column lg={2}>
+            <div className="bottomAlign">
+              <Checkbox
+                id="allInfo1"
+                labelText={intl.formatMessage({ id: "eorder.allInfo" })}
+                checked={allInfo}
+                onChange={(e) => {
+                  setAllInfo(e.currentTarget.checked);
+                }}
+              />
             </div>
-          </div>
-        </div>
-        <hr></hr>
-        <FormattedMessage id="eorder.search2.text" />
-        <br></br>
-        <div className="formInlineDiv">
-          <CustomDatePicker
-            id={"eOrder_startDate"}
-            labelText={intl.formatMessage({ id: "eorder.date.start" })}
-            value={startDate}
-            className="inputDate"
-            onChange={(date) => setStartDate(date)}
-          />
-        </div>
-        <div className="formInlineDiv">
-          <CustomDatePicker
-            id={"eOrder_startDate"}
-            labelText={intl.formatMessage({ id: "eorder.date.end" })}
-            value={startDate}
-            className="inputDate"
-            onChange={(date) => setEndDate(date)}
-          />
-        </div>
-        <div className="formInlineDiv">
-          <Select
-            id="statusId"
-            labelText={intl.formatMessage({ id: "eorder.status" })}
-            value={statusId}
-            onChange={(e) => {
-              setStatusId(e.target.value);
-            }}
-          >
-            <SelectItem value="" text="All Statuses" />
-            {statusOptions.map((statusOption, index) => {
-              return (
-                <SelectItem
-                  key={index}
-                  value={statusOption.id}
-                  text={statusOption.value}
-                />
-              );
-            })}
-          </Select>
-          <div className="formInlineDiv bottomAlign">
-            <Checkbox
-              id="allInfo2"
-              labelText={intl.formatMessage({ id: "eorder.allInfo" })}
-              checked={allInfo}
-              onChange={(e) => {
-                setAllInfo(e.currentTarget.checked);
-              }}
+          </Column>
+          <Column lg={1}></Column>
+          <Column lg={4}>
+            <Button onClick={searchByIdentifier}>
+              <FormattedMessage id="label.button.search" />
+            </Button>
+          </Column>
+
+          <Column lg={16} md={8} sm={4}>
+            <hr></hr>
+          </Column>
+          <Column lg={16} md={8} sm={4}>
+            <FormattedMessage id="eorder.search2.text" />
+          </Column>
+          <Column lg={16} md={8} sm={4}>
+            <br></br>
+          </Column>
+          <Column lg={3} md={2} sm={2}>
+            <CustomDatePicker
+              id={"eOrder_startDate"}
+              labelText={intl.formatMessage({ id: "eorder.date.start" })}
+              value={startDate}
+              className="inputDate"
+              onChange={(date) => setStartDate(date)}
             />
-            <div className="formInlineDiv">
-              <div></div>
-              <Button onClick={searchByDateAndStatus}>
-                <FormattedMessage id="label.button.search" />
-              </Button>
+          </Column>
+          <Column lg={3} md={2} sm={2}>
+            <CustomDatePicker
+              id={"eOrder_startDate"}
+              labelText={intl.formatMessage({ id: "eorder.date.end" })}
+              value={startDate}
+              className="inputDate"
+              onChange={(date) => setEndDate(date)}
+            />
+          </Column>
+          <Column lg={3} md={2} sm={2}>
+            <Select
+              id="statusId"
+              labelText={intl.formatMessage({ id: "eorder.status" })}
+              value={statusId}
+              onChange={(e) => {
+                setStatusId(e.target.value);
+              }}
+            >
+              <SelectItem value="" text="All Statuses" />
+              {statusOptions.map((statusOption, index) => {
+                return (
+                  <SelectItem
+                    key={index}
+                    value={statusOption.id}
+                    text={statusOption.value}
+                  />
+                );
+              })}
+            </Select>
+          </Column>
+          <Column lg={2}>
+            <div className="bottomAlign">
+              <Checkbox
+                id="allInfo2"
+                labelText={intl.formatMessage({ id: "eorder.allInfo" })}
+                checked={allInfo2}
+                onChange={(e) => {
+                  setAllInfo2(e.currentTarget.checked);
+                }}
+              />
             </div>
-          </div>
-        </div>
+          </Column>
+          <Column lg={1}></Column>
+          <Column lg={4} md={4} sm={2}>
+            <Button onClick={searchByDateAndStatus}>
+              <FormattedMessage id="label.button.search" />
+            </Button>
+          </Column>
+
+          {searchCompleted && !hasEOrders && (
+            <Column lg={16} md={8} sm={4}>
+              <FormattedMessage id="eorder.search.noresults" />
+            </Column>
+          )}
+        </Grid>
       </div>
-      {searchCompleted && !hasEOrders && (
-        <FormattedMessage id="eorder.search.noresults" />
-      )}
     </>
   );
 };

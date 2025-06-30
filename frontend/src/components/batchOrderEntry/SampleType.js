@@ -87,18 +87,16 @@ const SampleType = ({ updateFormValues }) => {
     if (isChecked) {
       updatedPanels = [
         ...selectedPanels,
-        { id: panel.panelId, name: panel.name, testMaps: panel.testMaps },
+        { id: panel.id, name: panel.name, testIds: panel.testIds },
       ];
     } else {
-      updatedPanels = selectedPanels.filter(
-        (item) => item.id !== panel.panelId,
-      );
+      updatedPanels = selectedPanels.filter((item) => item.id !== panel.id);
     }
     setSelectedPanels(updatedPanels);
 
     var updatedTests = [...selectedTests];
 
-    const testMapIds = panel.testMaps.split(",");
+    const testMapIds = panel.testIds.split(",");
     if (isChecked) {
       testMapIds.forEach((testId) => {
         const isTestSelected = updatedTests.some((test) => test.id === testId);
@@ -202,11 +200,11 @@ const SampleType = ({ updateFormValues }) => {
                 />
                 {filteredPanels.map((panel) => (
                   <Checkbox
-                    key={panel.panelId}
-                    id={`panel_${panel.panelId}`}
+                    key={panel.id}
+                    id={`panel_${panel.id}`}
                     labelText={panel.name}
                     checked={selectedPanels.some(
-                      (item) => item.id === panel.panelId,
+                      (item) => item.id === panel.id,
                     )}
                     onChange={(e) => handlePanelCheckbox(e, panel)}
                   />

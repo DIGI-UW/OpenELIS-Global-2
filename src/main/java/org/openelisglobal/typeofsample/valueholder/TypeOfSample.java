@@ -15,6 +15,7 @@
  */
 package org.openelisglobal.typeofsample.valueholder;
 
+import java.util.Objects;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.common.valueholder.ValueHolder;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -112,5 +113,20 @@ public class TypeOfSample extends BaseObject<String> {
 
     public void setLocalization(Localization localization) {
         this.localization.setValue(localization);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
+        TypeOfSample that = (TypeOfSample) o;
+        return id.equals(that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }
