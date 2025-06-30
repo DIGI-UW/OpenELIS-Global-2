@@ -15,6 +15,7 @@ import messages_en from "./languages/en.json";
 import messages_fr from "./languages/fr.json";
 import messages_es from "./languages/es.json";
 import messages_id from "./languages/id.json";
+import messages_ro from "./languages/ro.json";
 import config from "./config.json";
 import { SecureRoute } from "./components/security";
 import "./index.scss";
@@ -134,6 +135,9 @@ export default function App() {
     case "id":
       i18nConfig.messages = messages_id;
       break;
+    case "ro":
+      i18nConfig.messages = messages_ro;
+      break;
     default:
       i18nConfig.messages = messages_en;
       break;
@@ -202,6 +206,9 @@ export default function App() {
         break;
       case "id":
         i18nConfig.messages = messages_id;
+        break;
+      case "ro":
+        i18nConfig.messages = messages_ro;
         break;
       default:
         i18nConfig.messages = messages_en;

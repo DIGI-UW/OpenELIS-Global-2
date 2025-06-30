@@ -6,7 +6,8 @@ import { FormattedMessage } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 
 const PatientInfo = (props) => {
-  const { orderFormValues, setOrderFormValues, error } = props;
+  const { orderFormValues, setOrderFormValues, error, setPhoneValidation } =
+    props;
   const componentMounted = useRef(false);
   const [searchPatientTab, setSearchPatientTab] = useState({
     kind: "primary",
@@ -117,6 +118,7 @@ const PatientInfo = (props) => {
                   orderFormValues={orderFormValues}
                   setOrderFormValues={setOrderFormValues}
                   error={error}
+                  setPhoneValidation={setPhoneValidation}
                 />
               )}
             </Column>
