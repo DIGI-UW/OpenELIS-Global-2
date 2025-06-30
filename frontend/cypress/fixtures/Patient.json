@@ -6,5 +6,6 @@
   "nationalId": "UG-23SLHD7DBD",
   "DOB": "12/05/2001",
   "gender": "Male",
-  "labNo": "DEV01240000000000001"
+  "labNo": "DEV01250000000000001",
+  "endLabNo": "DEV01250000000000100"
 }

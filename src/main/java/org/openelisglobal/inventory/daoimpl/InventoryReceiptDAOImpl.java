@@ -92,9 +92,10 @@ public class InventoryReceiptDAOImpl extends BaseDAOImpl<InventoryReceipt, Strin
         try {
             List<InventoryReceipt> inventoryReceipts;
 
-            String sql = "from InventoryReceipt where invitem_id = :id";
-            Query<InventoryReceipt> query = entityManager.unwrap(Session.class).createNativeQuery(sql);
+            String sql = "SELECT * FROM clinlims.inventory_receipt WHERE invitem_id = :id";
+            Query query = entityManager.unwrap(Session.class).createNativeQuery(sql, InventoryReceipt.class);
             query.setParameter("id", Integer.parseInt(id));
+
             inventoryReceipts = query.list();
 
             if (inventoryReceipts != null && inventoryReceipts.size() > 0) {

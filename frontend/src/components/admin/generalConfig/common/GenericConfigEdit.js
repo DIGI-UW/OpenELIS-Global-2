@@ -208,31 +208,35 @@ const GenericConfigEdit = ({ menuType, ID }) => {
           <div className="orderLegendBody">
             <div className="gridBoundary">
               <Grid fullWidth={true}>
-                <Column lg={3}>
+                <Column lg={3} md={2} sm={1}>
                   <h4>
                     <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.name" />
                   </h4>
                 </Column>
-                <Column lg={3}>{FormEntryConfig.paramName}</Column>
+                <Column lg={3} md={6} sm={3}>
+                  {FormEntryConfig.paramName}
+                </Column>
               </Grid>
               <br />
               <Grid fullWidth={true}>
-                <Column lg={3}>
+                <Column lg={3} md={2} sm={2}>
                   <h4>
                     <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.description" />
                   </h4>
                 </Column>
-                <Column lg={7}>{FormEntryConfig.description}</Column>
+                <Column lg={7} md={6} sm={4}>
+                  {FormEntryConfig.description}
+                </Column>
               </Grid>
               <br />
               {FormEntryConfig.valueType === "boolean" && (
                 <Grid fullWidth={true}>
-                  <Column lg={3}>
+                  <Column lg={3} md={2} sm={1}>
                     <h4>
                       <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.value" />
                     </h4>
                   </Column>
-                  <Column lg={5}>
+                  <Column lg={5} md={6} sm={3}>
                     <RadioButtonGroup
                       name="radioValue"
                       valueSelected={radioValue}
@@ -255,12 +259,12 @@ const GenericConfigEdit = ({ menuType, ID }) => {
               {FormEntryConfig.valueType === "dictionary" && (
                 <>
                   <Grid fullWidth={true}>
-                    <Column lg={3}>
+                    <Column lg={3} md={2} sm={1}>
                       <h4>
                         <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.value" />
                       </h4>
                     </Column>
-                    <Column lg={3}>
+                    <Column lg={3} md={6} sm={3}>
                       <Dropdown
                         id="dictionaryDropdown"
                         items={FormEntryConfig.dictionaryValues}
@@ -279,7 +283,7 @@ const GenericConfigEdit = ({ menuType, ID }) => {
                         <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.value" />
                       </h4>
                     </Column>
-                    <Column lg={3}>
+                    <Column lg={3} md={6} sm={3}>
                       {!removeImage && (
                         <FileUploader
                           buttonLabel="Choose file"
@@ -334,7 +338,7 @@ const GenericConfigEdit = ({ menuType, ID }) => {
                       </h4>
                     </Column>
                     {FormEntryConfig.tag !== "localization" && (
-                      <Column lg={8}>
+                      <Column lg={8} sm={3}>
                         <TextInput
                           id="textInput"
                           value={textInputValue}
@@ -347,7 +351,7 @@ const GenericConfigEdit = ({ menuType, ID }) => {
                     <>
                       <br />
                       <Grid>
-                        <Column lg={8}>
+                        <Column lg={8} sm={2} md={4}>
                           <TextInput
                             id="myInputEnglish"
                             labelText={<FormattedMessage id="english.label" />}
@@ -355,7 +359,7 @@ const GenericConfigEdit = ({ menuType, ID }) => {
                             onChange={handleInputEnglishChange}
                           />
                         </Column>
-                        <Column lg={8}>
+                        <Column lg={8} sm={2} md={4}>
                           <TextInput
                             id="myInputFrench"
                             labelText={<FormattedMessage id="french.label" />}
@@ -371,7 +375,7 @@ const GenericConfigEdit = ({ menuType, ID }) => {
               <br />
               <br />
               <Grid fullWidth={true}>
-                <Column lg={2}>
+                <Column lg={2} sm={2}>
                   <Button onClick={handleSubmitButton} disabled={isLoading}>
                     <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.save" />
                   </Button>

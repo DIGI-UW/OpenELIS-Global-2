@@ -30,7 +30,7 @@ public class DataIndicatorServiceImpl extends AuditableBaseObjectServiceImpl<Dat
     @Transactional(readOnly = true)
     public DataIndicator getIndicatorByTypeYearMonth(TypeOfDataIndicator type, int year, int month) {
         Map<String, Object> properties = new HashMap<>();
-        properties.put("typeOfDataIndicator.id", type.getId());
+        properties.put("typeOfIndicator.id", type.getId());
         properties.put("year", year);
         properties.put("month", month);
         return getMatch(properties).orElse(null);

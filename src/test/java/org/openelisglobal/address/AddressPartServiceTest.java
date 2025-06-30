@@ -1,7 +1,8 @@
 package org.openelisglobal.address;
 
+import static org.junit.Assert.*;
+
 import java.util.List;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -22,14 +23,20 @@ public class AddressPartServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void verifyTestData() {
         List<AddressPart> addressPartList = partService.getAll();
-        System.out.println("address parts we have in db: " + addressPartList.size());
-        addressPartList.forEach(addressPart -> System.out.println(
-                addressPart.getId() + " - " + addressPart.getPartName() + " - " + addressPart.getDisplayOrder()));
+
+        assertNotNull("The address part list should not be null", addressPartList);
+        assertFalse("The address part list should not be empty", addressPartList.isEmpty());
+
+        for (AddressPart addressPart : addressPartList) {
+            assertNotNull("AddressPart ID should not be null", addressPart.getId());
+            assertNotNull("AddressPart partName should not be null", addressPart.getPartName());
+            assertNotNull("AddressPart displayOrder should not be null", addressPart.getDisplayOrder());
+        }
     }
 
     @Test
     public void getAll_shouldGetAllAddressParts() throws Exception {
-        Assert.assertEquals(3, partService.getAll().size());
+        assertEquals(3, partService.getAll().size());
     }
 
     @Test
@@ -39,8 +46,8 @@ public class AddressPartServiceTest extends BaseWebContextSensitiveTest {
         part.setDisplayOrder("022");
 
         partService.save(part);
-        Assert.assertEquals("PartName", part.getPartName());
-        Assert.assertEquals("022", part.getDisplayOrder());
+        assertEquals("PartName", part.getPartName());
+        assertEquals("022", part.getDisplayOrder());
     }
 
     @Test
@@ -54,7 +61,7 @@ public class AddressPartServiceTest extends BaseWebContextSensitiveTest {
         savedPart.setPartName("updatedName");
         partService.save(savedPart);
 
-        Assert.assertEquals("updatedName", savedPart.getPartName());
+        assertEquals("updatedName", savedPart.getPartName());
 
     }
 
@@ -62,7 +69,7 @@ public class AddressPartServiceTest extends BaseWebContextSensitiveTest {
     public void getAddressPartByNam_shouldReturnAddressPartByName() {
         AddressPart part = partService.getAddresPartByName("Village");
 
-        Assert.assertEquals("Village", part.getPartName());
-        Assert.assertEquals("1", part.getDisplayOrder());
+        assertEquals("Village", part.getPartName());
+        assertEquals("1", part.getDisplayOrder());
     }
 }

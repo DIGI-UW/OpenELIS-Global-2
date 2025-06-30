@@ -1,5 +1,8 @@
 package org.openelisglobal.sampleorganization;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.text.ParseException;
@@ -33,9 +36,16 @@ public class SampleOrganizationServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void verifyTestData() {
         List<SampleOrganization> sampleOrganizationList = sampleOrganizationService.getAll();
-        System.out.println("sample organization we have in db: " + sampleOrganizationList.size());
-        sampleOrganizationList.forEach(sampleOrganization -> System.out
-                .println(sampleOrganization.getId() + " - " + sampleOrganization.getSample().getAccessionNumber()));
+
+        assertNotNull("SampleOrganization list should not be null", sampleOrganizationList);
+        assertFalse("SampleOrganization list should not be empty", sampleOrganizationList.isEmpty());
+
+        sampleOrganizationList.forEach(sampleOrganization -> {
+            assertNotNull("SampleOrganization ID should not be null", sampleOrganization.getId());
+            assertNotNull("SampleOrganization Sample should not be null", sampleOrganization.getSample());
+            assertNotNull("Sample Accession Number should not be null",
+                    sampleOrganization.getSample().getAccessionNumber());
+        });
     }
 
     @Test

@@ -1,6 +1,4 @@
 import LoginPage from "../pages/LoginPage";
-import HomePage from "../pages/HomePage";
-import Result from "../pages/ResultsPage";
 import PatientEntryPage from "../pages/PatientEntryPage";
 
 let homePage = null;
@@ -14,14 +12,14 @@ before("login", () => {
 });
 
 describe("Result By Unit", function () {
-  before("navigate to Result By Unit", function () {
+  before("Navigate to Result By Unit", function () {
     homePage = loginPage.goToHomePage();
     result = homePage.goToResultsByUnit();
   });
 
-  it("User visits Results Page", function () {
+  it("User validates Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
@@ -32,30 +30,31 @@ describe("Result By Unit", function () {
   });
 
   it("should accept the sample, refer the sample, and save the result", function () {
+    result.expandSampleDetails();
     cy.fixture("result").then((res) => {
-      result.acceptSample();
-      result.expandSampleDetails();
-      result.selectTestMethod(0, res.pcrTestMethod);
-      cy.get(":nth-child(3) > .cds--form-item > .cds--checkbox-label").click();
-      result.referSample(0, res.testNotPerformed, res.cedres);
-      result.setResultValue(0, res.positiveResult);
-      result.submitResults();
+      result.selectTestMethod(res.pcrTestMethod);
+      result.referTests(res.referTests);
+      result.referralReason(res.referalReason);
+      result.selectInstitute(res.cedres);
+      result.selectResultValue(res.negativeResult);
     });
+    result.submitResults();
   });
 });
 
 describe("Result By Patient", function () {
-  before("navigate to Result By Patient", function () {
+  it("Navigate to Result By Patient", function () {
+    homePage = loginPage.goToHomePage();
     result = homePage.goToResultsByPatient();
   });
 
   it("User visits Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
-  it("Should search Patient By First and LastName and validate", function () {
+  it("Search Patient By First and Last Name and validate", function () {
     cy.wait(1000);
     cy.fixture("Patient").then((patient) => {
       patientPage.searchPatientByFirstAndLastName(
@@ -87,23 +86,40 @@ describe("Result By Patient", function () {
     cy.reload();
   });
 
+  it("Search by sex", function () {
+    patientPage.getMaleGenderRadioButton();
+    patientPage.clickSearchPatientButton();
+    cy.reload();
+  });
   it("should search patient By Lab Number and validate", function () {
-    cy.wait(500);
-    cy.fixture("EnteredOrder").then((patient) => {
-      cy.get("#labNumber").type(patient.labNo);
+    cy.fixture("Patient").then((patient) => {
+      patientPage.enterPreviousLabNumber(patient.labNo);
       patientPage.clickSearchPatientButton();
     });
+    cy.reload();
   });
 
-  it("Should be able to search by respective patient and accept the result", function () {
-    cy.wait(1000);
-    result.selectPatient();
-    cy.fixture("result").then((res) => {
-      result.acceptResult();
-      result.expandSampleDetails();
-      result.selectTestMethod(0, res.stainTestMethod);
-      result.submitResults();
+  it("Search by respective patient and accept the result", function () {
+    cy.fixture("Patient").then((patient) => {
+      patientPage.searchPatientByFirstAndLastName(
+        patient.firstName,
+        patient.lastName,
+      );
     });
+    patientPage.getMaleGenderRadioButton();
+    patientPage.clickSearchPatientButton();
+    cy.wait(1000);
+    result.selectPatientFromSearchResults();
+    cy.wait(1200);
+    result.expandSampleDetails();
+    cy.fixture("result").then((res) => {
+      result.selectTestMethod(res.pcrTestMethod);
+      result.referTests(res.referTests);
+      result.referralReason(res.referalReason);
+      result.selectInstitute(res.cedres);
+      //result.setResultValue(res.resultNo);
+    });
+    result.submitResults();
   });
 });
 
@@ -115,105 +131,130 @@ describe("Result By Order", function () {
 
   it("User visits Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
   it("Should Search by Accession Number", function () {
-    cy.fixture("EnteredOrder").then((order) => {
-      cy.get("#accessionNumber").type(order.labNo);
+    cy.fixture("Patient").then((order) => {
+      patientPage.enterAccessionNumber(order.labNo);
     });
-    cy.get(":nth-child(4) > #submit").click();
+    result.searchResults();
+    cy.wait(900);
   });
 
   it("should accept the sample and save the result", function () {
+    result.expandSampleDetails();
     cy.fixture("result").then((res) => {
-      result.acceptSample();
-      result.expandSampleDetails();
-      result.selectTestMethod(0, res.stainTestMethod);
-      result.submitResults();
+      result.selectTestMethod(res.pcrTestMethod);
+      result.referTests(res.referTests);
+      result.referralReason(res.referalReason);
+      result.selectInstitute(res.cedres);
+      //result.setResultValue(res.resultNo);
     });
+    result.submitResults();
   });
 });
 
 describe("Result By Referred Out Tests", function () {
-  before("navigate to Result By Referred Out Tests", function () {
+  before("Navigate to Result By Referred Out Tests", function () {
     homePage = loginPage.goToHomePage();
     result = homePage.goToResultsForRefferedOut();
   });
 
-  it("User visits Reffered out Page", function () {
+  it("Navigate to Reffered out Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.referralPageTitle);
+      result.getResultTitle(res.referrals);
     });
   });
 
-  it("should search Referrals By Patient and validate", function () {
+  it("Search by respective patient and accept the result", function () {
     cy.fixture("Patient").then((patient) => {
-      patientPage.searchPatientByPatientId(patient.nationalId);
       patientPage.searchPatientByFirstAndLastName(
         patient.firstName,
         patient.lastName,
       );
-      patientPage.getFirstName().should("have.value", patient.firstName);
-      patientPage.getLastName().should("have.value", patient.lastName);
-      patientPage.clickSearchPatientButton();
-      patientPage.validatePatientSearchTable(
-        patient.firstName,
-        patient.inValidName,
-      );
     });
+    patientPage.clickSearchPatientButton();
+    cy.wait(900);
+    result.selectPatientFromSearchResults();
+    result.clickReferralsByPatient();
   });
 
-  it("should click respective patient and search for referred out tests", function () {
-    result.selectPatient();
-    result.search();
-  });
-
-  it("should validate the results", function () {
-    cy.wait(1000);
-    cy.fixture("Patient").then((patient) => {
-      result.validatePatientResult(patient);
-    });
+  it("Validation that the patient exists in the reports table", function () {
+    result.selectAllButtonEnabled(); //wont be if patient does not exist
+    result.clickSelectAllButton();
+    result.selectNoneButtonEnabled();
+    result.printReportsButtonEnabled();
     cy.reload();
   });
 
-  it("should search Referrals By Test Unit and validate", function () {
+  it("Referrals by Sent Date", function () {
+    cy.fixture("result").then((res) => {
+      result.selectSentDate();
+      result.startDate(res.startDate);
+      result.endDate(res.endDate);
+    });
+    result.clickReferralsByTestAndName();
+    result.selectAllButtonEnabled(); //wont be if patient does not exist
+    result.clickSelectAllButton();
+    result.selectNoneButtonEnabled();
+    result.printReportsButtonEnabled();
+    cy.reload();
+  });
+
+  it("Referrals by Result Date", function () {
+    cy.fixture("result").then((res) => {
+      result.selectResultDate();
+      result.startDate(res.startDate);
+      result.endDate(res.endDate);
+    });
+    result.clickReferralsByTestAndName();
+    result.selectAllButtonEnabled(); //wont be if patient does not exist
+    result.clickSelectAllButton();
+    result.selectNoneButtonEnabled();
+    result.printReportsButtonEnabled();
+    cy.reload();
+  });
+
+  it("Referrals by Test Unit and validate", function () {
     cy.fixture("workplan").then((res) => {
-      cy.get("#testnames-input").type(res.testName);
-      cy.get("#testnames-item-0-item").click();
-      cy.get(":nth-child(15) > .cds--btn").click({ force: true });
+      result.unitType(res.unitType);
+      result.unitTypeItem();
+      result.clickDateButton();
     });
-    //update in UI elements
-    // cy.fixture("result").then((res) => {
-    //   cy.get("tbody > tr > :nth-child(8)").should(
-    //     "contain.text",
-    //     res.westernBlotHiv,
-    //   );
-    // });
+    result.clickReferralsByTestAndName();
+    result.selectAllButtonEnabled(); //wont be if patient does not exist
+    result.clickSelectAllButton();
+    result.selectNoneButtonEnabled();
+    result.printReportsButtonEnabled();
     cy.reload();
   });
 
-  it("should search Referrals By LabNumber and validate", function () {
-    cy.fixture("EnteredOrder").then((order) => {
-      cy.get("#labNumberInput").type(order.labNo);
+  it("Referrals by Test Name and validate", function () {
+    cy.fixture("workplan").then((res) => {
+      result.testName(res.testName);
+      result.testNameItem();
+      result.clickDateButton();
     });
-    cy.get(":nth-child(4) > .cds--lg\\:col-span-4 > .cds--btn")
-      .should("be.visible")
-      .click();
-    //update in UI elements
-    // cy.fixture("EnteredOrder").then((patient) => {
-    //   cy.get("tbody > tr > :nth-child(3)").should(
-    //     "contain.text",
-    //     patient.labNo,
-    //   );
-    // });
+    result.clickReferralsByTestAndName();
+    result.selectAllButtonEnabled(); //wont be if patient does not exist
+    result.clickSelectAllButton();
+    result.selectNoneButtonEnabled();
+    result.printReportsButtonEnabled();
+    cy.reload();
   });
-  //commented due to UI changes
-  // it("should select the respecting referred test and print the selected patient reports", function () {
-  //   result.selectRefferedTest();
-  //   result.printReport();
-  // });
+
+  it("search Referrals By LabNumber and validate", function () {
+    cy.fixture("Patient").then((order) => {
+      result.resultsByLabNumber(order.labNo);
+    });
+    result.clickReferralsByLabNumber();
+    result.selectAllButtonEnabled(); //wont be if patient does not exist
+    result.clickSelectAllButton();
+    result.selectNoneButtonEnabled();
+    result.printReportsButtonEnabled();
+  });
 });
 
 describe("Result By Range Of Order", function () {
@@ -224,62 +265,90 @@ describe("Result By Range Of Order", function () {
 
   it("User visits Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
-  it("Should Enter Lab Number and perform Search", function () {
-    cy.fixture("EnteredOrder").then((order) => {
-      cy.get("#startLabNo").type(order.labNo);
+  it("Enter Lab Numbers and Search", function () {
+    cy.fixture("Patient").then((order) => {
+      result.startLabNumber(order.labNo);
+      result.endLabNo(order.endLabNo);
     });
-    cy.get(":nth-child(5) > #submit").click();
+    result.searchResults();
   });
 
-  it("Should Accept And Save the result", function () {
-    cy.wait(1000);
+  it("Accept And Save the result", function () {
+    result.expandSampleDetails();
     cy.fixture("result").then((res) => {
-      result.acceptSample();
-      result.expandSampleDetails();
-      result.selectTestMethod(0, res.eiaTestMethod);
-      result.submitResults();
+      result.selectTestMethod(res.pcrTestMethod);
     });
+    result.submitResults();
   });
 });
 
 describe("Result By Test And Status", function () {
-  before("navigate to Result By Test And Status", function () {
+  // This will run before every test case
+  beforeEach("Navigate to Results page", function () {
     homePage = loginPage.goToHomePage();
     result = homePage.goToResultsByTestAndStatus();
   });
 
   it("User visits Results Page", function () {
     cy.fixture("result").then((res) => {
-      result.getResultTitle().should("contain.text", res.pageTitle);
+      result.getResultTitle(res.pageTitle);
     });
   });
 
-  it("Should select testName, analysis status, and perform Search", function () {
+  it("Search by TestName", function () {
     cy.fixture("workplan").then((order) => {
       result.selectTestName(order.testName);
+      result.searchResults();
+      result.expandSampleDetails();
     });
     cy.fixture("result").then((res) => {
-      result.selectAnalysisStatus(res.acceptedStatus);
-      result.searchByTest();
+      result.selectTestMethod(res.pcrTestMethod);
     });
+    result.submitResults();
   });
 
-  it("Should Validate And accept the result", function () {
-    cy.fixture("workplan").then((order) => {
-      cy.get("#cell-testName-0 > .sampleInfo").should(
-        "contain.text",
-        order.testName,
-      );
-    });
+  it("Search by Collection Date", function () {
     cy.fixture("result").then((res) => {
-      result.acceptSample();
+      result.enterCollectionDate();
+      result.clickReceivedDate();
+      result.searchResults();
       result.expandSampleDetails();
-      result.selectTestMethod(0, res.eiaTestMethod);
-      result.submitResults();
+      result.selectTestMethod(res.pcrTestMethod);
     });
+    result.submitResults();
+  });
+
+  it("Search by Received Date", function () {
+    cy.fixture("result").then((res) => {
+      result.enterReceivedDate();
+      result.searchResults();
+      result.expandSampleDetails();
+      result.selectTestMethod(res.pcrTestMethod);
+    });
+    result.submitResults();
+  });
+
+  it("Search by Sample status", function () {
+    cy.fixture("result").then((res) => {
+      result.sampleStatus(res.sample);
+      result.searchResults();
+      result.expandSampleDetails();
+      result.selectTestMethod(res.pcrTestMethod);
+    });
+    result.submitResults();
+  });
+
+  it("Search by Test Analysis", function () {
+    cy.fixture("result").then((res) => {
+      result.selectAnalysisStatus(res.analysisStatus);
+      result.searchResults();
+      result.expandSampleDetails();
+      result.selectTestMethod(res.pcrTestMethod);
+    });
+    result.submitResults();
   });
 });

@@ -3,7 +3,7 @@ services:
     certs:
         container_name: oe-certs 
         image: itechuw/certgen:main
-        # platform: linux/amd64
+        platform: linux/amd64
         restart: always
         environment:
             - KEYSTORE_PW="kspass"
@@ -42,7 +42,7 @@ services:
         #     context: .
         #     dockerfile: Dockerfile.dev
         image: itechuw/openelis-global-2-dev:develop 
-        # platform: linux/amd64
+        platform: linux/amd64
         depends_on:
             - database
             - certs
@@ -61,10 +61,13 @@ services:
         volumes:
             -  key_trust-store-volume:/etc/openelis-global
             - ./volume/plugins/:/var/lib/openelis-global/plugins
+            - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
+            - ./volume/logs/tomcatLogs/:/usr/local/tomcat/logs
             - ./volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
             - ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war
             - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
             -  lucene_index-vol:/var/lib/lucene_index
+            - ./volume/test-map/test-loinc-map.csv:/var/lib/openelis-global/plugin-test-mappings/test-loinc-map.csv
         secrets:
             - source: datasource.password
             - source: common.properties
@@ -72,7 +75,7 @@ services:
     fhir.openelis.org:
         container_name: external-fhir-api
         image: itechuw/openelis-global-2-fhir:develop
-        # platform: linux/amd64
+        platform: linux/amd64
         depends_on:
             - database
             - certs
@@ -103,7 +106,7 @@ services:
     frontend.openelis.org:
         image: itechuw/openelis-global-2-frontend-dev:develop
         container_name: openelisglobal-front-end
-        # platform: linux/amd64
+        platform: linux/amd64
         networks:
             - default
         volumes:
@@ -116,7 +119,7 @@ services:
     proxy:
         image: itechuw/openelis-global-2-proxy:develop
         container_name: openelisglobal-proxy
-        # platform: linux/amd64
+        platform: linux/amd64
         ports:
             - 80:80
             - 443:443

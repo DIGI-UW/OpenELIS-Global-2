@@ -36,6 +36,12 @@ public class AnnotationWebAppInitializer implements WebApplicationInitializer {
                 new DispatcherServlet(rootContext));
         dispatcher.setLoadOnStartup(++startupOrder);
         dispatcher.addMapping("/");
+        // Enable Multipart Support
+        dispatcher.setMultipartConfig(new jakarta.servlet.MultipartConfigElement(null, // Location
+                10485760, // Max file size (10MB)
+                20971520, // Max request size (20MB)
+                0 // File size threshold
+        ));
 
         // converted to controller
         // ServletRegistration.Dynamic logoUploadServlet =

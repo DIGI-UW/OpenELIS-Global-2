@@ -277,6 +277,7 @@ export const NCECorrectiveAction = () => {
                       value: e.target.value,
                     })
                   }
+                  data-cy="fieldName"
                   id={`field.name`}
                 />
               </Column>
@@ -336,6 +337,7 @@ export const NCECorrectiveAction = () => {
                               onClick={() => setSelected(row.nceNumber)}
                               labelText=""
                               id={row.id}
+                              data-cy={`row-${row.id}`}
                             />
                           </TableCell>
                           <TableCell key={row.key + "date"}>

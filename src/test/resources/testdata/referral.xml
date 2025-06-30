@@ -1,0 +1,289 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- * The contents of this file are subject to the Mozilla Public License
+    * Version 1.1 (the "License"); you may not use this file except in * compliance
+    with the License. You may obtain a copy of the License at * http://www.mozilla.org/MPL/
+    * * Software distributed under the License is distributed on an "AS IS" *
+    basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the *
+    License for the specific language governing rights and limitations under
+    * the License. * * The Original Code is OpenELIS code. * * Copyright (C)
+    ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+
+<dataset>
+    <!-- Reference Tables -->
+    <reference_tables id="1" name="ANALYSIS"
+        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
+    <reference_tables id="2" name="RESULT"
+        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
+
+    <!-- Dictionary Category Entries -->
+    <dictionary_category id="1"
+        description="Category Description 1" local_Abbrev="CA1"
+        name="Category Name 1" lastUpdated="2023-11-01 12:00:00" />
+    <dictionary_category id="2"
+        description="Category Description 2" local_Abbrev="CA2"
+        name="Category Name 2" lastUpdated="2023-12-01 12:00:00" />
+
+    <!-- Localization (referenced by multiple tables) -->
+    <localization id="1" english="Test Localization 1"
+        french="Localisation de Test 1" lastupdated="2023-12-01 12:00:00" />
+    <localization id="2" english="Test Localization 2"
+        french="Localisation de Test 2" lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Requester Type -->
+    <requester_type id="1" requester_type="Internal" />
+    <requester_type id="2" requester_type="External" />
+
+    <!-- Panel table -->
+    <panel id="1" name="Test Panel"
+        description="This is a test panel." is_active="Y"
+        name_localization_id="1" loinc="12345" />
+    <panel id="2" name="Duplicate Panel"
+        description="Duplicate description" is_active="N"
+        name_localization_id="2" loinc="67890" />
+
+    <!-- Dictionary Entries -->
+    <dictionary id="1" is_active="Y"
+        dict_entry="Dictionary Entry 1" local_Abbrev="DE1"
+        dictionary_category_id="1" sort_order="1"
+        lastUpdated="2023-11-01 12:00:00" />
+    <dictionary id="2" is_active="Y"
+        dict_entry="Dictionary Entry 2" local_Abbrev="DE2"
+        dictionary_category_id="2" sort_order="2"
+        lastUpdated="2023-12-01 12:00:00" />
+
+    <!-- Type of Sample -->
+    <type_of_sample id="1" description="Blood Sample"
+        name_localization_id="1" lastupdated="2023-12-01 12:00:00" />
+    <type_of_sample id="2" description="Urine Sample"
+        name_localization_id="2" lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Status of Sample -->
+    <status_of_sample id="1" code="100"
+        status_type="Received" lastupdated="2023-12-01 12:00:00" />
+    <status_of_sample id="2" code="200"
+        status_type="In Progress" lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Test Section -->
+    <test_section id="1" name="Chemistry"
+        description="Chemical Testing Section" name_localization_id="1"
+        lastupdated="2023-12-01 12:00:00" />
+    <test_section id="2" name="Microbiology"
+        description="Microbiology Testing Section" name_localization_id="2"
+        lastupdated="2023-12-01 12:00:00" />
+
+    <person id="1" last_name="Doe" first_name="John"
+        middle_name="joddy" city="Kampala" state="Kampala metropolitan"
+        zip_code="256" country="Uganda" work_phone="12345678"
+        home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
+        fax="3456" email="john@gmail.com" lastupdated="2023-11-01 12:00:00" />
+    <person id="2" last_name="Mulizi" first_name="James"
+        middle_name="Mark" city="Orion" state="Texas" zip_code="001"
+        country="USA" work_phone="10000001" home_phone="8000001"
+        cell_phone="0000000" primary_phone="10000001" fax="0001"
+        email="james@gmail.com" lastupdated="2023-11-01 12:00:00" />
+    <person id="3" last_name="Kukki" first_name="Faith"
+        middle_name="Siannah" city="Dallas" state="Texas" zip_code="001"
+        country="USA" work_phone="10000002" home_phone="8000003"
+        cell_phone="0000001" primary_phone="10000002" fax="0002"
+        email="siannah@gmail.com" lastupdated="2023-11-01 12:00:00" />
+    <person id="4" last_name="Linn" first_name="Jane"
+        middle_name="jolly" city="Kampala" state="Kampala metropolitan"
+        zip_code="256" country="Uganda" work_phone="12345678"
+        home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
+        fax="3456" email="john@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+    <person id="5" last_name="Ataliah" first_name="Moreen"
+        middle_name="amore" city="Orion" state="Texas" zip_code="001"
+        country="USA" work_phone="10000001" home_phone="8000001"
+        cell_phone="0000000" primary_phone="10000001" fax="0001"
+        email="james@gmail.com" lastupdated="2023-11-01 12:00:00" />
+    <person id="6" last_name="Lucy" first_name="Nancy"
+        middle_name="Siannah" city="Dallas" state="Texas" zip_code="001"
+        country="USA" work_phone="10000002" home_phone="8000003"
+        cell_phone="0000001" primary_phone="10000002" fax="0002"
+        email="siannah@gmail.com" lastupdated="2023-11-01 12:00:00" />
+
+    <organization id="1" lastupdated="2024-06-03 12:00:00.0"
+        name="African Health Org" city="New York" zip_code="10001"
+        mls_sentinel_lab_flag="Y" short_name="GHG" multiple_unit="NYC Unit"
+        street_address="123 Health St" state="NY"
+        internet_address="www.africanhealth.org" clia_num="CLIA12345"
+        pws_id="PWS123" mls_lab_flag="Y" is_active="Y" local_abbrev="1"
+        code="GHG001" />
+    <organization id="2" lastupdated="2024-06-04 12:00:00.0"
+        name="Health Corporations Ltd" city="Los Angeles" zip_code="90001"
+        mls_sentinel_lab_flag="N" short_name="HSL" multiple_unit="LA Unit"
+        street_address="456 Medical Rd" state="CA"
+        internet_address="www.healthcorporations.com" clia_num="CLIA54321"
+        pws_d="PWS456" mls_lab_flag="N" is_active="Y" local_abbrev="2"
+        code="HSL002" />
+
+    <patient id="1" person_id="1" race="black" gender="M"
+        birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+        national_id="1234" ethnicity="U" external_id="EX456"
+        school_attend="MaKerere College" birth_place="Mulago"
+        entered_birth_date="1992-12-12" lastupdated="2023-11-01 12:00:02" />
+    <patient id="2" person_id="3" race="black" gender="F"
+        birth_date="1997-10-09 09:00:00" birth_time="1997-10-09 09:00:00"
+        national_id="56789" ethnicity="A" external_id="EX123"
+        school_attend="Merryland College" birth_place="Nevada"
+        entered_birth_date="1997-10-09" lastupdated="2023-11-01 12:00:02" />
+    <patient id="3" person_id="2" race="black" gender="M"
+        birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+        national_id="1234" ethnicity="U" external_id="EX432"
+        school_attend="MaKerere College" birth_place="Kawempe"
+        entered_birth_date="1992-12-12" lastupdated="2023-11-01 12:00:02" />
+
+    <provider id="1" person_id="4" provider_type="P"
+        lastupdated="2023-11-01 12:00:00" />
+    <provider id="2" person_id="5" provider_type="D"
+        lastupdated="2023-11-01 12:00:00" />
+    <provider id="3" person_id="6" provider_type="C"
+        lastdupated="2023-11-01 12:00:00" />
+
+    <sample id="1" accession_number="12345" status_id="1"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="2" accession_number="13333" status_id="2"
+        received_date="2024-06-04 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="3" accession_number="52541"
+        received_date="2024-06-05 00:00:00.0"
+        entered_date="2024-06-05 00:00:00.0"
+        collection_date="2024-06-05 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <sample_human id="1" provider_id="1" samp_id="1"
+        patient_id="1" lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="2" provider_id="2" samp_id="2"
+        patient_id="2" lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="3" provider_id="3" samp_id="3"
+        patient_id="3" lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Sample Item -->
+    <sample_item id="1" sort_order="1" status_id="1"
+        samp_id="1" typeosamp_id="1" collection_date="2023-11-15 10:00:00"
+        lastupdated="2023-12-01 12:00:00" />
+    <sample_item id="2" sort_order="2" status_id="2"
+        samp_id="2" typeosamp_id="2" collection_date="2023-11-16 10:00:00"
+        lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Sample Organization -->
+    <sample_organization id="1" samp_id="1"
+        lastupdated="2023-12-01 12:00:00" />
+    <sample_organization id="2" samp_id="2"
+        lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Sample Requester -->
+    <sample_requester id="1" requester_id="101"
+        requester_type_id="1" sample_id="1" lastupdated="2023-12-01 12:00:00" />
+    <sample_requester id="2" requester_id="102"
+        requester_type_id="2" sample_id="2" lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Test -->
+    <test id="1" description="Blood Chemistry Test" name="Blood Chem"
+        guid="TEST-BLOOD-CHEM-001" reporting_name_localization_id="1"
+        name_localization_id="1" test_section_id="1"
+        lastupdated="2023-12-01 12:00:00" />
+    <test id="2" description="Bacterial Culture Test"
+        name="Bacteria Culture" guid="TEST-BACT-CULT-001"
+        reporting_name_localization_id="2" name_localization_id="2"
+        test_section_id="2" lastupdated="2023-12-01 12:00:00" />
+
+    <!-- QA Event -->
+    <qa_event id="1" is_holdable="Y" test_id="1"
+        lastupdated="2023-12-01 12:00:00" />
+    <qa_event id="2" is_holdable="N" test_id="2"
+        lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Analyte -->
+    <analyte id="1" name="Glucose"
+        lastupdated="2023-12-01 12:00:00" />
+    <analyte id="2" name="Cholesterol"
+        lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Result without Analysis FK -->
+    <result id="1" analyte_id="1" is_reportable="Y" value="1"
+        lastupdated="2023-12-01 12:00:00" />
+    <result id="2" analyte_id="2" is_reportable="N" value="2"
+        lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Analysis -->
+    <analysis id="1" sampitem_id="1" test_sect_id="1" test_id="1"
+        revision="1" started_date="2023-11-15 12:00:00"
+        completed_date="2023-11-15 14:00:00" status="1"
+        released_date="2023-11-15 15:00:00" printed_date="2023-11-15 16:00:00"
+        is_reportable="Y" status_id="1" parent_analysis_id="1"
+        parent_result_id="1" entry_date="2023-11-15 12:00:00"
+        analysis_type="ROUTINE" lastupdated="2023-12-01 12:00:00" />
+    <analysis id="2" sampitem_id="2" test_sect_id="2" test_id="2"
+        revision="2" started_date="2023-11-16 12:00:00"
+        completed_date="2023-11-16 14:00:00" status="2"
+        released_date="2023-11-16 15:00:00" printed_date="2023-11-16 16:00:00"
+        is_reportable="N" status_id="2" parent_analysis_id="2"
+        parent_result_id="2" entry_date="2023-11-16 12:00:00"
+        analysis_type="CONFIRM" lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Result with Analysis FK -->
+    <result id="3" analysis_id="1" lastupdated="2023-12-01 12:00:00" />
+    <result id="4" analysis_id="2" lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Test Analyte -->
+    <test_analyte id="1" test_id="1" is_reportable="Y"
+        lastupdated="2023-12-01 12:00:00" />
+    <test_analyte id="2" test_id="2" is_reportable="N"
+        lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Analysis QA Event -->
+    <analysis_qaevent id="1" qa_event_id="1"
+        analysis_id="1" completed_date="2023-11-15 14:00:00"
+        lastupdated="2023-12-01 12:00:00" />
+    <analysis_qaevent id="2" qa_event_id="2"
+        analysis_id="2" completed_date="2023-11-16 14:00:00"
+        lastupdated="2023-12-01 12:00:00" />
+
+    <referral_type id="1" name="Confirmation"
+        description="Sent out to confirm result"
+        display_key="referral.type.confirmation"
+        lastupdated="2018-02-16 20:45:59" />
+    <referral_type id="2" name="QA"
+        description="Quality assuranceAC" display_key="referral.type.qa"
+        lastupdated="2018-02-16 20:45:59" />
+    <referral_type id="3" name="EQA"
+        description="External Qaulity Assurance"
+        display_key="referral.type.eqa" lastupdated="2018-02-16 20:45:59" />
+
+    <referral_reason id="1" name="Test not performed"
+        description="Test was not performed"
+        display_key="referral.reason.testNotPerformed"
+        lastupdated="2018-02-16 20:45:59" />
+    <referral_reason id="2" name="Confirmation requested"
+        description="Confirmation requested"
+        display_key="referral.reason.confirmation"
+        lastupdated="2018-02-16 20:45:59" />
+    <referral_reason id="3"
+        name="Further testing required "
+        description="Further testing required "
+        display_key="referral.reason.moreTests"
+        lastupdated="2018-02-16 20:45:59" />
+
+    <referral id="1" analysis_id="1" organization_id="1"
+        organization_name="African Health Org"
+        send_ready_date="2018-02-16 23:45:59" sent_date="2018-02-16 22:45:59"
+        result_recieved_date="2018-02-16 23:45:59" referral_reason_id="1"
+        referral_type_id="1" requester_name="Doctor" Status="SENT"
+        lastUpdated="2018-02-16 23:45:59" canceled="false"
+        referral_request_date="2018-02-16 21:45:59"
+        fhir_uuid="436a353f-8ac9-4a30-86db-bb6eda979b57" />
+    <referral id="2" analysis_id="2" organization_id="2"
+        organization_name="Health Corporations Ltd"
+        send_ready_date="2018-02-16 23:45:59" sent_date="2018-02-16 22:45:59"
+        result_recieved_date="2018-02-16 23:45:59" referral_reason_id="2"
+        referral_type_id="2" requester_name="Doctor" status="RECEIVED"
+        lastUpdated="2018-02-16 23:45:59" canceled="false"
+        referral_request_date="2018-02-16 21:45:59"
+        fhir_uuid="386e3e0c-013b-425b-ab5f-46f40278c5d3" />
+</dataset>

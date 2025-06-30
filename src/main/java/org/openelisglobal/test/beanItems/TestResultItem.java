@@ -116,7 +116,7 @@ public class TestResultItem implements ResultItem, Serializable {
     private double lowerCritical;
     private double higherCritical;
 
-    private int significantDigits = -1;
+    private int significantDigits = 0;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String shadowResultValue;

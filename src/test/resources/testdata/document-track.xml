@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <document_type id="1" name="Test Type 1"
+        description="Test Document Type 1" lastupdated="2024-03-06 10:00:00" />
+    <document_type id="2" name="Test Type 2"
+        description="Test Document Type 2" lastupdated="2024-03-06 10:00:00" />
+
+    <document_track id="1" document_type_id="1" table_id="1"
+        row_id="1" name="Test Doc 1"
+        report_generation_time="2024-03-06 10:00:00"
+        lastupdated="2024-03-06 10:00:00" />
+    <document_track id="2" document_type_id="1" table_id="1"
+        row_id="2" name="Test Doc 2"
+        report_generation_time="2024-03-06 11:00:00"
+        lastupdated="2024-03-06 11:00:00" />
+    <document_track id="3" document_type_id="2" table_id="1"
+        row_id="1" name="Test Doc 3"
+        report_generation_time="2024-03-06 12:00:00"
+        lastupdated="2024-03-06 12:00:00" />
+</dataset>

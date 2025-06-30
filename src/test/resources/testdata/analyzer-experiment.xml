@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <analyzer id="101" name="Cobas 6800"
+        machine_id="COBAS6800-001" analyzer_type="MOLECULAR"
+        description="Automated molecular analyzer for PCR testing"
+        location="Main Laboratory - Room 101" is_active="true"
+        has_setup_page="true" lastupdated="2023-01-01 12:00:00" />
+    <analyzer id="102" name="ABL800 FLEX" machine_id="ABL800-123"
+        analyzer_type="CHEMISTRY"
+        description="Blood gas and electrolyte analyzer"
+        location="Emergency Department - Station 3" is_active="true"
+        has_setup_page="false" lastupdated="2023-01-01 12:30:00" />
+    <analyzer id="103" name="Sysmex XN-1000"
+        machine_id="SYSMEX-XN1000-45" analyzer_type="HEMATOLOGY"
+        description="Automated hematology analyzer"
+        location="Hematology Lab - Room 203" is_active="false"
+        has_setup_page="true" lastupdated="2023-01-01 13:00:00" />
+
+    <analyzer_experiment id="1" analyzer_id="101"
+        name="Blood Chemistry Analysis"
+        file="\x48656c6c6f2c207468697320697320612073616d706c6520646174612066696c6520666f7220426c6f6f642043686d6973747279416e616c797369732e" />
+
+    <analyzer_experiment id="2" analyzer_id="102"
+        name="Complete Blood Count Test"
+        file="\x5468697320697320626c6f6f6420636f756e742064617461207769746820574243203d20352c205242432c20616e6420706c6174656c657420636f756e74732e" />
+
+    <analyzer_experiment id="3" analyzer_id="103"
+        name="Metabolic Panel Experiment"
+        file="\x4d657461626f6c69632050616e656c206461746120666f7220676c75636f73652c20656c656374726f6c797465732c20616e64206b69646e65792066756e6374696f6e2e" />
+</dataset>

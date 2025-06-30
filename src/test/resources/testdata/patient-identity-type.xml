@@ -1,0 +1,12 @@
+<dataset>
+    <!-- Patient Identity Type Records -->
+    <patient_identity_type id="9"
+        identity_type="NATIONAL" description="Patient ID Number"
+        lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="17"
+        identity_type="NATIONALITY" description="Nationality"
+        lastupdated="2023-01-01 00:00:00" />
+    <patient_identity_type id="18"
+        identity_type="OTHER NATIONALITY" description="Country of Residence"
+        lastupdated="2023-01-01 00:00:00" />
+</dataset>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- ObservationHistoryType data -->
+    <observation_history_type id="1"
+        type_name="EDUCATION_LEVEL" description="Patient's education level"
+        lastupdated="2023-11-01 12:00:00" />
+    <observation_history_type id="2"
+        type_name="MARITAL_STATUS" description="Patient's marital status"
+        lastupdated="2023-11-01 12:00:00" />
+    <observation_history_type id="3"
+        type_name="OCCUPATION" description="Patient's occupation"
+        lastupdated="2023-11-01 12:00:00" />
+    <observation_history_type id="4"
+        type_name="SMOKING_STATUS" description="Patient's smoking habits"
+        lastupdated="2023-11-01 12:00:00" />
+</dataset>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- System user data -->
+    <system_user id="1" external_id="EXT001" login_name="admin"
+        last_name="Administrator" first_name="System" initials="SA"
+        is_active="Y" is_employee="Y" lastupdated="2025-03-15 12:00:00" />
+    <system_user id="2" external_id="EXT002"
+        login_name="labtech" last_name="Technician" first_name="Lab"
+        initials="LT" is_active="Y" is_employee="Y"
+        lastupdated="2025-03-15 12:00:00" />
+    <system_user id="3" external_id="EXT003"
+        login_name="manager" last_name="Manager" first_name="Lab"
+        initials="LM" is_active="Y" is_employee="Y"
+        lastupdated="2025-03-15 12:00:00" />
+
+    <!-- System role data -->
+    <system_role id="1" name="Admin"
+        description="Administrator role" display_key="role.admin" />
+    <system_role id="2" name="LabTech"
+        description="Laboratory Technician" display_key="role.labtech" />
+    <system_role id="3" name="Manager"
+        description="Laboratory Manager" display_key="role.manager" />
+    <system_role id="4" name="QA"
+        description="Quality Assurance" display_key="role.qa" />
+
+    <!-- User role assignments -->
+    <system_user_role system_user_id="1" role_id="1" />
+    <system_user_role system_user_id="2" role_id="2" />
+    <system_user_role system_user_id="3" role_id="3" />
+    <system_user_role system_user_id="1" role_id="4" />
+
+    <!-- Lab unit role maps -->
+    <lab_unit_role_map lab_unit_role_map_id="1"
+        lab_unit="Hematology_Analyzer" />
+    <lab_unit_role_map lab_unit_role_map_id="2"
+        lab_unit="Hematology_Reviewer" />
+    <lab_unit_role_map lab_unit_role_map_id="3"
+        lab_unit="Biochemistry_Analyzer" />
+    <lab_unit_role_map lab_unit_role_map_id="4"
+        lab_unit="Biochemistry_Supervisor" />
+    <lab_unit_role_map lab_unit_role_map_id="5"
+        lab_unit="Microbiology_Technician" />
+    <lab_unit_role_map lab_unit_role_map_id="6"
+        lab_unit="Microbiology_Manager" />
+
+    <!-- User lab unit roles with embedded lab unit role maps -->
+    <user_lab_unit_roles system_user_id="1" />
+    <user_lab_unit_roles system_user_id="2" />
+    <user_lab_unit_roles system_user_id="3" />
+</dataset>

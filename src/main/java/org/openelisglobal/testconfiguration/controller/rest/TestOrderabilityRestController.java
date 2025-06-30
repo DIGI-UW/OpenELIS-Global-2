@@ -25,6 +25,7 @@ import org.openelisglobal.testconfiguration.form.TestOrderabilityForm;
 import org.openelisglobal.testconfiguration.validator.TestOrderabilityFormValidator;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -139,14 +140,16 @@ public class TestOrderabilityRestController extends BaseController {
     }
 
     @PostMapping(value = "/TestOrderability")
-    public TestOrderabilityForm postTestOrderability(HttpServletRequest request,
+    public ResponseEntity<?> postTestOrderability(HttpServletRequest request,
             @RequestBody @Valid TestOrderabilityForm form, BindingResult result) throws ParseException {
         formValidator.validate(form, result);
         if (result.hasErrors()) {
-            // saveErrors(result);
+            saveErrors(result);
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            // return form;
+            return ResponseEntity.badRequest()
+                    .body(Collections.singletonMap("error", "Validation errors occurred, Form Data is not valid"));
         }
 
         String changeList = form.getJsonChangeList();
@@ -173,7 +176,7 @@ public class TestOrderabilityRestController extends BaseController {
         form.setOrderableTestList(orderableTestList);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(Collections.singletonMap("status", "success"));
     }
 
     private List<Test> getTests(List<String> testIds, boolean orderable) {

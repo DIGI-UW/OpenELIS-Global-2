@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Test data with required fields -->
+    <test id="101" name="Blood Test"
+        description="Blood Test Description"
+        guid="bd7c32a1-2135-4c21-a542-8f11121e3210" is_active="Y"
+        is_reportable="Y" orderable="true" lastUpdated="2023-12-01 12:00:00" />
+    <test id="102" name="Urine Test"
+        description="Urine Test Description"
+        guid="fe9a45b7-8723-4d61-b8f5-3c29e7a82416" is_active="Y"
+        is_reportable="Y" orderable="true" lastUpdated="2023-12-01 12:00:00" />
+    <test id="103" name="Glucose Test"
+        description="Fasting Blood Glucose"
+        guid="a4d5e7c8-9f12-4b3e-8d67-1e23a4b5c6d7" is_active="Y"
+        is_reportable="Y" orderable="true" lastUpdated="2023-12-01 12:00:00" />
+
+    <!-- Analyzer data -->
+    <analyzer id="1" name="Cobas 6800" machine_id="COBAS6800-001"
+        analyzer_type="MOLECULAR"
+        description="Automated molecular analyzer for PCR testing"
+        location="Main Laboratory - Room 101" is_active="true"
+        has_setup_page="true" lastupdated="2023-01-01 12:00:00" />
+    <analyzer id="2" name="ABL800 FLEX" machine_id="ABL800-123"
+        analyzer_type="CHEMISTRY"
+        description="Blood gas and electrolyte analyzer"
+        location="Emergency Department - Station 3" is_active="true"
+        has_setup_page="false" lastupdated="2023-01-01 12:30:00" />
+    <analyzer id="3" name="Sysmex XN-1000"
+        machine_id="SYSMEX-XN1000-45" analyzer_type="HEMATOLOGY"
+        description="Automated hematology analyzer"
+        location="Hematology Lab - Room 203" is_active="false"
+        has_setup_page="true" lastupdated="2023-01-01 13:00:00" />
+
+    <!-- Analyzer Test Map data -->
+    <analyzer_test_map analyzer_id="1"
+        analyzer_test_name="Glucose Test" test_id="101"
+        lastupdated="2023-01-01 12:00:00" />
+    <analyzer_test_map analyzer_id="2"
+        analyzer_test_name="Hemoglobin Test" test_id="102"
+        lastupdated="2023-01-01 12:30:00" />
+    <analyzer_test_map analyzer_id="3"
+        analyzer_test_name="Potassium Test" test_id="103"
+        lastupdated="2023-01-01 13:00:00" />
+
+</dataset>

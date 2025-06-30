@@ -53,18 +53,18 @@ function AnalyzerTestName() {
 
   const componentMounted = useRef(false);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
   const [modifyButton, setModifyButton] = useState(true);
   const [deactivateButton, setDeactivateButton] = useState(true);
   const [selectedRowIds, setSelectedRowIds] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [startingRecNo, setStartingRecNo] = useState(21);
+  const [startingRecNo, setStartingRecNo] = useState(1);
   const [AnalyzerTestName, setAnalyzerTestName] = useState({});
   const [AnalyzerTestNameShow, setAnalyzerTestNameShow] = useState([]);
-  const [fromRecordCount, setFromRecordCount] = useState("");
+  const [fromRecordCount, setFromRecordCount] = useState("1");
   const [toRecordCount, setToRecordCount] = useState("");
   const [totalRecordCount, setTotalRecordCount] = useState("");
-  const [paging, setPaging] = useState(1);
+  const [paging, setPaging] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [testName, setTestName] = useState("");
@@ -86,7 +86,10 @@ function AnalyzerTestName() {
   useEffect(() => {
     componentMounted.current = true;
     setLoading(true);
-    getFromOpenElisServer("/rest/AnalyzerTestNameMenu", handleMenuItems);
+    getFromOpenElisServer(
+      `/rest/AnalyzerTestNameMenu?paging=${paging}&startingRecNo=${startingRecNo}`,
+      handleMenuItems,
+    );
     return () => {
       componentMounted.current = false;
       setLoading(false);
@@ -103,8 +106,8 @@ function AnalyzerTestName() {
         };
       });
       setFromRecordCount(AnalyzerTestName.fromRecordCount);
-      setToRecordCount(AnalyzerTestName.menuList.length);
-      setTotalRecordCount(AnalyzerTestName.menuList.length);
+      setToRecordCount(AnalyzerTestName.toRecordCount);
+      setTotalRecordCount(AnalyzerTestName.totalRecordCount);
       setAnalyzerTestNameShow(newAnalyzerTestName);
     }
   }, [AnalyzerTestName]);

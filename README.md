@@ -18,6 +18,13 @@ You can find more information on how to set up OpenELIS at our
 
 [![End to End QA Tests Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml)
 
+### Requirements
+
+1. You need to install [Docker](https://docs.docker.com/engine/install/) and
+   [Docker compose](https://docs.docker.com/compose/install/)
+
+1. For development , you need to install [Java](https://openjdk.org/install/) 21
+
 ### For Offline Installation Using the OpenELIS Global2 Installer
 
 Download the OpenELIS Global Installer for each Release from the
@@ -41,7 +48,11 @@ see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
 
     docker-compose -f build.docker-compose.yml up -d --build
 
-#### Running OpenELIS Global2 using docker compose With locally compiled/built Artifacts (ie the War file and React code)
+#### Running OpenELIS Global2 with docker compose For Development
+
+Here Artifacts (ie the War file and React code) are compiled/built on the local
+machine outside docker and just mounted into the docker compose setup. This
+speeds up the development process
 
 1.  Fork the
     [OpenELIS-Global Repository](https://github.com/DIGI-UW/OpenELIS-Global-2.git)
@@ -110,6 +121,27 @@ accessing any of these links, simply follow these steps:
     to properly format the Java code
 
         mvn spotless:apply
+
+#### To ensure your code passes the same checks as the CI pipeline, you can run the following commands from your project directory
+
+1.  Run Code Formatting Check (Backend). This command checks code formatting and
+    performs validation similar to the CI
+
+        mvn spotless:check
+
+2.  Run Build Check (Backend). This command builds the project similar to CI
+
+        mvn clean install -Dspotless.check.skip=true
+
+3.  Run Frontend Formatting, Build, and E2E Test Checks similar to CI
+
+    > **Note:** Frontend checks will only pass successfully if your development
+    > environment is properly set up and running without issues.
+
+        cd frontend/ # from project directory
+        npm install
+        npm run build
+        npm run cy:run # this will run e2e testing same CI
 
 ### Pull request guidelines
 

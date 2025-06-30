@@ -445,7 +445,11 @@ function PatientStatusReport(props) {
                     <br />
                   </Column>
                   <Column lg={16} md={8} sm={4}>
-                    <Button type="button" onClick={handleReportPrint}>
+                    <Button
+                      data-cy="printableVersion"
+                      type="button"
+                      onClick={handleReportPrint}
+                    >
                       <FormattedMessage id="label.button.generatePrintableVersion" />
                     </Button>
                   </Column>
