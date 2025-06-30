@@ -11,7 +11,7 @@ before(() => {
   loginPage.visit();
 
   homePage = loginPage.goToHomePage();
-  adminPage = homePage.goToAdminPage();
+  adminPage = homePage.goToAdminPageProgram();
 });
 
 beforeEach(() => {
@@ -22,6 +22,10 @@ beforeEach(() => {
 describe("Lab Number Management", function () {
   it("User navigates to the Lab Number Management page", function () {
     labNumMgtPage = adminPage.goToLabNumberManagementPage();
+  });
+
+  it("Validate Page Visibility", function () {
+    labNumMgtPage.verifyPageLoaded();
   });
 
   it("User selects legacy lab number type and submits", function () {
@@ -38,6 +42,16 @@ describe("Lab Number Management", function () {
       labNumMgtPage.selectLabNumber(labNumberManagementData.alphaLabNumberType);
       labNumMgtPage.checkPrefixCheckBox();
       labNumMgtPage.typePrefix(labNumberManagementData.userPrefix);
+      labNumMgtPage.clickSubmitButton();
+    });
+  });
+
+  //Back to default type
+  it("Navigate back to legacy lab number type", function () {
+    cy.get("@labNMData").then((labNumberManagementData) => {
+      labNumMgtPage.selectLabNumber(
+        labNumberManagementData.legacyLabNumberType,
+      );
       labNumMgtPage.clickSubmitButton();
     });
   });

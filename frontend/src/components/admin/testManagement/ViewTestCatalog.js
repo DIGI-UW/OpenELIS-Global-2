@@ -331,25 +331,25 @@ const TestCatalog = () => {
       <br />
       <div className="orderLegendBody">
         <Grid fullWidth={true}>
-          <Column lg={12}>
+          <Column lg={12} md={6} sm={3}>
             <h1>
               {" "}
               <FormattedMessage id="label.viewtestCatalog" />
             </h1>
           </Column>
-          <Column lg={4} md={8} sm={12}>
+          <Column lg={12} md={6} sm={3}>
             <Toggle id="toggle" labelText="Show Guide" onClick={handleToggle} />
           </Column>
         </Grid>
         <hr />
         <Grid>
-          <Column lg={11}>
+          <Column lg={11} md={6} sm={3}>
             <br />
             <h5>
               <FormattedMessage id="label.selectTestSectionCatalog" />
             </h5>
           </Column>
-          <Column lg={5}>
+          <Column lg={5} md={2} sm={1}>
             <FilterableMultiSelect
               type="inline"
               id="carbon-multiselect-example-3"

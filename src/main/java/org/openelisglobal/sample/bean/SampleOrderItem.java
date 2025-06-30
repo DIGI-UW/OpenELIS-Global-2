@@ -16,13 +16,13 @@
 
 package org.openelisglobal.sample.bean;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
-import javax.validation.constraints.Email;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Pattern;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.util.IdValuePair;

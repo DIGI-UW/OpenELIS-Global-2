@@ -1,5 +1,7 @@
 package org.openelisglobal.common.rest;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -11,8 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.annotation.PostConstruct;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.apache.logging.log4j.core.util.KeyValuePair;
@@ -132,6 +132,11 @@ public class DisplayListController extends BaseRestController {
 
     protected static List<Integer> statusList;
     protected static List<String> nfsTestIdList;
+
+    private String escapeRegexChars(String regex) {
+        // TODO Auto-generated method stub
+        return regex;
+    }
 
     // Manually create an instance of ExportTrendsByDate
     private ExportTrendsByDate exportTrendsByDate = new ExportTrendsByDate();
@@ -352,6 +357,15 @@ public class DisplayListController extends BaseRestController {
     @GetMapping(value = "configuration-properties", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     private Map<String, Object> getConfigurationProperties() {
+        SiteInformation DEFAULT_SITE_INFORATION = new SiteInformation();
+        String DEFAULT_REGEX = "0-9a-z .'_@-";
+        DEFAULT_SITE_INFORATION.setValue(DEFAULT_REGEX);
+        String FIRST_NAME_REGEX = "^[" + escapeRegexChars(
+                siteInformationService.getMatch("name", "firstNameCharset").orElse(DEFAULT_SITE_INFORATION).getValue())
+                + "]*$";
+        String LAST_NAME_REGEX = "^[" + escapeRegexChars(
+                siteInformationService.getMatch("name", "lastNameCharset").orElse(DEFAULT_SITE_INFORATION).getValue())
+                + "]*$";
         Map<String, Object> configs = getOpenConfigurationProperties();
 
         configs.put(Property.allowResultRejection.toString(),
@@ -369,6 +383,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.UseExternalPatientInfo));
         configs.put("DEFAULT_PAGE_SIZE",
                 ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        configs.put("FIRST_NAME_REGEX", FIRST_NAME_REGEX);
+        configs.put("LAST_NAME_REGEX", LAST_NAME_REGEX);
         return configs;
     }
 

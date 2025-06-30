@@ -3,31 +3,31 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class
-		name="org.openelisglobal.inventory.valueholder.InventoryLocation"
-		table="inventory_location" optimistic-lock="version"
-		dynamic-update="true">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<param name="sequence_name">inventory_location_seq</param>
-			</generator>
-		</id>
+    <class
+        name="org.openelisglobal.inventory.valueholder.InventoryLocation"
+        table="inventory_location" optimistic-lock="version"
+        dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">inventory_location_seq</param>
+            </generator>
+        </id>
 
-		<many-to-one name="inventoryItem"
-			class="org.openelisglobal.inventory.valueholder.InventoryItem"
-			fetch="select" lazy="false">
-			<column name="INV_ITEM_ID" precision="10" scale="0" />
-		</many-to-one>
+        <many-to-one name="inventoryItem"
+            class="org.openelisglobal.inventory.valueholder.InventoryItem"
+            fetch="select" lazy="false">
+            <column name="INV_ITEM_ID" precision="10" scale="0" />
+        </many-to-one>
 
-		<property name="lotNumber" type="java.lang.String">
-			<column name="lot_number" length="20" />
-		</property>
-		<property name="expirationDate" type="timestamp">
-			<column name="expiration_date" />
-		</property>
+        <property name="lotNumber" type="java.lang.String">
+            <column name="lot_number" length="20" />
+        </property>
+        <property name="expirationDate" type="timestamp">
+            <column name="expiration_date" />
+        </property>
 
-	</class>
+    </class>
 </hibernate-mapping>

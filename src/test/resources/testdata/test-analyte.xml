@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Analyte records (needed for foreign key references) -->
+    <analyte id="1" analyte_id="1" name="Glucose" is_active="Y"
+        external_id="EXT123" lastupdated="2025-03-07 12:00:00"
+        local_abbrev="GLU" />
+    <analyte id="2" analyte_id="2" name="Hemoglobin" is_active="N"
+        external_id="EXT124" lastupdated="2025-03-06 14:30:00"
+        local_abbrev="HGB" />
+
+    <!-- Test records (needed for foreign key references) -->
+    <test id="1" name="Blood Test"
+        description="Blood Test Description"
+        guid="bd7c32a1-2135-4c21-a542-8f11121e3210" is_active="Y"
+        is_reportable="Y" orderable="true" lastupdated="2023-12-01 12:00:00" />
+    <test id="2" name="Urine Test"
+        description="Urine Test Description"
+        guid="fe9a45b7-8723-4d61-b8f5-3c29e7a82416" is_active="Y"
+        is_reportable="Y" orderable="true" lastupdated="2023-12-01 12:00:00" />
+
+    <!-- Test Analyte records -->
+    <test_analyte id="1" test_id="1" analyte_id="1"
+        result_group="1" sort_order="1" testalyt_type="T"
+        lastupdated="2025-03-19 10:00:00" is_reportable="Y" />
+    <test_analyte id="2" test_id="2" analyte_id="2"
+        result_group="1" sort_order="2" testalyt_type="R"
+        lastupdated="2025-03-19 10:01:00" is_reportable="Y" />
+</dataset>

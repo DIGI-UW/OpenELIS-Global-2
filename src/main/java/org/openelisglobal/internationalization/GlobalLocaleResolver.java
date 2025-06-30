@@ -1,11 +1,11 @@
 package org.openelisglobal.internationalization;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.util.ConfigurationListener;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;

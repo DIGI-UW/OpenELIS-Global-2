@@ -3,22 +3,22 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class
-		name="org.openelisglobal.requester.valueholder.SampleRequester"
-		table="sample_requester" optimistic-lock="version"
-		dynamic-update="true">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<param name="sequence_name">sample_requester_seq</param>
-			</generator>
-		</id>
-		<version name="lastupdated" column="LASTUPDATED"
-			type="timestamp" access="field" />
-		<property name="sampleId" column="sample_id" />
-		<property name="requesterTypeId" column="requester_type_id" />
-		<property name="requesterId" column="requester_id" />
-	</class>
+    <class
+        name="org.openelisglobal.requester.valueholder.SampleRequester"
+        table="sample_requester" optimistic-lock="version"
+        dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">sample_requester_seq</param>
+            </generator>
+        </id>
+        <version name="lastupdated" column="LASTUPDATED"
+            type="timestamp" access="field" />
+        <property name="sampleId" column="sample_id" />
+        <property name="requesterTypeId" column="requester_type_id" />
+        <property name="requesterId" column="requester_id" />
+    </class>
 </hibernate-mapping>

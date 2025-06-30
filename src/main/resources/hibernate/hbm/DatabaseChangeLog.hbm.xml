@@ -3,20 +3,20 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class
-		name="org.openelisglobal.common.valueholder.DatabaseChangeLog"
-		table="databasechangelog" optimistic-lock="version"
-		dynamic-update="true">
-		<id name="id" type="java.lang.String" column="ID" />
+    <class
+        name="org.openelisglobal.common.valueholder.DatabaseChangeLog"
+        table="databasechangelog" optimistic-lock="version"
+        dynamic-update="true">
+        <id name="id" type="java.lang.String" column="ID" />
 
-		<property name="author" type="java.lang.String"
-			column="author" length="63" />
-		<property name="fileName" type="java.lang.String"
-			column="filename" length="200" />
-		<property name="comment" type="java.lang.String"
-			column="comments" length="255" />
-		<property name="executed" type="java.sql.Timestamp"
-			column="dateexecuted" />
+        <property name="author" type="java.lang.String"
+            column="author" length="63" />
+        <property name="fileName" type="java.lang.String"
+            column="filename" length="200" />
+        <property name="comment" type="java.lang.String"
+            column="comments" length="255" />
+        <property name="executed" type="java.sql.Timestamp"
+            column="dateexecuted" />
 
-	</class>
+    </class>
 </hibernate-mapping>

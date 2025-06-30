@@ -1,8 +1,8 @@
 package org.openelisglobal.externalconnections.valueholder;
 
-import javax.persistence.Entity;
-import javax.persistence.Table;
-import javax.persistence.Transient;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import org.openelisglobal.externalconnections.valueholder.ExternalConnection.AuthType;
 import org.springframework.web.multipart.MultipartFile;
 

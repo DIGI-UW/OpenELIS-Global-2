@@ -1,10 +1,10 @@
 package org.openelisglobal.qaevent.valueholder;
 
+import jakarta.persistence.Basic;
+import jakarta.persistence.Column;
+import jakarta.persistence.Id;
 import java.sql.Date;
 import java.util.Objects;
-import javax.persistence.Basic;
-import javax.persistence.Column;
-import javax.persistence.Id;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 public class NcEvent extends BaseObject<String> {

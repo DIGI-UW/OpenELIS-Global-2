@@ -1,7 +1,7 @@
 package org.openelisglobal.typeoftestresult.service;
 
+import jakarta.annotation.PostConstruct;
 import java.util.EnumSet;
-import javax.annotation.PostConstruct;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;

@@ -14,6 +14,7 @@
 package org.openelisglobal.dataexchange.common;
 
 import ca.uhn.hl7v2.HL7Exception;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
@@ -22,7 +23,6 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import javax.servlet.http.HttpServletResponse;
 import org.exolab.castor.mapping.Mapping;
 import org.exolab.castor.mapping.MappingException;
 import org.exolab.castor.xml.MarshalException;

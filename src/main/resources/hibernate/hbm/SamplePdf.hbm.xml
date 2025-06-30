@@ -3,27 +3,27 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class name="org.openelisglobal.samplepdf.valueholder.SamplePdf"
-		table="SAMPLE_PDF" optimistic-lock="version" dynamic-update="true">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<param name="sequence_name">sample_pdf_seq</param>
-			</generator>
-		</id>
+    <class name="org.openelisglobal.samplepdf.valueholder.SamplePdf"
+        table="SAMPLE_PDF" optimistic-lock="version" dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">sample_pdf_seq</param>
+            </generator>
+        </id>
 
-		<property name="accessionNumber"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ACCESSION_NUMBER" precision="10" scale="0"
-				not-null="true" unique="true" />
-		</property>
-		<property name="allowView" type="java.lang.String">
-			<column name="ALLOW_VIEW" length="1" />
-		</property>
-		<property name="barcode" type="java.lang.String">
-			<column name="BARCODE" length="20" />
-		</property>
-	</class>
+        <property name="accessionNumber"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ACCESSION_NUMBER" precision="10" scale="0"
+                not-null="true" unique="true" />
+        </property>
+        <property name="allowView" type="java.lang.String">
+            <column name="ALLOW_VIEW" length="1" />
+        </property>
+        <property name="barcode" type="java.lang.String">
+            <column name="BARCODE" length="20" />
+        </property>
+    </class>
 </hibernate-mapping>

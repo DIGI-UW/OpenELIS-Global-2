@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- ObservationHistoryType data -->
+    <observation_history_type id="1"
+        type_name="initialSampleCondition"
+        description="Patient's education level"
+        lastupdated="2023-11-01 12:00:00" />
+    <observation_history_type id="2"
+        type_name="paymentStatus" description="Patient's marital status"
+        lastupdated="2023-11-01 12:00:00" />
+    <observation_history_type id="3"
+        type_name="requestDate" description="Patient's occupation"
+        lastupdated="2023-11-01 12:00:00" />
+    <!-- New ObservationHistoryType entry -->
+    <observation_history_type id="4"
+        type_name="nextVisitDate" description="Patient's smoking habits"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Sample data -->
+    <sample id="1" accession_number="12345"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="2" accession_number="13333"
+        received_date="2024-06-04 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="3" accession_number="52541"
+        received_date="2024-06-05 00:00:00.0"
+        entered_date="2024-06-05 00:00:00.0"
+        collection_date="2024-06-05 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <!-- New Sample entry -->
+    <sample id="4" accession_number="67890"
+        received_date="2024-06-06 00:00:00.0"
+        entered_date="2024-06-06 00:00:00.0"
+        collection_date="2024-06-06 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Person data -->
+    <person id="1" last_name="Doe" first_name="John"
+        middle_name="joddy" city="Kampala" state="Kampala metropolitan"
+        zip_code="256" country="Uganda" work_phone="12345678"
+        home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
+        fax="3456" email="john@gmail.com" lastupdated="2023-11-01 12:00:00" />
+    <person id="2" last_name="Mulizi" first_name="James"
+        middle_name="Mark" city="Orion" state="Texas" zip_code="001"
+        country="USA" work_phone="10000001" home_phone="8000001"
+        cell_phone="0000000" primary_phone="10000001" fax="0001"
+        email="james@gmail.com" lastupdated="2023-11-01 12:00:00" />
+    <person id="3" last_name="Kukki" first_name="Faith"
+        middle_name="Siannah" city="Dallas" state="Texas" zip_code="001"
+        country="USA" work_phone="10000002" home_phone="8000003"
+        cell_phone="0000001" primary_phone="10000002" fax="0002"
+        email="siannah@gmail.com" lastupdated="2023-11-01 12:00:00" />
+    <person id="4" last_name="Linn" first_name="Jane"
+        middle_name="jolly" city="Kampala" state="Kampala metropolitan"
+        zip_code="256" country="Uganda" work_phone="12345678"
+        home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
+        fax="3456" email="john@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+    <!-- New Person entry -->
+    <person id="5" last_name="Smith" first_name="Robert"
+        middle_name="Alan" city="Entebbe" state="Central" zip_code="256"
+        country="Uganda" work_phone="87654321" home_phone="12345678"
+        cell_phone="09876543" primary_phone="87654321" fax="6789"
+        email="robert@gmail.com" lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Patient data -->
+    <patient id="1" person_id="1" race="black" gender="M"
+        birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+        national_id="1234" ethnicity="U" external_id="EX456"
+        school_attend="MaKerere College" birth_place="Mulago"
+        entered_birth_date="1992-12-12" lastupdated="2023-11-01 12:00:02" />
+    <patient id="2" person_id="3" race="black" gender="F"
+        birth_date="1997-10-09 09:00:00" birth_time="1997-10-09 09:00:00"
+        national_id="56789" ethnicity="A" external_id="EX123"
+        school_attend="Merryland College" birth_place="Nevada"
+        entered_birth_date="1997-10-09" lastupdated="2023-11-01 12:00:02" />
+    <patient id="3" person_id="2" race="black" gender="M"
+        birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+        national_id="1234" ethnicity="U" external_id="EX432"
+        school_attend="MaKerere College" birth_place="Kawempe"
+        entered_birth_date="1992-12-12" lastupdated="2023-11-01 12:00:02" />
+    <!-- New Patient entry -->
+    <patient id="4" person_id="5" race="white" gender="M"
+        birth_date="1985-05-15 08:30:00" birth_time="1985-05-15 08:30:00"
+        national_id="98765" ethnicity="H" external_id="EX789"
+        school_attend="Kampala University" birth_place="Entebbe"
+        entered_birth_date="1985-05-15" lastupdated="2023-11-01 12:00:02" />
+
+    <!-- ObservationHistory data -->
+    <observation_history id="1" patient_id="1"
+        sample_id="1" observation_history_type_id="1" value_type="L"
+        value="University" lastupdated="2023-11-01 12:00:02" />
+    <observation_history id="2" patient_id="2"
+        sample_id="2" observation_history_type_id="2" value_type="L"
+        value="Married" lastupdated="2023-11-01 12:00:02" />
+    <observation_history id="3" patient_id="3"
+        sample_id="3" observation_history_type_id="3" value_type="L"
+        value="Engineer" lastupdated="2023-11-01 12:00:02" />
+</dataset>

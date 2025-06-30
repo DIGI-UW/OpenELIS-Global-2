@@ -3,12 +3,12 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class
-		name="org.openelisglobal.citystatezip.valueholder.StateView"
-		table="STATE_VIEW">
-		<id name="state"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="STATE" length="2" />
-		</id>
-	</class>
+    <class
+        name="org.openelisglobal.citystatezip.valueholder.StateView"
+        table="STATE_VIEW">
+        <id name="state"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="STATE" length="2" />
+        </id>
+    </class>
 </hibernate-mapping>

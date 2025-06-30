@@ -185,7 +185,11 @@ const ReferredOut = () => {
             <br />
             <Section>
               <br />
-              <Button type="button" onClick={handlePrinting}>
+              <Button
+                data-cy="printableVersion"
+                type="button"
+                onClick={handlePrinting}
+              >
                 <FormattedMessage
                   id="label.button.generatePrintableVersion"
                   defaultMessage="Generate printable version"

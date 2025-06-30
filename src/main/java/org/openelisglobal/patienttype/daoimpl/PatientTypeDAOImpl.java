@@ -13,8 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 import org.apache.commons.beanutils.PropertyUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.hibernate.Session;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -33,9 +31,6 @@ public class PatientTypeDAOImpl extends BaseDAOImpl<PatientType, String> impleme
     public PatientTypeDAOImpl() {
         super(PatientType.class);
     }
-
-    @SuppressWarnings("unused")
-    private static Log log = LogFactory.getLog(PatientTypeDAOImpl.class);
 
     // @Override
     // public void deleteData(List patientTypes) throws LIMSRuntimeException {

@@ -493,6 +493,7 @@ const SampleBatchEntry = (props) => {
               )}
               <Grid>
                 <Button
+                  data-cy="finishButton"
                   onClick={() =>
                     (window.location.href = "/SampleBatchEntrySetup")
                   }

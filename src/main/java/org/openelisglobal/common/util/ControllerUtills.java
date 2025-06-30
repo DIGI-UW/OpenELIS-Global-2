@@ -1,6 +1,6 @@
 package org.openelisglobal.common.util;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.web.context.request.RequestAttributes;

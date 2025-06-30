@@ -1,10 +1,10 @@
 package org.openelisglobal.testconfiguration.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
@@ -117,11 +117,12 @@ public class PanelCreateRestController extends BaseController {
 
         String identifyingName = form.getPanelEnglishName();
         String sampleTypeId = form.getSampleTypeId();
+        String loinc = form.getPanelLoinc();
         String systemUserId = getSysUserId(request);
 
         Localization localization = createLocalization(form.getPanelFrenchName(), identifyingName, systemUserId);
 
-        Panel panel = createPanel(identifyingName, systemUserId);
+        Panel panel = createPanel(identifyingName, systemUserId, loinc);
         SystemModule workplanModule = createSystemModule("Workplan", identifyingName, systemUserId);
         SystemModule resultModule = createSystemModule("LogbookResults", identifyingName, systemUserId);
         SystemModule validationModule = createSystemModule("ResultValidation", identifyingName, systemUserId);
@@ -168,13 +169,14 @@ public class PanelCreateRestController extends BaseController {
         return roleModule;
     }
 
-    private Panel createPanel(String identifyingName, String userId) {
+    private Panel createPanel(String identifyingName, String userId, String loinc) {
         Panel panel = new Panel();
         panel.setDescription(identifyingName);
         panel.setPanelName(identifyingName);
         panel.setIsActive("N");
         panel.setSortOrderInt(Integer.MAX_VALUE);
         panel.setSysUserId(userId);
+        panel.setLoinc(loinc);
         return panel;
     }
 

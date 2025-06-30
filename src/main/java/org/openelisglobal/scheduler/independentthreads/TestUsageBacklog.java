@@ -13,13 +13,13 @@
  */
 package org.openelisglobal.scheduler.independentthreads;
 
+import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.annotation.PostConstruct;
 import org.json.simple.JSONObject;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;

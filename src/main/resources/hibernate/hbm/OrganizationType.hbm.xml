@@ -3,37 +3,37 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class
-		name="org.openelisglobal.organization.valueholder.OrganizationType"
-		table="ORGANIZATION_TYPE" optimistic-lock="version"
-		dynamic-update="true">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<param name="sequence_name">organization_type_seq</param>
-			</generator>
-		</id>
-		<version name="lastupdated" column="LASTUPDATED"
-			type="timestamp" access="field" />
+    <class
+        name="org.openelisglobal.organization.valueholder.OrganizationType"
+        table="ORGANIZATION_TYPE" optimistic-lock="version"
+        dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">organization_type_seq</param>
+            </generator>
+        </id>
+        <version name="lastupdated" column="LASTUPDATED"
+            type="timestamp" access="field" />
 
-		<property name="name" type="java.lang.String">
-			<column name="SHORT_NAME" length="20" not-null="true" />
-		</property>
+        <property name="name" type="java.lang.String">
+            <column name="SHORT_NAME" length="20" not-null="true" />
+        </property>
 
-		<property name="description" type="java.lang.String">
-			<column name="DESCRIPTION" length="60" not-null="false" />
-		</property>
+        <property name="description" type="java.lang.String">
+            <column name="DESCRIPTION" length="60" not-null="false" />
+        </property>
 
-		<property name="nameKey" type="java.lang.String">
-			<column name="name_display_key" length="60" not-null="false" />
-		</property>
-		<set name="organizations" table="organization_organization_type"
-			cascade="all" lazy="false">
-			<key column="org_type_id" />
-			<many-to-many column="org_id"
-				class="org.openelisglobal.organization.valueholder.Organization" />
-		</set>
-	</class>
+        <property name="nameKey" type="java.lang.String">
+            <column name="name_display_key" length="60" not-null="false" />
+        </property>
+        <set name="organizations" table="organization_organization_type"
+            cascade="all" lazy="false">
+            <key column="org_type_id" />
+            <many-to-many column="org_id"
+                class="org.openelisglobal.organization.valueholder.Organization" />
+        </set>
+    </class>
 </hibernate-mapping>

@@ -186,15 +186,24 @@ function TestRenameEntry() {
           {testNamesShow ? (
             <Grid fullWidth={true}>
               {testNamesShow.map((test, index) => (
-                <Column key={index} lg={5} md={5} sm={5}>
+                <Column
+                  key={index}
+                  lg={4}
+                  md={4}
+                  sm={3}
+                  style={{ minWidth: 0 }}
+                >
                   <Button
                     id={`button-${index}`}
                     kind="ghost"
                     type="button"
-                    onClick={() => {
-                      openAppModle(test);
+                    onClick={() => openAppModle(test)}
+                    style={{
+                      color: "#000000",
+                      width: "auto",
+                      whiteSpace: "pre-line",
+                      textAlign: "left",
                     }}
-                    style={{ color: "#000000" }}
                   >
                     {test.value}
                   </Button>

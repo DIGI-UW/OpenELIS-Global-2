@@ -2,9 +2,9 @@ package org.openelisglobal.resultvalidation.controller.rest;
 
 import static org.apache.commons.validator.GenericValidator.isBlankOrNull;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;

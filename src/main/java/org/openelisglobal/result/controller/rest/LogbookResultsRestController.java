@@ -1,5 +1,6 @@
 package org.openelisglobal.result.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Timestamp;
 import java.time.OffsetDateTime;
@@ -11,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.StaleObjectStateException;
@@ -202,7 +202,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
     @GetMapping(value = "LogbookResults", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public LogbookResultsForm showReactLogbookResults(@RequestParam(required = false) String labNumber,
+    public LogbookResultsForm showRestLogbookResults(@RequestParam(required = false) String labNumber,
             @RequestParam(required = false) String patientPK, @RequestParam(required = false) String collectionDate,
             @RequestParam(required = false) String recievedDate, @RequestParam(required = false) String selectedTest,
             @RequestParam(required = false) String selectedSampleStatus,

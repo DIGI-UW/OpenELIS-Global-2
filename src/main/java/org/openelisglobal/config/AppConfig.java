@@ -3,7 +3,7 @@ package org.openelisglobal.config;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.datatype.hibernate5.Hibernate5Module;
+import com.fasterxml.jackson.datatype.hibernate5.jakarta.Hibernate5JakartaModule;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.net.URI;
@@ -39,7 +39,7 @@ import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
-import org.springframework.web.multipart.commons.CommonsMultipartResolver;
+import org.springframework.web.multipart.support.StandardServletMultipartResolver;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.ViewResolver;
@@ -85,10 +85,8 @@ public class AppConfig implements WebMvcConfigurer {
     }
 
     @Bean(name = "filterMultipartResolver")
-    public CommonsMultipartResolver multipartResolver() {
-        CommonsMultipartResolver multipartResolver = new CommonsMultipartResolver();
-        multipartResolver.setDefaultEncoding("utf-8");
-        multipartResolver.setMaxUploadSize(20848820);
+    public StandardServletMultipartResolver multipartResolver() {
+        StandardServletMultipartResolver multipartResolver = new StandardServletMultipartResolver();
         multipartResolver.setResolveLazily(false);
         return multipartResolver;
     }
@@ -177,7 +175,7 @@ public class AppConfig implements WebMvcConfigurer {
         ObjectMapper mapper = new ObjectMapper();
         // Registering Hibernate4Module to support lazy objects
         mapper.registerModule(new JavaTimeModule());
-        mapper.registerModule(new Hibernate5Module());
+        mapper.registerModule(new Hibernate5JakartaModule());
         mapper.registerModule(new Jdk8Module());
         mapper.setSerializationInclusion(Include.NON_NULL);
 

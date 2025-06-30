@@ -72,7 +72,7 @@ const SearchForm = (props) => {
           }
         }
       }
-      if (data.resultList.length > 0) {
+      if (data?.resultList?.length > 0) {
         const newResultsList = data.resultList.map((data, id) => {
           let tempData = { ...data };
           tempData.id = id;

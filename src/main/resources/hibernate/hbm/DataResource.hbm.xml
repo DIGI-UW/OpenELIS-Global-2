@@ -3,42 +3,42 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class
-		name="org.openelisglobal.datasubmission.valueholder.DataResource"
-		table="DATA_RESOURCE" optimistic-lock="version" dynamic-update="true">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<param name="sequence_name">data_resource_seq</param>
-			</generator>
-		</id>
-		<version name="lastupdated" column="LASTUPDATED"
-			type="timestamp" access="field" />
-		<property name="name" type="java.lang.String">
-			<column name="name" />
-		</property>
-		<property name="collectionName" type="java.lang.String">
-			<column name="collection_name" />
-		</property>
-		<property name="headerKey" type="java.lang.String">
-			<column name="header_key" />
-		</property>
-		<property name="level" type="java.lang.String">
-			<column name="level" />
-		</property>
-		<map name="levelIdMap" table="DATA_RESOURCE_LEVEL_ID"
-			cascade="all" lazy="false">
-			<key column="data_resource_id" />
-			<index column="level" type="java.lang.String"></index>
-			<element column="id_for_level" type="java.lang.String"></element>
-		</map>
-		<list name="columnValues" cascade="all" lazy="false">
-			<key column="data_resource_id" />
-			<index column="index" />
-			<one-to-many
-				class="org.openelisglobal.datasubmission.valueholder.DataValue" />
-		</list>
-	</class>
+    <class
+        name="org.openelisglobal.datasubmission.valueholder.DataResource"
+        table="DATA_RESOURCE" optimistic-lock="version" dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">data_resource_seq</param>
+            </generator>
+        </id>
+        <version name="lastupdated" column="LASTUPDATED"
+            type="timestamp" access="field" />
+        <property name="name" type="java.lang.String">
+            <column name="name" />
+        </property>
+        <property name="collectionName" type="java.lang.String">
+            <column name="collection_name" />
+        </property>
+        <property name="headerKey" type="java.lang.String">
+            <column name="header_key" />
+        </property>
+        <property name="level" type="java.lang.String">
+            <column name="level" />
+        </property>
+        <map name="levelIdMap" table="DATA_RESOURCE_LEVEL_ID"
+            cascade="all" lazy="false">
+            <key column="data_resource_id" />
+            <index column="level" type="java.lang.String"></index>
+            <element column="id_for_level" type="java.lang.String"></element>
+        </map>
+        <list name="columnValues" cascade="all" lazy="false">
+            <key column="data_resource_id" />
+            <index column="index" />
+            <one-to-many
+                class="org.openelisglobal.datasubmission.valueholder.DataValue" />
+        </list>
+    </class>
 </hibernate-mapping>

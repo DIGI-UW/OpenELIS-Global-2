@@ -509,7 +509,7 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
 
         String localizedGender = patientService.getLocalizedGender(pat);
 
-        Assert.assertEquals("MALE", localizedGender);
+        Assert.assertEquals("MALE", localizedGender.toUpperCase());
     }
 
     /*

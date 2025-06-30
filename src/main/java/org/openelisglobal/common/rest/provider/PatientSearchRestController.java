@@ -3,13 +3,13 @@ package org.openelisglobal.common.rest.provider;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.IQuery;
 import ca.uhn.fhir.rest.param.StringOrListParam;
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.*;
@@ -37,8 +37,6 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.search.service.SearchResultsService;
 import org.openelisglobal.spring.util.SpringContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
@@ -69,8 +67,6 @@ public class PatientSearchRestController extends BaseRestController {
     SearchResultsService searchResultsService;
 
     StringOrListParam targetSystemsParam;
-
-    private static final Logger log = LoggerFactory.getLogger(PatientSearchRestController.class);
 
     @GetMapping(value = "patient-search-results", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -210,7 +206,8 @@ public class PatientSearchRestController extends BaseRestController {
             if (transformedPatientSearchResult.getNationalId() == null
                     || transformedPatientSearchResult.getNationalId().isEmpty()) {
                 String nationalId = generateDynamicID(transformedPatientSearchResult);
-                log.info("dynamic national id: {}", nationalId);
+                LogEvent.logInfo(this.getClass().getSimpleName(), "searchPatientInClientRegistry",
+                        "dynamic national id: " + nationalId);
                 transformedPatientSearchResult.setNationalId(nationalId);
             }
 

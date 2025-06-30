@@ -84,6 +84,9 @@ public class TestAnalyteDAOImpl extends BaseDAOImpl<TestAnalyte, String> impleme
     public List<TestAnalyte> getPageOfTestAnalytes(int startingRecNo) throws LIMSRuntimeException {
         List<TestAnalyte> list;
         try {
+            // if(startingRecNo < 1) {
+            // startingRecNo = 1;
+            // }
             // calculate maxRow to be one more than the page size
             int endingRecNo = startingRecNo
                     + (Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))

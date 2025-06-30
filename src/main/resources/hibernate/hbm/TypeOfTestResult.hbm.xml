@@ -3,29 +3,29 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class
-		name="org.openelisglobal.typeoftestresult.valueholder.TypeOfTestResult"
-		table="TYPE_OF_TEST_RESULT" optimistic-lock="version"
-		dynamic-update="true">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<param name="sequence_name">type_of_test_result_seq</param>
-			</generator>
-		</id>
-		<version name="lastupdated" column="LASTUPDATED"
-			type="timestamp" access="field" />
+    <class
+        name="org.openelisglobal.typeoftestresult.valueholder.TypeOfTestResult"
+        table="TYPE_OF_TEST_RESULT" optimistic-lock="version"
+        dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">type_of_test_result_seq</param>
+            </generator>
+        </id>
+        <version name="lastupdated" column="LASTUPDATED"
+            type="timestamp" access="field" />
 
-		<property name="testResultType" type="java.lang.String">
-			<column name="TEST_RESULT_TYPE" length="1" />
-		</property>
-		<property name="description" type="java.lang.String">
-			<column name="DESCRIPTION" length="20" />
-		</property>
-		<property name="hl7Value" type="java.lang.String">
-			<column name="HL7_VALUE" length="20" />
-		</property>
-	</class>
+        <property name="testResultType" type="java.lang.String">
+            <column name="TEST_RESULT_TYPE" length="1" />
+        </property>
+        <property name="description" type="java.lang.String">
+            <column name="DESCRIPTION" length="20" />
+        </property>
+        <property name="hl7Value" type="java.lang.String">
+            <column name="HL7_VALUE" length="20" />
+        </property>
+    </class>
 </hibernate-mapping>

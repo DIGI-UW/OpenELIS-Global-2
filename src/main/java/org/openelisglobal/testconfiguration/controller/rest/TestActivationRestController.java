@@ -1,10 +1,10 @@
 package org.openelisglobal.testconfiguration.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import org.apache.commons.lang.math.NumberUtils;
 import org.json.simple.JSONArray;
@@ -246,7 +246,8 @@ public class TestActivationRestController extends BaseController {
             JSONArray actionArray = (JSONArray) parser.parse(action);
 
             for (int i = 0; i < actionArray.size(); i++) {
-                list.add((String) ((JSONObject) actionArray.get(i)).get("id"));
+                Object idObj = ((JSONObject) actionArray.get(i)).get("id");
+                list.add(String.valueOf(idObj));
             }
         } catch (ParseException e) {
             LogEvent.logDebug(e);

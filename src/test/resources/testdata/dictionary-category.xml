@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <dictionary_category id="1"
+        description="Test Category 1" local_abbrev="TEST1"
+        name="TEST_CATEGORY_ONE" lastupdated="2023-01-01 12:00:00.000" />
+
+    <dictionary_category id="2"
+        description="Test Category 2" local_abbrev="TEST2"
+        name="TEST_CATEGORY_TWO" lastupdated="2023-01-01 12:30:00.000" />
+
+    <dictionary_category id="3"
+        description="Test Category 3" local_abbrev="TEST3"
+        name="TEST_CATEGORY_THREE" lastupdated="2023-01-01 13:00:00.000" />
+</dataset>

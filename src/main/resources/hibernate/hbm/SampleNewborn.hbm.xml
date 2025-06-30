@@ -3,91 +3,91 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class
-		name="org.openelisglobal.samplenewborn.valueholder.SampleNewborn"
-		table="SAMPLE_NEWBORN" optimistic-lock="version" dynamic-update="true">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator class="assigned" />
-		</id>
-		<version name="lastupdated" column="LASTUPDATED"
-			type="timestamp" access="field" />
+    <class
+        name="org.openelisglobal.samplenewborn.valueholder.SampleNewborn"
+        table="SAMPLE_NEWBORN" optimistic-lock="version" dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator class="assigned" />
+        </id>
+        <version name="lastupdated" column="LASTUPDATED"
+            type="timestamp" access="field" />
 
-		<property name="weight"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="WEIGHT" precision="5" scale="0" />
-		</property>
-		<property name="multiBirth" type="java.lang.String">
-			<column name="MULTI_BIRTH" length="1" />
-		</property>
-		<property name="birthOrder"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="BIRTH_ORDER" precision="2" scale="0" />
-		</property>
-		<property name="gestationalWeek" type="double">
-			<column name="GESTATIONAL_WEEK" precision="5" scale="2" />
-		</property>
-		<property name="dateFirstFeeding" type="timestamp">
-			<column name="DATE_FIRST_FEEDING" length="7" />
-		</property>
-		<property name="breast" type="java.lang.String">
-			<column name="BREAST" length="1" />
-		</property>
-		<property name="tpn" type="java.lang.String">
-			<column name="TPN" length="1" />
-		</property>
-		<property name="formula" type="java.lang.String">
-			<column name="FORMULA" length="1" />
-		</property>
-		<property name="milk" type="java.lang.String">
-			<column name="MILK" length="1" />
-		</property>
-		<property name="soy" type="java.lang.String">
-			<column name="SOY" length="1" />
-		</property>
-		<property name="jaundice" type="java.lang.String">
-			<column name="JAUNDICE" length="1" />
-		</property>
-		<property name="antibiotic" type="java.lang.String">
-			<column name="ANTIBIOTICS" length="1" />
-		</property>
-		<property name="transfused" type="java.lang.String">
-			<column name="TRANSFUSED" length="1" />
-		</property>
-		<property name="dateTransfution" type="timestamp">
-			<column name="DATE_TRANSFUSION" length="7" />
-		</property>
-		<property name="medicalRecordNumber" type="java.lang.String">
-			<column name="MEDICAL_RECORD_NUMBER" length="18" />
-		</property>
-		<property name="nicu" type="java.lang.String">
-			<column name="NICU" length="1" />
-		</property>
-		<property name="birthDefect" type="java.lang.String">
-			<column name="BIRTH_DEFECT" length="1" />
-		</property>
-		<property name="pregnancyComplication"
-			type="java.lang.String">
-			<column name="PREGNANCY_COMPLICATION" length="1" />
-		</property>
-		<property name="deceasedSibling" type="java.lang.String">
-			<column name="DECEASED_SIBLING" length="1" />
-		</property>
-		<property name="causeOfDeath" type="java.lang.String">
-			<column name="CAUSE_OF_DEATH" length="50" />
-		</property>
-		<property name="familyHistory" type="java.lang.String">
-			<column name="FAMILY_HISTORY" length="1" />
-		</property>
-		<property name="other" type="java.lang.String">
-			<column name="OTHER" length="100" />
-		</property>
-		<property name="ynumber" type="java.lang.String">
-			<column name="Y_NUMBER" length="18" />
-		</property>
-		<property name="yellowCard" type="java.lang.String">
-			<column name="YELLOW_CARD" length="1" />
-		</property>
-	</class>
+        <property name="weight"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="WEIGHT" precision="5" scale="0" />
+        </property>
+        <property name="multiBirth" type="java.lang.String">
+            <column name="MULTI_BIRTH" length="1" />
+        </property>
+        <property name="birthOrder"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="BIRTH_ORDER" precision="2" scale="0" />
+        </property>
+        <property name="gestationalWeek" type="double">
+            <column name="GESTATIONAL_WEEK" precision="5" scale="2" />
+        </property>
+        <property name="dateFirstFeeding" type="timestamp">
+            <column name="DATE_FIRST_FEEDING" length="7" />
+        </property>
+        <property name="breast" type="java.lang.String">
+            <column name="BREAST" length="1" />
+        </property>
+        <property name="tpn" type="java.lang.String">
+            <column name="TPN" length="1" />
+        </property>
+        <property name="formula" type="java.lang.String">
+            <column name="FORMULA" length="1" />
+        </property>
+        <property name="milk" type="java.lang.String">
+            <column name="MILK" length="1" />
+        </property>
+        <property name="soy" type="java.lang.String">
+            <column name="SOY" length="1" />
+        </property>
+        <property name="jaundice" type="java.lang.String">
+            <column name="JAUNDICE" length="1" />
+        </property>
+        <property name="antibiotic" type="java.lang.String">
+            <column name="ANTIBIOTICS" length="1" />
+        </property>
+        <property name="transfused" type="java.lang.String">
+            <column name="TRANSFUSED" length="1" />
+        </property>
+        <property name="dateTransfution" type="timestamp">
+            <column name="DATE_TRANSFUSION" length="7" />
+        </property>
+        <property name="medicalRecordNumber" type="java.lang.String">
+            <column name="MEDICAL_RECORD_NUMBER" length="18" />
+        </property>
+        <property name="nicu" type="java.lang.String">
+            <column name="NICU" length="1" />
+        </property>
+        <property name="birthDefect" type="java.lang.String">
+            <column name="BIRTH_DEFECT" length="1" />
+        </property>
+        <property name="pregnancyComplication"
+            type="java.lang.String">
+            <column name="PREGNANCY_COMPLICATION" length="1" />
+        </property>
+        <property name="deceasedSibling" type="java.lang.String">
+            <column name="DECEASED_SIBLING" length="1" />
+        </property>
+        <property name="causeOfDeath" type="java.lang.String">
+            <column name="CAUSE_OF_DEATH" length="50" />
+        </property>
+        <property name="familyHistory" type="java.lang.String">
+            <column name="FAMILY_HISTORY" length="1" />
+        </property>
+        <property name="other" type="java.lang.String">
+            <column name="OTHER" length="100" />
+        </property>
+        <property name="ynumber" type="java.lang.String">
+            <column name="Y_NUMBER" length="18" />
+        </property>
+        <property name="yellowCard" type="java.lang.String">
+            <column name="YELLOW_CARD" length="1" />
+        </property>
+    </class>
 </hibernate-mapping>

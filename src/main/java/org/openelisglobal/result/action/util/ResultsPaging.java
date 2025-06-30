@@ -13,10 +13,10 @@
  */
 package org.openelisglobal.result.action.util;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.paging.IPageDivider;
 import org.openelisglobal.common.paging.IPageFlattener;

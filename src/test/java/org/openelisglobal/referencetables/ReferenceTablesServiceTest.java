@@ -12,6 +12,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -90,4 +91,42 @@ public class ReferenceTablesServiceTest extends BaseWebContextSensitiveTest {
         assertTrue(hl7EncodedTables.stream().anyMatch(t -> "Hl7Table".equals(t.getName())));
         assertFalse(hl7EncodedTables.stream().anyMatch(t -> "NonHl7Table".equals(t.getName())));
     }
+
+    @Test
+    public void getTotalReferenceTablesCount_shouldReturnCorrectCount() throws Exception {
+        int count = referenceTablesService.getTotalReferenceTablesCount();
+        assertTrue(count > 0);
+    }
+
+    @Test
+    public void getPageOfReferenceTables_shouldReturnSubset() throws Exception {
+        List<ReferenceTables> page = referenceTablesService.getPageOfReferenceTables(1);
+        assertNotNull(page);
+        assertFalse(page.isEmpty());
+    }
+
+    @Test
+    public void getReferenceTableByName_withObject_shouldReturnCorrectReferenceTable() throws Exception {
+        ReferenceTables ref = new ReferenceTables();
+        ref.setTableName("TestTable");
+        ReferenceTables result = referenceTablesService.getReferenceTableByName(ref);
+        assertNotNull(result);
+        assertEquals("TestTable", result.getName());
+    }
+
+    @Test
+    public void getData_shouldPopulateFields() throws Exception {
+        ReferenceTables ref = new ReferenceTables();
+        ref.setId("1");
+        referenceTablesService.getData(ref);
+        assertNotNull(ref.getName());
+    }
+
+    @Test(expected = LIMSRuntimeException.class)
+    public void updateDuplicateReferenceTable_shouldThrowException() throws Exception {
+        ReferenceTables refTable = referenceTablesService.getReferenceTableByName("DuplicateTable");
+        refTable.setId(null);
+        referenceTablesService.update(refTable);
+    }
+
 }

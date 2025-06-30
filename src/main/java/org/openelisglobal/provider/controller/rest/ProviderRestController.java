@@ -7,6 +7,7 @@ import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,23 +27,23 @@ public class ProviderRestController {
     @Autowired
     private PersonService personService;
 
-    @GetMapping(value = "/Provider/raw/{id}")
+    @GetMapping(value = "/Provider/raw/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public Provider getProvider(@PathVariable String id) {
+    public ResponseEntity<Provider> getProvider(@PathVariable String id) {
         Provider provider = providerService.get(id);
-        return provider;
+        return ResponseEntity.ok(provider);
     }
 
-    @GetMapping(value = "/Provider/Person/{id}")
+    @GetMapping(value = "/Provider/Person/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public Person getPerson(@PathVariable String id) {
+    public ResponseEntity<Person> getPerson(@PathVariable String id) {
         Person person = personService.get(id);
-        return person;
+        return ResponseEntity.ok(person);
     }
 
-    @PostMapping(value = "/Provider/FhirUuid")
+    @PostMapping(value = "/Provider/FhirUuid", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Object> insertOrUpdateProviderByFhirUuid(@RequestParam(required = false) UUID fhirUuid,
+    public ResponseEntity<?> insertOrUpdateProviderByFhirUuid(@RequestParam(required = false) UUID fhirUuid,
             @RequestBody Provider provider) {
         try {
             if (fhirUuid == null) {

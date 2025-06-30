@@ -277,6 +277,7 @@ export const NCECorrectiveAction = () => {
                       value: e.target.value,
                     })
                   }
+                  data-cy="fieldName"
                   id={`field.name`}
                 />
               </Column>
@@ -304,6 +305,7 @@ export const NCECorrectiveAction = () => {
             </Section>
           </Form>
         </Column>
+
         <Column lg={16} md={8} sm={4}>
           <br />
         </Column>
@@ -335,6 +337,7 @@ export const NCECorrectiveAction = () => {
                               onClick={() => setSelected(row.nceNumber)}
                               labelText=""
                               id={row.id}
+                              data-cy={`row-${row.id}`}
                             />
                           </TableCell>
                           <TableCell key={row.key + "date"}>
@@ -760,7 +763,7 @@ export const NCECorrectiveAction = () => {
                       id={"dateCompleted"}
                       labelText=""
                       autofillDate={true}
-                      value={data[`dateCompleted`] ?? undefined}
+                      value={log[`dateCompleted`] ?? undefined}
                       onChange={(e) => {}}
                       disabled
                       style={{ marginTop: "5px" }}

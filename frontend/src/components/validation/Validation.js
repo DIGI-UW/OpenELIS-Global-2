@@ -412,7 +412,7 @@ const Validation = (props) => {
             <DataTable
               data={
                 props.results
-                  ? props.results.resultList.slice(
+                  ? props?.results?.resultList?.slice(
                       (page - 1) * pageSize,
                       page * pageSize,
                     )

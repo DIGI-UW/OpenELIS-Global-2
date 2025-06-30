@@ -1,6 +1,7 @@
 package org.openelisglobal.common.rest.provider;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -10,7 +11,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.Coding;

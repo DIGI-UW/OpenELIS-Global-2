@@ -1,7 +1,7 @@
 package org.openelisglobal.systemmodule.daoimpl;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.Session;
 import org.hibernate.query.Query;

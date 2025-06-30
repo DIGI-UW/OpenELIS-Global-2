@@ -3,25 +3,25 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class name="org.openelisglobal.county.valueholder.County"
-		table="COUNTY" optimistic-lock="version" dynamic-update="true">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<param name="sequence_name">county_seq</param>
-			</generator>
-		</id>
-		<version name="lastupdated" column="LASTUPDATED"
-			type="timestamp" access="field" />
+    <class name="org.openelisglobal.county.valueholder.County"
+        table="COUNTY" optimistic-lock="version" dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">county_seq</param>
+            </generator>
+        </id>
+        <version name="lastupdated" column="LASTUPDATED"
+            type="timestamp" access="field" />
 
-		<many-to-one name="region"
-			class="org.openelisglobal.region.valueholder.Region" fetch="select">
-			<column name="REGION_ID" precision="10" scale="0" />
-		</many-to-one>
-		<property name="county" type="java.lang.String">
-			<column name="COUNTY" length="75" not-null="true" />
-		</property>
-	</class>
+        <many-to-one name="region"
+            class="org.openelisglobal.region.valueholder.Region" fetch="select">
+            <column name="REGION_ID" precision="10" scale="0" />
+        </many-to-one>
+        <property name="county" type="java.lang.String">
+            <column name="COUNTY" length="75" not-null="true" />
+        </property>
+    </class>
 </hibernate-mapping>

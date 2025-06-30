@@ -3,31 +3,31 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class
-		name="org.openelisglobal.datasubmission.valueholder.TypeOfDataIndicator"
-		table="TYPE_OF_DATA_INDICATOR" optimistic-lock="version"
-		dynamic-update="true">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<param name="sequence_name">type_of_data_indicator_seq</param>
-			</generator>
-		</id>
-		<version name="lastupdated" column="LASTUPDATED"
-			type="timestamp" access="field" />
-		<property name="name" type="java.lang.String">
-			<column name="name" />
-		</property>
-		<property name="nameKey" type="java.lang.String">
-			<column name="name_key" />
-		</property>
-		<property name="description" type="java.lang.String">
-			<column name="description" />
-		</property>
-		<property name="descriptionKey" type="java.lang.String">
-			<column name="description_key" />
-		</property>
-	</class>
+    <class
+        name="org.openelisglobal.datasubmission.valueholder.TypeOfDataIndicator"
+        table="TYPE_OF_DATA_INDICATOR" optimistic-lock="version"
+        dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">type_of_data_indicator_seq</param>
+            </generator>
+        </id>
+        <version name="lastupdated" column="LASTUPDATED"
+            type="timestamp" access="field" />
+        <property name="name" type="java.lang.String">
+            <column name="name" />
+        </property>
+        <property name="nameKey" type="java.lang.String">
+            <column name="name_key" />
+        </property>
+        <property name="description" type="java.lang.String">
+            <column name="description" />
+        </property>
+        <property name="descriptionKey" type="java.lang.String">
+            <column name="description_key" />
+        </property>
+    </class>
 </hibernate-mapping>

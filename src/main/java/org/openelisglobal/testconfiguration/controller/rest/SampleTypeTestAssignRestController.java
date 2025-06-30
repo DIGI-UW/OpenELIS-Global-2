@@ -1,10 +1,10 @@
 package org.openelisglobal.testconfiguration.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import org.hibernate.HibernateException;
 import org.openelisglobal.common.controller.BaseController;

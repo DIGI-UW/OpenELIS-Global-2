@@ -1,9 +1,9 @@
 package org.openelisglobal.siteinformation.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseMenuController;

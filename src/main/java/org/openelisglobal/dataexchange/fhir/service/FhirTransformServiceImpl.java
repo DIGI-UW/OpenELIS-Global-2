@@ -4,6 +4,7 @@ import ca.uhn.fhir.model.api.TemporalPrecisionEnum;
 import ca.uhn.fhir.parser.DataFormatException;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.exceptions.FhirClientConnectionException;
+import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.text.ParseException;
@@ -19,7 +20,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.annotation.PostConstruct;
 import org.apache.commons.lang3.ObjectUtils;
 import org.hl7.fhir.r4.model.Address;
 import org.hl7.fhir.r4.model.Annotation;
@@ -1294,10 +1294,16 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             } else if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())
                     && !"0".equals(result.getValue())) {
                 Dictionary dictionary = dictionaryService.getDataForId(result.getValue());
-                observation.setValue(new CodeableConcept(
+                CodeableConcept codeableConcept = new CodeableConcept();
+                if (dictionary.getLoincCode() != null && !dictionary.getLoincCode().isEmpty()) {
+                    codeableConcept.addCoding(new Coding("http://loinc.org", dictionary.getLoincCode(),
+                            dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
+                                    : dictionary.getLocalizedDictionaryName().getEnglish()));
+                }
+                codeableConcept.addCoding(
                         new Coding(fhirConfig.getOeFhirSystem() + "/dictionary_entry", dictionary.getDictEntry(),
                                 dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
-                                        : dictionary.getLocalizedDictionaryName().getEnglish())));
+                                        : dictionary.getLocalizedDictionaryName().getEnglish()));
             } else if (TypeOfTestResultServiceImpl.ResultType.isNumeric(result.getResultType())) {
                 Quantity quantity = new Quantity();
                 quantity.setValue(new BigDecimal(result.getValue(true)));

@@ -1,11 +1,14 @@
 {
   "samples": [
     {
-      "sampleType": "Serum"
+      "sampleType": "Serum",
+      "collectionDate": "30/04/2025",
+      "receivedDate": "01/05/2025"
     }
   ],
-  "siteName": "279 - CAMES MAN",
+  "siteName": "CAMES MAN",
   "requester": {
+    "fullName": "Prime, Optimus",
     "firstName": "Optimus",
     "lastName": "Prime"
   },

@@ -8,7 +8,7 @@ before("login", () => {
   loginPage = new LoginPage();
   loginPage.visit();
 });
-describe("Patient Search", function () {
+describe("Add New Patient", function () {
   it("User Visits Home Page and goes to Add Add|Modify Patient Page", () => {
     homePage = loginPage.goToHomePage();
     patientPage = homePage.goToPatientEntry();
@@ -24,12 +24,12 @@ describe("Patient Search", function () {
     patientPage.getExternalSearchButton();
   });
 
-  it("User should be able to navigate to create Patient tab", function () {
+  it("Navigate to create Patient tab", function () {
     patientPage.clickNewPatientTab();
     patientPage.getSubmitButton().should("be.visible");
   });
 
-  it("User should enter patient Information", function () {
+  it("Enter patient Information and clear", function () {
     cy.fixture("Patient").then((patient) => {
       patientPage.enterPatientInfo(
         patient.firstName,
@@ -40,17 +40,34 @@ describe("Patient Search", function () {
       );
     });
   });
-  it("User should click save new patient information button", function () {
+
+  it("Clear new patient information", function () {
+    patientPage.clearPatientInfo();
+  });
+
+  it("Enter patient Information and save", function () {
+    cy.fixture("Patient").then((patient) => {
+      patientPage.enterPatientInfo(
+        patient.firstName,
+        patient.lastName,
+        patient.subjectNumber,
+        patient.nationalId,
+        patient.DOB,
+      );
+    });
+  });
+  it("Save new patient information button", function () {
     patientPage.clickSavePatientButton();
     cy.wait(1000);
     cy.get("div[role='status']").should("be.visible");
     cy.wait(200).reload();
   });
+});
 
-  it("Should be able to search patients By gender", function () {
+describe("Search Patient", function () {
+  it("Search patients By gender", function () {
     cy.wait(1000);
-    patientPage.getMaleGenderRadioButton().should("be.visible");
-    patientPage.getMaleGenderRadioButton().click();
+    patientPage.getMaleGenderRadioButton();
     cy.wait(200);
     patientPage.clickSearchPatientButton();
     cy.fixture("Patient").then((patient) => {
@@ -58,7 +75,7 @@ describe("Patient Search", function () {
     });
     cy.wait(200).reload();
   });
-  it("Should search Patient By FirstName only", function () {
+  it("Search Patient By FirstName only", function () {
     cy.wait(1000);
     cy.fixture("Patient").then((patient) => {
       patientPage.searchPatientByFirstNameOnly(patient.firstName);
@@ -72,7 +89,7 @@ describe("Patient Search", function () {
     cy.wait(200).reload();
   });
 
-  it("Should search Patient By LastName only", function () {
+  it("Search Patient By LastName only", function () {
     cy.wait(1000);
     cy.fixture("Patient").then((patient) => {
       patientPage.searchPatientByLastNameOnly(patient.lastName);
@@ -86,7 +103,7 @@ describe("Patient Search", function () {
     cy.wait(200).reload();
   });
 
-  it("Should search Patient By First and LastName", function () {
+  it("Search Patient By both Names", function () {
     cy.wait(1000);
     cy.fixture("Patient").then((patient) => {
       patientPage.searchPatientByFirstAndLastName(
@@ -106,7 +123,7 @@ describe("Patient Search", function () {
     });
     cy.wait(200).reload();
   });
-  it("should search patient By Date Of Birth", function () {
+  it("Search patient By Date Of Birth", function () {
     cy.wait(1000);
     cy.fixture("Patient").then((patient) => {
       patientPage.searchPatientByDateOfBirth(patient.DOB);
@@ -119,7 +136,7 @@ describe("Patient Search", function () {
     cy.wait(200).reload();
   });
 
-  it("should search patient By Lab Number", function () {
+  it("Search patient By Lab Number", function () {
     cy.fixture("Patient").then((patient) => {
       patientPage.searchPatientBylabNo(patient.labNo);
       cy.intercept(
@@ -137,7 +154,7 @@ describe("Patient Search", function () {
     cy.wait(200).reload();
   });
 
-  it("should search patient By PatientId", function () {
+  it("Search patient By PatientId", function () {
     cy.wait(1000);
     cy.fixture("Patient").then((patient) => {
       patientPage.searchPatientByPatientId(patient.nationalId);

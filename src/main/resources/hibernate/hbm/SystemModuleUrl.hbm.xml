@@ -3,24 +3,24 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping
-	package="org.openelisglobal.systemmodule.valueholder">
-	<class name="SystemModuleUrl" table="SYSTEM_MODULE_URL"
-		optimistic-lock="version" dynamic-update="true">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<param name="sequence_name">SYSTEM_MODULE_URL_SEQ</param>
-			</generator>
-		</id>
-		<property name="urlPath" type="java.lang.String"
-			column="url_path" not-null="true" />
-		<many-to-one name="systemModule" column="system_module_id"
-			class="SystemModule" fetch="select" not-null="true" lazy="false" />
-		<many-to-one name="param" column="system_module_param_id"
-			class="SystemModuleParam" cascade="save-update" fetch="select"
-			lazy="false" />
+    package="org.openelisglobal.systemmodule.valueholder">
+    <class name="SystemModuleUrl" table="SYSTEM_MODULE_URL"
+        optimistic-lock="version" dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">SYSTEM_MODULE_URL_SEQ</param>
+            </generator>
+        </id>
+        <property name="urlPath" type="java.lang.String"
+            column="url_path" not-null="true" />
+        <many-to-one name="systemModule" column="system_module_id"
+            class="SystemModule" fetch="select" not-null="true" lazy="false" />
+        <many-to-one name="param" column="system_module_param_id"
+            class="SystemModuleParam" cascade="save-update" fetch="select"
+            lazy="false" />
 
-	</class>
+    </class>
 </hibernate-mapping>

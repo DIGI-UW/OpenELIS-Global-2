@@ -1,6 +1,6 @@
 package org.openelisglobal.notifications.entity;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 @Entity

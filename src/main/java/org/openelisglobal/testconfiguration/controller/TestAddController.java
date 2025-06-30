@@ -1,13 +1,13 @@
 package org.openelisglobal.testconfiguration.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.HibernateException;
 import org.json.simple.JSONArray;

@@ -3,59 +3,59 @@
 "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class
-		name="org.openelisglobal.sampletracking.valueholder.SampleTracking"
-		table="SAMPLETRACKING">
-		<id name="accNum"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="accNum" length="10" />
-			<generator class="assigned" />
-		</id>
-		<property name="patientId" type="java.lang.String">
-			<column name="PATIENTID" length="20" />
-		</property>
-		<property name="cliRef" type="java.lang.String">
-			<column name="CLIREF" length="20" />
-		</property>
-		<property name="patientLastName" type="java.lang.String">
-			<column name="PATIENTLASTNAME" length="30" />
-		</property>
-		<property name="patientFirstName" type="java.lang.String">
-			<column name="PATIENTFIRSTNAME" length="20" />
-		</property>
-		<property name="organizationLocalAbbreviation"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ORG_LOCAL_ABBREV" length="10" />
-		</property>
-		<property name="orgName" type="java.lang.String">
-			<column name="ORGNAME" length="40" />
-		</property>
-		<property name="recdDate" type="java.lang.String">
-			<column name="RECDDATE" length="7" />
-		</property>
-		<property name="tosId"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="TOSID" length="10" />
-		</property>
-		<property name="tosDesc" type="java.lang.String">
-			<column name="TOSDESC" length="20" />
-		</property>
-		<property name="sosId"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="SOSID" length="10" />
-		</property>
-		<property name="sosDesc" type="java.lang.String">
-			<column name="SOSDESC" length="20" />
-		</property>
-		<property name="collDate" type="java.lang.String">
-			<column name="COLLDATE" precision="7" scale="0" />
-		</property>
-		<property name="dateofBirth" type="java.lang.String">
-			<column name="DATEOFBIRTH" precision="7" scale="0" />
-		</property>
-		<!-- bugzilla 2455 -->
-		<property name="specOrIsolate" type="java.lang.String">
-			<column name="SORI" length="1" />
-		</property>
-	</class>
+    <class
+        name="org.openelisglobal.sampletracking.valueholder.SampleTracking"
+        table="SAMPLETRACKING">
+        <id name="accNum"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="accNum" length="10" />
+            <generator class="assigned" />
+        </id>
+        <property name="patientId" type="java.lang.String">
+            <column name="PATIENTID" length="20" />
+        </property>
+        <property name="cliRef" type="java.lang.String">
+            <column name="CLIREF" length="20" />
+        </property>
+        <property name="patientLastName" type="java.lang.String">
+            <column name="PATIENTLASTNAME" length="30" />
+        </property>
+        <property name="patientFirstName" type="java.lang.String">
+            <column name="PATIENTFIRSTNAME" length="20" />
+        </property>
+        <property name="organizationLocalAbbreviation"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ORG_LOCAL_ABBREV" length="10" />
+        </property>
+        <property name="orgName" type="java.lang.String">
+            <column name="ORGNAME" length="40" />
+        </property>
+        <property name="recdDate" type="java.lang.String">
+            <column name="RECDDATE" length="7" />
+        </property>
+        <property name="tosId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="TOSID" length="10" />
+        </property>
+        <property name="tosDesc" type="java.lang.String">
+            <column name="TOSDESC" length="20" />
+        </property>
+        <property name="sosId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="SOSID" length="10" />
+        </property>
+        <property name="sosDesc" type="java.lang.String">
+            <column name="SOSDESC" length="20" />
+        </property>
+        <property name="collDate" type="java.lang.String">
+            <column name="COLLDATE" precision="7" scale="0" />
+        </property>
+        <property name="dateofBirth" type="java.lang.String">
+            <column name="DATEOFBIRTH" precision="7" scale="0" />
+        </property>
+        <!-- bugzilla 2455 -->
+        <property name="specOrIsolate" type="java.lang.String">
+            <column name="SORI" length="1" />
+        </property>
+    </class>
 </hibernate-mapping>

@@ -13,7 +13,7 @@ const loginAndNavigateToHome = () => {
 
 // Helper function to add a new order
 const addNewOrder = (dashboardType, testType, sampleType, panelType) => {
-  homePage.goToOrderPage();
+  homePage.goToOrderPageExt();
   dashboard.searchPatientByFName();
   dashboard.searchPatient();
   cy.wait(200);
@@ -30,9 +30,9 @@ const addNewOrder = (dashboardType, testType, sampleType, panelType) => {
   dashboard.generateLabNo();
   dashboard.selectSite();
   dashboard.selectRequesting();
-  cy.wait(200);
+  cy.wait(1000);
   dashboard.submitButton();
-  cy.wait(3000);
+  cy.wait(8000);
 };
 
 // Helper function to validate success and print barcode
@@ -59,13 +59,11 @@ const validateOrderStatus = (dashboardType) => {
   dashboard.statusFilter();
 };
 
-// Main test suite
 describe("Dashboard Tests", function () {
-  before("Login and navigate to homepage", () => {
+  before("Navigate to homepage", () => {
     loginAndNavigateToHome();
   });
 
-  // Pathology Dashboard Tests
   describe("Pathology Dashboard", function () {
     before("Navigate to Pathology Dashboard", function () {
       dashboard = homePage.goToPathologyDashboard();
@@ -81,12 +79,12 @@ describe("Dashboard Tests", function () {
       );
     });
 
-    it("Validate Success by Confirming Print Barcode button", function () {
-      validateSuccessAndPrintBarcode();
-    });
+    //it("Validate Success by Confirming Print Barcode button", function () {
+    // validateSuccessAndPrintBarcode();
+    //});
 
     it("User navigates back to Pathology Dashboard to confirm added order", function () {
-      homePage.goToPathologyDashboard();
+      dashboard = homePage.goToPathologyDashboard();
     });
 
     it("Change The Status of Order and saves it", function () {

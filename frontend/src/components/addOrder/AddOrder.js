@@ -29,8 +29,15 @@ const AddOrder = (props) => {
 
   const componentMounted = useRef(false);
 
-  const { orderFormValues, setOrderFormValues, samples, error, isModifyOrder } =
-    props;
+  const {
+    orderFormValues,
+    setOrderFormValues,
+    samples,
+    error,
+    isModifyOrder,
+    changed,
+    setChanged,
+  } = props;
   const [otherSamplingVisible, setOtherSamplingVisible] = useState(false);
   const [providers, setProviders] = useState([]);
   const [paymentOptions, setPaymentOptions] = useState([]);
@@ -129,6 +136,13 @@ const AddOrder = (props) => {
         ...orderFormValues.sampleOrderItems,
         providerFirstName: e.target.value,
       },
+    });
+  }
+  function handleChange(path) {
+    console.log([path]);
+    setChanged({
+      ...changed,
+      [path]: true,
     });
   }
 
@@ -484,6 +498,7 @@ const AddOrder = (props) => {
                       : orderFormValues.sampleOrderItems.labNo
                   }
                   //onMouseLeave={handleLabNoValidation}
+                  onClick={() => handleChange("sampleOrderItems.labNo")}
                   onChange={handleLabNo}
                   onKeyPress={handleKeyPress}
                   labelText={
@@ -493,12 +508,21 @@ const AddOrder = (props) => {
                     </>
                   }
                   id="labNo"
-                  invalid={error("sampleOrderItems.labNo") ? true : false}
+                  invalid={
+                    changed["sampleOrderItems.labNo"] &&
+                    error("sampleOrderItems.labNo")
+                      ? true
+                      : false
+                  }
                   invalidText={error("sampleOrderItems.labNo")}
                 />
                 <div>
                   <FormattedMessage id="label.order.scan.text" />{" "}
-                  <Link href="#" onClick={(e) => handleLabNoGeneration(e)}>
+                  <Link
+                    data-cy="generate-labNumber"
+                    href="#"
+                    onClick={(e) => handleLabNoGeneration(e)}
+                  >
                     <FormattedMessage id="sample.label.labnumber.generate" />
                   </Link>
                 </div>
@@ -696,9 +720,15 @@ const AddOrder = (props) => {
                   "true"
                 }
                 onChange={handleRequesterFirstName}
+                onClick={() =>
+                  handleChange("sampleOrderItems.providerFirstName")
+                }
                 value={orderFormValues.sampleOrderItems.providerFirstName}
                 invalid={
-                  error("sampleOrderItems.providerFirstName") ? true : false
+                  changed["sampleOrderItems.providerFirstName"] &&
+                  error("sampleOrderItems.providerFirstName")
+                    ? true
+                    : false
                 }
                 invalidText={error("sampleOrderItems.providerFirstName")}
                 id="requesterFirstName"
@@ -722,10 +752,16 @@ const AddOrder = (props) => {
                   "true"
                 }
                 value={orderFormValues.sampleOrderItems.providerLastName}
+                onClick={() =>
+                  handleChange("sampleOrderItems.providerLastName")
+                }
                 onChange={handleRequesterLastName}
                 id="requesterLastName"
                 invalid={
-                  error("sampleOrderItems.providerLastName") ? true : false
+                  changed["sampleOrderItems.providerLastName"] &&
+                  error("sampleOrderItems.providerLastName")
+                    ? true
+                    : false
                 }
                 invalidText={error("sampleOrderItems.providerLastName")}
               />

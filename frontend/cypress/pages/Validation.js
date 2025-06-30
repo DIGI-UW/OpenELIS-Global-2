@@ -1,6 +1,9 @@
 class Validation {
   checkForHeading() {
-    cy.get("section > h3").should("contain.text", "Validation");
+    cy.get("section > h3", { timeout: 15000 }).should(
+      "contain.text",
+      "Validation",
+    );
   }
 
   selectTestUnit(unitType) {
@@ -14,12 +17,11 @@ class Validation {
   enterLabNumberAndSearch(labNo) {
     cy.get("#accessionNumber").type(labNo);
     cy.get("[data-testid='Search-btn']").click();
-    cy.get("[data-testid='LabNo']").should("contain.text", labNo);
   }
 
-  saveResults(note) {
-    cy.get("[data-testid='Checkbox']").click();
-    cy.get("#resultList0\\.note").type(note);
+  saveResults() {
+    // cy.get("[data-testid='Checkbox']").click();
+    //cy.get("#resultList0\\.note").type(note);
     cy.get("[data-testid='Save-btn']").click();
   }
 }

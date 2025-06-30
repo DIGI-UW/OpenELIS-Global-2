@@ -36,7 +36,7 @@ const RenameModelBox = ({
       {data ? (
         <Grid fullWidth={true}>
           {data.map((item, index) => (
-            <Column key={index} lg={5} md={5} sm={5}>
+            <Column key={index} lg={5} md={2} sm={2}>
               <Button
                 id={`button-${index}`}
                 kind="ghost"
@@ -44,7 +44,10 @@ const RenameModelBox = ({
                 onClick={() => {
                   openModel(item);
                 }}
-                style={{ color: "#000000" }}
+                style={{
+                  color: "#000000",
+                  width: "auto",
+                }}
               >
                 {item.value}
               </Button>

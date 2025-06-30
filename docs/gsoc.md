@@ -1,4 +1,4 @@
- <img src="https://github.com/I-TECH-UW/OpenELIS-Global-2/assets/29783151/a17e5666-156d-4882-91a0-606c8dc2f52e" alt="gsoc" width="800" align="center"/>
+ <img src="https://github.com/DIGI-UW/OpenELIS-Global-2/assets/29783151/a17e5666-156d-4882-91a0-606c8dc2f52e" alt="gsoc" width="800" align="center"/>
 
 [**OpenELIS Global**](https://openelis-global.org/) is hoping to be a mentoring
 organization for [Google Summer of Code](https://summerofcode.withgoogle.com/)

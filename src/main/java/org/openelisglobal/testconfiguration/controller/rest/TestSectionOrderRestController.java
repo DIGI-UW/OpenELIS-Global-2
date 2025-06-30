@@ -1,8 +1,8 @@
 package org.openelisglobal.testconfiguration.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import org.hibernate.HibernateException;
 import org.json.simple.JSONArray;
