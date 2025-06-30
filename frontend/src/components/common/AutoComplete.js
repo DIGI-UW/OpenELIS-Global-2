@@ -67,17 +67,31 @@ function AutoComplete(props) {
   };
 
   const onKeyDown = (e) => {
+    // Handeling enter key
+    const { onSelect } = props;
     if (e.keyCode === 13) {
-      setActiveSuggestion(0);
-      setUserInput(filteredSuggestions[activeSuggestion]);
-      setShowSuggestions(false);
-    } else if (e.keyCode === 38) {
+      if (filteredSuggestions[activeSuggestion]) {
+        const selectedValue = filteredSuggestions[activeSuggestion].value;
+        setUserInput(selectedValue);
+        setTextValue(selectedValue);
+        setShowSuggestions(false);
+        setInvalid(false);
+
+        if (typeof onSelect === "function") {
+          onSelect(filteredSuggestions[activeSuggestion].id);
+        }
+      }
+    }
+    // Handeling up arrow
+    else if (e.keyCode === 38) {
       if (activeSuggestion === 0) {
         return;
       }
       setActiveSuggestion(activeSuggestion - 1);
-    } else if (e.keyCode === 40) {
-      if (activeSuggestion - 1 === filteredSuggestions.length) {
+    }
+    // Handeling down arrow
+    else if (e.keyCode === 40) {
+      if (activeSuggestion === filteredSuggestions.length - 1) {
         return;
       }
       setActiveSuggestion(activeSuggestion + 1);
@@ -88,24 +102,27 @@ function AutoComplete(props) {
   if (showSuggestions && userInput) {
     if (filteredSuggestions.length) {
       suggestionsListComponent = (
-        <ul className="suggestions">
-          {filteredSuggestions.map((suggestion, index) => {
-            let className;
-            // Flag the active suggestion with a class
-            if (index === activeSuggestion) {
-              className = "suggestion-active";
-            }
-            return (
-              <li
-                className={className}
-                key={index}
-                onClick={(e) => onClick(e, suggestion.id, suggestion)}
-              >
-                {suggestion.value}
-              </li>
-            );
-          })}
-        </ul>
+        <div className="suggestions-container">
+          <ul className="suggestions">
+            {filteredSuggestions.map((suggestion, index) => {
+              let className;
+              // Flag the active suggestion with a class
+              if (index === activeSuggestion) {
+                className = "suggestion-active";
+              }
+              return (
+                <li
+                  data-cy="auto-suggestion"
+                  className={className}
+                  key={index}
+                  onClick={(e) => onClick(e, suggestion.id, suggestion)}
+                >
+                  {suggestion.value}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       );
     } else {
       suggestionsListComponent = (

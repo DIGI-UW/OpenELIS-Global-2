@@ -30,3 +30,8 @@ src/main/resources/adminPassword.txt
 /.apt_generated/
 */plugins/*.jar
 Patient/*
+volume/database/data/*
+tools/Liquibase-Outdated
+volume/tomcat/*
+volume/database/data/*
+volume/logs/*

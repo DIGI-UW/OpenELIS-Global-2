@@ -15,6 +15,7 @@ public interface SearchResultsDAO {
     String ID_PARAM = "id";
     String GUID = "guid";
     String DATE_OF_BIRTH = "dateOfBirth";
+    String DATE_OF_BIRTH_FORMATED = "dateOfBirthFormatted";
     String GENDER = "gender";
 
     String ID_TYPE_FOR_ST = "stNumberId";

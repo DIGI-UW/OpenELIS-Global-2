@@ -3,15 +3,15 @@ package org.openelisglobal.program.service;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.datatype.hibernate5.Hibernate5Module;
+import com.fasterxml.jackson.datatype.hibernate5.jakarta.Hibernate5JakartaModule;
+import jakarta.annotation.PostConstruct;
+import jakarta.transaction.Transactional;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.annotation.PostConstruct;
-import javax.transaction.Transactional;
 import liquibase.repackaged.org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.openelisglobal.common.log.LogEvent;
@@ -117,7 +117,7 @@ public class ProgramAutocreateService {
 
                     String contents = reader.lines().map(line -> line + "\n").collect(Collectors.joining());
                     ObjectMapper mapper = new ObjectMapper();
-                    mapper.registerModule(new Hibernate5Module());
+                    mapper.registerModule(new Hibernate5JakartaModule());
                     mapper.setSerializationInclusion(Include.NON_NULL);
 
                     SimpleModule module = new SimpleModule();

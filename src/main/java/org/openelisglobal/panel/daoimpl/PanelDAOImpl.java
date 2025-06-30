@@ -25,8 +25,8 @@ import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.panel.dao.PanelDAO;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.springframework.stereotype.Component;
@@ -113,7 +113,9 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
         List<Panel> list;
         try {
             // calculate maxRow to be one more than the page size
-            int endingRecNo = startingRecNo + (SystemConfiguration.getInstance().getDefaultPageSize() + 1);
+            int endingRecNo = startingRecNo
+                    + (Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
+                            + 1);
 
             // bugzilla 1399
             String sql = "from Panel p order by p.panelName";
@@ -299,6 +301,9 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
     @Override
     @Transactional(readOnly = true)
     public Panel getPanelByName(String panelName) {
+        if (panelName == null) {
+            panelName = "";
+        }
         try {
             String sql = "from Panel p where p.panelName = :name";
             Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql, Panel.class);
@@ -310,5 +315,24 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in Panel getPanelByName()", e);
         }
+    }
+
+    @Override
+    public Panel getPanelByLoincCode(String loincCode) {
+        if (loincCode == null) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "getPanelByLoincCode", "loincCode is null");
+        }
+        LogEvent.logDebug(this.getClass().getSimpleName(), "getPanelByLoincCode", "loincCode is: " + loincCode);
+
+        String sql = "From Panel p where p.loinc = :loinc";
+        try {
+            Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql, Panel.class);
+            query.setParameter("loinc", loincCode);
+            return query.uniqueResult();
+        } catch (HibernateException e) {
+            handleException(e, "getPanelByLoincCode");
+        }
+
+        return null;
     }
 }

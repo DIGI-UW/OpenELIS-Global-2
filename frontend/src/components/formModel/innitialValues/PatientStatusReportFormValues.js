@@ -4,7 +4,7 @@ const PatientStatusReportFormValues = {
   referringSiteName: "",
   startDate: "",
   endDate: "",
-  form: "",
+  from: "",
   to: "",
   dateType: "",
   checkbox: "",

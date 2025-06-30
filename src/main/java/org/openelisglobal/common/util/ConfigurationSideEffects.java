@@ -30,12 +30,12 @@ public class ConfigurationSideEffects {
     private SiteInformationService siteInformationService;
 
     public void siteInformationChanged(SiteInformation siteInformation) {
-        if (Property.DEFAULT_LANG_LOCALE.getName().equals(siteInformation.getName())) {
+        if (Property.DEFAULT_LANG_LOCALE.getDBName().equals(siteInformation.getName())) {
             // this is done in SiteInformationController.java as we need to have the user
             // request to change the locale
         }
 
-        if (Property.roleRequiredForModifyResults.getName().equals(siteInformation.getName())) {
+        if (Property.roleRequiredForModifyResults.getDBName().equals(siteInformation.getName())) {
             Role modifierRole = roleService.getRoleByName("Results modifier");
 
             if (modifierRole != null && modifierRole.getId() != null) {
@@ -45,7 +45,7 @@ public class ConfigurationSideEffects {
             }
         }
 
-        if (Property.SiteCode.getName().equals(siteInformation.getName())) {
+        if (Property.SiteCode.getDBName().equals(siteInformation.getName())) {
             SiteInformation accessionFormat = siteInformationService.getSiteInformationByName("acessionFormat");
             if ("SITEYEARNUM".equals(accessionFormat.getValue())) {
                 SiteInformation accessionPrefix = siteInformationService

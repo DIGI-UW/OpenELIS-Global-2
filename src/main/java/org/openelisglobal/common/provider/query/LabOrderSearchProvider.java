@@ -15,6 +15,9 @@ package org.openelisglobal.common.provider.query;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -23,9 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
@@ -452,7 +452,7 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
             }
         }
 
-        addToTestOrPanel(tests, loinc, sampleTypeAbbreviation);
+        addToTestOrPanel(tests, panels, loinc, sampleTypeAbbreviation);
     }
 
     // private List<ServiceRequest> getBasedOnServiceRequestFromBundle(Bundle
@@ -480,8 +480,10 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
     //
     // }
 
-    private void addToTestOrPanel(List<Request> tests, String loinc, String sampleTypeAbbreviation) {
+    private void addToTestOrPanel(List<Request> tests, List<Request> panels, String loinc,
+            String sampleTypeAbbreviation) {
         Test test = null;
+        Panel panel = null;
         TypeOfSample typeOfSample = null;
         if (!GenericValidator.isBlankOrNull(sampleTypeAbbreviation)) {
             String typeOfSampleId = typeOfSampleService.getTypeOfSampleIdForLocalAbbreviation(sampleTypeAbbreviation);
@@ -503,6 +505,20 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                 typeOfSample = typeOfSampleService.getTypeOfSampleForTest(test.getId()).get(0);
             }
             tests.add(new Request(test.getName(), loinc, typeOfSample.getLocalizedName()));
+            return;
+        }
+        panel = panelService.getPanelByLoincCode(loinc);
+        if (panel != null) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), "addToTestOrPanel",
+                    "panel matching loinc is: " + panel.getDescription());
+
+            if (typeOfSample == null) {
+                typeOfSample = typeOfSampleService.getTypeOfSampleForPanelId(panel.getId()).get(0);
+                LogEvent.logDebug(this.getClass().getSimpleName(), "addToTestOrPanel",
+                        "typeOfSample matching for panel is: " + typeOfSample.getDescription());
+
+            }
+            panels.add(new Request(panel.getPanelName(), loinc, typeOfSample.getLocalizedName()));
         }
 
     }
@@ -578,7 +594,13 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
 
     private void createMapsForPanels(List<Request> panelRequests) {
         for (Request panelRequest : panelRequests) {
-            Panel panel = panelService.getPanelByName(panelRequest.getName());
+            Panel panel = null;
+            if (!GenericValidator.isBlankOrNull(panelRequest.getLoinc())) {
+                panel = panelService.getPanelByLoincCode(panelRequest.getLoinc());
+            }
+            if (panel == null && !GenericValidator.isBlankOrNull(panelRequest.getName())) {
+                panel = panelService.getPanelByName(panelRequest.getName());
+            }
 
             if (panel != null) {
                 List<TypeOfSample> typeOfSamples = typeOfSampleService.getTypeOfSampleForPanelId(panel.getId());

@@ -22,7 +22,14 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 
-let breadcrumbs = [{ label: "home.label", link: "/" }];
+let breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+  {
+    label: "Billing Menu Management",
+    link: "/MasterListsPage#billingMenuManagement",
+  },
+];
 function BillingMenuManagement() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -87,18 +94,19 @@ function BillingMenuManagement() {
       {loading && <Loading />}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
-        <Grid>
+        <Grid fullWidth={true}>
           <Column lg={16} md={8} sm={4}>
             <Section>
               <Heading>
                 <FormattedMessage id="menu.billing.title" />
               </Heading>
             </Section>
+            <br />
             <Section>
               <Form onSubmit={handleSubmit}>
                 <div className="formInlineDiv">
                   <TextInput
-                    id="billing address"
+                    id="billing_address"
                     labelText={intl.formatMessage({
                       id: "menu.billing.address",
                     })}

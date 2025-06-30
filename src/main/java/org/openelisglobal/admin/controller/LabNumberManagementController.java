@@ -1,8 +1,8 @@
 package org.openelisglobal.admin.controller;
 
+import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.Map;
-import javax.validation.Valid;
 import org.openelisglobal.admin.form.LabNumberManagementForm;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -38,13 +38,13 @@ public class LabNumberManagementController {
     public LabNumberManagementForm setValues(@Valid @RequestBody LabNumberManagementForm form) {
         Map<String, String> map = new HashMap<>();
 
-        map.put(Property.ALPHANUM_ACCESSION_PREFIX.getName(),
+        map.put(Property.ALPHANUM_ACCESSION_PREFIX.getDBName(),
                 form.getAlphanumPrefix() != null ? form.getAlphanumPrefix().toUpperCase() : "");
-        map.put(Property.AccessionFormat.getName(), form.getLabNumberType().name());
-        map.put(Property.USE_ALPHANUM_ACCESSION_PREFIX.getName(), form.getUsePrefix().toString());
+        map.put(Property.AccessionFormat.getDBName(), form.getLabNumberType().name());
+        map.put(Property.USE_ALPHANUM_ACCESSION_PREFIX.getDBName(), form.getUsePrefix().toString());
         siteInformationService.updateSiteInformationByName(map);
 
-        ConfigurationProperties.forceReload();
+        ConfigurationProperties.loadDBValuesIntoConfiguration();
         return form;
     }
 }

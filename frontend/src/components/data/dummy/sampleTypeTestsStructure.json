@@ -3,25 +3,25 @@
   "panels": [
     {
       "name": "Bilan Biochimique",
-      "testMaps": "7",
+      "testIds": "7",
       "panelId": "1",
       "panelOrder": 0
     },
     {
       "name": "Serologie VIH",
-      "testMaps": "9,9",
+      "testIds": "9,9",
       "panelId": "4",
       "panelOrder": 0
     },
     {
       "name": "Bilan Biochimique",
-      "testMaps": "7,8,9,10,11,12,13",
+      "testIds": "7,8,9,10,11,12,13",
       "panelId": "1",
       "panelOrder": 0
     },
     {
       "name": "Serologie VIH",
-      "testMaps": "16,16",
+      "testIds": "16,16",
       "panelId": "4",
       "panelOrder": 0
     }

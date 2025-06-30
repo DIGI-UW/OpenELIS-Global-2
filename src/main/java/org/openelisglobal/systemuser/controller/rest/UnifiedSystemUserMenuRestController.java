@@ -1,11 +1,11 @@
 package org.openelisglobal.systemuser.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.action.IActionConstants;
@@ -14,9 +14,9 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.form.AdminOptionMenuForm;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
@@ -255,7 +255,7 @@ public class UnifiedSystemUserMenuRestController extends BaseMenuController<Unif
 
     @Override
     protected int getPageSize() {
-        return SystemConfiguration.getInstance().getDefaultPageSize();
+        return Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
     }
 
     @PostMapping(value = "/DeleteUnifiedSystemUser")
@@ -274,6 +274,12 @@ public class UnifiedSystemUserMenuRestController extends BaseMenuController<Unif
 
         for (int i = 0; i < selectedIDs.size(); i++) {
             String systemUserId = UnifiedSystemUser.getSystemUserIDFromCombinedID(selectedIDs.get(i));
+            Integer loginUserId = UnifiedSystemUser.getLoginUserIDFromCombinedID(selectedIDs.get(i));
+
+            LoginUser user = loginService.get(loginUserId);
+            if (loginService.isUserAdmin(user)) {
+                continue;
+            }
 
             if (!GenericValidator.isBlankOrNull(systemUserId)) {
                 SystemUser systemUser = new SystemUser();
@@ -281,8 +287,6 @@ public class UnifiedSystemUserMenuRestController extends BaseMenuController<Unif
                 systemUser.setSysUserId(sysUserId);
                 systemUsers.add(systemUser);
             }
-
-            Integer loginUserId = UnifiedSystemUser.getLoginUserIDFromCombinedID(selectedIDs.get(i));
 
             if (null != loginUserId) {
                 LoginUser loginUser = new LoginUser();

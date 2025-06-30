@@ -32,6 +32,7 @@ import {
   postToOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
+import CustomDatePicker from "../../common/CustomDatePicker.js";
 import AutoComplete from "../../common/AutoComplete.js";
 
 const breadcrumbs = [
@@ -56,6 +57,14 @@ function UserAddModify() {
   const intl = useIntl();
 
   const [saveButton, setSaveButton] = useState(true);
+  const [validation, setValidation] = useState({
+    validatepassword: false,
+    password: false,
+    password2: false,
+    loginName: false,
+    firstName: false,
+    secondName: false,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isLocked, setIsLocked] = useState("radio-2");
   const [isDisabled, setIsDisabled] = useState("radio-4");
@@ -110,6 +119,16 @@ function UserAddModify() {
       setIsLoading(true);
     } else {
       setUserData(res);
+      if (res.loginUserId) {
+        setValidation({
+          validatepassword: true,
+          password: true,
+          password2: true,
+          loginName: true,
+          firstName: true,
+          secondName: true,
+        });
+      }
       var KeyList = [];
       Object.keys(res.selectedTestSectionLabUnits).map((key) =>
         KeyList.push(key),
@@ -121,7 +140,7 @@ function UserAddModify() {
   useEffect(() => {
     componentMounted.current = true;
     setIsLoading(true);
-    getFromOpenElisServer(`/rest/rest/users`, handleCopyUserPermissionsList);
+    getFromOpenElisServer(`/rest/users`, handleCopyUserPermissionsList);
     return () => {
       componentMounted.current = false;
       setIsLoading(false);
@@ -277,6 +296,14 @@ function UserAddModify() {
         userDataShow.accountDisabled === "Y" ? "radio-3" : "radio-4",
       );
       setIsActive(userDataShow.accountActive === "Y" ? "radio-5" : "radio-6");
+      if (
+        userDataShow.userPassword &&
+        userDataShow.userPassword === userDataShow.confirmPassword
+      ) {
+        setValidation({ ...validation, validatepassword: true });
+      } else {
+        setValidation({ ...validation, validatepassword: false });
+      }
     }
   }, [userDataShow]);
 
@@ -353,7 +380,7 @@ function UserAddModify() {
     const value = e.target.value.trim();
     const isValid = loginNameRegex.test(value);
 
-    if (value && !isValid) {
+    if (!value || (value && !isValid)) {
       if (!notificationVisible) {
         setNotificationVisible(true);
         addNotification({
@@ -365,9 +392,11 @@ function UserAddModify() {
         });
       }
       setSaveButton(true);
+      setValidation({ ...validation, loginName: false });
     } else {
       setNotificationVisible(false);
       setSaveButton(false);
+      setValidation({ ...validation, loginName: true });
       setUserDataPost((prevUserDataPost) => ({
         ...prevUserDataPost,
         userLoginName: value,
@@ -400,9 +429,11 @@ function UserAddModify() {
         });
       }
       setSaveButton(true);
+      setValidation({ ...validation, password: false });
     } else {
       setNotificationVisible(false);
       setSaveButton(false);
+      setValidation({ ...validation, password: true });
       setUserDataPost((prevUserDataPost) => ({
         ...prevUserDataPost,
         userPassword: value,
@@ -435,9 +466,11 @@ function UserAddModify() {
         });
       }
       setSaveButton(true);
+      setValidation({ ...validation, password2: false });
     } else {
       setNotificationVisible(false);
       setSaveButton(false);
+      setValidation({ ...validation, password2: true });
       setUserDataPost((prevUserDataPost) => ({
         ...prevUserDataPost,
         confirmPassword: value,
@@ -454,7 +487,7 @@ function UserAddModify() {
     const value = e.target.value;
     const isValid = nameRegex.test(value);
 
-    if (value && !isValid) {
+    if (!value || (value && !isValid)) {
       if (!notificationVisible) {
         setNotificationVisible(true);
         addNotification({
@@ -466,9 +499,11 @@ function UserAddModify() {
         });
       }
       setSaveButton(true);
+      setValidation({ ...validation, firstName: false });
     } else {
       setNotificationVisible(false);
       setSaveButton(false);
+      setValidation({ ...validation, firstName: true });
       setUserDataPost((prevUserDataPost) => ({
         ...prevUserDataPost,
         userFirstName: value,
@@ -485,7 +520,7 @@ function UserAddModify() {
     const value = e.target.value;
     const isValid = nameRegex.test(value);
 
-    if (value && !isValid) {
+    if (!value || (value && !isValid)) {
       if (!notificationVisible) {
         setNotificationVisible(true);
         addNotification({
@@ -497,6 +532,7 @@ function UserAddModify() {
         });
       }
       setSaveButton(true);
+      setValidation({ ...validation, secondName: false });
     } else {
       setNotificationVisible(false);
       setUserDataPost((prevUserDataPost) => ({
@@ -504,6 +540,7 @@ function UserAddModify() {
         userLastName: value,
       }));
       setSaveButton(false);
+      setValidation({ ...validation, secondName: true });
     }
 
     setUserDataShow((prevUserData) => ({
@@ -512,20 +549,22 @@ function UserAddModify() {
     }));
   }
 
-  function handleExpirationDateChange(e) {
+  function handleExpirationDateChange(date) {
     setSaveButton(false);
+    setValidation({ ...validation, expDate: true });
     setUserDataPost((prevUserDataPost) => ({
       ...prevUserDataPost,
-      expirationDate: e.target.value,
+      expirationDate: date,
     }));
     setUserDataShow((prevUserData) => ({
       ...prevUserData,
-      expirationDate: e.target.value,
+      expirationDate: date,
     }));
   }
 
   function handleTimeoutChange(e) {
     setSaveButton(false);
+    setValidation({ ...validation, timeout: true });
     setUserDataPost((prevUserDataPost) => ({
       ...prevUserDataPost,
       timeout: e.target.value,
@@ -538,6 +577,7 @@ function UserAddModify() {
 
   function handleAccountActiveChange(e) {
     setSaveButton(false);
+    setValidation({ ...validation, active: true });
     setUserDataPost((prevUserDataPost) => ({
       ...prevUserDataPost,
       accountActive: e.target.value,
@@ -550,6 +590,7 @@ function UserAddModify() {
 
   function handleAccountDisabledChange(e) {
     setSaveButton(false);
+    setValidation({ ...validation, disabled: true });
     setUserDataPost((prevUserDataPost) => ({
       ...prevUserDataPost,
       accountDisabled: e.target.value,
@@ -562,6 +603,7 @@ function UserAddModify() {
 
   function handleAccountLockedChange(e) {
     setSaveButton(false);
+    setValidation({ ...validation, locked: true });
     setUserDataPost((prevUserDataPost) => ({
       ...prevUserDataPost,
       accountLocked: e.target.value,
@@ -575,12 +617,14 @@ function UserAddModify() {
   function handleCopyUserPermissionsChange() {
     if (copyUserPermission.length > 0) {
       setSaveButton(false);
+      setValidation({ ...validation, copy: true });
     }
   }
 
   function handleAutoCompleteCopyUserPermissionsChange(selectedUserId) {
     setCopyUserPermission(selectedUserId);
     setSaveButton(false);
+    setValidation({ ...validation, autoCopy: true });
   }
 
   function handleCopyUserPermissionsChangeClick() {
@@ -625,6 +669,7 @@ function UserAddModify() {
       selectedRoles: updatedRoles,
     }));
     setSaveButton(false);
+    setValidation({ ...validation, checkBox: true });
   }
 
   function handleTestSectionsSelectChange(e, key) {
@@ -658,6 +703,7 @@ function UserAddModify() {
 
     setSelectedTestSectionLabUnits(updatedTestSectionLabUnits);
     setSaveButton(false);
+    setValidation({ ...validation, testSection: true });
   }
 
   const addRoleToSelectedUnits = (key, roleIdToAdd) => {
@@ -667,6 +713,7 @@ function UserAddModify() {
       if (!currentRoles.includes(roleIdToAdd)) {
         updatedUnits[key] = [...currentRoles, roleIdToAdd];
         setSaveButton(false);
+        setValidation({ ...validation, role: true });
       }
       return updatedUnits;
     });
@@ -680,6 +727,7 @@ function UserAddModify() {
           (roleId) => roleId !== roleIdToRemove,
         );
         setSaveButton(false);
+        setValidation({ ...validation, removeSelected: true });
       }
       return updatedUnits;
     });
@@ -843,6 +891,7 @@ function UserAddModify() {
                     />
                   </Column>
                 </Grid>
+                <br />
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
                     <>
@@ -868,8 +917,9 @@ function UserAddModify() {
                           !passwordPatternRegex.test(
                             userDataShow.confirmPassword,
                           )) ||
-                        userDataShow.confirmPassword !==
-                          userDataShow.userPassword
+                        (passwordTouched.confirmPassword &&
+                          userDataShow.confirmPassword !==
+                            userDataShow.userPassword)
                       }
                       // invalidText={errors.order}
                       value={
@@ -882,7 +932,7 @@ function UserAddModify() {
                   </Column>
                 </Grid>
                 <br />
-                <br />
+
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
                     <>
@@ -915,6 +965,7 @@ function UserAddModify() {
                     />
                   </Column>
                 </Grid>
+                <br />
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
                     <>
@@ -947,6 +998,7 @@ function UserAddModify() {
                     />
                   </Column>
                 </Grid>
+                <br />
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
                     <>
@@ -955,26 +1007,23 @@ function UserAddModify() {
                     </>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
-                    <TextInput
+                    <CustomDatePicker
                       id="password-expire-date"
                       className="defalut"
-                      type="text"
                       labelText=""
-                      placeholder={intl.formatMessage({
-                        id: "login.password.expired.date.placeholder",
-                      })}
                       required={true}
-                      // invalid={errors.order && touched.order}
-                      // invalidText={errors.order}
+                      disallowPastDate={true}
+                      updateStateValue={true}
                       value={
                         userDataShow && userDataShow.expirationDate
                           ? userDataShow.expirationDate
                           : ""
                       }
-                      onChange={(e) => handleExpirationDateChange(e)}
+                      onChange={(date) => handleExpirationDateChange(date)}
                     />
                   </Column>
                 </Grid>
+                <br />
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
                     <>
@@ -986,12 +1035,13 @@ function UserAddModify() {
                     <TextInput
                       id="login-timeout"
                       className="defalut"
-                      type="text"
-                      labelText=""
+                      type="number"
                       placeholder={intl.formatMessage({
                         id: "login.timeout.placeholder",
                       })}
                       required={true}
+                      labelText=""
+                      min={0}
                       // invalid={errors.order && touched.order}
                       // invalidText={errors.order}
                       value={
@@ -1138,7 +1188,7 @@ function UserAddModify() {
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
                     <>
-                      <FormattedMessage id="systemuserrole.copypermisions" /> :
+                      <FormattedMessage id="systemuserrole.copypermissions" /> :
                     </>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
@@ -1295,6 +1345,7 @@ function UserAddModify() {
                               [key]: updatedRoles,
                             }));
                             setSaveButton(false);
+                            setValidation({ ...validation, selectedLab: true });
                           }}
                         />
                         <FormGroup
@@ -1366,7 +1417,9 @@ function UserAddModify() {
                 <Grid fullWidth={true}>
                   <Column lg={16} md={8} sm={4}>
                     <Button
-                      disabled={saveButton}
+                      disabled={Object.values(validation).some(
+                        (value) => !value,
+                      )}
                       onClick={userSavePostCall}
                       type="button"
                     >

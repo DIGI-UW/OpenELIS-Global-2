@@ -1,8 +1,8 @@
 package org.openelisglobal.samplebatchentry.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.StringTokenizer;
-import javax.servlet.http.HttpServletRequest;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;

@@ -451,7 +451,7 @@ Casey Iiams-Hauser
 
 OpenELIS Global Product Owner
 
-Digital Initiatives Group at I-TECH (DIGI) University of Washington digit@uw.edu
+Digital Initiatives Group (DIGI) at University of Washington digit@uw.edu
 
 [TOC]
 

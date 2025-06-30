@@ -1,14 +1,14 @@
 package org.openelisglobal.test.service;
 
+import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.annotation.PostConstruct;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.LocaleChangeListener;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.internationalization.GlobalLocaleResolver;
 import org.openelisglobal.systemusersection.service.SystemUserSectionService;
 import org.openelisglobal.systemusersection.valueholder.SystemUserSection;
 import org.openelisglobal.test.dao.TestSectionDAO;
@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.LocaleResolver;
 
 @Service
 @DependsOn({ "springContext" })
@@ -30,6 +31,8 @@ public class TestSectionServiceImpl extends AuditableBaseObjectServiceImpl<TestS
     private TestSectionDAO baseObjectDAO;
     @Autowired
     private SystemUserSectionService systemUserSectionService;
+    @Autowired
+    private LocaleResolver localeResolver;
 
     @PostConstruct
     private void initializeGlobalVariables() {
@@ -38,7 +41,9 @@ public class TestSectionServiceImpl extends AuditableBaseObjectServiceImpl<TestS
 
     @PostConstruct
     private void initialize() {
-        SystemConfiguration.getInstance().addLocalChangeListener(this);
+        if (localeResolver instanceof GlobalLocaleResolver) {
+            ((GlobalLocaleResolver) localeResolver).addLocalChangeListener(this);
+        }
     }
 
     public TestSectionServiceImpl() {

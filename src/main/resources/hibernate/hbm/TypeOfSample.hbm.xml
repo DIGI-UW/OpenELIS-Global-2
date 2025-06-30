@@ -45,10 +45,10 @@
 
 
     </class>
-<!-- 	<query name="typeofsample.getNext"> -->
-<!-- 		from TypeOfSample tos order by tos.domain, tos.description -->
-<!-- 	</query> -->
-<!-- 	<query name="typeofsample.getPrevious"> -->
-<!-- 		from TypeOfSample tos order by tos.domain desc, tos.description desc -->
-<!-- 	</query> -->
+    <!-- <query name="typeofsample.getNext"> -->
+    <!-- from TypeOfSample tos order by tos.domain, tos.description -->
+    <!-- </query> -->
+    <!-- <query name="typeofsample.getPrevious"> -->
+    <!-- from TypeOfSample tos order by tos.domain desc, tos.description desc -->
+    <!-- </query> -->
 </hibernate-mapping>

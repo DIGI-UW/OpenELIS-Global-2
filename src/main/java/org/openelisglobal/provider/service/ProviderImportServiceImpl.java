@@ -51,7 +51,7 @@ public class ProviderImportServiceImpl implements ProviderImportService {
 
     @Override
     @Async
-    @Scheduled(initialDelay = 1000, fixedRate = 60 * 60 * 1000)
+    @Scheduled(initialDelay = 1000, fixedRateString = "${org.openelisglobal.providerlist.poll.frequency:3600000}")
     public void importPractitionerList() throws FhirLocalPersistingException, FhirGeneralException, IOException {
         if (!GenericValidator.isBlankOrNull(providerFhirStore)) {
             IGenericClient client = fhirUtil.getFhirClient(providerFhirStore);

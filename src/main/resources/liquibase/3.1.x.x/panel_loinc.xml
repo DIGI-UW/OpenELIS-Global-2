@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog/1.9"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog/1.9 http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-1.9.xsd">
+    <!--Organization
+    settings-->
+    <changeSet id="1" author="csteele">
+        <validCheckSum>8:bc3102f55e943fbbb61b69324a5d6eb0</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists columnName="loinc" schemaName="clinlims"
+                    tableName="panel" />
+            </not>
+        </preConditions>
+        <comment>Adds loinc columns to panel</comment>
+        <addColumn tableName="panel">
+            <column name="loinc" type="character varying(10)"></column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

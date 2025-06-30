@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <persistence xmlns="http://xmlns.jcp.org/xml/ns/persistence"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/persistence http://xmlns.jcp.org/xml/ns/persistence/persistence_2_2.xsd"
-        version="2.2">
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/persistence http://xmlns.jcp.org/xml/ns/persistence/persistence_2_2.xsd"
+    version="2.2">
 
     <persistence-unit
         name="OpenELIS-Global-persistence-unit">
@@ -15,6 +15,7 @@
         <class>org.openelisglobal.security.converter.EncryptionConverter</class>
 
         <!-- entities -->
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerExperiment</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
@@ -27,11 +28,32 @@
 
         <class>org.ozeki.sms.valueholder.OzekiMessageOut</class>
 
+
+        <class>org.openelisglobal.program.valueholder.ProgramSample</class>
+        <class>org.openelisglobal.program.valueholder.cytology.CytologySample</class>
+        <class>org.openelisglobal.program.valueholder.cytology.CytologyDiagnosis</class>
+        <class>org.openelisglobal.program.valueholder.cytology.CytologySpecimenAdequacy</class>
+        <class>org.openelisglobal.program.valueholder.cytology.CytologyReport</class>
+        <class>org.openelisglobal.program.valueholder.cytology.CytologySlide</class>
+        <class>org.openelisglobal.program.valueholder.cytology.CytologyDiagnosisCategoryResultsMap</class>
+
+
+        <class>org.openelisglobal.program.valueholder.pathology.PathologySample</class>
+        <class>org.openelisglobal.program.valueholder.pathology.PathologyTechnique</class>
+        <class>org.openelisglobal.program.valueholder.pathology.PathologySlide</class>
+        <class>org.openelisglobal.program.valueholder.pathology.PathologyRequest</class>
+        <class>org.openelisglobal.program.valueholder.pathology.PathologyReport</class>
+        <class>org.openelisglobal.program.valueholder.pathology.PathologyConclusion</class>
+        <class>org.openelisglobal.program.valueholder.pathology.PathologyBlock</class>
+
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />
-            <property name="hibernate.search.backend.directory.type" value="local-heap" />
-            <property name="hibernate.search.backend.analysis.configurer" value="class:org.openelisglobal.hibernate.search.analysis.CustomLuceneAnalysisConfigurer"/>
+            <property name="hibernate.search.backend.directory.type"
+                value="local-heap" />
+            <property
+                name="hibernate.search.backend.analysis.configurer"
+                value="class:org.openelisglobal.hibernate.search.analysis.CustomLuceneAnalysisConfigurer" />
         </properties>
 
     </persistence-unit>

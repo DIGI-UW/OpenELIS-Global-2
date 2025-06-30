@@ -6,7 +6,12 @@ import java.util.Set;
 
 public class UserSession {
 
+    public enum LoginMethod {
+        FORM, SAML, OAUTH, CERT, NONE
+    }
+
     private Boolean authenticated;
+    private LoginMethod loginMethod;
     private String sessionId;
     private String userId;
     private String loginName;
@@ -23,6 +28,14 @@ public class UserSession {
 
     public void setAuthenticated(Boolean authenticated) {
         this.authenticated = authenticated;
+    }
+
+    public LoginMethod getLoginMethod() {
+        return loginMethod;
+    }
+
+    public void setLoginMethod(LoginMethod loginMethod) {
+        this.loginMethod = loginMethod;
     }
 
     public String getUserId() {

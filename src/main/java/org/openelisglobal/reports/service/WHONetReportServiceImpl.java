@@ -1,5 +1,6 @@
 package org.openelisglobal.reports.service;
 
+import jakarta.annotation.PostConstruct;
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -7,7 +8,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import javax.annotation.PostConstruct;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
@@ -72,11 +72,7 @@ public class WHONetReportServiceImpl implements WHONetReportService {
         List<Analysis> analysises = analysisService.getAllAnalysisByTestsAndStatusAndCompletedDateRange(testIds,
                 ANALYSIS_STATUS_IDS, SAMPLE_STATUS_IDS, lowDate, highDate);
 
-        System.out.println(
-                "analysises" + String.join(", ", analysises.stream().map(e -> e.getId()).collect(Collectors.toList())));
         analysises.stream().forEach(e -> sampleItems.putIfAbsent(e.getSampleItem().getId(), e.getSampleItem()));
-        System.out.println("sampleItems"
-                + String.join(", ", analysises.stream().map(e -> e.getId()).collect(Collectors.toList())));
 
         return new ArrayList<SampleItem>(sampleItems.values());
     }

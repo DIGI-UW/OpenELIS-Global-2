@@ -1,20 +1,25 @@
 package org.openelisglobal.sample.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.constraints.Pattern;
 import java.lang.reflect.InvocationTargetException;
+import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.constraints.Pattern;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.StaleObjectStateException;
 import org.hl7.fhir.r4.model.Enumerations.ResourceType;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Task;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.SampleOrderService;
@@ -23,11 +28,12 @@ import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
-import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
-import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
+import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.notifications.dao.NotificationDAO;
+import org.openelisglobal.notifications.entity.Notification;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.action.IPatientUpdate;
@@ -39,16 +45,22 @@ import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.controller.BaseSampleEntryController;
+import org.openelisglobal.sample.event.SamplePatientUpdateDataCreatedEvent;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.service.PatientManagementUpdate;
 import org.openelisglobal.sample.service.SamplePatientEntryService;
+import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.validator.SamplePatientEntryFormValidator;
+import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField.AdditionalFieldName;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
+import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
@@ -151,6 +163,17 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
     @Autowired
     private FhirUtil fhirUtil;
+    @Autowired
+    private NotificationDAO notificationDAO;
+    @Autowired
+    private UserRoleService userRoleService;
+    @Autowired
+    private SystemUserService systemUserService;
+    @Autowired
+    private SampleService sampleService;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -259,10 +282,39 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         try {
             samplePatientService.persistData(updateData, patientUpdate, patientInfo, form, request);
             try {
-                fhirTransformService.transformPersistOrderEntryFhirObjects(updateData, patientInfo,
-                        form.getUseReferral(), form.getReferralItems());
-            } catch (FhirTransformationException | FhirPersistanceException e) {
+                SamplePatientUpdateDataCreatedEvent event = new SamplePatientUpdateDataCreatedEvent(this, updateData,
+                        patientInfo, form);
+                eventPublisher.publishEvent(event);
+            } catch (Exception e) {
                 LogEvent.logError(e);
+            }
+
+            if (sampleOrder.getPriority().equals(OrderPriority.STAT)) {
+                List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_RESULTS);
+                List<Analysis> analyses = sampleService
+                        .getAnalysis(sampleService.getSampleByAccessionNumber(sampleOrder.getLabNo()));
+                String message = MessageUtil.getMessage("notification.order.stat",
+                        AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(sampleOrder.getLabNo()));
+                StringBuffer sb = new StringBuffer(message);
+                for (String userId : systemUserIds) {
+                    List<Analysis> userAnalyses = userService.filterAnalysesByLabUnitRoles(userId, analyses,
+                            Constants.ROLE_RESULTS);
+                    if (userAnalyses != null && !userAnalyses.isEmpty()) {
+                        List<String> tests = userAnalyses.stream().map(a -> a.getTest().getLocalizedName())
+                                .collect(Collectors.toList());
+                        String testString = String.join(", ", tests);
+                        sb.append(testString);
+                        try {
+                            Notification notification = new Notification();
+                            notification.setMessage(sb.toString());
+                            notification.setUser(systemUserService.getUserById(userId));
+                            notification.setCreatedDate(OffsetDateTime.now());
+                            notification.setReadAt(null);
+                            notificationDAO.save(notification);
+                        } catch (Exception e) {
+                        }
+                    }
+                }
             }
 
             // String fhir_json = fhirTransformService.CreateFhirFromOESample(updateData,

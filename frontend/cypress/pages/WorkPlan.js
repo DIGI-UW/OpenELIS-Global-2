@@ -6,20 +6,20 @@ class WorkPlan {
   visit() {
     cy.visit("/WorkplanByTest");
   }
-
-  getWorkPlanFilterTitle() {
-    return cy.get("h3");
+  getWorkPlanFilterTitle(tiles) {
+    cy.contains("h3", tiles).should("be.visible");
   }
 
-  getTestTypeOrPanelSelector() {
-    return cy.get("select#select-1");
+  selectDropdownOption(option) {
+    cy.get("select#select-1").should("be.visible").select(option);
   }
 
   getPrintWorkPlanButton() {
-    return cy.get("button#print");
+    cy.contains("button", "Print Workplan").should("be.visible");
   }
+
   getWorkPlanResultsTable() {
-    return cy.get(".cds--data-table.cds--data-table--sm");
+    return cy.get('[data-cy="workplanResultsTable"]');
   }
 }
 export default WorkPlan;

@@ -31,7 +31,7 @@ const AuditTrailReport = ({ id }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(30);
   const [auditTrailItems, setAuditTrailItems] = useState([]);
   const [data, setData] = useState(null);
 
@@ -56,7 +56,7 @@ const AuditTrailReport = ({ id }) => {
       "/rest/AuditTrailReport?accessionNumber=" + labNo,
       (data) => {
         if (!data.log) {
-          setIsLabNoError("labe.audittrail.labNo.invalidaccessionnumber");
+          setIsLabNoError("label.audittrail.labNo.invalidaccessionnumber");
           setData(null);
           setAuditTrailItems([]);
           setIsLoading(false);
@@ -117,7 +117,7 @@ const AuditTrailReport = ({ id }) => {
                 defaultMessage: "Lab No",
               })}
               value={labNo}
-              onChange={(event) => setLabNo(event.target.value)}
+              onChange={(event, rowValue) => setLabNo(rowValue)}
               invalid={
                 isLabNoError
                   ? intl.formatMessage({
@@ -308,7 +308,7 @@ const AuditTrailReport = ({ id }) => {
           onChange={handlePageChange}
           page={page}
           pageSize={pageSize}
-          pageSizes={[5, 10, 20, 30]}
+          pageSizes={[10, 30, 50, 100]}
           totalItems={auditTrailItems.length}
           forwardText={intl.formatMessage({ id: "pagination.forward" })}
           backwardText={intl.formatMessage({ id: "pagination.backward" })}

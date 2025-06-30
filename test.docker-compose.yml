@@ -48,7 +48,6 @@ services:
     networks:
       default:
         ipv4_address: 172.20.1.121
-
     environment:
       - DEFAULT_PW=adminADMIN!
       - TZ=Africa/Nairobi
@@ -61,10 +60,16 @@ services:
     secrets:
       - source: datasource.password
       - source: common.properties
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      timeout: 10s
+      interval: 30s
+      retries: 3
+      start_period: 2m
 
   fhir.openelis.org:
     container_name: external-fhir-api
-    image: hapiproject/hapi:v6.6.0-tomcat
+    image: "${DOCKER_TEST_NAME}-fhir:${GITHUB_REF_NAME}"
     depends_on:
       - database
       - certs
@@ -83,7 +88,6 @@ services:
                       -Djavax.net.ssl.keyStore=/etc/openelis-global/keystore 
                       -Djavax.net.ssl.keyStorePassword=kspass 
                       -Djavax.net.ssl.keyStoreType=pkcs12"
-
     volumes:
       -  key_trust-store-volume:/etc/openelis-global
       - ./volume/tomcat/hapi_server.xml:/opt/bitnami/tomcat/conf/server.xml
@@ -95,9 +99,15 @@ services:
     container_name: openelisglobal-front-end  
     networks:
       - default
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      timeout: 10s
+      interval: 30s
+      retries: 3
+      start_period: 2m
 
   proxy:
-    image: nginx:1.15-alpine
+    image: "${DOCKER_TEST_NAME}-proxy:${GITHUB_REF_NAME}"
     container_name: openelisglobal-proxy
     ports:
       - 80:80

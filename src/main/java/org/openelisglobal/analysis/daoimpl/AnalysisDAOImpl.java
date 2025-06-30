@@ -35,8 +35,8 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -444,11 +444,14 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     public List<Analysis> getAnalysesReadyToBeReported() throws LIMSRuntimeException {
         try {
             List<String> analysisStatusesToInclude = new ArrayList<>();
-            analysisStatusesToInclude.add(SystemConfiguration.getInstance().getAnalysisStatusReleased());
+            analysisStatusesToInclude
+                    .add(ConfigurationProperties.getInstance().getPropertyValue("analysis.status.released"));
 
             List<String> sampleStatusesToInclude = new ArrayList<>();
-            sampleStatusesToInclude.add(SystemConfiguration.getInstance().getSampleStatusEntry2Complete());
-            sampleStatusesToInclude.add(SystemConfiguration.getInstance().getSampleStatusReleased());
+            sampleStatusesToInclude
+                    .add(ConfigurationProperties.getInstance().getPropertyValue("sample.status.entry.2.complete"));
+            sampleStatusesToInclude
+                    .add(ConfigurationProperties.getInstance().getPropertyValue("sample.status.released"));
 
             String sql = "select distinct anal.id\n" + "        from\n" + "            sample samp,\n"
                     + "            test_analyte ta,\n" + "            analysis anal,\n"
@@ -497,7 +500,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
             query.setParameter("param", result.getId());
             List<String> statusesToExclude = new ArrayList<>();
-            statusesToExclude.add(SystemConfiguration.getInstance().getAnalysisStatusCanceled());
+            statusesToExclude.add(ConfigurationProperties.getInstance().getPropertyValue("analysis.status.canceled"));
             query.setParameterList("param2", statusesToExclude);
             return query.list();
         } catch (RuntimeException e) {
@@ -518,7 +521,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
             query.setParameter("param", sampleItem.getId());
             List<String> statusesToExclude = new ArrayList<>();
-            statusesToExclude.add(SystemConfiguration.getInstance().getAnalysisStatusCanceled());
+            statusesToExclude.add(ConfigurationProperties.getInstance().getPropertyValue("analysis.status.canceled"));
             query.setParameterList("param2", statusesToExclude);
             return query.list();
         } catch (RuntimeException e) {
@@ -561,7 +564,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
             query.setParameter("param", sampleItem.getId());
             List<String> statusesToExclude = new ArrayList<>();
-            statusesToExclude.add(SystemConfiguration.getInstance().getAnalysisStatusCanceled());
+            statusesToExclude.add(ConfigurationProperties.getInstance().getPropertyValue("analysis.status.canceled"));
             query.setParameterList("param2", statusesToExclude);
             return query.list();
         } catch (RuntimeException e) {
@@ -591,7 +594,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             query.setParameter("param", sampleItem.getId());
             query.setParameter("param2", test.getId());
             List<String> statusesToExclude = new ArrayList<>();
-            statusesToExclude.add(SystemConfiguration.getInstance().getAnalysisStatusCanceled());
+            statusesToExclude.add(ConfigurationProperties.getInstance().getPropertyValue("analysis.status.canceled"));
             query.setParameterList("param3", statusesToExclude);
             return query.list();
         } catch (RuntimeException e) {
@@ -613,7 +616,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             query.setParameter("param", test.getId());
 
             List<String> statusesToExclude = new ArrayList<>();
-            statusesToExclude.add(SystemConfiguration.getInstance().getAnalysisStatusCanceled());
+            statusesToExclude.add(ConfigurationProperties.getInstance().getPropertyValue("analysis.status.canceled"));
             query.setParameterList("param2", statusesToExclude);
 
             return query.list();
@@ -629,11 +632,14 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     public List<Analysis> getMaxRevisionAnalysesReadyToBeReported() throws LIMSRuntimeException {
         try {
             List<String> analysisStatusesToInclude = new ArrayList<>();
-            analysisStatusesToInclude.add(SystemConfiguration.getInstance().getAnalysisStatusReleased());
+            analysisStatusesToInclude
+                    .add(ConfigurationProperties.getInstance().getPropertyValue("analysis.status.released"));
 
             List<String> sampleStatusesToInclude = new ArrayList<>();
-            sampleStatusesToInclude.add(SystemConfiguration.getInstance().getSampleStatusEntry2Complete());
-            sampleStatusesToInclude.add(SystemConfiguration.getInstance().getSampleStatusReleased());
+            sampleStatusesToInclude
+                    .add(ConfigurationProperties.getInstance().getPropertyValue("sample.status.entry.2.complete"));
+            sampleStatusesToInclude
+                    .add(ConfigurationProperties.getInstance().getPropertyValue("sample.status.released"));
 
             String sql = "select distinct anal.id\n" + "        from\n" + "            sample samp,\n"
                     + "            test_analyte ta,\n" + "            analysis anal,\n"
@@ -689,12 +695,15 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             // see question in 1900 should this be released or results completed
             // status?
             // answer: results completed
-            analysisStatusesToInclude.add(SystemConfiguration.getInstance().getAnalysisStatusResultCompleted());
+            analysisStatusesToInclude
+                    .add(ConfigurationProperties.getInstance().getPropertyValue("analysis.status.result.completed"));
 
             List<String> sampleStatusesToInclude = new ArrayList<>();
-            sampleStatusesToInclude.add(SystemConfiguration.getInstance().getSampleStatusEntry2Complete());
+            sampleStatusesToInclude
+                    .add(ConfigurationProperties.getInstance().getPropertyValue("sample.status.entry.2.complete"));
             // see question in 1900 - should this be included? Yes
-            sampleStatusesToInclude.add(SystemConfiguration.getInstance().getSampleStatusReleased());
+            sampleStatusesToInclude
+                    .add(ConfigurationProperties.getInstance().getPropertyValue("sample.status.released"));
 
             if (accessionNumbers != null && accessionNumbers.size() > 0) {
                 String sql = "select distinct anal.id\n" + "        from\n" + "            sample samp,\n"
@@ -779,10 +788,12 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             throws LIMSRuntimeException {
         try {
             List<String> analysisStatusesToInclude = new ArrayList<>();
-            analysisStatusesToInclude.add(SystemConfiguration.getInstance().getAnalysisStatusAssigned());
+            analysisStatusesToInclude
+                    .add(ConfigurationProperties.getInstance().getPropertyValue("analysis.status.assigned"));
             // bugzilla 2264 per Nancy add results completed status to pending
             // tests
-            analysisStatusesToInclude.add(SystemConfiguration.getInstance().getAnalysisStatusResultCompleted());
+            analysisStatusesToInclude
+                    .add(ConfigurationProperties.getInstance().getPropertyValue("analysis.status.result.completed"));
 
             String sql = "select\n" + "    distinct anal.id\n" + "    from\n" + "    sample_item sampitem,\n"
                     + "    sample samp,\n" + "    analysis anal,\n" + "    test test\n" + "\n" + "   where\n"
@@ -830,10 +841,11 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
         try {
 
             List<String> analysisStatusesToInclude = new ArrayList<>();
-            analysisStatusesToInclude.add(SystemConfiguration.getInstance().getAnalysisStatusAssigned());
+            analysisStatusesToInclude
+                    .add(ConfigurationProperties.getInstance().getPropertyValue("analysis.status.assigned"));
             // see question in 1900 do we need to include this?
             // Answer NO
-            // analysisStatusesToInclude.add(SystemConfiguration.getInstance().getAnalysisStatusResultCompleted());
+            // analysisStatusesToInclude.add(ConfigurationProperties.getInstance().getPropertyValue("analysis.status.result.completed"));
 
             list = entityManager.unwrap(Session.class)
                     .getNamedQuery("analysis.getMaxRevisionPendingAnalysesReadyToBeReportedBySample")
@@ -876,7 +888,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             query.setParameter("param3", analysis.getTest());
 
             List<String> statusesToExclude = new ArrayList<>();
-            statusesToExclude.add(SystemConfiguration.getInstance().getAnalysisStatusCanceled());
+            statusesToExclude.add(ConfigurationProperties.getInstance().getPropertyValue("analysis.status.canceled"));
             query.setParameterList("param4", statusesToExclude);
             List<Analysis> list = query.list();
             if ((list != null) && !list.isEmpty()) {
@@ -906,7 +918,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             query.setParameter("param", analysis.getSampleItem().getId());
             query.setParameter("param2", analysis.getTest().getId());
             List<String> statusesToExclude = new ArrayList<>();
-            statusesToExclude.add(SystemConfiguration.getInstance().getAnalysisStatusCanceled());
+            statusesToExclude.add(ConfigurationProperties.getInstance().getPropertyValue("analysis.status.canceled"));
             query.setParameterList("param3", statusesToExclude);
             anal = query.uniqueResult();
 
@@ -939,7 +951,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
             query.setParameter("param", sampleItem.getId());
             List<String> statusesToExclude = new ArrayList<>();
-            statusesToExclude.add(SystemConfiguration.getInstance().getAnalysisStatusCanceled());
+            statusesToExclude.add(ConfigurationProperties.getInstance().getPropertyValue("analysis.status.canceled"));
             query.setParameterList("param2", statusesToExclude);
             list = query.list();
         } catch (RuntimeException e) {

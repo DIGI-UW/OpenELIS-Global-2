@@ -1,0 +1,102 @@
+{
+  "program": {
+    "code": "CYTO",
+    "programName": "Cytology",
+    "questionnaireUUID": "1dd212a2-5da1-41a5-9304-cad5f900c998"
+  },
+  "testSectionName": "Cytology",
+  "additionalOrderEntryQuestions": {
+    "resourceType" : "Questionnaire",
+    "id" : "1dd212a2-5da1-41a5-9304-cad5f900c998",
+    "text" : {
+      "status" : "generated",
+      "div" : "<div xmlns=\"http://www.w3.org/1999/xhtml\">\n      \n      <pre>\n            1.Comorbidity?\n              1.1 Cardial Comorbidity\n                1.1.1 Angina?\n                1.1.2 MI?\n              1.2 Vascular Comorbidity?\n              ...\n            Histopathology\n              Abdominal\n                pT category?\n              ...\n          </pre>\n    \n    </div>"
+    },
+    "name" : "Cytology Reception",
+    "status" : "active",
+    "subjectType" : ["Patient", "Specimen", "ServiceRequest"],
+    "description" : "Extra information for Cytology workflow",
+    "item" : [
+      {
+      "linkId" : "3a952ede-e177-4dd2-b70b-e3322fb22cdf",
+      "text" : "Nature of Specimen",
+      "type" : "choice",
+      "answerOption" : [ 
+        { "valueString": "Conventional smear" },
+        { "valueString": "Liquid-based preparation" }
+      ]
+    },
+    {
+      "linkId" : "fb8a36f1-d95d-419d-8817-73d14fc9029d",
+      "text" : "Source of Smear",
+      "type" : "choice",
+      "answerOption" : [
+        { "valueString": "Cervix" },
+        { "valueString": "Vault" }
+      ]
+    },
+    {
+      "linkId" : "9dcedc5d-4d04-489c-8837-2de39ecd98b9",
+      "text" : "Provisional Clinical Diagnosis",
+      "type" : "choice",
+      "answerOption" : []
+    },
+    {
+      "linkId" : "e973078c-5f6b-4ac3-ba12-bc1fa41f3df7",
+      "text" : "Previous Cytology Report / Surgery / Treatment",
+      "type" : "text"
+    },
+    {
+      "linkId" : "e7778b8d-20e2-4c46-9de0-6610a4a1ed74",
+      "text" : "Clinical Report",
+      "type" : "choice",
+      "answerOption" : [ 
+        { "valueString": "This Test" },
+        { "valueString": "LMP 1st Day" }
+      ]
+    },
+    {
+      "linkId" : "e8620ca3-4f61-4d64-897b-1399696217ad",
+      "text" : "Date of Last test",
+      "type" : "date"
+    },
+    {
+      "linkId" : "07c10054-3d2d-44ec-a6c8-0a3e2d445ec0",
+      "text" : "No Previous test",
+      "type" : "boolean"
+    },
+    {
+      "linkId" : "c799c981-e109-4109-bdcb-4c545c8cff1c",
+      "text" : "Reason for Smear",
+      "type" : "choice",
+      "answerOption" : [ 
+        { "valueString": "Routine Call" },
+        { "valueString": "Routine Recall" },
+        { "valueString": "Clinically Indicated" },
+        { "valueString": "Previous abnormal smear" }
+      ]
+    },
+    {
+      "linkId" : "3cdd3645-da14-4850-adb7-83a43f8b1beb",
+      "text" : "Condition",
+      "type" : "choice",
+      "repeats" : true,
+      "answerOption" : [ 
+        { "valueString": "Routine Call" },
+        { "valueString": "Routine Recall" },
+        { "valueString": "Clinically Indicated" },
+        { "valueString": "Previous abnormal smear" }
+      ]
+    },
+    {
+      "linkId" : "7501c3ee-5f00-4621-8c32-efcdf6895793",
+      "text" : "Got HPV Vaccinationt?",
+      "type" : "boolean"
+    },
+    {
+      "linkId" : "003d6fc1-5468-4d09-a553-4d0284a64540",
+      "text" : "HPV Vaccinationt Date",
+      "type" : "date"
+    }]
+  }
+}

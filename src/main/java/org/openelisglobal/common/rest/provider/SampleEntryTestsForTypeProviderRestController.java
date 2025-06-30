@@ -1,5 +1,8 @@
 package org.openelisglobal.common.rest.provider;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -7,9 +10,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
@@ -162,8 +162,8 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         panelMap = sortPanels(panelMap);
         panelsMapList.clear();
         for (PanelTestMap testMap : panelMap) {
-            panelsMapList.add(new PanelTestMap(testMap.getPanelId(), testMap.getPanelOrder(), testMap.getName(),
-                    testMap.getTestMaps()));
+            panelsMapList.add(new PanelTestMap(testMap.getId(), testMap.getPanelOrder(), testMap.getName(),
+                    testMap.getTestIds()));
         }
         sampleEntryTests.setPanels(panelsMapList);
     }
@@ -283,16 +283,17 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
         private String name;
 
-        private String testMaps;
+        private String testIds;
 
-        private String panelId;
+        // panel id
+        private String id;
 
         private int panelOrder;
 
-        public PanelTestMap(String panelId, int panelOrder, String panelName, String map) {
+        public PanelTestMap(String id, int panelOrder, String panelName, String testIds) {
             name = panelName;
-            testMaps = map;
-            this.panelId = panelId;
+            this.testIds = testIds;
+            this.id = id;
             this.panelOrder = panelOrder;
         }
 
@@ -300,12 +301,12 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
             return name;
         }
 
-        public String getTestMaps() {
-            return testMaps;
+        public String getTestIds() {
+            return testIds;
         }
 
-        public String getPanelId() {
-            return panelId;
+        public String getId() {
+            return id;
         }
 
         public int getPanelOrder() {

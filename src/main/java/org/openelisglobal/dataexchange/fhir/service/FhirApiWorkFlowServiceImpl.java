@@ -258,6 +258,7 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
                             .where(ServiceRequest.BASED_ON
                                     .hasAnyOfIds(originalReferralObjectsByServiceRequest.keySet()));
                     originalTasksBundle = searchQuery.execute();
+
                     Map<String, ReferralResultsImportObjects> resultImportByServiceRequest = new HashMap<>();
                     for (BundleEntryComponent bundleEntry : originalTasksBundle.getEntry()) {
                         if (bundleEntry.hasResource()) {
@@ -713,8 +714,8 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
     private Optional<Practitioner> getProviderWithSameIdentifier(Practitioner provider, String remoteStorePath) {
         IGenericClient localFhirClient = fhirUtil.getFhirClient(localFhirStorePath);
         Bundle localBundle = localFhirClient.search() //
-                .forResource(Specimen.class) //
-                .where(Specimen.IDENTIFIER.exactly().systemAndIdentifier(remoteStorePath,
+                .forResource(Practitioner.class) //
+                .where(Practitioner.IDENTIFIER.exactly().systemAndIdentifier(remoteStorePath,
                         provider.getIdElement().getIdPart())) //
                 .returnBundle(Bundle.class).execute();
         for (BundleEntryComponent entry : localBundle.getEntry()) {

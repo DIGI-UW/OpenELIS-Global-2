@@ -17,11 +17,11 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
-<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions"%>
-<%@ taglib prefix = "fmt" uri = "http://java.sun.com/jsp/jstl/fmt" %>
+
+<%@ taglib prefix="fn" uri="jakarta.tags.functions"%>
+<%@ taglib prefix = "fmt" uri = "jakarta.tags.fmt" %>
 
 
 <c:set var="testSection"	value='${form.testSection}'/>
@@ -34,7 +34,7 @@
 <%
 	int rowColorIndex = 2;
 	String searchTerm = request.getParameter("searchTerm");
-	String url = request.getAttribute("javax.servlet.forward.servlet_path").toString();	
+	String url = request.getAttribute("jakarta.servlet.forward.servlet_path").toString();	
 	//boolean showTestSectionSelect = !ConfigurationProperties.getInstance().isPropertyValueEqual(Property.configurationName, "CI RetroCI");
 	String criticalMessage = ConfigurationProperties.getInstance().getPropertyValue(ConfigurationProperties.Property.customCriticalMessage);
 %>

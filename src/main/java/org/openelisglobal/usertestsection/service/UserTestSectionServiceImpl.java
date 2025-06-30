@@ -1,12 +1,12 @@
 package org.openelisglobal.usertestsection.service;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.spring.util.SpringContext;
@@ -34,7 +34,8 @@ public class UserTestSectionServiceImpl implements UserTestSectionService {
         List<TestSection> list = new ArrayList<>();
 
         try {
-            if (SystemConfiguration.getInstance().getEnableUserTestSection().equals(IActionConstants.NO)) {
+            if (ConfigurationProperties.getInstance().getPropertyValue("enable.user.test.section")
+                    .equals(IActionConstants.NO)) {
                 list = testSectionService.getTestSections(testSectionName);
             } else {
                 UserSessionData usd = (UserSessionData) request.getSession()
@@ -67,7 +68,7 @@ public class UserTestSectionServiceImpl implements UserTestSectionService {
     //
     // try {
     // if
-    // (SystemConfiguration.getInstance().getEnableUserTestSection().equals(IActionConstants.NO))
+    // (ConfigurationProperties.getInstance().getPropertyValue("enable.user.test.section").equals(IActionConstants.NO))
     // {
     //
     // if (!StringUtil.isNullorNill(doingSearch) &&
@@ -121,7 +122,7 @@ public class UserTestSectionServiceImpl implements UserTestSectionService {
     // List list = new ArrayList();
     // try {
     // if
-    // (SystemConfiguration.getInstance().getEnableUserTestSection().equals(IActionConstants.NO))
+    // (ConfigurationProperties.getInstance().getPropertyValue("enable.user.test.section").equals(IActionConstants.NO))
     // {
     // list = testSectionService.getAllTestSections();
     // } else {
@@ -152,7 +153,8 @@ public class UserTestSectionServiceImpl implements UserTestSectionService {
         TestService testService = SpringContext.getBean(TestService.class);
 
         try {
-            if (SystemConfiguration.getInstance().getEnableUserTestSection().equals(IActionConstants.NO)) {
+            if (ConfigurationProperties.getInstance().getPropertyValue("enable.user.test.section")
+                    .equals(IActionConstants.NO)) {
                 list = testService.getAllTests(onlyTestsFullySetup);
             } else {
                 UserSessionData usd = (UserSessionData) request.getSession()
@@ -181,7 +183,7 @@ public class UserTestSectionServiceImpl implements UserTestSectionService {
     //
     // try {
     // if
-    // (SystemConfiguration.getInstance().getEnableUserTestSection().equals(IActionConstants.NO))
+    // (ConfigurationProperties.getInstance().getPropertyValue("enable.user.test.section").equals(IActionConstants.NO))
     // {
     // return sample_Tas;
     // } else {
@@ -267,7 +269,7 @@ public class UserTestSectionServiceImpl implements UserTestSectionService {
     // List newAnalyses = new ArrayList();
     // try {
     // if
-    // (SystemConfiguration.getInstance().getEnableUserTestSection().equals(IActionConstants.NO))
+    // (ConfigurationProperties.getInstance().getPropertyValue("enable.user.test.section").equals(IActionConstants.NO))
     // {
     // return newAnalyses;
     // } else {
@@ -310,7 +312,7 @@ public class UserTestSectionServiceImpl implements UserTestSectionService {
     //
     // try {
     // if
-    // (SystemConfiguration.getInstance().getEnableUserTestSection().equals(IActionConstants.NO))
+    // (ConfigurationProperties.getInstance().getPropertyValue("enable.user.test.section").equals(IActionConstants.NO))
     // {
     // return sample_Tas;
     // } else {

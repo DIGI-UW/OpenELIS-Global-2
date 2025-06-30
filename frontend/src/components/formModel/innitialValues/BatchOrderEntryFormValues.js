@@ -5,7 +5,7 @@ const BatchOrderEntryFormValues = {
   panels: [
     {
       name: "",
-      testMaps: "",
+      testIds: "",
       panelId: "",
       panelOrder: 0,
     },

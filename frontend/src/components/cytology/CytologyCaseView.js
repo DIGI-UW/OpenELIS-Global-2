@@ -87,6 +87,7 @@ function CytologyCaseView() {
   const [reportTypes, setReportTypes] = useState([]);
   const [slidesToAdd, setSlidesToAdd] = useState(1);
   const [isConfirmOpen, setConfirmOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [reportParams, setReportParams] = useState({
     0: {
       submited: false,
@@ -108,6 +109,7 @@ function CytologyCaseView() {
   async function displayStatus(response) {
     var body = await response.json();
     console.debug(body);
+    setIsSubmitting(false);
     var status = response.status;
     setNotificationVisible(true);
     if (status == "200") {
@@ -173,6 +175,10 @@ function CytologyCaseView() {
     });
 
   const save = (e) => {
+    if (isSubmitting) {
+      return;
+    }
+    setIsSubmitting(true);
     let specimenAdequacy = null;
     if (pathologySampleInfo.specimenAdequacy) {
       specimenAdequacy = pathologySampleInfo.specimenAdequacy;
@@ -418,6 +424,7 @@ function CytologyCaseView() {
         <Column lg={16} md={8} sm={4}>
           <Button
             id="pathology_save"
+            disabled={isSubmitting}
             onClick={(e) => {
               e.preventDefault();
               save(e);
@@ -1705,6 +1712,7 @@ function CytologyCaseView() {
         <Column lg={16}>
           <Button
             id="pathology_save2"
+            disabled={isSubmitting}
             onClick={(e) => {
               e.preventDefault();
               save(e);

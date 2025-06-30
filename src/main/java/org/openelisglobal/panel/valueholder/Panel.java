@@ -27,6 +27,8 @@ public class Panel extends EnumValueItemImpl {
     private String id;
     private String panelName;
     private String description;
+    private String loinc;
+
     private int sortOrderInt;
     private ValueHolder localization = new ValueHolder();
 
@@ -58,6 +60,14 @@ public class Panel extends EnumValueItemImpl {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getLoinc() {
+        return loinc;
+    }
+
+    public void setLoinc(String loinc) {
+        this.loinc = loinc;
     }
 
     @Override

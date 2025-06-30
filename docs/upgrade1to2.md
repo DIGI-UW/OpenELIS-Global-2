@@ -79,9 +79,9 @@ This is the recommended method of upgrading
 ## Run Liquibase on New Server
 
 1. Download the
-   [old liquibase files](https://github.com/I-TECH-UW/Liquibase-Outdated) and if
+   [old liquibase files](https://github.com/DIGI-UW/Liquibase-Outdated) and if
    there is a custom branch, change to it
-   1. `git clone https://github.com/I-TECH-UW/Liquibase-Outdated.git`
+   1. `git clone https://github.com/DIGI-UW/Liquibase-Outdated.git`
    1. `cd Liquibase-Outdated`
    1. `git checkout <branch>`
 1. Run the liquibase command
@@ -162,9 +162,9 @@ This is the recommended method of upgrading
 ## Run Liquibase on New Server
 
 1. Download the
-   [old liquibase files](https://github.com/I-TECH-UW/Liquibase-Outdated) and if
+   [old liquibase files](https://github.com/DIGI-UW/Liquibase-Outdated) and if
    there is a custom branch, change to it
-   1. `git clone https://github.com/I-TECH-UW/Liquibase-Outdated.git`
+   1. `git clone https://github.com/DIGI-UW/Liquibase-Outdated.git`
    1. `cd Liquibase-Outdated`
    1. `git checkout <branch>`
 1. Run the liquibase command

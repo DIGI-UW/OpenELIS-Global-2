@@ -64,21 +64,21 @@ function PatientStatusReport(props) {
   const handleReportPrint = () => {
     let barcodesPdf =
       config.serverBaseUrl +
-      `/ReportPrint?report=${props.report}&type=patient&accessionDirect=${reportFormValues.form}&highAccessionDirect=${reportFormValues.to}&dateOfBirthSearchValue=&selPatient=${reportFormValues.selectedPatientId}&referringSiteId=${reportFormValues.referringSiteId}&referringSiteDepartmentId=${reportFormValues.referringSiteDepartmentId ? reportFormValues.referringSiteDepartmentId : ""}&onlyResults=${result}&_onlyResults=${checkbox}&dateType=${items}&lowerDateRange=${reportFormValues.startDate}&upperDateRange=${reportFormValues.endDate}`;
+      `/ReportPrint?report=${props.report}&type=patient&accessionDirect=${reportFormValues.from}&highAccessionDirect=${reportFormValues.to}&dateOfBirthSearchValue=&selPatient=${reportFormValues.selectedPatientId}&referringSiteId=${reportFormValues.referringSiteId}&referringSiteDepartmentId=${reportFormValues.referringSiteDepartmentId ? reportFormValues.referringSiteDepartmentId : ""}&onlyResults=${result}&_onlyResults=${checkbox}&dateType=${items}&lowerDateRange=${reportFormValues.startDate}&upperDateRange=${reportFormValues.endDate}`;
     window.open(barcodesPdf);
   };
 
-  function handlePatientIdFrom(e) {
+  function handleLabNoFrom(value) {
     setReportFormValues({
       ...reportFormValues,
-      form: e.target.value,
+      from: value,
     });
   }
 
-  function handlePatientIdTo(e) {
+  function handleLabNoTo(value) {
     setReportFormValues({
       ...reportFormValues,
-      to: e.target.value,
+      to: value,
     });
   }
 
@@ -248,9 +248,14 @@ function PatientStatusReport(props) {
                                 defaultMessage: "From",
                               })}
                               id={field.name}
-                              onChange={(e, rawValue) => {
-                                setFieldValue(field.name, rawValue);
-                                handlePatientIdFrom(e);
+                              onChange={(e, rawVal) => {
+                                setFieldValue(
+                                  field.name,
+                                  rawVal ? rawVal : e?.target?.value,
+                                );
+                                handleLabNoFrom(
+                                  rawVal ? rawVal : e?.target?.value,
+                                );
                               }}
                             />
                           )}
@@ -267,9 +272,14 @@ function PatientStatusReport(props) {
                                 defaultMessage: "To",
                               })}
                               id={field.name}
-                              onChange={(e, rawValue) => {
-                                setFieldValue(field.name, rawValue);
-                                handlePatientIdTo(e);
+                              onChange={(e, rawVal) => {
+                                setFieldValue(
+                                  field.name,
+                                  rawVal ? rawVal : e?.target?.value,
+                                );
+                                handleLabNoTo(
+                                  rawVal ? rawVal : e?.target?.value,
+                                );
                               }}
                             />
                           )}
@@ -435,7 +445,11 @@ function PatientStatusReport(props) {
                     <br />
                   </Column>
                   <Column lg={16} md={8} sm={4}>
-                    <Button type="button" onClick={handleReportPrint}>
+                    <Button
+                      data-cy="printableVersion"
+                      type="button"
+                      onClick={handleReportPrint}
+                    >
                       <FormattedMessage id="label.button.generatePrintableVersion" />
                     </Button>
                   </Column>

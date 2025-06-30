@@ -1,9 +1,9 @@
 package org.openelisglobal.result.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
@@ -63,7 +63,6 @@ public class AccessionResultsController extends BaseController {
     public ModelAndView showAccessionResults(HttpServletRequest request)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
         AccessionResultsForm form = new AccessionResultsForm();
-        System.out.println("AccessionResultsController:");
         request.getSession().setAttribute(SAVE_DISABLED, TRUE);
         form.setReferralReasons(DisplayListService.getInstance().getList(DisplayListService.ListType.REFERRAL_REASONS));
         form.setRejectReasons(DisplayListService.getInstance()

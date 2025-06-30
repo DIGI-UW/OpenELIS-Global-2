@@ -15,13 +15,12 @@ public class MassIndexerRestController {
     MassIndexerService massIndexerService;
 
     @GetMapping("/reindex")
-    public ResponseEntity<String> reindex() {
+    public ResponseEntity<Boolean> reindex() {
         try {
             massIndexerService.reindex();
-            return ResponseEntity.ok("Reindexing completed successfully.");
+            return ResponseEntity.ok(true);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error occurred during reindexing: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(false);
         }
     }
 }

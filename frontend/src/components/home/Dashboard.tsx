@@ -22,7 +22,8 @@ import {
   Tag,
 } from "@carbon/react";
 import "./Dashboard.css";
-import { Minimize, Maximize } from "@carbon/react/icons";
+import { Minimize, Maximize, ArrowLeft, ArrowRight } from "@carbon/react/icons";
+import { Copy } from "@carbon/icons-react";
 import { useState, useEffect, useRef, useContext } from "react";
 import {
   getFromOpenElisServer,
@@ -94,11 +95,13 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const [loading, setLoading] = useState(true);
   const componentMounted = useRef(true);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(100);
   const [selectedTile, setSelectedTile] = useState<Tile>(null);
   const [nextPage, setNextPage] = useState(null);
   const [previousPage, setPreviousPage] = useState(null);
   const [pagination, setPagination] = useState(false);
+  const [currentApiPage, setCurrentApiPage] = useState(null);
+  const [totalApiPages, setTotalApiPages] = useState(null);
   const [url, setUrl] = useState("");
   const { userSessionDetails } = useContext(
     UserSessionDetailsContext,
@@ -209,6 +212,8 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       const { totalPages, currentPage } = res.paging;
       if (totalPages > 1) {
         setPagination(true);
+        setCurrentApiPage(currentPage);
+        setTotalApiPages(totalPages);
         if (parseInt(currentPage) < parseInt(totalPages)) {
           setNextPage(parseInt(currentPage) + 1);
         } else {
@@ -355,7 +360,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   };
 
   const handleMaximizeClick = (tile) => {
-    console.log("Icon clicked!");
     if (
       testSections?.length > 0 ||
       hasRole(userSessionDetails, "Global Administrator")
@@ -407,22 +411,39 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       return (
         <TableCell key={cell.id}>
           <>
-            {selectedTile.type == "ORDERS_IN_PROGRESS" ||
-            selectedTile.type == "ORDERS_READY_FOR_VALIDATION" ? (
-              <Link
-                style={{ color: "blue" }}
-                href={
-                  selectedTile.type == "ORDERS_IN_PROGRESS"
-                    ? "/result?type=order&doRange=false&accessionNumber=" +
-                      cell.value
-                    : "validation?type=order&accessionNumber=" + cell.value
-                }
-              >
-                <u>{convertAlphaNumLabNumForDisplay(cell.value)}</u>
-              </Link>
-            ) : (
-              <> {convertAlphaNumLabNumForDisplay(cell.value)}</>
-            )}
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <Button
+                onClick={async () => {
+                  if ("clipboard" in navigator) {
+                    return await navigator.clipboard.writeText(cell.value);
+                  } else {
+                    return document.execCommand("copy", true, cell.value);
+                  }
+                }}
+                kind="ghost"
+                iconDescription={intl.formatMessage({
+                  id: "instructions.copy.labnum",
+                })}
+                hasIconOnly
+                renderIcon={Copy}
+              />
+              {selectedTile.type == "ORDERS_IN_PROGRESS" ||
+              selectedTile.type == "ORDERS_READY_FOR_VALIDATION" ? (
+                <Link
+                  style={{ color: "blue" }}
+                  href={
+                    selectedTile.type == "ORDERS_IN_PROGRESS"
+                      ? "/result?type=order&doRange=false&accessionNumber=" +
+                        cell.value
+                      : "validation?type=order&accessionNumber=" + cell.value
+                  }
+                >
+                  <u>{convertAlphaNumLabNumForDisplay(cell.value)}</u>
+                </Link>
+              ) : (
+                <> {convertAlphaNumLabNumForDisplay(cell.value)}</>
+              )}
+            </div>
           </>
         </TableCell>
       );
@@ -482,7 +503,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       {selectedTile == null ? (
         <div className="home-dashboard-container">
           {tileList.map((tile, index) => (
-            <ClickableTile key={index} className="dashboard-tile">
+            <ClickableTile
+              key={index}
+              className="dashboard-tile"
+              onClick={() => handleMaximizeClick(tile)}
+            >
               <h3 className="tile-title">{tile.title}</h3>
               <p className="tile-subtitle">{tile.subTitle}</p>
               <p className="tile-value">{tile.value}</p>
@@ -492,7 +517,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                   onClick={() => handleMaximizeClick(tile)}
                   className="icon-wrapper"
                 >
-                  <Maximize size={20} className="clickable-icon" />
+                  <Maximize
+                    id="maximizeIcon"
+                    size={20}
+                    className="clickable-icon"
+                  />
                 </div>
               </div>
             </ClickableTile>
@@ -509,7 +538,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                 {
                   <div className="tile-icon">
                     <div onClick={handleMinimizeClick} className="icon-wrapper">
-                      <Minimize size={20} className="clickable-icon" />
+                      <Minimize
+                        id="minimizeIcon"
+                        size={20}
+                        className="clickable-icon"
+                      />
                     </div>
                   </div>
                 }
@@ -533,24 +566,38 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                   <Column lg={16} md={8} sm={4}>
                     {pagination && (
                       <Grid>
-                        <Column lg={11} />
-                        <Column lg={2}>
-                          <Button
-                            id="loadpreviousresults"
-                            onClick={loadPreviousResultsPage}
-                            disabled={previousPage != null ? false : true}
-                          >
-                            <FormattedMessage id="button.label.loadprevious" />
-                          </Button>
-                        </Column>
-                        <Column lg={2}>
-                          <Button
-                            id="loadnextresults"
-                            onClick={loadNextResultsPage}
-                            disabled={nextPage != null ? false : true}
-                          >
-                            <FormattedMessage id="button.label.loadnext" />
-                          </Button>
+                        <Column lg={14} />
+                        <Column
+                          lg={2}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: "10px",
+                            width: "110%",
+                          }}
+                        >
+                          <Link>
+                            {currentApiPage} / {totalApiPages}
+                          </Link>
+                          <div style={{ display: "flex", gap: "10px" }}>
+                            <Button
+                              hasIconOnly
+                              id="loadpreviousresults"
+                              onClick={loadPreviousResultsPage}
+                              disabled={previousPage != null ? false : true}
+                              renderIcon={ArrowLeft}
+                              iconDescription="previous"
+                            ></Button>
+                            <Button
+                              hasIconOnly
+                              id="loadnextresults"
+                              onClick={loadNextResultsPage}
+                              disabled={nextPage != null ? false : true}
+                              renderIcon={ArrowRight}
+                              iconDescription="next"
+                            ></Button>
+                          </div>
                         </Column>
                       </Grid>
                     )}
@@ -562,7 +609,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                               userSessionDetails,
                               "Global Administrator",
                             ) ? (
-                              <TabList aria-label="List of tabs" contained>
+                              <TabList
+                                style={{ width: "100%" }}
+                                aria-label="List of tabs"
+                                contained
+                              >
                                 <Tab
                                   onClick={() => setSelectedTestSection("all")}
                                 >
@@ -583,7 +634,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                                 })}
                               </TabList>
                             ) : (
-                              <TabList aria-label="List of tabs" contained>
+                              <TabList
+                                style={{ width: "100%" }}
+                                aria-label="List of tabs"
+                                contained
+                              >
                                 {testSections?.map((item, id) => {
                                   return (
                                     <Tab

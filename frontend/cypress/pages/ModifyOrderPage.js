@@ -8,18 +8,25 @@ class ModifyOrderPage {
   enterAccessionNo(accessionNo) {
     cy.enterText("#labNumber", accessionNo);
   }
-
   clickSubmitButton() {
-    return cy
-      .getElement(
-        "div[class='cds--lg:col-span-2 cds--css-grid-column'] button[type='submit']",
-      )
+    cy.getElement("[data-cy='submit-order']")
       .should("be.visible")
-      .click();
+      .click({ force: true });
+  }
+  clickSubmitAccessionButton() {
+    cy.get("[data-cy='submit-button']").should("be.visible").click();
   }
 
   clickNextButton() {
-    return cy.get(".forwardButton").should("be.visible").click();
+    return cy.get("[data-cy='next-button']").should("be.visible").click();
+  }
+
+  selectSerumSample() {
+    cy.get("#sampleId_0").select("Serum");
+  }
+
+  checkRemeberSiteAndRequester() {
+    cy.contains("span", "Remember site and requester").click();
   }
 
   checkProgramButton() {
@@ -27,24 +34,37 @@ class ModifyOrderPage {
   }
 
   assignValues() {
-    cy.get(
-      ":nth-child(1) > :nth-child(4) > .cds--form-item > .cds--checkbox-label",
-    ).click();
+    // Wait for table to be visible first
+    cy.get("table").should("be.visible");
+    // Then find the checkbox within table cells
+    cy.get('table input[type="checkbox"][name="add"]')
+      .first()
+      .click({ force: true });
   }
 
   clickPrintBarcodeButton() {
-    return cy.get(".orderEntrySuccessMsg > :nth-child(3) > .cds--btn").click();
+    return cy.get("[data-cy='printBarCode']").should("be.visible");
   }
   clickSearchPatientButton() {
-    return cy.get(":nth-child(12) > .cds--btn").click({ force: true });
+    return cy.get("[data-cy='searchPatientButton']").click();
   }
 
   clickRespectivePatient() {
+    // Wait for the table to be visible first
+    cy.get("table").should("be.visible");
+
+    // Wait for at least one radio button to be present
+    cy.get('input[type="radio"][name="radio-group"]').should("exist");
+
+    // Click the first radio button with a more specific selector
     return cy
-      .get(
-        ":nth-child(2) > :nth-child(1) > .cds--radio-button-wrapper > .cds--radio-button__label > .cds--radio-button__appearance",
-      )
-      .click();
+      .get("tbody tr")
+      .first()
+      .within(() => {
+        cy.get('input[type="radio"][name="radio-group"]')
+          .should("exist")
+          .click({ force: true });
+      });
   }
 }
 

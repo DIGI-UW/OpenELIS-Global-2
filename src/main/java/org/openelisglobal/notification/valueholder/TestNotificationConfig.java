@@ -2,25 +2,27 @@ package org.openelisglobal.notification.valueholder;
 
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
+import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.List;
-import javax.persistence.CascadeType;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
-import javax.validation.Valid;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption.NotificationMethod;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption.NotificationNature;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption.NotificationPersonType;
+import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 
 @Entity
@@ -93,6 +95,10 @@ public class TestNotificationConfig extends NotificationConfig<Test> {
         return test.getId();
     }
 
+    public void setTestId(String testId) {
+        this.test = SpringContext.getBean(TestService.class).get(testId);
+    }
+
     public void setTest(Test test) {
         this.test = test;
     }
@@ -107,6 +113,9 @@ public class TestNotificationConfig extends NotificationConfig<Test> {
 
     @Override
     public List<NotificationConfigOption> getOptions() {
+        if (options == null) {
+            options = new ArrayList<>();
+        }
         return options;
     }
 
@@ -155,5 +164,21 @@ public class TestNotificationConfig extends NotificationConfig<Test> {
     public NotificationConfigOption getProviderSMS() {
         return getOptionFor(NotificationNature.RESULT_VALIDATION, NotificationMethod.SMS,
                 NotificationPersonType.PROVIDER);
+    }
+
+    public void setPatientEmail(NotificationConfigOption option) {
+        getOptions().add(option);
+    }
+
+    public void setPatientSMS(NotificationConfigOption option) {
+        getOptions().add(option);
+    }
+
+    public void setProviderEmail(NotificationConfigOption option) {
+        getOptions().add(option);
+    }
+
+    public void setProviderSMS(NotificationConfigOption option) {
+        getOptions().add(option);
     }
 }

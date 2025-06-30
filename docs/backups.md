@@ -43,7 +43,7 @@ like to continue using it.
 # Continuous Backups
 
 Currently backups are being handled by a
-[script](https://github.com/I-TECH-UW/OpenELIS-Global-2/blob/develop/install/installerTemplate/linux/templates/DatabaseBackup.pl)
+[script](https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/install/installerTemplate/linux/templates/DatabaseBackup.pl)
 that takes a logical backup periodically and copies them offsite. This script
 must be configured to have a destination. This script will be getting replaced
 in 2.7 to use physical backups with continuous WAL archiving that are similarly

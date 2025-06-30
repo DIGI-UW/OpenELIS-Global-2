@@ -26,10 +26,15 @@ body {
   margin-left: 0px;
   overflow-y: auto;
   padding-left: 0px;
-  width: 30%;
+  width: 100%;
   z-index: 10;
   position: absolute;
   background-color: #ffffff;
+}
+
+.suggestions-container {
+  position: relative;
+  width: 100%;
 }
 
 .suggestions li {

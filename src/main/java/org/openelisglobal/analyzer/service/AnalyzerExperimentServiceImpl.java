@@ -18,7 +18,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.dao.AnalyzerExperimentDAO;
 import org.openelisglobal.analyzer.valueholder.AnalyzerExperiment;
-import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
@@ -37,14 +36,17 @@ public class AnalyzerExperimentServiceImpl extends AuditableBaseObjectServiceImp
     }
 
     @Override
-    protected BaseDAO<AnalyzerExperiment, Integer> getBaseObjectDAO() {
+    protected AnalyzerExperimentDAO getBaseObjectDAO() {
         return baseDAO;
     }
 
     @Override
     public Map<String, String> getWellValuesForId(Integer id) throws IOException {
         Map<String, String> wellValues = new HashMap<>();
-        AnalyzerExperiment analyzerExperiment = get(id);
+        AnalyzerExperiment analyzerExperiment = getBaseObjectDAO().get(id).orElse(null);
+        if (analyzerExperiment == null) {
+            return wellValues;
+        }
         BufferedReader reader = new BufferedReader(
                 new InputStreamReader(new ByteArrayInputStream(analyzerExperiment.getFile())));
         String[] columns = reader.readLine().split(",");

@@ -18,8 +18,9 @@ import {
   TextArea,
   Loading,
   InlineLoading,
+  Link,
 } from "@carbon/react";
-import { Launch, Subtract } from "@carbon/react/icons";
+import { Launch, Subtract, ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
@@ -64,6 +65,12 @@ function PathologyCaseView() {
   const [blocksToAdd, setBlocksToAdd] = useState(1);
   const [slidesToAdd, setSlidesToAdd] = useState(1);
   const [loadingReport, setLoadingReport] = useState(false);
+  const [nextPage, setNextPage] = useState(null);
+  const [previousPage, setPreviousPage] = useState(null);
+  const [pagination, setPagination] = useState(false);
+  const [currentApiPage, setCurrentApiPage] = useState(null);
+  const [totalApiPages, setTotalApiPages] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [reportParams, setReportParams] = useState({
     0: {
       submited: false,
@@ -74,6 +81,7 @@ function PathologyCaseView() {
   async function displayStatus(response) {
     var body = await response.json();
     console.debug(body);
+    setIsSubmitting(false);
     var status = response.status;
     setNotificationVisible(true);
     if (status == "200") {
@@ -139,6 +147,10 @@ function PathologyCaseView() {
     });
 
   const save = (e) => {
+    if (isSubmitting) {
+      return;
+    }
+    setIsSubmitting(true);
     let submitValues = {
       assignedTechnicianId: pathologySampleInfo.assignedTechnicianId,
       assignedPathologistId: pathologySampleInfo.assignedPathologistId,
@@ -224,6 +236,9 @@ function PathologyCaseView() {
 
   useEffect(() => {
     componentMounted.current = true;
+    setNextPage(null);
+    setPreviousPage(null);
+    setPagination(false);
     getFromOpenElisServer("/rest/displayList/PATHOLOGY_STATUS", setStatuses);
     getFromOpenElisServer(
       "/rest/displayList/PATHOLOGY_TECHNIQUES",
@@ -243,8 +258,8 @@ function PathologyCaseView() {
       setImmunoHistoChemistryTests,
     );
     getFromOpenElisServer(
-      "/rest/displayList/PATHOLOGIST_CONCLUSIONS",
-      setConclusions,
+      "/rest/paginatedDisplayList/PATHOLOGIST_CONCLUSIONS",
+      loadConclusionData,
     );
     getFromOpenElisServer("/rest/users", setTechnicianUsers);
     getFromOpenElisServer("/rest/users/Pathologist", setPathologistUsers);
@@ -257,6 +272,58 @@ function PathologyCaseView() {
       componentMounted.current = false;
     };
   }, []);
+
+  const loadNextCOnclusionsPage = () => {
+    setLoading(true);
+    getFromOpenElisServer(
+      "/rest/paginatedDisplayList/PATHOLOGIST_CONCLUSIONS" +
+        "?page=" +
+        nextPage,
+      loadConclusionData,
+    );
+  };
+
+  const loadPreviousConclusionsPage = () => {
+    setLoading(true);
+    getFromOpenElisServer(
+      "/rest/paginatedDisplayList/PATHOLOGIST_CONCLUSIONS" +
+        "?page=" +
+        previousPage,
+      loadConclusionData,
+    );
+  };
+
+  const loadConclusionData = (res) => {
+    // If the response object is not null and has displayItems array with length greater than 0 then set it as data.
+    if (res && res.displayItems && res.displayItems.length > 0) {
+      setConclusions(res.displayItems);
+    } else {
+      setConclusions([]);
+    }
+
+    // Sets next and previous page numbers based on the total pages and current page number.
+    if (res && res.paging) {
+      const { totalPages, currentPage } = res.paging;
+      if (totalPages > 1) {
+        setPagination(true);
+        setCurrentApiPage(currentPage);
+        setTotalApiPages(totalPages);
+        if (parseInt(currentPage) < parseInt(totalPages)) {
+          setNextPage(parseInt(currentPage) + 1);
+        } else {
+          setNextPage(null);
+        }
+
+        if (parseInt(currentPage) > 1) {
+          setPreviousPage(parseInt(currentPage) - 1);
+        } else {
+          setPreviousPage(null);
+        }
+      }
+    }
+
+    setLoading(false);
+  };
 
   return (
     <>
@@ -314,6 +381,7 @@ function PathologyCaseView() {
         <Column lg={16} md={8} sm={4}>
           <Button
             id="pathology_save"
+            disabled={isSubmitting}
             onClick={(e) => {
               e.preventDefault();
               save(e);
@@ -1040,6 +1108,35 @@ function PathologyCaseView() {
             </Column>
             <Column lg={16} md={8} sm={4}>
               <Grid fullWidth={true} className="gridBoundary">
+                {pagination && (
+                  <Column lg={16} md={8} sm={4}>
+                    <Link>
+                      {currentApiPage} / {totalApiPages}
+                    </Link>
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <Button
+                        hasIconOnly
+                        iconDescription="previous"
+                        disabled={previousPage != null ? false : true}
+                        onClick={loadPreviousConclusionsPage}
+                        renderIcon={ArrowLeft}
+                        size="sm"
+                      />
+                      <Button
+                        hasIconOnly
+                        iconDescription="next"
+                        disabled={nextPage != null ? false : true}
+                        renderIcon={ArrowRight}
+                        onClick={loadNextCOnclusionsPage}
+                        size="sm"
+                      />
+                    </div>
+                  </Column>
+                )}
+                <Column lg={16}>
+                  <br />
+                  <br />
+                </Column>
                 <Column lg={4} md={8} sm={4}>
                   {initialMount && (
                     <FilterableMultiSelect
@@ -1177,6 +1274,7 @@ function PathologyCaseView() {
         <Column lg={16}>
           <Button
             id="pathology_save2"
+            disabled={isSubmitting}
             onClick={(e) => {
               e.preventDefault();
               save(e);

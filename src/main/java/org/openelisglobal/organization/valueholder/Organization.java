@@ -14,10 +14,11 @@
 package org.openelisglobal.organization.valueholder;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.constraints.Pattern;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
-import javax.validation.constraints.Pattern;
 import org.hibernate.validator.constraints.URL;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.common.valueholder.EnumValueItemImpl;
@@ -53,6 +54,7 @@ public class Organization extends EnumValueItemImpl implements SimpleBaseEntity<
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String multipleUnit;
 
+    @JsonIgnoreProperties({ "organization" })
     private ValueHolderInterface organization;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)

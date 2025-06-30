@@ -21,7 +21,8 @@
             <column name="TEST_SECTION_ID" precision="10" scale="0" />
         </many-to-one>
         <many-to-one name="label"
-            class="org.openelisglobal.label.valueholder.Label" fetch="select" lazy="false">
+            class="org.openelisglobal.label.valueholder.Label" fetch="select"
+            lazy="false">
             <column name="LABEL_ID" precision="10" scale="0" />
         </many-to-one>
         <many-to-one name="localizedTestName"
@@ -46,7 +47,8 @@
             <column name="SCRIPTLET_ID" precision="10" scale="0" />
         </many-to-one>
         <many-to-one name="method"
-            class="org.openelisglobal.method.valueholder.Method" fetch="select" lazy="false">
+            class="org.openelisglobal.method.valueholder.Method" fetch="select"
+            lazy="false">
             <column name="METHOD_ID" precision="10" scale="0" />
         </many-to-one>
         <many-to-one name="testTrailer"
@@ -115,19 +117,21 @@
         <property name="guid" type="java.lang.String" column="guid" />
         <property name="name" type="java.lang.String" column="name" />
         <many-to-one name="defaultTestResult"
-            class="org.openelisglobal.testresult.valueholder.TestResult" fetch="select" lazy="false">
+            class="org.openelisglobal.testresult.valueholder.TestResult"
+            fetch="select" lazy="false">
             <column name="default_test_result_id" precision="10" scale="0" />
         </many-to-one>
         <property name="inLabOnly" type="java.lang.Boolean"
             column="in_lab_only" />
 
-        <property name="antimicrobialResistance" type="java.lang.Boolean"
-            column="antimicrobial_resistance" />
+        <property name="antimicrobialResistance"
+            type="java.lang.Boolean" column="antimicrobial_resistance" />
     </class>
-<!-- 	<query name="test.getNext"> -->
-<!-- 		from Test t order by t.testSection.testSectionName, t.testName -->
-<!-- 	</query> -->
-<!-- 	<query name="test.getPrevious"> -->
-<!-- 		from Test t order by t.testSection.testSectionName desc, t.testName desc -->
-<!-- 	</query> -->
+    <!-- <query name="test.getNext"> -->
+    <!-- from Test t order by t.testSection.testSectionName, t.testName -->
+    <!-- </query> -->
+    <!-- <query name="test.getPrevious"> -->
+    <!-- from Test t order by t.testSection.testSectionName desc, t.testName
+        desc -->
+    <!-- </query> -->
 </hibernate-mapping>

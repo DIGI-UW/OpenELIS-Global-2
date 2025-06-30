@@ -10,6 +10,7 @@ import {
   LocationFilled,
 } from "@carbon/icons-react";
 import { Select, SelectItem } from "@carbon/react";
+import HelpMenu from "./HelpMenu";
 import React, {
   createRef,
   useContext,
@@ -59,22 +60,26 @@ function OEHeader(props) {
     menu_billing: { menu: {}, childMenus: [] },
     menu_nonconformity: { menu: {}, childMenus: [] },
   });
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showRead, setShowRead] = useState(false);
   const [unReadNotifications, setUnReadNotifications] = useState([]);
   const [readNotifications, setReadNotifications] = useState([]);
   const [searchBar, setSearchBar] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   scrollRef.current = window.scrollY;
   useLayoutEffect(() => {
     window.scrollTo(0, scrollRef.current);
   }, []);
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/menu", (res) => {
-      handleMenuItems("menu", res);
-    });
-  }, []);
+    userSessionDetails.authenticated
+      ? getFromOpenElisServer("/rest/menu", (res) => {
+          handleMenuItems("menu", res);
+        })
+      : console.log("User not authenticated, not getting menu");
+  }, [userSessionDetails.authenticated]);
 
   const panelSwitchLabel = () => {
     return userSessionDetails.authenticated ? "User" : "Lang";
@@ -88,12 +93,11 @@ function OEHeader(props) {
     }
   };
 
-  const toggleSlideOver = () => {
-    setIsOpen(!isOpen);
-  };
-
-  const clickPanelSwitch = () => {
-    setSwitchCollapsed(!switchCollapsed);
+  const handlePanelToggle = (panel) => {
+    setSearchBar(panel === "search");
+    setNotificationsOpen(panel === "notifications");
+    setSwitchCollapsed(panel !== "user");
+    setHelpOpen(panel === "help");
   };
 
   const getNotifications = async () => {
@@ -178,9 +182,6 @@ function OEHeader(props) {
       </>
     );
   };
-  const handleSearch = () => {
-    setSearchBar(!searchBar);
-  };
   const generateMenuItems = (menuItem, index, level, path) => {
     if (menuItem.menu.isActive) {
       if (level === 0 && menuItem.childMenus.length > 0) {
@@ -240,7 +241,11 @@ function OEHeader(props) {
         );
       } else {
         return (
-          <span id={menuItem.menu.elementId} key={path}>
+          <span
+            data-cy={`${menuItem.menu.elementId.replace(/[^\w\s]/gi, "_")}`}
+            id={menuItem.menu.elementId}
+            key={path}
+          >
             <SideNavMenuItem
               className="reduced-padding-nav-menu-item"
               href={menuItem.menu.actionURL}
@@ -301,6 +306,7 @@ function OEHeader(props) {
     const marginValue = (level - 1) * 0.5 + "rem";
     return (
       <button
+        data-cy="single-sidenav-button"
         className={"custom-sidenav-button"}
         style={{ width: "100%", marginLeft: marginValue }}
         id={menuItem.menu.elementId + "_nav"}
@@ -321,6 +327,7 @@ function OEHeader(props) {
     const marginValue = (level - 1) * 0.5 + "rem";
     return (
       <button
+        data-cy="sidenav-button"
         id={menuItem.menu.displayKey + "_dropdown"}
         className={"custom-sidenav-button"}
         style={{ marginLeft: marginValue }}
@@ -358,6 +365,7 @@ function OEHeader(props) {
         </button>
         {menuItem.childMenus.length > 0 && (
           <button
+            data-cy={`sidenav-button-${menuItem.menu.elementId}`}
             id={menuItem.menu.displayKey + "_dropdown"}
             className="custom-sidenav-button"
             onClick={(e) => {
@@ -427,6 +435,7 @@ function OEHeader(props) {
                 <Header id="mainHeader" className="mainHeader" aria-label="">
                   {userSessionDetails.authenticated && (
                     <HeaderMenuButton
+                      data-cy="menuButton"
                       aria-label={
                         isSideNavExpanded ? "Close menu" : "Open menu"
                       }
@@ -450,8 +459,11 @@ function OEHeader(props) {
                       <>
                         {searchBar && <SearchBar />}
                         <HeaderGlobalAction
+                          id="search-Icon"
                           aria-label="Search"
-                          onClick={handleSearch}
+                          onClick={() =>
+                            handlePanelToggle(searchBar ? "" : "search")
+                          }
                         >
                           {!searchBar ? (
                             <Search size={20} />
@@ -460,8 +472,13 @@ function OEHeader(props) {
                           )}
                         </HeaderGlobalAction>
                         <HeaderGlobalAction
+                          id="notification-Icon"
                           aria-label="Notifications"
-                          onClick={toggleSlideOver}
+                          onClick={() =>
+                            handlePanelToggle(
+                              notificationsOpen ? "" : "notifications",
+                            )
+                          }
                         >
                           <div
                             style={{
@@ -469,29 +486,33 @@ function OEHeader(props) {
                               display: "inline-block",
                             }}
                           >
-                            <Notification size={20} />
+                            {!notificationsOpen ? (
+                              <Notification size={20} />
+                            ) : (
+                              <Close size={20} />
+                            )}
                             {unReadNotifications?.length > 0 && (
                               <span
                                 style={{
                                   position: "absolute",
                                   top: "-5px",
                                   right: "-5px",
-                                  backgroundColor: "#3A6B8D",
+                                  backgroundColor: "red",
                                   color: "white",
                                   borderRadius: "50%",
-                                  width: "16px",
-                                  height: "16px",
+                                  width: "22px",
+                                  height: "22px",
                                   display: "flex",
                                   alignItems: "center",
                                   justifyContent: "center",
-                                  fontSize: "10px",
+                                  fontSize: "12px",
                                   animation: "pulse 5s infinite",
                                   opacity: 1,
                                   transition:
                                     "background-color 0.3s ease-in-out",
                                 }}
                               >
-                                {unReadNotifications?.length}
+                                {unReadNotifications.length}
                               </span>
                             )}
                           </div>
@@ -499,12 +520,19 @@ function OEHeader(props) {
                       </>
                     )}
                     <HeaderGlobalAction
+                      id="user-Icon"
                       aria-label={panelSwitchLabel()}
-                      onClick={clickPanelSwitch}
+                      onClick={() =>
+                        handlePanelToggle(switchCollapsed ? "user" : "")
+                      }
                       ref={userSwitchRef}
                     >
                       {panelSwitchIcon()}
                     </HeaderGlobalAction>
+                    <HelpMenu
+                      helpOpen={helpOpen}
+                      handlePanelToggle={handlePanelToggle}
+                    />
                   </HeaderGlobalBar>
                   <HeaderPanel
                     aria-label="Header Panel"
@@ -533,13 +561,11 @@ function OEHeader(props) {
                             </li>
                           )}
                           <li
+                            data-cy="logOut"
                             className="userDetails clickableUserDetails"
                             onClick={logout}
                           >
-                            <Logout
-                              id="sign-out"
-                              style={{ marginRight: "3px" }}
-                            />
+                            <Logout style={{ marginRight: "3px" }} />
                             <FormattedMessage id="header.label.logout" />
                           </li>
                         </>
@@ -559,7 +585,9 @@ function OEHeader(props) {
                           value={props.intl.locale}
                         >
                           <SelectItem text="English" value="en" />
-                          <SelectItem text="French" value="fr" />
+                          <SelectItem text="Français" value="fr" />
+                          <SelectItem text="Español" value="es" />
+                          <SelectItem text="Indonesia" value="id" />
                         </Select>
                       </li>
                       <li className="userDetails">
@@ -580,15 +608,12 @@ function OEHeader(props) {
                       >
                         <SideNavItems>
                           {menus["menu"].map((childMenuItem, index) => {
-                            // ignore the Home Menu in the new UI
-                            if (childMenuItem.menu.elementId != "menu_home") {
-                              return generateMenuItems(
-                                childMenuItem,
-                                index,
-                                0,
-                                "$.menu[" + index + "]",
-                              );
-                            }
+                            return generateMenuItems(
+                              childMenuItem,
+                              index,
+                              0,
+                              "$.menu[" + index + "]",
+                            );
                           })}
                         </SideNavItems>
                       </SideNav>
@@ -599,8 +624,8 @@ function OEHeader(props) {
             />
             <div style={{ flex: 1 }}>
               <SlideOver
-                open={isOpen}
-                setOpen={setIsOpen}
+                open={notificationsOpen}
+                setOpen={(open) => setNotificationsOpen(open)}
                 slideFrom="right"
                 title="Notifications"
               >

@@ -1,8 +1,8 @@
 package org.openelisglobal.validation.constraintvalidator;
 
-import javax.annotation.PostConstruct;
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
+import jakarta.annotation.PostConstruct;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
 import org.openelisglobal.common.util.ConfigurationListener;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;

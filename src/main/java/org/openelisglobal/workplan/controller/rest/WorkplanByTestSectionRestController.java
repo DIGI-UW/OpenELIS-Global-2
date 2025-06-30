@@ -1,9 +1,9 @@
 package org.openelisglobal.workplan.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -66,7 +66,7 @@ public class WorkplanByTestSectionRestController extends WorkplanRestController 
     @Autowired
     private UserService userService;
 
-    @GetMapping(value = "/rest/workplan-by-test-section", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/rest/WorkPlanByTestSection", produces = MediaType.APPLICATION_JSON_VALUE)
     public WorkplanForm showWorkPlanByTestSection(HttpServletRequest request,
             @RequestParam(name = "test_section_id", defaultValue = "0") String testSectionId)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {

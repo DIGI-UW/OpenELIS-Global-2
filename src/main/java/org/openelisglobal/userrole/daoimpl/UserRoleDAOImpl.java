@@ -16,6 +16,7 @@
 package org.openelisglobal.userrole.daoimpl;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.hibernate.HibernateException;
@@ -107,5 +108,21 @@ public class UserRoleDAOImpl extends BaseDAOImpl<UserRole, UserRolePK> implement
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in UserRoleDAOImpl userInRole()", e);
         }
+    }
+
+    @Override
+    public List<String> getUserIdsForRole(String roleName) {
+        List<String> userIds = new ArrayList<>();
+        try {
+            String sql = "select cast(system_user_id AS varchar) from system_user_role sur join system_role as sr on sr.id = sur.role_id where sr.name = :roleName";
+            NativeQuery query = entityManager.unwrap(Session.class).createNativeQuery(sql);
+            query.setParameter("roleName", roleName);
+
+            userIds = query.list();
+        } catch (HibernateException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in UserRoleDAOImpl userInRole()", e);
+        }
+        return userIds;
     }
 }

@@ -65,14 +65,6 @@ function OrganizationManagement() {
   const [fromRecordCount, setFromRecordCount] = useState("");
   const [toRecordCount, setToRecordCount] = useState("");
   const [paging, setPaging] = useState(1);
-  const [
-    searchedOrganizationManagamentList,
-    setSearchedOrganizationManagamentList,
-  ] = useState();
-  const [
-    searchedOrganizationManagamentListShow,
-    setSearchedOrganizationManagamentListShow,
-  ] = useState([]);
   const [organizationsManagmentList, setOrganizationsManagmentList] =
     useState();
   const [organizationsManagmentListShow, setOrganizationsManagmentListShow] =
@@ -93,11 +85,13 @@ function OrganizationManagement() {
   const handleNextPage = () => {
     setPaging((pager) => Math.max(pager, 2));
     setStartingRecNo(fromRecordCount);
+    setSelectedRowIds([]);
   };
 
   const handlePreviousPage = () => {
     setPaging((pager) => Math.max(pager - 1, 1));
     setStartingRecNo(Math.max(fromRecordCount, 1));
+    setSelectedRowIds([]);
   };
 
   const handlePanelSearchChange = (event) => {
@@ -157,7 +151,7 @@ function OrganizationManagement() {
     if (!res) {
       setLoading(true);
     } else {
-      setSearchedOrganizationManagamentList(res);
+      setOrganizationsManagmentList(res);
     }
   };
 
@@ -171,7 +165,7 @@ function OrganizationManagement() {
   useEffect(() => {
     if (organizationsManagmentList) {
       const newOrganizationsManagementList =
-        organizationsManagmentList.modelMap.form.menuList.map((item) => {
+        organizationsManagmentList.menuList.map((item) => {
           return {
             id: item.id,
             orgName: item.organizationName,
@@ -180,52 +174,21 @@ function OrganizationManagement() {
               : "",
             orgPrefix: item.shortName || "",
             active: item.isActive || "",
-            streetAddress: item.internetAddress || "",
-            city: item.state || "",
-            cliaNumber: item.cliaNumber || "",
+            internetAddress: item.internetAddress || "",
+            streetAddress: item.streetAddress || "",
+            city: item.city || "",
+            cliaNumber: item.cliaNum || "",
           };
         });
       const newOrganizationsManagementListArray = Object.values(
         newOrganizationsManagementList,
       );
-      setFromRecordCount(
-        organizationsManagmentList.modelMap.form.fromRecordCount,
-      );
-      setToRecordCount(organizationsManagmentList.modelMap.form.toRecordCount);
-      setTotalRecordCount(
-        organizationsManagmentList.modelMap.form.totalRecordCount,
-      );
+      setFromRecordCount(organizationsManagmentList.fromRecordCount);
+      setToRecordCount(organizationsManagmentList.toRecordCount);
+      setTotalRecordCount(organizationsManagmentList.totalRecordCount);
       setOrganizationsManagmentListShow(newOrganizationsManagementListArray);
     }
   }, [organizationsManagmentList]);
-
-  useEffect(() => {
-    if (searchedOrganizationManagamentList) {
-      const newOrganizationsManagementList =
-        searchedOrganizationManagamentList.modelMap.form.menuList.map(
-          (item) => {
-            return {
-              id: item.id,
-              orgName: item.organizationName,
-              parentOrg: item.organization
-                ? item.organization.organizationName
-                : "",
-              orgPrefix: item.shortName || "",
-              active: item.isActive || "",
-              streetAddress: item.internetAddress || "",
-              city: item.state || "",
-              cliaNumber: item.cliaNumber || "",
-            };
-          },
-        );
-      const newOrganizationsManagementListArray = Object.values(
-        newOrganizationsManagementList,
-      );
-      setSearchedOrganizationManagamentListShow(
-        newOrganizationsManagementListArray,
-      );
-    }
-  }, [searchedOrganizationManagamentList]);
 
   useEffect(() => {
     const selectedIDsObject = {
@@ -236,6 +199,11 @@ function OrganizationManagement() {
   }, [selectedRowIds, organizationsManagmentListShow]);
 
   useEffect(() => {
+    if (selectedRowIds.length == 0) {
+      setDeactivateButton(true);
+    } else {
+      setDeactivateButton(false);
+    }
     if (selectedRowIds.length === 1) {
       setModifyButton(false);
     } else {
@@ -251,14 +219,6 @@ function OrganizationManagement() {
     }
   }, [isSearching, panelSearchTerm]);
 
-  useEffect(() => {
-    if (selectedRowIds.length === 0) {
-      setDeactivateButton(true);
-    } else {
-      setDeactivateButton(false);
-    }
-  }, [selectedRowIds]);
-
   const renderCell = (cell, row) => {
     if (cell.info.header === "select") {
       return (
@@ -269,7 +229,9 @@ function OrganizationManagement() {
           name="selectRowCheckbox"
           ariaLabel="selectRows"
           onSelect={() => {
-            setDeactivateButton(false);
+            const isActiveCell = row.cells.find((cell) =>
+              cell.id.endsWith(":active"),
+            );
             if (selectedRowIds.includes(row.id)) {
               setSelectedRowIds(selectedRowIds.filter((id) => id !== row.id));
             } else {
@@ -350,445 +312,170 @@ function OrganizationManagement() {
             </Column>
           </Grid>
           <br />
-          {isSearching ? (
-            <>
-              <Grid fullWidth={true} className="gridBoundary">
-                <Column lg={16} md={8} sm={4}>
-                  <br />
-                  <DataTable
-                    rows={searchedOrganizationManagamentListShow.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )}
-                    headers={[
-                      {
-                        key: "select",
-                        header: intl.formatMessage({
-                          id: "organization.select",
-                        }),
-                      },
-                      {
-                        key: "orgName",
-                        header: intl.formatMessage({
-                          id: "organization.organizationName",
-                        }),
-                      },
 
-                      {
-                        key: "parentOrg",
-                        header: intl.formatMessage({
-                          id: "organization.parent",
-                        }),
-                      },
+          <>
+            <Grid fullWidth={true} className="gridBoundary">
+              <Column lg={16} md={8} sm={4}>
+                <DataTable
+                  rows={organizationsManagmentListShow.slice(
+                    (page - 1) * pageSize,
+                    page * pageSize,
+                  )}
+                  headers={[
+                    {
+                      key: "select",
+                      header: intl.formatMessage({
+                        id: "organization.select",
+                      }),
+                    },
+                    {
+                      key: "orgName",
+                      header: intl.formatMessage({
+                        id: "organization.organizationName",
+                      }),
+                    },
 
-                      {
-                        key: "orgPrefix",
-                        header: intl.formatMessage({
-                          id: "organization.short.CI",
-                        }),
-                      },
-                      {
-                        key: "active",
-                        header: intl.formatMessage({
-                          id: "organization.isActive",
-                        }),
-                      },
-                      {
-                        key: "streetAddress",
-                        header: intl.formatMessage({
-                          id: "organization.streetAddress",
-                        }),
-                      },
-                      {
-                        key: "city",
-                        header: intl.formatMessage({
-                          id: "organization.city",
-                        }),
-                      },
-                      {
-                        key: "cliaNumber",
-                        header: intl.formatMessage({
-                          id: "organization.clia.number",
-                        }),
-                      },
-                    ]}
-                  >
-                    {({
-                      rows,
-                      headers,
-                      getHeaderProps,
-                      getTableProps,
-                      getSelectionProps,
-                    }) => (
-                      <TableContainer>
-                        <Table {...getTableProps()}>
-                          <TableHead>
-                            <TableRow>
-                              <TableSelectAll
-                                id="table-select-all"
-                                {...getSelectionProps()}
-                                checked={
-                                  selectedRowIds.length === pageSize &&
-                                  searchedOrganizationManagamentListShow
-                                    .slice(
-                                      (page - 1) * pageSize,
-                                      page * pageSize,
-                                    )
-                                    .filter(
-                                      (row) =>
-                                        !row.disabled &&
-                                        selectedRowIds.includes(row.id),
-                                    ).length === pageSize
-                                }
-                                indeterminate={
-                                  selectedRowIds.length > 0 &&
-                                  selectedRowIds.length <
-                                    searchedOrganizationManagamentListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled).length
-                                }
-                                onSelect={() => {
-                                  setDeactivateButton(false);
-                                  const currentPageIds =
-                                    searchedOrganizationManagamentListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled)
-                                      .map((row) => row.id);
-                                  if (
-                                    selectedRowIds.length === pageSize &&
-                                    currentPageIds.every((id) =>
-                                      selectedRowIds.includes(id),
-                                    )
-                                  ) {
-                                    setSelectedRowIds([]);
-                                  } else {
+                    {
+                      key: "parentOrg",
+                      header: intl.formatMessage({
+                        id: "organization.parent",
+                      }),
+                    },
+
+                    {
+                      key: "orgPrefix",
+                      header: intl.formatMessage({
+                        id: "organization.short.CI",
+                      }),
+                    },
+                    {
+                      key: "active",
+                      header: intl.formatMessage({
+                        id: "organization.isActive",
+                      }),
+                    },
+                    {
+                      key: "internetAddress",
+                      header: intl.formatMessage({
+                        id: "organization.internetaddress",
+                      }),
+                    },
+                    {
+                      key: "streetAddress",
+                      header: intl.formatMessage({
+                        id: "organization.streetAddress",
+                      }),
+                    },
+                    {
+                      key: "city",
+                      header: intl.formatMessage({
+                        id: "organization.city",
+                      }),
+                    },
+                    {
+                      key: "cliaNumber",
+                      header: intl.formatMessage({
+                        id: "organization.clia.number",
+                      }),
+                    },
+                  ]}
+                >
+                  {({
+                    rows,
+                    headers,
+                    getHeaderProps,
+                    getTableProps,
+                    getSelectionProps,
+                  }) => (
+                    <TableContainer>
+                      <Table {...getTableProps()}>
+                        <TableHead>
+                          <TableRow>
+                            {headers.map((header) => (
+                              <TableHeader
+                                key={header.key}
+                                {...getHeaderProps({ header })}
+                              >
+                                {header.header}
+                              </TableHeader>
+                            ))}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          <>
+                            {rows.map((row) => (
+                              <TableRow
+                                key={row.id}
+                                onClick={() => {
+                                  const id = row.id;
+                                  const isSelected =
+                                    selectedRowIds.includes(id);
+                                  if (isSelected) {
                                     setSelectedRowIds(
-                                      currentPageIds.filter(
-                                        (id) => !selectedRowIds.includes(id),
+                                      selectedRowIds.filter(
+                                        (selectedId) => selectedId !== id,
                                       ),
                                     );
-                                  }
-                                }}
-                              />
-                              {headers.map(
-                                (header) =>
-                                  header.key !== "select" && (
-                                    <TableHeader
-                                      key={header.key}
-                                      {...getHeaderProps({ header })}
-                                    >
-                                      {header.header}
-                                    </TableHeader>
-                                  ),
-                              )}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            <>
-                              {rows.map((row) => (
-                                <TableRow
-                                  key={row.id}
-                                  onClick={() => {
-                                    const id = row.id;
-                                    const isSelected =
-                                      selectedRowIds.includes(id);
-                                    if (isSelected) {
-                                      setSelectedRowIds(
-                                        selectedRowIds.filter(
-                                          (selectedId) => selectedId !== id,
-                                        ),
-                                      );
-                                    } else {
-                                      setSelectedRowIds([
-                                        ...selectedRowIds,
-                                        id,
-                                      ]);
-                                    }
-                                  }}
-                                >
-                                  {row.cells.map((cell) =>
-                                    renderCell(cell, row),
-                                  )}
-                                </TableRow>
-                              ))}
-                            </>
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    )}
-                  </DataTable>
-                  <Pagination
-                    onChange={handlePageChange}
-                    page={page}
-                    pageSize={pageSize}
-                    pageSizes={[10, 20]}
-                    totalItems={searchedOrganizationManagamentListShow.length}
-                    forwardText={intl.formatMessage({
-                      id: "pagination.forward",
-                    })}
-                    backwardText={intl.formatMessage({
-                      id: "pagination.backward",
-                    })}
-                    itemRangeText={(min, max, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.item-range" },
-                        { min: min, max: max, total: total },
-                      )
-                    }
-                    itemsPerPageText={intl.formatMessage({
-                      id: "pagination.items-per-page",
-                    })}
-                    itemText={(min, max) =>
-                      intl.formatMessage(
-                        { id: "pagination.item" },
-                        { min: min, max: max },
-                      )
-                    }
-                    pageNumberText={intl.formatMessage({
-                      id: "pagination.page-number",
-                    })}
-                    pageRangeText={(_current, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.page-range" },
-                        { total: total },
-                      )
-                    }
-                    pageText={(page, pagesUnknown) =>
-                      intl.formatMessage(
-                        { id: "pagination.page" },
-                        { page: pagesUnknown ? "" : page },
-                      )
-                    }
-                  />
-                  <br />
-                </Column>
-              </Grid>
-            </>
-          ) : (
-            <>
-              <Grid fullWidth={true} className="gridBoundary">
-                <Column lg={16} md={8} sm={4}>
-                  <DataTable
-                    rows={organizationsManagmentListShow.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )}
-                    headers={[
-                      {
-                        key: "select",
-                        header: intl.formatMessage({
-                          id: "organization.select",
-                        }),
-                      },
-                      {
-                        key: "orgName",
-                        header: intl.formatMessage({
-                          id: "organization.organizationName",
-                        }),
-                      },
-
-                      {
-                        key: "parentOrg",
-                        header: intl.formatMessage({
-                          id: "organization.parent",
-                        }),
-                      },
-
-                      {
-                        key: "orgPrefix",
-                        header: intl.formatMessage({
-                          id: "organization.short.CI",
-                        }),
-                      },
-                      {
-                        key: "active",
-                        header: intl.formatMessage({
-                          id: "organization.isActive",
-                        }),
-                      },
-                      {
-                        key: "streetAddress",
-                        header: intl.formatMessage({
-                          id: "organization.streetAddress",
-                        }),
-                      },
-                      {
-                        key: "city",
-                        header: intl.formatMessage({
-                          id: "organization.city",
-                        }),
-                      },
-                      {
-                        key: "cliaNumber",
-                        header: intl.formatMessage({
-                          id: "organization.clia.number",
-                        }),
-                      },
-                    ]}
-                  >
-                    {({
-                      rows,
-                      headers,
-                      getHeaderProps,
-                      getTableProps,
-                      getSelectionProps,
-                    }) => (
-                      <TableContainer>
-                        <Table {...getTableProps()}>
-                          <TableHead>
-                            <TableRow>
-                              <TableSelectAll
-                                id="table-select-all"
-                                {...getSelectionProps()}
-                                checked={
-                                  selectedRowIds.length === pageSize &&
-                                  organizationsManagmentListShow
-                                    .slice(
-                                      (page - 1) * pageSize,
-                                      page * pageSize,
-                                    )
-                                    .filter(
-                                      (row) =>
-                                        !row.disabled &&
-                                        selectedRowIds.includes(row.id),
-                                    ).length === pageSize
-                                }
-                                indeterminate={
-                                  selectedRowIds.length > 0 &&
-                                  selectedRowIds.length <
-                                    organizationsManagmentListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled).length
-                                }
-                                onSelect={() => {
-                                  setDeactivateButton(false);
-                                  const currentPageIds =
-                                    organizationsManagmentListShow
-                                      .slice(
-                                        (page - 1) * pageSize,
-                                        page * pageSize,
-                                      )
-                                      .filter((row) => !row.disabled)
-                                      .map((row) => row.id);
-                                  if (
-                                    selectedRowIds.length === pageSize &&
-                                    currentPageIds.every((id) =>
-                                      selectedRowIds.includes(id),
-                                    )
-                                  ) {
-                                    setSelectedRowIds([]);
                                   } else {
-                                    setSelectedRowIds(
-                                      currentPageIds.filter(
-                                        (id) => !selectedRowIds.includes(id),
-                                      ),
-                                    );
+                                    setSelectedRowIds([...selectedRowIds, id]);
                                   }
                                 }}
-                              />
-                              {headers.map(
-                                (header) =>
-                                  header.key !== "select" && (
-                                    <TableHeader
-                                      key={header.key}
-                                      {...getHeaderProps({ header })}
-                                    >
-                                      {header.header}
-                                    </TableHeader>
-                                  ),
-                              )}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            <>
-                              {rows.map((row) => (
-                                <TableRow
-                                  key={row.id}
-                                  onClick={() => {
-                                    const id = row.id;
-                                    const isSelected =
-                                      selectedRowIds.includes(id);
-                                    if (isSelected) {
-                                      setSelectedRowIds(
-                                        selectedRowIds.filter(
-                                          (selectedId) => selectedId !== id,
-                                        ),
-                                      );
-                                    } else {
-                                      setSelectedRowIds([
-                                        ...selectedRowIds,
-                                        id,
-                                      ]);
-                                    }
-                                  }}
-                                >
-                                  {row.cells.map((cell) =>
-                                    renderCell(cell, row),
-                                  )}
-                                </TableRow>
-                              ))}
-                            </>
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    )}
-                  </DataTable>
-                  <Pagination
-                    onChange={handlePageChange}
-                    page={page}
-                    pageSize={pageSize}
-                    pageSizes={[10, 20]}
-                    totalItems={organizationsManagmentListShow.length}
-                    forwardText={intl.formatMessage({
-                      id: "pagination.forward",
-                    })}
-                    backwardText={intl.formatMessage({
-                      id: "pagination.backward",
-                    })}
-                    itemRangeText={(min, max, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.item-range" },
-                        { min: min, max: max, total: total },
-                      )
-                    }
-                    itemsPerPageText={intl.formatMessage({
-                      id: "pagination.items-per-page",
-                    })}
-                    itemText={(min, max) =>
-                      intl.formatMessage(
-                        { id: "pagination.item" },
-                        { min: min, max: max },
-                      )
-                    }
-                    pageNumberText={intl.formatMessage({
-                      id: "pagination.page-number",
-                    })}
-                    pageRangeText={(_current, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.page-range" },
-                        { total: total },
-                      )
-                    }
-                    pageText={(page, pagesUnknown) =>
-                      intl.formatMessage(
-                        { id: "pagination.page" },
-                        { page: pagesUnknown ? "" : page },
-                      )
-                    }
-                  />
-                </Column>
-              </Grid>
-            </>
-          )}
+                              >
+                                {row.cells.map((cell) => renderCell(cell, row))}
+                              </TableRow>
+                            ))}
+                          </>
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </DataTable>
+                <Pagination
+                  onChange={handlePageChange}
+                  page={page}
+                  pageSize={pageSize}
+                  pageSizes={[10, 20]}
+                  totalItems={organizationsManagmentListShow.length}
+                  forwardText={intl.formatMessage({
+                    id: "pagination.forward",
+                  })}
+                  backwardText={intl.formatMessage({
+                    id: "pagination.backward",
+                  })}
+                  itemRangeText={(min, max, total) =>
+                    intl.formatMessage(
+                      { id: "pagination.item-range" },
+                      { min: min, max: max, total: total },
+                    )
+                  }
+                  itemsPerPageText={intl.formatMessage({
+                    id: "pagination.items-per-page",
+                  })}
+                  itemText={(min, max) =>
+                    intl.formatMessage(
+                      { id: "pagination.item" },
+                      { min: min, max: max },
+                    )
+                  }
+                  pageNumberText={intl.formatMessage({
+                    id: "pagination.page-number",
+                  })}
+                  pageRangeText={(_current, total) =>
+                    intl.formatMessage(
+                      { id: "pagination.page-range" },
+                      { total: total },
+                    )
+                  }
+                  pageText={(page, pagesUnknown) =>
+                    intl.formatMessage(
+                      { id: "pagination.page" },
+                      { page: pagesUnknown ? "" : page },
+                    )
+                  }
+                />
+              </Column>
+            </Grid>
+          </>
         </div>
       </div>
     </>

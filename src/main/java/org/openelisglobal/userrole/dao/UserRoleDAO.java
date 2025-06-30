@@ -32,4 +32,6 @@ public interface UserRoleDAO extends BaseDAO<UserRole, UserRolePK> {
     List<String> getRoleIdsForUser(String userId) throws LIMSRuntimeException;
 
     void deleteLabUnitRoleMap(LabUnitRoleMap roleMap);
+
+    List<String> getUserIdsForRole(String roleName);
 }

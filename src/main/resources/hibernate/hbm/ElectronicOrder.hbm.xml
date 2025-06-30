@@ -24,7 +24,8 @@
             <column name="EXTERNAL_ID" length="60" not-null="true" />
         </property>
         <many-to-one name="patient"
-            class="org.openelisglobal.patient.valueholder.Patient" fetch="select" lazy="false">
+            class="org.openelisglobal.patient.valueholder.Patient" fetch="select"
+            lazy="false">
             <column name="patient_id" precision="10" scale="0" />
         </many-to-one>
         <property name="statusId"

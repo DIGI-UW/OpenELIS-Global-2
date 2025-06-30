@@ -13,12 +13,12 @@
  */
 package org.openelisglobal.audittrail.action.workers;
 
+import jakarta.transaction.Transactional;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import javax.transaction.Transactional;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -42,6 +42,7 @@ import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.service.ProgramSampleService;
+import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.bean.SampleOrderItem;
@@ -94,7 +95,10 @@ public class AuditTrailViewWorkerImpl implements AuditTrailViewWorker {
             items.addAll(addPatientHistory());
             items.addAll(addNotes());
             items.addAll(addQAEvents());
-            items.addAll(addProgram());
+            if (!addProgram().isEmpty()) {
+                items.addAll(addProgram());
+            }
+
         }
 
         sortItemsByTime(items);
@@ -291,8 +295,12 @@ public class AuditTrailViewWorkerImpl implements AuditTrailViewWorker {
         if (sample != null) {
             String programName = observationHistoryService.getRawValueForSample(ObservationType.PROGRAM,
                     sample.getId());
-            AbstractHistoryService historyService = new ProgramSampleHistoryService(
-                    programSampleService.getProgrammeSampleBySample(Integer.valueOf(sample.getId()), programName));
+            ProgramSample programSample = programSampleService
+                    .getProgrammeSampleBySample(Integer.valueOf(sample.getId()), programName);
+            if (programSample == null) {
+                return programs;
+            }
+            AbstractHistoryService historyService = new ProgramSampleHistoryService(programSample);
             programs.addAll(historyService.getAuditTrailItems());
 
             // sortItems(notes);

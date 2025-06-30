@@ -11,7 +11,7 @@ import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.login.dao.LoginUserDAO;
 import org.openelisglobal.login.valueholder.LoginUser;
 import org.openelisglobal.security.PasswordUtil;
@@ -103,7 +103,7 @@ public class LoginUserServiceImpl extends AuditableBaseObjectServiceImpl<LoginUs
         login.setPassword(PasswordUtil.hashPassword(newPassword));
         Calendar passwordExpiredDate = Calendar.getInstance();
         passwordExpiredDate.add(Calendar.MONTH,
-                Integer.parseInt(SystemConfiguration.getInstance().getLoginUserChangePasswordExpiredMonth()));
+                Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("login.user.expired.month")));
         login.setPasswordExpiredDate(new Date(passwordExpiredDate.getTimeInMillis()));
         login.setPasswordExpiredDayNo(baseObjectDAO.getPasswordExpiredDayNo(login));
     }

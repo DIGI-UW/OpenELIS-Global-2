@@ -348,17 +348,6 @@ public class ResultReportingCollator {
                         GUID_IDENTITY_TYPE);
             }
 
-            // Everything between these comments are for testing only and should be remove
-            // beforE they go into production
-            // if (SystemConfiguration.getInstance().useTestPatientGUID() && patientIdentity
-            // == null) {
-            // patientIdentity = new PatientIdentity();
-            // patientIdentity.setIdentityData(UUID.randomUUID().toString());
-            // patientIdentity.setIdentityTypeId(GUID_IDENTITY_TYPE);
-            // patientIdentity.setPatientId(patientId);
-            // }
-            // End of testing comment
-
             if (patientIdentity == null) {
                 noGUIDPatients.add(patientId);
                 return null;

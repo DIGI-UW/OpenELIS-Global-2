@@ -7,15 +7,14 @@
          		org.openelisglobal.common.action.IActionConstants,
          		org.openelisglobal.common.util.IdValuePair,
          		org.openelisglobal.common.util.Versioning,
-         		org.openelisglobal.common.util.SystemConfiguration,
          		org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl" %>
 
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
 <%--
   ~ The contents of this file are subject to the Mozilla Public License

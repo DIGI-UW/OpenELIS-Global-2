@@ -1,6 +1,6 @@
 package org.openelisglobal.dictionary.validator;
 
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.dictionary.form.DictionaryForm;
 import org.springframework.stereotype.Component;
@@ -20,7 +20,7 @@ public class DictionaryFormValidator implements Validator {
         DictionaryForm form = (DictionaryForm) target;
 
         String[] dirtyFields = form.getDirtyFormFields()
-                .split(SystemConfiguration.getInstance().getDefaultIdSeparator(), -1);
+                .split(ConfigurationProperties.getInstance().getPropertyValue("default.idSeparator"), -1);
         for (String dirtyField : dirtyFields) {
             ValidationHelper.validateFieldAndCharset(dirtyField, "dirtyFormField", errors, false, 255, "a-zA-Z0-9_");
             if (errors.hasErrors()) {

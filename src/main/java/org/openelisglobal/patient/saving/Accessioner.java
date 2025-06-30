@@ -55,9 +55,9 @@ import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.services.StatusService.RecordStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.services.StatusSet;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl;
@@ -716,7 +716,7 @@ public abstract class Accessioner implements IAccessioner {
             sample.setEnteredDateForDisplay(todayAsText);
             sample.setEnteredDate(today);
         }
-        sample.setDomain(SystemConfiguration.getInstance().getHumanDomain());
+        sample.setDomain(ConfigurationProperties.getInstance().getPropertyValue("domain.human"));
     }
 
     protected void populateSampleProject() {
@@ -924,7 +924,7 @@ public abstract class Accessioner implements IAccessioner {
         Map<String, SampleItem> itemsByType = findExistingSampleTypeItems();
         int nextSortOrder = calcLastSortOrder(itemsByType) + 1;
 
-        String analysisRevision = SystemConfiguration.getInstance().getAnalysisDefaultRevision();
+        String analysisRevision = ConfigurationProperties.getInstance().getPropertyValue("analysis.default.revision");
         boolean newAnalysis = false;
         for (SampleItemAnalysisCollection sampleTestPair : sampleItemsAnalysis) {
 

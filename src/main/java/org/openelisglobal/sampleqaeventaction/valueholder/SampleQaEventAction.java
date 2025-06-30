@@ -15,8 +15,9 @@ package org.openelisglobal.sampleqaeventaction.valueholder;
 
 import java.sql.Date;
 import org.openelisglobal.action.valueholder.Action;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.common.valueholder.ValueHolder;
 import org.openelisglobal.common.valueholder.ValueHolderInterface;
@@ -127,7 +128,7 @@ public class SampleQaEventAction extends BaseObject<String> {
     public void setCreatedDateForDisplay(String createdDateForDisplay) {
         this.createdDateForDisplay = createdDateForDisplay;
         // also update the java.sql.Date
-        String locale = SystemConfiguration.getInstance().getDefaultLocale().toString();
+        String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
         this.createdDate = DateUtil.convertStringDateToSqlDate(createdDateForDisplay, locale);
     }
 

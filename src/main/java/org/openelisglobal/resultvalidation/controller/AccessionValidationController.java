@@ -1,12 +1,10 @@
 package org.openelisglobal.resultvalidation.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.*;
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.services.DisplayListService;
@@ -129,17 +127,6 @@ public class AccessionValidationController extends BaseController {
         }
         request.setAttribute("analysisCount", count);
         request.setAttribute("pageSize", count);
-
-        ObjectMapper mapper = new ObjectMapper();
-        String jsonForm = "";
-        try {
-            jsonForm = mapper.writeValueAsString(form);
-        } catch (JsonProcessingException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-
-        System.out.println("AccessionValidationController:jsonForm:" + jsonForm);
 
         return findForward(FWD_SUCCESS, form);
     }

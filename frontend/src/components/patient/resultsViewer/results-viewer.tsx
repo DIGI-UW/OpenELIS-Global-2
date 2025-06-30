@@ -88,7 +88,7 @@ const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
       <>
         <Loading></Loading>
         <Grid fullWidth={true}>
-          <Column lg={16}>
+          <Column lg={16} md={8} sm={4}>
             <EmptyState
               headerTitle={intl.formatMessage({ id: "label.test.results" })}
               displayText={intl.formatMessage({
@@ -104,7 +104,7 @@ const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
   return (
     <>
       <Grid fullWidth={true}>
-        <Column lg={16}>
+        <Column lg={16} md={8} sm={4}>
           <Breadcrumb>
             <BreadcrumbItem href="/">
               {intl.formatMessage({ id: "home.label" })}
@@ -116,7 +116,7 @@ const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
         </Column>
       </Grid>
       <Grid fullWidth={true}>
-        <Column lg={16}>
+        <Column lg={16} md={8} sm={4}>
           <Section>
             <Section>
               <Heading>
@@ -127,7 +127,7 @@ const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
         </Column>
       </Grid>
       <Grid fullWidth={true}>
-        <Column lg={16}>
+        <Column lg={16} md={8} sm={4}>
           <PatientHeader
             id={patient.patientPK}
             lastName={patient.lastName}
@@ -145,7 +145,7 @@ const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
 
       {roots?.length ? (
         <Grid fullWidth={true} className="orderLegendBody">
-          <Column lg={16}>
+          <Column lg={16} md={8} sm={4}>
             <FilterProvider roots={loading ? roots : []}>
               <ResultsViewer
                 patientId={patientId}

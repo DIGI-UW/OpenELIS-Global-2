@@ -32,8 +32,9 @@ import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.sample.dao.SampleDAO;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -88,7 +89,9 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
         try {
 
             // calculate maxRow to be one more than the page size
-            int endingRecNo = startingRecNo + (SystemConfiguration.getInstance().getDefaultPageSize() + 1);
+            int endingRecNo = startingRecNo
+                    + (Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
+                            + 1);
 
             String sql = "from Sample s order by s.id";
             Query<Sample> query = entityManager.unwrap(Session.class).createQuery(sql, Sample.class);
@@ -353,7 +356,7 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
             }
 
             List<String> statusesToExclude = new ArrayList<>();
-            statusesToExclude.add(SystemConfiguration.getInstance().getAnalysisStatusCanceled());
+            statusesToExclude.add(ConfigurationProperties.getInstance().getPropertyValue("analysis.status.canceled"));
             query.setParameterList("param3", statusesToExclude);
             list = query.list();
         } catch (RuntimeException e) {
@@ -427,7 +430,7 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
     }
 
     private Calendar getCalendarForDateString(String recievedDate) {
-        String localeName = SystemConfiguration.getInstance().getDefaultLocale().toString();
+        String localeName = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
         Locale locale = new Locale(localeName);
         Calendar calendar = Calendar.getInstance(locale);
 

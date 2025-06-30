@@ -147,4 +147,9 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
         Hibernate.initialize(localization);
         return localization;
     }
+
+    @Override
+    public Panel getPanelByLoincCode(String loincCode) {
+        return getBaseObjectDAO().getPanelByLoincCode(loincCode);
+    }
 }

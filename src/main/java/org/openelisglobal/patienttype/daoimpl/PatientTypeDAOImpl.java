@@ -13,14 +13,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 import org.apache.commons.beanutils.PropertyUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.hibernate.Session;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.patienttype.dao.PatientTypeDAO;
 import org.openelisglobal.patienttype.valueholder.PatientType;
 import org.springframework.stereotype.Component;
@@ -33,9 +31,6 @@ public class PatientTypeDAOImpl extends BaseDAOImpl<PatientType, String> impleme
     public PatientTypeDAOImpl() {
         super(PatientType.class);
     }
-
-    @SuppressWarnings("unused")
-    private static Log log = LogFactory.getLog(PatientTypeDAOImpl.class);
 
     // @Override
     // public void deleteData(List patientTypes) throws LIMSRuntimeException {
@@ -184,7 +179,9 @@ public class PatientTypeDAOImpl extends BaseDAOImpl<PatientType, String> impleme
         List<PatientType> list = new Vector<>();
         try {
             // calculate maxRow to be one more than the page size
-            int endingRecNo = startingRecNo + (SystemConfiguration.getInstance().getDefaultPageSize() + 1);
+            int endingRecNo = startingRecNo
+                    + (Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
+                            + 1);
 
             String sql = "from PatientType l order by l.type";
             org.hibernate.query.Query query = entityManager.unwrap(Session.class).createQuery(sql);
@@ -222,7 +219,7 @@ public class PatientTypeDAOImpl extends BaseDAOImpl<PatientType, String> impleme
     public List<PatientType> getPatientTypes(String description) throws LIMSRuntimeException {
         List<PatientType> list = new Vector<>();
         try {
-            String sql = "from patientType l where upper(l.description) like upper(:param) order by"
+            String sql = "from PatientType l where upper(l.description) like upper(:param) order by"
                     + " upper(l.description)";
             org.hibernate.query.Query query = entityManager.unwrap(Session.class).createQuery(sql);
             query.setParameter("param", description + "%");

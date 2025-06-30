@@ -1,14 +1,13 @@
 package org.openelisglobal.sample.form;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import java.util.List;
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Pattern;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.IdValuePair;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.patient.action.bean.PatientSearch;
@@ -98,7 +97,7 @@ public class SampleEditForm extends BaseForm {
     private Boolean warning = false;
 
     // in validator
-    private String idSeparator = SystemConfiguration.getInstance().getDefaultIdSeparator();
+    private String idSeparator = ConfigurationProperties.getInstance().getPropertyValue("default.idSeparator");
 
     // in validator
     private String accessionFormat = ConfigurationProperties.getInstance().getPropertyValue(Property.AccessionFormat);

@@ -1,7 +1,7 @@
 ##
 # Build Stage
 #
-FROM maven:3-jdk-11 AS build
+FROM maven:3-eclipse-temurin-21 AS build
 
 RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     --mount=target=/var/cache/apt,type=cache,sharing=locked \
@@ -32,6 +32,9 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn clean install -DskipTests
 
+##
+# Build the Project
+#  
 WORKDIR /build
 
 COPY ./pom.xml /build/pom.xml
@@ -46,7 +49,7 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
 ##
 # Run Stage
 #
-FROM tomcat:8.5-jdk11
+FROM tomcat:10-jre21
 
 COPY install/createDefaultPassword.sh ./
 
@@ -91,7 +94,12 @@ RUN groupadd tomcat; \
     chmod g-w,o-rwx $CATALINA_HOME/conf/logging.properties; \
     chmod g-w,o-rwx $CATALINA_HOME/conf/server.xml; \
     chmod g-w,o-rwx $CATALINA_HOME/conf/tomcat-users.xml; \
-    chmod g-w,o-rwx $CATALINA_HOME/conf/web.xml
+    chmod g-w,o-rwx $CATALINA_HOME/conf/web.xml; \
+    mkdir -p /var/lib/openelis-global/logs/; \
+    chown -R tomcat_admin:tomcat /var/lib/openelis-global/logs/;\
+    mkdir -p /var/lib/openelis-global/properties/; \
+    chown -R tomcat_admin:tomcat /var/lib/openelis-global/properties/;
+
 
 COPY install/openelis_healthcheck.sh /healthcheck.sh
 RUN chown tomcat_admin:tomcat /healthcheck.sh; \

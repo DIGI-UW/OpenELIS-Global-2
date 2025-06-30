@@ -15,8 +15,8 @@
  */
 package org.openelisglobal.login.daoimpl;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -31,9 +31,11 @@ import org.openelisglobal.systemusermodule.valueholder.PermissionModule;
 import org.openelisglobal.systemusermodule.valueholder.SystemUserModule;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.saml2.provider.service.authentication.DefaultSaml2AuthenticatedPrincipal;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -159,7 +161,16 @@ public class UserModuleServiceImpl implements UserModuleService, IActionConstant
             // UserSessionData usd = (UserSessionData)
             // request.getSession().getAttribute(USER_SESSION_DATA);
             // login = loginService.getUserProfile(usd.getLoginName());
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            // Authentication authentication2 =
+            // SecurityContextHolder.getContext().getAuthentication();
+            // TODO workaround for Security Context authentication is null
+            Object sc = request.getSession()
+                    .getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+            if (!(sc instanceof SecurityContext)) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "getUserLogin",
+                        "security context is not of type SecurityContext");
+            }
+            Authentication authentication = ((SecurityContext) sc).getAuthentication();
             if (authentication != null) {
                 Object principal = authentication.getPrincipal();
                 if (principal instanceof UserDetails) {
@@ -168,6 +179,9 @@ public class UserModuleServiceImpl implements UserModuleService, IActionConstant
                 } else if (principal instanceof DefaultSaml2AuthenticatedPrincipal) {
                     DefaultSaml2AuthenticatedPrincipal samlUser = (DefaultSaml2AuthenticatedPrincipal) principal;
                     login = loginService.getUserProfile(samlUser.getName());
+                } else if (principal instanceof DefaultOAuth2User) {
+                    DefaultOAuth2User oauthUser = (DefaultOAuth2User) principal;
+                    login = loginService.getUserProfile(oauthUser.getName());
                 }
             }
         } catch (LIMSRuntimeException e) {

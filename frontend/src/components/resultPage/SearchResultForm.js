@@ -20,8 +20,9 @@ import {
   Select,
   SelectItem,
   Loading,
+  Link,
 } from "@carbon/react";
-import { Copy } from "@carbon/icons-react";
+import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import DataTable from "react-data-table-component";
 import { Formik, Field } from "formik";
@@ -91,6 +92,8 @@ export function SearchResultForm(props) {
   const [nextPage, setNextPage] = useState(null);
   const [previousPage, setPreviousPage] = useState(null);
   const [pagination, setPagination] = useState(false);
+  const [currentApiPage, setCurrentApiPage] = useState(null);
+  const [totalApiPages, setTotalApiPages] = useState(null);
   const [url, setUrl] = useState("");
   const componentMounted = useRef(false);
 
@@ -106,6 +109,8 @@ export function SearchResultForm(props) {
         var { totalPages, currentPage } = results.paging;
         if (totalPages > 1) {
           setPagination(true);
+          setCurrentApiPage(currentPage);
+          setTotalApiPages(totalPages);
           if (parseInt(currentPage) < parseInt(totalPages)) {
             setNextPage(parseInt(currentPage) + 1);
           } else {
@@ -165,7 +170,7 @@ export function SearchResultForm(props) {
     values.unitType = values.unitType ? values.unitType : "";
 
     let searchEndPoint =
-      "/rest/ReactLogbookResultsByRange?" +
+      "/rest/LogbookResults?" +
       "labNumber=" +
       labNo +
       "&upperRangeAccessionNumber=" +
@@ -461,6 +466,7 @@ export function SearchResultForm(props) {
                             placeholder="Enter Accession No."
                             name={field.name}
                             id={field.name}
+                            data-cy="enterAccession"
                             value={values[field.name]}
                             labelText={
                               <FormattedMessage id="search.label.accession" />
@@ -481,14 +487,18 @@ export function SearchResultForm(props) {
                     <Column lg={6} sm={4}>
                       <Field name="startLabNo">
                         {({ field }) => (
-                          <TextInput
-                            placeholder={"Enter LabNo"}
+                          <CustomLabNumberInput
+                            placeholder="Enter Accession No."
                             name={field.name}
                             id={field.name}
-                            defaultValue={values["accessionNumber"]}
+                            data-cy="startAccession"
+                            value={values[field.name]}
                             labelText={
                               <FormattedMessage id="search.label.fromaccession" />
                             }
+                            onChange={(e, rawValue) => {
+                              setFieldValue(field.name, rawValue);
+                            }}
                           />
                         )}
                       </Field>
@@ -496,14 +506,18 @@ export function SearchResultForm(props) {
                     <Column lg={6} sm={4}>
                       <Field name="endLabNo">
                         {({ field }) => (
-                          <TextInput
-                            placeholder={"Enter LabNo"}
+                          <CustomLabNumberInput
+                            placeholder="Enter Accession No."
                             name={field.name}
                             id={field.name}
-                            defaultValue={values["endLabNo"]}
+                            data-cy="endAccession"
+                            value={values[field.name]}
                             labelText={
                               <FormattedMessage id="search.label.toaccession" />
                             }
+                            onChange={(e, rawValue) => {
+                              setFieldValue(field.name, rawValue);
+                            }}
                           />
                         )}
                       </Field>
@@ -648,7 +662,7 @@ export function SearchResultForm(props) {
                     <Button
                       style={{ marginTop: "16px" }}
                       type="submit"
-                      id="submit"
+                      id="searchResults"
                     >
                       <FormattedMessage id="label.button.search" />
                     </Button>
@@ -706,26 +720,42 @@ export function SearchResultForm(props) {
       <>
         {pagination && (
           <Grid>
-            <Column lg={12} />
-            <Column lg={2}>
-              <Button
-                type=""
-                id="loadpreviousresults"
-                onClick={loadPreviousResultsPage}
-                disabled={previousPage != null ? false : true}
-              >
-                <FormattedMessage id="button.label.loadprevious" />
-              </Button>
+            <Column lg={16}>
+              {" "}
+              <br /> <br />
             </Column>
-            <Column lg={2}>
-              <Button
-                type=""
-                id="loadnextresults"
-                disabled={nextPage != null ? false : true}
-                onClick={loadNextResultsPage}
-              >
-                <FormattedMessage id="button.label.loadnext" />
-              </Button>
+            <Column lg={14} />
+            <Column
+              lg={2}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "10px",
+                width: "110%",
+              }}
+            >
+              <Link>
+                {currentApiPage} / {totalApiPages}
+              </Link>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <Button
+                  hasIconOnly
+                  id="loadpreviousresults"
+                  onClick={loadPreviousResultsPage}
+                  disabled={previousPage != null ? false : true}
+                  renderIcon={ArrowLeft}
+                  iconDescription="previous"
+                ></Button>
+                <Button
+                  hasIconOnly
+                  id="loadnextresults"
+                  onClick={loadNextResultsPage}
+                  disabled={nextPage != null ? false : true}
+                  renderIcon={ArrowRight}
+                  iconDescription="next"
+                ></Button>
+              </div>
             </Column>
           </Grid>
         )}
@@ -742,7 +772,7 @@ export function SearchResults(props) {
   const intl = useIntl();
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(100);
   const [acceptAsIs, setAcceptAsIs] = useState([]);
   const [referalOrganizations, setReferalOrganizations] = useState([]);
   const [methods, setMethods] = useState([]);
@@ -752,6 +782,7 @@ export function SearchResults(props) {
   const [validationState, setValidationState] = useState({});
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const componentMounted = useRef(false);
 
@@ -782,6 +813,40 @@ export function SearchResults(props) {
       componentMounted.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (props.results.testResult) {
+      let newValidationState = { ...validationState };
+      props.results.testResult.forEach((row) => {
+        if (row.resultType === "N") {
+          let value = row.resultValue;
+          if (!value) {
+            return;
+          }
+          let validation = (newValidationState[row.id] = validateNumericResults(
+            value,
+            row,
+          ));
+
+          row.resultValue = validation.newValue;
+          validation.style = {
+            ...validation?.style,
+            borderColor: validation.isCritical
+              ? "orange"
+              : validation.isInvalid
+                ? "red"
+                : "",
+            background: validation.outsideValid
+              ? "#ffa0a0"
+              : validation.outsideNormal
+                ? "#ffffa0"
+                : "var(--cds-field)",
+          };
+        }
+      });
+      setValidationState(newValidationState);
+    }
+  }, [props.results]);
 
   const loadReferalOrganizations = (values) => {
     if (componentMounted.current) {
@@ -983,6 +1048,7 @@ export function SearchResults(props) {
             <Field name="forceTechApproval">
               {() => (
                 <Checkbox
+                  data-cy="checkTestResult"
                   id={"testResult" + row.id + ".forceTechApproval"}
                   name={"testResult[" + row.id + "].forceTechApproval"}
                   labelText=""
@@ -1089,45 +1155,46 @@ export function SearchResults(props) {
                 type="number"
                 value={row.resultValue}
                 style={validationState[row.id]?.style}
-                onMouseOut={(e) => {
-                  let value = e.target.value;
-                  if (value == null || value == "") {
-                    return;
-                  }
-                  let newValidationState = { ...validationState };
-                  let validation = (newValidationState[row.id] =
-                    validateNumericResults(value, row));
-                  //e.target.value = validation.newValue;
-                  row.resultValue = validation.newValue;
-                  validation.style = {
-                    ...validation?.style,
-                    borderColor: validation.isCritical
-                      ? "orange"
-                      : validation.isInvalid
-                        ? "red"
-                        : "",
-                    background: validation.outsideValid
-                      ? "#ffa0a0"
-                      : validation.outsideNormal
-                        ? "#ffffa0"
-                        : "var(--cds-field)",
-                  };
-
-                  setValidationState(newValidationState);
-
+                onBlur={(e) => {
                   if (
-                    validation.isInvalid &&
+                    validationState[row.id].isInvalid &&
                     configurationProperties.ALERT_FOR_INVALID_RESULTS
                   ) {
-                    alert(
-                      intl.formatMessage({
-                        id: "result.outOfValidRange.msg",
-                      }),
-                    );
+                    addNotification({
+                      title: intl.formatMessage({ id: "notification.title" }),
+                      message:
+                        intl.formatMessage({
+                          id: "result.outOfValidRange.msg",
+                        }) +
+                        " " +
+                        row.testName +
+                        " : " +
+                        row.resultValue,
+                      kind: NotificationKinds.error,
+                    });
+                    setNotificationVisible(true);
                   }
                 }}
                 onChange={(e) => {
                   handleChange(e, row.id);
+                  if (
+                    validationState[row.id].isInvalid &&
+                    configurationProperties.ALERT_FOR_INVALID_RESULTS
+                  ) {
+                    addNotification({
+                      title: intl.formatMessage({ id: "notification.title" }),
+                      message:
+                        intl.formatMessage({
+                          id: "result.outOfValidRange.msg",
+                        }) +
+                        " " +
+                        row.testName +
+                        " : " +
+                        row.resultValue,
+                      kind: NotificationKinds.error,
+                    });
+                    setNotificationVisible(true);
+                  }
                 }}
               />
             );
@@ -1515,8 +1582,12 @@ export function SearchResults(props) {
 
   const handleSave = (values) => {
     console.debug("handleSave:" + values);
+    if (isSubmitting) {
+      return;
+    }
+    setIsSubmitting(true);
     values.status = saveStatus;
-    var searchEndPoint = "/rest/ReactLogbookResultsUpdate";
+    var searchEndPoint = "/rest/LogbookResults";
     props.results.testResult.forEach((result) => {
       result.reportable = result.reportable === "N" ? false : true;
       delete result.result;
@@ -1530,6 +1601,7 @@ export function SearchResults(props) {
 
   const setResponse = (resp) => {
     console.debug("setStatus" + JSON.stringify(resp));
+    setIsSubmitting(false);
     if (resp) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
@@ -1639,7 +1711,7 @@ export function SearchResults(props) {
                 onChange={handlePageChange}
                 page={page}
                 pageSize={pageSize}
-                pageSizes={[10, 20, 50, 100]}
+                pageSizes={[10, 20, 30, 50, 100]}
                 totalItems={props.results?.testResult?.length}
                 forwardText={intl.formatMessage({ id: "pagination.forward" })}
                 backwardText={intl.formatMessage({ id: "pagination.backward" })}
@@ -1677,9 +1749,10 @@ export function SearchResults(props) {
 
               <Button
                 type="button"
-                id="submit"
+                id="saveResults"
                 onClick={handleSave}
                 style={{ marginTop: "16px" }}
+                disabled={isSubmitting}
               >
                 <FormattedMessage id="label.button.save" />
               </Button>

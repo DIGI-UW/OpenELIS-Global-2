@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- * The contents of this file are subject to the Mozilla Public License
+    * Version 1.1 (the "License"); you may not use this file except in * compliance
+    with the License. You may obtain a copy of the License at * http://www.mozilla.org/MPL/
+    * * Software distributed under the License is distributed on an "AS IS" *
+    basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the *
+    License for the specific language governing rights and limitations under
+    * the License. * * The Original Code is OpenELIS code. * * Copyright (C)
+    ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+
+<dataset>
+    <!-- CityView entries -->
+    <city_view city="SEATTLE" />
+    <city_view city="TIMES SQUARE" />
+    <city_view city="BROADWAY" />
+    <city_view city="CAPITOL HILL" />
+    <city_view city="LOS ANGELES" />
+    <city_view city="SAN FRANCISCO" />
+    <city_view city="SACRAMENTO" />
+    <city_view city="SAN DIEGO" />
+
+    <!-- CityStateZip entries -->
+    <city_state_zip id="1" city="SEATTLE" state="WA"
+        zip_code="98102" county_fips="33" county="KING" state_fips="53"
+        state_name="WASHINGTON" lastupdated="2006-12-04 12:46:48" />
+    <city_state_zip id="2" city="TIMES SQUARE" state="WA"
+        zip_code="98102" county_fips="33" county="KING" state_fips="53"
+        state_name="WASHINGTON" lastupdated="2006-12-04 12:46:48" />
+    <city_state_zip id="3" city="BROADWAY" state="WA"
+        zip_code="98102" county_fips="33" county="KING" state_fips="53"
+        state_name="WASHINGTON" lastupdated="2006-12-04 12:46:48" />
+    <city_state_zip id="4" city="CAPITOL HILL" state="WA"
+        zip_code="98102" county_fips="33" county="KING" state_fips="53"
+        state_name="WASHINGTON" lastupdated="2006-12-04 12:46:48" />
+    <city_state_zip id="5" city="LOS ANGELES" state="CA"
+        zip_code="102" county_fips="34" county="QUEENS" state_fips="53"
+        state_name="CALIFORNIA" lastupdated="2006-12-04 12:46:48" />
+    <city_state_zip id="6" city="SAN FRANCISCO" state="CA"
+        zip_code="102" county_fips="34" county="QUEENS" state_fips="53"
+        state_name="CALIFORNIA" lastupdated="2006-12-04 12:46:48" />
+    <city_state_zip id="7" city="SACRAMENTO" state="CA"
+        zip_code="102" county_fips="34" county="QUEENS" state_fips="53"
+        state_name="CALIFORNIA" lastupdated="2006-12-04 12:46:48" />
+    <city_state_zip id="8" city="SAN DIEGO" state="CA"
+        zip_code="102" county_fips="34" county="QUEENS" state_fips="53"
+        state_name="CALIFORNIA" lastupdated="2006-12-04 12:46:48" />
+
+</dataset>

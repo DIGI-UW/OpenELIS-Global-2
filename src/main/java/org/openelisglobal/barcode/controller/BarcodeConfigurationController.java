@@ -1,8 +1,8 @@
 package org.openelisglobal.barcode.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.barcode.form.BarcodeConfigurationForm;
 import org.openelisglobal.barcode.service.BarcodeInformationService;
@@ -153,7 +153,7 @@ public class BarcodeConfigurationController extends BaseController {
         } catch (LIMSRuntimeException e) {
             result.reject("barcode.config.error.insert");
         } finally {
-            ConfigurationProperties.forceReload();
+            ConfigurationProperties.loadDBValuesIntoConfiguration();
         }
 
         if (result.hasErrors()) {

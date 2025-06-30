@@ -1,11 +1,11 @@
 package org.openelisglobal.security.login;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import javax.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.action.IActionConstants;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
 import org.openelisglobal.login.valueholder.UserSessionData;
@@ -38,8 +38,8 @@ public class BasicAuthFilter extends BasicAuthenticationFilter {
     }
 
     @Override
-    protected void onSuccessfulAuthentication(javax.servlet.http.HttpServletRequest request,
-            javax.servlet.http.HttpServletResponse response, Authentication authResult) {
+    protected void onSuccessfulAuthentication(jakarta.servlet.http.HttpServletRequest request,
+            jakarta.servlet.http.HttpServletResponse response, Authentication authResult) {
         LoginUser loginInfo = loginService.getMatch("loginName", authResult.getName()).get();
         setupUserRequest(request, loginInfo);
     }
@@ -58,7 +58,7 @@ public class BasicAuthFilter extends BasicAuthenticationFilter {
         request.getSession().setAttribute(IActionConstants.USER_SESSION_DATA, usd);
 
         // get permitted actions map (available modules for the current user)
-        if (SystemConfiguration.getInstance().getPermissionAgent().equals("ROLE")) {
+        if (ConfigurationProperties.getInstance().getPropertyValue("permissions.agent").equalsIgnoreCase("ROLE")) {
             Set<String> permittedPages = getPermittedForms(usd.getSystemUserId());
             request.setAttribute(IActionConstants.PERMITTED_ACTIONS_MAP, permittedPages);
             // showAdminMenu |= permittedPages.contains("MasterList");

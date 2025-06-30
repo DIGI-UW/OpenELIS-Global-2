@@ -23,4 +23,5 @@
   <include relativeToChangelogFile="true" file="notification_subscriptions.xml" />
   <include relativeToChangelogFile="true" file="method.xml" />
   <include relativeToChangelogFile="true" file="landing_page_config.xml" />
+  <include relativeToChangelogFile="true" file="enable_client_registry_search.xml" />
 </databaseChangeLog>

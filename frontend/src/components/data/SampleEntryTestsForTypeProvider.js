@@ -3,7 +3,7 @@ export const sampleTypeTestsStructure = {
   panels: [
     {
       name: "",
-      testMaps: "",
+      testIds: "",
       panelId: "1",
       panelOrder: 0,
     },

@@ -40,11 +40,16 @@ const Index = () => {
   const samplePageNumber = firstPageNumber + 2;
   const orderPageNumber = firstPageNumber + 3;
   const successMsgPageNumber = lastPageNumber;
-
+  const [changed, setChanged] = useState({
+    "sampleOrderItems.providerFirstName": false,
+    "sampleOrderItems.providerLastName": false,
+    "sampleOrderItems.labNo": false,
+  });
   const [page, setPage] = useState(firstPageNumber);
   const [orderFormValues, setOrderFormValues] = useState(SampleOrderFormValues);
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   let SampleTypes = [];
   let sampleTypeMap = {};
@@ -428,14 +433,18 @@ const Index = () => {
     let nodes =
       elements[tag] instanceof Array ? elements[tag] : [elements[tag]];
     let objList = [];
+
     for (let j = 0; j < nodes.length; j++) {
       let name = nodes[j].name;
       let id = nodes[j].id;
       if (tag == "panel") {
         objList[j] = newPanel(id, name);
-        let testNodes = elements.panelTests;
+        let testNodes = nodes[j].panelTests;
+        if (testNodes.length === undefined) {
+          testNodes = [testNodes];
+        }
         for (let x = 0; x < testNodes.length; x++) {
-          let ptNodes = elements.test;
+          let ptNodes = testNodes[x].test;
           for (let y = 0; y < ptNodes.length; y++) {
             let pName = ptNodes[y].name;
             let pId = ptNodes[y].id;
@@ -532,6 +541,7 @@ const Index = () => {
   };
 
   const handlePost = (status) => {
+    setIsSubmitting(false);
     if (status === 200) {
       showAlertMessage(
         <FormattedMessage id="save.order.success.msg" />,
@@ -558,6 +568,11 @@ const Index = () => {
 
   const handleSubmitOrderForm = (e) => {
     e.preventDefault();
+    // Prevent multiple submissions.
+    if (isSubmitting) {
+      return;
+    }
+    setIsSubmitting(true);
     if ("years" in orderFormValues.patientProperties) {
       delete orderFormValues.patientProperties.years;
     }
@@ -594,6 +609,7 @@ const Index = () => {
   }, [page]);
 
   useEffect(() => {
+    console.log(changed);
     OrderEntryValidationSchema.validate(orderFormValues, { abortEarly: false })
       .then((validData) => {
         setErrors([]);
@@ -603,7 +619,7 @@ const Index = () => {
         setErrors(errors);
         console.error("Validation Errors:", errors.errors);
       });
-  }, [orderFormValues]);
+  }, [changed, orderFormValues]);
 
   useEffect(() => {
     const labNumber = new URLSearchParams(window.location.search).get(
@@ -766,6 +782,8 @@ const Index = () => {
                 samples={samples}
                 error={elementError}
                 isModifyOrder={false}
+                changed={changed}
+                setChanged={setChanged}
               />
             )}
 
@@ -798,7 +816,9 @@ const Index = () => {
                 <Button
                   kind="primary"
                   className="forwardButton"
-                  disabled={errors?.errors?.length > 0 ? true : false}
+                  disabled={
+                    isSubmitting || errors?.errors?.length > 0 ? true : false
+                  }
                   onClick={handleSubmitOrderForm}
                 >
                   <FormattedMessage id="label.button.submit" />

@@ -23,8 +23,8 @@ import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.renametestsection.dao.RenameTestSectionDAO;
 import org.openelisglobal.renametestsection.valueholder.RenameTestSection;
 import org.springframework.stereotype.Component;
@@ -63,7 +63,7 @@ public class RenameTestSectionDAOImpl extends BaseDAOImpl<RenameTestSection, Str
     public List<RenameTestSection> getAllTestSections() throws LIMSRuntimeException {
         List<RenameTestSection> list = new Vector<>();
         try {
-            String sql = "from TestSection";
+            String sql = "from RenameTestSection";
             Query<RenameTestSection> query = entityManager.unwrap(Session.class).createQuery(sql,
                     RenameTestSection.class);
             // query.setMaxResults(10);
@@ -84,10 +84,12 @@ public class RenameTestSectionDAOImpl extends BaseDAOImpl<RenameTestSection, Str
         List<RenameTestSection> list = new Vector<>();
         try {
             // calculate maxRow to be one more than the page size
-            int endingRecNo = startingRecNo + (SystemConfiguration.getInstance().getDefaultPageSize() + 1);
+            int endingRecNo = startingRecNo
+                    + (Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
+                            + 1);
 
             // bugzilla 1399
-            String sql = "from TestSection t order by t.testSectionName";
+            String sql = "from RenameTestSection t order by t.testSectionName";
             Query<RenameTestSection> query = entityManager.unwrap(Session.class).createQuery(sql,
                     RenameTestSection.class);
             query.setFirstResult(startingRecNo - 1);
@@ -120,7 +122,7 @@ public class RenameTestSectionDAOImpl extends BaseDAOImpl<RenameTestSection, Str
     @Transactional(readOnly = true)
     public RenameTestSection getTestSectionByName(RenameTestSection testSection) throws LIMSRuntimeException {
         try {
-            String sql = "from TestSection t where t.testSectionName = :param";
+            String sql = "from RenameTestSection t where t.testSectionName = :param";
             Query<RenameTestSection> query = entityManager.unwrap(Session.class).createQuery(sql,
                     RenameTestSection.class);
             query.setParameter("param", testSection.getTestSectionName());
@@ -146,7 +148,7 @@ public class RenameTestSectionDAOImpl extends BaseDAOImpl<RenameTestSection, Str
     public List<RenameTestSection> getTestSections(String filter) throws LIMSRuntimeException {
         List<RenameTestSection> list = new Vector<>();
         try {
-            String sql = "from TestSection t where upper(t.testSectionName) like upper(:param) order by"
+            String sql = "from RenameTestSection t where upper(t.testSectionName) like upper(:param) order by"
                     + " upper(t.testSectionName)";
             Query<RenameTestSection> query = entityManager.unwrap(Session.class).createQuery(sql,
                     RenameTestSection.class);
@@ -190,7 +192,7 @@ public class RenameTestSectionDAOImpl extends BaseDAOImpl<RenameTestSection, Str
 
             // not case sensitive hemolysis and Hemolysis are considered
             // duplicates
-            String sql = "from TestSection t where trim(lower(t.testSectionName)) = :param and t.id != :param2";
+            String sql = "from RenameTestSection t where trim(lower(t.testSectionName)) = :param and t.id != :param2";
             Query<RenameTestSection> query = entityManager.unwrap(Session.class).createQuery(sql,
                     RenameTestSection.class);
             query.setParameter("param", testSection.getTestSectionName().toLowerCase().trim());

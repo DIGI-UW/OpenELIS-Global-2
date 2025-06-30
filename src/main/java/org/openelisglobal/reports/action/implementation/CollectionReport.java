@@ -13,9 +13,9 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
-import com.lowagie.text.DocumentException;
-import com.lowagie.text.pdf.PdfCopyFields;
-import com.lowagie.text.pdf.PdfReader;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.pdf.PdfCopyFields;
+import com.itextpdf.text.pdf.PdfReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

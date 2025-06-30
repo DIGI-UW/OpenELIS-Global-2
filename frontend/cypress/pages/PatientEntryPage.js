@@ -13,6 +13,10 @@ class PatientEntryPage {
   primaryPhone = "input#primaryPhone";
   dateOfBirth = "input#date-picker-default-id";
   savePatientBtn = "#submit";
+  enterPreviousLabNo = "input#labNumber";
+  enterAccessionNo = "input#accessionNumber";
+  startLabNo = "#startLabNo";
+  endLabNo = "#endLabNo";
 
   constructor() {}
 
@@ -25,7 +29,7 @@ class PatientEntryPage {
   }
 
   clickNewPatientTab() {
-    cy.get(":nth-child(1) > :nth-child(2) > .cds--btn").click();
+    cy.get("#newPatient").click();
   }
 
   enterPatientInfo(
@@ -41,7 +45,7 @@ class PatientEntryPage {
     cy.enterText(this.firstNameSelector, firstName);
     cy.enterText(this.dateOfBirth, dateOfBirth);
     this.getMaleGenderRadioButton().click();
-    cy.getElement("#submit").click();
+    //cy.getElement("#submit").click();
   }
 
   clickSavePatientButton() {
@@ -49,13 +53,37 @@ class PatientEntryPage {
   }
 
   getMaleGenderRadioButton() {
-    return cy.getElement(
-      ":nth-child(2) > .cds--radio-button__label > .cds--radio-button__appearance",
-    );
+    return cy.contains("span", "Male").click();
+  }
+
+  enterPreviousLabNumber(value) {
+    cy.get(this.enterPreviousLabNo, { timeout: 15000 })
+      .invoke("css", "display", "block")
+      .should("be.visible")
+      .type(value, { force: true });
+  }
+
+  enterAccessionNumber(value) {
+    cy.get(this.enterAccessionNo)
+      .invoke("css", "display", "block")
+      .should("be.visible")
+      .type(value, { force: true });
+  }
+
+  startLabNumber(value) {
+    cy.get(this.startLabNo)
+      .invoke("css", "display", "block")
+      .should("be.visible")
+      .type(value, { force: true });
+  }
+
+  endLabNo(value) {
+    cy.get(this.endLabNo, { timeout: 20000 }).should("be.visible");
+    cy.get(this.endLabNo).type(value);
   }
 
   clickSearchPatientButton() {
-    cy.getElement("#local_search").click();
+    cy.getElement("#local_search").should("be.visible").click();
   }
 
   getExternalSearchButton() {
@@ -80,6 +108,11 @@ class PatientEntryPage {
   searchPatientByDateOfBirth(dateOfBirth) {
     cy.enterText(this.dateOfBirth, dateOfBirth);
   }
+
+  clearPatientInfo() {
+    cy.get("#clear").click();
+  }
+
   getSubmitButton() {
     return cy.getElement(this.savePatientBtn);
   }

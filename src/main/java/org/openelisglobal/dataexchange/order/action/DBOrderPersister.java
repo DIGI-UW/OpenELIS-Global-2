@@ -13,21 +13,26 @@
  */
 package org.openelisglobal.dataexchange.order.action;
 
+import jakarta.annotation.PostConstruct;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import javax.annotation.PostConstruct;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.service.PersonAddressService;
 import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.address.valueholder.PersonAddress;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.ExternalOrderStatus;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
+import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.notifications.dao.NotificationDAO;
+import org.openelisglobal.notifications.entity.Notification;
 import org.openelisglobal.patient.service.PatientContactService;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -38,9 +43,11 @@ import org.openelisglobal.patientidentitytype.service.PatientIdentityTypeService
 import org.openelisglobal.patientidentitytype.valueholder.PatientIdentityType;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
@@ -75,6 +82,10 @@ public class DBOrderPersister implements IOrderPersister {
     private PersonAddressService personAddressService;
     @Autowired
     private AddressPartService addressPartService;
+    @Autowired
+    private NotificationDAO notificationDAO;
+    @Autowired
+    private UserRoleService userRoleService;
 
     private Patient patient;
 
@@ -359,6 +370,22 @@ public class DBOrderPersister implements IOrderPersister {
             persist(orderPatient);
             eOrder.setPatient(patient);
             eOrderService.insert(eOrder);
+            if (eOrder.getPriority().equals(OrderPriority.STAT)) {
+                String message = MessageUtil.getMessage("notification.eorder.stat", eOrder.getExternalId());
+                List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_RECEPTION);
+                for (String userId : systemUserIds) {
+                    try {
+                        Notification notification = new Notification();
+                        notification.setMessage(message);
+                        notification.setUser(systemUserService.getUserById(userId));
+                        notification.setCreatedDate(OffsetDateTime.now());
+                        notification.setReadAt(null);
+                        notificationDAO.save(notification);
+
+                    } catch (Exception e) {
+                    }
+                }
+            }
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw e;

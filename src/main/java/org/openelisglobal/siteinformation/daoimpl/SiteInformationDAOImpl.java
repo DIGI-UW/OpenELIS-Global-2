@@ -25,7 +25,7 @@ import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.siteinformation.dao.SiteInformationDAO;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.springframework.stereotype.Component;
@@ -79,7 +79,9 @@ public class SiteInformationDAOImpl extends BaseDAOImpl<SiteInformation, String>
         List<SiteInformation> list = new ArrayList<>();
         try {
 
-            int endingRecNo = startingRecNo + (SystemConfiguration.getInstance().getDefaultPageSize() + 1);
+            int endingRecNo = startingRecNo
+                    + (Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
+                            + 1);
 
             String sql = "from SiteInformation si where si.domain.name = :domainName order by si.name";
             Query<SiteInformation> query = entityManager.unwrap(Session.class).createQuery(sql, SiteInformation.class);

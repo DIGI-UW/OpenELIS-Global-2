@@ -3,6 +3,7 @@ import config from "../config.json";
 import "./Style.css";
 import qs from "qs";
 import { FormattedMessage, injectIntl } from "react-intl";
+import { HardwareSecurityModule } from "@carbon/icons-react";
 import {
   Form,
   Section,
@@ -30,7 +31,7 @@ function Login(props) {
   const firstInput = createRef();
 
   useEffect(() => {
-    firstInput.current.focus();
+    firstInput?.current?.focus();
 
     const interval = setInterval(() => {
       checkLogin();
@@ -52,7 +53,8 @@ function Login(props) {
   const loginMessage = () => {
     return (
       <>
-        <div>
+        <Column lg={6} md={0} sm={0} />
+        <Column lg={4} md={8} sm={4}>
           <picture>
             <img
               src={`images/openelis_logo_full.png`}
@@ -61,11 +63,13 @@ function Login(props) {
               height="56"
             />
           </picture>
-        </div>
-        <br></br>
-        <div>
+        </Column>
+        <Column lg={6} md={0} sm={0} />
+        <Column lg={6} md={0} sm={0} />
+        <Column lg={4} md={8} sm={4}>
           <FormattedMessage id="login.notice.message" />
-        </div>
+        </Column>
+        <Column lg={6} md={0} sm={0} />
       </>
     );
   };
@@ -129,15 +133,38 @@ function Login(props) {
       });
   };
 
+  const renderOauthButtons = () => {
+    return (
+      <span id="oauth-buttons">
+        {configurationProperties?.oauthUrls?.map((url) => (
+          <Button
+            key={url.key}
+            type="button"
+            renderIcon={HardwareSecurityModule}
+            onClick={() => {
+              console.log(url);
+              window.location.href = config.serverBaseUrl + "/" + url.value;
+            }}
+          >
+            <FormattedMessage id="label.button.login.sso" />
+          </Button>
+        ))}
+      </span>
+    );
+  };
+
   return (
     <>
-      <div className="loginPageContent">
+      <div data-cy="login-Page-Content" className="loginPageContent">
         {notificationVisible === true ? <AlertDialog /> : ""}
-        <Grid fullWidth={true}>
-          <Column lg={0} md={0} sm={4}>
-            {loginMessage()}
+        <Grid fullWidth={true}>{loginMessage()}</Grid>
+        <Grid fullWidth={false}>
+          <Column lg={16}>
+            <br />
+            <br />
           </Column>
-          <Column lg={4} md={4} sm={4}>
+          <Column lg={6} md={0} sm={0} />
+          <Column lg={4} md={8} sm={4}>
             <Section>
               <Formik
                 initialValues={{
@@ -145,6 +172,7 @@ function Login(props) {
                   password: "",
                 }}
                 onSubmit={(values) => {
+                  doLogin(values);
                   fetch(config.serverBaseUrl + "/LoginPage", {
                     //includes the browser sessionId in the Header for Authentication on the backend server
                     credentials: "include",
@@ -167,45 +195,66 @@ function Login(props) {
                           <FormattedMessage id="login.title" />
                         </Heading>
                       </FormLabel>
-                      <TextInput
-                        id="loginName"
-                        invalidText={props.intl.formatMessage({
-                          id: "login.msg.username.missing",
-                        })}
-                        labelText={props.intl.formatMessage({
-                          id: "login.msg.username",
-                        })}
-                        hideLabel={true}
-                        placeholder={props.intl.formatMessage({
-                          id: "login.msg.username",
-                        })}
-                        autoComplete="off"
-                        ref={firstInput}
-                      />
-                      <TextInput.PasswordInput
-                        id="password"
-                        invalidText={props.intl.formatMessage({
-                          id: "login.msg.password.missing",
-                        })}
-                        labelText={props.intl.formatMessage({
-                          id: "login.msg.password",
-                        })}
-                        hideLabel={true}
-                        placeholder={props.intl.formatMessage({
-                          id: "login.msg.password",
-                        })}
-                      />
-                      <Button type="submit" disabled={!isValid}>
-                        <FormattedMessage id="label.button.submit" />
-                        <Loading
-                          small={true}
-                          withOverlay={false}
-                          className={submitting ? "show" : "hidden"}
-                        />
-                      </Button>
+                      {configurationProperties?.useFormLogin == "true" && (
+                        <>
+                          <TextInput
+                            id="loginName"
+                            invalidText={props.intl.formatMessage({
+                              id: "login.msg.username.missing",
+                            })}
+                            labelText={props.intl.formatMessage({
+                              id: "login.msg.username",
+                            })}
+                            hideLabel={true}
+                            placeholder={props.intl.formatMessage({
+                              id: "login.msg.username",
+                            })}
+                            autoComplete="off"
+                            ref={firstInput}
+                          />
+                          <TextInput.PasswordInput
+                            id="password"
+                            invalidText={props.intl.formatMessage({
+                              id: "login.msg.password.missing",
+                            })}
+                            labelText={props.intl.formatMessage({
+                              id: "login.msg.password",
+                            })}
+                            hideLabel={true}
+                            placeholder={props.intl.formatMessage({
+                              id: "login.msg.password",
+                            })}
+                          />
+                          <Stack orientation="horizontal">
+                            <Button
+                              type="submit"
+                              disabled={!isValid}
+                              data-cy="loginButton"
+                            >
+                              <FormattedMessage id="label.button.login" />
+                              <Loading
+                                small={true}
+                                withOverlay={false}
+                                className={submitting ? "show" : "hidden"}
+                              />
+                            </Button>
+
+                            <Button
+                              data-cy="changePassword"
+                              type="button"
+                              onClick={() => {
+                                window.location.href = "/ChangePasswordLogin";
+                              }}
+                            >
+                              <FormattedMessage id="label.button.changepassword" />
+                            </Button>
+                          </Stack>
+                        </>
+                      )}
                       {configurationProperties?.useSaml == "true" && (
                         <Button
                           type="button"
+                          renderIcon={HardwareSecurityModule}
                           onClick={() => {
                             const POPUP_HEIGHT = 700;
                             const POPUP_WIDTH = 600;
@@ -227,13 +276,16 @@ function Login(props) {
                           <FormattedMessage id="label.button.login.sso" />
                         </Button>
                       )}
+                      {configurationProperties?.useOauth == "true" &&
+                        renderOauthButtons()}
                     </Stack>
                   </Form>
                 )}
               </Formik>
             </Section>
           </Column>
-          <Column lg={8} md={4} sm={0}>
+          <Column lg={6} md={0} sm={0} />
+          <Column lg={0} md={0} sm={0}>
             {loginMessage()}
           </Column>
         </Grid>

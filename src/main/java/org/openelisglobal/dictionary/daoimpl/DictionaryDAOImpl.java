@@ -25,13 +25,11 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.dictionary.dao.DictionaryDAO;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,8 +39,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Transactional
 public class DictionaryDAOImpl extends BaseDAOImpl<Dictionary, String> implements DictionaryDAO {
-
-    private static final Logger log = LoggerFactory.getLogger(DictionaryDAOImpl.class);
 
     public DictionaryDAOImpl() {
         super(Dictionary.class);
@@ -217,8 +213,8 @@ public class DictionaryDAOImpl extends BaseDAOImpl<Dictionary, String> implement
             // to check those here also check references from other tables depending on
             // dictionary
             // category local abbrev code
-            if (dictionary.getDictionaryCategory().getLocalAbbreviation()
-                    .equals(SystemConfiguration.getInstance().getQaEventDictionaryCategoryType())) {
+            if (dictionary.getDictionaryCategory().getLocalAbbreviation().equals(
+                    ConfigurationProperties.getInstance().getPropertyValue("dictionary.category.qaevent.type"))) {
                 sql = "from QaEvent q where q.type = :param";
                 // bugzilla 2221: at this time there are only 2 categories as
                 // far as this isFrozen() logic:

@@ -27,7 +27,7 @@ import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.result.dao.ResultDAO;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -172,7 +172,9 @@ public class ResultDAOImpl extends BaseDAOImpl<Result, String> implements Result
         List<Result> results;
         try {
             // calculate maxRow to be one more than the page size
-            int endingRecNo = startingRecNo + (SystemConfiguration.getInstance().getDefaultPageSize() + 1);
+            int endingRecNo = startingRecNo
+                    + (Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
+                            + 1);
 
             String sql = "from Result r order by r.id";
             Query<Result> query = entityManager.unwrap(Session.class).createQuery(sql, Result.class);

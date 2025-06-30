@@ -13,10 +13,10 @@
  */
 package org.openelisglobal.analyzerresults.action;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.form.IPagingForm;
@@ -55,10 +55,11 @@ public class AnalyzerResultsPaging {
         }
 
         request.getSession().setAttribute(IActionConstants.SAVE_DISABLED, IActionConstants.FALSE);
-        List<AnalyzerResultItem> clientTests = form.getResultList();
-        PagingBean bean = form.getPaging();
+        // List<AnalyzerResultItem> clientTests = form.getResultList();
+        // PagingBean bean = form.getPaging();
 
-        paging.updatePagedResults(request.getSession(), clientTests, bean, pagingHelper);
+        // paging.updatePagedResults(request.getSession(), clientTests, bean,
+        // pagingHelper);
 
         List<AnalyzerResultItem> resultPage = paging.getPage(newPage, request.getSession());
         if (resultPage != null) {

@@ -17,8 +17,9 @@ package org.openelisglobal.project.valueholder;
 
 import java.sql.Date;
 import java.util.Set;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.common.valueholder.ValueHolder;
 import org.openelisglobal.common.valueholder.ValueHolderInterface;
@@ -217,7 +218,7 @@ public class Project extends BaseObject<String> {
     public void setStartedDateForDisplay(String startedDateForDisplay) {
         this.startedDateForDisplay = startedDateForDisplay;
         // also update the java.sql.Date
-        String locale = SystemConfiguration.getInstance().getDefaultLocale().toString();
+        String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
         this.startedDate = DateUtil.convertStringDateToSqlDate(this.startedDateForDisplay, locale);
     }
 
@@ -228,7 +229,7 @@ public class Project extends BaseObject<String> {
     public void setCompletedDateForDisplay(String completedDateForDisplay) {
         this.completedDateForDisplay = completedDateForDisplay;
         // also update the java.sql.Date
-        String locale = SystemConfiguration.getInstance().getDefaultLocale().toString();
+        String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
         this.completedDate = DateUtil.convertStringDateToSqlDate(completedDateForDisplay, locale);
     }
 

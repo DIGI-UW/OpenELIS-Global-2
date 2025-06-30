@@ -4,16 +4,17 @@
     "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 <hibernate-mapping>
 
-    <class name="org.openelisglobal.qaevent.valueholder.NceSpecimen" table="nce_specimen" schema="clinlims">
+    <class name="org.openelisglobal.qaevent.valueholder.NceSpecimen"
+        table="nce_specimen" schema="clinlims">
         <id name="id"
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
             <column name="ID" precision="10" scale="0" />
             <generator
-                    class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
                 <param name="sequence_name">nce_specimen_id_seq</param>
             </generator>
         </id>
-        <property name="nceId" column="nce_id"/>
-        <property name="sampleItemId" column="sample_item_id"/>
+        <property name="nceId" column="nce_id" />
+        <property name="sampleItemId" column="sample_item_id" />
     </class>
 </hibernate-mapping>

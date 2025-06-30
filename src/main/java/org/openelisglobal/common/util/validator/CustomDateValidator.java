@@ -23,7 +23,8 @@ import java.util.Locale;
 import org.apache.commons.validator.routines.DateValidator;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 
 public class CustomDateValidator extends DateValidator {
 
@@ -111,7 +112,8 @@ public class CustomDateValidator extends DateValidator {
     }
 
     public Date getDate(String date) {
-        Locale locale = SystemConfiguration.getInstance().getDateLocale();
+        Locale locale = Locale
+                .forLanguageTag(ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE));
         return validate(date, locale);
     }
 

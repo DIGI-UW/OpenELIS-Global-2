@@ -30,6 +30,6 @@ public class ResultReportingConfigurationServiceImpl implements ResultReportingC
             schedulerService.update(scheduler);
         }
 
-        ConfigurationProperties.forceReload();
+        ConfigurationProperties.loadDBValuesIntoConfiguration();
     }
 }

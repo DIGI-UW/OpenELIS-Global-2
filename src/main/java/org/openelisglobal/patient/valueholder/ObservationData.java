@@ -13,13 +13,13 @@
  */
 package org.openelisglobal.patient.valueholder;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import javax.validation.Valid;
-import javax.validation.constraints.Pattern;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.dictionary.ObservationHistoryList;

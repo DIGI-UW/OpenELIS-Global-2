@@ -1,5 +1,15 @@
 package org.openelisglobal.common.externalLinks;
 
+import jakarta.xml.soap.MessageFactory;
+import jakarta.xml.soap.MimeHeaders;
+import jakarta.xml.soap.SOAPBody;
+import jakarta.xml.soap.SOAPConnection;
+import jakarta.xml.soap.SOAPConnectionFactory;
+import jakarta.xml.soap.SOAPElement;
+import jakarta.xml.soap.SOAPEnvelope;
+import jakarta.xml.soap.SOAPException;
+import jakarta.xml.soap.SOAPMessage;
+import jakarta.xml.soap.SOAPPart;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -8,16 +18,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Future;
 import javax.xml.namespace.QName;
-import javax.xml.soap.MessageFactory;
-import javax.xml.soap.MimeHeaders;
-import javax.xml.soap.SOAPBody;
-import javax.xml.soap.SOAPConnection;
-import javax.xml.soap.SOAPConnectionFactory;
-import javax.xml.soap.SOAPElement;
-import javax.xml.soap.SOAPEnvelope;
-import javax.xml.soap.SOAPException;
-import javax.xml.soap.SOAPMessage;
-import javax.xml.soap.SOAPPart;
 import org.apache.commons.validator.GenericValidator;
 import org.apache.http.HttpStatus;
 import org.openelisglobal.common.log.LogEvent;
@@ -278,7 +278,7 @@ public class PatientInfoHighwaySearch implements IExternalPatientSearch {
     private void processResponse(SOAPMessage soapResponse) throws SOAPException {
         SOAPBody soapResponseBody = soapResponse.getSOAPBody();
         QName bodyName = new QName("http://ws.server.mhaccess.crimsonlogic.com/", "queryResponse", "ns3");
-        Iterator<javax.xml.soap.Node> iterator = soapResponseBody.getChildElements(bodyName);
+        Iterator<jakarta.xml.soap.Node> iterator = soapResponseBody.getChildElements(bodyName);
         while (iterator.hasNext()) {
             SOAPElement queryResponse = (SOAPElement) iterator.next();
 
