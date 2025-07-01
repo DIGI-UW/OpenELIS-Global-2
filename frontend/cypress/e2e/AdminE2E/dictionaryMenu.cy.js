@@ -106,7 +106,6 @@ describe("Dictionary Menu", function () {
     });
 
     it("Validate Deactivated Dictionary", () => {
-      cy.reload();
       dictMenu.searchByDictionaryEntry(usersData[1].dictionaryEntry);
       dictMenu.validateDictStatus(usersData[0].no);
     });
