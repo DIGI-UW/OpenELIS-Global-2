@@ -21,9 +21,11 @@ import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.patient.action.IPatientUpdate;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
+import org.openelisglobal.patient.service.PatientContactService;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.patient.valueholder.PatientContact;
 import org.openelisglobal.patientidentity.service.PatientIdentityService;
 import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
 import org.openelisglobal.patientidentitytype.util.PatientIdentityTypeMap;
@@ -59,6 +61,8 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
     private AddressPartService addressPartService;
     @Autowired
     private PatientPatientTypeService patientPatientTypeService;
+    @Autowired
+    private PatientContactService patientContactService;
     protected PatientUpdateStatus patientUpdateStatus = PatientUpdateStatus.NO_ACTION;
 
     private String ADDRESS_PART_VILLAGE_ID;
@@ -206,6 +210,29 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         personAddressService.insert(address);
     }
 
+    private void persistContact(PatientManagementInfo patientInfo, Patient patient) {
+        if (GenericValidator.isBlankOrNull(patientInfo.getPatientContact().getId())) {
+            PatientContact contact = patientInfo.getPatientContact();
+            Person contactPerson = patientInfo.getPatientContact().getPerson();
+            contact.setPatientId(patient.getId());
+            contact.setSysUserId(patient.getSysUserId());
+            contactPerson.setSysUserId(patient.getSysUserId());
+
+            personService.insert(contactPerson);
+            patientContactService.insert(contact);
+        } else {
+            Person newContactPerson = patientInfo.getPatientContact().getPerson();
+            PatientContact contact = patientContactService.get(patientInfo.getPatientContact().getId());
+            Person oldContactPerson = contact.getPerson();
+            oldContactPerson.setEmail(newContactPerson.getEmail());
+            oldContactPerson.setLastName(newContactPerson.getLastName());
+            oldContactPerson.setFirstName(newContactPerson.getFirstName());
+            oldContactPerson.setPrimaryPhone(newContactPerson.getPrimaryPhone());
+            contact.setSysUserId(patient.getSysUserId());
+            oldContactPerson.setSysUserId(patient.getSysUserId());
+        }
+    }
+
     public void persistIdentityType(String paramValue, String type) throws LIMSRuntimeException {
 
         Boolean newIdentityNeeded = true;
@@ -334,6 +361,7 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
             patientService.update(patient);
         }
 
+        persistContact(patientInfo, patient);
         persistPatientRelatedInformation(patientInfo);
         patientID = patient.getId();
         patientInfo.setPatientPK(patientID);

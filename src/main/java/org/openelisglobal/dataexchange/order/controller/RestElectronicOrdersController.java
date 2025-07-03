@@ -4,9 +4,12 @@ import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.ServiceRequest;
@@ -19,6 +22,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.order.ElectronicOrderSortOrderCategoryConvertor;
+import org.openelisglobal.dataexchange.order.form.ElectronicOrderPaging;
 import org.openelisglobal.dataexchange.order.form.ElectronicOrderViewForm;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderDisplayItem;
@@ -73,23 +77,29 @@ public class RestElectronicOrdersController extends BaseController {
 
     @RequestMapping(value = "/rest/ElectronicOrders", method = RequestMethod.GET)
     public ElectronicOrderViewForm showElectronicOrders(HttpServletRequest request,
-            @ModelAttribute("form") @Valid ElectronicOrderViewForm form, BindingResult result) {
+            @ModelAttribute("form") @Valid ElectronicOrderViewForm form, BindingResult result)
+            throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
         form.setReferralFacilitySelectionList(
                 DisplayListService.getInstance().getList(ListType.REFERRAL_ORGANIZATIONS));
         form.setTestSelectionList(DisplayListService.getInstance().getList(ListType.ORDERABLE_TESTS));
         form.setStatusSelectionList(DisplayListService.getInstance().getList(ListType.ELECTRONIC_ORDER_STATUSES));
 
-        if (form.getSearchType() != null) {
-            List<ElectronicOrder> electronicOrders;
-            List<ElectronicOrderDisplayItem> eOrderDisplayItems;
-
-            electronicOrders = electronicOrderService.searchForElectronicOrders(form);
-            eOrderDisplayItems = convertToDisplayItem(electronicOrders, form.getUseAllInfo());
-
-            form.setSearchFinished(true);
-            form.setEOrders(eOrderDisplayItems);
+        List<ElectronicOrder> electronicOrders;
+        List<ElectronicOrderDisplayItem> eOrderDisplayItems = new ArrayList<>();
+        ElectronicOrderPaging paging = new ElectronicOrderPaging();
+        String requestedPage = request.getParameter("page");
+        if (GenericValidator.isBlankOrNull(requestedPage)) {
+            if (form.getSearchType() != null) {
+                electronicOrders = electronicOrderService.searchForElectronicOrders(form);
+                eOrderDisplayItems = convertToDisplayItem(electronicOrders, form.getUseAllInfo());
+                paging.setDatabaseResults(request, form, eOrderDisplayItems);
+            }
+        } else {
+            int requestedPageNumber = Integer.parseInt(requestedPage);
+            // Sets the requested page in the response.
+            paging.page(request, form, requestedPageNumber);
         }
-
+        form.setSearchFinished(true);
         return form;
     }
 

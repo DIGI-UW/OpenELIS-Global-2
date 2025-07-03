@@ -21,14 +21,14 @@ public class ReportQueueTypeServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetReportQueueTypeByName() {
+    public void getReportQueueTypeByName_ShouldReturnReportQueueType_UsingPassedParameter() {
         ReportQueueType reportQueueType = reportQueueTypeService.getReportQueueTypeByName("CriticalAlerts");
         assertNotNull(reportQueueType);
         assertEquals("3", reportQueueType.getId());
     }
 
     @Test
-    public void testGetAllReportQueueTypes() {
+    public void getAllReportQueueTypes_ShouldReturnAllReportQueueTypes() {
         List<ReportQueueType> reportQueueTypes = reportQueueTypeService.getAll();
         assertNotNull(reportQueueTypes);
         assertEquals(3, reportQueueTypes.size());

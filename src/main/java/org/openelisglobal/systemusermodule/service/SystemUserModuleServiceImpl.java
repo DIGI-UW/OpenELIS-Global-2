@@ -95,6 +95,7 @@ public class SystemUserModuleServiceImpl extends AuditableBaseObjectServiceImpl<
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Set<String> getAllPermittedPagesFromAgentId(int roleId) {
         Set<String> permittedPages = new HashSet<>();
         List<SystemUserModule> permissionModules = getAllPermissionModulesByAgentId((roleId));

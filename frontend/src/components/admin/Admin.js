@@ -219,31 +219,55 @@ function Admin() {
             title={intl.formatMessage({ id: "admin.formEntryConfig" })}
             renderIcon={ListDropdown}
           >
-            <SideNavMenuItem href="#NonConformityConfigurationMenu">
+            <SideNavMenuItem
+              data-cy="nonConformConfig"
+              href="#NonConformityConfigurationMenu"
+            >
               <FormattedMessage id="sidenav.label.admin.formEntry.nonconformityconfig" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#MenuStatementConfigMenu">
+            <SideNavMenuItem
+              data-cy="menuStatementConfig"
+              href="#MenuStatementConfigMenu"
+            >
               <FormattedMessage id="sidenav.label.admin.formEntry.menustatementconfig" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#WorkPlanConfigurationMenu">
+            <SideNavMenuItem
+              data-cy="workPlanConfig"
+              href="#WorkPlanConfigurationMenu"
+            >
               <FormattedMessage id="sidenav.label.admin.formEntry.Workplanconfig" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#SiteInformationMenu">
+            <SideNavMenuItem data-cy="siteInfoMenu" href="#SiteInformationMenu">
               <FormattedMessage id="sidenav.label.admin.formEntry.siteInfoconfig" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#ResultConfigurationMenu">
+            <SideNavMenuItem
+              data-cy="resultConfigMenu"
+              href="#ResultConfigurationMenu"
+            >
               <FormattedMessage id="sidenav.label.admin.formEntry.resultConfig" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#PatientConfigurationMenu">
+            <SideNavMenuItem
+              data-cy="patientConfigMenu"
+              href="#PatientConfigurationMenu"
+            >
               <FormattedMessage id="sidenav.label.admin.formEntry.patientconfig" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#PrintedReportsConfigurationMenu">
+            <SideNavMenuItem
+              data-cy="printedReportsConfigMenu"
+              href="#PrintedReportsConfigurationMenu"
+            >
               <FormattedMessage id="sidenav.label.admin.formEntry.PrintedReportsconfig" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#SampleEntryConfigurationMenu">
+            <SideNavMenuItem
+              data-cy="sampleEntryConfigMenu"
+              href="#SampleEntryConfigurationMenu"
+            >
               <FormattedMessage id="sidenav.label.admin.formEntry.sampleEntryconfig" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#ValidationConfigurationMenu">
+            <SideNavMenuItem
+              data-cy="validationConfigMenu"
+              href="#ValidationConfigurationMenu"
+            >
               <FormattedMessage id="sidenav.label.admin.formEntry.validationconfig" />
             </SideNavMenuItem>
           </SideNavMenu>

@@ -588,6 +588,7 @@ function OEHeader(props) {
                           <SelectItem text="Français" value="fr" />
                           <SelectItem text="Español" value="es" />
                           <SelectItem text="Indonesia" value="id" />
+                          <SelectItem text="România" value="ro" />
                         </Select>
                       </li>
                       <li className="userDetails">

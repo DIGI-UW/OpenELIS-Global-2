@@ -16,7 +16,7 @@ public class HL7MessageOutServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetByData() {
+    public void getByData_ShouldReturnHL7MessageOutUsingTheDataPassedAsParameter() {
         // TODO: Method not yet implemented.
         // HL7MessageOut message = hL7MessageOutService.getByData("You are requested
         // submit the tests");

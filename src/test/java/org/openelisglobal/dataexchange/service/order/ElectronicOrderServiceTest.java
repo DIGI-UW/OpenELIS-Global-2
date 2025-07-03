@@ -36,14 +36,14 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersOrderedBy_WhenSortOrderIsSTATUS_ID() {
+    public void getAllElectronicOrdersOrderedBy_ShouldReturnElectronicOrders_WhenSortOrderIsSTATUS_ID() {
         electronicOrders = electronicOrderService.getAllElectronicOrdersOrderedBy(ElectronicOrder.SortOrder.STATUS_ID);
         assertEquals(3, electronicOrders.size());
         assertEquals("1", electronicOrders.get(0).getId());
     }
 
     @Test
-    public void testGetAllElectronicOrdersOrderedBy_WhenSortOrderIsEXTERNAL_ID() {
+    public void getAllElectronicOrdersOrderedBy_ShouldReturnElectronicOrders_WhenSortOrderIsEXTERNAL_ID() {
         electronicOrders = electronicOrderService
                 .getAllElectronicOrdersOrderedBy(ElectronicOrder.SortOrder.EXTERNAL_ID);
         assertEquals(3, electronicOrders.size());
@@ -51,7 +51,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersOrderedBy_WhenSortOrderIsLAST_UPDATED_ASC() {
+    public void getAllElectronicOrdersOrderedBy_ShouldReturnElectronicOrders_WhenSortOrderIsLAST_UPDATED_ASC() {
         electronicOrders = electronicOrderService
                 .getAllElectronicOrdersOrderedBy(ElectronicOrder.SortOrder.LAST_UPDATED_ASC);
         assertEquals(3, electronicOrders.size());
@@ -59,7 +59,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersOrderedBy_WhenSortOrderIsLAST_UPDATED_DESC() {
+    public void getAllElectronicOrdersOrderedBy_ShouldReturnElectronicOrders_WhenSortOrderIsLAST_UPDATED_DESC() {
         electronicOrders = electronicOrderService
                 .getAllElectronicOrdersOrderedBy(ElectronicOrder.SortOrder.LAST_UPDATED_DESC);
         assertEquals(3, electronicOrders.size());
@@ -67,7 +67,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetElectronicOrdersByExternalId() {
+    public void getElectronicOrdersByExternalId_ShouldReturnElectronicOrders_UsingExternalID() {
         electronicOrders = electronicOrderService.getElectronicOrdersByExternalId("EXT789012");
         assertNotNull(electronicOrders);
         assertEquals(1, electronicOrders.size());
@@ -75,7 +75,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersContainingValueOrderedBy_WhenSortOrderIsSTATUS_ID() {
+    public void getAllElectronicOrdersContainingValueOrderedBy_ShouldReturnElectronicOrders_WhenSortOrderIsSTATUS_ID() {
         electronicOrders = electronicOrderService.getAllElectronicOrdersContainingValueOrderedBy("details",
                 ElectronicOrder.SortOrder.STATUS_ID);
         assertNotNull(electronicOrders);
@@ -84,7 +84,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersContainingValueOrderedBy_WhenSortOrderIsLAST_UPDATED_ASC() {
+    public void getAllElectronicOrdersContainingValueOrderedBy_ShouldReturnElectronicOrders_WhenSortOrderIsLAST_UPDATED_ASC() {
         electronicOrders = electronicOrderService.getAllElectronicOrdersContainingValueOrderedBy("details",
                 ElectronicOrder.SortOrder.LAST_UPDATED_ASC);
         assertNotNull(electronicOrders);
@@ -93,7 +93,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersContainingValueOrderedBy_WhenSortOrderIsLAST_UPDATED_DESC() {
+    public void getAllElectronicOrdersContainingValueOrderedBy_ShouldReturnElectronicOrders_WhenSortOrderIsLAST_UPDATED_DESC() {
         electronicOrders = electronicOrderService.getAllElectronicOrdersContainingValueOrderedBy("details",
                 ElectronicOrder.SortOrder.LAST_UPDATED_DESC);
         assertNotNull(electronicOrders);
@@ -102,7 +102,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersContainingValueOrderedBy_WhenSortOrderIsLAST_EXTERNAL_ID() {
+    public void getAllElectronicOrdersContainingValueOrderedBy_ShouldReturnElectronicOrders_WhenSortOrderIsLAST_EXTERNAL_ID() {
         electronicOrders = electronicOrderService.getAllElectronicOrdersContainingValueOrderedBy("details",
                 ElectronicOrder.SortOrder.EXTERNAL_ID);
         assertNotNull(electronicOrders);
@@ -111,7 +111,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersContainingValuesOrderedBy_WhenSortOrderIsSTATUS_ID() {
+    public void getAllElectronicOrdersContainingValuesOrderedBy_ShouldReturnElectronicOrders_WhenSortOrderIsSTATUS_ID() {
         electronicOrders = electronicOrderService.getAllElectronicOrdersContainingValuesOrderedBy("Order", "Kukki",
                 "Faith", "M", ElectronicOrder.SortOrder.STATUS_ID);
         assertNotNull(electronicOrders);
@@ -120,7 +120,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersContainingValuesOrderedBy_WhenSortOrderIsLAST_UPDATED_ASC() {
+    public void getAllElectronicOrdersContainingValuesOrderedBy_ShouldReturnElectronicOrders_WhenSortOrderIsLAST_UPDATED_ASC() {
         electronicOrders = electronicOrderService.getAllElectronicOrdersContainingValuesOrderedBy("Order", "Kukki",
                 "Faith", "M", ElectronicOrder.SortOrder.LAST_UPDATED_ASC);
         assertNotNull(electronicOrders);
@@ -129,7 +129,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersContainingValuesOrderedBy_WhenSortOrderIsLAST_UPDATED_DESC() {
+    public void getAllElectronicOrdersContainingValuesOrderedBy_ShouldReturnElectronicOrders_WhenSortOrderIsLAST_UPDATED_DESC() {
         electronicOrders = electronicOrderService.getAllElectronicOrdersContainingValuesOrderedBy("Order", "Kukki",
                 "Faith", "M", ElectronicOrder.SortOrder.LAST_UPDATED_DESC);
         assertNotNull(electronicOrders);
@@ -138,7 +138,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersContainingValuesOrderedBy_WhenSortOrderIsEXTERNAL_ID() {
+    public void getAllElectronicOrdersContainingValuesOrderedBy_ShouldReturnElectronicOrders_WhenSortOrderIsEXTERNAL_ID() {
         electronicOrders = electronicOrderService.getAllElectronicOrdersContainingValuesOrderedBy("Order", "Kukki",
                 "Faith", "M", ElectronicOrder.SortOrder.EXTERNAL_ID);
         assertNotNull(electronicOrders);
@@ -147,7 +147,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetElectronicOrdersContainingValueExludedByOrderedBy_WhenSortOrderIs_STATUS_ID() {
+    public void getElectronicOrdersContainingValueExludedByOrderedBy_ShouldReturnElectronicOrders_WhenSortOrderIs_STATUS_ID() {
         List<StatusService.ExternalOrderStatus> excludedStatuses = new ArrayList<>();
         electronicOrders = electronicOrderService.getElectronicOrdersContainingValueExludedByOrderedBy("details",
                 excludedStatuses, ElectronicOrder.SortOrder.STATUS_ID);
@@ -157,7 +157,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetElectronicOrdersContainingValueExludedByOrderedBy_WhenSortOrderIsLAST_UPDATED_ASC() {
+    public void getElectronicOrdersContainingValueExludedByOrderedBy_ShouldReturnElectronicOrders_WhenSortOrderIsLAST_UPDATED_ASC() {
         List<StatusService.ExternalOrderStatus> excludedStatuses = new ArrayList<>();
         electronicOrders = electronicOrderService.getElectronicOrdersContainingValueExludedByOrderedBy("details",
                 excludedStatuses, ElectronicOrder.SortOrder.LAST_UPDATED_ASC);
@@ -167,7 +167,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetElectronicOrdersContainingValueExludedByOrderedBy_WhenSortOrderIsLAST_UPDATED_DESC() {
+    public void getElectronicOrdersContainingValueExludedByOrderedBy_ShouldReturnElectronicOrders_WhenSortOrderIsLAST_UPDATED_DESC() {
         List<StatusService.ExternalOrderStatus> excludedStatuses = new ArrayList<>();
         electronicOrders = electronicOrderService.getElectronicOrdersContainingValueExludedByOrderedBy("details",
                 excludedStatuses, ElectronicOrder.SortOrder.LAST_UPDATED_DESC);
@@ -177,7 +177,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetElectronicOrdersContainingValueExludedByOrderedBy_WhenSortOrderIsEXTERNAL_ID() {
+    public void getElectronicOrdersContainingValueExludedByOrderedBy_ShouldReturnElectronicOrders_WhenSortOrderIsEXTERNAL_ID() {
         List<StatusService.ExternalOrderStatus> excludedStatuses = new ArrayList<>();
         electronicOrders = electronicOrderService.getElectronicOrdersContainingValueExludedByOrderedBy("details",
                 excludedStatuses, ElectronicOrder.SortOrder.EXTERNAL_ID);
@@ -187,7 +187,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersByDateAndStatus_WhenSortOrderIsSTATUS_ID() {
+    public void getAllElectronicOrdersByDateAndStatus_ShouldReturnElectronicOrders_WhenSortOrderIsSTATUS_ID() {
         electronicOrders = electronicOrderService.getAllElectronicOrdersByDateAndStatus(START_DATE, END_DATE, "1",
                 ElectronicOrder.SortOrder.STATUS_ID);
         assertNotNull(electronicOrders);
@@ -196,7 +196,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersByDateAndStatus_WhenSortOrderIsLAST_UPDATED_ASC() {
+    public void getAllElectronicOrdersByDateAndStatus_ShouldReturnElectronicOrders_WhenSortOrderIsLAST_UPDATED_ASC() {
         electronicOrders = electronicOrderService.getAllElectronicOrdersByDateAndStatus(START_DATE, END_DATE, "1",
                 ElectronicOrder.SortOrder.LAST_UPDATED_ASC);
         assertNotNull(electronicOrders);
@@ -205,7 +205,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersByDateAndStatus_WhenSortOrderIsLAST_UPDATED_DESC() {
+    public void getAllElectronicOrdersByDateAndStatus_ShouldReturnElectronicOrders_WhenSortOrderIsLAST_UPDATED_DESC() {
         electronicOrders = electronicOrderService.getAllElectronicOrdersByDateAndStatus(START_DATE, END_DATE, "1",
                 ElectronicOrder.SortOrder.LAST_UPDATED_DESC);
         assertNotNull(electronicOrders);
@@ -214,7 +214,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersByDateAndStatus_WhenSortOrderIsLAST_EXTERNAL_ID() {
+    public void getAllElectronicOrdersByDateAndStatus_ShouldReturnElectronicOrders_WhenSortOrderIsLAST_EXTERNAL_ID() {
         electronicOrders = electronicOrderService.getAllElectronicOrdersByDateAndStatus(START_DATE, END_DATE, "1",
                 ElectronicOrder.SortOrder.EXTERNAL_ID);
         assertNotNull(electronicOrders);
@@ -223,14 +223,14 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetCountOfAllElectronicOrdersByDateAndStatus() {
+    public void getCountOfAllElectronicOrdersByDateAndStatus_ShouldReturnNumberOfElectronicOrders() {
         NUMBER_OF_ELECTRONIC_ORDERS = electronicOrderService.getCountOfAllElectronicOrdersByDateAndStatus(START_DATE,
                 END_DATE, "1");
         assertEquals(2, NUMBER_OF_ELECTRONIC_ORDERS);
     }
 
     @Test
-    public void testGetAllElectronicOrdersByTimestampAndStatus_WhenSortOrderIsSTATUS_ID() {
+    public void getAllElectronicOrdersByTimestampAndStatus_ShouldReturnElectronicOrders_WhenSortOrderIsSTATUS_ID() {
         electronicOrders = electronicOrderService.getAllElectronicOrdersByTimestampAndStatus(
                 Timestamp.valueOf("2023-03-03 12:00:00"), Timestamp.valueOf("2025-12-03 12:00:00"), "1",
                 ElectronicOrder.SortOrder.STATUS_ID);
@@ -240,7 +240,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersByTimestampAndStatus_WhenSortOrderIsLAST_UPDATED_ASC() {
+    public void getAllElectronicOrdersByTimestampAndStatus_ShouldReturnElectronicOrders_WhenSortOrderIsLAST_UPDATED_ASC() {
         electronicOrders = electronicOrderService.getAllElectronicOrdersByTimestampAndStatus(
                 Timestamp.valueOf("2023-03-03 12:00:00"), Timestamp.valueOf("2025-12-03 12:00:00"), "1",
                 ElectronicOrder.SortOrder.LAST_UPDATED_ASC);
@@ -250,7 +250,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersByTimestampAndStatus_WhenSortOrderIsLAST_UPDATED_DESC() {
+    public void getAllElectronicOrdersByTimestampAndStatus_ShouldReturnElectronicOrders_WhenSortOrderIsLAST_UPDATED_DESC() {
         electronicOrders = electronicOrderService.getAllElectronicOrdersByTimestampAndStatus(
                 Timestamp.valueOf("2023-03-03 12:00:00"), Timestamp.valueOf("2025-12-03 12:00:00"), "1",
                 ElectronicOrder.SortOrder.LAST_UPDATED_DESC);
@@ -260,7 +260,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersByTimestampAndStatus_WhenSortOrderIsEXTERNAL_ID() {
+    public void getAllElectronicOrdersByTimestampAndStatus_ShouldReturnElectronicOrders_WhenSortOrderIsEXTERNAL_ID() {
         electronicOrders = electronicOrderService.getAllElectronicOrdersByTimestampAndStatus(
                 Timestamp.valueOf("2023-03-03 12:00:00"), Timestamp.valueOf("2025-12-03 12:00:00"), "1",
                 ElectronicOrder.SortOrder.EXTERNAL_ID);
@@ -270,14 +270,14 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetCountOfElectronicOrdersByTimestampAndStatus() {
+    public void getCountOfElectronicOrdersByTimestampAndStatus_ShouldReturnNumberOfElectronicOrders() {
         NUMBER_OF_ELECTRONIC_ORDERS = electronicOrderService.getCountOfElectronicOrdersByTimestampAndStatus(
                 Timestamp.valueOf("2024-01-03 12:00:00"), Timestamp.valueOf("2025-12-03 12:00:00"), "3");
         assertEquals(1, NUMBER_OF_ELECTRONIC_ORDERS);
     }
 
     @Test
-    public void testGetCountOfElectronicOrdersByStatusList() {
+    public void getCountOfElectronicOrdersByStatusList_ShouldReturnElectronicOrders_UsingListOfStatusIds() {
         List<Integer> statusIds = new ArrayList<>();
         statusIds.add(1);
         NUMBER_OF_ELECTRONIC_ORDERS = electronicOrderService.getCountOfElectronicOrdersByStatusList(statusIds);
@@ -285,7 +285,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersByStatusList_WhenOrderIsSTATUS_ID() {
+    public void getAllElectronicOrdersByStatusList_ShouldReturnElectronicOrders_WhenOrderIsSTATUS_ID() {
         List<Integer> statusIds = new ArrayList<>();
         statusIds.add(1);
         statusIds.add(3);
@@ -297,7 +297,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersByStatusList_WhenOrderIsLAST_UPDATED_ASC() {
+    public void getAllElectronicOrdersByStatusList_ShouldReturnElectronicOrders_WhenOrderIsLAST_UPDATED_ASC() {
         List<Integer> statusIds = new ArrayList<>();
         statusIds.add(1);
         statusIds.add(3);
@@ -309,7 +309,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersByStatusList_WhenOrderIsLAST_UPDATED_DESC() {
+    public void getAllElectronicOrdersByStatusList_ShouldReturnElectronicOrders_WhenOrderIsLAST_UPDATED_DESC() {
         List<Integer> statusIds = new ArrayList<>();
         statusIds.add(1);
         statusIds.add(3);
@@ -321,7 +321,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetAllElectronicOrdersByStatusList_WhenOrderIsEXTERNAL_ID() {
+    public void getAllElectronicOrdersByStatusList_ShouldReturnElectronicOrders_WhenOrderIsEXTERNAL_ID() {
         List<Integer> statusIds = new ArrayList<>();
         statusIds.add(1);
         statusIds.add(3);
@@ -333,7 +333,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testSearchForElectronicOrders() {
+    public void searchForElectronicOrders_ShouldReturnElectronicOrders() {
         ElectronicOrderViewForm orderViewForm = new ElectronicOrderViewForm();
         orderViewForm.setSearchType(ElectronicOrderViewForm.SearchType.DATE_STATUS);
         electronicOrders = electronicOrderService.searchForElectronicOrders(orderViewForm);
@@ -343,7 +343,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testSearchForStudyElectronicOrders_WhenSearchTypeIsDATESTATUS() {
+    public void searchForStudyElectronicOrders_ShouldReturnElectronicOrders_WhenSearchTypeIsDATESTATUS() {
         ElectronicOrderViewForm orderViewForm = new ElectronicOrderViewForm();
         orderViewForm.setSearchType(ElectronicOrderViewForm.SearchType.DATE_STATUS);
         electronicOrders = electronicOrderService.searchForStudyElectronicOrders(orderViewForm);
@@ -353,7 +353,7 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testSearchForStudyElectronicOrders_WhenSearchTypeIsIDENTIFIER() {
+    public void searchForStudyElectronicOrders_ShouldReturnElectronicOrders_WhenSearchTypeIsIDENTIFIER() {
         // Method call fails when the searchType is IDENTIFIER;
         // Because the method call
         // "fhirUtil.getFhirClient(fhirConfig.getLocalFhirStorePath());" in the

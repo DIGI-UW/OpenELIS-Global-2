@@ -13,7 +13,7 @@ const loginAndNavigateToHome = () => {
 
 // Helper function to add a new order
 const addNewOrder = (dashboardType, testType, sampleType, panelType) => {
-  homePage.goToOrderPageExt();
+  homePage.goToOrderPage();
   dashboard.searchPatientByFName();
   dashboard.searchPatient();
   cy.wait(200);

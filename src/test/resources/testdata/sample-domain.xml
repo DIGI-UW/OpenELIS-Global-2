@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <sample_domain id="1" domain_description="Adult Clinical"
+        domain="A" lastupdated="2025-07-01 09:00:00" />
+
+    <sample_domain id="2" domain_description="Pediatric"
+        domain="P" lastupdated="2025-07-01 09:15:00" />
+
+    <sample_domain id="3" domain_description="Veterinary"
+        domain="V" lastupdated="2025-07-01 09:15:00" />
+</dataset>
