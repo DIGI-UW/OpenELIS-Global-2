@@ -131,6 +131,14 @@ function AnalyzerTestName() {
     if (response) {
       setAnalyzerList(response.analyzerList || []);
       // setTestList(response.testList || []);
+      if (response.analyzerList.length == 0) {
+        setNotificationVisible(true);
+        addNotification({
+          kind: NotificationKinds.warning,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({ id: "message.noPluginFound" }),
+        });
+      }
     }
   }
 
@@ -356,6 +364,7 @@ function AnalyzerTestName() {
           modalHeading="Add Analyzer Test Name"
           primaryButtonText="Add"
           secondaryButtonText="Cancel"
+          primaryButtonDisabled={analyzerList.length == 0}
           onRequestSubmit={handleAddAnalyzer}
           onRequestClose={closeAddModal}
         >

@@ -367,6 +367,7 @@
   "label.button.uploadfile": "Upload file",
   "label.button.select": "Select",
   "label.button.add": "Add",
+  "label.button.add.question": "Add new Question",
   "order.title": "ORDER",
   "label.text.generate": "generate",
   "label.order.scan.text": "Scan OR Enter Manually OR",

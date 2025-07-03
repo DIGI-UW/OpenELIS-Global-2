@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <sample_pdf id="1" accession_number="100001" allow_view="Y"
+        barcode="ABC123XYZ" />
+
+    <sample_pdf id="2" accession_number="100002" allow_view="N"
+        barcode="DEF456UVW" />
+
+    <sample_pdf id="3" accession_number="100003" allow_view="Y"
+        barcode="GHI789RST" />
+    <sample_pdf id="4" accession_number="100002" allow_view="Y"
+        barcode="ABC123XYZ" />
+</dataset>

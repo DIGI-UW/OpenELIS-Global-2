@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+
+    <sample id="4001" accession_number="ACC123456" domain="A"
+        next_item_sequence="1" revision="0" entered_date="2025-07-01 08:00:00"
+        received_date="2025-07-01 08:30:00"
+        collection_date="2025-07-01 07:45:00" client_reference="REF001"
+        status="R" released_date="2025-07-01 12:00:00" sticker_rcvd_flag="Y"
+        barcode="BC123456" transmission_date="2025-07-01 13:00:00"
+        lastupdated="2025-07-01 13:30:00" spec_or_isolate="S"
+        is_confirmation="false" />
+
+    <sample id="4002" accession_number="ACC654321" domain="B"
+        next_item_sequence="2" revision="1" entered_date="2025-07-02 09:10:00"
+        received_date="2025-07-02 09:45:00"
+        collection_date="2025-07-02 09:00:00" client_reference="REF002"
+        status="P" released_date="2025-07-02 13:15:00" sticker_rcvd_flag="N"
+        barcode="BC654321" transmission_date="2025-07-02 14:00:00"
+        lastupdated="2025-07-02 14:30:00" spec_or_isolate="I" priority="2"
+        is_confirmation="true" />
+
+    <sample id="4003" accession_number="ACC789012" domain="C"
+        next_item_sequence="3" revision="0" entered_date="2025-07-03 10:20:00"
+        received_date="2025-07-03 10:45:00"
+        collection_date="2025-07-03 10:10:00" client_reference="REF003"
+        status="C" released_date="2025-07-03 15:00:00" sticker_rcvd_flag="Y"
+        barcode="BC789012" transmission_date="2025-07-03 15:30:00"
+        lastupdated="2025-07-03 16:00:00" spec_or_isolate="S" priority="1"
+        is_confirmation="false" />
+
+    <sample_human id="1001" samp_id="4001"
+        lastupdated="2025-07-01 09:15:00" />
+
+    <sample_human id="1002" samp_id="4002"
+        lastupdated="2025-07-01 10:45:00" />
+
+    <sample_human id="1003" samp_id="4003"
+        lastupdated="2025-07-01 12:30:00" />
+
+    <sample_newborn id="1001" weight="3200" multi_birth="N"
+        birth_order="1" gestational_week="39.50"
+        date_first_feeding="2025-06-25" breast="Y" tpn="N" formula="N"
+        milk="Y" soy="N" jaundice="N" antibiotics="N" transfused="N"
+        date_transfusion="2025-07-01" medical_record_numeric="MRN123456"
+        nicu="N" birth_defect="N" pregnancy_complication="N"
+        deceased_sibling="N" cause_of_death="" family_history="N" other=""
+        y_numeric="YN456789" yellow_card="Y" lastupdated="2025-07-01 10:00:00" />
+
+    <sample_newborn id="1002" weight="3200" multi_birth="Y"
+        birth_order="2" gestational_week="37.25"
+        date_first_feeding="2025-06-26" breast="N" tpn="Y" formula="Y"
+        milk="N" soy="Y" jaundice="Y" antibiotics="Y" transfused="Y"
+        date_transfusion="2025-06-28" medical_record_numeric="MRN654321"
+        nicu="Y" birth_defect="Y" pregnancy_complication="Y"
+        deceased_sibling="N" cause_of_death="Early child birth"
+        family_history="Y" other="Mother diabetic" y_numeric="YN987654"
+        yellow_card="N" lastupdated="2025-07-01 11:00:00" />
+
+    <sample_newborn id="1003" weight="3500" multi_birth="N"
+        birth_order="1" gestational_week="40.00"
+        date_first_feeding="2025-06-24" breast="Y" tpn="N" formula="N"
+        milk="Y" soy="N" jaundice="N" antibiotics="N" transfused="N"
+        date_transfusion="2025-07-01" medical_record_numeric="MRN111222"
+        nicu="N" birth_defect="N" pregnancy_complication="N"
+        deceased_sibling="N" cause_of_death="Poor health conditions"
+        family_history="N" other="Mother diabetic" y_numeric="YN112233"
+        yellow_card="Y" lastupdated="2025-07-01 12:00:00" />
+</dataset>

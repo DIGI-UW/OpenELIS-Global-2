@@ -7,6 +7,7 @@ import ProviderManagementPage from "./ProviderManagementPage";
 import OrganizationManagementPage from "./OrganizationManagementPage";
 import ReflexTestsConfigPage from "./ReflexTestsConfigPage";
 import DictionaryMenuPage from "./DictionaryMenu";
+import GeneralConfigurationsPage from "./GeneralConfigurationsPage";
 
 class AdminPage {
   constructor() {}
@@ -109,6 +110,69 @@ class AdminPage {
     cy.contains("span", "Reflex Tests Configuration").click();
     cy.get("[data-cy='calculatedValue']").click();
     return new ReflexTestsConfigPage();
+  }
+
+  goToNonConformityConfig() {
+    cy.contains("span", "General Configurations").click();
+    cy.get("[data-cy='nonConformConfig']").click();
+
+    return new GeneralConfigurationsPage();
+  }
+
+  goToMenuStatementConfig() {
+    cy.contains("span", "General Configurations").click();
+    cy.get("[data-cy='menuStatementConfig']").click();
+
+    return new GeneralConfigurationsPage();
+  }
+
+  goToWorkPlanConfig() {
+    cy.contains("span", "General Configurations").click();
+    cy.get("[data-cy='workPlanConfig']").click();
+
+    return new GeneralConfigurationsPage();
+  }
+
+  goToSiteInformationConfig() {
+    cy.contains("span", "General Configurations").click();
+    cy.get("[data-cy='siteInfoMenu']").click();
+
+    return new GeneralConfigurationsPage();
+  }
+
+  goToResultEntityConfig() {
+    cy.contains("span", "General Configurations").click();
+    cy.get("[data-cy='resultConfigMenu']").click();
+
+    return new GeneralConfigurationsPage();
+  }
+
+  goToPatientEntityConfig() {
+    cy.contains("span", "General Configurations").click();
+    cy.get("[data-cy='patientConfigMenu']").click();
+
+    return new GeneralConfigurationsPage();
+  }
+
+  goToPrintedReportConfig() {
+    cy.contains("span", "General Configurations").click();
+    cy.get("[data-cy='printedReportsConfigMenu']").click();
+
+    return new GeneralConfigurationsPage();
+  }
+
+  goToOrderEntityConfig() {
+    cy.contains("span", "General Configurations").click();
+    cy.get("[data-cy='sampleEntryConfigMenu']").click();
+
+    return new GeneralConfigurationsPage();
+  }
+
+  goToValidationConfig() {
+    cy.contains("span", "General Configurations").click();
+    cy.get("[data-cy='validationConfigMenu']").click();
+
+    return new GeneralConfigurationsPage();
   }
 }
 export default AdminPage;
