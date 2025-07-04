@@ -122,6 +122,27 @@ accessing any of these links, simply follow these steps:
 
         mvn spotless:apply
 
+#### To ensure your code passes the same checks as the CI pipeline, you can run the following commands from your project directory
+
+1.  Run Code Formatting Check (Backend). This command checks code formatting and
+    performs validation similar to the CI
+
+        mvn spotless:check
+
+2.  Run Build Check (Backend). This command builds the project similar to CI
+
+        mvn clean install -Dspotless.check.skip=true
+
+3.  Run Frontend Formatting, Build, and E2E Test Checks similar to CI
+
+    > **Note:** Frontend checks will only pass successfully if your development
+    > environment is properly set up and running without issues.
+
+        cd frontend/ # from project directory
+        npm install
+        npm run build
+        npm run cy:run # this will run e2e testing same CI
+
 ### Pull request guidelines
 
 Please follow the [pull request tips](PULL_REQUEST_TIPS.md) in order to make

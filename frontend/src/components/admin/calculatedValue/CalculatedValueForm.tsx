@@ -437,6 +437,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
           <>
             <Column lg={5} md={2} sm={1}>
               <Select
+                data-cy="add-sample"
                 id={index + "_" + operationIndex + "_sample"}
                 name="sampleId"
                 labelText={
@@ -866,7 +867,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                     index +
                                     "_" +
                                     operation_index +
-                                    "_addopeartion"
+                                    "_addoperation"
                                   }
                                   name="addoperation"
                                   labelText={
@@ -920,6 +921,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                           </Column>
                           <Column lg={4}>
                             <Select
+                              data-cy="calc-sample"
                               id={index + "_sample"}
                               name="sampleId"
                               labelText={
@@ -1012,6 +1014,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
             </Form>
             {calculationList.length - 1 === index && (
               <IconButton
+                data-cy="calcRule"
                 onClick={handleRuleAdd}
                 label={<FormattedMessage id="rulebuilder.label.addRule" />}
                 size="md"

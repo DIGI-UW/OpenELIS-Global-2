@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <report_external_import id="1"
+        sending_site="LAB001" event_date="2022-11-01 12:00:00"
+        recieved_date="2023-01-01 00:00:00" type="LAB_RESULTS"
+        updated_flag="false" data="{'result': 'Positive', 'test': 'COVID-19'}"
+        lastupdated="2025-05-11 00:30:00" />
+
+    <report_external_import id="2"
+        sending_site="CLINIC45" event_date="2022-09-01 00:00:00"
+        recieved_date="2023-01-11 00:00:00" type="VACCINATION"
+        updated_flag="true" data="{'vaccine': 'MMR', 'dose': 2}"
+        lastupdated="2025-01-01 00:00:00" />
+
+    <report_external_import id="3"
+        sending_site="MOBILE_UNIT" event_date="2019-01-01 00:00:00"
+        recieved_date="2021-01-11 00:00:00" type="FIELD_DATA"
+        updated_flag="false"
+        data="{'observation': 'no symptoms', 'temperature': '36.7'}"
+        lastupdated="2025-01-01 00:00:00" />
+</dataset>

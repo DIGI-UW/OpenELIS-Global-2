@@ -201,7 +201,11 @@ function ConfigMenuDisplay(props) {
                 <Section>
                   <Form onSubmit={handleModify}>
                     <Column lg={16} md={8} sm={4}>
-                      <Button disabled={modifyButton} type="submit">
+                      <Button
+                        data-cy="modify-Button"
+                        disabled={modifyButton}
+                        type="submit"
+                      >
                         <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.modify" />
                       </Button>{" "}
                     </Column>

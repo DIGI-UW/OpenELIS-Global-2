@@ -365,7 +365,7 @@ export const CustomCommonSortableOrderList = ({
           }}
         >
           <Draggable aria-label="sample-type-list-draggable" size={24} />
-          {test.value}
+          {test.value ? test.value : test.name}
         </div>
       ))}
     </div>

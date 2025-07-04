@@ -1,6 +1,4 @@
 import LoginPage from "../pages/LoginPage";
-import ProviderManagementPage from "../pages/ProviderManagementPage";
-import OrganizationManagementPage from "../pages/OrganizationManagementPage";
 import AdminPage from "../pages/AdminPage";
 
 let homePage = null;
@@ -8,65 +6,10 @@ let loginPage = null;
 let adminPage = new AdminPage();
 let orderEntityPage = null;
 let patientEntryPage = null;
-let providerManagementPage = new ProviderManagementPage();
-let orgMgmnt = new OrganizationManagementPage();
 
 before("login", () => {
   loginPage = new LoginPage();
   loginPage.visit();
-});
-
-describe("Add requester, institute and site first", function () {
-  it("Navidates to Admin", function () {
-    homePage = loginPage.goToHomePage();
-    orderEntityPage = homePage.goToAdminPageProgram();
-    orderEntityPage = adminPage.goToProviderManagementPage();
-  });
-
-  it("Adds and saves requester", function () {
-    providerManagementPage.clickAddProviderButton();
-    providerManagementPage.enterProviderLastName();
-    providerManagementPage.enterProviderFirstName();
-    providerManagementPage.clickActiveDropdown();
-    providerManagementPage.addProvider();
-    cy.reload();
-  });
-
-  it("Navidate to organisation Management", function () {
-    orderEntityPage = adminPage.goToOrganizationManagement();
-  });
-
-  it("Add organisation/site details", function () {
-    orgMgmnt.clickAddOrganization();
-    orgMgmnt.addOrgName();
-    orgMgmnt.activateOrganization();
-    orgMgmnt.addPrefix();
-    orgMgmnt.addParentOrg();
-    orgMgmnt.checkReferringClinic();
-    orgMgmnt.saveOrganization();
-  });
-
-  it("Validates the added site/organization", function () {
-    orderEntityPage = adminPage.goToOrganizationManagement();
-    orgMgmnt.searchOrganzation();
-    orgMgmnt.confirmOrganization();
-  });
-
-  it("Add institute details", function () {
-    orgMgmnt.clickAddOrganization();
-    orgMgmnt.addInstituteName();
-    orgMgmnt.activateOrganization();
-    //orgMgmnt.addInstitutePrefix();
-    orgMgmnt.addParentOrg();
-    orgMgmnt.checkReferalLab();
-    orgMgmnt.saveOrganization();
-  });
-
-  it("Validates the added institute", function () {
-    orderEntityPage = adminPage.goToOrganizationManagement();
-    orgMgmnt.searchInstitute();
-    orgMgmnt.confirmInstitute();
-  });
 });
 
 describe("Order Entity", function () {

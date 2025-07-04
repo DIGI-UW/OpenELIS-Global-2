@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer;
 
+import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -25,23 +26,25 @@ public class AnalyzerExperimentServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/analyzer-experiment.xml");
     }
 
-    public void getAnalyzerExperimentFromDataBase() {
+    @Test
+    public void getAnalyzerExperimentFromDataBase_shouldReturnExpectedResults() {
+
         List<AnalyzerExperiment> experimentList = analyzerExperimentService.getAll();
-        assertNotNull(experimentList);
-        assertEquals(3, experimentList.size());
-        experimentList.forEach(experiment -> {
-            System.out.print(experiment.getName() + " ");
-        });
+
+        assertNotNull("Experiment list should not be null", experimentList);
+        assertFalse("Experiment list should not be empty", experimentList.isEmpty());
+        assertEquals("Expected 3 experiments in the database", 3, experimentList.size());
+
+        for (AnalyzerExperiment experiment : experimentList) {
+            assertNotNull("Experiment name should not be null", experiment.getName());
+            assertFalse("Experiment name should not be empty", experiment.getName().trim().isEmpty());
+        }
     }
 
     @Test
     public void getWellValuesForId_shouldReturnWellValues() throws IOException {
-        // The file in the XML dataset contains binary data
-        Map<String, String> wellValues = analyzerExperimentService.getWellValuesForId(1);
 
-        // Just verify we get a non-null result
-        // In a real test environment with proper CSV data, we would check specific
-        // values
+        Map<String, String> wellValues = analyzerExperimentService.getWellValuesForId(1);
         assertNotNull(wellValues);
     }
 
@@ -49,56 +52,45 @@ public class AnalyzerExperimentServiceTest extends BaseWebContextSensitiveTest {
     public void saveMapAsCSVFile_shouldSaveAndReturnId() throws LIMSException, Exception {
         cleanRowsInCurrentConnection(new String[] { "analyzer_experiment" });
 
-        // Arrange
         Map<String, String> wellValues = new HashMap<>();
         wellValues.put("A1", "Sample1");
         wellValues.put("B2", "Sample2");
         wellValues.put("C3", "Sample3");
         assertEquals(0, analyzerExperimentService.getAll().size());
 
-        // Act
         Integer id = analyzerExperimentService.saveMapAsCSVFile("TestFile.csv", wellValues);
 
-        // Assert
         assertNotNull(id);
 
-        // Verify the file was saved properly
         AnalyzerExperiment savedExperiment = analyzerExperimentService.get(id);
         assertEquals("TestFile.csv", savedExperiment.getName());
         assertEquals(1, analyzerExperimentService.getAll().size());
 
-        // Clean up
         analyzerExperimentService.delete(savedExperiment);
     }
 
     @Test
     public void insert_shouldInsertAnalyzerExperiment() throws Exception {
         cleanRowsInCurrentConnection(new String[] { "analyzer_experiment" });
-        // Arrange
         AnalyzerExperiment newExperiment = new AnalyzerExperiment();
         newExperiment.setName("PCR Test Experiment");
         newExperiment.setFile("well,Sample Name\nD1,NewSample1\n".getBytes());
         assertEquals(0, analyzerExperimentService.getAll().size());
 
-        // Act
         Integer inserted = analyzerExperimentService.insert(newExperiment);
         AnalyzerExperiment insertedExperiment = analyzerExperimentService.get(inserted);
 
-        // Assert
         assertNotNull(insertedExperiment);
         assertEquals("PCR Test Experiment", insertedExperiment.getName());
         assertEquals(1, analyzerExperimentService.getAll().size());
 
-        // Clean up
         analyzerExperimentService.delete(insertedExperiment);
     }
 
     @Test
     public void getAnalyzerExperimentById_shouldReturnCorrectExperiment() {
-        // Act
         AnalyzerExperiment experiment = analyzerExperimentService.get(1);
 
-        // Assert
         assertNotNull(experiment);
         assertEquals("Blood Chemistry Analysis", experiment.getName());
     }
@@ -107,7 +99,6 @@ public class AnalyzerExperimentServiceTest extends BaseWebContextSensitiveTest {
     public void update_shouldUpdateAnalyzerExperiment() throws Exception {
         cleanRowsInCurrentConnection(new String[] { "analyzer_experiment" });
 
-        // Arrange
         AnalyzerExperiment newExperiment = new AnalyzerExperiment();
         newExperiment.setName("PCR Test Experiment");
         newExperiment.setFile("well,Sample Name\nD1,NewSample1\n".getBytes());
@@ -121,15 +112,12 @@ public class AnalyzerExperimentServiceTest extends BaseWebContextSensitiveTest {
         String originalName = experiment.getName();
         experiment.setName("Updated Blood Count Test");
 
-        // Act
         analyzerExperimentService.update(experiment);
         AnalyzerExperiment updatedExperiment = analyzerExperimentService.get(id);
 
-        // Assert
         assertNotNull(updatedExperiment);
         assertEquals("Updated Blood Count Test", updatedExperiment.getName());
 
-        // Clean up
         analyzerExperimentService.delete(updatedExperiment);
     }
 
@@ -137,7 +125,6 @@ public class AnalyzerExperimentServiceTest extends BaseWebContextSensitiveTest {
     public void delete_shouldDeleteAnalyzerExperiment() throws Exception {
         cleanRowsInCurrentConnection(new String[] { "analyzer_experiment" });
 
-        // Arrange
         AnalyzerExperiment newExperiment = new AnalyzerExperiment();
         newExperiment.setName("PCR Test Experiment");
         newExperiment.setFile("well,Sample Name\nD1,NewSample1\n".getBytes());
@@ -150,7 +137,7 @@ public class AnalyzerExperimentServiceTest extends BaseWebContextSensitiveTest {
         Integer id = experiment.getId();
 
         AnalyzerExperiment deleteExperiment = analyzerExperimentService.get(id);
-        // Assert
+
         assertNotNull(deleteExperiment);
         analyzerExperimentService.delete(deleteExperiment);
         assertEquals(0, analyzerExperimentService.getAll().size());

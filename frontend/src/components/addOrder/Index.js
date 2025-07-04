@@ -50,6 +50,10 @@ const Index = () => {
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [phoneValidation, setPhoneValidation] = useState({
+    primaryPhone: { body: "", status: true },
+    contactPhone: { body: "", status: true },
+  });
 
   let SampleTypes = [];
   let sampleTypeMap = {};
@@ -760,6 +764,7 @@ const Index = () => {
                 orderFormValues={orderFormValues}
                 setOrderFormValues={setOrderFormValues}
                 error={elementError}
+                setPhoneValidation={setPhoneValidation}
               />
             )}
             {page === programPageNumber && (
@@ -817,7 +822,13 @@ const Index = () => {
                   kind="primary"
                   className="forwardButton"
                   disabled={
-                    isSubmitting || errors?.errors?.length > 0 ? true : false
+                    isSubmitting ||
+                    Object.values(phoneValidation).some(
+                      (item) => item.status === false,
+                    ) ||
+                    errors?.errors?.length > 0
+                      ? true
+                      : false
                   }
                   onClick={handleSubmitOrderForm}
                 >

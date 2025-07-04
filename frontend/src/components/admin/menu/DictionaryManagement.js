@@ -61,8 +61,7 @@ function DictionaryManagement() {
   const [fromRecordCount, setFromRecordCount] = useState("1");
   const [toRecordCount, setToRecordCount] = useState("");
   const [totalRecordCount, setTotalRecordCount] = useState("");
-
-  const [selectedRowId, setSelectedRowId] = useState(null);
+  const [selectedRowIds, setSelectedRowIds] = useState([]);
   const [modifyButton, setModifyButton] = useState(true);
   const [deactivateButton, setDeactivateButton] = useState(true);
   const [editMode, setEditMode] = useState(true);
@@ -92,14 +91,29 @@ function DictionaryManagement() {
     };
   }, [paging, startingRecNo]);
 
+  useEffect(() => {
+    if (selectedRowIds.length === 1) {
+      setModifyButton(false);
+    } else {
+      setModifyButton(true);
+    }
+    if (selectedRowIds.length === 0) {
+      setDeactivateButton(true);
+    } else {
+      setDeactivateButton(false);
+    }
+  }, [selectedRowIds]);
+
   const handleNextPage = () => {
     setPaging((pager) => Math.max(pager, 2));
     setStartingRecNo(fromRecordCount);
+    setSelectedRowIds([]);
   };
 
   const handlePreviousPage = () => {
     setPaging((pager) => Math.max(pager - 1, 1));
     setStartingRecNo(Math.max(fromRecordCount, 1));
+    setSelectedRowIds([]);
   };
 
   const yesOrNo = [
@@ -240,7 +254,7 @@ function DictionaryManagement() {
         message: intl.formatMessage({ id: "error.add.edited.msg" }),
       });
     }
-    reloadConfiguration();
+    window.location.reload();
   }
 
   const handleSubmitModal = (e) => {
@@ -283,7 +297,7 @@ function DictionaryManagement() {
     };
 
     postToOpenElisServerFullResponse(
-      `/rest/Dictionary?ID=${selectedRowId}&startingRecNo=${startingRecNo}`,
+      `/rest/Dictionary?ID=${selectedRowIds[0]}&startingRecNo=${startingRecNo}`,
       JSON.stringify(updateData),
       displayStatus,
     );
@@ -296,24 +310,16 @@ function DictionaryManagement() {
         <TableSelectRow
           key={cell.id}
           id={cell.id}
-          radio={true}
-          checked={selectedRowId === row.id}
+          checked={selectedRowIds.includes(row.id)}
           name="selectRowRadio"
           ariaLabel="selectRow"
-          onSelect={() => {
-            const isActiveCell = row.cells.find((cell) =>
-              cell.id.endsWith(":isActive"),
-            );
-
-            let isActiveValue = "";
-            if (isActiveCell) {
-              isActiveValue = isActiveCell.value;
+          onSelect={(e) => {
+            e.stopPropagation();
+            if (selectedRowIds.includes(row.id)) {
+              setSelectedRowIds(selectedRowIds.filter((id) => id !== row.id));
+            } else {
+              setSelectedRowIds([...selectedRowIds, row.id]);
             }
-
-            setModifyButton(false);
-            setSelectedRowId(row.id);
-
-            setDeactivateButton(isActiveValue !== "Y");
           }}
         />
       );
@@ -347,9 +353,9 @@ function DictionaryManagement() {
 
   const handleOnClickOnModification = async (event) => {
     event.preventDefault();
-    if (selectedRowId) {
+    if (selectedRowIds.length == 1) {
       const selectedItem = dictionaryMenuList.find(
-        (item) => item.id === selectedRowId,
+        (item) => item.id === selectedRowIds[0],
       );
 
       if (selectedItem) {
@@ -363,7 +369,7 @@ function DictionaryManagement() {
       }
 
       getFromOpenElisServer(
-        `/rest/Dictionary?ID=${selectedRowId}&startingRecNo=${startingRecNo}`,
+        `/rest/Dictionary?ID=${selectedRowIds[0]}&startingRecNo=${startingRecNo}`,
         handleDictionaryMenuItems,
       );
       setOpen(true);
@@ -373,12 +379,9 @@ function DictionaryManagement() {
 
   const handleDeactivation = async (event) => {
     event.preventDefault();
-    const list = [...dictionaryMenuList];
-    list.splice(selectedRowId, 1);
-    setDictionaryMenuList(list);
-    if (selectedRowId) {
+    if (selectedRowIds) {
       postToOpenElisServer(
-        `/rest/delete-dictionary?selectedIDs=${selectedRowId}`,
+        `/rest/DeleteDictionary?ID=${selectedRowIds.join(",")}`,
         {},
         handleDelete,
       );
@@ -403,6 +406,7 @@ function DictionaryManagement() {
         message: intl.formatMessage({ id: "dictionary.menu.deactivate.fail" }),
       });
     }
+    window.location.reload();
   };
 
   const handlePanelSearchChange = (event) => {
@@ -553,7 +557,7 @@ function DictionaryManagement() {
                 <Button
                   data-cy="deactivateButton"
                   style={{ width: isMobile ? "100%" : "auto" }}
-                  disabled={modifyButton || deactivateButton}
+                  disabled={deactivateButton}
                   onClick={handleDeactivation}
                   type="submit"
                 >

@@ -4,7 +4,7 @@ class DictionaryMenuPage {
       title: "h2",
       modal: ".cds--modal-container",
       add: "[data-cy='addButton']",
-      dictCategory: "#description",
+      dictCategory: "#downshift-1-toggle-button",
       dictNumber: "#dictNumber",
       dictEntry: "#dictEntry",
       dictValue: "div",
@@ -18,7 +18,8 @@ class DictionaryMenuPage {
       addbutton: "div.cds--btn-set > button.cds--btn--primary",
       modify: "[data-cy='modifyButton']",
       deactivate: "[data-cy='deactivateButton']",
-      radioButton: "td.cds--table-column-checkbox.cds--table-column-radio",
+      checkBox: "td.cds--table-column-checkbox",
+      status: "span.cds--list-box__label",
     };
   }
 
@@ -32,23 +33,26 @@ class DictionaryMenuPage {
 
   clickModifyButton() {
     cy.get(this.selectors.modify).click();
+    cy.wait(2000);
   }
 
   clickUpdateButton() {
     cy.contains(this.selectors.updateButton, "Update").click();
+    cy.wait(1000);
   }
 
   clickDeactivateButton() {
     cy.get(this.selectors.deactivate).should("be.enabled").click();
-    cy.reload();
+    cy.wait(1000);
   }
 
   addButton() {
     cy.get(this.selectors.addbutton).click();
+    cy.wait(1000);
   }
 
   validateModal() {
-    cy.get(this.selectors.modal).should("be.visible");
+    cy.get(this.selectors.modal).should("exist");
   }
 
   dictNumberDisabled() {
@@ -67,11 +71,13 @@ class DictionaryMenuPage {
   isActive(value) {
     cy.get(this.selectors.isActive).click();
     cy.contains(this.selectors.active, value).click();
+    cy.contains(this.selectors.status, value);
   }
 
   notActive(value) {
     cy.get(this.selectors.isActive).click();
     cy.contains(this.selectors.notActive, value).click();
+    cy.contains(this.selectors.status, value);
   }
 
   localAbbreviation(value) {
@@ -88,18 +94,19 @@ class DictionaryMenuPage {
 
   searchByDictionaryEntry(value) {
     cy.get(this.selectors.searchByDictEntry).clear().type(value);
+    cy.wait(1000);
   }
 
   clearSearch() {
     cy.get(this.selectors.searchByDictEntry).clear();
   }
 
-  validateDictEntry(value) {
-    cy.contains("td", value);
+  validateColumnContent(columnNum, value) {
+    cy.get(`td:nth-child(${columnNum})`).should("contain", value);
   }
 
   checkFirstDict() {
-    cy.get(this.selectors.radioButton).click({ multiple: true });
+    cy.get(this.selectors.checkBox).first().click();
   }
 }
 

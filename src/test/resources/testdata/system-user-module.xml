@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <system_user id="1001" external_id="EXT003"
+        login_name="admin" last_name="Doe" first_name="John" initials="JD"
+        is_active="Y" is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+    <system_user id="1002" external_id="EXT003"
+        login_name="jdoe" last_name="Doe" first_name="John" initials="JD"
+        is_active="Y" is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+    <system_user id="1003" external_id="EXT004"
+        login_name="asmith" last_name="Smith" first_name="Alice" initials="AS"
+        is_active="Y" is_employee="N" lastupdated="2025-03-08 12:00:00" />
+
+    <system_module id="2001" name="Module 1"
+        description="Description for Module 1" has_select_flag="Y"
+        has_add_flag="Y" has_update_flag="Y" has_delete_flag="Y" />
+    <system_module id="2002" name="Module 2"
+        description="Description for Module 2" has_select_flag="N"
+        has_add_flag="Y" has_update_flag="N" has_delete_flag="Y" />
+
+    <system_user_module id="1" has_select="Y"
+        has_add="N" has_update="Y" has_delete="N" system_user_id="1001"
+        system_module_id="2001" />
+
+    <system_user_module id="2" has_select="Y"
+        has_add="Y" has_update="N" has_delete="Y" system_user_id="1002"
+        system_module_id="2002" />
+
+    <system_user_module id="3" has_select="N"
+        has_add="N" has_update="N" has_delete="N" system_user_id="1003"
+        system_module_id="2002" />
+</dataset>

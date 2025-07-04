@@ -139,8 +139,8 @@ public class SampleQaEventDAOImpl extends BaseDAOImpl<SampleQaEvent, String> imp
             // sample and qaevent is given
             String sql = "from SampleQaEvent aqe where aqe.sample = :param and aqe.qaEvent = :param2";
             Query<SampleQaEvent> query = entityManager.unwrap(Session.class).createQuery(sql, SampleQaEvent.class);
-            query.setParameter("param", sampleQaEvent.getSample().getId());
-            query.setParameter("param2", sampleQaEvent.getQaEvent().getId());
+            query.setParameter("param", Integer.parseInt(sampleQaEvent.getSample().getId()));
+            query.setParameter("param2", Integer.parseInt(sampleQaEvent.getQaEvent().getId()));
             List<SampleQaEvent> list = query.list();
             if ((list != null) && !list.isEmpty()) {
                 analQaEvent = list.get(0);

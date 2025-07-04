@@ -106,7 +106,7 @@ function BillingMenuManagement() {
               <Form onSubmit={handleSubmit}>
                 <div className="formInlineDiv">
                   <TextInput
-                    id="billing address"
+                    id="billing_address"
                     labelText={intl.formatMessage({
                       id: "menu.billing.address",
                     })}

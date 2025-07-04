@@ -18,7 +18,6 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
-import Questionnaire from "../../common/Questionnaire";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -276,7 +275,15 @@ function ProgramManagement() {
               <br></br>
             </Column>
             <Column lg={3} md={2} sm={1}>
-              <Button id="submitProgram" type="submit">
+              <Button
+                id="submitProgram"
+                type="submit"
+                disabled={
+                  programValues.program.programName === "" ||
+                  programValues.program.code === "" ||
+                  programValues.testSectionId == ""
+                }
+              >
                 <FormattedMessage id="label.button.submit" />
                 {isSubmitting && <Loading small={true} />}
               </Button>
