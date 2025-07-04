@@ -51,10 +51,10 @@ function PatientManagement() {
           </Section>
         </Column>
       </Grid>
-      <br></br>
+      <br />
       <div className="orderLegendBody">
-        <Grid>
-          <Column lg={4} md={3} sm={2}>
+        <Grid className="button-container">
+          <Column lg={4} md={4} sm={4}>
             <Button
               id="searchPatient"
               kind={searchPatientTab.kind}
@@ -66,7 +66,8 @@ function PatientManagement() {
               />
             </Button>
           </Column>
-          <Column lg={4} md={3} sm={2}>
+
+          <Column lg={4} md={4} sm={4}>
             <Button
               id="newPatient"
               kind={newPatientTab.kind}
@@ -86,8 +87,7 @@ function PatientManagement() {
               ></SearchPatientForm>
             </Column>
           )}
-
-          <br></br>
+          <br />
           {newPatientTab.active && (
             <Column lg={16} md={8} sm={4}>
               <CreatePatientForm
