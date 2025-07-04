@@ -53,23 +53,6 @@ function PatientManagement() {
       </Grid>
       <br />
       <div className="orderLegendBody">
-        <style>{`
-          @media (max-width: 672px) {
-            .button-container {
-              display: flex;
-              flex-direction: column;
-              gap: 1rem;
-            }
-            .button-container .bx--col {
-              max-width: 100% !important;
-              margin-bottom: 1rem;
-            }
-            .button-container button {
-              width: 100%;
-            }
-          }
-        `}</style>
-
         <Grid className="button-container">
           <Column lg={4} md={4} sm={4}>
             <Button

@@ -533,3 +533,17 @@ button {
     width: 14rem;
   }
 }
+@media (max-width: 672px) {
+  .button-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .button-container .bx--col {
+    max-width: 100% !important;
+    margin-bottom: 1rem;
+  }
+  .button-container button {
+    width: 100%;
+  }
+}
