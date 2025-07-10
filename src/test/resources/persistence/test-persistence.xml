@@ -18,6 +18,7 @@
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerExperiment</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>
+        <class>org.openelisglobal.testresultsview.valueholder.ClientResultsViewBean</class>
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnectionContact</class>
         <class>org.openelisglobal.externalconnections.valueholder.CertificateAuthenticationData</class>
