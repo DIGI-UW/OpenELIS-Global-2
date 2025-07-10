@@ -39,7 +39,7 @@ public class ClientResultsViewInfoServiceTest extends BaseWebContextSensitiveTes
     public void setUp() {
         jdbcTemplate.execute("CREATE SEQUENCE IF NOT EXISTS client_results_view_seq START WITH 1 INCREMENT BY 1");
 
-        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS result (id numeric(10,0) NOT NULL,"
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS result (id numeric(10,0) primary key NOT NULL,"
                 + "analysis_id numeric(10,0), sort_order numeric, is_reportable character varying(1),"
                 + "result_type character varying(1),value character varying(200), analyte_id numeric(10,0),"
                 + "test_result_id numeric(10,0), lastupdated timestamp(6) without time zone,"
@@ -50,7 +50,7 @@ public class ClientResultsViewInfoServiceTest extends BaseWebContextSensitiveTes
 
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS client_results_view ("
                 + "id INTEGER PRIMARY KEY DEFAULT nextval('client_results_view_seq'), password TEXT, "
-                + "result_id VARCHAR(10), "
+                + "result_id NUMERIC(10), "
                 + "CONSTRAINT fk_client_results_view FOREIGN KEY (result_id) REFERENCES result(id));");
 
         jdbcTemplate.update("INSERT INTO client_results_view (id, password, result_id ) "
