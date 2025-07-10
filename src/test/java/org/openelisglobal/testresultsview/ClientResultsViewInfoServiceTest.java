@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import javax.sql.DataSource;
 import lombok.NonNull;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -19,7 +18,6 @@ import org.openelisglobal.testresultsview.service.ClientResultsViewInfoService;
 import org.openelisglobal.testresultsview.valueholder.ClientResultsViewBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.annotation.DirtiesContext;
 
 public class ClientResultsViewInfoServiceTest extends BaseWebContextSensitiveTest {
 
@@ -65,15 +63,6 @@ public class ClientResultsViewInfoServiceTest extends BaseWebContextSensitiveTes
         propertyValues.put("result", 1001);
         orderProperties = new ArrayList<>();
         orderProperties.add("password");
-    }
-
-    @After
-    @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-    public void cleanUp() {
-        System.out.println("Running cleanUp");
-        jdbcTemplate.execute("DROP TABLE IF EXISTS result CASCADE ");
-        jdbcTemplate.execute("DROP TABLE IF EXISTS client_results_view CASCADE ");
-        jdbcTemplate.execute("DROP SEQUENCE IF EXISTS client_results_view_seq");
     }
 
     @Test
