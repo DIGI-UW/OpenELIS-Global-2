@@ -19,7 +19,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.TestPropertySource;
 
 @TestPropertySource(properties = { "facilitylist.schedule.fixedRate=864000000" })
-
 public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
@@ -41,7 +40,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getAll_ShouldReturnAllCronStatements() {
+    public void getAll_ShouldReturnAllCronSchedulers() {
         cronSchedulerList = cronSchedulerService.getAll();
         assertNotNull(cronSchedulerList);
         assertEquals(3, cronSchedulerList.size());
@@ -49,7 +48,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getAllMatching_ShouldReturnAllMatchingCronStatements_UsingPropertyNameAndValue() {
+    public void getAllMatching_ShouldReturnAllMatchingCronSchedulers_UsingPropertyNameAndValue() {
         cronSchedulerList = cronSchedulerService.getAllMatching("name", "HalfHourlyJob");
         assertNotNull(cronSchedulerList);
         assertEquals(2, cronSchedulerList.size());
@@ -57,7 +56,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getAllMatching_ShouldReturnAllMatchingCronStatements_UsingAMap() {
+    public void getAllMatching_ShouldReturnAllMatchingCronSchedulers_UsingAMap() {
         cronSchedulerList = cronSchedulerService.getAllMatching(propertyValues);
         assertNotNull(cronSchedulerList);
         assertEquals(2, cronSchedulerList.size());
@@ -65,7 +64,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getAllOrdered_ShouldReturnAllOrderedCronStatements_UsingAnOrderProperty() {
+    public void getAllOrdered_ShouldReturnAllOrderedCronSchedulers_UsingAnOrderProperty() {
         cronSchedulerList = cronSchedulerService.getAllOrdered("cronStatement", false);
         assertNotNull(cronSchedulerList);
         assertEquals(3, cronSchedulerList.size());
@@ -81,7 +80,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getAllMatchingOrdered_ShouldReturnAllMatchingOrderedCronStatements_UsingPropertyNameAndValueAndAnOrderProperty() {
+    public void getAllMatchingOrdered_ShouldReturnAllMatchingOrderedCronSchedulers_UsingPropertyNameAndValueAndAnOrderProperty() {
         cronSchedulerList = cronSchedulerService.getAllMatchingOrdered("name", "HalfHourlyJob", "id", false);
         assertNotNull(cronSchedulerList);
         assertEquals(2, cronSchedulerList.size());
@@ -89,7 +88,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getAllMatchingOrdered_ShouldReturnAllMatchingOrderedCronStatements_UsingPropertyNameAndValueAndAList() {
+    public void getAllMatchingOrdered_ShouldReturnAllMatchingOrderedCronSchedulers_UsingPropertyNameAndValueAndAList() {
         cronSchedulerList = cronSchedulerService.getAllMatchingOrdered("name", "HalfHourlyJob", orderProperties, true);
         assertNotNull(cronSchedulerList);
         assertEquals(2, cronSchedulerList.size());
@@ -97,7 +96,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getAllMatchingOrdered_ShouldReturnAllMatchingOrderedCronStatements_UsingAMapAndAnOrderProperty() {
+    public void getAllMatchingOrdered_ShouldReturnAllMatchingOrderedCronSchedulers_UsingAMapAndAnOrderProperty() {
         cronSchedulerList = cronSchedulerService.getAllMatchingOrdered(propertyValues, "cronStatement", false);
         assertNotNull(cronSchedulerList);
         assertEquals(2, cronSchedulerList.size());
@@ -105,7 +104,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getAllMatchingOrdered_ShouldReturnAllMatchingOrderedCronStatements_UsingAMapAndAList() {
+    public void getAllMatchingOrdered_ShouldReturnAllMatchingOrderedCronSchedulers_UsingAMapAndAList() {
         cronSchedulerList = cronSchedulerService.getAllMatchingOrdered(propertyValues, orderProperties, false);
         assertNotNull(cronSchedulerList);
         assertEquals(2, cronSchedulerList.size());
@@ -113,7 +112,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getPage_ShouldReturnAPageOfCronStatements_UsingAPageNumber() {
+    public void getPage_ShouldReturnAPageOfCronSchedulers_UsingAPageNumber() {
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         cronSchedulerList = cronSchedulerService.getPage(1);
@@ -121,7 +120,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getMatchingPage_ShouldReturnAPageOfCronStatements_UsingAPropertyNameAndValue() {
+    public void getMatchingPage_ShouldReturnAPageOfCronSchedulers_UsingAPropertyNameAndValue() {
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         cronSchedulerList = cronSchedulerService.getMatchingPage("displayKey", "cleanup.display", 1);
@@ -129,7 +128,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getMatchingPage_ShouldReturnAPageOfCronStatements_UsingAMap() {
+    public void getMatchingPage_ShouldReturnAPageOfCronSchedulers_UsingAMap() {
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         cronSchedulerList = cronSchedulerService.getMatchingPage(propertyValues, 1);
@@ -137,7 +136,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getOrderedPage_ShouldReturnAnOrderedPageOfCronStatements_UsingAnOrderProperty() {
+    public void getOrderedPage_ShouldReturnAnOrderedPageOfCronSchedulers_UsingAnOrderProperty() {
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         cronSchedulerList = cronSchedulerService.getOrderedPage("id", true, 1);
@@ -145,7 +144,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getOrderedPage_ShouldReturnAnOrderedPageOfCronStatements_UsingAList() {
+    public void getOrderedPage_ShouldReturnAnOrderedPageOfCronSchedulers_UsingAList() {
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         cronSchedulerList = cronSchedulerService.getOrderedPage(orderProperties, false, 1);
@@ -153,7 +152,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfCronStatements_UsingAPropertyNameAndValueAndAnOrderProperty() {
+    public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfCronSchedulers_UsingAPropertyNameAndValueAndAnOrderProperty() {
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         cronSchedulerList = cronSchedulerService.getMatchingOrderedPage("name", "HalfHourlyJob", "id", true, 1);
@@ -161,7 +160,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfCronStatements_UsingAPropertyNameAndValueAndAList() {
+    public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfCronSchedulers_UsingAPropertyNameAndValueAndAList() {
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         cronSchedulerList = cronSchedulerService.getMatchingOrderedPage("name", "HalfHourlyJob", orderProperties, true,
@@ -170,7 +169,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfCronStatements_UsingAMapAndAnOrderProperty() {
+    public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfCronSchedulers_UsingAMapAndAnOrderProperty() {
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         cronSchedulerList = cronSchedulerService.getMatchingOrderedPage(propertyValues, "lastRun", false, 1);
@@ -178,7 +177,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfCronStatements_UsingAMapAndAList() {
+    public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfCronSchedulers_UsingAMapAndAList() {
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         cronSchedulerList = cronSchedulerService.getMatchingOrderedPage(propertyValues, orderProperties, false, 1);
@@ -186,7 +185,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void delete_ShouldDeleteACronStatement() {
+    public void delete_ShouldDeleteACronScheduler() {
         cronSchedulerList = cronSchedulerService.getAll();
         assertEquals(3, cronSchedulerList.size());
         CronScheduler cronScheduler = cronSchedulerService.get("2");
@@ -196,7 +195,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void deleteAll_ShouldDeleteAllCronStatements() {
+    public void deleteAll_ShouldDeleteAllCronSchedulers() {
         cronSchedulerList = cronSchedulerService.getAll();
         assertEquals(3, cronSchedulerList.size());
         cronSchedulerService.deleteAll(cronSchedulerList);
