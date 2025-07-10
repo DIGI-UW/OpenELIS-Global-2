@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.sql.DataSource;
+import lombok.NonNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -18,6 +19,7 @@ import org.openelisglobal.testresultsview.service.ClientResultsViewInfoService;
 import org.openelisglobal.testresultsview.valueholder.ClientResultsViewBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.annotation.DirtiesContext;
 
 public class ClientResultsViewInfoServiceTest extends BaseWebContextSensitiveTest {
 
@@ -31,7 +33,7 @@ public class ClientResultsViewInfoServiceTest extends BaseWebContextSensitiveTes
     private static int NUMBER_OF_PAGES = 0;
 
     @Autowired
-    public void setJdbcTemplate(DataSource dataSource) {
+    public void setDataSource(@NonNull DataSource dataSource) {
         this.jdbcTemplate = new JdbcTemplate(dataSource);
     }
 
@@ -39,14 +41,15 @@ public class ClientResultsViewInfoServiceTest extends BaseWebContextSensitiveTes
     public void setUp() {
         jdbcTemplate.execute("CREATE SEQUENCE IF NOT EXISTS client_results_view_seq START WITH 1 INCREMENT BY 1");
 
-        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS result (id numeric(10,0) primary key NOT NULL,"
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS result (id numeric(10,0) unique NOT NULL,"
                 + "analysis_id numeric(10,0), sort_order numeric, is_reportable character varying(1),"
                 + "result_type character varying(1),value character varying(200), analyte_id numeric(10,0),"
                 + "test_result_id numeric(10,0), lastupdated timestamp(6) without time zone,"
                 + "min_normal double precision, max_normal double precision, parent_id numeric(10,0),"
                 + "significant_digits numeric DEFAULT 0, \"grouping\" numeric DEFAULT 0);");
 
-        jdbcTemplate.update("INSERT INTO result (id,sort_order,is_reportable,result_type) VALUES (1001, 1, 'Y','N');");
+        jdbcTemplate.update(
+                "INSERT INTO result (id,sort_order,is_reportable,result_type, lastupdated) VALUES (1001, 1, 'Y','N', CURRENT_TIMESTAMP);");
 
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS client_results_view ("
                 + "id INTEGER PRIMARY KEY DEFAULT nextval('client_results_view_seq'), password TEXT, "
@@ -65,10 +68,12 @@ public class ClientResultsViewInfoServiceTest extends BaseWebContextSensitiveTes
     }
 
     @After
-    public void cleaUp() {
-        jdbcTemplate.execute("DROP TABLE result CASCADE ");
-        jdbcTemplate.execute("DROP TABLE client_results_view CASCADE ");
-        jdbcTemplate.execute("DROP SEQUENCE client_results_view_seq");
+    @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+    public void cleanUp() {
+        System.out.println("Running cleanUp");
+        jdbcTemplate.execute("DROP TABLE IF EXISTS result CASCADE ");
+        jdbcTemplate.execute("DROP TABLE IF EXISTS client_results_view CASCADE ");
+        jdbcTemplate.execute("DROP SEQUENCE IF EXISTS client_results_view_seq");
     }
 
     @Test
@@ -85,7 +90,7 @@ public class ClientResultsViewInfoServiceTest extends BaseWebContextSensitiveTes
                 "encrypted-password-string");
         assertNotNull(clientResultsViewInfoList);
         assertEquals(1, clientResultsViewInfoList.size());
-        assertEquals(Integer.valueOf("7002"), clientResultsViewInfoList.get(0).getId());
+        assertEquals(Integer.valueOf("7001"), clientResultsViewInfoList.get(0).getId());
     }
 
     @Test
