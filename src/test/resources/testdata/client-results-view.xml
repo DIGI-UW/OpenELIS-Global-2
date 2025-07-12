@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <result id="1001" sort_order="1" is_reportable="Y"
+        result_type="N" lastupdated="2025-07-10 12:00:00" />
+
+    <client_results_view id="7001"
+        password="encrypted-password-string" result_id="1001" />
+    <client_results_view id="7002"
+        password="encryptedpassword" result_id="1001" />
+</dataset>

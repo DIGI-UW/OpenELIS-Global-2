@@ -8,8 +8,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.sql.DataSource;
-import lombok.NonNull;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -17,47 +15,20 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.testresultsview.service.ClientResultsViewInfoService;
 import org.openelisglobal.testresultsview.valueholder.ClientResultsViewBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 public class ClientResultsViewInfoServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private ClientResultsViewInfoService clientResultsViewInfoService;
 
-    private JdbcTemplate jdbcTemplate;
     private List<ClientResultsViewBean> clientResultsViewInfoList;
     private Map<String, Object> propertyValues;
     private List<String> orderProperties;
     private static int NUMBER_OF_PAGES = 0;
 
-    @Autowired
-    public void setDataSource(@NonNull DataSource dataSource) {
-        this.jdbcTemplate = new JdbcTemplate(dataSource);
-    }
-
     @Before
-    public void setUp() {
-        jdbcTemplate.execute("CREATE SEQUENCE IF NOT EXISTS client_results_view_seq START WITH 1 INCREMENT BY 1");
-
-        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS result (id numeric(10,0) unique NOT NULL,"
-                + "analysis_id numeric(10,0), sort_order numeric, is_reportable character varying(1),"
-                + "result_type character varying(1),value character varying(200), analyte_id numeric(10,0),"
-                + "test_result_id numeric(10,0), lastupdated timestamp(6) without time zone,"
-                + "min_normal double precision, max_normal double precision, parent_id numeric(10,0),"
-                + "significant_digits numeric DEFAULT 0, \"grouping\" numeric DEFAULT 0);");
-
-        jdbcTemplate.update(
-                "INSERT INTO result (id,sort_order,is_reportable,result_type, lastupdated) VALUES (1001, 1, 'Y','N', CURRENT_TIMESTAMP);");
-
-        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS client_results_view ("
-                + "id INTEGER PRIMARY KEY DEFAULT nextval('client_results_view_seq'), password TEXT, "
-                + "result_id NUMERIC(10), "
-                + "CONSTRAINT fk_client_results_view FOREIGN KEY (result_id) REFERENCES result(id));");
-
-        jdbcTemplate.update("INSERT INTO client_results_view (id, password, result_id ) "
-                + "VALUES ( 7001, 'encrypted-password-string', 1001);");
-        jdbcTemplate.update("INSERT INTO client_results_view (id, password, result_id ) "
-                + "VALUES ( 7002, 'encryptedpassword', 1001);");
+    public void setUp() throws Exception {
+        executeDataSetWithStateManagement("testdata/client-results-view.xml");
 
         propertyValues = new HashMap<>();
         propertyValues.put("result", 1001);
