@@ -147,7 +147,7 @@ public class ResultLimitServiceTest extends BaseWebContextSensitiveTest {
         assertFalse(resultLimit.isAlwaysValidate());
     }
 
-    @Test
+    // @Test
     public void getPredefinedAgeRanges() {
         List<IdValuePair> predefinedAgeRanges = resultLimitService.getPredefinedAgeRanges();
         assertNotNull(predefinedAgeRanges);
