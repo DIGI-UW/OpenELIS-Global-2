@@ -1,9 +1,9 @@
 {
-  "dictionary.loincCode.invalid": "Format LOINC invalid (așteptat: 12345-6 sau LP12345-6)",
+  "dictionary.loincCode.invalid": " Format LOINC invalid (exemplu valid: 12345-6 sau LP12345-6)",
   "dictionary.loincCode.helpText": "Identificator standard pentru observații de laborator",
   "dictionary.loincCode": "Cod LOINC",
-  "dictionary.loincCode.placeholder": "ex. 12345-6",
-  "dictionary.loincCode.help": "Identificator standard pentru observații de laborator",
+  "dictionary.loincCode.placeholder": "ex: 12345-6",
+  "dictionary.loincCode.help": "Introduceți identificatorul LOINC standard",
   "language.select.label": "Română",
   "label.button.submit": "Trimite",
   "label.button.finish": "Finalizare",
@@ -371,7 +371,7 @@
   "label.button.uploadfile": "Încarcă fișier",
   "label.button.select": "Selectează",
   "label.button.add": "Adaugă",
-  "label.button.add.question": "Add new Question",
+  "label.button.add.question": "Adaugă întrebare nouă",
   "order.title": "COMANDĂ",
   "label.text.generate": "generează",
   "label.order.scan.text": "Scanează SAU Introdu manual SAU",
@@ -549,7 +549,7 @@
   "search.label.loadnext": "Încarcă următoarele 99 înregistrări începând cu numărul laboratorului",
   "search.label.analysis": "Selectează starea analizei",
   "search.label.test": "Selectează numele testului",
-  "select.label.analyser": "Select Analyzer",
+  "select.label.analyser": "Selectați analizorul",
   "search.label.sample": "Selectează starea probei",
   "pathology.label.report": "Raport patologic",
   "patient.natioanalid": "CNP",
@@ -1449,5 +1449,9 @@
   "test.field.active": "Activ",
   "test.description.active": "Dacă testul este activ, poate fi comandat în formularul de comandă sau ca parte a unui algoritm de testare. Dacă nu este activ, nu poate fi comandat și nu poate face parte dintr-un algoritm de testare.\n \n\n \n ",
   "test.field.orderable": "Comandabil",
-  "test.description.orderable": "Daca un test este activ si comandabil, atunci poate fi comandat in formularul de comanda. Daca este activ, dar nu este comandabil, va fi efectuat doar daca este declansat reflex dintr-un alt test."
+  "test.description.orderable": "Daca un test este activ si comandabil, atunci poate fi comandat in formularul de comanda. Daca este activ, dar nu este comandabil, va fi efectuat doar daca este declansat reflex dintr-un alt test.",
+  "test.modify.header.modify": "Selectați analiza de modificat!",
+  "test.modify.header.test": "Analiză",
+  "test.modify.en": "en",
+  "test.modify.fr": "fr"
 }

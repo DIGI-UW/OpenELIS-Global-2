@@ -27,13 +27,13 @@ import * as Yup from "yup";
 import { CustomCommonSortableOrderList } from "./../sortableListComponent/SortableList.js";
 import { getFromOpenElisServer } from "../../../utils/Utils.js";
 import { NotificationContext } from "../../../layout/Layout.js";
+import { extractAgeRangeParts } from "./TestFormData.js";
 
 export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
   const intl = useIntl();
-  console.log(initialData);
   const componentMounted = useRef(false);
   const [formData, setFormData] = useState(initialData);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +47,9 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
   const [uomList, setUomList] = useState([]);
   const [selectedUomList, setSelectedUomList] = useState({});
   const [resultTypeList, setResultTypeList] = useState([]);
+  const [codedResultList, setCodedResultList] = useState([]);
+  const [freeResultList, setFreeResultList] = useState([]);
+  const [numericResultId, setNumericResultId] = useState("");
   const [selectedResultTypeList, setSelectedResultTypeList] = useState({});
   const [sampleTypeList, setSampleTypeList] = useState([]);
   const [selectedSampleTypeList, setSelectedSampleTypeList] = useState([]);
@@ -70,6 +73,33 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
     useState([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [ageRangeFields, setAgeRangeFields] = useState([0]);
+  const [ageRanges, setAgeRanges] = useState([{ raw: 0, unit: "Y" }]);
+
+  useEffect(() => {
+    if (resultTypeList.length > 0) {
+      const codedList = resultTypeList
+        .filter(
+          (item) =>
+            item.value === "Multiselect" ||
+            item.value === "Cascading multiselect" ||
+            item.value === "Select List",
+        )
+        .map((item) => item.id);
+      setCodedResultList(codedList);
+
+      const freeTextList = resultTypeList
+        .filter(
+          (item) => item.value === "Free text" || item.value === "Alphanumeric",
+        )
+        .map((item) => item.id);
+      setFreeResultList(freeTextList);
+
+      const numericId = resultTypeList.find(
+        (item) => item.value === "Numeric",
+      ).id;
+      setNumericResultId(numericId);
+    }
+  }, [resultTypeList]);
 
   const handleNextStep = (newData, final = false) => {
     setFormData((prev) => ({ ...prev, ...newData }));
@@ -82,24 +112,24 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
 
     setCurrentStep((prev) => {
       if (prev === 3) {
-        if (["1", "5"].includes(selectedResultTypeId)) {
+        if (freeResultList.includes(selectedResultTypeId)) {
           return prev + 3;
         }
 
-        if (["4"].includes(selectedResultTypeId)) {
+        if (numericResultId === selectedResultTypeId) {
           return prev + 2;
         }
 
-        if (["2", "6", "7"].includes(selectedResultTypeId)) {
+        if (codedResultList.includes(selectedResultTypeId)) {
           return prev + 1;
         }
       }
 
-      if (prev === 4 && ["2", "6", "7"].includes(selectedResultTypeId)) {
+      if (prev === 4 && codedResultList.includes(selectedResultTypeId)) {
         return prev + 2;
       }
 
-      if (prev === 5 && selectedResultTypeId === "4") {
+      if (prev === 5 && selectedResultTypeId === numericResultId) {
         return prev + 1;
       }
 
@@ -113,20 +143,20 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
 
     setCurrentStep((prevStep) => {
       if (prevStep === 6) {
-        if (["1", "5"].includes(selectedResultTypeId)) {
+        if (freeResultList.includes(selectedResultTypeId)) {
           return prevStep - 3;
         }
 
-        if (["2", "6", "7"].includes(selectedResultTypeId)) {
+        if (codedResultList.includes(selectedResultTypeId)) {
           return prevStep - 2;
         }
 
-        if (selectedResultTypeId === "4") {
+        if (selectedResultTypeId === numericResultId) {
           return prevStep - 1;
         }
       }
 
-      if (prevStep === 5 && selectedResultTypeId === "4") {
+      if (prevStep === 5 && selectedResultTypeId === numericResultId) {
         return prevStep - 2;
       }
 
@@ -153,6 +183,44 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
       setIsLoading(false);
     };
   }, []);
+
+  const normalizeResultLimits = (limits = []) => {
+    const keyMap = {};
+    const extractedAgeRanges = [];
+
+    limits.forEach((limit) => {
+      const key = `${limit.ageRange}`;
+
+      if (!keyMap[key]) {
+        const { low, high } = extractAgeRangeParts(limit.ageRange);
+
+        extractedAgeRanges.push(high);
+
+        keyMap[key] = {
+          ageRange: low.raw?.toString(),
+          highAgeRange: high.raw?.toString(),
+          gender: limit.gender,
+          lowNormal: limit.lowNormal,
+          highNormal: limit.highNormal,
+          lowNormalFemale: limit.lowNormalFemale,
+          highNormalFemale: limit.highNormalFemale,
+        };
+      }
+
+      if (limit.gender || limit.gender === "M" || limit.gender === "F") {
+        keyMap[key].gender = true;
+        keyMap[key].lowNormal = limit.lowNormal;
+        keyMap[key].highNormal = limit.highNormal;
+        keyMap[key].lowNormalFemale = limit.lowNormalFemale;
+        keyMap[key].highNormalFemale = limit.highNormalFemale;
+      }
+    });
+
+    return {
+      normalizedLimits: Object.values(keyMap),
+      extractedAgeRanges,
+    };
+  };
 
   useEffect(() => {
     if (mode === "edit") {
@@ -234,12 +302,13 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
 
       const mappedResultType = resultTypeList.find(
         (type) =>
-          (initialData.resultType === "R" && type.id === "1") ||
-          (initialData.resultType === "D" && type.id === "2") ||
-          (initialData.resultType === "N" && type.id === "4") ||
-          (initialData.resultType === "A" && type.id === "5") ||
-          (initialData.resultType === "M" && type.id === "6") ||
-          (initialData.resultType === "C" && type.id === "7"),
+          (initialData.resultType === "R" && type.value === "Free text") ||
+          (initialData.resultType === "D" && type.value === "Select List") ||
+          (initialData.resultType === "N" && type.value === "Numeric") ||
+          (initialData.resultType === "A" && type.value === "Alphanumeric") ||
+          (initialData.resultType === "M" && type.value === "Multiselect") ||
+          (initialData.resultType === "C" &&
+            type.value === "Cascading multiselect"),
       );
 
       if (mappedResultType) {
@@ -314,6 +383,12 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
         }
       }
 
+      const { extractedAgeRanges, normalizedLimits } = normalizeResultLimits(
+        initialData.resultLimits || [],
+      );
+      setAgeRanges(extractedAgeRanges);
+      setAgeRangeFields(normalizedLimits.map((_, i) => i));
+
       setFormData((prev) => ({
         ...prev,
         testSection: selectedLabUnit?.id || "",
@@ -321,6 +396,7 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
         uom: selectedUom?.id || "",
         sampleTypes: [],
         resultType: mappedResultType?.id || "",
+        resultLimits: normalizedLimits,
       }));
     }
   }, [
@@ -454,8 +530,6 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
       handleNextStep={handleNextStep}
       handlePreviousStep={handlePreviousStep}
       resultTypeList={resultTypeList}
-      setResultTypeList={setResultTypeList}
-      selectedResultTypeList={selectedResultTypeList}
       setSelectedResultTypeList={setSelectedResultTypeList}
       intl={intl}
       addNotification={addNotification}
@@ -522,6 +596,9 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
       setCurrentStep={setCurrentStep}
       ageRangeFields={ageRangeFields}
       setAgeRangeFields={setAgeRangeFields}
+      ageRanges={ageRanges}
+      setAgeRanges={setAgeRanges}
+      mode={mode}
     />,
     <StepSevenFinalDisplayAndSaveConfirmation
       key="step-7"
@@ -608,22 +685,16 @@ export const StepOneTestNameAndTestSection = ({
           testSection: Yup.string()
             .required("Test section is required")
             .notOneOf(["0"], "Please select a valid test section"),
-          testNameEnglish: Yup.string()
-            .matches(/^[A-Za-z\s]+$/, "Only letters and spaces are allowed")
-            .trim()
-            .required("English test name is required"),
-          testNameFrench: Yup.string()
-            .matches(/^[A-Za-z\s]+$/, "Only letters and spaces are allowed")
-            .trim()
-            .required("French test name is required"),
-          testReportNameEnglish: Yup.string()
-            .matches(/^[A-Za-z\s]+$/, "Only letters and spaces are allowed")
-            .trim()
-            .required("English report name is required"),
-          testReportNameFrench: Yup.string()
-            .matches(/^[A-Za-z\s]+$/, "Only letters and spaces are allowed")
-            .trim()
-            .required("French report name is required"),
+          testNameEnglish: Yup.string().required(
+            "English test name is required",
+          ),
+          testNameFrench: Yup.string().required("French test name is required"),
+          testReportNameEnglish: Yup.string().required(
+            "English report name is required",
+          ),
+          testReportNameFrench: Yup.string().required(
+            "French report name is required",
+          ),
         })}
         validateOnChange={true}
         validateOnBlur={true}
@@ -1051,8 +1122,6 @@ export const StepThreeTestResultTypeAndLoinc = ({
   handleNextStep,
   handlePreviousStep,
   resultTypeList,
-  setResultTypeList,
-  selectedResultTypeList,
   setSelectedResultTypeList,
   intl,
   addNotification,
@@ -2160,12 +2229,13 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
   setCurrentStep,
   ageRangeFields,
   setAgeRangeFields,
+  ageRanges,
+  setAgeRanges,
+  mode,
 }) => {
   const handleSubmit = (values) => {
     handleNextStep(values, true);
   };
-
-  const [ageRanges, setAgeRanges] = useState([{ raw: 0, unit: "Y" }]);
 
   return (
     <>
@@ -2532,7 +2602,10 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
 
                 const updatedLimits = [...(currentLimits || []), newLimit];
                 setFieldValue("resultLimits", updatedLimits);
-                setAgeRanges((prev) => [...prev, { raw: 0, unit: "Y" }]);
+                setAgeRanges((prev) => {
+                  const unit = prev[index]?.unit || "Y";
+                  return [...prev, { raw: 0, unit: unit }];
+                });
               };
 
               const handleRemoveAgeRangeFillUp = (indexToRemove) => {
@@ -2553,9 +2626,6 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
               const handleRangeChange = (index, field, value) => {
                 setFieldValue(`resultLimits[${index}].${field}`, value);
               };
-
-              console.log(values);
-              console.log(values.resultLimits);
 
               return (
                 <Form>
@@ -2581,11 +2651,27 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                       <hr />
                     </Column>
                     {ageRangeFields.map((_, index) => {
-                      const selectedAgeRanges = (values.resultLimits || [])
-                        .map((item) => item.ageRange)
-                        .filter((val, idx) => idx !== index && val);
+                      // const selectedAgeRangesCurrent = selectedAgeRanges
+                      //   .map((item) => item.ageRange)
+                      //   .filter((val, idx) => idx !== index && val)
+                      //   .filter(Boolean);
+                      // const selectedAgeRangesCurrent = gotSelectedAgeRangeList
+                      //   .filter((_, i) => i !== index)
+                      //   .map((item) => item.ageRange)
+                      //   .filter(Boolean);
+                      // const selectedAgeRangesCurrent = []
+                      //   .filter((_, i) => i !== index)
+                      //   .map((item) => item.id)
+                      //   .filter(Boolean);
+                      const selectedAgeRangesCurrent = ageRangeList
+                        .slice(0, ageRangeFields.length)
+                        .filter((_, i) => i !== index)
+                        .map((item) => item.id);
+                      // const selectedAgeRangesCurrent = ageRangeList
+                      //   .slice(0, ageRangeFields.length - 1)
+                      //   .map((item) => item.id);
                       const availableAgeRanges = ageRangeList.filter(
-                        (age) => !selectedAgeRanges.includes(age.id),
+                        (age) => !selectedAgeRangesCurrent.includes(age.id),
                       );
                       return (
                         <React.Fragment key={index}>
@@ -2630,8 +2716,15 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                           >
                             <RadioButtonGroup
                               id={`fieldAgeRangeRadioGroup-${index}`}
-                              name={`fieldAgeRangeRadioGroup-${index}`}
-                              value={ageRanges[index]?.unit || "Y"}
+                              name={`resultLimits[${index}].unit`}
+                              // defaultSelected={
+                              //   `${ageRanges?.[index]?.unit}-${index}` ||
+                              //   `Y-${index}`
+                              // }
+                              // value={String(
+                              //   ageRanges?.[index]?.unit || `Y-${index}`,
+                              // )}
+                              value={ageRanges?.[index]?.unit || "Y"}
                               onChange={(val) => {
                                 setAgeRanges((prev) => {
                                   const updated = [...prev];
@@ -2708,9 +2801,9 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                               // min={0}
                               // max={1000}
                               // step={1}
-                              // value={values.resultLimits?.[index]?.highAgeRange}
+                              value={values.resultLimits?.[index]?.highAgeRange}
                               required
-                              value={String(ageRanges[index]?.raw) || "0"}
+                              // value={String(ageRanges[index]?.raw) || "0"}
                               invalid={
                                 touched?.resultLimits?.[index]?.highAgeRange &&
                                 !!errors?.resultLimits?.[index]?.highAgeRange
@@ -2729,6 +2822,7 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                                   };
                                   return updated;
                                 });
+                                handleRangeChange(index, "highAgeRange", val);
                               }}
                             />
                           </Column>
@@ -2739,23 +2833,48 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                             sm={4}
                             style={{ marginTop: "1rem" }}
                           >
-                            {/* ageRange removal from the end data */}
                             <Select
                               onBlur={handleBlur}
-                              id={`resultLimits[${index}].ageRange`}
-                              name={`resultLimits[${index}].ageRange`}
+                              id={`resultLimits[${index}].ageRangeChange`}
+                              name={`resultLimits[${index}].ageRangeChange`}
                               labelText=""
                               hideLabel
                               size={"md"}
-                              value={
-                                values.resultLimits?.[index]?.ageRange || ""
-                              }
+                              // value={
+                              //   values.resultLimits?.[index]?.ageRange || ""
+                              // }
+                              // value={
+                              //   ageRangeList.find(
+                              //     (a) => a.id === ageRanges[index + 1]?.raw,
+                              //   )?.id || ""
+                              // } // select just based on number of itesm present in list and index
+                              value={ageRangeList?.[index]?.id || ""}
                               onChange={(e) => {
-                                setFieldValue(
-                                  `resultLimits[${index}].ageRange`,
-                                  e.target.value,
+                                // setFieldValue(
+                                //   `resultLimits[${index}].ageRange`,
+                                //   e.target.value,
+                                // );
+                                const selectedAge = ageRangeList.find(
+                                  (a) => a.id === e.target.value,
                                 );
+                                if (selectedAge) {
+                                  setAgeRangeList((prev) =>
+                                    prev.filter((a) => a.id !== selectedAge.id),
+                                  );
+                                  setGotSelectedAgeRangeList((prev) => [
+                                    ...prev,
+                                    {
+                                      id: selectedAge.id,
+                                      value: selectedAge.value,
+                                    },
+                                  ]);
+                                  selectedAgeRangesCurrent.push({
+                                    id: selectedAge.id,
+                                    value: selectedAge.value,
+                                  });
+                                }
                               }}
+                              // disabled
                               invalid={
                                 touched?.resultLimits?.[index]?.ageRange &&
                                 !!errors?.resultLimits?.[index]?.ageRange
@@ -2765,10 +2884,12 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                                 errors?.resultLimits?.[index]?.ageRange
                               }
                             >
-                              <SelectItem
-                                value={"0"}
-                                text={`Select Age Range`}
-                              />
+                              {mode !== "edit" && (
+                                <SelectItem
+                                  value={"0"}
+                                  text={`Select Age Range`}
+                                />
+                              )}
                               {availableAgeRanges.map((age) => (
                                 <SelectItem
                                   key={age.id}
@@ -2977,6 +3098,10 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                               name={`add-age-range-fill-up-${index}`}
                               kind="secondary"
                               type="button"
+                              disabled={
+                                index !== ageRangeFields.length - 1 ||
+                                ageRangeFields.length >= ageRangeList.length
+                              }
                               onClick={() =>
                                 handleAddAgeRangeFillUp(
                                   index,
