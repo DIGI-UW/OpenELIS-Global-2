@@ -1,9 +1,9 @@
 {
-  "dictionary.loincCode.invalid": "Format LOINC tidak valid (harap gunakan: 12345-6 atau LP12345-6)",
-  "dictionary.loincCode.helpText": "Pengidentifikasi observasi laboratorium standar",
-  "dictionary.loincCode": "Kode LOINC",
-  "dictionary.loincCode.placeholder": "contoh 12345-6",
-  "dictionary.loincCode.help": "Pengidentifikasi observasi laboratorium standar",
+  "dictionary.loincCode.invalid": "Invalid LOINC format (expected: 12345-6 or LP12345-6)",
+  "dictionary.loincCode.helpText": "Standard laboratory observation identifier",
+  "dictionary.loincCode": "LOINC Code",
+  "dictionary.loincCode.placeholder": "e.g. 12345-6",
+  "dictionary.loincCode.help": "Enter standard LOINC identifier",
   "language.select.label": "Indonesia",
   "label.button.submit": "Submit",
   "label.button.finish": "Finish",
@@ -1449,5 +1449,9 @@
   "test.field.active": "Active",
   "test.description.active": "If the test is active it can be ordered on the order form or as part of a test algorithm.If it is not active it can not be ordered or be part of a test algorithm",
   "test.field.orderable": "Orderable",
-  "test.description.orderable": "If a test is active and orderable then it can be ordered on an order form. If it is active but not orderable then it will only be done if it is reflexed from another test"
+  "test.description.orderable": "If a test is active and orderable then it can be ordered on an order form. If it is active but not orderable then it will only be done if it is reflexed from another test",
+  "test.modify.header.modify": "Please Select Test to Modify!",
+  "test.modify.header.test": "Test",
+  "test.modify.en": "en",
+  "test.modify.fr": "fr"
 }

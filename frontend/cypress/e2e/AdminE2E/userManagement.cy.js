@@ -145,7 +145,7 @@ describe("User Management", function () {
     it("Search users by Usernames", function () {
       userManagement = adminPage.goToUserManagementPage();
       userManagement.verifyPageTitle();
-      cy.wait(500);
+      cy.reload();
       userManagement.searchUser(usersData[0].username);
       userManagement.validateColumnContent("4", usersData[0].username);
       userManagement.searchUser(usersData[1].username);
