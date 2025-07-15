@@ -27,7 +27,7 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
     private List<CronScheduler> cronSchedulerList;
     private Map<String, Object> propertyValues;
     private List<String> orderProperties;
-    private static int NUMBER_OF_PAGES = 0;
+    private static int PAGE_SIZE = 0;
 
     @Before
     public void setup() throws Exception {
@@ -113,75 +113,66 @@ public class CronSchedulerServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getPage_ShouldReturnAPageOfCronSchedulers_UsingAPageNumber() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         cronSchedulerList = cronSchedulerService.getPage(1);
-        assertTrue(NUMBER_OF_PAGES >= cronSchedulerList.size());
+        assertTrue(PAGE_SIZE >= cronSchedulerList.size());
     }
 
     @Test
     public void getMatchingPage_ShouldReturnAPageOfCronSchedulers_UsingAPropertyNameAndValue() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         cronSchedulerList = cronSchedulerService.getMatchingPage("displayKey", "cleanup.display", 1);
-        assertTrue(NUMBER_OF_PAGES >= cronSchedulerList.size());
+        assertTrue(PAGE_SIZE >= cronSchedulerList.size());
     }
 
     @Test
     public void getMatchingPage_ShouldReturnAPageOfCronSchedulers_UsingAMap() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         cronSchedulerList = cronSchedulerService.getMatchingPage(propertyValues, 1);
-        assertTrue(NUMBER_OF_PAGES >= cronSchedulerList.size());
+        assertTrue(PAGE_SIZE >= cronSchedulerList.size());
     }
 
     @Test
     public void getOrderedPage_ShouldReturnAnOrderedPageOfCronSchedulers_UsingAnOrderProperty() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         cronSchedulerList = cronSchedulerService.getOrderedPage("id", true, 1);
-        assertTrue(NUMBER_OF_PAGES >= cronSchedulerList.size());
+        assertTrue(PAGE_SIZE >= cronSchedulerList.size());
     }
 
     @Test
     public void getOrderedPage_ShouldReturnAnOrderedPageOfCronSchedulers_UsingAList() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         cronSchedulerList = cronSchedulerService.getOrderedPage(orderProperties, false, 1);
-        assertTrue(NUMBER_OF_PAGES >= cronSchedulerList.size());
+        assertTrue(PAGE_SIZE >= cronSchedulerList.size());
     }
 
     @Test
     public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfCronSchedulers_UsingAPropertyNameAndValueAndAnOrderProperty() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         cronSchedulerList = cronSchedulerService.getMatchingOrderedPage("name", "HalfHourlyJob", "id", true, 1);
-        assertTrue(NUMBER_OF_PAGES >= cronSchedulerList.size());
+        assertTrue(PAGE_SIZE >= cronSchedulerList.size());
     }
 
     @Test
     public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfCronSchedulers_UsingAPropertyNameAndValueAndAList() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         cronSchedulerList = cronSchedulerService.getMatchingOrderedPage("name", "HalfHourlyJob", orderProperties, true,
                 1);
-        assertTrue(NUMBER_OF_PAGES >= cronSchedulerList.size());
+        assertTrue(PAGE_SIZE >= cronSchedulerList.size());
     }
 
     @Test
     public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfCronSchedulers_UsingAMapAndAnOrderProperty() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         cronSchedulerList = cronSchedulerService.getMatchingOrderedPage(propertyValues, "lastRun", false, 1);
-        assertTrue(NUMBER_OF_PAGES >= cronSchedulerList.size());
+        assertTrue(PAGE_SIZE >= cronSchedulerList.size());
     }
 
     @Test
     public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfCronSchedulers_UsingAMapAndAList() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         cronSchedulerList = cronSchedulerService.getMatchingOrderedPage(propertyValues, orderProperties, false, 1);
-        assertTrue(NUMBER_OF_PAGES >= cronSchedulerList.size());
+        assertTrue(PAGE_SIZE >= cronSchedulerList.size());
     }
 
     @Test
