@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- Patient Identity Type Records -->
+    <patient_identity_type id="1000"
+        identity_type="ST" description="ST Number"
+        lastupdated="2023-01-01 00:00:00" />
+
+    <!-- Person entry -->
+    <person id="1000" last_name="Test" first_name="Patient"
+        middle_name="Unit" city="TestCity" state="TestState" zip_code="12345"
+        country="TestCountry" work_phone="11111" home_phone="22222"
+        cell_phone="33333" primary_phone="11111" fax="44444"
+        email="patient@test.com" lastUpdated="2023-11-01 12:00:00" />
+
+    <!-- Patient entry -->
+    <patient id="1000" person_id="1000" race="black" gender="M"
+        birth_date="1990-01-01 00:00:00" birth_time="1990-01-01 00:00:00"
+        national_id="999999" ethnicity="U" external_id="EXT999"
+        school_attend="TestSchool" birth_place="TestPlace"
+        entered_birth_date="1990-01-01" lastUpdated="2023-11-01 12:00:02" />
+
+    <!-- Patient Identity -->
+    <patient_identity id="1000" identity_type_id="1000"
+        patient_id="1000" identity_data="ID999"
+        lastUpdated="2023-11-01 12:00:02" />
+
+    <!-- Patient Type -->
+    <patient_type id="1000" type="D" description="Discharged"
+        lastUpdated="2023-11-01 12:00:02" />
+</dataset>
