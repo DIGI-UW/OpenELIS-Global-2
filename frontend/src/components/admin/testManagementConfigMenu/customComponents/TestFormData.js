@@ -75,7 +75,10 @@ export const mapTestCatBeanToFormData = (test) => {
     testReportNameEnglish: test.reportLocalization?.english || "",
     testReportNameFrench: test.reportLocalization?.french || "",
     testSection: test.testUnit || "",
-    panels: test.panel && test.panel !== "None" ? [test.panel] : [],
+    panels:
+      typeof test.panel === "string" && test.panel !== "None"
+        ? test.panel.split(",").map((p) => p.trim())
+        : [],
     uom: test.uom || "",
     loinc: test.loinc || "",
     resultType: test.resultType || "",
@@ -89,7 +92,7 @@ export const mapTestCatBeanToFormData = (test) => {
       test.referenceValue !== "n/a" ? test.referenceValue : "",
     defaultTestResult: "",
     sampleTypes: test.sampleType ? [test.sampleType] : [],
-    lowValid: "-Infinity", // this may be needs to fetched from resultLimits collection
+    lowValid: "-Infinity",
     highValid: "Infinity",
     lowReportingRange: "-Infinity",
     highReportingRange: "Infinity",
@@ -97,26 +100,6 @@ export const mapTestCatBeanToFormData = (test) => {
     highCritical: "Infinity",
     significantDigits:
       test.significantDigits !== "n/a" ? test.significantDigits : "0",
-    // resultLimits:
-    //   test.resultLimits?.map((limit) => {
-    //     const normalRange = limit.normalRange?.split("-") || [];
-    //     return {
-    //       ageRange: limit.ageRange || "0",
-    //       highAgeRange: "0",
-    //       gender:
-    //         limit.gender === "n/a"
-    //           ? false
-    //           : limit.gender === "M"
-    //             ? true
-    //             : limit.gender === "F"
-    //               ? true
-    //               : false,
-    //       lowNormal: normalRange[0] || "-Infinity",
-    //       highNormal: normalRange[1] || "Infinity",
-    //       lowNormalFemale: normalRange[0] || "-Infinity",
-    //       highNormalFemale: normalRange[1] || "Infinity",
-    //     };
-    //   }) || [],
     resultLimits: Object.entries(
       (test.resultLimits || []).reduce((acc, limit) => {
         const key = limit.ageRange;
@@ -156,225 +139,3 @@ export const mapTestCatBeanToFormData = (test) => {
     }),
   };
 };
-
-// {
-//     "id": "381",
-//     "localization": {
-//         "lastupdated": 1751896824848,
-//         "id": "562",
-//         "description": "test name",
-//         "localeValues": {
-//             "fr": "democ",
-//             "en": "democ"
-//         },
-//         "localizedValue": "democ",
-//         "localesWithValue": [
-//             "en",
-//             "fr"
-//         ],
-//         "english": "democ",
-//         "french": "democ",
-//         "allActiveLocales": [
-//             "en",
-//             "fr"
-//         ],
-//         "localesSortedForDisplay": [
-//             "en",
-//             "fr"
-//         ],
-//         "localesWithValueSortedForDisplay": [
-//             "en",
-//             "fr"
-//         ],
-//         "localesAndValuesOfLocalesWithValues": [
-//             "English: democ",
-//             "French: democ"
-//         ]
-//     },
-//     "reportLocalization": {
-//         "lastupdated": 1751896824849,
-//         "id": "563",
-//         "description": "test report name",
-//         "localeValues": {
-//             "fr": "democ",
-//             "en": "democ"
-//         },
-//         "localizedValue": "democ",
-//         "localesWithValue": [
-//             "en",
-//             "fr"
-//         ],
-//         "english": "democ",
-//         "french": "democ",
-//         "allActiveLocales": [
-//             "en",
-//             "fr"
-//         ],
-//         "localesSortedForDisplay": [
-//             "en",
-//             "fr"
-//         ],
-//         "localesWithValueSortedForDisplay": [
-//             "en",
-//             "fr"
-//         ],
-//         "localesAndValuesOfLocalesWithValues": [
-//             "English: democ",
-//             "French: democ"
-//         ]
-//     },
-//     "testUnit": "Biochemistry",
-//     "sampleType": "Sputum",
-//     "panel": "Bilan Biochimique",
-//     "resultType": "N",
-//     "uom": "cp/mL",
-//     "significantDigits": "1",
-//     "loinc": "1",
-//     "active": "Active",
-//     "orderable": "Orderable",
-//     "notifyResults": true,
-//     "hasDictionaryValues": false,
-//     "hasLimitValues": true,
-//     "resultLimits": [
-//         {
-//             "gender": "M",
-//             "ageRange": "0D/0M/0Y-10D/0M/0Y",
-//             "normalRange": "Any value",
-//             "validRange": "Any value",
-//             "reportingRange": "Any value",
-//             "criticalRange": "Any value"
-//         },
-//         {
-//             "gender": "F",
-//             "ageRange": "0D/0M/0Y-10D/0M/0Y",
-//             "normalRange": "Any value",
-//             "validRange": "Any value",
-//             "reportingRange": "Any value",
-//             "criticalRange": "Any value"
-//         },
-//         {
-//             "gender": "M",
-//             "ageRange": "10D/0M/0Y-20D/0M/0Y",
-//             "normalRange": "1.0-2.0",
-//             "validRange": "Any value",
-//             "reportingRange": "Any value",
-//             "criticalRange": "Any value"
-//         },
-//         {
-//             "gender": "F",
-//             "ageRange": "10D/0M/0Y-20D/0M/0Y",
-//             "normalRange": "1.0-2.0",
-//             "validRange": "Any value",
-//             "reportingRange": "Any value",
-//             "criticalRange": "Any value"
-//         },
-//         {
-//             "gender": "n/a",
-//             "ageRange": "20D/0M/0Y-0D/1M/0Y",
-//             "normalRange": "Any value",
-//             "validRange": "Any value",
-//             "reportingRange": "Any value",
-//             "criticalRange": "Any value"
-//         },
-//         {
-//             "gender": "n/a",
-//             "ageRange": "0D/1M/0Y-10D/1M/0Y",
-//             "normalRange": "1.0-2.0",
-//             "validRange": "Any value",
-//             "reportingRange": "Any value",
-//             "criticalRange": "Any value"
-//         }
-//     ],
-//     "testSortOrder": 3,
-//     "inLabOnly": true,
-//     "antimicrobialResistance": true
-// }
-
-// {
-//     "testId": "381",
-//     "testNameEnglish": "democ",
-//     "testNameFrench": "democ",
-//     "testReportNameEnglish": "democ",
-//     "testReportNameFrench": "democ",
-//     "testSection": "Biochemistry",
-//     "panels": [
-//         "Bilan Biochimique"
-//     ],
-//     "uom": "cp/mL",
-//     "loinc": "1",
-//     "resultType": "N",
-//     "orderable": "Y",
-//     "notifyResults": "Y",
-//     "inLabOnly": "Y",
-//     "antimicrobialResistance": "Y",
-//     "active": "Y",
-//     "dictionary": [],
-//     "dictionaryReference": "",
-//     "defaultTestResult": "",
-//     "sampleTypes": [
-//         "Sputum"
-//     ],
-//     "lowValid": "-Infinity",
-//     "highValid": "Infinity",
-//     "lowReportingRange": "-Infinity",
-//     "highReportingRange": "Infinity",
-//     "lowCritical": "-Infinity",
-//     "highCritical": "Infinity",
-//     "significantDigits": "1",
-//     "resultLimits": [
-//         {
-//             "ageRange": "0D/0M/0Y-10D/0M/0Y",
-//             "highAgeRange": "0",
-//             "gender": true,
-//             "lowNormal": "Any value",
-//             "highNormal": "Infinity",
-//             "lowNormalFemale": "Any value",
-//             "highNormalFemale": "Infinity"
-//         },
-//         {
-//             "ageRange": "0D/0M/0Y-10D/0M/0Y",
-//             "highAgeRange": "0",
-//             "gender": true,
-//             "lowNormal": "Any value",
-//             "highNormal": "Infinity",
-//             "lowNormalFemale": "Any value",
-//             "highNormalFemale": "Infinity"
-//         },
-//         {
-//             "ageRange": "10D/0M/0Y-20D/0M/0Y",
-//             "highAgeRange": "0",
-//             "gender": true,
-//             "lowNormal": "1.0",
-//             "highNormal": "2.0",
-//             "lowNormalFemale": "1.0",
-//             "highNormalFemale": "2.0"
-//         },
-//         {
-//             "ageRange": "10D/0M/0Y-20D/0M/0Y",
-//             "highAgeRange": "0",
-//             "gender": true,
-//             "lowNormal": "1.0",
-//             "highNormal": "2.0",
-//             "lowNormalFemale": "1.0",
-//             "highNormalFemale": "2.0"
-//         },
-//         {
-//             "ageRange": "20D/0M/0Y-0D/1M/0Y",
-//             "highAgeRange": "0",
-//             "gender": false,
-//             "lowNormal": "Any value",
-//             "highNormal": "Infinity",
-//             "lowNormalFemale": "Any value",
-//             "highNormalFemale": "Infinity"
-//         },
-//         {
-//             "ageRange": "0D/1M/0Y-10D/1M/0Y",
-//             "highAgeRange": "0",
-//             "gender": false,
-//             "lowNormal": "1.0",
-//             "highNormal": "2.0",
-//             "lowNormalFemale": "1.0",
-//             "highNormalFemale": "2.0"
-//         }
-//     ]
-// }
