@@ -86,7 +86,7 @@ class UserManagementPage {
 
   typeLoginName(value) {
     cy.wait(1500);
-    cy.get(this.selectors.loginName).type(value);
+    cy.get(this.selectors.loginName).clear().type(value);
   }
 
   typeLoginPassword(value) {
