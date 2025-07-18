@@ -880,9 +880,13 @@ const Index = () => {
                 </Column>
               </Grid>
             </div>
-          </Stack>
-        </Column>
-      </Grid>
+          </div>
+        </div>
+      </Stack>
+        </div>
+      </Stack>
+      </Column>
+    </Grid>
     </>
   );
 };
