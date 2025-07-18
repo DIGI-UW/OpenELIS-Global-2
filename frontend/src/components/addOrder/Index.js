@@ -775,7 +775,7 @@ const Index = () => {
                       setOrderFormValues={setOrderFormValues}
                       error={elementError}
                       setPhoneValidation={setPhoneValidation}
-              />
+                    />
                   )}
                   {page === programPageNumber && (
                     <OrderEntryAdditionalQuestions
@@ -857,14 +857,12 @@ const Index = () => {
                         className="forwardButton"
                         disabled={
                           isSubmitting ||
-                    Object.values(phoneValidation).some(
-                      (item) => item.status === false,
-                    ) ||
-                    errors?.errors?.length > 0
-                           
-                      ? true
-                           
-                      : false
+                          Object.values(phoneValidation).some(
+                            (item) => item.status === false,
+                          ) ||
+                          errors?.errors?.length > 0
+                            ? true
+                            : false
                         }
                         onClick={handleSubmitOrderForm}
                         style={{
@@ -880,13 +878,9 @@ const Index = () => {
                 </Column>
               </Grid>
             </div>
-          </div>
-        </div>
-      </Stack>
-        </div>
-      </Stack>
-      </Column>
-    </Grid>
+          </Stack>
+        </Column>
+      </Grid>
     </>
   );
 };
