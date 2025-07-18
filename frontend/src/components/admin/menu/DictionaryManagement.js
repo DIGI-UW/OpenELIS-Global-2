@@ -568,6 +568,10 @@ function DictionaryManagement() {
                     labelText="LOINC Code"
                     value={loincCode}
                     onChange={(e) => setLoincCode(e.target.value)}
+                    invalid={!/^(?!-)(?:\d+-)*\d*$/.test(loincCode)}
+                    invalidText={
+                      <FormattedMessage id="dictionary.loincCode.invalid" />
+                    }
                     style={{
                       marginBottom: "1rem",
                     }}
