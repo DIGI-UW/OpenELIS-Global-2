@@ -31,6 +31,7 @@ import org.openelisglobal.organization.service.OrganizationTypeService;
 import org.openelisglobal.referral.fhir.service.FhirReferralService;
 import org.openelisglobal.reports.service.WHONetReportServiceImpl;
 import org.openelisglobal.requester.service.RequesterTypeService;
+import org.openelisglobal.result.controller.AnalyzerResultsController;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
@@ -79,7 +80,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.action", "org.openelisglobal.analysisqaevent", "org.openelisglobal.analysisqaeventaction",
         "org.openelisglobal.dataexchange", "org.openelisglobal.samplepdf", "org.openelisglobal.samplenewborn",
         "org.openelisglobal.sampleqaeventaction", "org.openelisglobal.analyzerresults", "org.openelisglobal.testreflex",
-        "org.openelisglobal.county", "org.openelisglobal.sampletracking" }, excludeFilters = {
+        "org.openelisglobal.county", "org.openelisglobal.sampletracking",
+        "org.openelisglobal.projectorganization" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
@@ -273,6 +275,11 @@ public class AppTestConfig implements WebMvcConfigurer {
         WebMvcConfigurer.super.configureMessageConverters(converters);
         converters.add(new StringHttpMessageConverter());
         converters.add(jsonConverter());
+    }
+
+    @Bean()
+    public AnalyzerResultsController analyzerResultsController() {
+        return mock(AnalyzerResultsController.class);
     }
 
 }

@@ -92,12 +92,18 @@ export const mapTestCatBeanToFormData = (test) => {
       test.referenceValue !== "n/a" ? test.referenceValue : "",
     defaultTestResult: "",
     sampleTypes: test.sampleType ? [test.sampleType] : [],
-    lowValid: "-Infinity",
-    highValid: "Infinity",
-    lowReportingRange: "-Infinity",
-    highReportingRange: "Infinity",
-    lowCritical: "-Infinity",
-    highCritical: "Infinity",
+    lowValid:
+      test.resultLimits?.[0]?.validRange?.split("-")?.[0] || "-Infinity",
+    highValid:
+      test.resultLimits?.[0]?.validRange?.split("-")?.[1] || "Infinity",
+    lowReportingRange:
+      test.resultLimits?.[0]?.reportingRange?.split("-")?.[0] || "-Infinity",
+    highReportingRange:
+      test.resultLimits?.[0]?.reportingRange?.split("-")?.[1] || "Infinity",
+    lowCritical:
+      test.resultLimits?.[0]?.criticalRange?.split("-")?.[0] || "-Infinity",
+    highCritical:
+      test.resultLimits?.[0]?.criticalRange?.split("-")?.[1] || "Infinity",
     significantDigits:
       test.significantDigits !== "n/a" ? test.significantDigits : "0",
     resultLimits: Object.entries(
@@ -119,7 +125,11 @@ export const mapTestCatBeanToFormData = (test) => {
       };
 
       limits.forEach((limit) => {
-        const [low, high] = limit.normalRange?.split("-") || [];
+        let low = "-Infinity",
+          high = "Infinity";
+        if (limit.normalRange && limit.normalRange !== "Any value") {
+          [low, high] = limit.normalRange.split("-");
+        }
 
         if (limit.gender === "M") {
           result.gender = true;

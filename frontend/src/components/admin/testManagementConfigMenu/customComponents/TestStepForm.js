@@ -2284,6 +2284,19 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
     handleNextStep(values, true);
   };
 
+  useEffect(() => {
+    if (mode === "edit" && ageRangeList.length && ageRangeFields.length) {
+      setGotSelectedAgeRangeList(
+        ageRangeFields.map((_, index) => {
+          const current = ageRangeList?.[index];
+          return current
+            ? { id: current.id, value: current.value }
+            : { id: "0", value: "Select Age Range" };
+        }),
+      );
+    }
+  }, [mode, ageRangeList, ageRangeFields.length]);
+
   return (
     <>
       {currentStep === 5 && selectedResultTypeList?.id === "4" ? (
@@ -2516,21 +2529,31 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                     if (
                       !resultLimits ||
                       resultLimits.length === 0 ||
-                      isNaN(lowValid)
-                    )
+                      // isNaN(lowValid)
+                      !Number.isFinite(lowValid)
+                    ) {
                       return true;
+                    }
+                    const lowNormalRaw = resultLimits[0]?.lowNormal;
+                    const lowNormalFemaleRaw = resultLimits[0]?.lowNormalFemale;
 
-                    const lowNormal = parseFloat(resultLimits[0].lowNormal);
-                    const lowNormalFemale = parseFloat(
-                      resultLimits[0].lowNormalFemale,
-                    );
+                    const lowNormal = Number.isFinite(parseFloat(lowNormalRaw))
+                      ? parseFloat(lowNormalRaw)
+                      : NaN;
 
-                    if (isNaN(lowNormal) && isNaN(lowNormalFemale)) return true;
+                    const lowNormalFemale = Number.isFinite(
+                      parseFloat(lowNormalFemaleRaw),
+                    )
+                      ? parseFloat(lowNormalFemaleRaw)
+                      : NaN;
 
-                    return (
-                      (isNaN(lowNormal) || lowValid < lowNormal) &&
-                      (isNaN(lowNormalFemale) || lowValid < lowNormalFemale)
-                    );
+                    const validAgainstLowNormal =
+                      isNaN(lowNormal) || lowValid < lowNormal;
+
+                    const validAgainstLowNormalFemale =
+                      isNaN(lowNormalFemale) || lowValid < lowNormalFemale;
+
+                    return validAgainstLowNormal && validAgainstLowNormalFemale;
                   },
                 ),
               // .min(0, "Minimum value is 0")
@@ -2547,18 +2570,6 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                     typeof value === "number" ||
                     !isNaN(Number(value)),
                 )
-                // .test(
-                //   "greater-than-lowValid",
-                //   "Must be greater or equal to lower valid range",
-                //   function (value) {
-                //     const { lowValid } = this.parent;
-                //     const high = parseFloat(value);
-                //     const low = parseFloat(lowValid);
-
-                //     if (isNaN(high) || isNaN(low)) return true;
-                //     return high >= low;
-                //   },
-                // )
                 .test(
                   "greater-than-highNormals",
                   "High Valid must be greater than High Normal and High Normal Female",
@@ -2569,21 +2580,36 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                     if (
                       !resultLimits ||
                       resultLimits.length === 0 ||
-                      isNaN(highValid)
+                      // isNaN(highValid)
+                      !Number.isFinite(highValid)
+                    ) {
+                      return true;
+                    }
+
+                    const highNormalRaw = resultLimits[0]?.highNormal;
+                    const highNormalFemaleRaw =
+                      resultLimits[0]?.highNormalFemale;
+
+                    const highNormal = Number.isFinite(
+                      parseFloat(highNormalRaw),
                     )
-                      return true;
+                      ? parseFloat(highNormalRaw)
+                      : NaN;
 
-                    const highNormal = parseFloat(resultLimits[0].highNormal);
-                    const highNormalFemale = parseFloat(
-                      resultLimits[0].highNormalFemale,
-                    );
+                    const highNormalFemale = Number.isFinite(
+                      parseFloat(highNormalFemaleRaw),
+                    )
+                      ? parseFloat(highNormalFemaleRaw)
+                      : NaN;
 
-                    if (isNaN(highNormal) && isNaN(highNormalFemale))
-                      return true;
+                    const validAgainstHighNormal =
+                      isNaN(highNormal) || highValid > highNormal;
+
+                    const validAgainstHighNormalFemale =
+                      isNaN(highNormalFemale) || highValid > highNormalFemale;
 
                     return (
-                      (isNaN(highNormal) || highValid > highNormal) &&
-                      (isNaN(highNormalFemale) || highValid > highNormalFemale)
+                      validAgainstHighNormal && validAgainstHighNormalFemale
                     );
                   },
                 ),
@@ -2754,28 +2780,6 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                       <hr />
                     </Column>
                     {ageRangeFields.map((_, index) => {
-                      // const selectedAgeRangesCurrent = selectedAgeRanges
-                      //   .map((item) => item.ageRange)
-                      //   .filter((val, idx) => idx !== index && val)
-                      //   .filter(Boolean);
-                      // const selectedAgeRangesCurrent = gotSelectedAgeRangeList
-                      //   .filter((_, i) => i !== index)
-                      //   .map((item) => item.ageRange)
-                      //   .filter(Boolean);
-                      // const selectedAgeRangesCurrent = []
-                      //   .filter((_, i) => i !== index)
-                      //   .map((item) => item.id)
-                      //   .filter(Boolean);
-                      const selectedAgeRangesCurrent = ageRangeList
-                        .slice(0, ageRangeFields.length)
-                        .filter((_, i) => i !== index)
-                        .map((item) => item.id);
-                      // const selectedAgeRangesCurrent = ageRangeList
-                      //   .slice(0, ageRangeFields.length - 1)
-                      //   .map((item) => item.id);
-                      const availableAgeRanges = ageRangeList.filter(
-                        (age) => !selectedAgeRangesCurrent.includes(age.id),
-                      );
                       return (
                         <React.Fragment key={index}>
                           <Column
@@ -2943,15 +2947,10 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                               labelText=""
                               hideLabel
                               size={"md"}
-                              // value={
-                              //   values.resultLimits?.[index]?.ageRange || ""
-                              // }
-                              // value={
-                              //   ageRangeList.find(
-                              //     (a) => a.id === ageRanges[index + 1]?.raw,
-                              //   )?.id || ""
-                              // } // select just based on number of itesm present in list and index
-                              value={ageRangeList?.[index]?.id || ""}
+                              // value={ageRangeList?.[index]?.id || "0"}
+                              value={
+                                gotSelectedAgeRangeList?.[index]?.id || "0"
+                              }
                               onChange={(e) => {
                                 // setFieldValue(
                                 //   `resultLimits[${index}].ageRange`,
@@ -2960,20 +2959,12 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                                 const selectedAge = ageRangeList.find(
                                   (a) => a.id === e.target.value,
                                 );
+                                console.log(selectedAge);
                                 if (selectedAge) {
-                                  setAgeRangeList((prev) =>
-                                    prev.filter((a) => a.id !== selectedAge.id),
-                                  );
-                                  setGotSelectedAgeRangeList((prev) => [
-                                    ...prev,
-                                    {
-                                      id: selectedAge.id,
-                                      value: selectedAge.value,
-                                    },
-                                  ]);
-                                  selectedAgeRangesCurrent.push({
-                                    id: selectedAge.id,
-                                    value: selectedAge.value,
+                                  setGotSelectedAgeRangeList((prev) => {
+                                    const updated = [...prev];
+                                    updated[index] = selectedAge;
+                                    return updated;
                                   });
                                 }
                               }}
@@ -2993,13 +2984,20 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                                   text={`Select Age Range`}
                                 />
                               )}
-                              {availableAgeRanges.map((age) => (
-                                <SelectItem
-                                  key={age.id}
-                                  value={age.id}
-                                  text={`${age.value}`}
-                                />
-                              ))}
+                              {ageRangeList
+                                .filter(
+                                  (age) =>
+                                    !gotSelectedAgeRangeList.some(
+                                      (a, i) => i !== index && a?.id === age.id,
+                                    ),
+                                )
+                                .map((age) => (
+                                  <SelectItem
+                                    key={age.id}
+                                    value={age.id}
+                                    text={`${age.value}`}
+                                  />
+                                ))}
                             </Select>
                           </Column>
                           <Column
