@@ -90,7 +90,7 @@ public class ProjectOrganizationServiceTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
-    public void getAllMatchingOrdered_ShouldReturnMatchingOrderedProjectOrganizationsFilteredByAPatientIdAndOrderedByOrderPropertiesInDescendingOrder() {
+    public void getAllMatchingOrdered_ShouldReturnMatchingOrderedProjectOrganizationsFilteredByAProjectIdAndOrderedByOrderPropertiesInDescendingOrder() {
         projectOrganizationList = projectOrganizationService.getAllMatchingOrdered("project", 102, orderProperties,
                 true);
         assertNotNull(projectOrganizationList);
