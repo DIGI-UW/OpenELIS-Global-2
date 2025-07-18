@@ -23,7 +23,9 @@
         <class>org.openelisglobal.externalconnections.valueholder.CertificateAuthenticationData</class>
         <class>org.openelisglobal.externalconnections.valueholder.BasicAuthenticationData</class>
         <class>org.openelisglobal.projectorganization.valueholder.ProjectOrganization</class>
-
+        <class>org.openelisglobal.testreflex.action.bean.ReflexRule</class>
+        <class>org.openelisglobal.testreflex.action.bean.ReflexRuleCondition</class>
+        <class>org.openelisglobal.testreflex.action.bean.ReflexRuleAction</class>
         <class>org.itech.fhir.dataexport.core.model.DataExportAttempt</class>
         <class>org.itech.fhir.dataexport.core.model.DataExportTask</class>
 

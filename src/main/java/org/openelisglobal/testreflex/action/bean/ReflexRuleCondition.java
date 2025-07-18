@@ -9,10 +9,11 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import org.openelisglobal.common.valueholder.BaseObject;
 
 @Entity
 @Table(name = "reflex_rule_condition")
-public class ReflexRuleCondition {
+public class ReflexRuleCondition extends BaseObject<Integer> {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "reflex_rule_condition_generator")

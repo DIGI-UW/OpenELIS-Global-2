@@ -1,0 +1,139 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <sample id="4001" accession_number="ACC123456" domain="A"
+        next_item_sequence="1" revision="0" entered_date="2025-07-01 08:00:00"
+        received_date="2025-07-01 08:30:00"
+        collection_date="2025-07-01 07:45:00" client_reference="REF001"
+        status="R" released_date="2025-07-01 12:00:00" sticker_rcvd_flag="Y"
+        barcode="BC123456" transmission_date="2025-07-01 13:00:00"
+        lastupdated="2025-07-01 13:30:00" spec_or_isolate="S"
+        is_confirmation="false" />
+
+    <sample id="4002" accession_number="ACC654321" domain="B"
+        next_item_sequence="2" revision="1" entered_date="2025-07-02 09:10:00"
+        received_date="2025-07-02 09:45:00"
+        collection_date="2025-07-02 09:00:00" client_reference="REF002"
+        status="P" released_date="2025-07-02 13:15:00" sticker_rcvd_flag="N"
+        barcode="BC654321" transmission_date="2025-07-02 14:00:00"
+        lastupdated="2025-07-02 14:30:00" spec_or_isolate="I" priority="2"
+        is_confirmation="true" />
+
+    <test id="4001" description="Blood Test" loinc="123456"
+        reporting_description="Complete Blood Count" sticker_req_flag="Y"
+        is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2025-12-31 12:00:00" is_reportable="N" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2025-03-20 12:00:00"
+        local_code="CBC" sort_order="2147483646" name="Complete Blood Count"
+        orderable="true" guid="abc-123" name_localization_id="1"
+        antimicrobial_resistance="true" />
+
+    <test id="4002" description="Urine Test" loinc="543216"
+        reporting_description="Urinalysis" sticker_req_flag="N" is_active="Y"
+        active_begin="2025-02-01 12:00:00" active_end="2025-12-31 12:00:00"
+        is_reportable="Y" time_holding="25" time_wait="10"
+        time_ta_average="50" time_ta_warning="70" time_ta_max="90"
+        label_qty="1" lastupdated="2025-03-20 12:00:00" local_code="UA"
+        sort_order="2147483646" name="Urinalysis" orderable="true"
+        guid="def-456" name_localization_id="2"
+        antimicrobial_resistance="false" />
+
+
+    <scriptlet id="7001" name="Scriptlet 1" code_type="T"
+        code_source="Source1" lastupdated="2025-03-13 12:00:00" />
+    <scriptlet id="7002" name="Scriptlet 2" code_type="T"
+        code_source="Source2" lastupdated="2025-03-14 12:00:00" />
+
+    <test_result id="2001" test_id="4001" result_group="1"
+        flags="FLAG1" tst_rslt_type="N" value="5.6" significant_digits="2"
+        quant_limit="10.0" cont_level="High" lastupdated="2025-04-01 12:00:00"
+        scriptlet_id="7001" sort_order="1" is_quantifiable="true"
+        is_active="true" is_normal="true" />
+
+    <test_result id="2002" test_id="4002" result_group="2"
+        flags="FLAG2" tst_rslt_type="T" value="Positive"
+        significant_digits="0" quant_limit="15.1" cont_level="High"
+        lastupdated="2025-04-01 12:30:00" scriptlet_id="7002" sort_order="2"
+        is_quantifiable="true" is_active="true" is_normal="false" />
+
+    <analyte id="701" analyte_id="701" name="Glucose" is_active="Y"
+        external_id="EXT123" lastupdated="2025-03-07 12:00:00"
+        local_abbrev="GLU" />
+    <analyte id="702" analyte_id="702" name="Hemoglobin"
+        is_active="N" external_id="EXT124" lastupdated="2025-03-06 14:30:00"
+        local_abbrev="HGB" />
+
+    <result id="901" sort_order="2" result_type="N" value="14.5"
+        analyte_id="702" test_result_id="2001" is_reportable="Y"
+        lastupdated="2025-07-07 14:00:00" min_normal="12.0" max_normal="16.0"
+        significant_digits="1" grouping="0"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
+
+    <analysis id="301" test_id="4002" revision="1"
+        started_date="2025-06-18 08:00:00"
+        completed_date="2025-06-18 10:00:00"
+        released_date="2025-06-18 11:00:00" printed_date="2025-06-18 12:00:00"
+        is_reportable="Y" so_send_ready_date="2025-06-18 13:00:00"
+        so_client_reference="REF001"
+        so_notify_received_date="2025-06-18 13:30:00"
+        so_notify_send_date="2025-06-18 14:00:00"
+        so_send_date="2025-06-18 14:15:00" so_send_entry_by="user01"
+        so_send_entry_date="2025-06-18 14:30:00" analysis_type="CLINICAL"
+        lastupdated="2025-06-18 15:00:00" parent_analysis_id="301"
+        parent_result_id="901" reflex_trigger="false"
+        entry_date="2025-06-18 07:45:00" referred_out="false"
+        type_of_sample_name="Blood" corrected="false" />
+
+    <test_analyte id="3001" test_id="4001" analyte_id="701"
+        result_group="1" sort_order="1" testalyt_type="T"
+        lastupdated="2025-03-19 10:00:00" is_reportable="Y" />
+
+    <test_analyte id="3002" test_id="4002" analyte_id="702"
+        result_group="1" sort_order="2" testalyt_type="R"
+        lastupdated="2025-03-19 10:01:00" is_reportable="Y" />
+
+
+    <test_reflex id="1001" tst_rslt_id="2001" flags="positive"
+        lastupdated="2025-07-10 14:30:00" test_analyte_id="3001"
+        test_id="4001" add_test_id="4001" sibling_reflex="1001"
+        scriptlet_id="7001" />
+
+    <test_reflex id="1002" tst_rslt_id="2002" flags="negative"
+        lastupdated="2025-07-11 09:15:00" test_analyte_id="3002"
+        test_id="4002" add_test_id="4002" sibling_reflex="1002"
+        scriptlet_id="7002" />
+
+    <test_reflex id="1003" tst_rslt_id="2002" flags="pending"
+        lastupdated="2025-07-12 17:00:00" test_analyte_id="3001"
+        test_id="4001" add_test_id="4001" sibling_reflex="1002"
+        scriptlet_id="7002" />
+
+    <test_reflex id="1004" tst_rslt_id="2002" flags="positive"
+        lastupdated="2025-07-13 08:45:00" test_analyte_id="3001"
+        test_id="4001" add_test_id="4001" sibling_reflex="1001"
+        scriptlet_id="7002" />
+
+    <reflex_rule id="1401" rule_name="High Hemoglobin Rule"
+        overall="ALL" toggled="true" active="true"
+        last_updated="2023-01-23 12:00:00" analyte_id="701" />
+
+    <reflex_rule id="1402" rule_name="Low WBC Alert"
+        overall="ANY" toggled="true" active="true"
+        last_updated="2025-03-13 12:00:00" analyte_id="702" />
+
+    <reflex_rule id="1403" rule_name="Glucose Range Rule"
+        overall="ALL" toggled="false" active="false"
+        last_updated="2021-03-18 15:00:00" analyte_id="701" />
+
+    <reflex_rule_condition id="1" sample_id="4001"
+        test_name="Hemoglobin" test_id="4001" relation="GREATER_THAN"
+        value="13.5" value2="19.7" test_analyte_id="3002" />
+
+    <reflex_rule_condition id="2" sample_id="4001"
+        test_name="WBC" test_id="4002" relation="LESS_THAN" value="4.0"
+        value2="4.8" test_analyte_id="3002" />
+
+    <reflex_rule_condition id="3" sample_id="4002"
+        test_name="Glucose" test_id="4001" relation="BETWEEN" value="70"
+        value2="110" test_analyte_id="3001" />
+</dataset>
