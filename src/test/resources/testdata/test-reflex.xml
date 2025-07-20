@@ -124,16 +124,4 @@
     <reflex_rule id="1403" rule_name="Glucose Range Rule"
         overall="ALL" toggled="false" active="false"
         last_updated="2021-03-18 15:00:00" analyte_id="701" />
-
-    <reflex_rule_condition id="1" sample_id="4001"
-        test_name="Hemoglobin" test_id="4001" relation="GREATER_THAN"
-        value="13.5" value2="19.7" test_analyte_id="3002" />
-
-    <reflex_rule_condition id="2" sample_id="4001"
-        test_name="WBC" test_id="4002" relation="LESS_THAN" value="4.0"
-        value2="4.8" test_analyte_id="3002" />
-
-    <reflex_rule_condition id="3" sample_id="4002"
-        test_name="Glucose" test_id="4001" relation="BETWEEN" value="70"
-        value2="110" test_analyte_id="3001" />
 </dataset>

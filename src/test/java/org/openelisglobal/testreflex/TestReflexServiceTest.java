@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -20,7 +21,6 @@ import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testreflex.action.bean.ReflexRule;
 import org.openelisglobal.testreflex.action.bean.ReflexRuleCondition;
 import org.openelisglobal.testreflex.action.bean.ReflexRuleOptions;
-import org.openelisglobal.testreflex.service.ReflexRuleConditionService;
 import org.openelisglobal.testreflex.service.ReflexRuleService;
 import org.openelisglobal.testreflex.service.TestReflexService;
 import org.openelisglobal.testreflex.valueholder.TestReflex;
@@ -40,8 +40,6 @@ public class TestReflexServiceTest extends BaseWebContextSensitiveTest {
     private TestAnalyteService testAnalyteService;
     @Autowired
     private ReflexRuleService reflexRuleService;
-    @Autowired
-    private ReflexRuleConditionService reflexRuleConditionService;
 
     @Before
     public void setUp() throws Exception {
@@ -59,7 +57,7 @@ public class TestReflexServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getPageOfTestReflexs_ShouldReturnAllTestReflexesOnAPage() {
+    public void getPageOfTestReflexes_ShouldReturnAllTestReflexesOnAPage() {
         List<TestReflex> testReflexes = testReflexService.getPageOfTestReflexs(1);
         assertNotNull(testReflexes);
         assertEquals(4, testReflexes.size());
@@ -76,7 +74,7 @@ public class TestReflexServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getTestReflexsByTestAndFlag_ShouldReturnTestReflexesWithTestIdAndFlagsPassedAsParameter() {
+    public void getTestReflexesByTestAndFlag_ShouldReturnTestReflexesWithTestIdAndFlagsPassedAsParameter() {
         List<TestReflex> testReflexes = testReflexService.getTestReflexsByTestAndFlag("4001", "positive");
         assertNotNull(testReflexes);
         assertEquals(1, testReflexes.size());
@@ -156,11 +154,15 @@ public class TestReflexServiceTest extends BaseWebContextSensitiveTest {
         assertFalse(reflexRule.getActive());
     }
 
-    // @Test
+    @Test
     public void saveOrUpdateReflexRule_TestInsertingANewReflexRule() {
-        List<ReflexRuleCondition> reflexRuleConditions = new ArrayList<>();
-        ReflexRuleCondition condition = reflexRuleConditionService.get(2);
-        reflexRuleConditions.add(condition);
+        ReflexRuleCondition condition = new ReflexRuleCondition();
+        condition.setSampleId("4002");
+        condition.setTestName("Urinalysis");
+        condition.setTestId("4001");
+        condition.setRelation(ReflexRuleOptions.NumericRelationOptions.GREATER_THAN);
+        condition.setValue("Value1");
+        List<ReflexRuleCondition> reflexRuleConditions = new ArrayList<>(Arrays.asList(condition));
 
         Set<ReflexRuleCondition> reflexRuleConditionSet = new HashSet<>(reflexRuleConditions);
         ReflexRule reflexRule = new ReflexRule();
@@ -171,8 +173,14 @@ public class TestReflexServiceTest extends BaseWebContextSensitiveTest {
         reflexRule.setLastupdated(Timestamp.valueOf("2021-12-28 08:45:00"));
         reflexRule.setConditions(reflexRuleConditionSet);
 
-        // Method failing to insert new ReflexRule
+        List<ReflexRule> reflexRules = reflexRuleService.getAll();
+        assertEquals(3, reflexRules.size());
+        assertFalse("Endoscopy rule", reflexRules.stream().anyMatch(rl -> "Endoscopy rule".equals(rl.getRuleName())));
         testReflexService.saveOrUpdateReflexRule(reflexRule);
+        List<ReflexRule> updatedReflexRules = reflexRuleService.getAll();
+        assertEquals(4, updatedReflexRules.size());
+        assertTrue("Endoscopy rule",
+                updatedReflexRules.stream().anyMatch(rl -> "Endoscopy rule".equals(rl.getRuleName())));
     }
 
     @Test
