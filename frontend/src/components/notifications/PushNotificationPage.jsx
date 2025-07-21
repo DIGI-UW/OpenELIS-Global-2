@@ -147,7 +147,11 @@ export default function PushNotificationPage() {
         {error !== "" && (
           <div style={{ color: "#c62828", margin: 4 }}>{error}</div>
         )}
-        <Button onClick={submit} style={{ marginBottom: "20px" }}>
+        <Button
+          data-cy="submitButton"
+          onClick={submit}
+          style={{ marginBottom: "20px" }}
+        >
           Submit
         </Button>
       </div>

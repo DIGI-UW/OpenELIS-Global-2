@@ -339,13 +339,6 @@ function TestModifyEntry() {
           <hr />
           <br />
         </div>
-        <button
-          onClick={() => {
-            console.log(testMonifyList);
-          }}
-        >
-          testMonifyList
-        </button>
       </div>
     </>
   );

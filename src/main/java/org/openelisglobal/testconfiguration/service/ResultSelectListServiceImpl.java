@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -141,11 +142,15 @@ public class ResultSelectListServiceImpl implements ResultSelectListService {
                         Map<String, Object> filter = new HashMap<>();
                         filter.put("test.id", testId);
                         filter.put("value", object.get("id"));
-                        TestResult testResult = resultService.getMatch(filter).get(); // get((String) object.get("id"));
+                        Optional<TestResult> testResult = resultService.getMatch(filter); // get((String)
+                                                                                          // object.get("id"));
                         long order = (Long) object.get("order");
-                        testResult.setSortOrder(String.valueOf(10 * order));
-                        testResult.setSysUserId(currentUserId);
-                        resultService.save(testResult);
+                        if (testResult.isPresent()) {
+                            testResult.get().setSortOrder(String.valueOf(10 * order));
+                            testResult.get().setSysUserId(currentUserId);
+                            resultService.save(testResult.get());
+                        }
+
                     } else {
                         TestResult testResult = new TestResult();
                         testResult.setIsQuantifiable((Boolean) object.get("qualifiable"));

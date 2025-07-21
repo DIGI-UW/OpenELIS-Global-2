@@ -66,6 +66,7 @@ function ResultSelectListAdd() {
   const [englishLangPost, setEnglishLangPost] = useState("");
   const [frenchLangPost, setFrenchLangPost] = useState("");
   const [loincCode, setLoincCode] = useState("");
+  const [loincCodeError, setLoincCodeError] = useState(false);
   const [inputError, setInputError] = useState(false);
   const [ResultSelectListRes, setResultSelectListRes] = useState({});
   const [resultTestsList, setResultTestsList] = useState([]);
@@ -91,6 +92,15 @@ function ResultSelectListAdd() {
       },
     );
   };
+
+  useEffect(() => {
+    if (loincCode) {
+      const invalidLoinc = /^(?!-)(?:\d+-)*\d*$/.test(loincCode);
+      setLoincCodeError(!invalidLoinc);
+    } else {
+      setLoincCodeError(false);
+    }
+  }, [loincCode]);
 
   const handlePostResultSelectListCallBack = (res) => {
     if (res) {
@@ -343,6 +353,10 @@ function ResultSelectListAdd() {
                 labelText=""
                 disabled={bothFilled}
                 hideLabel
+                invalid={loincCodeError}
+                invalidText={
+                  <FormattedMessage id="dictionary.loincCode.invalid" />
+                }
                 value={`${loincCode}` || ""}
                 onChange={(e) => {
                   setLoincCode(e.target.value);
@@ -458,7 +472,7 @@ function ResultSelectListAdd() {
                 )}
                 <br />
                 <Grid fullWidth={true}>
-                  <Column lg={16} md={8} sm={4}>
+                  <Column lg={4} md={8} sm={4}>
                     <Button
                       onClick={() => {
                         if (englishLangPost && frenchLangPost !== "") {
@@ -478,7 +492,7 @@ function ResultSelectListAdd() {
                       <FormattedMessage id="next.action.button" />
                     </Button>
                   </Column>
-                  <Column lg={16} md={8} sm={4}>
+                  <Column lg={4} md={8} sm={4}>
                     <Button
                       type="button"
                       kind="tertiary"

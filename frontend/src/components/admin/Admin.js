@@ -307,7 +307,11 @@ function Admin() {
           >
             <FormattedMessage id="dictionary.label.modify" />
           </SideNavLink>
-          <SideNavLink href="#NotifyUser" renderIcon={Bullhorn}>
+          <SideNavLink
+            data-cy="notifyUser"
+            href="#NotifyUser"
+            renderIcon={Bullhorn}
+          >
             <FormattedMessage id="notify.main.title" />
           </SideNavLink>
           <SideNavLink href="#SearchIndexManagement" renderIcon={Search}>
