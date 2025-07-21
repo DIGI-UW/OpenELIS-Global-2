@@ -80,7 +80,7 @@
     "**/@types/react": "16.14.5"
   },
   "devDependencies": {
-    "cypress": "^12.17.3",
+    "cypress": "^14.5.2",
     "cypress-xpath": "^2.0.1",
     "eslint": "^8.48.0",
     "eslint-config-prettier": "^9.0.0",
