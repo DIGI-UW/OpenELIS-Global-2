@@ -97,7 +97,7 @@ public class TestReflexServiceTest extends BaseWebContextSensitiveTest {
     }
 
     // @Test
-    public void isReflexedTest_ShouldReturnTrueIfTestReflexIs() {
+    public void isReflexedTest_ShouldReturnTrueIfTestReflexWasReflexedOrLinked() {
         // Method Not behaving as expected!
         Analysis analysis = analysisService.get("301");
         boolean isReflexedTest = testReflexService.isReflexedTest(analysis);
@@ -114,7 +114,7 @@ public class TestReflexServiceTest extends BaseWebContextSensitiveTest {
     }
 
     // @Test
-    public void getTestReflexesByTestResultAndTestAnalyte() {
+    public void getTestReflexesByTestResultAndTestAnalyte_ShouldReturnTestReflexesWithTestResultAndTestAnalyteValuesPassedAsParameter() {
         TestResult testResult = testResultService.get("2002");
         TestAnalyte testAnalyte = testAnalyteService.get("3001");
 
