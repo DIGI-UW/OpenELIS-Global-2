@@ -32,19 +32,22 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
     }
 
     @Test
-    public void savePatient_shouldReturn200OnInvalidInput() throws Exception {
+    public void savePatient_shouldReturn200OnEmptyRequiredFields() throws Exception {
         Patient existingPatient = patientDAO.getPatientByNationalId("999999");
         assertNotNull("Test requires patient with nationalId 999999 to exist", existingPatient);
 
         Map<String, Object> invalidPayload = new HashMap<>();
         invalidPayload.put("patientPK", existingPatient.getId());
+        invalidPayload.put("firstName", "");
+        invalidPayload.put("lastName", "");
+        invalidPayload.put("gender", "");
 
         Map<String, Object> patientContact = new HashMap<>();
         Map<String, Object> person = new HashMap<>();
-        person.put("firstName", "John");
-        person.put("lastName", "Doe");
-        person.put("email", "john.doe@example.com");
-        person.put("primaryPhone", "1234567890");
+        person.put("firstName", "");
+        person.put("lastName", "");
+        person.put("email", "");
+        person.put("primaryPhone", "");
         patientContact.put("person", person);
         invalidPayload.put("patientContact", patientContact);
 
