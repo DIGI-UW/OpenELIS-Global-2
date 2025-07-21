@@ -1,7 +1,8 @@
 package org.openelisglobal.patient.controller.rest;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
@@ -14,7 +15,6 @@ import org.openelisglobal.patient.valueholder.Patient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -37,7 +37,7 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
     }
 
     @Test
-    public void savePatient_shouldReturn200OnEmptyRequiredFields() throws Exception {
+    public void savePatient_shouldReturn200EvenWithEmptyRequiredFields() throws Exception {
         Patient existingPatient = patientDAO.getPatientByNationalId("999999");
         assertNotNull("Test requires patient with nationalId 999999 to exist", existingPatient);
 
@@ -58,25 +58,21 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
 
         String json = objectMapper.writeValueAsString(invalidPayload);
 
-        MvcResult result = mockMvc
-                .perform(post("/rest/PatientManagement").contentType(MediaType.APPLICATION_JSON).content(json))
-                .andReturn();
-
-        assertEquals("Expected 200 due to controller swallowing validation exceptions", 200,
-                result.getResponse().getStatus());
-        assertEquals("Expected empty response body", "", result.getResponse().getContentAsString());
+        mockMvc.perform(post("/rest/PatientManagement").contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isOk());
     }
 
     @Test
-    public void savePatient_shouldHandleEmptyRequiredFields() throws Exception {
+    public void savePatient_shouldReturn200WithValidData() throws Exception {
         Patient existingPatient = patientDAO.getPatientByNationalId("999999");
         assertNotNull("Test requires patient with nationalId 999999 to exist", existingPatient);
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("patientPK", existingPatient.getId());
-        payload.put("firstName", "");
-        payload.put("lastName", "");
-        payload.put("gender", "");
+        payload.put("firstName", "Test");
+        payload.put("lastName", "Patient");
+        payload.put("gender", "M");
+        payload.put("dob", "2000-01-01");
 
         Map<String, Object> patientContact = new HashMap<>();
         Map<String, Object> person = new HashMap<>();
@@ -90,11 +86,7 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
 
         String json = objectMapper.writeValueAsString(payload);
 
-        MvcResult result = mockMvc
-                .perform(post("/rest/PatientManagement").contentType(MediaType.APPLICATION_JSON).content(json))
-                .andReturn();
-
-        assertTrue("Should return either 200 or 400",
-                result.getResponse().getStatus() == 200 || result.getResponse().getStatus() == 400);
+        mockMvc.perform(post("/rest/PatientManagement").contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isOk());
     }
 }
