@@ -177,7 +177,7 @@ public class DictionaryRestController extends BaseController {
                 // UPDATE
                 // bugzilla 2062
                 boolean isDictionaryFrozenCheckRequired = checkForDictionaryFrozenCheck(form);
-                dictionaryService.update(dictionary, isDictionaryFrozenCheckRequired);
+                dictionaryService.update(dictionary);
             } else {
                 // INSERT
                 dictionaryService.insert(dictionary);

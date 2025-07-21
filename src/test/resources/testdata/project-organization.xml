@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <project id="101" name="Integration Test Project"
+        description="Used for integration test"
+        started_date="2023-01-01 00:00:00"
+        completed_date="2023-12-31 00:00:00" is_active="Y"
+        reference_to="REF-101" program_code="PG101"
+        lastupdated="2024-01-01 00:00:00" local_abbrev="1001"
+        display_key="project.integration.test" />
+
+    <project id="102" name="Integration Test Project"
+        description="Used for integration test"
+        started_date="2023-01-01 00:00:00"
+        completed_date="2023-12-31 00:00:00" is_active="Y"
+        reference_to="REF-101" program_code="PG101"
+        lastupdated="2024-01-01 00:00:00" local_abbrev="1001"
+        display_key="project.integration.test" />
+
+    <organization id="1001"
+        lastupdated="2024-06-03 12:00:00.0" name="Global Health Org"
+        city="New York" zip_code="10001" mls_sentinel_lab_flag="Y"
+        short_name="GHG" multiple_unit="NYC Unit"
+        street_address="123 Health St" state="NY" org_id="1001"
+        internet_address="www.globalhealth.org" clia_num="CLIA12345"
+        pws_id="PWS123" mls_lab_flag="Y" is_active="Y" local_abbrev="1"
+        code="GHG001" fhir_uuid="f2cdeff8-8d5b-4023-bd7c-932b4b98b6d3" />
+    <organization id="1002"
+        lastupdated="2024-06-04 13:00:00.0" name="Health Services Inc"
+        city="Los Angeles" zip_code="90001" mls_sentinel_lab_flag="N"
+        short_name="HSI" multiple_unit="LA Unit"
+        street_address="456 Wellness Ave" state="CA" org_id="1002"
+        internet_address="www.healthservices.org" clia_num="CLIA67890"
+        pws_id="PWS456" mls_lab_flag="N" is_active="Y" local_abbrev="2"
+        code="HSI002" fhir_uuid="a3bdeff8-8d5b-4023-bd7c-932b4b98b6d4" />
+
+    <project_organization id="201"
+        lastupdated="2023-06-04 13:00:00" project_id="101" org_id="1001" />
+    <project_organization id="202"
+        lastupdated="2022-09-14 15:00:00" project_id="102" org_id="1002" />
+    <project_organization id="203"
+        lastupdated="2024-10-15 23:10:00" project_id="102" org_id="1001" />
+    <project_organization id="204"
+        lastupdated="2022-09-14 15:00:00" project_id="101" org_id="1002" />
+    <project_organization id="205"
+        lastupdated="2022-09-14 15:00:00" project_id="102" org_id="1001" />
+</dataset>

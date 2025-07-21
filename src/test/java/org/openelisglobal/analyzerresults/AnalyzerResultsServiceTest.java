@@ -5,24 +5,45 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.common.services.StatusSet;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.note.service.NoteService;
+import org.openelisglobal.note.valueholder.Note;
+import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.result.controller.AnalyzerResultsController;
+import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.samplehuman.valueholder.SampleHuman;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private AnalyzerResultsService analyzerResultsService;
+    @Autowired
+    private AnalyzerResultsController analyzerResultsController;
+    @Autowired
+    private NoteService noteService;
+
+    @PersistenceContext
+    protected EntityManager entityManager;
 
     private List<AnalyzerResults> analyzerResultsList;
     private Map<String, Object> propertyValues;
@@ -77,14 +98,87 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void persistAnalyzerResults_ShouldPersistAListOfAnalyzerResults() {
+    public void persistAnalyzerResults_ShouldDeleteAListOfAnalyzerResultsAndInsertANewSampleGroupingList() {
+        AnalyzerResults analyzerResult = analyzerResultsService.get("1003");
         List<AnalyzerResults> deletableAnalyzerResults = new ArrayList<>();
-        AnalyzerResults analyzerResults = analyzerResultsService.get("1002");
-        deletableAnalyzerResults.add(analyzerResults);
-        List<AnalyzerResultsController.SampleGrouping> sampleGroupList = new ArrayList<>();
+        deletableAnalyzerResults.add(analyzerResult);
 
-        analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupList, "1006");
+        AnalyzerResultsController.SampleGrouping sampleGrouping = analyzerResultsController.new SampleGrouping();
+        List<AnalyzerResultsController.SampleGrouping> sampleGroupingList = new ArrayList<>();
 
+        Sample sample = new Sample();
+        sample.setAccessionNumber("78891");
+        sample.setEnteredDate(Date.valueOf("2025-07-01"));
+        sample.setReceivedDate(Date.valueOf("2025-07-01"));
+        sample.setIsConfirmation(true);
+        sampleGrouping.sample = sample;
+
+        SampleItem sampleItem = new SampleItem();
+        sampleItem.setSortOrder("2");
+        sampleItem.setSample(sample);
+        sampleItem.setLastupdated(Timestamp.valueOf("2025-02-01 12:00:00"));
+        sampleItem.setStatusId("401");
+        sampleGrouping.sampleItem = sampleItem;
+
+        Patient patient = new Patient();
+        patient.setPerson(new Person());
+        patient.setRace("Red");
+        patient.setBirthDate(Timestamp.valueOf("2014-03-20 12:00:00"));
+        sampleGrouping.patient = patient;
+
+        List<Note> notes = noteService.getAll();
+        noteService.deleteAll(notes);
+        Note note = new Note();
+        note.setSysUserId("2001");
+        note.setReferenceId("3001");
+        note.setReferenceTableId("1");
+        note.setNoteType("G");
+        note.setSubject("General Observation");
+        note.setText("Patient shows signs of improvement.");
+        List<Note> noteList = new ArrayList<>();
+        noteList.add(note);
+        sampleGrouping.noteList = noteList;
+
+        Analysis analysis = new Analysis();
+        analysis.setSampleItem(sampleItem);
+        analysis.setAnalysisType("Endoscopy");
+        analysis.setStartedDate(Date.valueOf("2024-06-17"));
+        List<Analysis> analysisList = new ArrayList<>();
+        analysisList.add(analysis);
+        sampleGrouping.analysisList = analysisList;
+
+        Result result = new Result();
+        result.setAnalysis(analysis);
+        result.setIsReportable("Y");
+        result.setResultType("N");
+        result.setLastupdated(Timestamp.valueOf("2025-11-16 10:00:00"));
+        List<Result> resultList = new ArrayList<>();
+        resultList.add(result);
+        sampleGrouping.resultList = resultList;
+
+        Map<String, List<String>> reflexMap = new HashMap<>();
+        reflexMap.put("Trigger_A", Arrays.asList("Reflex_A1", "Reflex_A2"));
+        reflexMap.put("triger_B", Arrays.asList("Reflex_B1", "Reflex_B2"));
+        sampleGrouping.triggersToSelectedReflexesMap = reflexMap;
+
+        sampleGrouping.sampleHuman = new SampleHuman();
+        sampleGrouping.statusSet = new StatusSet();
+        sampleGrouping.addSample = true;
+        sampleGrouping.updateSample = false;
+        sampleGrouping.addSampleItem = true;
+
+        sampleGroupingList.add(sampleGrouping);
+        analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupingList, "2001");
+        List<AnalyzerResults> analyzerResults = analyzerResultsService.getAll();
+        assertFalse(analyzerResults.contains(analyzerResult));
+
+        Sample sampleInDb = entityManager.find(Sample.class, sampleGrouping.sample.getId());
+        assertNotNull(sampleInDb);
+        assertEquals("78891", sampleInDb.getAccessionNumber());
+
+        Analysis analysisInDB = entityManager.find(Analysis.class, sampleGrouping.analysisList.get(0).getId());
+        assertNotNull(analysisInDB);
+        assertEquals("Endoscopy", analysisInDB.getAnalysisType());
     }
 
     @Test

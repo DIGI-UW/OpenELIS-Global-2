@@ -9,6 +9,7 @@ import UserManagementPage from "./UserManagementPage";
 import ReflexTestsConfigPage from "./ReflexTestsConfigPage";
 import DictionaryMenuPage from "./DictionaryMenu";
 import GeneralConfigurationsPage from "./GeneralConfigurationsPage";
+import NotifyUserPage from "./NotifyUserPage";
 
 class AdminPage {
   constructor() {
@@ -20,6 +21,7 @@ class AdminPage {
       barcodeConfig: "[data-cy='barcodeConfig']",
       programEntry: "[data-cy='programEntry']",
       userManagement: "[data-cy='userMgmnt']",
+      notifyUser: "[data-cy='notifyUser']",
       span: "span",
     };
   }
@@ -179,6 +181,11 @@ class AdminPage {
     cy.get("[data-cy='validationConfigMenu']").click();
 
     return new GeneralConfigurationsPage();
+  }
+
+  goToNotifyUserPage() {
+    cy.get(this.selectors.notifyUser).should("be.visible").click();
+    return new NotifyUserPage();
   }
 }
 export default AdminPage;
