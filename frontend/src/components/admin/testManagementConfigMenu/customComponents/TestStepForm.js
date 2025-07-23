@@ -2307,9 +2307,9 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
               resultLimits: Yup.array().of(
                 Yup.object().shape({
                   ageRange: Yup.string().required("Age range is required"),
-                  highAgeRange: Yup.string().required(
-                    "High age range is required",
-                  ),
+                  // highAgeRange: Yup.string().required(
+                  //   "High age range is required",
+                  // ),
                   // gender: Yup.boolean().when("lowNormalFemale", {
                   //   is: (val) => val !== undefined,
                   //   then: (schema) => schema.required("Required"),
@@ -2909,7 +2909,7 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                               // max={1000}
                               // step={1}
                               value={values.resultLimits?.[index]?.highAgeRange}
-                              required
+                              // required
                               // value={String(ageRanges[index]?.raw) || "0"}
                               invalid={
                                 touched?.resultLimits?.[index]?.highAgeRange &&

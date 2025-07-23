@@ -93,17 +93,29 @@ export const mapTestCatBeanToFormData = (test) => {
     defaultTestResult: "",
     sampleTypes: test.sampleType ? [test.sampleType] : [],
     lowValid:
-      test.resultLimits?.[0]?.validRange?.split("-")?.[0] || "-Infinity",
+      test.resultLimits?.[0]?.validRange !== "Any value"
+        ? test.resultLimits?.[0]?.validRange.split("-")?.[0] || "-Infinity"
+        : "-Infinity",
     highValid:
-      test.resultLimits?.[0]?.validRange?.split("-")?.[1] || "Infinity",
+      test.resultLimits?.[0]?.validRange !== "Any value"
+        ? test.resultLimits?.[0]?.validRange.split("-")?.[1] || "Infinity"
+        : "Infinity",
     lowReportingRange:
-      test.resultLimits?.[0]?.reportingRange?.split("-")?.[0] || "-Infinity",
+      test.resultLimits?.[0]?.reportingRange !== "Any value"
+        ? test.resultLimits?.[0]?.reportingRange.split("-")?.[0] || "-Infinity"
+        : "-Infinity",
     highReportingRange:
-      test.resultLimits?.[0]?.reportingRange?.split("-")?.[1] || "Infinity",
+      test.resultLimits?.[0]?.reportingRange !== "Any value"
+        ? test.resultLimits?.[0]?.reportingRange.split("-")?.[1] || "Infinity"
+        : "Infinity",
     lowCritical:
-      test.resultLimits?.[0]?.criticalRange?.split("-")?.[0] || "-Infinity",
+      test.resultLimits?.[0]?.criticalRange !== "Any value"
+        ? test.resultLimits?.[0]?.criticalRange.split("-")?.[0] || "-Infinity"
+        : "-Infinity",
     highCritical:
-      test.resultLimits?.[0]?.criticalRange?.split("-")?.[1] || "Infinity",
+      test.resultLimits?.[0]?.criticalRange !== "Any value"
+        ? test.resultLimits?.[0]?.criticalRange.split("-")?.[1] || "Infinity"
+        : "Infinity",
     significantDigits:
       test.significantDigits !== "n/a" ? test.significantDigits : "0",
     resultLimits: Object.entries(
