@@ -1,6 +1,6 @@
 {
   "dictionary.loincCode.invalid": "Invalid LOINC format (expected: 12345-6 or LP12345-6)",
-  "dictionary.loincCode.helpText": "Standard laboratory observation identifier",
+  "dictionary.loincCode.helpText": "Pengenal standar observasi laboratorium",
   "dictionary.loincCode": "LOINC Code",
   "dictionary.loincCode.placeholder": "e.g. 12345-6",
   "dictionary.loincCode.help": "Enter standard LOINC identifier",
