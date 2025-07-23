@@ -10,6 +10,7 @@ import ReflexTestsConfigPage from "./ReflexTestsConfigPage";
 import DictionaryMenuPage from "./DictionaryMenu";
 import GeneralConfigurationsPage from "./GeneralConfigurationsPage";
 import NotifyUserPage from "./NotifyUserPage";
+import ResultReportingConfigurationPage from "./ResultReportingConfiguration";
 
 class AdminPage {
   constructor() {
@@ -22,6 +23,7 @@ class AdminPage {
       programEntry: "[data-cy='programEntry']",
       userManagement: "[data-cy='userMgmnt']",
       notifyUser: "[data-cy='notifyUser']",
+      resultReportingConfig: "[data-cy='resultReportingConfiguration']",
       span: "span",
     };
   }
@@ -186,6 +188,11 @@ class AdminPage {
   goToNotifyUserPage() {
     cy.get(this.selectors.notifyUser).should("be.visible").click();
     return new NotifyUserPage();
+  }
+
+  goToResultReportingConfigurationPage() {
+    cy.get(this.selectors.resultReportingConfig).should("be.visible").click();
+    return new ResultReportingConfigurationPage();
   }
 }
 export default AdminPage;

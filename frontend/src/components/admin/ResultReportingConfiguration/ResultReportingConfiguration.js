@@ -258,13 +258,19 @@ function ResultReportingConfiguration() {
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
               <Button
+                data-cy="saveButton"
                 disabled={saveButton}
                 onClick={handleSubmit}
                 type="button"
               >
                 <FormattedMessage id="label.button.save" />
               </Button>{" "}
-              <Button onClick={resetToDefault} kind="tertiary" type="button">
+              <Button
+                data-cy="cancelButton"
+                onClick={resetToDefault}
+                kind="tertiary"
+                type="button"
+              >
                 <FormattedMessage id="label.button.cancel" />
               </Button>
             </Column>
