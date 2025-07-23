@@ -145,7 +145,7 @@ public class PatientContactServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getOrderedPage_ShouldReturnAPageOfResultsGivenAListAndOrderedInDescendingOrder() {
+    public void getOrderedPage_ShouldReturnAPageOfResultsGivenAListAndOrderedInAscendingOrder() {
         patientContacts = patientContactService.getOrderedPage(orderProperties, false, 7);
         PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertNotNull(patientContacts);
