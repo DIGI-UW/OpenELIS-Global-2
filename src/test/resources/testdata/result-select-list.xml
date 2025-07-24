@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <localization id="1" description="Test Description 1"
+        english="TB" french="TB" />
+    <localization id="2" description="Test Description 2"
+        english="Urinalysis" french="Urinalysis" />
+
+    <test id="1" description="Blood Test" loinc="123456"
+        reporting_description="Complete Blood Count" sticker_req_flag="Y"
+        is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2025-12-31 12:00:00" is_reportable="N" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2025-03-20 12:00:00"
+        local_code="CBC" sort_order="2147483646" name="Complete Blood Count"
+        orderable="true" guid="abc-123" name_localization_id="1"
+        antimicrobial_resistance="true" />
+
+    <test id="2" description="Urine Test" loinc="543216"
+        reporting_description="Urinalysis" sticker_req_flag="N" is_active="Y"
+        active_begin="2025-02-01 12:00:00" active_end="2025-12-31 12:00:00"
+        is_reportable="Y" time_holding="25" time_wait="10"
+        time_ta_average="50" time_ta_warning="70" time_ta_max="90"
+        label_qty="1" lastupdated="2025-03-20 12:00:00" local_code="UA"
+        sort_order="2147483646" name="Urinalysis" orderable="true"
+        guid="def-456" name_localization_id="2"
+        antimicrobial_resistance="false" />
+
+    <test_result id="1" test_id="1" result_group="1"
+        flags="FLAG1" tst_rslt_type="DMC" value="201" significant_digits="2"
+        quant_limit="10.0" cont_level="High" lastupdated="2025-04-01 12:00:00"
+        sort_order="1" is_quantifiable="true" is_active="true"
+        is_normal="true" />
+
+    <test_result id="2" test_id="2" result_group="2"
+        flags="FLAG2" tst_rslt_type="DMC" value="202" significant_digits="0"
+        quant_limit="15.1" cont_level="High" lastupdated="2025-04-01 12:30:00"
+        sort_order="2" is_quantifiable="true" is_active="true"
+        is_normal="false" />
+
+    <dictionary_category id="1"
+        description="Category Description 1" local_Abbrev="CA1"
+        name="Category Name 1" lastUpdated="2023-11-01 12:00:00" />
+    <dictionary_category id="2"
+        description="Category Description 2" local_Abbrev="CA2"
+        name="Category Name 2" lastUpdated="2023-12-01 12:00:00" />
+    <dictionary_category id="3"
+        description="Category Description 3" local_Abbrev="CA3"
+        name="Category Name 3" lastUpdated="2023-10-01 12:00:00" />
+
+
+    <dictionary id="201" is_active="Y"
+        dict_entry="Dictionary Entry 1" local_Abbrev="DE1"
+        dictionary_category_id="1" sort_order="1"
+        lastUpdated="2023-11-01 12:00:00" />
+    <dictionary id="202" is_active="Y"
+        dict_entry="Dictionary Entry 2" local_Abbrev="DE2"
+        dictionary_category_id="2" sort_order="2"
+        lastUpdated="2023-12-01 12:00:00" />
+    <dictionary id="203" is_active="N"
+        dict_entry="Dictionary Entry 3" local_Abbrev="DE3"
+        dictionary_category_id="3" sort_order="3"
+        lastUpdated="2023-10-01 12:00:00" />
+</dataset>

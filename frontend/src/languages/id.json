@@ -5,7 +5,7 @@
   "dictionary.loincCode.placeholder": "e.g. 12345-6",
   "dictionary.loincCode.help": "Enter standard LOINC identifier",
   "language.select.label": "Indonesia",
-  "label.button.submit": "Submit",
+  "label.button.submit": "Mengirimkan",
   "label.button.finish": "Finish",
   "label.button.changepassword": "Change Password",
   "label.button.save": "Save",
