@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <result id="1001" sort_order="1" is_reportable="Y"
+        result_type="N" lastupdated="2025-07-10 12:00:00" />
+    <result id="1002" sort_order="1" is_reportable="Y"
+        result_type="N" lastupdated="2025-07-10 12:00:00" />
+    <result id="1003" sort_order="3" is_reportable="Y"
+        result_type="M" lastupdated="2023-07-07 12:00:00" />
+    <result id="1004" sort_order="2" is_reportable="Y"
+        result_type="M" lastupdated="2000-07-14 16:00:00" />
+    <result id="1005" sort_order="3" is_reportable="Y"
+        result_type="M" lastupdated="2022-09-10 12:00:00" />
+
+    <client_results_view id="7001"
+        password="encrypted-password-string" result_id="1001" />
+    <client_results_view id="7002"
+        password="encryptedpassword" result_id="1003" />
+    <client_results_view id="7003"
+        password="encrypted-password-string" result_id="1004" />
+    <client_results_view id="7004"
+        password="digital-password" result_id="1001" />
+    <client_results_view id="7005"
+        password="encrypted-password-string" result_id="1003" />
+    <client_results_view id="7006"
+        password="strong-password" result_id="1002" />
+    <client_results_view id="7007"
+        password="encrypted-password-string" result_id="1001" />
+    <client_results_view id="7008"
+        password="weak-password" result_id="1005" />
+</dataset>

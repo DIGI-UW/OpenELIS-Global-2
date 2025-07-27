@@ -8052,7 +8052,7 @@ CREATE TABLE clinlims.test_result (
     test_id numeric(10,0) NOT NULL,
     result_group numeric,
     flags character varying(10),
-    tst_rslt_type character varying(1),
+    tst_rslt_type character varying(3),
     value character varying(80),
     significant_digits numeric DEFAULT 0,
     quant_limit character varying(30),

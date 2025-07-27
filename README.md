@@ -129,11 +129,15 @@ accessing any of these links, simply follow these steps:
 
         mvn spotless:check
 
-2.  Run Build Check (Backend). This command builds the project similar to CI
+1.  Run Build Check (Backend). This command builds the project similar to CI
 
         mvn clean install -Dspotless.check.skip=true
 
-3.  Run Frontend Formatting, Build, and E2E Test Checks similar to CI
+1.  To run Individual Integration Test
+
+         mvn verify -Dit.test=<packageName>.<TestClassName>
+
+1.  Run Frontend Formatting, Build, and E2E Test Checks similar to CI
 
     > **Note:** Frontend checks will only pass successfully if your development
     > environment is properly set up and running without issues.

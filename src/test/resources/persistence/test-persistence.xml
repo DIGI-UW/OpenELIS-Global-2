@@ -22,6 +22,7 @@
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnectionContact</class>
         <class>org.openelisglobal.externalconnections.valueholder.CertificateAuthenticationData</class>
         <class>org.openelisglobal.externalconnections.valueholder.BasicAuthenticationData</class>
+        <class>org.openelisglobal.testresultsview.valueholder.ClientResultsViewBean</class>
         <class>org.openelisglobal.projectorganization.valueholder.ProjectOrganization</class>
 
         <class>org.itech.fhir.dataexport.core.model.DataExportAttempt</class>
