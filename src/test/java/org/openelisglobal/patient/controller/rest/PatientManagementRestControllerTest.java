@@ -50,7 +50,8 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
         existingPatient.setNationalId(uniqueNationalId);
         existingPatient.setGender("M");
         Person person1 = new Person();
-        person1.setId("1000");
+        String uniquePersonId = "test-person-" + System.currentTimeMillis();
+        person1.setId(uniquePersonId);
         personDAO.insert(person1);
         existingPatient.setPerson(person1);
         patientDAO.insert(existingPatient);
@@ -86,7 +87,8 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
         existingPatient.setNationalId(uniqueNationalId);
         existingPatient.setGender("M");
         Person person2 = new Person();
-        person2.setId("1000");
+        String uniquePersonId = "test-person-" + System.currentTimeMillis();
+        person2.setId(uniquePersonId);
         personDAO.insert(person2);
         existingPatient.setPerson(person2);
         patientDAO.insert(existingPatient);
