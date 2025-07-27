@@ -40,6 +40,9 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/patient_management_rest_test.xml");
+
+        Patient testPatient = patientDAO.getPatientByNationalId("999999");
+        assertNotNull("Test data not loaded - patient with nationalId 999999", testPatient);
         this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
     }
 
