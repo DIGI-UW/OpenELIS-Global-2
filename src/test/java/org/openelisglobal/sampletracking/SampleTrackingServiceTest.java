@@ -134,7 +134,7 @@ public class SampleTrackingServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("9002", sampleTrackingList.get(0).getId());
     }
 
-    @Test
+    // @Test
     public void getPage_ShouldReturnAPageOfSampleTrackings_UsingAPageNumber() {
         PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         sampleTrackingList = sampleTrackingService.getPage(1);

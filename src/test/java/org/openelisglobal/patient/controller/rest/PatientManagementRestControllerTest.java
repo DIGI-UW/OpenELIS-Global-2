@@ -12,6 +12,7 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.patient.dao.PatientDAO;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.person.valueholder.Person;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.Rollback;
@@ -40,11 +41,20 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
 
     @Test
     public void savePatient_shouldReturn200EvenWithEmptyRequiredFields() throws Exception {
-        Patient existingPatient = patientDAO.getPatientByNationalId("999999");
-        assertNotNull("Test requires patient with nationalId 999999 to exist", existingPatient);
+        String uniqueNationalId = "test-" + System.currentTimeMillis();
+        Patient existingPatient = new Patient();
+        existingPatient.setNationalId(uniqueNationalId);
+        existingPatient.setGender("M");
+        Person person1 = new Person();
+        person1.setId("1000");
+        existingPatient.setPerson(person1);
+        patientDAO.insert(existingPatient);
+
+        Patient patientFromDb = patientDAO.getPatientByNationalId(uniqueNationalId);
+        assertNotNull("Test requires patient with nationalId " + uniqueNationalId + " to exist", patientFromDb);
 
         Map<String, Object> invalidPayload = new HashMap<>();
-        invalidPayload.put("patientPK", existingPatient.getId());
+        invalidPayload.put("patientPK", patientFromDb.getId());
         invalidPayload.put("firstName", "");
         invalidPayload.put("lastName", "");
         invalidPayload.put("gender", "");
@@ -66,11 +76,20 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
 
     @Test
     public void savePatient_shouldReturn200WithValidData() throws Exception {
-        Patient existingPatient = patientDAO.getPatientByNationalId("999999");
-        assertNotNull("Test requires patient with nationalId 999999 to exist", existingPatient);
+        String uniqueNationalId = "test-" + System.currentTimeMillis();
+        Patient existingPatient = new Patient();
+        existingPatient.setNationalId(uniqueNationalId);
+        existingPatient.setGender("M");
+        Person person2 = new Person();
+        person2.setId("1000");
+        existingPatient.setPerson(person2);
+        patientDAO.insert(existingPatient);
+
+        Patient patientFromDb = patientDAO.getPatientByNationalId(uniqueNationalId);
+        assertNotNull("Test requires patient with nationalId " + uniqueNationalId + " to exist", patientFromDb);
 
         Map<String, Object> payload = new HashMap<>();
-        payload.put("patientPK", existingPatient.getId());
+        payload.put("patientPK", patientFromDb.getId());
         payload.put("firstName", "Test");
         payload.put("lastName", "Patient");
         payload.put("gender", "M");
