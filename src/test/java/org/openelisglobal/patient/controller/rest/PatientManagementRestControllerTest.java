@@ -12,6 +12,7 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.patient.dao.PatientDAO;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.person.dao.PersonDAO;
 import org.openelisglobal.person.valueholder.Person;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -28,6 +29,9 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
 
     @Autowired
     private PatientDAO patientDAO;
+
+    @Autowired
+    private PersonDAO personDAO;
 
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -47,6 +51,7 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
         existingPatient.setGender("M");
         Person person1 = new Person();
         person1.setId("1000");
+        personDAO.insert(person1);
         existingPatient.setPerson(person1);
         patientDAO.insert(existingPatient);
 
@@ -82,6 +87,7 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
         existingPatient.setGender("M");
         Person person2 = new Person();
         person2.setId("1000");
+        personDAO.insert(person2);
         existingPatient.setPerson(person2);
         patientDAO.insert(existingPatient);
 
