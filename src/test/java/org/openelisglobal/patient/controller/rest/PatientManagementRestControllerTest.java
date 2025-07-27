@@ -14,10 +14,12 @@ import org.openelisglobal.patient.dao.PatientDAO;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.test.annotation.Rollback;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+@Rollback
 public class PatientManagementRestControllerTest extends BaseWebContextSensitiveTest {
 
     @Autowired
