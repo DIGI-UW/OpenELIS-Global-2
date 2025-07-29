@@ -68,6 +68,16 @@
         lastupdated="2025-07-07 14:00:00" min_normal="12.0" max_normal="16.0"
         significant_digits="1" grouping="0"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
+    <result id="902" sort_order="1" result_type="N" value="85.0"
+        analyte_id="701" test_result_id="2001"
+        lastupdated="2025-07-07 14:00:00" min_normal="70.0" max_normal="100.0"
+        significant_digits="1" grouping="0"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440003" />
+    <result id="903" sort_order="2" result_type="N" value="14.5"
+        analyte_id="701" test_result_id="2002"
+        lastupdated="2025-07-07 14:00:00" min_normal="12.0" max_normal="16.0"
+        parent_id="1" significant_digits="1" grouping="0"
+        fhir_uuid="550e8400-e29b-41d5-a716-446655440004" />
 
     <analysis id="301" test_id="4002" revision="1"
         started_date="2025-06-18 08:00:00"
@@ -83,6 +93,39 @@
         parent_result_id="901" reflex_trigger="false"
         entry_date="2025-06-18 07:45:00" referred_out="false"
         type_of_sample_name="Blood" corrected="false" />
+
+    <analysis id="302" test_id="4002" revision="1" status="1"
+        started_date="2023-11-15 12:00:00"
+        completed_date="2023-11-15 14:00:00"
+        released_date="2023-11-15 15:00:00" printed_date="2023-11-15 16:00:00"
+        so_send_ready_date="2023-11-15 13:00:00" so_client_reference="REF001"
+        so_notify_received_date="2023-11-15 14:30:00"
+        so_notify_send_date="2023-11-15 13:30:00"
+        so_send_date="2023-11-15 13:45:00" parent_result_id="903"
+        so_send_entry_by="Dr. Doe" so_send_entry_date="2023-11-15 13:45:00"
+        analysis_type="ROUTINE" lastupdated="2023-12-01 12:00:00"
+        parent_analysis_id="302" reflex_trigger="false" status_id="1"
+        entry_date="2023-11-15 12:00:00" referred_out="true"
+        type_of_sample_name="Blood Sample" corrected="false"
+        fhir_uuid="f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01"
+        result_calculated="false" />
+
+    <analysis id="303" test_id="4001" revision="1" status="2"
+        started_date="2023-11-16 12:00:00"
+        completed_date="2023-11-16 14:00:00"
+        released_date="2023-11-16 15:00:00" printed_date="2023-11-16 16:00:00"
+        so_send_ready_date="2023-11-16 13:00:00" so_client_reference="REF002"
+        so_notify_received_date="2023-11-16 14:30:00"
+        so_notify_send_date="2023-11-16 13:30:00"
+        so_send_date="2023-11-16 13:45:00" parent_result_id="902"
+        so_send_entry_by="Dr. Smith" so_send_entry_date="2023-11-16 13:45:00"
+        analysis_type="CONFIRM" lastupdated="2023-12-01 12:00:00"
+        parent_analysis_id="303" reflex_trigger="false" status_id="2"
+        entry_date="2023-11-16 12:00:00" panel_id="2" referred_out="true"
+        type_of_sample_name="Urine Sample" corrected="false"
+        fhir_uuid="f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02"
+        result_calculated="false" method_id="2" />
+
 
     <test_analyte id="3001" test_id="4001" analyte_id="701"
         result_group="1" sort_order="1" testalyt_type="T"

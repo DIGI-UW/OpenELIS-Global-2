@@ -151,8 +151,8 @@ public class TestReflexDAOImpl extends BaseDAOImpl<TestReflex, String> implement
             // bugzilla 1404 testResultId is mapped as testResult.id now
             String sql = "from TestReflex t where t.testResult.id = :param and t.testAnalyte.id = :param2";
             Query<TestReflex> query = entityManager.unwrap(Session.class).createQuery(sql, TestReflex.class);
-            query.setParameter("param", testResult.getId());
-            query.setParameter("param2", testAnalyte.getId());
+            query.setParameter("param", Integer.parseInt(testResult.getId()));
+            query.setParameter("param2", Integer.parseInt(testAnalyte.getId()));
 
             List<TestReflex> list = query.list();
 
@@ -183,10 +183,10 @@ public class TestReflexDAOImpl extends BaseDAOImpl<TestReflex, String> implement
                 String sql = "from TestReflex t where t.testResult.id = :param and t.testAnalyte.analyte.id ="
                         + " :param2 and t.test.id = :param3 and t.addedTest.id = :param4";
                 Query<TestReflex> query = entityManager.unwrap(Session.class).createQuery(sql, TestReflex.class);
-                query.setParameter("param", analysis.getParentResult().getTestResult().getId());
-                query.setParameter("param2", analysis.getParentResult().getAnalyte().getId());
-                query.setParameter("param3", analysis.getParentAnalysis().getTest().getId());
-                query.setParameter("param4", analysis.getTest().getId());
+                query.setParameter("param", Integer.parseInt(analysis.getParentResult().getTestResult().getId()));
+                query.setParameter("param2", Integer.parseInt(analysis.getParentResult().getAnalyte().getId()));
+                query.setParameter("param3", Integer.parseInt(analysis.getParentAnalysis().getTest().getId()));
+                query.setParameter("param4", Integer.parseInt(analysis.getTest().getId()));
 
                 list = query.list();
             }

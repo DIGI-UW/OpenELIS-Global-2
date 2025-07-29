@@ -96,12 +96,11 @@ public class TestReflexServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("pending", testReflexes.get(1).getFlags());
     }
 
-    // @Test
+    @Test
     public void isReflexedTest_ShouldReturnTrueIfTestReflexWasReflexedOrLinked() {
-        // Method Not behaving as expected!
-        Analysis analysis = analysisService.get("301");
+        Analysis analysis = analysisService.get("303");
         boolean isReflexedTest = testReflexService.isReflexedTest(analysis);
-        System.out.println(isReflexedTest);
+        assertTrue(isReflexedTest);
     }
 
     @Test
@@ -113,12 +112,10 @@ public class TestReflexServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("1001", testReflexes.get(0).getId());
     }
 
-    // @Test
+    @Test
     public void getTestReflexesByTestResultAndTestAnalyte_ShouldReturnTestReflexesWithTestResultAndTestAnalyteValuesPassedAsParameter() {
         TestResult testResult = testResultService.get("2002");
         TestAnalyte testAnalyte = testAnalyteService.get("3001");
-
-        // Method not behaving as expected!
         List<TestReflex> testReflexes = testReflexService.getTestReflexesByTestResultAndTestAnalyte(testResult,
                 testAnalyte);
         assertNotNull(testReflexes);
@@ -193,12 +190,12 @@ public class TestReflexServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void deactivateReflexRule_ShouldSetActiveToFalse() {
-        // Method not beg-having as expected!
         ReflexRule reflexRule = reflexRuleService.get(1402);
         assertTrue(reflexRule.getActive());
         testReflexService.deactivateReflexRule("1402");
-        System.out.println(reflexRule.getActive()); // this prints out "true" making the assertion below to fail!
-        // assertFalse(reflexRule.getActive());
+        ReflexRule updatedReflexRule = reflexRuleService.get(1402);
+        System.out.println(updatedReflexRule.getActive());
+        assertFalse(updatedReflexRule.getActive());
     }
 
     @Test
