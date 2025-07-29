@@ -417,6 +417,11 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
                         LogEvent.logError(e);
                         LogEvent.logError(this.getClass().getSimpleName(), "beginTaskImportOrderPath",
                                 "could not process Task with identifier : " + remoteTask.getId());
+                    } catch (Exception e) {
+                        // General catch block for any other unexpected exceptions
+                        LogEvent.logError(e);
+                        LogEvent.logError(this.getClass().getSimpleName(), "beginTaskImportOrderPath",
+                                "Unexpected error while processing Task with identifier : " + remoteTask.getId());
                     }
                 }
             }
