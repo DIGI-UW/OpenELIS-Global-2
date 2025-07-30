@@ -208,7 +208,7 @@ function TestAdd() {
             <Column lg={16} md={8} sm={4}>
               <Toggle
                 id="toggle"
-                labelText="Show Guide"
+                labelText={<FormattedMessage id="test.show.guide" />}
                 onClick={handleToggleShowGuide}
               />
             </Column>

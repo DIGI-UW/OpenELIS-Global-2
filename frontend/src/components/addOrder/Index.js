@@ -232,7 +232,7 @@ const Index = () => {
 
   const parsePatient = (newOrderFormValues, patient) => {
     newOrderFormValues.patientProperties = {
-      ...orderFormValues.patientProperties,
+      ...newOrderFormValues.patientProperties,
       guid: patient.guid,
     };
   };
@@ -241,7 +241,7 @@ const Index = () => {
     const providerId = requester.personId;
     if (providerId) {
       newOrderFormValues.sampleOrderItems = {
-        ...orderFormValues.sampleOrderItems,
+        ...newOrderFormValues.sampleOrderItems,
         providerId: providerId,
       };
       getFromOpenElisServer(
@@ -251,7 +251,8 @@ const Index = () => {
             ...orderFormValues,
             sampleOrderItems: {
               ...orderFormValues.sampleOrderItems,
-              providerId: providerId,
+              providerId: data.id,
+              providerPersonId: data.person.id,
               providerFirstName: data.person.firstName,
               providerLastName: data.person.lastName,
               providerWorkPhone: data.person.workPhone,
@@ -263,7 +264,7 @@ const Index = () => {
       );
     } else {
       newOrderFormValues.sampleOrderItems = {
-        ...orderFormValues.sampleOrderItems,
+        ...newOrderFormValues.sampleOrderItems,
         providerFirstName: requester.firstName,
         providerLastName: requester.lastName,
         providerWorkPhone: requester.phone,
@@ -275,7 +276,7 @@ const Index = () => {
 
   const parseRequestingOrg = (newOrderFormValues, requestingOrg) => {
     newOrderFormValues.sampleOrderItems = {
-      ...orderFormValues.sampleOrderItems,
+      ...newOrderFormValues.sampleOrderItems,
       referringSiteId: requestingOrg.id,
     };
     getFromOpenElisServer(
@@ -286,7 +287,7 @@ const Index = () => {
 
   const parseLocation = (newOrderFormValues, location) => {
     newOrderFormValues.sampleOrderItems = {
-      ...orderFormValues.sampleOrderItems,
+      ...newOrderFormValues.sampleOrderItems,
       referringSiteId: location.id,
     };
     getFromOpenElisServer(

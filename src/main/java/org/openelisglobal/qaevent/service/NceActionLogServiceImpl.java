@@ -23,7 +23,7 @@ public class NceActionLogServiceImpl extends AuditableBaseObjectServiceImpl<NceA
     @Override
     @Transactional
     public List<NceActionLog> getNceActionLogByNceId(String nceId) throws LIMSRuntimeException {
-        return null;
+        return getBaseObjectDAO().getNceActionLogByNceId(nceId);
     }
 
     @Override

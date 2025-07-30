@@ -342,7 +342,11 @@ const TestCatalog = () => {
             </h1>
           </Column>
           <Column lg={12} md={6} sm={3}>
-            <Toggle id="toggle" labelText="Show Guide" onClick={handleToggle} />
+            <Toggle
+              id="toggle"
+              labelText={<FormattedMessage id="test.show.guide" />}
+              onClick={handleToggle}
+            />
           </Column>
         </Grid>
         <hr />
