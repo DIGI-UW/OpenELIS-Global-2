@@ -1453,5 +1453,6 @@
   "test.modify.header.modify": "Selectați analiza de modificat!",
   "test.modify.header.test": "Analiză",
   "test.modify.en": "en",
-  "test.modify.fr": "fr"
+  "test.modify.fr": "fr",
+  "test.show.guide": "Show Guide"
 }

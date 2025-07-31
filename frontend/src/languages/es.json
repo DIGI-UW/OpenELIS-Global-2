@@ -1453,5 +1453,6 @@
   "test.modify.header.modify": "¡Por favor Seleccione la Prueba a Modificar!",
   "test.modify.header.test": "Prueba",
   "test.modify.en": "en",
-  "test.modify.fr": "fr"
+  "test.modify.fr": "fr",
+  "test.show.guide": "Show Guide"
 }

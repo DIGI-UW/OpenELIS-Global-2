@@ -1405,27 +1405,23 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
   };
 
   useEffect(() => {
-    if (!selectedSampleTypeResp.length) return;
+    if (!selectedSampleTypeResp.length) {
+      setFormData((prev) => ({
+        ...prev,
+        sampleTypes: [],
+      }));
+      return;
+    }
 
     setFormData((prev) => {
-      const existingTypeIds = new Set(
-        (prev.sampleTypes || []).map((st) => String(st.typeId)),
-      );
-
-      const newUniqueOnes = selectedSampleTypeResp.filter(
-        (resp) => !existingTypeIds.has(String(resp.sampleTypeId)),
-      );
-
-      if (newUniqueOnes.length === 0) return prev;
-
-      const newTransformed = newUniqueOnes.map((resp) => ({
+      const transformed = selectedSampleTypeResp.map((resp) => ({
         typeId: String(resp.sampleTypeId),
         tests: (resp.tests || []).map((t) => ({ id: Number(t.id) })),
       }));
 
       return {
         ...prev,
-        sampleTypes: [...(prev.sampleTypes || []), ...newTransformed],
+        sampleTypes: transformed,
       };
     });
   }, [selectedSampleTypeResp]);
@@ -1488,7 +1484,6 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
                     ...selectedSampleTypeList,
                     selectedSampleTypeObject,
                   ];
-
                   setSelectedSampleTypeList(updatedList);
                   setSampleTestTypeToGetTagList((prev) => [
                     ...prev,

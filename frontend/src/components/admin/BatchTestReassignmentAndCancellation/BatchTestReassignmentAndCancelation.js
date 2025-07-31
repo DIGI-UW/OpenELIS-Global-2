@@ -799,6 +799,7 @@ function BatchTestReassignmentAndCancelation() {
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
               <Button
+                data-cy="okButton"
                 disabled={saveButton}
                 onClick={() => {
                   setChangesToShow(true);
@@ -812,6 +813,7 @@ function BatchTestReassignmentAndCancelation() {
                 <FormattedMessage id="label.button.ok" />
               </Button>{" "}
               <Button
+                data-cy="cancelButton"
                 onClick={() => {
                   resetToDefault();
                   window.location.assign(

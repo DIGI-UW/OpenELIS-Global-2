@@ -11,6 +11,7 @@ import DictionaryMenuPage from "./DictionaryMenu";
 import GeneralConfigurationsPage from "./GeneralConfigurationsPage";
 import NotifyUserPage from "./NotifyUserPage";
 import ResultReportingConfigurationPage from "./ResultReportingConfiguration";
+import BatchTestReassignmentandCancelationPage from "./BatchTestReassignmentandCancelation";
 
 class AdminPage {
   constructor() {
@@ -24,6 +25,7 @@ class AdminPage {
       userManagement: "[data-cy='userMgmnt']",
       notifyUser: "[data-cy='notifyUser']",
       resultReportingConfig: "[data-cy='resultReportingConfiguration']",
+      batchTest: "[data-cy='batchTestReassignment']",
       span: "span",
     };
   }
@@ -193,6 +195,11 @@ class AdminPage {
   goToResultReportingConfigurationPage() {
     cy.get(this.selectors.resultReportingConfig).should("be.visible").click();
     return new ResultReportingConfigurationPage();
+  }
+
+  goToBatchTestReassignmentandCanelationPage() {
+    cy.get(this.selectors.batchTest).should("be.visible").click();
+    return new BatchTestReassignmentandCancelationPage();
   }
 }
 export default AdminPage;

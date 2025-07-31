@@ -83,6 +83,7 @@ const extractRange = (rangeStr) => {
 };
 
 export const mapTestCatBeanToFormData = (test) => {
+  console.log(JSON.stringify(test));
   return {
     testId: test.id,
     testNameEnglish: test.localization?.english || "",
@@ -113,8 +114,11 @@ export const mapTestCatBeanToFormData = (test) => {
     highReportingRange: extractRange(test.resultLimits?.[0]?.reportingRange)[1],
     lowCritical: extractRange(test.resultLimits?.[0]?.criticalRange)[0],
     highCritical: extractRange(test.resultLimits?.[0]?.criticalRange)[1],
-    significantDigits:
-      test.significantDigits !== "n/a" ? test.significantDigits : "0",
+    significantDigits: test.significantDigits
+      ? test.significantDigits !== "n/a"
+        ? test.significantDigits
+        : "0"
+      : "0",
     resultLimits: Object.entries(
       (test.resultLimits || []).reduce((acc, limit) => {
         const key = limit.ageRange;
