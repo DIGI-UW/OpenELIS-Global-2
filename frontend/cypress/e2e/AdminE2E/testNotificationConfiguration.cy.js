@@ -22,6 +22,7 @@ describe("Test Notification Configuration", function () {
       testNotificationConfigPage.checkBoxes("providerEmail");
       testNotificationConfigPage.checkBoxes("providerSMS");
       testNotificationConfigPage.saveChanges();
+      cy.wait(1000);
     });
 
     it("Click Settings, checkboxes and Save", () => {
