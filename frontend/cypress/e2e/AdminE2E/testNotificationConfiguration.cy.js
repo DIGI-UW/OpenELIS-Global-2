@@ -24,12 +24,17 @@ describe("Test Notification Configuration", function () {
       testNotificationConfigPage.saveChanges();
     });
 
-    it("Settings button and checkboxes", () => {
+    it("Click Settings, checkboxes and Save", () => {
       testNotificationConfigPage.settingsButton("128");
       testNotificationConfigPage.settingsCheckBoxes("patientEmail");
       testNotificationConfigPage.settingsCheckBoxes("patientSMS");
       testNotificationConfigPage.settingsCheckBoxes("providerEmail");
       testNotificationConfigPage.settingsCheckBoxes("providerSMS");
+      testNotificationConfigPage.enterSubject("1", "Test Subject");
+      testNotificationConfigPage.enterMessage("1", "Test Message");
+      testNotificationConfigPage.enterBCC("Test BCC");
+      testNotificationConfigPage.enterSubject("2", "Test Subject");
+      testNotificationConfigPage.enterMessage("2", "Test Message");
       testNotificationConfigPage.clickSave();
     });
   });

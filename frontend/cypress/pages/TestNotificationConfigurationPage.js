@@ -3,7 +3,7 @@ class TestNotificationConfigurationPage {
     this.selectors = {
       title: "h2",
       span: "span",
-      sampleType: "#selectSampleType",
+      carbonCopy: "#carbon-copy",
       save: "[data-cy='saveButton']",
       cancel: "[data-cy='cancelButton']",
     };
@@ -13,10 +13,6 @@ class TestNotificationConfigurationPage {
     cy.get(this.selectors.title)
       .should("be.visible")
       .and("contain.text", "Test Notification Configuration");
-  }
-
-  selectSampleType() {
-    cy.get(this.selectors.sampleType).select("Serum");
   }
 
   checkBoxes(boxName) {
@@ -41,6 +37,18 @@ class TestNotificationConfigurationPage {
 
   clickCancel() {
     cy.get(this.selectors.cancel).click();
+  }
+
+  enterSubject(index, text) {
+    cy.get(`#subject-${index}`).clear().type(text);
+  }
+
+  enterMessage(index, text) {
+    cy.get(`#subject-${index}`).clear().type(text);
+  }
+
+  enterBCC(text) {
+    cy.get(this.selectors.carbonCopy).clear().type(text);
   }
 }
 
