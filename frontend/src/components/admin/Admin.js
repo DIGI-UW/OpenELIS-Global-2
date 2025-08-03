@@ -297,7 +297,11 @@ function Admin() {
               defaultMessage={"Common Properties"}
             />
           </SideNavLink>
-          <SideNavLink href="#testNotificationConfigMenu" renderIcon={Popup}>
+          <SideNavLink
+            data-cy="testNotificationConfig"
+            href="#testNotificationConfigMenu"
+            renderIcon={Popup}
+          >
             <FormattedMessage id="testnotificationconfig.browse.title" />
           </SideNavLink>
           <SideNavLink

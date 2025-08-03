@@ -12,6 +12,7 @@ import GeneralConfigurationsPage from "./GeneralConfigurationsPage";
 import NotifyUserPage from "./NotifyUserPage";
 import ResultReportingConfigurationPage from "./ResultReportingConfiguration";
 import BatchTestReassignmentandCancelationPage from "./BatchTestReassignmentandCancelation";
+import TestNotificationConfigurationPage from "./TestNotificationConfigurationPage";
 
 class AdminPage {
   constructor() {
@@ -26,6 +27,7 @@ class AdminPage {
       notifyUser: "[data-cy='notifyUser']",
       resultReportingConfig: "[data-cy='resultReportingConfiguration']",
       batchTest: "[data-cy='batchTestReassignment']",
+      testNotification: "[data-cy='testNotificationConfig']",
       span: "span",
     };
   }
@@ -201,5 +203,11 @@ class AdminPage {
     cy.get(this.selectors.batchTest).should("be.visible").click();
     return new BatchTestReassignmentandCancelationPage();
   }
+
+  goToTestNotificationConfigPage() {
+    cy.get(this.selectors.testNotification).should("be.visible").click();
+    return new TestNotificationConfigurationPage();
+  }
 }
+
 export default AdminPage;

@@ -391,6 +391,7 @@ function TestNotificationConfigEdit() {
               </Column>
               <Column lg={2} md={8} sm={4}>
                 <Button
+                  data-cy="editButton"
                   onClick={() => {
                     setSysDefaultMsg(!sysDefaultMsg);
                   }}
@@ -406,7 +407,7 @@ function TestNotificationConfigEdit() {
               </Column>
               <Column lg={8} md={4} sm={2}>
                 <TextInput
-                  id="subject"
+                  id="subject-0"
                   type="text"
                   labelText=""
                   hideLabel={true}
@@ -444,7 +445,7 @@ function TestNotificationConfigEdit() {
             <Grid fullWidth={true}>
               <Column lg={16} md={8} sm={4}>
                 <TextArea
-                  id="message"
+                  id="message-0"
                   type="text"
                   labelText=""
                   hideLabel={true}
@@ -497,7 +498,7 @@ function TestNotificationConfigEdit() {
               </Column>
               <Column lg={8} md={4} sm={2}>
                 <TextInput
-                  id="subject"
+                  id="subject-1"
                   type="text"
                   labelText=""
                   // invalid={
@@ -526,7 +527,7 @@ function TestNotificationConfigEdit() {
             <Grid fullWidth={true}>
               <Column lg={16} md={8} sm={4}>
                 <TextArea
-                  id="message"
+                  id="message-1"
                   type="text"
                   labelText=""
                   // invalid={
@@ -567,6 +568,7 @@ function TestNotificationConfigEdit() {
             <Grid fullWidth={true}>
               <Column lg={4} md={8} sm={4}>
                 <Button
+                  data-cy="emailButton"
                   onClick={() => {
                     setIndMsg("0");
                   }}
@@ -577,6 +579,7 @@ function TestNotificationConfigEdit() {
               </Column>{" "}
               <Column lg={4} md={8} sm={4}>
                 <Button
+                  data-cy="smsButton"
                   onClick={() => {
                     setIndMsg("1");
                   }}
@@ -587,6 +590,7 @@ function TestNotificationConfigEdit() {
               </Column>{" "}
               <Column lg={4} md={8} sm={4}>
                 <Button
+                  data-cy="patientEmailButton"
                   onClick={() => {
                     setIndMsg("2");
                   }}
@@ -597,6 +601,7 @@ function TestNotificationConfigEdit() {
               </Column>{" "}
               <Column lg={4} md={8} sm={4}>
                 <Button
+                  data-cy="patientSmsButton"
                   onClick={() => {
                     setIndMsg("3");
                   }}
@@ -639,7 +644,7 @@ function TestNotificationConfigEdit() {
                   </Column>
                   <Column lg={8} md={4} sm={2}>
                     <TextInput
-                      id="subject"
+                      id="carbon-copy"
                       type="text"
                       labelText=""
                       // invalid={
@@ -665,7 +670,7 @@ function TestNotificationConfigEdit() {
                   </Column>
                   <Column lg={8} md={4} sm={2}>
                     <TextInput
-                      id="subject"
+                      id="subject-2"
                       type="text"
                       labelText=""
                       // invalid={
@@ -694,7 +699,7 @@ function TestNotificationConfigEdit() {
                 <Grid fullWidth={true}>
                   <Column lg={16} md={8} sm={4}>
                     <TextArea
-                      id="message"
+                      id="message-2"
                       type="text"
                       labelText=""
                       // invalid={
@@ -747,7 +752,7 @@ function TestNotificationConfigEdit() {
                 <Grid fullWidth={true}>
                   <Column lg={16} md={8} sm={4}>
                     <TextArea
-                      id="message"
+                      id="message-3"
                       type="text"
                       labelText=""
                       // invalid={
@@ -774,6 +779,7 @@ function TestNotificationConfigEdit() {
             <Grid fullWidth={true}>
               <Column lg={16} md={8} sm={4}>
                 <Button
+                  data-cy="saveButton"
                   disabled={saveButton}
                   onClick={testNotificationConfigEditSavePostCall}
                   type="button"
@@ -781,6 +787,7 @@ function TestNotificationConfigEdit() {
                   <FormattedMessage id="label.button.save" />
                 </Button>{" "}
                 <Button
+                  data-cy="cancelButton"
                   onClick={() =>
                     window.location.assign(
                       "/MasterListsPage#testNotificationConfigMenu",
