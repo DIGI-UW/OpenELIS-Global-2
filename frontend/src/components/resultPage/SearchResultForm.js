@@ -1283,17 +1283,6 @@ export function SearchResults(props) {
             buttonKind="primary"
             size="lg"
             filenameStatus="edit"
-            onChange={async (e) => {
-              e.preventDefault();
-              let file = e.target.files[0];
-              var newSlides = [...pathologySampleInfo.slides];
-              let encodedFile = await toBase64(file);
-              newSlides[index].base64Image = encodedFile;
-              setPathologySampleInfo({
-                ...pathologySampleInfo,
-                slides: newSlides,
-              });
-            }}
             onClick={function noRefCheck() {}}
             onDelete={(e) => {
               e.preventDefault();
