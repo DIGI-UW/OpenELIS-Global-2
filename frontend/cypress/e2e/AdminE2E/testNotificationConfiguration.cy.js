@@ -7,7 +7,7 @@ describe("Test Notification Configuration", function () {
     loginPage = new LoginPage();
     loginPage.visit();
     homePage = loginPage.goToHomePage();
-    adminPage = homePage.goToTestNotificationConfigPage();
+    adminPage = homePage.goToAdminPage();
   });
 
   it("Navigate to Test Notification Configuration Page", () => {
