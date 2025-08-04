@@ -246,7 +246,7 @@ const TestCatalog = () => {
         field: intl.formatMessage({ id: "field.uom" }),
         value: item.uom,
       },
-      {
+      item.resultType == "N" && {
         id: `${item.id}-significantDigits`,
         field: intl.formatMessage({ id: "field.significantDigits" }),
         value: item.significantDigits,
@@ -390,8 +390,12 @@ const TestCatalog = () => {
             <StructuredListWrapper ariaLabel="Structured list">
               <StructuredListHead>
                 <StructuredListRow head>
-                  <StructuredListCell head>Field</StructuredListCell>
-                  <StructuredListCell head>Description</StructuredListCell>
+                  <StructuredListCell head>
+                    <FormattedMessage id="label.button.field" />
+                  </StructuredListCell>
+                  <StructuredListCell head>
+                    <FormattedMessage id="label.button.descritpion" />
+                  </StructuredListCell>
                 </StructuredListRow>
               </StructuredListHead>
               <StructuredListBody>

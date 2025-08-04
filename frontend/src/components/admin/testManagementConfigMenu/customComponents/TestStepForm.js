@@ -37,7 +37,6 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
   const componentMounted = useRef(false);
   const [formData, setFormData] = useState(initialData);
   const [isLoading, setIsLoading] = useState(false);
-  const [lonic, setLonic] = useState("");
   const [ageRangeList, setAgeRangeList] = useState([]);
   const [gotSelectedAgeRangeList, setGotSelectedAgeRangeList] = useState([]);
   const [labUnitList, setLabUnitList] = useState([]);
@@ -564,11 +563,6 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
       handlePreviousStep={handlePreviousStep}
       resultTypeList={resultTypeList}
       setSelectedResultTypeList={setSelectedResultTypeList}
-      intl={intl}
-      addNotification={addNotification}
-      setNotificationVisible={setNotificationVisible}
-      lonic={lonic}
-      setLonic={setLonic}
     />,
     <StepFourSelectSampleTypeAndTestDisplayOrder
       key="step-4"
@@ -1157,11 +1151,6 @@ export const StepThreeTestResultTypeAndLoinc = ({
   handlePreviousStep,
   resultTypeList,
   setSelectedResultTypeList,
-  intl,
-  addNotification,
-  setNotificationVisible,
-  lonic,
-  setLonic,
 }) => {
   const handleSubmit = (values) => {
     handleNextStep(values, true);
@@ -1176,7 +1165,7 @@ export const StepThreeTestResultTypeAndLoinc = ({
             .notOneOf(["0", ""], "Please select a valid Result Type")
             .required("Result Type is required"),
           loinc: Yup.string().matches(
-            /^(?!-)(?:\d+-)*\d*$/,
+            /^(?!-)(?:\d+-)*\d+$/,
             "Loinc must contain only numbers",
           ),
           // .required("Loinc is required"),
@@ -1211,29 +1200,6 @@ export const StepThreeTestResultTypeAndLoinc = ({
           errors,
           setFieldValue,
         }) => {
-          const handelLonicChange = (e) => {
-            const regex = /^(?!-)(?:\d+-)*\d+$/;
-
-            const value = e.target.value;
-
-            setFieldValue("loinc", value);
-
-            if (regex.test(value)) {
-              setLonic(value);
-            } else {
-              addNotification({
-                title: intl.formatMessage({
-                  id: "notification.title",
-                }),
-                message: intl.formatMessage({
-                  id: "notification.user.post.save.success",
-                }),
-                kind: NotificationKinds.error,
-              });
-              setNotificationVisible(true);
-            }
-          };
-
           const handelResultType = (e) => {
             const selectedResultTypeObject = resultTypeList.find(
               (item) => item.id == e.target.value,
@@ -1309,7 +1275,6 @@ export const StepThreeTestResultTypeAndLoinc = ({
                       value={values.loinc}
                       placeholder={`Example : 430-0, 43166-0, 43167-8`}
                       onChange={(e) => {
-                        handelLonicChange(e);
                         handleChange(e);
                       }}
                       invalid={touched.loinc && !!errors.loinc}
