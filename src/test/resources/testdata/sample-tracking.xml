@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <sampletracking accnum="9001" patientid="PAT-001"
+        cliref="CL-REF-22" patientlastname="Doe" patientfirstname="John"
+        org_local_abbrev="7001" orgname="General Hospital" recddate="240705"
+        tosid="1001" tosdesc="Routine" sosid="2001" sosdesc="Emergency"
+        colldate="240705" dateofbirth="940101" sori="S" />
+
+    <sampletracking accnum="9002" patientid="PAT-002"
+        cliref="CL-REF-23" patientlastname="Smith" patientfirstname="Jane"
+        org_local_abbrev="7002" orgname="General Hospital" recddate="240708"
+        tosid="1002" tosdesc="Urgent" sosid="2002" sosdesc="Scheduled"
+        colldate="240708" dateofbirth="950315" sori="I" />
+
+    <sampletracking accnum="9003" patientid="PAT001"
+        cliref="REF123" patientlastname="Doe" patientfirstname="John"
+        org_local_abbrev="7003" orgname="City Lab Center" recddate="250701"
+        tosid="1003" tosdesc="Blood" sosid="2003" sosdesc="Routine"
+        colldate="2507011" dateofbirth="9001011" sori="Y" />
+
+    <sampletracking accnum="9004" patientid="PAT002"
+        cliref="REF124" patientlastname="Smith" patientfirstname="Alice"
+        org_local_abbrev="7004" orgname="North Lab" recddate="250702"
+        tosid="1004" tosdesc="Urine" sosid="2004" sosdesc="Emergency"
+        colldate="2507021" dateofbirth="8806151" sori="N" />
+
+    <sampletracking accnum="9005" patientid="PAT003"
+        cliref="REF125" patientlastname="Brown" patientfirstname="Michael"
+        org_local_abbrev="7005" orgname="East Diagnostic" recddate="250703"
+        tosid="1005" tosdesc="Saliva" sosid="2005" sosdesc="Follow-up"
+        colldate="2507031" dateofbirth="8509201" sori="Y" />
+
+    <sampletracking accnum="9006" patientid="PAT004"
+        cliref="REF126" patientlastname="Lee" patientfirstname="Sarah"
+        org_local_abbrev="7006" orgname="West Medical" recddate="250704"
+        tosid="1006" tosdesc="Stool" sosid="2006" sosdesc="Screening"
+        colldate="2507041" dateofbirth="9203011" sori="N" />
+</dataset>

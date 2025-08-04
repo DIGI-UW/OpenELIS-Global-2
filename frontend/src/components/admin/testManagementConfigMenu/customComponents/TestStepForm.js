@@ -37,7 +37,6 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
   const componentMounted = useRef(false);
   const [formData, setFormData] = useState(initialData);
   const [isLoading, setIsLoading] = useState(false);
-  const [lonic, setLonic] = useState("");
   const [ageRangeList, setAgeRangeList] = useState([]);
   const [gotSelectedAgeRangeList, setGotSelectedAgeRangeList] = useState([]);
   const [labUnitList, setLabUnitList] = useState([]);
@@ -236,12 +235,9 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
         (item) => item.value === initialData.testSection,
       );
 
-      const selectedPanelObjects =
-        initialData.panels?.length > 0
-          ? panelList.filter((panel) =>
-              initialData.panels.includes(panel.value),
-            )
-          : [];
+      const selectedPanelObjects = panelList.filter((panel) =>
+        initialData?.panels?.includes(panel.value),
+      );
 
       const selectedUom = uomList.find(
         (item) => item.value === initialData.uom,
@@ -266,7 +262,7 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
       });
 
       const updatedList = [
-        ...selectedSampleTypeList,
+        // ...selectedSampleTypeList,
         ...selectedSampleTypeFilteredObject,
       ];
 
@@ -291,8 +287,8 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
 
       setPanelListTag(
         selectedPanelObjects.map((panel) => ({
-          id: panel.id,
-          value: panel.value,
+          id: panel?.id,
+          value: panel?.value,
         })),
       );
 
@@ -392,7 +388,7 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
       setFormData((prev) => ({
         ...prev,
         testSection: selectedLabUnit?.id || "",
-        panels: selectedPanelObjects.map((panel) => ({ id: panel.id })),
+        panels: selectedPanelObjects.map((panel) => ({ id: panel?.id })),
         uom: selectedUom?.id || "",
         sampleTypes: [],
         resultType: mappedResultType?.id || "",
@@ -457,10 +453,39 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
     );
 
     const extraTestItem = {
-      id: "0",
+      id: formData.testId || "0",
       name: formData.testNameEnglish || formData.testNameFrench,
       userBenchChoice: false,
     };
+
+    const alreadyContainsDefault = res.tests?.some(
+      (t) =>
+        (t.name || "").trim().toLowerCase() ===
+          (formData.testNameEnglish || "").trim().toLowerCase() ||
+        (t.name || "").trim().toLowerCase() ===
+          (formData.testNameFrench || "").trim().toLowerCase(),
+    );
+
+    const hasTestIdMatch = res.tests?.some(
+      (t) => String(t.id) === String(initialData.testId),
+    );
+
+    const updatedTests = (() => {
+      if (hasTestIdMatch) {
+        return res.tests.map((t) =>
+          String(t.id) === String(initialData.testId)
+            ? {
+                ...t,
+                name: formData.testNameEnglish || formData.testNameFrench,
+              }
+            : t,
+        );
+      } else {
+        return mode === "edit" && alreadyContainsDefault
+          ? [...(res.tests || [])]
+          : [...(res.tests || []), extraTestItem];
+      }
+    })();
 
     setSelectedSampleTypeResp((prev) => {
       const isAlreadyPresent = prev.some(
@@ -470,22 +495,11 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
       let updated;
 
       if (isInSelectedSampleType && !isAlreadyPresent) {
-        const alreadyContainsDefault = res.tests?.some(
-          (t) =>
-            (t.name || "").trim().toLowerCase() ===
-              (formData.testNameEnglish || "").trim().toLowerCase() ||
-            (t.name || "").trim().toLowerCase() ===
-              (formData.testNameFrench || "").trim().toLowerCase(),
-        );
-
         updated = [
           ...prev,
           {
             ...res,
-            tests:
-              mode === "edit" && alreadyContainsDefault
-                ? [...(res.tests || [])]
-                : [...(res.tests || []), extraTestItem],
+            tests: updatedTests,
           },
         ];
       } else if (!isInSelectedSampleType) {
@@ -496,6 +510,24 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
       return updated;
     });
   };
+
+  useEffect(() => {
+    if (!initialData?.testId) return;
+
+    setSelectedSampleTypeResp((prevList) => {
+      return prevList.map((item) => ({
+        ...item,
+        tests: (item.tests || []).map((t) =>
+          String(t.id) === String(initialData.testId)
+            ? {
+                ...t,
+                name: formData.testNameEnglish || formData.testNameFrench,
+              }
+            : t,
+        ),
+      }));
+    });
+  }, [formData.testNameEnglish, formData.testNameFrench]);
 
   const steps = [
     <StepOneTestNameAndTestSection
@@ -531,11 +563,6 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
       handlePreviousStep={handlePreviousStep}
       resultTypeList={resultTypeList}
       setSelectedResultTypeList={setSelectedResultTypeList}
-      intl={intl}
-      addNotification={addNotification}
-      setNotificationVisible={setNotificationVisible}
-      lonic={lonic}
-      setLonic={setLonic}
     />,
     <StepFourSelectSampleTypeAndTestDisplayOrder
       key="step-4"
@@ -927,9 +954,11 @@ export const StepTwoTestPanelAndUom = ({
               "Please select a valid panel",
             )
             .nullable(),
-          uom: Yup.string()
-            .notOneOf(["0", ""], "Please select a valid unit of measurement")
-            .required("Unit of measurement is required"),
+          uom: Yup.string().notOneOf(
+            ["0", ""],
+            "Please select a valid unit of measurement",
+          ),
+          // .required("Unit of measurement is required"),
         })}
         enableReinitialize={true}
         validateOnChange={true}
@@ -950,7 +979,7 @@ export const StepTwoTestPanelAndUom = ({
           const handelPanelSelectSetTag = (e) => {
             const selectedId = e.target.value;
             const selectedPanelObject = panelList.find(
-              (item) => item.id === selectedId,
+              (item) => item?.id === selectedId,
             );
             if (!selectedPanelObject) return;
 
@@ -966,9 +995,11 @@ export const StepTwoTestPanelAndUom = ({
                   ],
             );
 
-            const isAlreadyInValuesPanels = values.panels.some(
-              (panel) => panel.id === selectedId,
-            );
+            const isAlreadyInValuesPanels = Array.isArray(values.panels)
+              ? values.panels.find(
+                  (panel) => String(panel?.id) === String(selectedId),
+                )
+              : false;
 
             if (!isAlreadyInValuesPanels) {
               setFieldValue("panels", [...values.panels, { id: selectedId }]);
@@ -978,8 +1009,8 @@ export const StepTwoTestPanelAndUom = ({
           };
 
           const handlePanelRemoveTag = (idToRemove) => {
-            const isPresentInValuesPanels = values.panels.some(
-              (panel) => panel.id === idToRemove,
+            const isPresentInValuesPanels = values.panels.find(
+              (panel) => panel?.id === idToRemove,
             );
 
             if (!isPresentInValuesPanels) return;
@@ -988,8 +1019,9 @@ export const StepTwoTestPanelAndUom = ({
               tags.filter((tag) => tag.id !== idToRemove),
             );
 
-            setFieldValue("panels", (prev) =>
-              prev.filter((p) => p.id !== idToRemove),
+            setFieldValue(
+              "panels",
+              values.panels.filter((p) => String(p.id) !== String(idToRemove)),
             );
 
             // const idToReAddObject = panelList.find(
@@ -1047,10 +1079,7 @@ export const StepTwoTestPanelAndUom = ({
                   </Select>
                   <br />
                   {panelListTag && panelListTag.length ? (
-                    <div
-                      className={"select-panel"}
-                      style={{ marginBottom: "1.188rem" }}
-                    >
+                    <div style={{ marginBottom: "1.188rem" }}>
                       <>
                         {panelListTag.map((panel) => (
                           <Tag
@@ -1078,7 +1107,6 @@ export const StepTwoTestPanelAndUom = ({
                     id={`select-uom`}
                     name="uom"
                     hideLabel
-                    required
                     invalid={touched.uom && !!errors.uom}
                     invalidText={touched.uom && errors.uom}
                     value={values.uom}
@@ -1123,11 +1151,6 @@ export const StepThreeTestResultTypeAndLoinc = ({
   handlePreviousStep,
   resultTypeList,
   setSelectedResultTypeList,
-  intl,
-  addNotification,
-  setNotificationVisible,
-  lonic,
-  setLonic,
 }) => {
   const handleSubmit = (values) => {
     handleNextStep(values, true);
@@ -1142,7 +1165,7 @@ export const StepThreeTestResultTypeAndLoinc = ({
             .notOneOf(["0", ""], "Please select a valid Result Type")
             .required("Result Type is required"),
           loinc: Yup.string().matches(
-            /^(?!-)(?:\d+-)*\d*$/,
+            /^(?!-)(?:\d+-)*\d+$/,
             "Loinc must contain only numbers",
           ),
           // .required("Loinc is required"),
@@ -1177,29 +1200,6 @@ export const StepThreeTestResultTypeAndLoinc = ({
           errors,
           setFieldValue,
         }) => {
-          const handelLonicChange = (e) => {
-            const regex = /^(?!-)(?:\d+-)*\d+$/;
-
-            const value = e.target.value;
-
-            setFieldValue("loinc", value);
-
-            if (regex.test(value)) {
-              setLonic(value);
-            } else {
-              addNotification({
-                title: intl.formatMessage({
-                  id: "notification.title",
-                }),
-                message: intl.formatMessage({
-                  id: "notification.user.post.save.success",
-                }),
-                kind: NotificationKinds.error,
-              });
-              setNotificationVisible(true);
-            }
-          };
-
           const handelResultType = (e) => {
             const selectedResultTypeObject = resultTypeList.find(
               (item) => item.id == e.target.value,
@@ -1275,7 +1275,6 @@ export const StepThreeTestResultTypeAndLoinc = ({
                       value={values.loinc}
                       placeholder={`Example : 430-0, 43166-0, 43167-8`}
                       onChange={(e) => {
-                        handelLonicChange(e);
                         handleChange(e);
                       }}
                       invalid={touched.loinc && !!errors.loinc}
@@ -1371,37 +1370,25 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
   };
 
   useEffect(() => {
-    if (!selectedSampleTypeResp.length) return;
+    if (!selectedSampleTypeResp.length) {
+      setFormData((prev) => ({
+        ...prev,
+        sampleTypes: [],
+      }));
+      return;
+    }
 
-    const existingTypeIds = new Set(
-      (formData.sampleTypes || []).map((st) => st.typeId),
-    );
+    setFormData((prev) => {
+      const transformed = selectedSampleTypeResp.map((resp) => ({
+        typeId: String(resp.sampleTypeId),
+        tests: (resp.tests || []).map((t) => ({ id: Number(t.id) })),
+      }));
 
-    const newOnes = selectedSampleTypeResp.filter(
-      (resp) => !existingTypeIds.has(String(resp.sampleTypeId)),
-    );
-
-    if (newOnes.length === 0) return;
-
-    const newTransformed = newOnes.map((resp) => ({
-      typeId: String(resp.sampleTypeId),
-      tests: (resp.tests || []).map((t) => ({ id: Number(t.id) })),
-    }));
-
-    // setFieldValue("sampleTypes", [
-    //   ...(values.sampleTypes || []),
-    //   ...newTransformed,
-    // ]);
-
-    const updatedSampleTypes = [
-      ...(formData.sampleTypes || []),
-      ...newTransformed,
-    ];
-
-    setFormData((prev) => ({
-      ...prev,
-      sampleTypes: updatedSampleTypes,
-    }));
+      return {
+        ...prev,
+        sampleTypes: transformed,
+      };
+    });
   }, [selectedSampleTypeResp]);
 
   return (
@@ -1458,24 +1445,10 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
                 );
 
                 if (!isAlreadySelected) {
-                  // const matchedResp = selectedSampleTypeResp.find(
-                  //   (resp) => String(resp.sampleTypeId) === selectedId,
-                  // );
-
-                  // const testList =
-                  //   matchedResp?.tests?.map((t) => ({ id: Number(t.id) })) ??
-                  //   [];
-
-                  // const transformedSampleType = {
-                  //   typeId: selectedId,
-                  //   tests: testList,
-                  // };
-
                   const updatedList = [
                     ...selectedSampleTypeList,
                     selectedSampleTypeObject,
                   ];
-
                   setSelectedSampleTypeList(updatedList);
                   setSampleTestTypeToGetTagList((prev) => [
                     ...prev,
@@ -1485,29 +1458,26 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
                     ...prev,
                     selectedSampleTypeObject,
                   ]);
-                  // setFieldValue("sampleTypes", [
-                  //   ...(values.sampleTypes || []),
-                  //   transformedSampleType,
-                  // ]);
                 }
               };
 
-              const handleRemoveSampleTypeListSelectIdTestTag = (
-                indexToRemove,
-              ) => {
-                const filterByIndex = (_, index) => index !== indexToRemove;
+              const handleRemoveSampleTypeListSelectIdTestTag = (index) => {
+                setSampleTestTypeToGetTagList((prev) => {
+                  const updated = [...prev];
+                  const removedItem = updated.splice(index, 1)[0];
+                  const removedId = removedItem?.id;
 
-                setFieldValue(
-                  "sampleTypes",
-                  selectedSampleTypeList.filter(filterByIndex),
-                );
-                setSelectedSampleTypeList((prev) => prev.filter(filterByIndex));
-                setSelectedSampleType((prev) => prev.filter(filterByIndex));
-                setSelectedSampleTypeResp((prev) => prev.filter(filterByIndex));
+                  setSelectedSampleType((prev) =>
+                    prev.filter((item) => item.id !== removedId),
+                  );
+                  setSelectedSampleTypeResp((prev) =>
+                    prev.filter((item) => item.sampleTypeId !== removedId),
+                  );
+                  setSelectedSampleTypeList((prev) =>
+                    prev.filter((item) => item.id !== removedId),
+                  );
 
-                setSampleTestTypeToGetTagList((prevTags) => {
-                  const updatedTags = prevTags.filter(filterByIndex);
-                  return updatedTags;
+                  return updated;
                 });
               };
 
@@ -1538,11 +1508,8 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
                       </Select>
                       <br />
                       {sampleTestTypeToGetTagList &&
-                      sampleTestTypeToGetTagList.length ? (
-                        <div
-                          className={"select-sample-type"}
-                          style={{ marginBottom: "1.188rem" }}
-                        >
+                      sampleTestTypeToGetTagList.length > 0 ? (
+                        <div style={{ marginBottom: "1.188rem" }}>
                           <>
                             {sampleTestTypeToGetTagList.map(
                               (section, index) => (
@@ -1579,29 +1546,32 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
                         </Section>
                       </Section>
                       <br />
-                      {selectedSampleTypeResp.length > 0 ? (
-                        selectedSampleTypeResp.map((item, index) => (
+                      {Array.isArray(selectedSampleTypeResp) &&
+                      selectedSampleTypeResp.length > 0 ? (
+                        selectedSampleTypeResp.map((item) => (
                           <>
-                            <div className="gridBoundary">
-                              <Section key={index}>
+                            <div
+                              className="gridBoundary"
+                              key={item.sampleTypeId}
+                            >
+                              <Section key={item.sampleTypeId}>
                                 <CustomCommonSortableOrderList
+                                  key={item.sampleTypeId}
                                   test={item.tests}
                                   onSort={(updatedList) => {
-                                    const newList = selectedSampleTypeResp.map(
-                                      (sampleType) => {
-                                        if (
+                                    const updatedResp =
+                                      selectedSampleTypeResp.map(
+                                        (sampleType) =>
                                           sampleType.sampleTypeId ===
                                           item.sampleTypeId
-                                        ) {
-                                          return {
-                                            ...sampleType,
-                                            tests: updatedList,
-                                          };
-                                        }
-                                        return sampleType;
-                                      },
-                                    );
-                                    setSelectedSampleTypeResp(newList);
+                                            ? {
+                                                ...sampleType,
+                                                tests: updatedList,
+                                              }
+                                            : sampleType,
+                                      );
+
+                                    setSelectedSampleTypeResp(updatedResp);
                                   }}
                                   disableSorting={false}
                                 />
@@ -1859,10 +1829,7 @@ export const StepFiveSelectListOptionsAndResultOrder = ({
                       </Select>
                       <br />
                       {dictionaryListTag && dictionaryListTag.length ? (
-                        <div
-                          className={"select-list-options-tag"}
-                          style={{ marginBottom: "1.188rem" }}
-                        >
+                        <div style={{ marginBottom: "1.188rem" }}>
                           <>
                             {dictionaryListTag.map((dict, index) => (
                               <Tag
@@ -2032,10 +1999,7 @@ export const StepFiveSelectListOptionsAndResultOrder = ({
                       <br />
                       {multiSelectDictionaryListTag &&
                       multiSelectDictionaryListTag.length ? (
-                        <div
-                          className={"select-qualifiers-tag"}
-                          style={{ marginBottom: "1.188rem" }}
-                        >
+                        <div style={{ marginBottom: "1.188rem" }}>
                           <>
                             {multiSelectDictionaryListTag.map((dict, index) => (
                               <Tag
@@ -2237,6 +2201,19 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
     handleNextStep(values, true);
   };
 
+  useEffect(() => {
+    if (mode === "edit" && ageRangeList.length && ageRangeFields.length) {
+      setGotSelectedAgeRangeList(
+        ageRangeFields.map((_, index) => {
+          const current = ageRangeList?.[index];
+          return current
+            ? { id: current.id, value: current.value }
+            : { id: "0", value: "Select Age Range" };
+        }),
+      );
+    }
+  }, [mode, ageRangeList, ageRangeFields.length]);
+
   return (
     <>
       {currentStep === 5 && selectedResultTypeList?.id === "4" ? (
@@ -2247,9 +2224,9 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
               resultLimits: Yup.array().of(
                 Yup.object().shape({
                   ageRange: Yup.string().required("Age range is required"),
-                  highAgeRange: Yup.string().required(
-                    "High age range is required",
-                  ),
+                  // highAgeRange: Yup.string().required(
+                  //   "High age range is required",
+                  // ),
                   // gender: Yup.boolean().when("lowNormalFemale", {
                   //   is: (val) => val !== undefined,
                   //   then: (schema) => schema.required("Required"),
@@ -2449,15 +2426,53 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
               // .max(100, "Maximum value is 100")
               // .required("Required"),
 
-              lowValid: Yup.mixed().test(
-                "is-valid-number-or-infinity",
-                "Low Valid must be a number or 'Infinity'",
-                (value) =>
-                  value === "-Infinity" ||
-                  value === "Infinity" ||
-                  typeof value === "number" ||
-                  !isNaN(Number(value)),
-              ),
+              lowValid: Yup.mixed()
+                .test(
+                  "is-valid-number-or-infinity",
+                  "Low Valid must be a number or 'Infinity'",
+                  (value) =>
+                    value === "-Infinity" ||
+                    value === "Infinity" ||
+                    typeof value === "number" ||
+                    !isNaN(Number(value)),
+                )
+                .test(
+                  "less-than-lowNormals",
+                  "Low Valid must be less than Low Normal and Low Normal Female",
+                  function (value) {
+                    const { resultLimits } = this.parent;
+                    const lowValid = parseFloat(value);
+
+                    if (
+                      !resultLimits ||
+                      resultLimits.length === 0 ||
+                      // isNaN(lowValid)
+                      !Number.isFinite(lowValid)
+                    ) {
+                      return true;
+                    }
+                    const lowNormalRaw = resultLimits[0]?.lowNormal;
+                    const lowNormalFemaleRaw = resultLimits[0]?.lowNormalFemale;
+
+                    const lowNormal = Number.isFinite(parseFloat(lowNormalRaw))
+                      ? parseFloat(lowNormalRaw)
+                      : NaN;
+
+                    const lowNormalFemale = Number.isFinite(
+                      parseFloat(lowNormalFemaleRaw),
+                    )
+                      ? parseFloat(lowNormalFemaleRaw)
+                      : NaN;
+
+                    const validAgainstLowNormal =
+                      isNaN(lowNormal) || lowValid < lowNormal;
+
+                    const validAgainstLowNormalFemale =
+                      isNaN(lowNormalFemale) || lowValid < lowNormalFemale;
+
+                    return validAgainstLowNormal && validAgainstLowNormalFemale;
+                  },
+                ),
               // .min(0, "Minimum value is 0")
               // .max(100, "Maximum value is 100")
               // .required("Required"),
@@ -2473,15 +2488,46 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                     !isNaN(Number(value)),
                 )
                 .test(
-                  "greater-than-lowValid",
-                  "Must be greater or equal to lower valid range",
+                  "greater-than-highNormals",
+                  "High Valid must be greater than High Normal and High Normal Female",
                   function (value) {
-                    const { lowValid } = this.parent;
-                    const high = parseFloat(value);
-                    const low = parseFloat(lowValid);
+                    const { resultLimits } = this.parent;
+                    const highValid = parseFloat(value);
 
-                    if (isNaN(high) || isNaN(low)) return true;
-                    return high >= low;
+                    if (
+                      !resultLimits ||
+                      resultLimits.length === 0 ||
+                      // isNaN(highValid)
+                      !Number.isFinite(highValid)
+                    ) {
+                      return true;
+                    }
+
+                    const highNormalRaw = resultLimits[0]?.highNormal;
+                    const highNormalFemaleRaw =
+                      resultLimits[0]?.highNormalFemale;
+
+                    const highNormal = Number.isFinite(
+                      parseFloat(highNormalRaw),
+                    )
+                      ? parseFloat(highNormalRaw)
+                      : NaN;
+
+                    const highNormalFemale = Number.isFinite(
+                      parseFloat(highNormalFemaleRaw),
+                    )
+                      ? parseFloat(highNormalFemaleRaw)
+                      : NaN;
+
+                    const validAgainstHighNormal =
+                      isNaN(highNormal) || highValid > highNormal;
+
+                    const validAgainstHighNormalFemale =
+                      isNaN(highNormalFemale) || highValid > highNormalFemale;
+
+                    return (
+                      validAgainstHighNormal && validAgainstHighNormalFemale
+                    );
                   },
                 ),
               // .max(100, "Maximum value is 100")
@@ -2651,28 +2697,6 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                       <hr />
                     </Column>
                     {ageRangeFields.map((_, index) => {
-                      // const selectedAgeRangesCurrent = selectedAgeRanges
-                      //   .map((item) => item.ageRange)
-                      //   .filter((val, idx) => idx !== index && val)
-                      //   .filter(Boolean);
-                      // const selectedAgeRangesCurrent = gotSelectedAgeRangeList
-                      //   .filter((_, i) => i !== index)
-                      //   .map((item) => item.ageRange)
-                      //   .filter(Boolean);
-                      // const selectedAgeRangesCurrent = []
-                      //   .filter((_, i) => i !== index)
-                      //   .map((item) => item.id)
-                      //   .filter(Boolean);
-                      const selectedAgeRangesCurrent = ageRangeList
-                        .slice(0, ageRangeFields.length)
-                        .filter((_, i) => i !== index)
-                        .map((item) => item.id);
-                      // const selectedAgeRangesCurrent = ageRangeList
-                      //   .slice(0, ageRangeFields.length - 1)
-                      //   .map((item) => item.id);
-                      const availableAgeRanges = ageRangeList.filter(
-                        (age) => !selectedAgeRangesCurrent.includes(age.id),
-                      );
                       return (
                         <React.Fragment key={index}>
                           <Column
@@ -2802,7 +2826,7 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                               // max={1000}
                               // step={1}
                               value={values.resultLimits?.[index]?.highAgeRange}
-                              required
+                              // required
                               // value={String(ageRanges[index]?.raw) || "0"}
                               invalid={
                                 touched?.resultLimits?.[index]?.highAgeRange &&
@@ -2840,15 +2864,10 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                               labelText=""
                               hideLabel
                               size={"md"}
-                              // value={
-                              //   values.resultLimits?.[index]?.ageRange || ""
-                              // }
-                              // value={
-                              //   ageRangeList.find(
-                              //     (a) => a.id === ageRanges[index + 1]?.raw,
-                              //   )?.id || ""
-                              // } // select just based on number of itesm present in list and index
-                              value={ageRangeList?.[index]?.id || ""}
+                              // value={ageRangeList?.[index]?.id || "0"}
+                              value={
+                                gotSelectedAgeRangeList?.[index]?.id || "0"
+                              }
                               onChange={(e) => {
                                 // setFieldValue(
                                 //   `resultLimits[${index}].ageRange`,
@@ -2858,19 +2877,10 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                                   (a) => a.id === e.target.value,
                                 );
                                 if (selectedAge) {
-                                  setAgeRangeList((prev) =>
-                                    prev.filter((a) => a.id !== selectedAge.id),
-                                  );
-                                  setGotSelectedAgeRangeList((prev) => [
-                                    ...prev,
-                                    {
-                                      id: selectedAge.id,
-                                      value: selectedAge.value,
-                                    },
-                                  ]);
-                                  selectedAgeRangesCurrent.push({
-                                    id: selectedAge.id,
-                                    value: selectedAge.value,
+                                  setGotSelectedAgeRangeList((prev) => {
+                                    const updated = [...prev];
+                                    updated[index] = selectedAge;
+                                    return updated;
                                   });
                                 }
                               }}
@@ -2890,13 +2900,20 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                                   text={`Select Age Range`}
                                 />
                               )}
-                              {availableAgeRanges.map((age) => (
-                                <SelectItem
-                                  key={age.id}
-                                  value={age.id}
-                                  text={`${age.value}`}
-                                />
-                              ))}
+                              {ageRangeList
+                                .filter(
+                                  (age) =>
+                                    !gotSelectedAgeRangeList.some(
+                                      (a, i) => i !== index && a?.id === age.id,
+                                    ),
+                                )
+                                .map((age) => (
+                                  <SelectItem
+                                    key={age.id}
+                                    value={age.id}
+                                    text={`${age.value}`}
+                                  />
+                                ))}
                             </Select>
                           </Column>
                           <Column
@@ -3442,7 +3459,6 @@ export const StepSevenFinalDisplayAndSaveConfirmation = ({
                       <br />
                       <FormattedMessage id="field.panel" />
                       {" : "}
-                      {/* map the  {panelList[0].value} in and there values in line*/}
                       {panelListTag.length > 0 ? (
                         <UnorderedList>
                           {panelListTag.map((tag) => (
@@ -3498,7 +3514,6 @@ export const StepSevenFinalDisplayAndSaveConfirmation = ({
                     </Column>
                     <Column lg={10} md={8} sm={4}>
                       <FormattedMessage id="sample.type.and.test.sort.order" />
-                      {/* Mapp the combbination of the selecte[sampleType] & tests of [sampleType] in sorted order */}
                       <br />
                       {selectedSampleTypeList.length > 0 ? (
                         <UnorderedList nested={true}>

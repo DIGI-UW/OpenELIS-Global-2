@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <nce_category id="1001" active="0"
+        name="Incorrect Sample Labeling"
+        display_key="nce.incorrect_sample_labeling"
+        last_updated="2025-07-25 10:30:00" />
+
+    <nce_category id="1002" active="1"
+        name="Improper Storage Conditions"
+        display_key="nce.improper_storage_conditions"
+        last_updated="2025-07-25 10:15:00" />
+
+    <nce_category id="1003" active="1"
+        name="Delayed Sample Transport"
+        display_key="nce.delayed_sample_transport"
+        last_updated="2025-07-25 10:30:00" />
+
+    <nce_category id="1004" active="0"
+        name="Incomplete Patient Information"
+        display_key="nce.incomplete_patient_info"
+        last_updated="2025-07-25 10:15:00" />
+
+    <nce_category id="1005" active="1"
+        name="Instrument Calibration Error"
+        display_key="nce.instrument_calibration_error"
+        last_updated="2025-07-25 10:15:00" />
+</dataset>

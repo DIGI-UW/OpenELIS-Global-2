@@ -9,6 +9,9 @@ import UserManagementPage from "./UserManagementPage";
 import ReflexTestsConfigPage from "./ReflexTestsConfigPage";
 import DictionaryMenuPage from "./DictionaryMenu";
 import GeneralConfigurationsPage from "./GeneralConfigurationsPage";
+import NotifyUserPage from "./NotifyUserPage";
+import ResultReportingConfigurationPage from "./ResultReportingConfiguration";
+import BatchTestReassignmentandCancelationPage from "./BatchTestReassignmentandCancelation";
 
 class AdminPage {
   constructor() {
@@ -20,6 +23,9 @@ class AdminPage {
       barcodeConfig: "[data-cy='barcodeConfig']",
       programEntry: "[data-cy='programEntry']",
       userManagement: "[data-cy='userMgmnt']",
+      notifyUser: "[data-cy='notifyUser']",
+      resultReportingConfig: "[data-cy='resultReportingConfiguration']",
+      batchTest: "[data-cy='batchTestReassignment']",
       span: "span",
     };
   }
@@ -179,6 +185,21 @@ class AdminPage {
     cy.get("[data-cy='validationConfigMenu']").click();
 
     return new GeneralConfigurationsPage();
+  }
+
+  goToNotifyUserPage() {
+    cy.get(this.selectors.notifyUser).should("be.visible").click();
+    return new NotifyUserPage();
+  }
+
+  goToResultReportingConfigurationPage() {
+    cy.get(this.selectors.resultReportingConfig).should("be.visible").click();
+    return new ResultReportingConfigurationPage();
+  }
+
+  goToBatchTestReassignmentandCanelationPage() {
+    cy.get(this.selectors.batchTest).should("be.visible").click();
+    return new BatchTestReassignmentandCancelationPage();
   }
 }
 export default AdminPage;

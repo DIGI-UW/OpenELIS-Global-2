@@ -250,7 +250,7 @@ function TestModifyEntry() {
             <Column lg={16} md={8} sm={4}>
               <Toggle
                 id="toggle"
-                labelText="Show Guide"
+                labelText={<FormattedMessage id="test.show.guide" />}
                 onClick={handleToggleShowGuide}
               />
             </Column>
@@ -339,13 +339,6 @@ function TestModifyEntry() {
           <hr />
           <br />
         </div>
-        <button
-          onClick={() => {
-            console.log(testMonifyList);
-          }}
-        >
-          testMonifyList
-        </button>
       </div>
     </>
   );

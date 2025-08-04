@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+
+    <system_role id="701" name="Global Administrator"
+        description="Change tests panels etc." is_grouping_role="false"
+        display_key="role.maintenance" active="1" editable="false" />
+    <system_role id="702" name="Reception"
+        description="Attendee of personnel." is_grouping_role="false"
+        display_key="role.intake" active="1" editable="false" />
+    <system_role id="703" name="Inventory mgr"
+        description="tracks inventory." is_grouping_role="false"
+        display_key="role.inventory" active="1" editable="false" />
+
+</dataset>
