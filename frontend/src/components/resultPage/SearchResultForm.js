@@ -21,6 +21,7 @@ import {
   SelectItem,
   Loading,
   Link,
+  FileUploader,
 } from "@carbon/react";
 import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
@@ -1270,6 +1271,34 @@ export function SearchResults(props) {
               />
             ))}
           </Select>
+        </Column>
+        <Column lg={3} md={1} sm={2}>
+          <FileUploader
+            buttonLabel={<FormattedMessage id="label.button.uploadfile" />}
+            iconDescription="file upload"
+            multiple={false}
+            accept={["image/jpeg", "image/png", "application/pdf"]}
+            disabled={false}
+            name=""
+            buttonKind="primary"
+            size="lg"
+            filenameStatus="edit"
+            onChange={async (e) => {
+              e.preventDefault();
+              let file = e.target.files[0];
+              var newSlides = [...pathologySampleInfo.slides];
+              let encodedFile = await toBase64(file);
+              newSlides[index].base64Image = encodedFile;
+              setPathologySampleInfo({
+                ...pathologySampleInfo,
+                slides: newSlides,
+              });
+            }}
+            onClick={function noRefCheck() {}}
+            onDelete={(e) => {
+              e.preventDefault();
+            }}
+          />
         </Column>
         <Column lg={1}></Column>
         <Column lg={2}>
