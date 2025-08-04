@@ -48,6 +48,7 @@ import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index.j
 import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests.js";
 import ChangePassword from "./components/ChangePassword.js";
 import { Roles } from "./components/utils/Utils";
+import GeneralProgrammeDashboard from "./components/admin/generalprogramme/GeneralProgrammeDashboard";
 
 export default function App() {
   let i18nConfig = {
@@ -298,6 +299,12 @@ export default function App() {
                   exact
                   component={() => <Admin />}
                   role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/GeneralProgrammeDashboard"
+                  exact
+                  component={() => <GeneralProgrammeDashboard />}
+                  role=""
                 />
                 <SecureRoute
                   path="/PathologyDashboard"

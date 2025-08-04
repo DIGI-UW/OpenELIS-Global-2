@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+"use client";
+
+import { useState, useEffect, useContext } from "react";
 import config from "../../config.json";
 import { FormattedMessage, useIntl, injectIntl } from "react-intl";
 import "../Style.css";
@@ -32,6 +34,7 @@ import {
   ResultNew,
   Popup,
   Search,
+  ArrowRight,
 } from "@carbon/icons-react";
 import PathRoute from "../utils/PathRoute";
 import CalculatedValue from "./calculatedValue/CalculatedValueForm";
@@ -41,6 +44,13 @@ import {
   SideNavLink,
   SideNavMenu,
   SideNavMenuItem,
+  Grid,
+  Column,
+  Section,
+  Breadcrumb,
+  BreadcrumbItem,
+  Heading,
+  Button,
 } from "@carbon/react";
 import { CommonProperties } from "./menu/CommonProperties";
 import ConfigMenuDisplay from "./generalConfig/common/ConfigMenuDisplay";
@@ -65,7 +75,6 @@ import ResultSelectListAdd from "./testManagementConfigMenu/ResultSelectListAdd.
 import TestAdd from "./testManagementConfigMenu/TestAdd.js";
 import TestModifyEntry from "./testManagementConfigMenu/TestModifyEntry.js";
 import TestOrderability from "./testManagementConfigMenu/TestOrderability.js";
-import MethodManagement from "./testManagementConfigMenu/MethodManagement.js";
 import MethodCreate from "./testManagementConfigMenu/MethodCreate.js";
 import TestSectionManagement from "./testManagementConfigMenu/TestSectionManagement.js";
 import TestSectionCreate from "./testManagementConfigMenu/TestSectionCreate.js";
@@ -89,13 +98,17 @@ import TestSectionRenameEntry from "./testManagementConfigMenu/TestSectionRename
 import UomRenameEntry from "./testManagementConfigMenu/UomRenameEntry.js";
 import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry.js";
 import MethodRenameEntry from "./testManagementConfigMenu/MethodRenameEntry.js";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import { getFromOpenElisServer } from "../utils/Utils";
 
 function Admin() {
   const intl = useIntl();
   const [isSmallScreen, setIsSmallScreen] = useState(false);
+  const [adminMenuItems, setAdminMenuItems] = useState([]);
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(max-width: 1024px)"); //applicable for medium screen and below  for only small screen set max-width: 768px
+    const mediaQuery = window.matchMedia("(max-width: 1024px)");
     const handleMediaQueryChange = () => setIsSmallScreen(mediaQuery.matches);
 
     handleMediaQueryChange();
@@ -105,8 +118,79 @@ function Admin() {
       mediaQuery.removeEventListener("change", handleMediaQueryChange);
   }, []);
 
+  useEffect(() => {
+    if (userSessionDetails && userSessionDetails.authenticated) {
+      getFromOpenElisServer("/rest/menu/admin", (res) => {
+        if (res) {
+          setAdminMenuItems(res);
+        }
+      });
+    }
+  }, [userSessionDetails]);
+
+  const handleNavigateToGeneralProgramme = () => {
+    window.location.href = "/GeneralProgrammeDashboard";
+  };
+
   return (
-    <>
+    <div className="adminPageContent">
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <Section>
+            <Breadcrumb>
+              <BreadcrumbItem>
+                <a href="/">
+                  <FormattedMessage id="home.label" />
+                </a>
+              </BreadcrumbItem>
+              <BreadcrumbItem isCurrentPage>
+                <FormattedMessage id="breadcrums.admin.managment" />
+              </BreadcrumbItem>
+            </Breadcrumb>
+          </Section>
+        </Column>
+      </Grid>
+
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <Section>
+            <Heading>
+              <FormattedMessage id="breadcrums.admin.managment" />
+            </Heading>
+
+            {/* Temporary button to access General Programme Dashboard */}
+            <div style={{ marginTop: "2rem", marginBottom: "2rem" }}>
+              <Button
+                kind="primary"
+                onClick={handleNavigateToGeneralProgramme}
+                renderIcon={ArrowRight}
+              >
+                <FormattedMessage id="menu.generalprogramme.label" />
+              </Button>
+              <p
+                style={{
+                  marginTop: "0.5rem",
+                  fontSize: "0.875rem",
+                  color: "#6f6f6f",
+                }}
+              >
+                <FormattedMessage id="menu.generalprogramme.description" />
+              </p>
+            </div>
+
+            {/* Existing admin menu items would be rendered here */}
+            <div className="admin-menu-grid">
+              {adminMenuItems &&
+                adminMenuItems.map((item, index) => (
+                  <div key={index} className="admin-menu-item">
+                    {/* Render existing admin menu items */}
+                  </div>
+                ))}
+            </div>
+          </Section>
+        </Column>
+      </Grid>
+
       <SideNav
         aria-label="Side navigation"
         defaultExpanded={true}
@@ -552,7 +636,7 @@ function Admin() {
       <PathRoute path="#SearchIndexManagement">
         <SearchIndexManagement />
       </PathRoute>
-    </>
+    </div>
   );
 }
 
