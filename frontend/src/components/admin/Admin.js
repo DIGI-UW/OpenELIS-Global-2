@@ -158,7 +158,6 @@ function Admin() {
               <FormattedMessage id="breadcrums.admin.managment" />
             </Heading>
 
-            {/* Temporary button to access General Programme Dashboard */}
             <div style={{ marginTop: "2rem", marginBottom: "2rem" }}>
               <Button
                 kind="primary"
@@ -178,13 +177,10 @@ function Admin() {
               </p>
             </div>
 
-            {/* Existing admin menu items would be rendered here */}
             <div className="admin-menu-grid">
               {adminMenuItems &&
                 adminMenuItems.map((item, index) => (
-                  <div key={index} className="admin-menu-item">
-                    {/* Render existing admin menu items */}
-                  </div>
+                  <div key={index} className="admin-menu-item"></div>
                 ))}
             </div>
           </Section>

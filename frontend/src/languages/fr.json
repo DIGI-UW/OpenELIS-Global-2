@@ -9,13 +9,11 @@
   "label.button.view": "Voir",
   "label.button.back": "Retour",
   "label.button.action": "Actions",
-
   "dictionary.loincCode.invalid": "Format incorrect de code LOINC ( attendu:12345-6 ou LP12345-6)",
   "dictionary.loincCode.helpText": "Identifiant standard d'observation de laboratoire",
   "dictionary.loincCode": "Code LOINC",
   "dictionary.loincCode.placeholder": "exemple: 12345-6",
-  "dictionary.loincCode.help": "Saisir un identifiant LOINC Standard"
-
+  "dictionary.loincCode.help": "Saisir un identifiant LOINC Standard",
   "language.select.label": "Français",
   "label.button.submit": "Connecter",
   "label.button.finish": "Terminer",
