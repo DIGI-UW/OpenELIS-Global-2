@@ -6,6 +6,8 @@ class TestNotificationConfigurationPage {
       carbonCopy: "#carbon-copy",
       save: "[data-cy='saveButton']",
       cancel: "[data-cy='cancelButton']",
+      topSave: "[data-cy='testNotificationTopSaveButton']",
+      topExit: "[data-cy='testNotificationTopExitButton']",
     };
   }
 
@@ -23,12 +25,12 @@ class TestNotificationConfigurationPage {
     cy.get(`[for="${boxName}"]`).click();
   }
 
-  settingsButton(buttonNum) {
-    cy.get(`#tooltip-${buttonNum}`).click();
+  editTestNotificationButton(columnNum) {
+    cy.get(`[data-cy='testNotificationEditButton-${columnNum}']`).click();
   }
 
   saveChanges() {
-    cy.contains("button", "Save").should("be.enabled").click();
+    cy.get(this.selectors.topSave).click();
   }
 
   clickSave() {

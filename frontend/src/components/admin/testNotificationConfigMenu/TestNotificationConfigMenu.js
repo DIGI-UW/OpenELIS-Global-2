@@ -250,6 +250,7 @@ function TestNotificationConfigMenu() {
             onClick={() => handleEditButtonClick(row.cells[0].value)}
             renderIcon={Settings}
             kind="tertiary"
+            data-cy={`testNotificationEditButton-${row.id}`}
           />
         </TableCell>
       );
@@ -280,6 +281,7 @@ function TestNotificationConfigMenu() {
                 style={{ display: "flex", gap: "10px" }}
               >
                 <Button
+                  data-cy="testNotificationTopSaveButton"
                   disabled={saveButton}
                   onClick={testNotificationConfigMenuSavePostCall}
                   type="button"
@@ -287,6 +289,7 @@ function TestNotificationConfigMenu() {
                   <FormattedMessage id="label.button.save" />
                 </Button>{" "}
                 <Button
+                  data-cy="testNotificationTopExitButton"
                   onClick={() =>
                     window.location.assign(
                       "/MasterListsPage#testNotificationConfigMenu",
@@ -452,12 +455,14 @@ function TestNotificationConfigMenu() {
             <Column lg={16} md={8} sm={4}>
               <Button
                 disabled={saveButton}
+                data-cy="testNotificationSaveButton"
                 onClick={testNotificationConfigMenuSavePostCall}
                 type="button"
               >
                 <FormattedMessage id="label.button.save" />
               </Button>{" "}
               <Button
+                data-cy="testNotificationExitButton"
                 onClick={() =>
                   window.location.assign(
                     "/MasterListsPage#testNotificationConfigMenu",

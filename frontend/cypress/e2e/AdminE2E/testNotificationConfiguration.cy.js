@@ -26,7 +26,7 @@ describe("Test Notification Configuration", function () {
     });
 
     it("Click Settings, checkboxes and Save", () => {
-      testNotificationConfigPage.settingsButton("128");
+      testNotificationConfigPage.editTestNotificationButton("373");
       testNotificationConfigPage.settingsCheckBoxes("patientEmail");
       testNotificationConfigPage.settingsCheckBoxes("patientSMS");
       testNotificationConfigPage.settingsCheckBoxes("providerEmail");
