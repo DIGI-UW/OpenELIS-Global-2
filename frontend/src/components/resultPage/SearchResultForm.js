@@ -22,6 +22,7 @@ import {
   Loading,
   Link,
   FileUploader,
+  Tag,
 } from "@carbon/react";
 import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
@@ -784,6 +785,7 @@ export function SearchResults(props) {
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState({});
 
   const componentMounted = useRef(false);
 
@@ -893,6 +895,46 @@ export function SearchResults(props) {
         columns = updatedList;
       }
     }
+  };
+  const toBase64 = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+    });
+
+  const handleFileUpload = async (e, rowId) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const base64File = await toBase64(file);
+    setUploadedFiles(newFiles);
+
+    const form = { ...props.results };
+    const jp = require("jsonpath");
+    jp.value(form, `testResult[${rowId}].uploadedFile`, newFiles[rowId]);
+    jp.value(form, `testResult[${rowId}].isModified`, "true");
+    props.setResultForm(form);
+
+    addNotification({
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({ id: "file.upload.success" }),
+      kind: NotificationKinds.success,
+    });
+    setNotificationVisible(true);
+  };
+
+  const handleFileDelete = (rowId) => {
+    const newFiles = { ...uploadedFiles };
+    delete newFiles[rowId];
+    setUploadedFiles(newFiles);
+
+    const form = { ...props.results };
+    const jp = require("jsonpath");
+    jp.value(form, `testResult[${rowId}].uploadedFile`, null);
+    jp.value(form, `testResult[${rowId}].isModified`, "true");
+    props.setResultForm(form);
   };
 
   var columns = [
@@ -1272,22 +1314,16 @@ export function SearchResults(props) {
             ))}
           </Select>
         </Column>
-        <Column lg={3} md={1} sm={2}>
+        <Column lg={16} md={8} sm={4}>
           <FileUploader
             buttonLabel={<FormattedMessage id="label.button.uploadfile" />}
-            iconDescription="file upload"
-            multiple={false}
-            accept={["image/jpeg", "image/png", "application/pdf"]}
-            disabled={false}
-            name=""
-            buttonKind="primary"
-            size="lg"
             filenameStatus="edit"
-            onClick={function noRefCheck() {}}
-            onDelete={(e) => {
-              e.preventDefault();
-            }}
+            accept={["image/jpeg", "image/png", "application/pdf"]}
+            name=""
+            onChange={(e) => handleFileUpload(e, data.id)}
+            onDelete={() => handleFileDelete(data.id)}
           />
+          {uploadedFiles[data.id] && <Tag>{uploadedFiles[data.id].name}</Tag>}
         </Column>
         <Column lg={1}></Column>
         <Column lg={2}>
