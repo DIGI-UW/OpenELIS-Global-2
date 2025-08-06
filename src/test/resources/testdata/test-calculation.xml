@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <localization id="1" description="Test Description 1"
+        english="TB" french="TB" />
+    <localization id="2" description="Test Description 2"
+        english="Urinalysis" french="Urinalysis" />
+
+    <sample id="1001" accession_number="12345"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="1002" accession_number="13333"
+        received_date="2024-06-04 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="1003" accession_number="52541"
+        received_date="2024-06-05 00:00:00.0"
+        entered_date="2024-06-05 00:00:00.0"
+        collection_date="2024-06-05 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <test id="4001" description="Blood Test" loinc="123456"
+        reporting_description="Complete Blood Count" sticker_req_flag="Y"
+        is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2025-12-31 12:00:00" is_reportable="N" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2025-03-20 12:00:00"
+        local_code="CBC" sort_order="2147483646" name="Complete Blood Count"
+        orderable="true" guid="abc-123" name_localization_id="1"
+        antimicrobial_resistance="true" />
+
+    <test id="4002" description="Urine Test" loinc="543216"
+        reporting_description="Urinalysis" sticker_req_flag="N" is_active="Y"
+        active_begin="2025-02-01 12:00:00" active_end="2025-12-31 12:00:00"
+        is_reportable="Y" time_holding="25" time_wait="10"
+        time_ta_average="50" time_ta_warning="70" time_ta_max="90"
+        label_qty="1" lastupdated="2025-03-20 12:00:00" local_code="UA"
+        sort_order="2147483646" name="Urinalysis" orderable="true"
+        guid="def-456" name_localization_id="2"
+        antimicrobial_resistance="false" />
+
+    <calculation id="101" name="Hemoglobin Calc"
+        sample_id="1001" test_id="4001" result="13.5" toggled="true"
+        active="true" note="Standard check" />
+    <calculation id="102" name="Glucose Level Calc"
+        sample_id="1002" test_id="4001" result="6.2" toggled="false"
+        active="true" note="Fasting sample" />
+    <calculation id="103" name="Cholesterol Calc"
+        sample_id="1003" test_id="4002" result="180" toggled="true"
+        active="true" note="Above normal" />
+    <calculation id="104" name="Uric Acid Calc"
+        sample_id="1001" test_id="4002" result="4.8" toggled="false"
+        active="false" note="Initial test" />
+    <calculation id="105" name="Calcium Calc" sample_id="1001"
+        test_id="4001" result="9.1" toggled="true" active="true"
+        note="Recheck after 1 week" />
+</dataset>

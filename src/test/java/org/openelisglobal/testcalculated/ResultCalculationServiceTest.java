@@ -10,8 +10,8 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.test.service.TestService;
-import org.openelisglobal.testcalculated.service.CalculationService;
 import org.openelisglobal.testcalculated.service.ResultCalculationService;
+import org.openelisglobal.testcalculated.service.TestCalculationService;
 import org.openelisglobal.testcalculated.valueholder.Calculation;
 import org.openelisglobal.testcalculated.valueholder.ResultCalculation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +25,7 @@ public class ResultCalculationServiceTest extends BaseWebContextSensitiveTest {
     @Autowired
     private TestService testService;
     @Autowired
-    private CalculationService calculationService;
+    private TestCalculationService calculationService;
 
     private List<ResultCalculation> resultCalculations;
 
@@ -61,7 +61,6 @@ public class ResultCalculationServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(resultCalculations);
         assertEquals(2, resultCalculations.size());
         assertEquals(Integer.valueOf("704"), resultCalculations.get(1).getId());
-
     }
 
     @Test
