@@ -24,7 +24,7 @@ public class TestCalculationServiceTest extends BaseWebContextSensitiveTest {
     private List<Calculation> testCalculations;
     private Map<String, Object> propertyValues;
     private List<String> orderProperties;
-    private static int NUMBER_OF_PAGES = 0;
+    private static int PAGE_SIZE = 0;
 
     @Before
     public void setup() throws Exception {
@@ -110,73 +110,64 @@ public class TestCalculationServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getPage_ShouldReturnAPageOfTestCalculations_UsingAPageNumber() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         testCalculations = calculationService.getPage(1);
-        assertTrue(NUMBER_OF_PAGES >= testCalculations.size());
+        assertTrue(PAGE_SIZE >= testCalculations.size());
     }
 
     @Test
     public void getMatchingPage_ShouldReturnAPageOfTestCalculations_UsingAPropertyNameAndValue() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         testCalculations = calculationService.getMatchingPage("result", "180", 1);
-        assertTrue(NUMBER_OF_PAGES >= testCalculations.size());
+        assertTrue(PAGE_SIZE >= testCalculations.size());
     }
 
     @Test
     public void getMatchingPage_ShouldReturnAPageOfTestCalculations_UsingAMap() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         testCalculations = calculationService.getMatchingPage(propertyValues, 1);
-        assertTrue(NUMBER_OF_PAGES >= testCalculations.size());
+        assertTrue(PAGE_SIZE >= testCalculations.size());
     }
 
     @Test
     public void getOrderedPage_ShouldReturnAnOrderedPageOfTestCalculations_UsingAnOrderProperty() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         testCalculations = calculationService.getOrderedPage("lastupdated", true, 1);
-        assertTrue(NUMBER_OF_PAGES >= testCalculations.size());
+        assertTrue(PAGE_SIZE >= testCalculations.size());
     }
 
     @Test
     public void getOrderedPage_ShouldReturnAnOrderedPageOfTestCalculations_UsingAList() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         testCalculations = calculationService.getOrderedPage(orderProperties, false, 1);
-        assertTrue(NUMBER_OF_PAGES >= testCalculations.size());
+        assertTrue(PAGE_SIZE >= testCalculations.size());
     }
 
     @Test
     public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfTestCalculations_UsingAPropertyNameAndValueAndAnOrderProperty() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         testCalculations = calculationService.getMatchingOrderedPage("testId", "1002", "lastupdated", true, 1);
-        assertTrue(NUMBER_OF_PAGES >= testCalculations.size());
+        assertTrue(PAGE_SIZE >= testCalculations.size());
     }
 
     @Test
     public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfTestCalculations_UsingAPropertyNameAndValueAndAList() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         testCalculations = calculationService.getMatchingOrderedPage("sampleId", "1002", orderProperties, true, 1);
-        assertTrue(NUMBER_OF_PAGES >= testCalculations.size());
+        assertTrue(PAGE_SIZE >= testCalculations.size());
     }
 
     @Test
     public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfTestCalculations_UsingAMapAndAnOrderProperty() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         testCalculations = calculationService.getMatchingOrderedPage(propertyValues, "id", false, 1);
-        assertTrue(NUMBER_OF_PAGES >= testCalculations.size());
+        assertTrue(PAGE_SIZE >= testCalculations.size());
     }
 
     @Test
     public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfTestCalculations_UsingAMapAndAList() {
-        NUMBER_OF_PAGES = Integer
-                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+        PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         testCalculations = calculationService.getMatchingOrderedPage(propertyValues, orderProperties, false, 1);
-        assertTrue(NUMBER_OF_PAGES >= testCalculations.size());
+        assertTrue(PAGE_SIZE >= testCalculations.size());
     }
 }
