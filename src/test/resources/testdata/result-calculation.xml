@@ -68,7 +68,7 @@
         time_wait="15" time_ta_average="60" time_ta_warning="90"
         time_ta_max="120" label_qty="1" lastupdated="2025-03-20 12:00:00"
         local_code="CBC" sort_order="2147483646" name="Complete Blood Count"
-        orderable="true" guid="abc-123" name_localization_id="1"
+        orderable="true" guid="abc-123"
         antimicrobial_resistance="true" />
 
     <test id="4002" description="Urine Test" loinc="543216"
@@ -78,7 +78,7 @@
         time_ta_average="50" time_ta_warning="70" time_ta_max="90"
         label_qty="1" lastupdated="2025-03-20 12:00:00" local_code="UA"
         sort_order="2147483646" name="Urinalysis" orderable="true"
-        guid="def-456" name_localization_id="2"
+        guid="def-456"
         antimicrobial_resistance="false" />
 
     <calculation id="101" name="Hemoglobin Calc"
