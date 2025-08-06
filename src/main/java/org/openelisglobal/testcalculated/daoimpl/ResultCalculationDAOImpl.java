@@ -1,6 +1,7 @@
 package org.openelisglobal.testcalculated.daoimpl;
 
 import jakarta.transaction.Transactional;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.hibernate.Session;
@@ -46,13 +47,18 @@ public class ResultCalculationDAOImpl extends BaseDAOImpl<ResultCalculation, Int
         try {
 
             String sql = "from ResultCalculation r JOIN r.test t WHERE t.id = :testId";
-            Query<ResultCalculation> query = entityManager.unwrap(Session.class).createQuery(sql,
-                    ResultCalculation.class);
+            Query query = (Query) entityManager.createQuery(sql);
             query.setParameter("testId", Integer.parseInt(test.getId()));
+            List<Object[]> results = query.getResultList();
 
-            List<ResultCalculation> results = query.list();
-            if (results.size() > 0) {
-                return results;
+            List<ResultCalculation> resultCalculations = new ArrayList<>();
+            for (Object[] result : results) {
+                ResultCalculation rs = (ResultCalculation) result[0];
+                resultCalculations.add(rs);
+            }
+
+            if (!results.isEmpty()) {
+                return resultCalculations;
             }
         } catch (RuntimeException e) {
             handleException(e, "getResultCalculationByPatientAndTest");

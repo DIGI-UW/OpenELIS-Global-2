@@ -159,4 +159,18 @@
             <column name="note" type="varchar(64)"/>
         </addColumn>
     </changeSet>
+    <changeSet id="9" author="Ariho-Seth">
+        <addColumn schemaName="clinlims" tableName="test_operations">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+    <changeSet id="10" author="Ariho-Seth">
+        <addColumn schemaName="clinlims" tableName="test_result_map">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
 </databaseChangeLog>

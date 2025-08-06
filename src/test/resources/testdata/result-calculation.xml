@@ -1,0 +1,123 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+
+    <person id="1" last_name="Doe" first_name="John"
+        middle_name="joddy" city="Kampala" state="Kampala metropolitan"
+        zip_code="256" country="Uganda" work_phone="12345678"
+        home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
+        fax="3456" email="john@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+    <person id="2" last_name="Mulizi" first_name="James"
+        middle_name="Mark" city="Orion" state="Texas" zip_code="001"
+        country="USA" work_phone="10000001" home_phone="8000001"
+        cell_phone="0000000" primary_phone="10000001" fax="0001"
+        email="james@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+    <person id="3" last_name="Kukki" first_name="Faith"
+        middle_name="Siannah" city="Dallas" state="Texas" zip_code="001"
+        country="USA" work_phone="10000002" home_phone="8000003"
+        cell_phone="0000001" primary_phone="10000002" fax="0002"
+        email="siannah@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+
+    <patient id="201" person_id="1" race="black" gender="M"
+        birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+        national_id="1234" ethnicity="U" external_id="EX456"
+        school_attend="MaKerere College" birth_place="Mulago"
+        entered_birth_date="1992-12-12" lastUpdated="2023-11-01 12:00:02" />
+    <patient id="202" person_id="3" race="black" gender="F"
+        birth_date="1997-10-09 09:00:00" birth_time="1997-10-09 09:00:00"
+        national_id="56789" ethnicity="A" external_id="EX123"
+        school_attend="Merryland College" birth_place="Nevada"
+        entered_birth_date="1997-10-09" lastUpdated="2023-11-01 12:00:02" />
+    <patient id="203" person_id="2" race="black" gender="M"
+        birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+        national_id="12314" ethnicity="U" external_id="EX432"
+        school_attend="MaKerere College" birth_place="Kawempe"
+        entered_birth_date="1992-12-12" lastUpdated="2023-11-01 12:00:02" />
+
+    <result id="301" sort_order="1" result_type="N" value="85.0"
+        is_reportable="Y" lastupdated="2025-04-04 14:00:00" min_normal="70.0"
+        max_normal="100.0" significant_digits="1" grouping="0"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440003" />
+
+    <result id="302" sort_order="2" result_type="N" value="14.5"
+        is_reportable="Y" lastupdated="2025-07-07 14:00:00" min_normal="12.0"
+        max_normal="16.0" parent_id="3" significant_digits="1" grouping="0"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
+    <result id="303" sort_order="2" result_type="N" value="14.5"
+        is_reportable="Y" lastupdated="2025-07-07 14:00:00" min_normal="12.0"
+        max_normal="16.0" significant_digits="1" grouping="0"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
+    <sample id="1001" accession_number="12345"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="1002" accession_number="13333"
+        received_date="2024-06-04 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="1003" accession_number="52541"
+        received_date="2024-06-05 00:00:00.0"
+        entered_date="2024-06-05 00:00:00.0"
+        collection_date="2024-06-05 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <test id="4001" description="Blood Test" loinc="123456"
+        reporting_description="Complete Blood Count" sticker_req_flag="Y"
+        is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2025-12-31 12:00:00" is_reportable="N" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2025-03-20 12:00:00"
+        local_code="CBC" sort_order="2147483646" name="Complete Blood Count"
+        orderable="true" guid="abc-123" name_localization_id="1"
+        antimicrobial_resistance="true" />
+
+    <test id="4002" description="Urine Test" loinc="543216"
+        reporting_description="Urinalysis" sticker_req_flag="N" is_active="Y"
+        active_begin="2025-02-01 12:00:00" active_end="2025-12-31 12:00:00"
+        is_reportable="Y" time_holding="25" time_wait="10"
+        time_ta_average="50" time_ta_warning="70" time_ta_max="90"
+        label_qty="1" lastupdated="2025-03-20 12:00:00" local_code="UA"
+        sort_order="2147483646" name="Urinalysis" orderable="true"
+        guid="def-456" name_localization_id="2"
+        antimicrobial_resistance="false" />
+
+    <calculation id="101" name="Hemoglobin Calc"
+        sample_id="1001" test_id="4001" result="13.5" toggled="true"
+        active="true" note="Standard check" />
+    <calculation id="102" name="Glucose Level Calc"
+        sample_id="1002" test_id="4001" result="6.2" toggled="false"
+        active="true" note="Fasting sample" />
+    <calculation id="103" name="Cholesterol Calc"
+        sample_id="1003" test_id="4002" result="180" toggled="true"
+        active="true" note="Above normal" />
+    <calculation id="104" name="Uric Acid Calc"
+        sample_id="1001" test_id="4002" result="4.8" toggled="false"
+        active="false" note="Initial test" />
+    <calculation id="105" name="Calcium Calc" sample_id="1001"
+        test_id="4001" result="9.1" toggled="true" active="true"
+        note="Recheck after 1 week" />
+
+    <result_calculation id="701" calculation_id="101"
+        patient_id="201" result_id="301" />
+    <result_calculation id="702" calculation_id="102"
+        patient_id="202" result_id="302" />
+    <result_calculation id="703" calculation_id="103"
+        patient_id="203" result_id="303" />
+    <result_calculation id="704" calculation_id="101"
+        patient_id="201" result_id="301" />
+    <result_calculation id="705" calculation_id="105"
+        patient_id="202" result_id="303" />
+
+    <!-- ElementCollection: Set<testId> -->
+    <test_operations id="201" result_calculation_id="701"
+        test_id="4001" />
+    <test_operations id="202" result_calculation_id="702"
+        test_id="4002" />
+
+    <!-- ElementCollection: Map<testId, resultId> -->
+    <test_result_map id="1" result_calculation_id="701"
+        test_id="4001" result_id="301" />
+    <test_result_map id="2" result_calculation_id="702"
+        test_id="4001" result_id="302" />
+
+</dataset>
