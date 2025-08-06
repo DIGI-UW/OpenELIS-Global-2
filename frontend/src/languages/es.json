@@ -1,5 +1,12 @@
 {
-  "menu.generalprogramme.label": "Programa General",
+  "program.case.details.label": "Detalles del Caso del Programa",
+  "program.case.not.found": "Caso no encontrado.",
+  "sample.information.label": "Información de la Muestra",
+  "sample.label.collectiondate": "Fecha de Recolección",
+  "label.status": "Estado",
+  "program.captured.information.label": "Información Capturada",
+  "program.no.additional.information": "No se capturó información adicional.",
+  "test.results.label": "Resultados de Prueba",
   "menu.generalprogramme.description": "Ver y gestionar programas de laboratorio generales y cuestionarios",
   "program.details.label": "Detalles del Programa",
   "program.information.label": "Información del Programa",

@@ -1,4 +1,12 @@
 {
+  "program.case.details.label": "Detalii Caz Program",
+  "program.case.not.found": "Cazul nu a fost găsit.",
+  "sample.information.label": "Informații despre Eșantion",
+  "sample.label.collectiondate": "Data Colectării",
+  "label.status": "Stare",
+  "program.captured.information.label": "Informații Înregistrate",
+  "program.no.additional.information": "Nu există informații suplimentare.",
+  "test.results.label": "Rezultate Teste",
   "menu.generalprogramme.label": "Program General",
   "menu.generalprogramme.description": "Vizualizați și gestionați programele generale de laborator și chestionarele",
   "program.details.label": "Detaliile Programului",

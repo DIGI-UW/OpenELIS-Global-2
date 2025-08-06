@@ -1,4 +1,10 @@
 {
+  "sample.information.label": "Informations sur l'Échantillon",
+  "sample.label.collectiondate": "Date de Prélèvement",
+  "label.status": "Statut",
+  "program.captured.information.label": "Informations Capturées",
+  "program.no.additional.information": "Aucune information supplémentaire capturée.",
+  "test.results.label": "Résultats des Tests",
   "menu.generalprogramme.label": "Programme Général",
   "menu.generalprogramme.description": "Voir et gérer les programmes de laboratoire généraux et les questionnaires",
   "program.details.label": "Détails du Programme",

@@ -1,4 +1,12 @@
 {
+  "program.case.details.label": "Detail Kasus Program",
+  "program.case.not.found": "Kasus tidak ditemukan.",
+  "sample.information.label": "Informasi Sampel",
+  "sample.label.collectiondate": "Tanggal Pengambilan",
+  "label.status": "Status",
+  "program.captured.information.label": "Informasi Terekam",
+  "program.no.additional.information": "Tidak ada informasi tambahan.",
+  "test.results.label": "Hasil Tes",
   "menu.generalprogramme.label": "Program Umum",
   "menu.generalprogramme.description": "Lihat dan kelola program laboratorium umum dan kuesioner",
   "program.details.label": "Detail Program",

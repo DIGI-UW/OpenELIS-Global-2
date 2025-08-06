@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import {
   Heading,
@@ -17,12 +15,18 @@ import {
   Column,
   Section,
   Pagination,
+  DatePicker,
+  DatePickerInput,
+  Select,
+  SelectItem,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { getFromOpenElisServer } from "../../utils/Utils";
-import { View } from "@carbon/icons-react";
+import { View, Search } from "@carbon/icons-react";
 
+// === BREADCRUMB CONFIGURATION ===
+// Navigation breadcrumb showing: Home > Admin > General Programme
 const breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
@@ -34,12 +38,19 @@ const breadcrumbs = [
 
 function GeneralProgrammeDashboard() {
   const intl = useIntl();
+
+  // === STATE MANAGEMENT ===
   const [loading, setLoading] = useState(true);
-  const [programmeData, setProgrammeData] = useState([]);
-  const [selectedProgramme, setSelectedProgramme] = useState(null);
-  const [programmeDetails, setProgrammeDetails] = useState(null);
+  const [programmeData, setProgrammeData] = useState([]); // List of general programmes
+  const [selectedProgramme, setSelectedProgramme] = useState(null); // Currently selected programme
+  const [capturedData, setCapturedData] = useState([]); // Captured data during order entry
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [searchCriteria, setSearchCriteria] = useState({
+    startDate: "",
+    endDate: "",
+    programmeId: "",
+  });
 
   useEffect(() => {
     fetchProgrammes();
@@ -58,22 +69,47 @@ function GeneralProgrammeDashboard() {
     });
   };
 
-  const fetchProgrammeDetails = (programmeId) => {
+  // Fetch captured data for selected programme (data captured during order entry)
+  const fetchCapturedData = (programmeId, startDate = "", endDate = "") => {
     setLoading(true);
-    getFromOpenElisServer(`/rest/program/${programmeId}`, (data) => {
-      setProgrammeDetails(data);
+    let endpoint = `/rest/program/${programmeId}/captured-data`;
+
+    const params = new URLSearchParams();
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+
+    if (params.toString()) {
+      endpoint += `?${params.toString()}`;
+    }
+
+    getFromOpenElisServer(endpoint, (data) => {
+      setCapturedData(data || []);
       setLoading(false);
     });
   };
 
   const handleViewProgramme = (programmeId, programmeName) => {
     setSelectedProgramme({ id: programmeId, name: programmeName });
-    fetchProgrammeDetails(programmeId);
+    fetchCapturedData(
+      programmeId,
+      searchCriteria.startDate,
+      searchCriteria.endDate,
+    );
   };
 
   const handleBackToList = () => {
     setSelectedProgramme(null);
-    setProgrammeDetails(null);
+    setCapturedData([]);
+  };
+
+  const handleSearch = () => {
+    if (selectedProgramme) {
+      fetchCapturedData(
+        selectedProgramme.id,
+        searchCriteria.startDate,
+        searchCriteria.endDate,
+      );
+    }
   };
 
   const handlePageChange = (pageInfo) => {
@@ -81,7 +117,7 @@ function GeneralProgrammeDashboard() {
     setPageSize(pageInfo.pageSize);
   };
 
-  const headers = [
+  const programmeHeaders = [
     {
       key: "value",
       header: intl.formatMessage({ id: "program.name.label" }),
@@ -92,7 +128,30 @@ function GeneralProgrammeDashboard() {
     },
   ];
 
-  const rows = programmeData
+  const capturedDataHeaders = [
+    {
+      key: "labNumber",
+      header: intl.formatMessage({ id: "sample.label.labnumber" }),
+    },
+    {
+      key: "patientName",
+      header: intl.formatMessage({ id: "patient.label.name" }),
+    },
+    {
+      key: "collectionDate",
+      header: intl.formatMessage({ id: "sample.label.collectiondate" }),
+    },
+    {
+      key: "status",
+      header: intl.formatMessage({ id: "label.status" }),
+    },
+    {
+      key: "actions",
+      header: intl.formatMessage({ id: "label.button.action" }),
+    },
+  ];
+
+  const programmeRows = programmeData
     .slice((page - 1) * pageSize, page * pageSize)
     .map((programme) => ({
       id: programme.id,
@@ -100,7 +159,18 @@ function GeneralProgrammeDashboard() {
       actions: programme.id,
     }));
 
-  if (selectedProgramme && programmeDetails) {
+  const capturedDataRows = capturedData
+    .slice((page - 1) * pageSize, page * pageSize)
+    .map((item) => ({
+      id: item.id,
+      labNumber: item.labNumber || "",
+      patientName: item.patientName || "",
+      collectionDate: item.collectionDate || "",
+      status: item.status || "",
+      actions: item.id,
+    }));
+
+  if (selectedProgramme) {
     return (
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
@@ -108,15 +178,71 @@ function GeneralProgrammeDashboard() {
           <Column lg={16} md={8} sm={4}>
             <Section>
               <div
-                style={{ display: "flex", alignItems: "center", gap: "1rem" }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "1rem",
+                  marginBottom: "2rem",
+                }}
               >
                 <Button kind="secondary" onClick={handleBackToList}>
                   <FormattedMessage id="label.button.back" />
                 </Button>
                 <Heading>
                   {selectedProgramme.name} -{" "}
-                  <FormattedMessage id="program.details.label" />
+                  <FormattedMessage id="program.captured.data.label" />
                 </Heading>
+              </div>
+
+              {/* === SEARCH FILTERS === */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: "1rem",
+                  alignItems: "end",
+                  marginBottom: "2rem",
+                  padding: "1rem",
+                  backgroundColor: "#f4f4f4",
+                  borderRadius: "4px",
+                }}
+              >
+                <DatePicker dateFormat="d/m/Y" datePickerType="single">
+                  <DatePickerInput
+                    id="start-date"
+                    placeholder="dd/mm/yyyy"
+                    labelText={intl.formatMessage({ id: "label.start.date" })}
+                    value={searchCriteria.startDate}
+                    onChange={(e) =>
+                      setSearchCriteria({
+                        ...searchCriteria,
+                        startDate: e.target.value,
+                      })
+                    }
+                  />
+                </DatePicker>
+
+                <DatePicker dateFormat="d/m/Y" datePickerType="single">
+                  <DatePickerInput
+                    id="end-date"
+                    placeholder="dd/mm/yyyy"
+                    labelText={intl.formatMessage({ id: "label.end.date" })}
+                    value={searchCriteria.endDate}
+                    onChange={(e) =>
+                      setSearchCriteria({
+                        ...searchCriteria,
+                        endDate: e.target.value,
+                      })
+                    }
+                  />
+                </DatePicker>
+
+                <Button
+                  kind="primary"
+                  renderIcon={Search}
+                  onClick={handleSearch}
+                >
+                  <FormattedMessage id="label.button.search" />
+                </Button>
               </div>
             </Section>
           </Column>
@@ -127,76 +253,124 @@ function GeneralProgrammeDashboard() {
         ) : (
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
-              <Section>
-                <div style={{ marginBottom: "2rem" }}>
-                  <h4>
-                    <FormattedMessage id="program.information.label" />
-                  </h4>
-                  <div style={{ marginTop: "1rem" }}>
-                    <p>
-                      <strong>
-                        <FormattedMessage id="program.name.label" />:
-                      </strong>{" "}
-                      {programmeDetails.program?.programName}
-                    </p>
-                    <p>
-                      <strong>Code:</strong> {programmeDetails.program?.code}
-                    </p>
-                    <p>
-                      <strong>UUID:</strong>{" "}
-                      {programmeDetails.program?.questionnaireUUID}
-                    </p>
-                    {programmeDetails.testSectionName && (
-                      <p>
-                        <strong>
-                          <FormattedMessage id="test.section.label" />:
-                        </strong>{" "}
-                        {programmeDetails.testSectionName}
-                      </p>
+              <DataTable
+                rows={capturedDataRows}
+                headers={capturedDataHeaders}
+                isSortable
+              >
+                {({ rows, headers, getHeaderProps, getTableProps }) => (
+                  <TableContainer
+                    title={intl.formatMessage({
+                      id: "program.captured.data.title",
+                    })}
+                    description={intl.formatMessage(
+                      {
+                        id: "program.captured.data.description",
+                      },
+                      { programmeName: selectedProgramme.name },
                     )}
-                  </div>
-                </div>
-
-                {programmeDetails.additionalOrderEntryQuestions && (
-                  <div>
-                    <h4>
-                      <FormattedMessage id="program.questionnaire.label" />
-                    </h4>
-                    <div
-                      style={{
-                        backgroundColor: "#f4f4f4",
-                        padding: "1rem",
-                        borderRadius: "4px",
-                        marginTop: "1rem",
-                      }}
-                    >
-                      <pre
-                        style={{
-                          whiteSpace: "pre-wrap",
-                          fontFamily: "monospace",
-                          fontSize: "0.875rem",
-                        }}
-                      >
-                        {typeof programmeDetails.additionalOrderEntryQuestions ===
-                        "string"
-                          ? programmeDetails.additionalOrderEntryQuestions
-                          : JSON.stringify(
-                              programmeDetails.additionalOrderEntryQuestions,
-                              null,
-                              2,
-                            )}
-                      </pre>
-                    </div>
-                  </div>
+                  >
+                    <Table {...getTableProps()}>
+                      <TableHead>
+                        <TableRow>
+                          {headers.map((header) => (
+                            <TableHeader
+                              key={header.key}
+                              {...getHeaderProps({ header })}
+                            >
+                              {header.header}
+                            </TableHeader>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {rows.map((row) => (
+                          <TableRow key={row.id}>
+                            <TableCell>{row.cells[0].value}</TableCell>
+                            <TableCell>{row.cells[1].value}</TableCell>
+                            <TableCell>{row.cells[2].value}</TableCell>
+                            <TableCell>{row.cells[3].value}</TableCell>
+                            <TableCell>
+                              <Button
+                                kind="ghost"
+                                size="sm"
+                                renderIcon={View}
+                                onClick={() => {
+                                  window.location.href = `/GeneralProgrammeCase/${row.id}`;
+                                }}
+                              >
+                                <FormattedMessage id="label.button.view" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
                 )}
-              </Section>
+              </DataTable>
+
+              {capturedDataRows.length === 0 && !loading && (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "2rem",
+                    backgroundColor: "#f4f4f4",
+                    borderRadius: "4px",
+                    marginTop: "1rem",
+                  }}
+                >
+                  <p>
+                    <FormattedMessage id="program.no.captured.data" />
+                  </p>
+                </div>
+              )}
+
+              <Pagination
+                onChange={handlePageChange}
+                page={page}
+                pageSize={pageSize}
+                pageSizes={[5, 10, 20, 30]}
+                totalItems={capturedData.length}
+                forwardText={intl.formatMessage({ id: "pagination.forward" })}
+                backwardText={intl.formatMessage({ id: "pagination.backward" })}
+                itemRangeText={(min, max, total) =>
+                  intl.formatMessage(
+                    { id: "pagination.item-range" },
+                    { min: min, max: max, total: total },
+                  )
+                }
+                itemsPerPageText={intl.formatMessage({
+                  id: "pagination.items-per-page",
+                })}
+                itemText={(min, max) =>
+                  intl.formatMessage(
+                    { id: "pagination.item" },
+                    { min: min, max: max },
+                  )
+                }
+                pageNumberText={intl.formatMessage({
+                  id: "pagination.page-number",
+                })}
+                pageRangeText={(_current, total) =>
+                  intl.formatMessage(
+                    { id: "pagination.page-range" },
+                    { total: total },
+                  )
+                }
+                pageText={(page, pagesUnknown) =>
+                  intl.formatMessage(
+                    { id: "pagination.page" },
+                    { page: pagesUnknown ? "" : page },
+                  )
+                }
+              />
             </Column>
           </Grid>
         )}
       </div>
     );
   }
-
   return (
     <div className="adminPageContent">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
@@ -218,7 +392,11 @@ function GeneralProgrammeDashboard() {
       ) : (
         <Grid fullWidth={true}>
           <Column lg={16} md={8} sm={4}>
-            <DataTable rows={rows} headers={headers} isSortable>
+            <DataTable
+              rows={programmeRows}
+              headers={programmeHeaders}
+              isSortable
+            >
               {({ rows, headers, getHeaderProps, getTableProps }) => (
                 <TableContainer
                   title={intl.formatMessage({ id: "program.list.title" })}
@@ -262,7 +440,6 @@ function GeneralProgrammeDashboard() {
                 </TableContainer>
               )}
             </DataTable>
-
             <Pagination
               onChange={handlePageChange}
               page={page}
