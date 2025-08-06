@@ -72,7 +72,7 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
     useState([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [ageRangeFields, setAgeRangeFields] = useState([0]);
-  const [ageRanges, setAgeRanges] = useState([{ raw: 0, unit: "Y" }]);
+  const [ageRanges, setAgeRanges] = useState([{ raw: "Infinity", unit: "Y" }]);
 
   useEffect(() => {
     if (resultTypeList.length > 0) {
@@ -2598,7 +2598,7 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
             onSubmit={(values, actions) => {
               const processedLimits = (values.resultLimits || []).map(
                 (limit, index) => {
-                  const raw = parseFloat(ageRanges[index]?.raw || "0");
+                  const raw = parseFloat(ageRanges[index]?.raw || "Infinity");
                   const unit = ageRanges[index]?.unit || "Y";
                   const multiplier = unit === "Y" ? 365 : unit === "M" ? 30 : 1;
 
@@ -2638,7 +2638,7 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
 
                 const newLimit = {
                   ageRange: String(nextLowAge),
-                  highAgeRange: "0",
+                  highAgeRange: "Infinity",
                   gender: false,
                   lowNormal: "-Infinity",
                   highNormal: "Infinity",
