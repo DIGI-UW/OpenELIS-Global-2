@@ -16,6 +16,8 @@
   "label.button.confirm": "Confirm",
   "label.button.cancel": "Cancel",
   "label.button.previous": "Previous",
+  "label.button.field": "Field",
+  "label.button.descritpion": "Description",
   "accept.action.button": "Accept",
   "reject.action.button": "Reject",
   "label.button.confirmDelete": "Confirm Delete",
