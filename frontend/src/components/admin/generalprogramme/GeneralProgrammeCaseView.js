@@ -1,7 +1,5 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Heading,
   Loading,
@@ -32,6 +30,7 @@ const breadcrumbs = [
 function GeneralProgrammeCaseView() {
   const intl = useIntl();
   const { caseId } = useParams();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [caseData, setCaseData] = useState(null);
 
@@ -50,7 +49,7 @@ function GeneralProgrammeCaseView() {
   };
 
   const handleBackToDashboard = () => {
-    window.history.back();
+    navigate(-1);
   };
 
   if (loading) {
@@ -61,7 +60,7 @@ function GeneralProgrammeCaseView() {
     return (
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
-        <Grid fullWidth={true}>
+        <Grid fullWidth>
           <Column lg={16} md={8} sm={4}>
             <Section>
               <p>
@@ -77,7 +76,7 @@ function GeneralProgrammeCaseView() {
   return (
     <div className="adminPageContent">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
-      <Grid fullWidth={true}>
+      <Grid fullWidth>
         <Column lg={16} md={8} sm={4}>
           <Section>
             <div
@@ -100,7 +99,7 @@ function GeneralProgrammeCaseView() {
         </Column>
       </Grid>
 
-      <Grid fullWidth={true}>
+      <Grid fullWidth>
         <Column lg={8} md={4} sm={4}>
           <Section>
             <Tile style={{ marginBottom: "1rem" }}>
@@ -165,7 +164,7 @@ function GeneralProgrammeCaseView() {
       </Grid>
 
       {caseData.testResults && caseData.testResults.length > 0 && (
-        <Grid fullWidth={true}>
+        <Grid fullWidth>
           <Column lg={16} md={8} sm={4}>
             <Section>
               <Tile>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Heading,
   Loading,
@@ -15,35 +15,26 @@ import {
   Column,
   Section,
   Pagination,
-  DatePicker,
-  DatePickerInput,
-  Select,
-  SelectItem,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import { View, Search } from "@carbon/icons-react";
+import CustomDatePicker from "../../common/CustomDatePicker";
 
-// === BREADCRUMB CONFIGURATION ===
-// Navigation breadcrumb showing: Home > Admin > General Programme
 const breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
-  {
-    label: "menu.generalprogramme.label",
-    link: "/GeneralProgrammeDashboard",
-  },
+  { label: "menu.generalprogramme.label", link: "/GeneralProgrammeDashboard" },
 ];
 
 function GeneralProgrammeDashboard() {
   const intl = useIntl();
 
-  // === STATE MANAGEMENT ===
   const [loading, setLoading] = useState(true);
-  const [programmeData, setProgrammeData] = useState([]); // List of general programmes
-  const [selectedProgramme, setSelectedProgramme] = useState(null); // Currently selected programme
-  const [capturedData, setCapturedData] = useState([]); // Captured data during order entry
+  const [programmeData, setProgrammeData] = useState([]);
+  const [selectedProgramme, setSelectedProgramme] = useState(null);
+  const [capturedData, setCapturedData] = useState([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchCriteria, setSearchCriteria] = useState({
@@ -53,10 +44,6 @@ function GeneralProgrammeDashboard() {
   });
 
   useEffect(() => {
-    fetchProgrammes();
-  }, []);
-
-  const fetchProgrammes = () => {
     getFromOpenElisServer("/rest/displayList/PROGRAM", (data) => {
       const filtered = data.filter(
         (entry) =>
@@ -67,9 +54,8 @@ function GeneralProgrammeDashboard() {
       setProgrammeData(filtered);
       setLoading(false);
     });
-  };
+  }, []);
 
-  // Fetch captured data for selected programme (data captured during order entry)
   const fetchCapturedData = (programmeId, startDate = "", endDate = "") => {
     setLoading(true);
     let endpoint = `/rest/program/${programmeId}/captured-data`;
@@ -118,10 +104,7 @@ function GeneralProgrammeDashboard() {
   };
 
   const programmeHeaders = [
-    {
-      key: "value",
-      header: intl.formatMessage({ id: "program.name.label" }),
-    },
+    { key: "value", header: intl.formatMessage({ id: "program.name.label" }) },
     {
       key: "actions",
       header: intl.formatMessage({ id: "label.button.action" }),
@@ -141,10 +124,7 @@ function GeneralProgrammeDashboard() {
       key: "collectionDate",
       header: intl.formatMessage({ id: "sample.label.collectiondate" }),
     },
-    {
-      key: "status",
-      header: intl.formatMessage({ id: "label.status" }),
-    },
+    { key: "status", header: intl.formatMessage({ id: "label.status" }) },
     {
       key: "actions",
       header: intl.formatMessage({ id: "label.button.action" }),
@@ -174,7 +154,7 @@ function GeneralProgrammeDashboard() {
     return (
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
-        <Grid fullWidth={true}>
+        <Grid fullWidth>
           <Column lg={16} md={8} sm={4}>
             <Section>
               <div
@@ -194,7 +174,6 @@ function GeneralProgrammeDashboard() {
                 </Heading>
               </div>
 
-              {/* === SEARCH FILTERS === */}
               <div
                 style={{
                   display: "flex",
@@ -206,36 +185,22 @@ function GeneralProgrammeDashboard() {
                   borderRadius: "4px",
                 }}
               >
-                <DatePicker dateFormat="d/m/Y" datePickerType="single">
-                  <DatePickerInput
-                    id="start-date"
-                    placeholder="dd/mm/yyyy"
-                    labelText={intl.formatMessage({ id: "label.start.date" })}
-                    value={searchCriteria.startDate}
-                    onChange={(e) =>
-                      setSearchCriteria({
-                        ...searchCriteria,
-                        startDate: e.target.value,
-                      })
-                    }
-                  />
-                </DatePicker>
-
-                <DatePicker dateFormat="d/m/Y" datePickerType="single">
-                  <DatePickerInput
-                    id="end-date"
-                    placeholder="dd/mm/yyyy"
-                    labelText={intl.formatMessage({ id: "label.end.date" })}
-                    value={searchCriteria.endDate}
-                    onChange={(e) =>
-                      setSearchCriteria({
-                        ...searchCriteria,
-                        endDate: e.target.value,
-                      })
-                    }
-                  />
-                </DatePicker>
-
+                <CustomDatePicker
+                  id="start-date"
+                  value={searchCriteria.startDate}
+                  onChange={(date) =>
+                    setSearchCriteria({ ...searchCriteria, startDate: date })
+                  }
+                  labelText={intl.formatMessage({ id: "label.start.date" })}
+                />
+                <CustomDatePicker
+                  id="end-date"
+                  value={searchCriteria.endDate}
+                  onChange={(date) =>
+                    setSearchCriteria({ ...searchCriteria, endDate: date })
+                  }
+                  labelText={intl.formatMessage({ id: "label.end.date" })}
+                />
                 <Button
                   kind="primary"
                   renderIcon={Search}
@@ -251,7 +216,7 @@ function GeneralProgrammeDashboard() {
         {loading ? (
           <Loading />
         ) : (
-          <Grid fullWidth={true}>
+          <Grid fullWidth>
             <Column lg={16} md={8} sm={4}>
               <DataTable
                 rows={capturedDataRows}
@@ -264,9 +229,7 @@ function GeneralProgrammeDashboard() {
                       id: "program.captured.data.title",
                     })}
                     description={intl.formatMessage(
-                      {
-                        id: "program.captured.data.description",
-                      },
+                      { id: "program.captured.data.description" },
                       { programmeName: selectedProgramme.name },
                     )}
                   >
@@ -371,10 +334,11 @@ function GeneralProgrammeDashboard() {
       </div>
     );
   }
+
   return (
     <div className="adminPageContent">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
-      <Grid fullWidth={true}>
+      <Grid fullWidth>
         <Column lg={16} md={8} sm={4}>
           <Section>
             <Heading>
@@ -390,7 +354,7 @@ function GeneralProgrammeDashboard() {
       {loading ? (
         <Loading />
       ) : (
-        <Grid fullWidth={true}>
+        <Grid fullWidth>
           <Column lg={16} md={8} sm={4}>
             <DataTable
               rows={programmeRows}
