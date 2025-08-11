@@ -106,7 +106,7 @@ function Admin() {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(max-width: 1024px)");
+    const mediaQuery = window.matchMedia("(max-width: 1024px)"); //applicable for medium screen and below for only small screen set max-width: 768px
     const handleMediaQueryChange = () => setIsSmallScreen(mediaQuery.matches);
 
     handleMediaQueryChange();
