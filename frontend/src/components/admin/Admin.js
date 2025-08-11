@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect, useContext } from "react";
 import config from "../../config.json";
 import { FormattedMessage, useIntl, injectIntl } from "react-intl";
