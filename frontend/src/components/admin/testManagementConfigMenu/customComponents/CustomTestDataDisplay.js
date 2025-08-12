@@ -293,8 +293,8 @@ export const CustomTestDataDisplay = ({ testToDisplay }) => {
                           <TableCell>{limit.ageRange}</TableCell>
                           <TableCell>{limit.normalRange}</TableCell>
                           <TableCell>{limit.validRange}</TableCell>
-                          <TableCell>{limit.reportingRange}</TableCell>
                           <TableCell>{limit.criticalRange}</TableCell>
+                          <TableCell>{limit.reportingRange}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
