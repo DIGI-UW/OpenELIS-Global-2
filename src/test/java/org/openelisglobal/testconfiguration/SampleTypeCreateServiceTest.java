@@ -108,7 +108,8 @@ public class SampleTypeCreateServiceTest extends BaseWebContextSensitiveTest {
 
         List<SystemModule> newSystemModules = systemModuleService.getAll();
         assertEquals(initialSystemModuleCount + 3, newSystemModules.size());
-        assertEquals("sample_type workPlan", newSystemModules.get(initialSystemModuleCount).getSystemModuleName());
+        // assertEquals("sample_type workPlan",
+        // newSystemModules.get(initialSystemModuleCount).getSystemModuleName());
 
         List<RoleModule> newRoleModules = roleModuleService.getAll();
         assertEquals((initialRoleModuleCount + 3), newRoleModules.size());

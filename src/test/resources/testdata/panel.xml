@@ -10,6 +10,8 @@
 
 <dataset>
     <!-- Panel table -->
+    <localization id="1" description="Test Description 1"
+        english="TB" french="TB" />
     <panel id="1" name="Test Panel"
         description="This is a test panel." is_active="Y"
         name_localization_id="1" loinc="12345" />
