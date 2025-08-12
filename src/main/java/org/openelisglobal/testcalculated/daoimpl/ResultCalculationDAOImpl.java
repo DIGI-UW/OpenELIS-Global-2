@@ -47,7 +47,7 @@ public class ResultCalculationDAOImpl extends BaseDAOImpl<ResultCalculation, Int
         try {
 
             String sql = "from ResultCalculation r JOIN r.test t WHERE t.id = :testId";
-            Query query = (Query) entityManager.createQuery(sql);
+            Query query = entityManager.unwrap(Session.class).createQuery(sql);
             query.setParameter("testId", Integer.parseInt(test.getId()));
             List<Object[]> results = query.getResultList();
 
