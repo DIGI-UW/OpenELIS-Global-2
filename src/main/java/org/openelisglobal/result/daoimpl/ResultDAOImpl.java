@@ -348,11 +348,11 @@ public class ResultDAOImpl extends BaseDAOImpl<Result, String> implements Result
     @Override
     @Transactional(readOnly = true)
     public List<Result> getChildResults(String resultId) throws LIMSRuntimeException {
-        String sql = "From Result r where r.parentResult.id = :parentId";
+        String sql = "SELECT r FROM Result r WHERE r.parentResult.id = :resultId";
 
         try {
             Query<Result> query = entityManager.unwrap(Session.class).createQuery(sql, Result.class);
-            query.setParameter("parentId", Integer.parseInt(resultId));
+            query.setParameter("resultId", Integer.parseInt(resultId));
             List<Result> results = query.list();
             return results;
         } catch (HibernateException e) {

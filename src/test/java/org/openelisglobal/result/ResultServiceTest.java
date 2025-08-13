@@ -588,4 +588,41 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(updatedResult);
         assertEquals("95.0", updatedResult.getValue());
     }
+
+    @Test
+    public void getChildResults_shouldReturnChildResults() {
+        List<ResultSignature> signatures = resultSignatureService.getAll();
+        resultSignatureService.deleteAll(signatures);
+        List<Result> results = resultService.getAll();
+        resultService.deleteAll(results);
+        Result parentResult = new Result();
+        parentResult.setId("1");
+        parentResult.setValue("100.0");
+        parentResult.setAnalysis(analysisService.get("1"));
+        parentResult.setTestResult(testResultService.get("1"));
+        parentResult.setAnalyte(analyteService.get("3"));
+
+        Result childResult1 = new Result();
+        childResult1.setValue("58.0");
+        childResult1.setId("2");
+        childResult1.setAnalysis(analysisService.get("1"));
+        childResult1.setTestResult(testResultService.get("1"));
+        childResult1.setAnalyte(analyteService.get("3"));
+        childResult1.setParentResult(parentResult);
+
+        Result childResult2 = new Result();
+        childResult2.setId("3");
+        childResult2.setValue("45.0");
+        childResult1.setAnalysis(analysisService.get("1"));
+        childResult1.setTestResult(testResultService.get("1"));
+        childResult1.setAnalyte(analyteService.get("3"));
+        childResult2.setParentResult(parentResult);
+
+        List<Result> childResults = resultService.getChildResults(parentResult.getId());
+        childResults.forEach(result -> {
+            System.out.println(result.getId());
+        });
+
+    }
+
 }
