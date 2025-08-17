@@ -185,7 +185,6 @@
         fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
 
     <!-- analysis -->
-    <!-- analysis -->
     <analysis id="1" sampitem_id="1" test_sect_id="1" test_id="1"
         revision="1" status="1" started_date="2023-11-15 12:00:00"
         completed_date="2023-11-15 14:00:00"
@@ -238,6 +237,12 @@
         add_test_id="1" sibling_reflex="1001" scriptlet_id="2"
         non_dictionary_value="Trigger Value B" relation="EQUALS"
         internal_note="Reflex Internal B" external_note="Reflex External B" />
+
+    <test_reflex id="1003" tst_rslt_id="1" flags="R"
+        lastupdated="2025-08-06 10:00:00" test_analyte_id="1" test_id="1"
+        add_test_id="1" scriptlet_id="1"
+        non_dictionary_value="Trigger Value A" relation="EQUALS"
+        internal_note="Reflex Internal A" external_note="Reflex External A" />
 
     <reference_tables id="1" name="SampleReferenceTable"
         keep_history="Y" is_hl7_encoded="N" lastupdated="2024-02-22" />
