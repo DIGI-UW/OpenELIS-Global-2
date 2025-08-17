@@ -246,7 +246,7 @@ const TestCatalog = () => {
         field: intl.formatMessage({ id: "field.uom" }),
         value: item.uom,
       },
-      {
+      item.resultType == "N" && {
         id: `${item.id}-significantDigits`,
         field: intl.formatMessage({ id: "field.significantDigits" }),
         value: item.significantDigits,
@@ -342,7 +342,11 @@ const TestCatalog = () => {
             </h1>
           </Column>
           <Column lg={12} md={6} sm={3}>
-            <Toggle id="toggle" labelText="Show Guide" onClick={handleToggle} />
+            <Toggle
+              id="toggle"
+              labelText={<FormattedMessage id="test.show.guide" />}
+              onClick={handleToggle}
+            />
           </Column>
         </Grid>
         <hr />
@@ -386,8 +390,12 @@ const TestCatalog = () => {
             <StructuredListWrapper ariaLabel="Structured list">
               <StructuredListHead>
                 <StructuredListRow head>
-                  <StructuredListCell head>Field</StructuredListCell>
-                  <StructuredListCell head>Description</StructuredListCell>
+                  <StructuredListCell head>
+                    <FormattedMessage id="label.button.field" />
+                  </StructuredListCell>
+                  <StructuredListCell head>
+                    <FormattedMessage id="label.button.descritpion" />
+                  </StructuredListCell>
                 </StructuredListRow>
               </StructuredListHead>
               <StructuredListBody>

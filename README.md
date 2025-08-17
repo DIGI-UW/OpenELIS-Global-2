@@ -31,7 +31,7 @@ Download the OpenELIS Global Installer for each Release from the
 [Release Assets](https://github.com/DIGI-UW/OpenELIS-Global-2/releases)
 
 see full
-[installtion instructions](https://docs.openelis-global.org/en/latest/install/)
+[installation instructions](https://uwdigi.atlassian.net/wiki/x/EoBIDg#Downloaded-Installer-Offline-Setup)
 for Offline Installation
 
 ### For running OpenELIS Global2 in Docker with default Settings out of the Box
