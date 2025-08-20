@@ -21,6 +21,8 @@ import {
   SelectItem,
   Loading,
   Link,
+  Modal,
+  FileUploader,
 } from "@carbon/react";
 import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
@@ -783,6 +785,7 @@ export function SearchResults(props) {
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   const componentMounted = useRef(false);
 
@@ -1271,7 +1274,26 @@ export function SearchResults(props) {
             ))}
           </Select>
         </Column>
-        <Column lg={1}></Column>
+        <Column lg={2}>
+          <Button onClick={() => setIsOpen(true)} style={{ margin: "5px" }}>
+            Upload File
+          </Button>
+
+          <Modal
+            open={isOpen}
+            onRequestClose={() => setIsOpen(false)}
+            primaryButtonText="Upload"
+            secondaryButtonText="Cancel"
+          >
+            <FileUploader
+              id="upload-file"
+              labelText="File Upload"
+              accept={[".pdf"]}
+              buttonLabel="Add file"
+              filenameStatus="edit"
+            />
+          </Modal>
+        </Column>
         <Column lg={2}>
           <Checkbox
             labelText={intl.formatMessage({ id: "results.label.refer" })}

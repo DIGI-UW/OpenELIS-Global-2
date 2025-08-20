@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.testresult.valueholder;
 
+import java.util.List;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.common.valueholder.ValueHolder;
 import org.openelisglobal.common.valueholder.ValueHolderInterface;
@@ -38,6 +39,7 @@ public class TestResult extends BaseObject<String> {
     private Boolean isQuantifiable = false;
     private Boolean isNormal = false;
     private Boolean isActive = true;
+    private List<ResultFile> resultFiles;
 
     // transient
     private Boolean isDefault = false;
@@ -206,4 +208,13 @@ public class TestResult extends BaseObject<String> {
     public Boolean getDefault() {
         return isDefault;
     }
+
+    public List<ResultFile> getResultFiles() {
+        return resultFiles;
+    }
+
+    public void setResultFiles(List<ResultFile> resultFiles) {
+        this.resultFiles = resultFiles;
+    }
+
 }

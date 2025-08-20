@@ -21,6 +21,7 @@ import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
@@ -31,6 +32,7 @@ import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.result.action.util.ResultItem;
 import org.openelisglobal.result.form.LogbookResultsForm;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.testresult.valueholder.ResultFile;
 import org.openelisglobal.validation.annotations.SafeHtml;
 import org.openelisglobal.validation.annotations.ValidAccessionNumber;
 import org.openelisglobal.validation.annotations.ValidDate;
@@ -58,6 +60,7 @@ public class TestResultItem implements ResultItem, Serializable {
      */
     private boolean isGroupSeparator = false;
     private int sampleGroupingNumber = 1; // display only -- groups like samples together
+    private List<ResultFileForm> resultFile;
 
     /*
      * Used for inserting Patient Names/o into lists of TestResultItems
@@ -976,4 +979,78 @@ public class TestResultItem implements ResultItem, Serializable {
     public void setReferralItem(ReferralItem referralItem) {
         this.referralItem = referralItem;
     }
+
+    public List<ResultFileForm> getResultFile() {
+        return resultFile;
+    }
+
+    public void setResultFile(List<ResultFileForm> resultFile) {
+        this.resultFile = resultFile;
+    }
+
+    public static class ResultFileForm extends ResultFile {
+
+        private static final long serialVersionUID = 3142138533368581327L;
+
+        private String base64File;
+        private String fileName;
+
+        public String getBase64File() {
+            if (getContent() != null && getFileType() != null) {
+                return "data:" + getFileType() + ";base64," + Base64.getEncoder().encodeToString(getContent());
+            }
+            return null;
+        }
+
+        public void setBase64File(String base64File) {
+            this.base64File = base64File;
+            if (base64File != null && base64File.contains(";base64,")) {
+                String[] fileInfo = base64File.split(";base64,", 2);
+
+                // Example: "data:application/pdf;base64,..."
+                String mimeType = fileInfo[0].replaceFirst("^data:", "");
+                setFileType(mimeType);
+                setContent(Base64.getDecoder().decode(fileInfo[1]));
+
+                // If no fileName given, generate one based on mime type
+                if (this.fileName == null || this.fileName.isEmpty()) {
+                    this.fileName = generateFileName(mimeType);
+                }
+                setFileName(this.fileName);
+            }
+        }
+
+        public String getFileName() {
+            return fileName;
+        }
+
+        public void setFileName(String fileName) {
+            this.fileName = fileName;
+            super.setFileName(fileName);
+        }
+
+        private String generateFileName(String mimeType) {
+            String ext = "";
+            if (mimeType != null) {
+                switch (mimeType) {
+                case "image/png":
+                    ext = ".png";
+                    break;
+                case "image/jpeg":
+                    ext = ".jpg";
+                    break;
+                case "application/pdf":
+                    ext = ".pdf";
+                    break;
+                case "text/plain":
+                    ext = ".txt";
+                    break;
+                default:
+                    ext = "";
+                }
+            }
+            return ext;
+        }
+    }
+
 }
