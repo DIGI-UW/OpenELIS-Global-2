@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="20250823-06-create-result-file-table" author="elia">
+
+        <createSequence sequenceName="result_file_seq" startValue="1" incrementBy="1"/>
+
+        <!-- Create result_file table -->
+        <createTable tableName="result_file">
+            <column name="id" type="INTEGER" valueSequenceNext="result_file_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="file_name" type="varchar(255)" />
+            <column name="file_type" type="varchar(100)" />
+            <column name="file_content" type="bytea" />
+            <column name="test_result_id" type="numeric" />
+            <column name="uploaded_at" type="timestamp" />
+
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="result_file"
+                                 baseColumnNames="test_result_id"
+                                 referencedTableName="test_result"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_resultfile_testresult"
+                                 onDelete="CASCADE"/>
+    </changeSet>
+
+</databaseChangeLog>

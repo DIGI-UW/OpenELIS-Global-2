@@ -59,12 +59,11 @@
             column="is_active" />
         <property name="isNormal" type="java.lang.Boolean"
             column="is_normal" />
-        <set name="resultFiles" inverse="true" lazy="true" cascade="all">
+        <set name="resultFiles" inverse="false" lazy="true" cascade="all">
             <key column="test_result_id" />
             <one-to-many
                 class="org.openelisglobal.testresult.valueholder.ResultFile" />
         </set>
-
 
     </class>
 </hibernate-mapping>
