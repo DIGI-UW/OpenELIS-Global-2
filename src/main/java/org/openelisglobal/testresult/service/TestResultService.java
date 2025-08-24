@@ -4,6 +4,7 @@ import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testresult.valueholder.ResultFile;
 import org.openelisglobal.testresult.valueholder.TestResult;
 
 public interface TestResultService extends BaseObjectService<TestResult, String> {
@@ -24,4 +25,8 @@ public interface TestResultService extends BaseObjectService<TestResult, String>
     List<TestResult> getTestResultsByTestAndResultGroup(TestAnalyte testAnalyte);
 
     List<TestResult> getAllSortedTestResults();
+
+    List<ResultFile> getResultFilesByTest(Test test);
+
+    TestResult getTestResultByTest(Test test);
 }

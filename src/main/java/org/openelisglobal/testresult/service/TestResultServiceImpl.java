@@ -10,6 +10,7 @@ import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testresult.dao.TestResultDAO;
+import org.openelisglobal.testresult.valueholder.ResultFile;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -115,5 +116,15 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
             }
         });
         return testResults;
+    }
+
+    @Override
+    public List<ResultFile> getResultFilesByTest(Test test) {
+        return getBaseObjectDAO().getResultFilesByTest(test);
+    }
+
+    @Override
+    public TestResult getTestResultByTest(Test test) {
+        return getBaseObjectDAO().getTestResultByTest(test);
     }
 }

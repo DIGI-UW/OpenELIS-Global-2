@@ -116,4 +116,14 @@
         lastupdated="2025-04-01 12:30:00" scriptlet_id="2" sort_order="2"
         is_quantifiable="true" is_active="true" is_normal="false" />
 
+    <result_file id="1001" test_result_id="1"
+        file_name="venom.txt" file_type="text/plain"
+        file_content="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/wcAAgMBAQEBBQAAAA=="
+        uploaded_at="2025-08-23 12:00:00" last_updated="2025-08-23 12:00:00" />
+
+    <result_file id="1002" test_result_id="1"
+        file_name="report.pdf" file_type="application/pdf"
+        file_content="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/wcAAgMBAQEBBQAAAA=="
+        uploaded_at="2025-08-23 12:00:00" last_updated="2025-08-23 12:00:00" />
+
 </dataset>

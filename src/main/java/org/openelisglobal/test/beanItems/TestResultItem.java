@@ -993,64 +993,33 @@ public class TestResultItem implements ResultItem, Serializable {
         private static final long serialVersionUID = 3142138533368581327L;
 
         private String base64File;
-        private String fileName;
 
         public String getBase64File() {
-            if (getContent() != null && getFileType() != null) {
-                return "data:" + getFileType() + ";base64," + Base64.getEncoder().encodeToString(getContent());
-            }
-            return null;
+            return base64File;
         }
 
         public void setBase64File(String base64File) {
-            this.base64File = base64File;
-            if (base64File != null && base64File.contains(";base64,")) {
-                String[] fileInfo = base64File.split(";base64,", 2);
+            String[] parts = base64File.split(";base64,", 2);
 
-                // Example: "data:application/pdf;base64,..."
-                String mimeType = fileInfo[0].replaceFirst("^data:", "");
-                setFileType(mimeType);
-                setContent(Base64.getDecoder().decode(fileInfo[1]));
-
-                // If no fileName given, generate one based on mime type
-                if (this.fileName == null || this.fileName.isEmpty()) {
-                    this.fileName = generateFileName(mimeType);
-                }
-                setFileName(this.fileName);
+            if (parts.length != 2) {
+                throw new IllegalArgumentException("Invalid Base64 file format");
             }
-        }
 
-        public String getFileName() {
-            return fileName;
-        }
+            String meta = parts[0].replaceFirst("data:", "");
+            String[] metaParts = meta.split(";");
 
-        public void setFileName(String fileName) {
-            this.fileName = fileName;
-            super.setFileName(fileName);
-        }
+            setFileType(metaParts[0]);
 
-        private String generateFileName(String mimeType) {
-            String ext = "";
-            if (mimeType != null) {
-                switch (mimeType) {
-                case "image/png":
-                    ext = ".png";
+            for (String part : metaParts) {
+                if (part.startsWith("name=")) {
+                    setFileName(part.substring(5));
                     break;
-                case "image/jpeg":
-                    ext = ".jpg";
-                    break;
-                case "application/pdf":
-                    ext = ".pdf";
-                    break;
-                case "text/plain":
-                    ext = ".txt";
-                    break;
-                default:
-                    ext = "";
                 }
             }
-            return ext;
+
+            setContent(Base64.getDecoder().decode(parts[1]));
         }
+
     }
 
 }

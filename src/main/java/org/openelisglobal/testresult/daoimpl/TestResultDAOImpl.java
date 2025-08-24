@@ -29,6 +29,7 @@ import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testresult.dao.TestResultDAO;
+import org.openelisglobal.testresult.valueholder.ResultFile;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -226,4 +227,35 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
 
         return null;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ResultFile> getResultFilesByTest(Test test) throws LIMSRuntimeException {
+        try {
+            String hql = "select rf from ResultFile rf " + "join rf.testResult tr " + "where tr.test = :test";
+
+            Query<ResultFile> query = entityManager.unwrap(Session.class).createQuery(hql, ResultFile.class);
+            query.setParameter("test", test);
+
+            return query.list();
+
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error fetching ResultFiles by test: " + test, e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TestResult getTestResultByTest(Test test) throws LIMSRuntimeException {
+        try {
+            String hql = "FROM TestResult tr WHERE tr.test = :test";
+            Query<TestResult> query = entityManager.unwrap(Session.class).createQuery(hql, TestResult.class);
+            query.setParameter("test", test);
+            return query.uniqueResult();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error fetching TestResult for test: " + test.getId(), e);
+        }
+    }
+
 }

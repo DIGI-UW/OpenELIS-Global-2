@@ -18,6 +18,7 @@ import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testresult.valueholder.ResultFile;
 import org.openelisglobal.testresult.valueholder.TestResult;
 
 /**
@@ -54,4 +55,8 @@ public interface TestResultDAO extends BaseDAO<TestResult, String> {
     TestResult getTestResultsByTestAndDictonaryResult(String testId, String result) throws LIMSRuntimeException;
 
     List<TestResult> getActiveTestResultsByTest(String testId) throws LIMSRuntimeException;
+
+    List<ResultFile> getResultFilesByTest(Test test) throws LIMSRuntimeException;
+
+    TestResult getTestResultByTest(Test test) throws LIMSRuntimeException;
 }

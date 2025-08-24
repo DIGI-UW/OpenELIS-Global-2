@@ -11,6 +11,7 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresult.valueholder.ResultFile;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -246,6 +247,26 @@ public class TestResultServiceTest extends BaseWebContextSensitiveTest {
         List<TestResult> testResults = testResultService.getAll();
         assertEquals(1, testResults.size());
         assertEquals("2", testResults.get(0).getId());
+    }
+
+    @Test
+    public void getResultFilesByTest_shouldReturnResultFiles() {
+        // Given: an existing test with ID "1"
+        org.openelisglobal.test.valueholder.Test test = testService.get("1");
+
+        // When: fetching ResultFiles
+        List<ResultFile> resultFiles = testResultService.getResultFilesByTest(test);
+
+        System.out.println("Files for test ID=" + test.getId() + ":");
+        resultFiles.forEach(file -> System.out.println(" - " + file.getFileName() + " (" + file.getFileType() + ")"));
+
+    }
+
+    @Test
+    public void getTestResultByTest_shouldReturnTestResult() {
+        org.openelisglobal.test.valueholder.Test test = testService.get("1");
+        TestResult testResult = testResultService.getTestResultByTest(test);
+        assertEquals(test.getId(), testResult.getTest().getId());
     }
 
 }
