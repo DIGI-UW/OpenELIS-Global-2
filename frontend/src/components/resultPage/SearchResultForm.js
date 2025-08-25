@@ -785,7 +785,6 @@ export function SearchResults(props) {
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState({});
 
   const componentMounted = useRef(false);
 
@@ -895,46 +894,6 @@ export function SearchResults(props) {
         columns = updatedList;
       }
     }
-  };
-  const toBase64 = (file) =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-    });
-
-  const handleFileUpload = async (e, rowId) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const base64File = await toBase64(file);
-    setUploadedFiles(newFiles);
-
-    const form = { ...props.results };
-    const jp = require("jsonpath");
-    jp.value(form, `testResult[${rowId}].uploadedFile`, newFiles[rowId]);
-    jp.value(form, `testResult[${rowId}].isModified`, "true");
-    props.setResultForm(form);
-
-    addNotification({
-      title: intl.formatMessage({ id: "notification.title" }),
-      message: intl.formatMessage({ id: "file.upload.success" }),
-      kind: NotificationKinds.success,
-    });
-    setNotificationVisible(true);
-  };
-
-  const handleFileDelete = (rowId) => {
-    const newFiles = { ...uploadedFiles };
-    delete newFiles[rowId];
-    setUploadedFiles(newFiles);
-
-    const form = { ...props.results };
-    const jp = require("jsonpath");
-    jp.value(form, `testResult[${rowId}].uploadedFile`, null);
-    jp.value(form, `testResult[${rowId}].isModified`, "true");
-    props.setResultForm(form);
   };
 
   var columns = [
@@ -1314,16 +1273,101 @@ export function SearchResults(props) {
             ))}
           </Select>
         </Column>
-        <Column lg={16} md={8} sm={4}>
+        <Column lg={1}></Column>
+
+        <Column lg={2}>
           <FileUploader
-            buttonLabel={<FormattedMessage id="label.button.uploadfile" />}
-            filenameStatus="edit"
+            buttonLabel={intl.formatMessage({ id: "label.button.uploadfile" })}
+            iconDescription="file upload"
+            multiple={false}
             accept={["image/jpeg", "image/png", "application/pdf"]}
+            disabled={data.referredOut}
             name=""
-            onChange={(e) => handleFileUpload(e, data.id)}
-            onDelete={() => handleFileDelete(data.id)}
+            buttonKind="primary"
+            size="lg"
+            filenameStatus="edit"
+            onChange={async (e) => {
+              const file = e.target.files[0];
+              if (file) {
+                try {
+                  const formData = new FormData();
+                  formData.append("file", file);
+                  formData.append("accessionNumber", data.accessionNumber);
+                  const response = await fetch(
+                    `${config.serverBaseUrl}/rest/results/uploadFile`,
+                    {
+                      method: "POST",
+                      body: formData,
+                    },
+                  );
+
+                  if (!response.ok) {
+                    throw new Error("Upload failed");
+                  }
+
+                  addNotification({
+                    title: intl.formatMessage({ id: "notification.title" }),
+                    message: intl.formatMessage({ id: "success.file.upload" }),
+                    kind: NotificationKinds.success,
+                  });
+                  setNotificationVisible(true);
+
+                  const form = { ...props.results };
+                  form.testResult[data.id].attachment = {
+                    fileName: file.name,
+                    fileType: file.type,
+                  };
+                  form.testResult[data.id].isModified = true;
+                  props.setResultForm(form);
+                } catch (error) {
+                  console.error("Error uploading file:", error);
+                  addNotification({
+                    title: intl.formatMessage({ id: "notification.title" }),
+                    message: intl.formatMessage({ id: "error.file.upload" }),
+                    kind: NotificationKinds.error,
+                  });
+                  setNotificationVisible(true);
+                }
+              }
+            }}
+            onClick={function noRefCheck() {}}
+            onDelete={async (e) => {
+              e.preventDefault();
+              try {
+                const response = await fetch(
+                  `${config.serverBaseUrl}/rest/results/deleteFile/${data.analysisId}`,
+                  {
+                    method: "DELETE",
+                    credentials: "include",
+                  },
+                );
+
+                if (!response.ok) {
+                  throw new Error("Delete failed");
+                }
+
+                addNotification({
+                  title: intl.formatMessage({ id: "notification.title" }),
+                  message: intl.formatMessage({ id: "success.file.delete" }),
+                  kind: NotificationKinds.success,
+                });
+                setNotificationVisible(true);
+
+                const form = { ...props.results };
+                form.testResult[data.id].attachment = null;
+                form.testResult[data.id].isModified = true;
+                props.setResultForm(form);
+              } catch (error) {
+                console.error("Error deleting file:", error);
+                addNotification({
+                  title: intl.formatMessage({ id: "notification.title" }),
+                  message: intl.formatMessage({ id: "error.file.delete" }),
+                  kind: NotificationKinds.error,
+                });
+                setNotificationVisible(true);
+              }
+            }}
           />
-          {uploadedFiles[data.id] && <Tag>{uploadedFiles[data.id].name}</Tag>}
         </Column>
         <Column lg={1}></Column>
         <Column lg={2}>

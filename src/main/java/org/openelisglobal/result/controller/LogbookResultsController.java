@@ -5,6 +5,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.sql.Timestamp;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -71,9 +73,11 @@ import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
 import org.openelisglobal.result.form.LogbookResultsForm;
 import org.openelisglobal.result.form.LogbookResultsForm.LogbookResults;
 import org.openelisglobal.result.service.LogbookResultsPersistService;
+import org.openelisglobal.result.service.ResultFileService;
 import org.openelisglobal.result.service.ResultInventoryService;
 import org.openelisglobal.result.service.ResultSignatureService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.result.valueholder.ResultFile;
 import org.openelisglobal.result.valueholder.ResultInventory;
 import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
@@ -92,15 +96,25 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -158,6 +172,8 @@ public class LogbookResultsController extends LogbookResultsBaseController {
     private SystemUserService systemUserService;
     @Autowired
     private UserRoleService userRoleService;
+    @Autowired
+    private ResultFileService resultFileService;
 
     private final String RESULT_SUBJECT = "Result Note";
     private final String REFERRAL_CONFORMATION_ID;
@@ -175,6 +191,70 @@ public class LogbookResultsController extends LogbookResultsBaseController {
     @InitBinder
     public void initBinder(WebDataBinder binder) {
         binder.setAllowedFields(ALLOWED_FIELDS);
+    }
+
+    @PostMapping(value = "/rest/results/uploadFile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseBody
+    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file,
+            @RequestParam("accessionNumber") String accessionNumber, @RequestParam("analysisId") String analysisId,
+            HttpServletRequest request) {
+
+        try {
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body("File is empty");
+            }
+
+            String contentType = file.getContentType();
+            if (!Arrays.asList("image/jpeg", "image/png", "application/pdf").contains(contentType)) {
+                return ResponseEntity.badRequest().body("Invalid file type");
+            }
+
+            String base64File = Base64.getEncoder().encodeToString(file.getBytes());
+
+            String currentUserId = getSysUserId(request);
+
+            resultFileService.saveFile(accessionNumber, analysisId, base64File, file.getOriginalFilename(), contentType,
+                    currentUserId);
+
+            return ResponseEntity.ok("File uploaded successfully");
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to upload file: " + e.getMessage());
+        }
+    }
+
+    @GetMapping(value = "/rest/results/getFile/{analysisId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> getFile(@PathVariable("analysisId") String analysisId) {
+        ResultFile file = resultFileService.getFileByAnalysisId(analysisId);
+
+        if (file == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Map<String, String> response = new HashMap<>();
+        response.put("fileContent", file.getFileContent());
+        response.put("fileName", file.getFileName());
+        response.put("contentType", file.getContentType());
+
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping(value = "/rest/results/deleteFile/{analysisId}")
+    @ResponseBody
+    public ResponseEntity<String> deleteFile(@PathVariable("analysisId") String analysisId,
+            HttpServletRequest request) {
+
+        try {
+            String currentUserId = getSysUserId(request);
+            resultFileService.deleteFile(analysisId, currentUserId);
+            return ResponseEntity.ok("File deleted successfully");
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to delete file: " + e.getMessage());
+        }
     }
 
     @RequestMapping(value = "/LogbookResults", method = RequestMethod.GET)
