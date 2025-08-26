@@ -21,6 +21,7 @@ import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
@@ -31,6 +32,7 @@ import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.result.action.util.ResultItem;
 import org.openelisglobal.result.form.LogbookResultsForm;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.testresult.valueholder.ResultFile;
 import org.openelisglobal.validation.annotations.SafeHtml;
 import org.openelisglobal.validation.annotations.ValidAccessionNumber;
 import org.openelisglobal.validation.annotations.ValidDate;
@@ -232,6 +234,8 @@ public class TestResultItem implements ResultItem, Serializable {
     private String defaultResultValue;
 
     private ReferralItem referralItem;
+
+    private List<ResultFileForm> resultFiles;
 
     public String getConsiderRejectReason() {
         return considerRejectReason;
@@ -976,4 +980,35 @@ public class TestResultItem implements ResultItem, Serializable {
     public void setReferralItem(ReferralItem referralItem) {
         this.referralItem = referralItem;
     }
+
+    public List<ResultFileForm> getResultFiles() {
+        return resultFiles;
+    }
+
+    public void setResultFiles(List<ResultFileForm> resultFiles) {
+        this.resultFiles = resultFiles;
+    }
+
+    public static class ResultFileForm extends ResultFile {
+        private static final long serialVersionUID = 3142138533368581327L;
+
+        private String base64Content;
+
+        public String getBase64Content() {
+            return base64Content;
+        }
+
+        public void setBase64Content(String base64Content) {
+            this.base64Content = base64Content;
+            if (base64Content != null && base64Content.contains(";base64,")) {
+                String[] contentInfo = base64Content.split(";base64,", 2);
+
+                // Example: data:application/pdf;base64,...
+                String mimePart = contentInfo[0];
+                setFileType(mimePart.replace("data:", ""));
+                setContent(Base64.getDecoder().decode(contentInfo[1]));
+            }
+        }
+    }
+
 }

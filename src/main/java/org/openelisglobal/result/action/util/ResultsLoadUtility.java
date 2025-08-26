@@ -17,6 +17,7 @@ package org.openelisglobal.result.action.util;
 
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -25,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -90,6 +92,7 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
 import org.openelisglobal.testreflex.valueholder.TestReflex;
+import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
@@ -150,6 +153,8 @@ public class ResultsLoadUtility {
     private SampleItemService sampleItemService;
     @Autowired
     private SampleQaEventService sampleQaEventService;
+    @Autowired
+    private TestResultService testResultService;
 
     private final StatusRules statusRules = new StatusRules();
 
@@ -688,6 +693,18 @@ public class ResultsLoadUtility {
         if (resultDisplayType != ResultDisplayType.TEXT) {
             inventoryNeeded = true;
         }
+
+        TestResult testResult = testResultService.getTestResultByTest(test);
+        List<TestResultItem.ResultFileForm> files = testResult.getResultFiles().stream().map(file -> {
+            TestResultItem.ResultFileForm form = new TestResultItem.ResultFileForm();
+            form.setFileName(file.getFileName());
+            form.setFileType(file.getFileType());
+            form.setBase64Content(Base64.getEncoder().encodeToString(file.getContent()));
+            form.setUploadedAt(file.getUploadedAt());
+            form.setLastupdated(file.getLastupdated());
+            return form;
+        }).collect(Collectors.toList());
+
         TestResultItem testItem = new TestResultItem();
 
         testItem.setAccessionNumber(accessionNumber);
@@ -736,6 +753,7 @@ public class ResultsLoadUtility {
                 analysisService.getTriggeredReflex(analysis) && analysisService.resultIsConclusion(result, analysis));
         testItem.setPastNotes(notes);
         testItem.setDisplayResultAsLog(hasLogValue(test));
+        testItem.setResultFiles(files);
         testItem.setNonconforming(
                 analysisService.isParentNonConforming(analysis) || SpringContext.getBean(IStatusService.class)
                         .matches(analysisService.getStatusId(analysis), AnalysisStatus.TechnicalRejected));

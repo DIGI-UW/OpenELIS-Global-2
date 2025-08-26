@@ -226,4 +226,18 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
 
         return null;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TestResult getTestResultByTest(Test test) throws LIMSRuntimeException {
+        try {
+            String hql = "FROM TestResult tr WHERE tr.test = :test";
+            Query<TestResult> query = entityManager.unwrap(Session.class).createQuery(hql, TestResult.class);
+            query.setParameter("test", test);
+            return query.uniqueResult();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error fetching TestResult for test: " + test.getId(), e);
+        }
+    }
+
 }

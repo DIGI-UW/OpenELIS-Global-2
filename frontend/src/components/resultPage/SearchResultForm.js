@@ -21,6 +21,7 @@ import {
   SelectItem,
   Loading,
   Link,
+  FileUploader,
 } from "@carbon/react";
 import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
@@ -783,6 +784,7 @@ export function SearchResults(props) {
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState({});
 
   const componentMounted = useRef(false);
 
@@ -1271,7 +1273,70 @@ export function SearchResults(props) {
             ))}
           </Select>
         </Column>
-        <Column lg={1}></Column>
+        <Column lg={2}>
+          <FileUploader
+            style={{ marginTop: "-10px" }}
+            buttonLabel="Upload File"
+            iconDescription="file upload"
+            multiple={false}
+            accept={["image/jpeg", "image/png", "application/pdf"]}
+            disabled={false}
+            name=""
+            buttonKind="primary"
+            size="lg"
+            filenameStatus="edit"
+            onChange={async (e) => {
+              e.preventDefault();
+              const file = e.target.files[0];
+              if (!file) return;
+              const base64Content = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = (err) => reject(err);
+              });
+              const updatedResults = { ...props.results };
+              if (!updatedResults.testResult[data.id].resultFiles) {
+                updatedResults.testResult[data.id].resultFiles = [];
+              }
+              updatedResults.testResult[data.id].resultFiles.push({
+                fileName: file.name,
+                fileType: file.type,
+                base64Content: base64Content,
+              });
+              props.setResultForm(updatedResults);
+              setUploadedFiles((prev) => ({
+                ...prev,
+                [data.id]: updatedResults.testResult[data.id].resultFiles,
+              }));
+            }}
+          />
+
+          {uploadedFiles[data.id]?.map((file, index) => (
+            <div key={index} style={{ marginTop: "8px" }}>
+              <b>{file.fileName}</b>
+              {file.fileType.startsWith("image/") ? (
+                <img
+                  src={filease64Content}
+                  alt={file.fileName}
+                  style={{
+                    maxWidth: "100px",
+                    maxHeight: "100px",
+                    display: "block",
+                  }}
+                />
+              ) : (
+                <a
+                  href={file.base64Content}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View File
+                </a>
+              )}
+            </div>
+          ))}
+        </Column>
         <Column lg={2}>
           <Checkbox
             labelText={intl.formatMessage({ id: "results.label.refer" })}

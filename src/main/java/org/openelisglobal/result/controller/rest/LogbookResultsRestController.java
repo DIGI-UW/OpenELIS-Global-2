@@ -95,7 +95,12 @@ import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresult.valueholder.ResultFile;
+import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -181,6 +186,10 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
     private NotificationDAO notificationDAO;
     @Autowired
     private SystemUserService systemUserService;
+    @Autowired
+    private TestResultService testResultService;
+    @Autowired
+    private TestService testService;
 
     private final String RESULT_SUBJECT = "Result Note";
     private final String REFERRAL_CONFORMATION_ID;
@@ -590,6 +599,15 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                     }
                 }
             }
+            Test test = analysisService.getTest(analysis);
+            TestResult testResult = testResultService.getTestResultByTest(test);
+
+            if (testResultItem.getResultFiles() != null && !testResultItem.getResultFiles().isEmpty()) {
+                testResultItem.getResultFiles().stream().map(this::createResultFile)
+                        .forEach(testResult.getResultFiles()::add);
+            }
+
+            testResultService.save(testResult);
 
             ResultSaveBean bean = ResultSaveBeanAdapter.fromTestResultItem(testResultItem);
             ResultSaveService resultSaveService = new ResultSaveService(analysis, getSysUserId(request));
@@ -871,6 +889,19 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
     private Patient getPatient(Sample sample) {
         return sampleHumanService.getPatientForSample(sample);
+    }
+
+    private ResultFile createResultFile(TestResultItem.ResultFileForm fileForm) {
+        ResultFile file = new ResultFile();
+        file.setFileName(fileForm.getFileName());
+        file.setFileType(fileForm.getFileType());
+        file.setContent(fileForm.getContent());
+
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        file.setUploadedAt(now);
+        file.setLastupdated(now);
+
+        return file;
     }
 
     private String findLogBookForward(String forward) {
