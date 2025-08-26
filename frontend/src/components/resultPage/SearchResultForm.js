@@ -1315,25 +1315,6 @@ export function SearchResults(props) {
           {uploadedFiles[data.id]?.map((file, index) => (
             <div key={index} style={{ marginTop: "8px" }}>
               <b>{file.fileName}</b>
-              {file.fileType.startsWith("image/") ? (
-                <img
-                  src={filease64Content}
-                  alt={file.fileName}
-                  style={{
-                    maxWidth: "100px",
-                    maxHeight: "100px",
-                    display: "block",
-                  }}
-                />
-              ) : (
-                <a
-                  href={file.base64Content}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  View File
-                </a>
-              )}
             </div>
           ))}
         </Column>
