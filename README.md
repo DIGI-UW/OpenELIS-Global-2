@@ -30,7 +30,7 @@ You can find more information on how to set up OpenELIS at our
 Download the OpenELIS Global Installer for each Release from the
 [Release Assets](https://github.com/DIGI-UW/OpenELIS-Global-2/releases)
 
-see full
+see full installation instructions
 [installation instructions](https://uwdigi.atlassian.net/wiki/x/EoBIDg#Downloaded-Installer-Offline-Setup)
 for Offline Installation
 
