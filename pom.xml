@@ -107,6 +107,11 @@
             <artifactId>jackson-datatype-jsr310</artifactId>
             <version>2.18.2</version>
         </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-csv</artifactId>
+            <version>2.18.2</version>
+        </dependency>
         <!-- APACHE ASSORTED DEPENDENCIES -->
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>

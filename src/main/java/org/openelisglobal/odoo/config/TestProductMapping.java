@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class TestProductMapping {
 
-    private static final String FIXED_CSV_PATH = "/var/lib/openelis-global/properties/odoo-test-product-mapping.csv";
+    private static final String FIXED_CSV_PATH = "/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv";
     private final Map<String, TestProductInfo> testToProductInfo = new HashMap<>();
 
     @Getter
