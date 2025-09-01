@@ -1,5 +1,7 @@
 # Odoo-OpenELIS Integration Documentation
 
+![OpenELIS + Odoo Integration](img/odooopenelis.png)
+
 ## Overview
 
 The Odoo-OpenELIS integration automates billing workflows by seamlessly
@@ -60,13 +62,15 @@ org.openelisglobal.odoo.password=your_odoo_password
 
 ### Step 2: Create Test-Product Mapping
 
-Create file: `/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv`
+Create file: `/var/lib/openelis-global/properties/odoo-test-product-mapping.csv`
 
 ```csv
 loinc_code,product_name,quantity,price_unit
-58410-2,CBC Test,1,25.00
-24323-8,Basic Metabolic Panel,1,35.00
-24331-1,Lipid Panel,1,30.00
+333-333,Albumine recherche miction,8,76
+718-7,Hémoglobine,8,73
+787-2,Volume Globulaire Moyen,8,69
+777-3,Plaquette,1,32
+736-9,Lymphocytes (%),3,15
 ```
 
 ### Step 3: Restart OpenELIS
@@ -98,9 +102,34 @@ Expected response:
 
 ### Step 5: Test the Integration
 
-1. Create a new sample in OpenELIS with tests that have LOINC codes
-2. Check Odoo for the automatically created invoice
-3. Verify patient creation in Odoo
+1. **Access OpenELIS**: Navigate to https://localhost:8443
+2. **Create a new sample** with tests that have LOINC codes
+3. **Check Odoo**: Navigate to http://localhost:8069 and verify:
+   - Patient creation in Partners
+   - Invoice creation in Accounting
+   - Product mapping from CSV configuration
+
+### Step 6: Verify Odoo Initialization
+
+Check that the Odoo initializer has run successfully:
+
+```bash
+# Check initialization logs
+docker-compose logs odoo.initializer.openelis.org
+
+# Expected output:
+# Waiting for Odoo to be ready...
+# Running initializer...
+# Initialization completed!
+```
+
+### Step 7: Access Services
+
+Once deployed, the services will be available at:
+
+- **OpenELIS**: https://localhost:8443 (admin/adminADMIN!)
+- **Odoo**: http://localhost:8069 (admin/admin)
+- **FHIR API**: http://localhost:8081
 
 ---
 
@@ -109,19 +138,20 @@ Expected response:
 ### Prerequisites
 
 - OpenELIS Global 2.0 or later
-- Odoo 16.0 or later
+- Odoo 17.0 or later
 - Network connectivity between OpenELIS and Odoo servers
+- Docker and Docker Compose (for containerized deployment)
 
 ### Environment Variables
 
 #### Required Configuration
 
-| Variable                           | Description        | Example                        | Default |
-| ---------------------------------- | ------------------ | ------------------------------ | ------- |
-| `org.openelisglobal.odoo.baseUrl`  | Odoo server URL    | `http://odoo.example.com:8069` | -       |
-| `org.openelisglobal.odoo.database` | Odoo database name | `openelis_production`          | -       |
-| `org.openelisglobal.odoo.username` | Odoo username      | `openelis_user`                | -       |
-| `org.openelisglobal.odoo.password` | Odoo password      | `secure_password`              | -       |
+| Variable                           | Description        | Example                         | Default |
+| ---------------------------------- | ------------------ | ------------------------------- | ------- |
+| `org.openelisglobal.odoo.baseUrl`  | Odoo server URL    | `http://odoo.openelis.org:8069` | -       |
+| `org.openelisglobal.odoo.database` | Odoo database name | `postgres`                      | -       |
+| `org.openelisglobal.odoo.username` | Odoo username      | `admin`                         | -       |
+| `org.openelisglobal.odoo.password` | Odoo password      | `admin`                         | -       |
 
 #### Optional Configuration
 
@@ -136,7 +166,7 @@ Expected response:
 The test-to-product mapping file must be located at:
 
 ```
-/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
+/var/lib/openelis-global/properties/odoo-test-product-mapping.csv
 ```
 
 #### CSV Format
@@ -145,9 +175,11 @@ The CSV file must have the following structure:
 
 ```csv
 loinc_code,product_name,quantity,price_unit
-58410-2,Complete Blood Count,1,25.00
-24323-8,Basic Metabolic Panel,1,35.00
-24331-1,Lipid Panel,1,30.00
+333-333,Albumine recherche miction,8,76
+718-7,Hémoglobine,8,73
+787-2,Volume Globulaire Moyen,8,69
+777-3,Plaquette,1,32
+736-9,Lymphocytes (%),3,15
 ```
 
 #### Field Descriptions
@@ -169,65 +201,245 @@ loinc_code,product_name,quantity,price_unit
 
 ### Docker Configuration
 
-#### Docker Compose Example
+#### Complete Docker Compose Example
 
 ```yaml
-version: "3.3"
 services:
-  openelis:
-    image: openelis-global:latest
+  certs:
+    container_name: oe-certs
+    image: itechuw/certgen:main
+    restart: always
     environment:
-      - org.openelisglobal.odoo.baseUrl=http://odoo:8069
-      - org.openelisglobal.odoo.database=openelis_db
-      - org.openelisglobal.odoo.username=openelis_user
-      - org.openelisglobal.odoo.password=secure_password
-      - logging.level.org.openelisglobal.odoo=INFO
+      - KEYSTORE_PW="kspass"
+      - TRUSTSTORE_PW="tspass"
+    networks:
+      - hie
     volumes:
-      - ./config/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv:ro
-    depends_on:
-      - odoo
+      - key_trust-store-volume:/etc/openelis-global
+      - keys-vol:/etc/ssl/private/
+      - certs-vol:/etc/ssl/certs/
 
-  odoo:
-    image: odoo:16.0
+  database:
+    container_name: openelisglobal-database
+    image: postgres:14.4
+    ports:
+      - "15432:5432"
+    restart: always
+    env_file:
+      - ./configs/openelis/database/database.env
+    volumes:
+      - db-data2:/var/lib/postgresql/data
+      - ./configs/openelis/database/dbInit:/docker-entrypoint-initdb.d
+    networks:
+      - hie
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-d", "clinlims", "-U", "clinlims"]
+      timeout: 45s
+      interval: 10s
+      retries: 10
+
+  oe.openelis.org:
+    container_name: openelisglobal-webapp
+    image: itechuw/openelis-global-2-dev:develop
+    depends_on:
+      odoo.openelis.org:
+        condition: service_started
+      database:
+        condition: service_healthy
+      certs:
+        condition: service_started
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    restart: always
+    networks:
+      hie:
+        ipv4_address: 172.20.1.121
     environment:
-      - HOST=odoo
-      - USER=openelis_user
-      - PASSWORD=secure_password
-    depends_on:
-      - postgres
+      - DEFAULT_PW=adminADMIN!
+      - TZ=Africa/Nairobi
+      - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://database:5432/clinlims
+        -Ddatasource.username=clinlims -Ddatasource.password=clinlims
+      - ODOO_MAPPING_FILE=/var/lib/openelis-global/properties/odoo-test-product-mapping.csv
+    volumes:
+      - key_trust-store-volume:/etc/openelis-global
+      - lucene_index-vol:/var/lib/lucene_index
+      - ./tools/dockerize:/dockerize:ro
+      - ./configs/openelis/plugins/:/var/lib/openelis-global/plugins
+      - ./configs/openelis/logs/oeLogs:/var/lib/openelis-global/logs
+      - ./configs/openelis/logs/tomcatLogs/:/usr/local/tomcat/logs
+      - ./configs/openelis/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
+      - ./configs/openelis/war/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war
+      - ./configs/openelis/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
+      - ./configs/openelis/test-map/test-loinc-map.csv:/var/lib/openelis-global/plugin-test-mappings/test-loinc-map.csv
+      - ./configs/openelis/properties/odoo-test-product-mapping.csv:/var/lib/openelis-global/properties/odoo-test-product-mapping.csv
+    secrets:
+      - source: datasource.password
+      - source: common.properties
+      - source: odoo-test-product-mapping.csv
 
-  postgres:
+  odoo.openelis.org:
+    container_name: odoo.openelis.org
+    image: odoo:17
+    depends_on:
+      - db
+    ports:
+      - "8069:8069"
+      - "8072:8072"
+    environment:
+      - INITIALIZER_DATA_FILES_PATH=/mnt/odoo_config
+      - INITIALIZER_CONFIG_FILE_PATH=/mnt/odoo_config/initializer_config.json
+      - INITIALIZER_CHECKSUMS_PATH=/var/lib/odoo/checksums
+    volumes:
+      - ./configs/odoo/addons:/mnt/extra-addons
+      - ./configs/odoo/initializer_config:/mnt/odoo_config
+      - odoo-openelis-data:/var/lib/odoo
+      - ./configs/odoo/config:/etc/odoo
+    command: >
+      odoo -d postgres -i
+      base,base_import,sale_management,stock,account_account,purchase,mrp,odoo_initializer,mrp_product_expiry,product_expiry,l10n_generic_coa
+      --db_user=odoo --db_password=odoo --db_host=db
+    networks:
+      - hie
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8069 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+    restart: unless-stopped
+
+  db:
+    container_name: odoo.db.openelis.org
     image: postgres:13
     environment:
-      - POSTGRES_DB=openelis_db
       - POSTGRES_USER=odoo
-      - POSTGRES_PASSWORD=odoo_password
+      - POSTGRES_PASSWORD=odoo
+      - POSTGRES_DB=postgres
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - odoo-openelis-db-data:/var/lib/postgresql/data
+    networks:
+      - hie
+    restart: unless-stopped
+
+  odoo.initializer.openelis.org:
+    container_name: odoo.initializer.openelis.org
+    image: odoo:17
+    depends_on:
+      odoo.openelis.org:
+        condition: service_healthy
+    volumes:
+      - ./configs/odoo/addons:/mnt/extra-addons
+      - ./configs/odoo/initializer_config:/mnt/odoo_config
+      - odoo-openelis-data:/var/lib/odoo
+      - ./configs/odoo/config:/etc/odoo
+      - ./test_initializer_fixed.py:/tmp/test_initializer_fixed.py
+    command: >
+      sh -c " echo 'Waiting for Odoo to be ready...' && sleep 60 && echo
+      'Running initializer...' && python3 /tmp/test_initializer_fixed.py && echo
+      'Initialization completed!' "
+    networks:
+      - hie
+    restart: "no"
+
+secrets:
+  datasource.password:
+    file: ./configs/openelis/properties/datasource.password
+  common.properties:
+    file: ./configs/openelis/properties/common.properties
+  hapi_application.yaml:
+    file: ./configs/openelis/properties/hapi_application.yaml
+  odoo-test-product-mapping.csv:
+    file: ./configs/openelis/properties/odoo-test-product-mapping.csv
+
+networks:
+  hie:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.1.0/24
 
 volumes:
-  postgres_data:
+  db-data2:
+  key_trust-store-volume:
+  certs-vol:
+  certs:
+  keys-vol:
+  lucene_index-vol:
+  odoo-openelis-data:
+  odoo-openelis-db-data:
 ```
 
 #### Volume Mounts
 
-| Host Path                                     | Container Path                                                | Purpose              | Permissions |
-| --------------------------------------------- | ------------------------------------------------------------- | -------------------- | ----------- |
-| `./config/odoo/odoo-test-product-mapping.csv` | `/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv` | Test-product mapping | Read-only   |
+| Host Path                                                     | Container Path                                                      | Purpose              | Permissions |
+| ------------------------------------------------------------- | ------------------------------------------------------------------- | -------------------- | ----------- |
+| `./configs/openelis/properties/odoo-test-product-mapping.csv` | `/var/lib/openelis-global/properties/odoo-test-product-mapping.csv` | Test-product mapping | Read-only   |
 
 ### Odoo Configuration
 
 #### Required Odoo Modules
 
-Ensure these Odoo modules are installed:
+The integration automatically installs these Odoo modules:
 
-- `account` - Accounting module
-- `sale` - Sales module (for products)
 - `base` - Base module (for partners)
+- `base_import` - Import functionality
+- `sale_management` - Sales module (for products)
+- `stock` - Inventory management
+- `account_account` - Accounting module
+- `purchase` - Purchase management
+- `mrp` - Manufacturing
+- `odoo_initializer` - Product initialization
+- `mrp_product_expiry` - Product expiry management
+- `product_expiry` - Product expiry
+- `l10n_generic_coa` - Generic chart of accounts
+
+#### Odoo Initializer Configuration
+
+The integration uses the **Odoo Initializer** addon from Mekom Solutions to
+automatically configure products and categories. The configuration is defined
+in:
+
+**Initializer Config File**:
+`configs/odoo/initializer_config/initializer_config.json`
+
+```json
+{
+  "models": [
+    {
+      "model_name": "product.category",
+      "folder": "product_category",
+      "field_rules": {}
+    },
+    {
+      "model_name": "product.template",
+      "folder": "product",
+      "field_rules": {}
+    }
+  ]
+}
+```
+
+**Product Categories**:
+`configs/odoo/initializer_config/product_category/product.category.csv`
+
+```csv
+id,name,property_valuation
+product_category_labtests,"Laboratory Tests",Manual
+```
+
+**Product Templates**:
+`configs/odoo/initializer_config/product/product.template.csv`
+
+```csv
+id,name,list_price,type,product_variant_ids/categ_id/id,default_code,description,sale_ok,purchase_ok,active
+odoo_test_albumine_recherche_miction,Albumine recherche miction,76.00,service,product_category_labtests,LAB-ALBUMINE_RECHERCHE_MICTION,Albumine recherche miction - Laboratory Test,true,false,true
+odoo_test_hemoglobine,Hémoglobine,73.00,service,product_category_labtests,LAB-HEMOGLOBINE,Hémoglobine - Laboratory Test,true,false,true
+```
 
 #### Odoo User Permissions
 
-The integration user needs the following permissions:
+The integration uses the default `admin` user with full permissions. For
+production, consider creating a dedicated user with these permissions:
 
 | Model               | Access Rights       |
 | ------------------- | ------------------- |
@@ -236,30 +448,14 @@ The integration user needs the following permissions:
 | `account.move`      | Create, Read, Write |
 | `account.move.line` | Create, Read, Write |
 
-#### Odoo Configuration Steps
+#### Automatic Initialization
 
-1. **Create Integration User**
+The integration includes an automatic initialization process:
 
-   ```bash
-   # In Odoo, create a new user with limited permissions
-   # Username: openelis_user
-   # Password: secure_password
-   # Groups: Accounting User, Sales User
-   ```
-
-2. **Configure Products**
-
-   ```bash
-   # Create products in Odoo that match your CSV mapping
-   # Product names should match the product_name field in CSV
-   # Set appropriate pricing and accounting settings
-   ```
-
-3. **Configure Chart of Accounts**
-   ```bash
-   # Ensure default income account is configured
-   # Usually account_id = 1 for invoice lines
-   ```
+1. **Odoo Initializer Service**: Runs after Odoo is healthy
+2. **Product Creation**: Automatically creates products from CSV files
+3. **Category Setup**: Establishes product categories
+4. **Pricing Configuration**: Sets up pricing from the CSV data
 
 ---
 
@@ -282,7 +478,7 @@ OdooIntegrationService → Finds/creates patient in Odoo
 Maps lab tests → Odoo products
            │
            ▼
-💰 Invoice automatically created in Odoo
+Invoice automatically created in Odoo
 ```
 
 ### Detailed Steps
@@ -297,6 +493,101 @@ Maps lab tests → Odoo products
 5. **Invoice Creation**: An invoice is created with all mapped test products
 6. **Error Handling**: Any failures are logged but don't affect OpenELIS
    operations
+
+---
+
+## Project Structure and Configuration
+
+### Odoo-OpenELIS Connector Project Structure
+
+The integration is organized in a dedicated connector project with the following
+structure:
+
+```
+odoo-openelis-connector/
+├── configs/
+│   ├── nginx/                    # Nginx configuration
+│   ├── odoo/                     # Odoo configuration and addons
+│   │   ├── addons/              # Odoo addons (managed by Maven)
+│   │   ├── config/              # Odoo configuration files
+│   │   └── initializer_config/  # Product initialization configs
+│   │       ├── product/         # Product templates CSV
+│   │       ├── product_category/ # Product categories CSV
+│   │       └── initializer_config.json
+│   └── openelis/                # OpenELIS configuration
+│       ├── properties/          # Application properties
+│       ├── test-map/            # Test mapping files
+│       ├── war/                 # OpenELIS WAR file
+│       ├── database/            # Database configuration
+│       └── tomcat/              # Tomcat configuration
+├── docker-compose.yml           # Complete deployment setup
+├── pom.xml                     # Maven project configuration
+├── assembly.xml                # Maven assembly descriptor
+└── README.md                   # Project documentation
+```
+
+### Key Configuration Files
+
+#### 1. OpenELIS Properties (`configs/openelis/properties/common.properties`)
+
+```properties
+# Odoo Integration Configuration
+org.openelisglobal.odoo.baseUrl=http://odoo.openelis.org:8069
+org.openelisglobal.odoo.database=postgres
+org.openelisglobal.odoo.username=admin
+org.openelisglobal.odoo.password=admin
+```
+
+#### 2. Test-Product Mapping (`configs/openelis/properties/odoo-test-product-mapping.csv`)
+
+```csv
+loinc_code,product_name,quantity,price_unit
+333-333,Albumine recherche miction,8,76
+718-7,Hémoglobine,8,73
+787-2,Volume Globulaire Moyen,8,69
+777-3,Plaquette,1,32
+736-9,Lymphocytes (%),3,15
+```
+
+#### 3. Test-LOINC Mapping (`configs/openelis/test-map/test-loinc-map.csv`)
+
+```csv
+ANALYSER_TEST,LOINC_CODE,ACTUAL_NAME
+MTB,10835-4,Neutrophiles
+MTB Trace,10836-2,Basophiles
+RIF Resistance,10837-0,Eosinophiles
+```
+
+#### 4. Odoo Product Templates (`configs/odoo/initializer_config/product/product.template.csv`)
+
+```csv
+id,name,list_price,type,product_variant_ids/categ_id/id,default_code,description,sale_ok,purchase_ok,active
+odoo_test_albumine_recherche_miction,Albumine recherche miction,76.00,service,product_category_labtests,LAB-ALBUMINE_RECHERCHE_MICTION,Albumine recherche miction - Laboratory Test,true,false,true
+odoo_test_hemoglobine,Hémoglobine,73.00,service,product_category_labtests,LAB-HEMOGLOBINE,Hémoglobine - Laboratory Test,true,false,true
+```
+
+### Maven Dependency Management
+
+The project uses Maven to manage the Odoo initializer addon dependency:
+
+```xml
+<dependency>
+    <groupId>net.mekomsolutions.odoo</groupId>
+    <artifactId>odoo-initializer</artifactId>
+    <version>2.3.0-SNAPSHOT</version>
+    <type>zip</type>
+    <optional>true</optional>
+</dependency>
+```
+
+**Key Features:**
+
+- **Automatic Download**: Maven attempts to download the latest version from the
+  Mekom Solutions repository
+- **Fallback Mechanism**: If the remote dependency is unavailable, the build
+  falls back to local files
+- **Version Management**: Easy version updates by changing the version property
+  in `pom.xml`
 
 ---
 
@@ -783,112 +1074,6 @@ sudo systemctl restart openelis
 
 ---
 
-## Security Considerations
-
-### Authentication
-
-- Use dedicated Odoo user account for integration
-- Implement least-privilege access in Odoo
-- Regularly rotate integration passwords
-
-### Data Protection
-
-- Ensure patient data is transmitted securely
-- Implement appropriate data retention policies
-- Consider data anonymization for testing
-
-### Network Security
-
-- Use HTTPS for Odoo communication
-- Implement firewall rules to restrict access
-- Consider VPN for secure communication
-
-### Network Security Configuration
-
-```bash
-# Firewall rules for Odoo communication
-# Allow OpenELIS server to connect to Odoo XML-RPC port
-iptables -A INPUT -s OPENELIS_IP -p tcp --dport 8069 -j ACCEPT
-
-# Or use UFW
-ufw allow from OPENELIS_IP to any port 8069
-```
-
-### SSL/TLS Configuration
-
-For production environments, use HTTPS:
-
-```properties
-# Use HTTPS for Odoo communication
-org.openelisglobal.odoo.baseUrl=https://odoo.example.com:8069
-```
-
-### Authentication Security
-
-```bash
-# Use strong passwords for integration user
-# Consider using API keys or OAuth if supported
-# Regularly rotate integration credentials
-```
-
----
-
-## Performance Optimization
-
-### Connection Pooling
-
-The integration automatically manages connections:
-
-```java
-// Connection is established once and reused
-// Automatic reconnection on failures
-// Connection timeout: 30 seconds (default)
-```
-
-### Asynchronous Processing
-
-Invoice creation is handled asynchronously to avoid blocking OpenELIS
-operations:
-
-```java
-@Async
-@EventListener
-public void handleSamplePatientUpdateDataCreatedEvent(SamplePatientUpdateDataCreatedEvent event) {
-    // Non-blocking invoice creation
-}
-```
-
-### Performance Issues
-
-#### 1. Slow Invoice Creation
-
-**Symptoms:**
-
-- Long delays between sample creation and invoice creation
-- Timeout errors
-
-**Solutions:**
-
-- **Network latency**: Optimize network connection
-- **Odoo performance**: Check Odoo server performance
-- **Connection pooling**: Verify connection reuse
-- **Asynchronous processing**: Ensure events are processed asynchronously
-
-#### 2. High Memory Usage
-
-**Symptoms:**
-
-- OpenELIS using excessive memory
-- Out of memory errors
-
-**Solutions:**
-
-- **Connection leaks**: Restart OpenELIS to clear connections
-- **Large CSV files**: Optimize CSV mapping file size
-- **Logging levels**: Reduce debug logging in production
-
----
-
 ## API Reference
 
 ### Health Check Controller
@@ -918,231 +1103,47 @@ public class OdooIntegrationService {
 
 ## Deployment Examples
 
-### Docker Compose Setup
+### Using the Odoo-OpenELIS Connector
 
-```yaml
-version: "3.3"
-services:
-  openelis:
-    image: openelis-global:latest
-    environment:
-      - org.openelisglobal.odoo.baseUrl=http://odoo:8069
-      - org.openelisglobal.odoo.database=openelis_db
-      - org.openelisglobal.odoo.username=openelis_user
-      - org.openelisglobal.odoo.password=secure_password
-    volumes:
-      - ./odoo-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
-    depends_on:
-      - odoo
+The easiest way to deploy the integration is using the **Odoo-OpenELIS
+Connector** project:
 
-  odoo:
-    image: odoo:16.0
-    environment:
-      - HOST=odoo
-      - USER=openelis_user
-      - PASSWORD=secure_password
-```
+#### Quick Start
 
-### Standalone Deployment
+1. **Clone the connector repository**:
 
-For standalone deployments, ensure the CSV mapping file is accessible:
+   ```bash
+   git clone https://github.com/DIGI-UW/odoo-openelis-connector.git
+   cd odoo-openelis-connector
+   ```
 
-```bash
-# Create mapping directory
-sudo mkdir -p /var/lib/openelis-global/odoo
+2. **Build the distribution**:
 
-# Copy mapping file
-sudo cp odoo-test-product-mapping.csv /var/lib/openelis-global/odoo/
+   ```bash
+   mvn clean package
+   ```
 
-# Set permissions
-sudo chown tomcat:tomcat /var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
-sudo chmod 644 /var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
-```
+3. **Extract and deploy**:
+   ```bash
+   cd target
+   tar -xzf odoo-openelis-connector-1.0.0-SNAPSHOT.tar.gz
+   cd odoo-openelis-connector-1.0.0-SNAPSHOT
+   docker-compose up -d
+   ```
 
----
+#### Development Setup
 
-## Monitoring and Alerting
-
-### Health Check Monitoring
-
-Set up monitoring for the health endpoint:
+For development, use the provided setup script:
 
 ```bash
-#!/bin/bash
-# Health check script
-HEALTH_URL="https://openelis-server:8443/health/odoo"
-EXPECTED_STATUS='"status":"UP"'
-
-if curl -s -k "$HEALTH_URL" | grep -q "$EXPECTED_STATUS"; then
-    echo "OK: Odoo integration is healthy"
-    exit 0
-else
-    echo "CRITICAL: Odoo integration is down"
-    exit 2
-fi
+./setup-dev.sh
+docker-compose up -d
 ```
-
-### Log Monitoring
-
-Monitor for specific error patterns:
-
-```bash
-# Monitor for integration errors
-tail -f /var/lib/openelis-global/logs/openelis.log | \
-  grep -E "(ERROR.*odoo|CRITICAL.*integration)" | \
-  while read line; do
-    echo "ALERT: $line"
-    # Send alert via email, Slack, etc.
-  done
-```
-
-### Performance Monitoring
-
-Monitor integration performance:
-
-```bash
-# Check response times
-time curl -s -k https://openelis-server:8443/health/odoo > /dev/null
-
-# Monitor log file growth
-ls -lh /var/lib/openelis-global/logs/openelis.log
-```
-
-### Application Metrics
-
-Monitor these key metrics:
-
-- Health check response time
-- Invoice creation success rate
-- Patient creation success rate
-- CSV mapping load time
-- Odoo connection status
-
----
-
-## Backup and Maintenance
-
-### CSV Mapping Backup
-
-```bash
-# Backup mapping file
-cp /var/lib/openelis-global/odoo/odoo-test-product-mapping.csv \
-   /backup/odoo-mapping-$(date +%Y%m%d).csv
-
-# Automated backup script
-#!/bin/bash
-BACKUP_DIR="/backup/odoo"
-DATE=$(date +%Y%m%d_%H%M%S)
-cp /var/lib/openelis-global/odoo/odoo-test-product-mapping.csv \
-   "$BACKUP_DIR/odoo-mapping-$DATE.csv"
-# Keep last 30 days
-find "$BACKUP_DIR" -name "odoo-mapping-*.csv" -mtime +30 -delete
-```
-
-### Configuration Backup
-
-```bash
-# Backup environment configuration
-cp /etc/openelis-global/application.properties \
-   /backup/config-$(date +%Y%m%d).properties
-```
-
-### Regular Maintenance
-
-- Monitor integration health daily
-- Review logs for errors and warnings
-- Update test mappings as needed
-- Verify Odoo connectivity
-
-### Updates and Upgrades
-
-- Test integration after OpenELIS updates
-- Verify compatibility with Odoo upgrades
-- Update mapping files for new tests
-- Review and update documentation
-
----
-
-## Best Practices
-
-### CSV Mapping Management
-
-1. **Version Control**: Keep CSV mappings in version control
-2. **Validation**: Validate CSV format before deployment
-3. **Backup**: Maintain backups of mapping configurations
-4. **Documentation**: Document any custom mappings
-
-### Error Handling
-
-1. **Graceful Degradation**: Integration failures shouldn't affect OpenELIS
-2. **Retry Logic**: Implement retry mechanisms for transient failures
-3. **Alerting**: Set up monitoring for integration failures
-4. **Logging**: Maintain comprehensive logs for troubleshooting
-
-### Performance
-
-1. **Connection Pooling**: Use connection pooling for Odoo communication
-2. **Asynchronous Processing**: Handle invoice creation asynchronously
-3. **Batch Processing**: Consider batch operations for high-volume scenarios
-4. **Caching**: Cache frequently accessed data
-
----
-
-## Getting Help
-
-### Collect Diagnostic Information
-
-Before contacting support, collect this information:
-
-```bash
-# System information
-uname -a
-java -version
-
-# OpenELIS version
-# (Check application logs or admin interface)
-
-# Configuration
-grep -E "org\.openelisglobal\.odoo\." /path/to/application.properties
-
-# Recent logs
-tail -100 /var/lib/openelis-global/logs/openelis.log | grep -i odoo
-
-# Health check
-curl -s -k https://openelis-server:8443/health/odoo
-
-# CSV file info
-ls -la /var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
-head -5 /var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
-```
-
-### Contact Support
-
-When contacting support, include:
-
-- Description of the issue
-- Steps to reproduce
-- Diagnostic information (above)
-- Error messages and logs
-- Configuration details (without sensitive data)
-
-### Community Resources
-
-- [OpenELIS Documentation](https://openelis-global.org)
-- [Odoo Documentation](https://www.odoo.com/documentation)
-- [GitHub Issues](https://github.com/DIGI-UW/OpenELIS-Global-2/issues)
-
----
-
-## Related Documentation
-
-- [OpenELIS Installation Guide](install.md)
-- [OpenELIS Configuration](server-property.md)
-- [OpenELIS Troubleshooting](troubleshooting.md)
-- [Odoo Documentation](https://www.odoo.com/documentation)
 
 ---
 
 _This documentation covers the Odoo-OpenELIS integration developed as part of
-Google Summer of Code 2025. For more information about the project, visit the
-[project repository](https://github.com/DIGI-UW/odoo-openelis-connector)._
+Google Summer of Code 2025. For more information about the project and how you
+can configure your OpenELIS instance to integrate with Odoo seemlessly, visit
+the
+[project repository configuration example](https://github.com/DIGI-UW/odoo-openelis-connector)._
