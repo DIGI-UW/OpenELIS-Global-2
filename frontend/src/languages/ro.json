@@ -1295,6 +1295,7 @@
   "manage.testing.algorithms.add.reflex.tests": "Gestionează algoritmi de testare și teste reflex",
   "configuration.test.management.organization": "Organizarea testelor",
   "configuration.test.management.spelling": "Corectarea denumirilor",
+  "configuration.test.management.ocl": "OCL Concept Import",
   "configuration.test.rename": "Redenumește teste existente",
   "configuration.test.rename.explain": "Redenumește testele doar pentru afișare, fără a le modifica.",
   "configuration.testSection.rename": "Redenumește secțiuni de test",

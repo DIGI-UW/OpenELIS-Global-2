@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
@@ -28,6 +30,8 @@ import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 
 public class OclToOpenElisMapper {
+    private static final Log log = LogFactory.getLog(OclToOpenElisMapper.class);
+
     private String defaultTestSection;
     private String defaultSampleType;
     private JsonNode rootNode;
@@ -94,20 +98,20 @@ public class OclToOpenElisMapper {
 
             // Validate root node structure
             if (!rootNode.has("type") || !"Collection Version".equals(getText(rootNode, "type"))) {
-                System.err.println("Error: Invalid OCL export format. Expected Collection Version type.");
+                log.error("Invalid OCL export format. Expected Collection Version type.");
                 return forms;
             }
 
             // Handle concepts array from OCL export
             JsonNode concepts = rootNode.get("concepts");
             if (concepts != null && concepts.isArray()) {
-                System.out.println("Processing " + concepts.size() + " concepts from collection: "
+                log.info("Processing " + concepts.size() + " concepts from collection: "
                         + getText(rootNode, "full_name"));
 
                 for (JsonNode conceptNode : concepts) {
                     String conceptId = getText(conceptNode, "id");
                     String displayName = getText(conceptNode, "display_name");
-                    System.out.println("\nProcessing concept: " + displayName + " (ID: " + conceptId + ")");
+                    log.info("Processing concept: " + displayName + " (ID: " + conceptId + ")");
 
                     TestAddForm form = mapSingleConceptToForm(conceptNode);
                     if (form != null) {
@@ -115,13 +119,12 @@ public class OclToOpenElisMapper {
                     }
                 }
             } else {
-                System.err.println("Error: Expected 'concepts' array in OCL export");
+                log.error("Expected 'concepts' array in OCL export");
             }
 
             return forms;
         } catch (Exception e) {
-            System.err.println("Error mapping OCL concepts to TestAddForm: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Error mapping OCL concepts to TestAddForm: " + e.getMessage(), e);
             return new ArrayList<>();
         }
     }
@@ -146,19 +149,19 @@ public class OclToOpenElisMapper {
 
             // Datatype filtering: Only map specific test types
             if (dataType == null || !SUPPORTED_DATATYPES.contains(dataType.toUpperCase())) {
-                System.out.println("Skipping concept " + conceptId + " due to unsupported datatype: " + dataType);
+                log.info("Skipping concept " + conceptId + " due to unsupported datatype: " + dataType);
                 return null;
             }
 
             if (conceptClass == null || !ALLOWED_CONCEPT_CLASSES.contains(conceptClass.toUpperCase())) {
-                System.out.println("✗ Skipping concept " + conceptId + " (name: " + displayName + ") "
+                log.info("Skipping concept " + conceptId + " (name: " + displayName + ") "
                         + "due to unsupported concept_class: " + conceptClass);
                 return null;
             }
 
             // Log concept class information
-            System.out.println("Processing concept ID: " + conceptId + ", Name: " + displayName);
-            System.out.println("Concept Class: " + conceptClass + ", Data Type: " + dataType);
+            log.info("Processing concept ID: " + conceptId + ", Name: " + displayName);
+            log.info("Concept Class: " + conceptClass + ", Data Type: " + dataType);
 
             TestAddForm form = new TestAddForm();
 
@@ -181,13 +184,12 @@ public class OclToOpenElisMapper {
             String jsonWadString = objectMapper.writeValueAsString(jsonWad);
             form.setJsonWad(jsonWadString);
 
-            System.out.println("✓ Successfully mapped OCL concept " + conceptId + " to TestAddForm");
-            System.out.println("  Generated JSON: " + jsonWadString);
+            log.info("Successfully mapped OCL concept " + conceptId + " to TestAddForm");
+            log.debug("Generated JSON: " + jsonWadString);
 
             return form;
         } catch (Exception e) {
-            System.err.println("✗ Error mapping single OCL concept: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Error mapping single OCL concept: " + e.getMessage(), e);
             return null;
         }
     }
@@ -305,40 +307,48 @@ public class OclToOpenElisMapper {
     }
 
     private void mapLoinc(JsonNode concept, ObjectNode jsonWad) {
-        String loinc = null;
         String id = getText(concept, "id");
+        String loinc = getLoinc(id);
+        jsonWad.put("loinc", loinc != null ? loinc : "");
+    }
 
-        // Try mappings array first (OCL standard format for LOINC)
+    private String getLoinc(String id) {
+        String loinc = null;
+
         JsonNode mappings = this.rootNode.get("mappings");
         if (mappings != null && mappings.isArray()) {
+            String fallbackLoinc = null;
+
             for (JsonNode mapping : mappings) {
-                String fromConceptCode = getText(mapping, "from_concept_code");
-                if (!fromConceptCode.equals(id)) {
+                if (!id.equals(getText(mapping, "from_concept_code"))) {
                     continue;
                 }
+
                 String mapType = getText(mapping, "map_type");
                 String toSourceName = getText(mapping, "to_source_name");
+                String candidateLoinc = getText(mapping, "to_concept_code");
 
-                if ("SAME-AS".equals(mapType) && "LOINC".equals(toSourceName)) {
-                    loinc = getText(mapping, "to_concept_code");
-                    if (StringUtils.isNotBlank(loinc)) {
-                        System.out.println("Found LOINC code: " + loinc + " for concept " + getText(concept, "id"));
-                        break;
-                    }
-                } else if ("LOINC".equals(toSourceName)) {
-                    loinc = getText(mapping, "to_concept_code");
+                // Priority 1: SAME-AS mapping pointing to LOINC
+                if ("SAME-AS".equals(mapType) && "LOINC".equals(toSourceName)
+                        && StringUtils.isNotBlank(candidateLoinc)) {
+                    loinc = candidateLoinc;
+                    log.info("Found SAME-AS LOINC code: " + loinc + " for concept " + id);
+                    break; // stop immediately since we found the best match
+                }
+
+                // Priority 2: any mapping pointing to LOINC (keep as fallback)
+                if ("LOINC".equals(toSourceName) && StringUtils.isNotBlank(candidateLoinc)) {
+                    fallbackLoinc = candidateLoinc;
                 }
             }
-        }
 
-        // Try extras section for LOINC
-        if (loinc == null) {
-            JsonNode extras = concept.get("extras");
-            if (extras != null && extras.has("loinc")) {
-                loinc = getText(extras, "loinc");
+            // If we didn’t find a SAME-AS → LOINC, use fallback if available
+            if (loinc == null && fallbackLoinc != null) {
+                loinc = fallbackLoinc;
+                log.info("Found Other LOINC code: " + loinc + " for concept " + id);
             }
         }
-        jsonWad.put("loinc", loinc != null ? loinc : "");
+        return loinc;
     }
 
     private void mapResultType(JsonNode concept, ObjectNode jsonWad) {
@@ -361,21 +371,17 @@ public class OclToOpenElisMapper {
                 jsonWad.put("resultType", typeObj.getId());
             }
         } catch (Exception e) {
-            System.err.println(
-                    "Error mapping result type (Spring context not available or service failed): " + e.getMessage());
+            log.error("Error mapping result type (Spring context not available or service failed): " + e.getMessage(),
+                    e);
         }
     }
 
     private void mapOrderableFlags(JsonNode concept, ObjectNode jsonWad) {
 
         jsonWad.put("orderable", "Y");
-
         jsonWad.put("notifyResults", "N");
-
         jsonWad.put("inLabOnly", "N");
-
         jsonWad.put("antimicrobialResistance", "N");
-
         Boolean retired = Boolean.valueOf(getText(concept, "retired"));
         jsonWad.put("active", retired ? "N" : "Y");
     }
@@ -443,7 +449,7 @@ public class OclToOpenElisMapper {
         String sigDigits = "0";
 
         if (isNumeric) {
-            System.out.println("Mapping NUMERIC result type for concept: " + getText(concept, "id"));
+            log.info("Mapping NUMERIC result type for concept: " + getText(concept, "id"));
 
             // Map validation ranges from 'extras' (OCL standard attributes)
             JsonNode extras = concept.get("extras");
@@ -544,7 +550,7 @@ public class OclToOpenElisMapper {
 
         ArrayNode dictionaryArray = objectMapper.createArrayNode();
         if (isDictionary) {
-            System.out.println("Mapping CODED/SELECT result type for concept: " + getText(concept, "id"));
+            log.info("Mapping CODED/SELECT result type for concept: " + getText(concept, "id"));
             String id = getText(concept, "id");
 
             // Try mappings array first (OCL standard format for LOINC)
@@ -555,7 +561,7 @@ public class OclToOpenElisMapper {
                     String toCoceptCode = getText(mapping, "to_concept_code");
                     String toCoceptName = getText(mapping, "to_concept_name_resolved");
                     String mapType = getText(mapping, "map_type");
-                    if (!fromConceptCode.equals(id) || mapType.equals("Q-AND-A")) {
+                    if (!fromConceptCode.equals(id) || !mapType.equals("Q-AND-A")) {
                         continue;
                     }
 
@@ -565,7 +571,7 @@ public class OclToOpenElisMapper {
                     dictionary.setDictEntry(toCoceptName);
                     dictionary.setLocalAbbreviation(toCoceptCode);
                     dictionary.setSysUserId("1");
-                    dictionary.setLoincCode("");
+                    dictionary.setLoincCode(getLoinc(toCoceptCode));
                     dictionary.setDictionaryCategory(
                             dictionaryCategoryService.getDictionaryCategoryByName("Test Result"));
 
@@ -630,9 +636,9 @@ public class OclToOpenElisMapper {
                 }
             }
 
-            System.out.println(details.toString());
+            log.debug(details.toString());
         } catch (Exception e) {
-            System.err.println("Error logging concept details: " + e.getMessage());
+            log.error("Error logging concept details: " + e.getMessage(), e);
         }
     }
 

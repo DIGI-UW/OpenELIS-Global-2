@@ -65,7 +65,7 @@ public class OclImportInitializer implements ApplicationListener<ContextRefreshe
             return;
         }
         log.info("OCL Import: Starting OCL import process...");
-        performOclImport();
+        performOclImport(OCL_IMPORT_DIR);
 
     }
 
@@ -73,9 +73,9 @@ public class OclImportInitializer implements ApplicationListener<ContextRefreshe
      * Public method to trigger OCL import manually This can be called from REST
      * endpoints
      */
-    public void performOclImport() {
+    public void performOclImport(String fileDir) {
         log.info("OCL Import: Manual import triggered");
-        Path configDir = Paths.get(OCL_IMPORT_DIR);
+        Path configDir = Paths.get(fileDir);
         if (!Files.exists(configDir)) {
             return;
         }
@@ -145,7 +145,7 @@ public class OclImportInitializer implements ApplicationListener<ContextRefreshe
                 isImported = true;
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            /// e.printStackTrace();
             isImported = false;
         }
         return isImported;
@@ -157,7 +157,7 @@ public class OclImportInitializer implements ApplicationListener<ContextRefreshe
             writer.write(MARKER_VALUE);
         } catch (IOException e) {
             // TODO Auto-generated catch block
-            e.printStackTrace();
+            // e.printStackTrace();
         }
 
     }
