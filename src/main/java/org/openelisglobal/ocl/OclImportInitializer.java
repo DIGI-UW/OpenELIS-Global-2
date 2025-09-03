@@ -10,17 +10,30 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import org.hibernate.HibernateException;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panel.valueholder.Panel;
+import org.openelisglobal.panelitem.service.PanelItemService;
+import org.openelisglobal.panelitem.valueholder.PanelItem;
+import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testconfiguration.action.TestAddControllerUtills;
 import org.openelisglobal.testconfiguration.action.TestAddControllerUtills.TestAddParams;
 import org.openelisglobal.testconfiguration.controller.TestAddController.TestSet;
 import org.openelisglobal.testconfiguration.form.TestAddForm;
 import org.openelisglobal.testconfiguration.service.TestAddService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,9 +46,9 @@ import org.springframework.stereotype.Component;
 public class OclImportInitializer implements ApplicationListener<ContextRefreshedEvent> {
     private static final Logger log = LoggerFactory.getLogger(OclImportInitializer.class);
     private static final String OCL_IMPORT_DIR = "/var/lib/openelis-global/ocl";
-    private static final String MARKER_FILE = "/var/lib/openelis-global/ocl/ocl_imported.flag";
+    private static final String MARKER_FILE = "ocl_imported.flag";
+    private static final String MARKER_FILE_PATH = OCL_IMPORT_DIR + "/" + MARKER_FILE;
     private static final String MARKER_VALUE = "TRUE";
-    File file = new File(MARKER_FILE);
 
     @Value("${org.openelisglobal.ocl.import.autocreate:false}")
     private boolean autocreateOn;
@@ -55,17 +68,29 @@ public class OclImportInitializer implements ApplicationListener<ContextRefreshe
     @Autowired
     private TestAddControllerUtills testAddControllerUtills;
 
+    @Autowired
+    private PanelService panelService;
+
+    @Autowired
+    private PanelItemService panelItemService;
+
+    @Autowired
+    private TestService testService;
+
+    @Autowired
+    private DisplayListService displayListService;
+
     @Override
     public void onApplicationEvent(ContextRefreshedEvent event) {
         if (!autocreateOn) {
             log.info("OCL Import: Auto-import is disabled. Skipping OCL import.");
             return;
         }
-        if (isOCLImported()) {
+        if (isOCLImported(MARKER_FILE_PATH)) {
             return;
         }
         log.info("OCL Import: Starting OCL import process...");
-        performOclImport(OCL_IMPORT_DIR);
+        performOclImport(OCL_IMPORT_DIR, MARKER_FILE_PATH);
 
     }
 
@@ -73,7 +98,7 @@ public class OclImportInitializer implements ApplicationListener<ContextRefreshe
      * Public method to trigger OCL import manually This can be called from REST
      * endpoints
      */
-    public void performOclImport(String fileDir) {
+    public void performOclImport(String fileDir, String markerFilePath) {
         log.info("OCL Import: Manual import triggered");
         Path configDir = Paths.get(fileDir);
         if (!Files.exists(configDir)) {
@@ -92,13 +117,13 @@ public class OclImportInitializer implements ApplicationListener<ContextRefreshe
                 e.printStackTrace();
             }
         }
-        performImport(oclNodes);
+        performImport(oclNodes, markerFilePath);
     }
 
     /**
      * Internal method that contains the actual import logic
      */
-    private void performImport(List<JsonNode> oclNodes) {
+    private void performImport(List<JsonNode> oclNodes, String markerFilePath) {
 
         // oclZipImporter.importOclZip(file);
         log.info("OCL Import: Found {} nodes to process.", oclNodes.size());
@@ -120,25 +145,40 @@ public class OclImportInitializer implements ApplicationListener<ContextRefreshe
 
                     try {
                         log.info("OCL Import: Processing concept #{} - attempting to create test", conceptCount);
-
                         handlenNewTests(form);
-                        updateFlag();
-
                     } catch (Exception ex) {
                         testsSkipped++;
                         log.error("OCL Import: Failed to create test for concept #{}", conceptCount, ex);
                     }
                 }
+                try {
+                    mapLabsetPannels(mapper);
+                } catch (Exception ex) {
+                    log.error("Error while Handling Lab sets", ex);
+                }
             }
         }
-
+        updateFlag(markerFilePath);
+        displayListService.refreshList(DisplayListService.ListType.PANELS);
+        displayListService.refreshList(DisplayListService.ListType.PANELS_INACTIVE);
+        testService.refreshTestNames();
+        displayListService.refreshList(DisplayListService.ListType.SAMPLE_TYPE_ACTIVE);
+        displayListService.refreshList(DisplayListService.ListType.SAMPLE_TYPE_INACTIVE);
+        displayListService.refreshList(DisplayListService.ListType.PANELS_ACTIVE);
+        displayListService.refreshList(DisplayListService.ListType.PANELS_INACTIVE);
+        displayListService.refreshList(DisplayListService.ListType.PANELS);
+        displayListService.refreshList(DisplayListService.ListType.TEST_SECTION_ACTIVE);
+        displayListService.refreshList(DisplayListService.ListType.TEST_SECTION_BY_NAME);
+        displayListService.refreshList(DisplayListService.ListType.TEST_SECTION_INACTIVE);
+        SpringContext.getBean(TypeOfSampleService.class).clearCache();
         log.info("OCL Import: Finished processing. Total concepts processed: {}, Tests created: {}, Tests skipped: {}",
                 conceptCount, testsCreated, testsSkipped);
     }
 
-    private boolean isOCLImported() {
+    private boolean isOCLImported(String markerFile) {
         String content = "";
         boolean isImported = false;
+        File file = new File(markerFile);
         try {
             content = Files.readString(file.toPath()).trim();
             if (MARKER_VALUE.equals(content)) {
@@ -151,8 +191,8 @@ public class OclImportInitializer implements ApplicationListener<ContextRefreshe
         return isImported;
     }
 
-    private void updateFlag() {
-
+    private void updateFlag(String markerFilePath) {
+        File file = new File(markerFilePath);
         try (FileWriter writer = new FileWriter(file, false)) { // false = overwrite
             writer.write(MARKER_VALUE);
         } catch (IOException e) {
@@ -160,6 +200,37 @@ public class OclImportInitializer implements ApplicationListener<ContextRefreshe
             // e.printStackTrace();
         }
 
+    }
+
+    private void mapLabsetPannels(OclToOpenElisMapper mapper) {
+        for (JsonNode panel : mapper.getLabSetPanelNodes()) {
+            Map<String, String> names = mapper.extractNames(panel);
+            String englishName = names.get("englishName");
+            Panel dbPanel = panelService.getPanelByName(englishName);
+            log.info("Mapping tests for Panel " + englishName);
+
+            if (dbPanel != null) {
+                List<PanelItem> panelItems = panelItemService.getPanelItemsForPanel(dbPanel.getId());
+
+                List<Test> newTests = new ArrayList<>();
+                Set<String> memebers = mapper.getLabSetMemebrs(panel);
+                log.info("Mapped Lab Set Memebers: " + memebers);
+                for (String testName : mapper.getLabSetMemebrs(panel)) {
+                    log.info("Adding Test " + testName + " to Pannel " + englishName);
+                    Test test = testService.getTestByLocalizedName(testName, Locale.ENGLISH);
+                    if (test != null) {
+                        log.info("Test " + testName + "Added to Pannel " + englishName);
+                        newTests.add(test);
+                    }
+                }
+                try {
+                    panelItemService.updatePanelItems(panelItems, dbPanel, false, "1", newTests);
+                } catch (LIMSRuntimeException e) {
+                    LogEvent.logDebug(e);
+                }
+            }
+
+        }
     }
 
     public TestAddForm handlenNewTests(TestAddForm form) {

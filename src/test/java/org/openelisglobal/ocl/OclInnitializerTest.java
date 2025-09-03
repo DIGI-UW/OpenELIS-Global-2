@@ -31,7 +31,8 @@ public class OclInnitializerTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void testImportOclPackage_validZip() throws IOException {
-        oclImportInitializer.performOclImport(oclDirPath);
+        java.io.File tempFile = java.io.File.createTempFile("ocl_imported", ".flag");
+        oclImportInitializer.performOclImport(oclDirPath, tempFile.getAbsolutePath());
     }
 
 }

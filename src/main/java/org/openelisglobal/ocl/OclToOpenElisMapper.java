@@ -7,21 +7,33 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panel.valueholder.Panel;
+import org.openelisglobal.role.service.RoleService;
+import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.systemmodule.valueholder.SystemModule;
+import org.openelisglobal.systemusermodule.valueholder.RoleModule;
 import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testconfiguration.form.TestAddForm;
+import org.openelisglobal.testconfiguration.service.PanelCreateService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultService;
@@ -35,6 +47,12 @@ public class OclToOpenElisMapper {
     private String defaultTestSection;
     private String defaultSampleType;
     private JsonNode rootNode;
+    private String systemUserId = "1";
+    private Set<JsonNode> labSetPanelNodes;
+
+    public Set<JsonNode> getLabSetPanelNodes() {
+        return labSetPanelNodes;
+    }
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private TypeOfTestResultService typeOfTestResultService = SpringContext.getBean(TypeOfTestResultService.class);
@@ -45,42 +63,29 @@ public class OclToOpenElisMapper {
     private DictionaryCategoryService dictionaryCategoryService = SpringContext
             .getBean(DictionaryCategoryService.class);
     private LocalizationService localizationService = SpringContext.getBean(LocalizationService.class);
+    private RoleService roleService = SpringContext.getBean(RoleService.class);
+    private PanelCreateService panelCreateService = SpringContext.getBean(PanelCreateService.class);
+    private PanelService panelService = SpringContext.getBean(PanelService.class);
+    private TestService testService = SpringContext.getBean(TestService.class);
 
     public OclToOpenElisMapper(String defaultTestSection, String defaultSampleType) {
         this.defaultTestSection = defaultTestSection;
         this.defaultSampleType = defaultSampleType;
     }
 
-    private static final Set<String> SUPPORTED_DATATYPES = Set.of("NUMERIC", "NUMBER", "TEXT", "STRING", "CODED",
-            "SELECT");
-
+    private static final Set<String> SUPPORTED_DATATYPES = Set.of("NUMERIC", "TEXT", "CODED");
     private static final Set<String> ALLOWED_CONCEPT_CLASSES = Set.of("TEST");
+    private static final Set<String> LABSET_CONCEPT_CLASSES = Set.of("LABSET");
+    private static final Set<String> NUMERIC_DATA_TYPES = Set.of("NUMERIC");
+    private static final Set<String> CODED_DATA_TYPES = Set.of("CODED");
+    private static final Set<String> NONE_DATATYPES = Set.of("NONE", "N/A");
 
     // Map OCL data types to OpenELIS result type IDs
     private static final Map<String, String> RESULT_TYPE_MAPPING = new HashMap<>();
     static {
         RESULT_TYPE_MAPPING.put("NUMERIC", "N");
-        RESULT_TYPE_MAPPING.put("NUMBER", "N");
         RESULT_TYPE_MAPPING.put("CODED", "D");
-        RESULT_TYPE_MAPPING.put("SELECT", "D");
-        RESULT_TYPE_MAPPING.put("BOOLEAN", "D");
         RESULT_TYPE_MAPPING.put("TEXT", "R");
-        RESULT_TYPE_MAPPING.put("STRING", "R");
-    }
-
-    /**
-     * Creates a wrapper node with concepts array for a single concept
-     * 
-     * @param singleConcept The JSON node representing a single OCL concept.
-     * @return A JSON node wrapper containing the single concept in a "concepts"
-     *         array.
-     */
-    public JsonNode createConceptWrapper(JsonNode singleConcept) {
-        ObjectNode wrapper = objectMapper.createObjectNode();
-        ArrayNode conceptsArray = objectMapper.createArrayNode();
-        conceptsArray.add(singleConcept);
-        wrapper.set("concepts", conceptsArray);
-        return wrapper;
     }
 
     /**
@@ -94,6 +99,7 @@ public class OclToOpenElisMapper {
     public List<TestAddForm> mapConceptsToTestAddForms(JsonNode rootNode) {
         try {
             List<TestAddForm> forms = new ArrayList<>();
+            labSetPanelNodes = new HashSet<>();
             this.rootNode = rootNode;
 
             // Validate root node structure
@@ -143,9 +149,56 @@ public class OclToOpenElisMapper {
             String displayName = getText(concept, "display_name");
             String dataType = getText(concept, "datatype");
             String conceptClass = getText(concept, "concept_class");
+            Map<String, String> names = extractNames(concept);
+            String englishName = names.get("englishName");
+            String frenchName = names.get("frenchName");
+            String description = names.get("description");
+            String loinc = getLoinc(conceptId);
 
+            Test dbTest = testService.getTestByLocalizedName(englishName, Locale.ENGLISH);
+            if (dbTest != null) {
+                if (StringUtils.isNotBlank(loinc)) {
+                    dbTest.setLoinc(loinc);
+                    testService.update(dbTest);
+                }
+                return null;
+            }
             // Log detailed concept information for debugging
             logConceptDetails(concept);
+
+            if (dataType != null && conceptClass != null && LABSET_CONCEPT_CLASSES.contains(conceptClass.toUpperCase())
+                    && NONE_DATATYPES.contains(dataType.toUpperCase())) {
+                Panel panel = createPanel(englishName, description, systemUserId, loinc);
+
+                if (panelService.getPanelByName(panel) != null) {
+                    if (StringUtils.isNotBlank(loinc)) {
+                        panel = panelService.getPanelByName(panel);
+                        panel.setLoinc(loinc);
+                        panelService.update(panel);
+                    }
+                } else {
+                    Localization localization = createLocalization(frenchName, englishName, "create panel",
+                            systemUserId);
+
+                    SystemModule workplanModule = createSystemModule("Workplan", englishName, systemUserId);
+                    SystemModule resultModule = createSystemModule("LogbookResults", englishName, systemUserId);
+                    SystemModule validationModule = createSystemModule("ResultValidation", englishName, systemUserId);
+
+                    Role resultsEntryRole = roleService.getRoleByName(Constants.ROLE_RESULTS);
+                    Role validationRole = roleService.getRoleByName(Constants.ROLE_VALIDATION);
+
+                    RoleModule workplanResultModule = createRoleModule(systemUserId, workplanModule, resultsEntryRole);
+                    RoleModule resultResultModule = createRoleModule(systemUserId, resultModule, resultsEntryRole);
+                    RoleModule validationValidationModule = createRoleModule(systemUserId, validationModule,
+                            validationRole);
+                    TypeOfSample typeOfSample = getTypeOfSample(concept);
+                    panelCreateService.insert(localization, panel, workplanModule, resultModule, validationModule,
+                            workplanResultModule, resultResultModule, validationValidationModule, typeOfSample.getId(),
+                            systemUserId);
+                }
+                getLabSetPanelNodes().add(concept);
+                return null;
+            }
 
             // Datatype filtering: Only map specific test types
             if (dataType == null || !SUPPORTED_DATATYPES.contains(dataType.toUpperCase())) {
@@ -169,11 +222,11 @@ public class OclToOpenElisMapper {
             ObjectNode jsonWad = objectMapper.createObjectNode();
 
             // Map all required fields in the exact format
-            mapTestNames(concept, jsonWad);
+            mapTestNames(englishName, frenchName, jsonWad);
             mapTestSection(concept, jsonWad); // Hardcoded to Hematology
             mapPanels(concept, jsonWad);
             mapUnits(concept, jsonWad);
-            mapLoinc(concept, jsonWad);
+            mapLoinc(loinc, jsonWad);
             mapResultType(concept, jsonWad);
             mapOrderableFlags(concept, jsonWad);
             mapSampleTypes(concept, jsonWad);
@@ -194,9 +247,17 @@ public class OclToOpenElisMapper {
         }
     }
 
-    private void mapTestNames(JsonNode concept, ObjectNode jsonWad) {
+    private void mapTestNames(String englishName, String frenchName, ObjectNode jsonWad) {
+        jsonWad.put("testNameEnglish", englishName != null ? englishName : "");
+        jsonWad.put("testNameFrench", frenchName != null ? frenchName : "");
+        jsonWad.put("testReportNameEnglish", englishName != null ? englishName : "");
+        jsonWad.put("testReportNameFrench", frenchName != null ? frenchName : "");
+    }
+
+    public Map<String, String> extractNames(JsonNode concept) {
         String englishName = null;
         String frenchName = null;
+        String description = null;
 
         // Get display_name as initial English name
         englishName = getText(concept, "display_name");
@@ -204,54 +265,49 @@ public class OclToOpenElisMapper {
         // Process names array for best matching names
         JsonNode names = concept.get("names");
         if (names != null && names.isArray()) {
-            // Process names for both FULLY_SPECIFIED and preferred names
             for (JsonNode nameNode : names) {
                 String locale = getText(nameNode, "locale");
                 String name = getText(nameNode, "name");
                 String nameType = getText(nameNode, "name_type");
 
-                // Handle FULLY_SPECIFIED preferred names first
                 if (name != null && "FULLY_SPECIFIED".equals(nameType)) {
                     if ("en".equals(locale)) {
-                        englishName = name; // Overwrite display_name with preferred English name
+                        englishName = name; // overwrite with preferred English name
                     } else if ("fr".equals(locale)) {
                         frenchName = name;
                     }
-                }
-                // Handle other cases
-                else if (name != null) {
-                    // For English, prefer FULLY_SPECIFIED name if display_name wasn't found
+                } else if (name != null) {
                     if ("en".equals(locale) && englishName == null) {
                         englishName = name;
-                    }
-                    // For French, prefer FULLY_SPECIFIED name
-                    else if ("fr".equals(locale) && frenchName == null) {
+                    } else if ("fr".equals(locale) && frenchName == null) {
                         frenchName = name;
                     }
                 }
             }
         }
 
-        // Further fallbacks if still no English name
+        // Fallbacks for English
         if (englishName == null) {
             JsonNode descriptions = concept.get("descriptions");
             if (descriptions != null && descriptions.isArray() && descriptions.size() > 0) {
-                englishName = getText(descriptions.get(0), "description");
+                description = getText(descriptions.get(0), "description");
+                englishName = description;
+
             }
             if (englishName == null) {
                 englishName = getText(concept, "id");
             }
         }
 
-        // Ensure French name has fallback
         if (frenchName == null) {
             frenchName = englishName;
         }
 
-        jsonWad.put("testNameEnglish", englishName != null ? englishName : "");
-        jsonWad.put("testNameFrench", frenchName != null ? frenchName : "");
-        jsonWad.put("testReportNameEnglish", englishName != null ? englishName : "");
-        jsonWad.put("testReportNameFrench", frenchName != null ? frenchName : "");
+        Map<String, String> result = new HashMap<>();
+        result.put("englishName", englishName);
+        result.put("frenchName", frenchName);
+        result.put("description", description != null ? description : "");
+        return result;
     }
 
     private void mapTestSection(JsonNode concept, ObjectNode jsonWad) {
@@ -306,9 +362,7 @@ public class OclToOpenElisMapper {
         jsonWad.put("uom", unitsId != null ? unitsId : "");
     }
 
-    private void mapLoinc(JsonNode concept, ObjectNode jsonWad) {
-        String id = getText(concept, "id");
-        String loinc = getLoinc(id);
+    private void mapLoinc(String loinc, ObjectNode jsonWad) {
         jsonWad.put("loinc", loinc != null ? loinc : "");
     }
 
@@ -324,8 +378,8 @@ public class OclToOpenElisMapper {
                     continue;
                 }
 
-                String mapType = getText(mapping, "map_type");
-                String toSourceName = getText(mapping, "to_source_name");
+                String mapType = getText(mapping, "map_type").toUpperCase();
+                String toSourceName = getText(mapping, "to_source_name").toUpperCase();
                 String candidateLoinc = getText(mapping, "to_concept_code");
 
                 // Priority 1: SAME-AS mapping pointing to LOINC
@@ -389,34 +443,7 @@ public class OclToOpenElisMapper {
     private void mapSampleTypes(JsonNode concept, ObjectNode jsonWad) {
         ArrayNode sampleTypesArray = objectMapper.createArrayNode();
 
-        JsonNode extras = concept.get("extras");
-        TypeOfSample typeOfSample = null;
-        if (extras.has("sample_type")) {
-            String ocltypeOfSample = getText(extras, "sample_type");
-            TypeOfSample tos = new TypeOfSample();
-            tos.setDescription(ocltypeOfSample);
-            typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(tos, true);
-
-            if (typeOfSample == null) {
-                typeOfSample = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain(ocltypeOfSample, "H");
-            }
-        }
-
-        if (typeOfSample == null) {
-            TypeOfSample tos = new TypeOfSample();
-            tos.setDescription(defaultSampleType);
-            typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(tos, true);
-
-            if (typeOfSample == null) {
-                typeOfSample = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain(defaultSampleType, "H");
-            }
-        }
-
-        if (typeOfSample == null) {
-            TypeOfSample tos = new TypeOfSample();
-            tos.setDescription("Whole Blood");
-            typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(tos, true);
-        }
+        TypeOfSample typeOfSample = getTypeOfSample(concept);
         if (typeOfSample != null) {
             ObjectNode sampleTypeObj = objectMapper.createObjectNode();
             sampleTypeObj.put("typeId", typeOfSample.getId());
@@ -435,8 +462,7 @@ public class OclToOpenElisMapper {
 
     private void mapNumericValidation(JsonNode concept, ObjectNode jsonWad) {
         String dataType = getText(concept, "datatype");
-        boolean isNumeric = dataType != null
-                && (dataType.toUpperCase().contains("NUMERIC") || dataType.toUpperCase().contains("NUMBER"));
+        boolean isNumeric = dataType != null && NUMERIC_DATA_TYPES.contains(dataType.toUpperCase());
 
         String lowValid = "-Infinity";
         String highValid = "Infinity";
@@ -535,8 +561,8 @@ public class OclToOpenElisMapper {
         limit.put("ageRange", "0");
         limit.put("highAgeRange", "Infinity");
         limit.put("gender", false);
-        limit.put("lowNormal", "-Infinity");
-        limit.put("highNormal", "Infinity");
+        limit.put("lowNormal", jsonWad.get("lowNormal").asText());
+        limit.put("highNormal", jsonWad.get("highNormal").asText());
         limit.put("lowNormalFemale", "-Infinity");
         limit.put("highNormalFemale", "Infinity");
         resultLimitsArray.add(limit);
@@ -545,8 +571,7 @@ public class OclToOpenElisMapper {
 
     private void mapDictionaryResults(JsonNode concept, ObjectNode jsonWad) {
         String dataType = getText(concept, "datatype");
-        boolean isDictionary = dataType != null
-                && (dataType.toUpperCase().equals("CODED") || dataType.toUpperCase().equals("SELECT"));
+        boolean isDictionary = dataType != null && CODED_DATA_TYPES.contains(dataType.toUpperCase());
 
         ArrayNode dictionaryArray = objectMapper.createArrayNode();
         if (isDictionary) {
@@ -558,32 +583,39 @@ public class OclToOpenElisMapper {
             if (mappings != null && mappings.isArray()) {
                 for (JsonNode mapping : mappings) {
                     String fromConceptCode = getText(mapping, "from_concept_code");
-                    String toCoceptCode = getText(mapping, "to_concept_code");
-                    String toCoceptName = getText(mapping, "to_concept_name_resolved");
-                    String mapType = getText(mapping, "map_type");
+                    String mapType = getText(mapping, "map_type").toUpperCase();
                     if (!fromConceptCode.equals(id) || !mapType.equals("Q-AND-A")) {
                         continue;
                     }
+                    String toCoceptCode = getText(mapping, "to_concept_code");
+                    JsonNode mapConcept = getConceptById(toCoceptCode);
+                    Map<String, String> names = extractNames(mapConcept);
+                    String englishName = names.get("englishName");
+                    String frenchName = names.get("frenchName");
+                    String loinc = getLoinc(toCoceptCode);
 
                     Dictionary dictionary = new Dictionary();
                     dictionary.setSortOrder(1);
                     dictionary.setIsActive("Y");
-                    dictionary.setDictEntry(toCoceptName);
+                    dictionary.setDictEntry(englishName);
                     dictionary.setLocalAbbreviation(toCoceptCode);
-                    dictionary.setSysUserId("1");
-                    dictionary.setLoincCode(getLoinc(toCoceptCode));
+                    dictionary.setSysUserId(systemUserId);
+                    dictionary.setLoincCode(loinc);
                     dictionary.setDictionaryCategory(
                             dictionaryCategoryService.getDictionaryCategoryByName("Test Result"));
-
-                    Localization localization = new Localization();
-                    localization.setEnglish(toCoceptName);
-                    localization.setFrench(toCoceptName);
-                    localization.setSysUserId("1");
-                    localization = localizationService.save(localization);
-
-                    dictionary.setLocalizedDictionaryName(localization);
-                    dictionary = dictionaryService.save(dictionary);
-
+                    if (dictionaryService.duplicateDictionaryExists(dictionary)) {
+                        if (StringUtils.isNotBlank(loinc)) {
+                            dictionary = dictionaryService.getDictionaryByDictEntry(englishName);
+                            dictionary.setLoincCode(loinc);
+                            dictionary = dictionaryService.update(dictionary);
+                        }
+                    } else {
+                        Localization localization = createLocalization(frenchName, englishName, "create Dictionary",
+                                systemUserId);
+                        localization = localizationService.save(localization);
+                        dictionary.setLocalizedDictionaryName(localization);
+                        dictionary = dictionaryService.save(dictionary);
+                    }
                     ObjectNode dictEntry = objectMapper.createObjectNode();
                     dictEntry.put("id", String.valueOf(dictionary.getId()));
                     dictEntry.put("qualified", "N");
@@ -598,6 +630,20 @@ public class OclToOpenElisMapper {
 
     }
 
+    public JsonNode getConceptById(String id) {
+        JsonNode concepts = this.rootNode.get("concepts");
+        if (concepts != null && concepts.isArray()) {
+            for (JsonNode conceptNode : concepts) {
+                String conceptId = getText(conceptNode, "id");
+                if (conceptId.equals(id)) {
+                    return conceptNode;
+                }
+
+            }
+        }
+        return null;
+    }
+
     /**
      * Helper to safely extract text from a JsonNode field.
      * 
@@ -605,7 +651,7 @@ public class OclToOpenElisMapper {
      * @param field The name of the field.
      * @return The text value, or null if the node or field is missing/null.
      */
-    private String getText(JsonNode node, String field) {
+    public String getText(JsonNode node, String field) {
         if (node != null && node.has(field)) {
             JsonNode value = node.get(field);
             if (value != null && !value.isNull()) {
@@ -613,6 +659,38 @@ public class OclToOpenElisMapper {
             }
         }
         return null;
+    }
+
+    private TypeOfSample getTypeOfSample(JsonNode concept) {
+        JsonNode extras = concept.get("extras");
+        TypeOfSample typeOfSample = null;
+        if (extras.has("sample_type")) {
+            String ocltypeOfSample = getText(extras, "sample_type");
+            TypeOfSample tos = new TypeOfSample();
+            tos.setDescription(ocltypeOfSample);
+            typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(tos, true);
+
+            if (typeOfSample == null) {
+                typeOfSample = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain(ocltypeOfSample, "H");
+            }
+        }
+
+        if (typeOfSample == null) {
+            TypeOfSample tos = new TypeOfSample();
+            tos.setDescription(defaultSampleType);
+            typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(tos, true);
+
+            if (typeOfSample == null) {
+                typeOfSample = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain(defaultSampleType, "H");
+            }
+        }
+
+        if (typeOfSample == null) {
+            TypeOfSample tos = new TypeOfSample();
+            tos.setDescription("Whole Blood");
+            typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(tos, true);
+        }
+        return typeOfSample;
     }
 
     /**
@@ -660,5 +738,79 @@ public class OclToOpenElisMapper {
             }
         }
         return null;
+    }
+
+    private Panel createPanel(String name, String decription, String userId, String loinc) {
+        Panel panel = new Panel();
+        panel.setDescription(decription);
+        panel.setPanelName(name);
+        panel.setIsActive("N");
+        panel.setSortOrderInt(Integer.MAX_VALUE);
+        panel.setSysUserId(userId);
+        panel.setLoinc(loinc);
+        return panel;
+    }
+
+    private Localization createLocalization(String french, String english, String decriptiopn, String currentUserId) {
+        Localization localization = new Localization();
+        localization.setEnglish(english);
+        localization.setFrench(french);
+        localization.setDescription(decriptiopn);
+        localization.setSysUserId(currentUserId);
+        return localization;
+    }
+
+    private SystemModule createSystemModule(String menuItem, String identifyingName, String userId) {
+        SystemModule module = new SystemModule();
+        module.setSystemModuleName(menuItem + ":" + identifyingName);
+        module.setDescription(menuItem + "=>panel=>" + identifyingName);
+        module.setSysUserId(userId);
+        module.setHasAddFlag("Y");
+        module.setHasDeleteFlag("Y");
+        module.setHasSelectFlag("Y");
+        module.setHasUpdateFlag("Y");
+        return module;
+    }
+
+    private RoleModule createRoleModule(String userId, SystemModule workplanModule, Role role) {
+        RoleModule roleModule = new RoleModule();
+        roleModule.setRole(role);
+        roleModule.setSystemModule(workplanModule);
+        roleModule.setSysUserId(userId);
+        roleModule.setHasAdd("Y");
+        roleModule.setHasDelete("Y");
+        roleModule.setHasSelect("Y");
+        roleModule.setHasUpdate("Y");
+        return roleModule;
+    }
+
+    public Set<String> getLabSetMemebrs(JsonNode concept) {
+        String dataType = getText(concept, "datatype");
+        String conceptClass = getText(concept, "concept_class");
+        boolean isLabSet = conceptClass != null && LABSET_CONCEPT_CLASSES.contains(conceptClass.toUpperCase())
+                && NONE_DATATYPES.contains(dataType.toUpperCase());
+
+        Set<String> mappedTests = new HashSet<>();
+        if (isLabSet) {
+            log.info("Mapping LabSet result type for concept: " + getText(concept, "id"));
+            String id = getText(concept, "id");
+
+            // Try mappings array first (OCL standard format for LOINC)
+            JsonNode mappings = this.rootNode.get("mappings");
+            if (mappings != null && mappings.isArray()) {
+                for (JsonNode mapping : mappings) {
+                    String fromConceptCode = getText(mapping, "from_concept_code");
+                    String toConceptCode = getText(mapping, "to_concept_code");
+                    String mapType = getText(mapping, "map_type").toUpperCase();
+                    if (fromConceptCode.equals(id) && mapType.equals("CONCEPT-SET")) {
+                        JsonNode mapConcept = getConceptById(toConceptCode);
+                        Map<String, String> names = extractNames(mapConcept);
+                        String englishName = names.get("englishName");
+                        mappedTests.add(englishName);
+                    }
+                }
+            }
+        }
+        return mappedTests;
     }
 }
