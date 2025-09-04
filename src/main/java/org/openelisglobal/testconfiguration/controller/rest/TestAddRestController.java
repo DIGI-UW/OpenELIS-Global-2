@@ -31,6 +31,7 @@ import org.openelisglobal.testconfiguration.service.TestAddService;
 import org.openelisglobal.testconfiguration.validator.TestAddFormValidator;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.BindingResult;
@@ -59,6 +60,9 @@ public class TestAddRestController extends BaseRestController {
 
     @Autowired
     private TestAddControllerUtills testAddControllerUtills;
+
+    @Autowired
+    private DisplayListService displayListService;
 
     @GetMapping(value = "/TestAdd")
     public TestAddForm showTestAdd(HttpServletRequest request) {
@@ -118,6 +122,16 @@ public class TestAddRestController extends BaseRestController {
             LogEvent.logDebug(e);
         }
 
+        testService.refreshTestNames();
+        displayListService.refreshList(DisplayListService.ListType.SAMPLE_TYPE_ACTIVE);
+        displayListService.refreshList(DisplayListService.ListType.SAMPLE_TYPE_INACTIVE);
+        displayListService.refreshList(DisplayListService.ListType.PANELS_ACTIVE);
+        displayListService.refreshList(DisplayListService.ListType.PANELS_INACTIVE);
+        displayListService.refreshList(DisplayListService.ListType.PANELS);
+        displayListService.refreshList(DisplayListService.ListType.TEST_SECTION_ACTIVE);
+        displayListService.refreshList(DisplayListService.ListType.TEST_SECTION_BY_NAME);
+        displayListService.refreshList(DisplayListService.ListType.TEST_SECTION_INACTIVE);
+        SpringContext.getBean(TypeOfSampleService.class).clearCache();
         return form;
     }
 

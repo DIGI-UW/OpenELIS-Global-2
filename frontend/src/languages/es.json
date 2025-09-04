@@ -1295,6 +1295,7 @@
   "manage.testing.algorithms.add.reflex.tests": "Administrar Algoritmos de Pruebas y Pruebas de Reflejo",
   "configuration.test.management.organization": "Organización de Pruebas",
   "configuration.test.management.spelling": "Correcciones ortográficas",
+  "configuration.test.management.ocl": "OCL Concept Import",
   "configuration.test.rename": "Renombrar nombres de pruebas existentes",
   "configuration.test.rename.explain": "Use para renombrar pruebas existentes. No cambiará la prueba, solo cómo el usuario las ve en OpenELIS y en los informes",
   "configuration.testSection.rename": "Renombrar Secciones de Pruebas Existentes",

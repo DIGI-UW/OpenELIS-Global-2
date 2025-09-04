@@ -1164,10 +1164,10 @@ export const StepThreeTestResultTypeAndLoinc = ({
           resultType: Yup.string()
             .notOneOf(["0", ""], "Please select a valid Result Type")
             .required("Result Type is required"),
-          loinc: Yup.string().matches(
-            /^(?!-)(?:\d+-)*\d+$/,
-            "Loinc must contain only numbers",
-          ),
+          // loinc: Yup.string().matches(
+          //   /^(?!-)(?:\d+-)*\d+$/,
+          //   "Loinc must contain only numbers",
+          // ),
           // .required("Loinc is required"),
           orderable: Yup.string().oneOf(["Y", "N"], "Orderable must be Y or N"),
           notifyResults: Yup.string().oneOf(

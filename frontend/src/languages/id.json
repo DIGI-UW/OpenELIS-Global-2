@@ -1295,6 +1295,7 @@
   "manage.testing.algorithms.add.reflex.tests": "Manage Testing Algorithms and Reflex tests",
   "configuration.test.management.organization": "Test Organization",
   "configuration.test.management.spelling": "Spelling corrections",
+  "configuration.test.management.ocl": "OCL Concept Import",
   "configuration.test.rename": "Rename existing test names",
   "configuration.test.rename.explain": "Use to rename existing tests.  Will not change test, only how the user sees them in OpenELIS and on reports",
   "configuration.testSection.rename": "Rename Existing Test Sections",

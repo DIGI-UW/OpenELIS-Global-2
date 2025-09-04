@@ -366,8 +366,8 @@ function PanelCreate() {
                       onChange={handleChange}
                       onBlur={handleBlur}
                       required
-                      invalid={touched.loincPost && !!errors.loincPost}
-                      invalidText={touched.loincPost && errors.loincPost}
+                      //invalid={touched.loincPost && !!errors.loincPost}
+                      //invalidText={touched.loincPost && errors.loincPost}
                     />
                   </Column>
                 </Grid>
