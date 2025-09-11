@@ -75,9 +75,9 @@ describe("Dictionary Menu", function () {
   describe("Validate Added Dictionary", function () {
     it("Search By Dictionary Entry", function () {
       dictMenu.searchByDictionaryEntry(usersData[0].dictionaryEntry);
-      dictMenu.validateDictEntry(usersData[0].dictionaryEntry);
+      dictMenu.validateColumnContent("3", usersData[0].dictionaryEntry);
       dictMenu.searchByDictionaryEntry(usersData[1].dictionaryEntry);
-      dictMenu.validateDictEntry(usersData[1].dictionaryEntry);
+      dictMenu.validateColumnContent("3", usersData[1].dictionaryEntry);
       dictMenu.clearSearch();
     });
   });
@@ -93,8 +93,9 @@ describe("Dictionary Menu", function () {
 
     it("Validate Modified Dictionary", () => {
       cy.reload();
+      cy.wait(2000);
       dictMenu.searchByDictionaryEntry(usersData[0].dictionaryEntry);
-      dictMenu.validateDictStatus(usersData[0].yes);
+      dictMenu.validateColumnContent("5", usersData[0].yes);
     });
   });
 
@@ -107,8 +108,9 @@ describe("Dictionary Menu", function () {
 
     it("Validate Deactivated Dictionary", () => {
       cy.reload();
+      cy.wait(2000);
       dictMenu.searchByDictionaryEntry(usersData[1].dictionaryEntry);
-      dictMenu.validateDictStatus(usersData[0].no);
+      dictMenu.validateColumnContent("5", usersData[0].no);
     });
   });
 });

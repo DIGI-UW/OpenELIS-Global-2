@@ -231,7 +231,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/api/OpenELIS-Global/TestModifyEntry"
+                  href="/admin#TestModifyEntry"
                   id="TestModifyEntry"
                 >
                   <FormattedMessage id="configuration.test.modify" />

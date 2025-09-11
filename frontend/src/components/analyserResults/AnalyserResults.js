@@ -19,10 +19,8 @@ import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSe
 import { NotificationKinds } from "../common/CustomNotification";
 import { postToOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
-import { getFromOpenElisServer } from "../utils/Utils";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
-import ActionPaginationButtonType from "../common/ActionPaginationButtonType";
 import config from "../../config.json";
 
 const AnalyserResults = (props) => {
@@ -192,44 +190,48 @@ const AnalyserResults = (props) => {
       case "sampleInfo":
         return (
           <>
-            <Button
-              onClick={async () => {
-                if ("clipboard" in navigator) {
-                  return await navigator.clipboard.writeText(
-                    row.accessionNumber,
-                  );
-                } else {
-                  return document.execCommand(
-                    "copy",
-                    true,
-                    row.accessionNumber,
-                  );
-                }
-              }}
-              kind="ghost"
-              iconDescription={intl.formatMessage({
-                id: "instructions.copy.labnum",
-              })}
-              hasIconOnly
-              renderIcon={Copy}
-            />
-            <div className="sampleInfo" data-testid="LabNo">
-              <br></br>
-              {formatLabNum
-                ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
-                : row.accessionNumber}
-              <br></br>
-              <br></br>
-            </div>
-            {row.nonconforming && (
-              <picture>
-                <img
-                  src={config.serverBaseUrl + "/images/nonconforming.gif"}
-                  alt="nonconforming"
-                  width="20"
-                  height="15"
+            {sampleGroupHasId(row.id) && (
+              <>
+                <Button
+                  onClick={async () => {
+                    if ("clipboard" in navigator) {
+                      return await navigator.clipboard.writeText(
+                        row.accessionNumber,
+                      );
+                    } else {
+                      return document.execCommand(
+                        "copy",
+                        true,
+                        row.accessionNumber,
+                      );
+                    }
+                  }}
+                  kind="ghost"
+                  iconDescription={intl.formatMessage({
+                    id: "instructions.copy.labnum",
+                  })}
+                  hasIconOnly
+                  renderIcon={Copy}
                 />
-              </picture>
+                <div className="sampleInfo" data-testid="LabNo">
+                  <br></br>
+                  {formatLabNum
+                    ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
+                    : row.accessionNumber}
+                  <br></br>
+                  <br></br>
+                </div>
+                {row.nonconforming && (
+                  <picture>
+                    <img
+                      src={config.serverBaseUrl + "/images/nonconforming.gif"}
+                      alt="nonconforming"
+                      width="20"
+                      height="15"
+                    />
+                  </picture>
+                )}
+              </>
             )}
           </>
         );
@@ -440,7 +442,7 @@ const AnalyserResults = (props) => {
             <DataTable
               data={
                 props.results
-                  ? props.results.resultList.slice(
+                  ? props.results.resultList?.slice(
                       (page - 1) * pageSize,
                       page * pageSize,
                     )

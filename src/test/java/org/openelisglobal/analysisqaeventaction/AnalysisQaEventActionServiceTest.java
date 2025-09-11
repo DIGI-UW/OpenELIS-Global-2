@@ -20,7 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class AnalysisQaEventActionServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
-    private AnalysisQaEventActionService analysisQaEventService;
+    private AnalysisQaEventActionService analysisQaEventActionService;
 
     private List<AnalysisQaEventAction> analysisQaEventActions;
     private Map<String, Object> propertyValues;
@@ -35,16 +35,16 @@ public class AnalysisQaEventActionServiceTest extends BaseWebContextSensitiveTes
     }
 
     @Test
-    public void testGetAllEventActions() {
-        analysisQaEventActions = analysisQaEventService.getAll();
+    public void getAllEventActions_ShouldReturnAllEventActions() {
+        analysisQaEventActions = analysisQaEventActionService.getAll();
         assertNotNull(analysisQaEventActions);
         assertEquals(3, analysisQaEventActions.size());
         assertEquals("3", analysisQaEventActions.get(2).getId());
     }
 
     @Test
-    public void testGetAllMatching() {
-        analysisQaEventActions = analysisQaEventService.getAllMatching("lastupdated",
+    public void getAllMatching_ShouldReturnMatchingEventActions_UsingPropertyName() {
+        analysisQaEventActions = analysisQaEventActionService.getAllMatching("lastupdated",
                 Timestamp.valueOf("2025-06-22 11:30:00"));
         assertNotNull(analysisQaEventActions);
         assertEquals(2, analysisQaEventActions.size());
@@ -53,34 +53,34 @@ public class AnalysisQaEventActionServiceTest extends BaseWebContextSensitiveTes
     }
 
     @Test
-    public void testGetAllMatching_UsingMap() {
+    public void getAllMatching_ShouldReturnMatchingEventActions_UsingMap() {
         propertyValues.put("lastupdated", Timestamp.valueOf("2025-06-22 11:30:00"));
-        analysisQaEventActions = analysisQaEventService.getAllMatching(propertyValues);
+        analysisQaEventActions = analysisQaEventActionService.getAllMatching(propertyValues);
         assertNotNull(analysisQaEventActions);
         assertEquals("2", analysisQaEventActions.get(0).getId());
         assertEquals("3", analysisQaEventActions.get(1).getId());
     }
 
     @Test
-    public void testGetAllOrdered() {
-        analysisQaEventActions = analysisQaEventService.getAllOrdered("createdDate", true);
+    public void getAllOrdered_ShouldReturnAllOrderedEventActions_UsingPropertyName() {
+        analysisQaEventActions = analysisQaEventActionService.getAllOrdered("createdDate", true);
         assertNotNull(analysisQaEventActions);
         assertEquals(3, analysisQaEventActions.size());
         assertEquals("3", analysisQaEventActions.get(2).getId());
     }
 
     @Test
-    public void testGetAllOrdered_UsingList() {
+    public void getAllOrdered_ShouldReturnAllOrderedEventActions_UsingList() {
         orderProperties.add("createdDate");
-        analysisQaEventActions = analysisQaEventService.getAllOrdered(orderProperties, true);
+        analysisQaEventActions = analysisQaEventActionService.getAllOrdered(orderProperties, true);
         assertNotNull(analysisQaEventActions);
         assertEquals(3, analysisQaEventActions.size());
         assertEquals("1", analysisQaEventActions.get(0).getId());
     }
 
     @Test
-    public void testGetAllMatchingOrdered() {
-        analysisQaEventActions = analysisQaEventService.getAllMatchingOrdered("createdDate",
+    public void getAllMatchingOrdered_ShouldReturnMatchingOrderedEventActions_Using() {
+        analysisQaEventActions = analysisQaEventActionService.getAllMatchingOrdered("createdDate",
                 Timestamp.valueOf("2025-06-23 14:15:00"), "createdDate", true);
         assertNotNull(analysisQaEventActions);
         assertEquals(2, analysisQaEventActions.size());
@@ -88,9 +88,9 @@ public class AnalysisQaEventActionServiceTest extends BaseWebContextSensitiveTes
     }
 
     @Test
-    public void testGetAllMatchingOrdered_UsingList() {
+    public void getAllMatchingOrdered_ShouldReturnMatchingOrderedEventActions_UsingList() {
         orderProperties.add("createdDate");
-        analysisQaEventActions = analysisQaEventService.getAllMatchingOrdered("createdDate",
+        analysisQaEventActions = analysisQaEventActionService.getAllMatchingOrdered("createdDate",
                 Timestamp.valueOf("2025-06-23 14:15:00"), orderProperties, true);
         assertNotNull(analysisQaEventActions);
         assertEquals(2, analysisQaEventActions.size());
@@ -98,25 +98,26 @@ public class AnalysisQaEventActionServiceTest extends BaseWebContextSensitiveTes
     }
 
     @Test
-    public void testGetAllMatchingOrdered_UsingMap() {
+    public void getAllMatchingOrdered_ShouldReturnMatchingOrderedEventActions_UsingMap() {
         propertyValues.put("lastupdated", Timestamp.valueOf("2025-06-22 11:30:00"));
-        analysisQaEventActions = analysisQaEventService.getAllMatchingOrdered(propertyValues, "lastupdated", true);
+        analysisQaEventActions = analysisQaEventActionService.getAllMatchingOrdered(propertyValues, "lastupdated",
+                true);
         assertNotNull(analysisQaEventActions);
         assertEquals(2, analysisQaEventActions.size());
         assertEquals("2", analysisQaEventActions.get(0).getId());
     }
 
     @Test
-    public void testGetPage() {
-        analysisQaEventActions = analysisQaEventService.getPage(1);
+    public void getPage_ShouldReturnAPageOfResults_UsingPageNumber() {
+        analysisQaEventActions = analysisQaEventActionService.getPage(1);
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(NUMBER_OF_PAGES >= analysisQaEventActions.size());
     }
 
     @Test
-    public void testGetMatchingPage_UsingPropertyNameAndValue() {
-        analysisQaEventActions = analysisQaEventService.getMatchingPage("lastupdated",
+    public void getMatchingPage_ShouldReturnAPageOfResults_UsingPropertyNameAndValue() {
+        analysisQaEventActions = analysisQaEventActionService.getMatchingPage("lastupdated",
                 Timestamp.valueOf("2025-06-22 11:30:00"), 1);
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
@@ -124,34 +125,34 @@ public class AnalysisQaEventActionServiceTest extends BaseWebContextSensitiveTes
     }
 
     @Test
-    public void testGetMatchingPage_UsingMap() {
+    public void getMatchingPage_ShouldReturnAPageOfResults_UsingMap() {
         propertyValues.put("createdDate", Timestamp.valueOf("2025-06-22 11:30:00"));
-        analysisQaEventActions = analysisQaEventService.getMatchingPage(propertyValues, 1);
+        analysisQaEventActions = analysisQaEventActionService.getMatchingPage(propertyValues, 1);
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(NUMBER_OF_PAGES >= analysisQaEventActions.size());
     }
 
     @Test
-    public void testGetOrderedPage() {
-        analysisQaEventActions = analysisQaEventService.getOrderedPage("lastupdated", true, 1);
+    public void getOrderedPage_ShouldReturnAPageOfResults_UsingOrderProperty() {
+        analysisQaEventActions = analysisQaEventActionService.getOrderedPage("lastupdated", true, 1);
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(NUMBER_OF_PAGES >= analysisQaEventActions.size());
     }
 
     @Test
-    public void testGetOrderedPage_UsingList() {
+    public void getOrderedPage_ShouldReturnAPageOfResults_UsingList() {
         orderProperties.add("lastupdated");
-        analysisQaEventActions = analysisQaEventService.getOrderedPage(orderProperties, true, 1);
+        analysisQaEventActions = analysisQaEventActionService.getOrderedPage(orderProperties, true, 1);
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(NUMBER_OF_PAGES >= analysisQaEventActions.size());
     }
 
     @Test
-    public void testGetMatchingOrderedPage() {
-        analysisQaEventActions = analysisQaEventService.getMatchingOrderedPage("lastupdated",
+    public void getMatchingOrderedPage_ShouldReturnAPageOfResults_UsingPropertyNameAndValue() {
+        analysisQaEventActions = analysisQaEventActionService.getMatchingOrderedPage("lastupdated",
                 Timestamp.valueOf("2025-06-22 11:30:00"), "lastupdated", true, 1);
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
@@ -159,9 +160,9 @@ public class AnalysisQaEventActionServiceTest extends BaseWebContextSensitiveTes
     }
 
     @Test
-    public void testGetMatchingOrderedPage_UsingList() {
+    public void getMatchingOrderedPage_ShouldReturnAPageOfResults_UsingList() {
         orderProperties.add("lastupdated");
-        analysisQaEventActions = analysisQaEventService.getMatchingOrderedPage("lastupdated",
+        analysisQaEventActions = analysisQaEventActionService.getMatchingOrderedPage("lastupdated",
                 Timestamp.valueOf("2025-06-22 11:30:00"), orderProperties, true, 1);
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
@@ -169,22 +170,39 @@ public class AnalysisQaEventActionServiceTest extends BaseWebContextSensitiveTes
     }
 
     @Test
-    public void testgetMatchingOrderedPage_UsingMap() {
+    public void getMatchingOrderedPage_ShouldReturnAPageOfResults_UsingMap() {
         propertyValues.put("createdDate", Timestamp.valueOf("2025-06-22 11:30:00"));
-        analysisQaEventActions = analysisQaEventService.getMatchingOrderedPage(propertyValues, "createdDate", true, 1);
+        analysisQaEventActions = analysisQaEventActionService.getMatchingOrderedPage(propertyValues, "createdDate",
+                true, 1);
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(NUMBER_OF_PAGES >= analysisQaEventActions.size());
     }
 
     @Test
-    public void testGetMatchingOrderedPage_UsingMapAndList() {
+    public void getMatchingOrderedPage_ShouldReturnAPageOfResults_UsingMapAndList() {
         propertyValues.put("createdDate", Timestamp.valueOf("2025-06-22 11:30:00"));
         orderProperties.add("lastupdated");
-        analysisQaEventActions = analysisQaEventService.getMatchingOrderedPage(propertyValues, orderProperties, true,
-                1);
+        analysisQaEventActions = analysisQaEventActionService.getMatchingOrderedPage(propertyValues, orderProperties,
+                true, 1);
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(NUMBER_OF_PAGES >= analysisQaEventActions.size());
+    }
+
+    @Test
+    public void deleteAnalysisQaEventActions_ShouldDeleteAnalysisQaEventActionPassedAsParameter() {
+        AnalysisQaEventAction analysisQaEventAction = analysisQaEventActionService.getAll().get(0);
+        analysisQaEventActionService.delete(analysisQaEventAction);
+        List<AnalysisQaEventAction> deletedAnalysisQaEventAction = analysisQaEventActionService.getAll();
+        assertEquals(2, deletedAnalysisQaEventAction.size());
+    }
+
+    @Test
+    public void deleteAllAnalysisQaEvents_ShouldDeleteAllAnalysisQaEvents() {
+        analysisQaEventActionService.deleteAll(analysisQaEventActionService.getAll());
+        List<AnalysisQaEventAction> delectedAnalysisQaEventAction = analysisQaEventActionService.getAll();
+        assertNotNull(delectedAnalysisQaEventAction);
+        assertEquals(0, delectedAnalysisQaEventAction.size());
     }
 }

@@ -6,7 +6,7 @@
     <class
         name="org.openelisglobal.sampletracking.valueholder.SampleTracking"
         table="SAMPLETRACKING">
-        <id name="accNum"
+        <id name="id"
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
             <column name="accNum" length="10" />
             <generator class="assigned" />

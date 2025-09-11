@@ -34,7 +34,7 @@
             <column name="display_key" length="60" not-null="false" />
         </property>
         <property name="loincCode" type="java.lang.String">
-            <column name="LOINC_CODE" length="10" />
+            <column name="LOINC_CODE" length="20" />
         </property>
         <property name="sortOrder" column="sort_order"
             type="java.lang.Integer" />

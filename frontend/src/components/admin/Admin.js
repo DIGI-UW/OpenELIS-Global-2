@@ -156,7 +156,11 @@ function Admin() {
           >
             <FormattedMessage id="sidenav.label.admin.barcodeconfiguration" />
           </SideNavLink>
-          <SideNavLink href="#PluginFile" renderIcon={BootVolumeAlt}>
+          <SideNavLink
+            data-cy="pluginFile"
+            href="#PluginFile"
+            renderIcon={BootVolumeAlt}
+          >
             <FormattedMessage id="sidenav.label.admin.Listplugin" />
           </SideNavLink>
           <SideNavLink
@@ -166,20 +170,35 @@ function Admin() {
           >
             <FormattedMessage id="organization.main.title" />
           </SideNavLink>
-          <SideNavLink renderIcon={Report} href="#resultReportingConfiguration">
+          <SideNavLink
+            data-cy="resultReportingConfiguration"
+            renderIcon={Report}
+            href="#resultReportingConfiguration"
+          >
             <FormattedMessage id="resultreporting.browse.title" />
           </SideNavLink>
-          <SideNavLink renderIcon={User} href="#userManagement">
+          <SideNavLink
+            data-cy="userMgmnt"
+            renderIcon={User}
+            href="#userManagement"
+          >
             <FormattedMessage id="unifiedSystemUser.browser.title" />
           </SideNavLink>
-          <SideNavLink renderIcon={BatchJob} href="#batchTestReassignment">
+          <SideNavLink
+            data-cy="batchTestReassignment"
+            renderIcon={BatchJob}
+            href="#batchTestReassignment"
+          >
             <FormattedMessage id="configuration.batch.test.reassignment" />
           </SideNavLink>
-          <SideNavLink renderIcon={ResultNew} href="#testManagementConfigMenu">
+          <SideNavLink
+            data-cy="testManagementConfigMenu"
+            renderIcon={ResultNew}
+            href="#testManagementConfigMenu"
+          >
             <FormattedMessage id="master.lists.page.test.management" />
           </SideNavLink>
           <SideNavMenu
-            data-testid="menuConfig"
             title={intl.formatMessage({ id: "sidenav.label.admin.menu" })}
             renderIcon={TableOfContents}
           >
@@ -219,31 +238,55 @@ function Admin() {
             title={intl.formatMessage({ id: "admin.formEntryConfig" })}
             renderIcon={ListDropdown}
           >
-            <SideNavMenuItem href="#NonConformityConfigurationMenu">
+            <SideNavMenuItem
+              data-cy="nonConformConfig"
+              href="#NonConformityConfigurationMenu"
+            >
               <FormattedMessage id="sidenav.label.admin.formEntry.nonconformityconfig" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#MenuStatementConfigMenu">
+            <SideNavMenuItem
+              data-cy="menuStatementConfig"
+              href="#MenuStatementConfigMenu"
+            >
               <FormattedMessage id="sidenav.label.admin.formEntry.menustatementconfig" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#WorkPlanConfigurationMenu">
+            <SideNavMenuItem
+              data-cy="workPlanConfig"
+              href="#WorkPlanConfigurationMenu"
+            >
               <FormattedMessage id="sidenav.label.admin.formEntry.Workplanconfig" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#SiteInformationMenu">
+            <SideNavMenuItem data-cy="siteInfoMenu" href="#SiteInformationMenu">
               <FormattedMessage id="sidenav.label.admin.formEntry.siteInfoconfig" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#ResultConfigurationMenu">
+            <SideNavMenuItem
+              data-cy="resultConfigMenu"
+              href="#ResultConfigurationMenu"
+            >
               <FormattedMessage id="sidenav.label.admin.formEntry.resultConfig" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#PatientConfigurationMenu">
+            <SideNavMenuItem
+              data-cy="patientConfigMenu"
+              href="#PatientConfigurationMenu"
+            >
               <FormattedMessage id="sidenav.label.admin.formEntry.patientconfig" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#PrintedReportsConfigurationMenu">
+            <SideNavMenuItem
+              data-cy="printedReportsConfigMenu"
+              href="#PrintedReportsConfigurationMenu"
+            >
               <FormattedMessage id="sidenav.label.admin.formEntry.PrintedReportsconfig" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#SampleEntryConfigurationMenu">
+            <SideNavMenuItem
+              data-cy="sampleEntryConfigMenu"
+              href="#SampleEntryConfigurationMenu"
+            >
               <FormattedMessage id="sidenav.label.admin.formEntry.sampleEntryconfig" />
             </SideNavMenuItem>
-            <SideNavMenuItem href="#ValidationConfigurationMenu">
+            <SideNavMenuItem
+              data-cy="validationConfigMenu"
+              href="#ValidationConfigurationMenu"
+            >
               <FormattedMessage id="sidenav.label.admin.formEntry.validationconfig" />
             </SideNavMenuItem>
           </SideNavMenu>
@@ -264,7 +307,11 @@ function Admin() {
           >
             <FormattedMessage id="dictionary.label.modify" />
           </SideNavLink>
-          <SideNavLink href="#NotifyUser" renderIcon={Bullhorn}>
+          <SideNavLink
+            data-cy="notifyUser"
+            href="#NotifyUser"
+            renderIcon={Bullhorn}
+          >
             <FormattedMessage id="notify.main.title" />
           </SideNavLink>
           <SideNavLink href="#SearchIndexManagement" renderIcon={Search}>
@@ -319,7 +366,7 @@ function Admin() {
       <PathRoute path="#resultReportingConfiguration">
         <ResultReportingConfiguration />
       </PathRoute>
-      <PathRoute path="#userManagement">
+      <PathRoute data-cy="userMgmnt" path="#userManagement">
         <UserManagement />
       </PathRoute>
       <PathRoute path="#batchTestReassignment">

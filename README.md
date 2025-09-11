@@ -31,7 +31,7 @@ Download the OpenELIS Global Installer for each Release from the
 [Release Assets](https://github.com/DIGI-UW/OpenELIS-Global-2/releases)
 
 see full
-[installtion instructions](https://docs.openelis-global.org/en/latest/install/)
+[installation instructions](https://uwdigi.atlassian.net/wiki/x/EoBIDg#Downloaded-Installer-Offline-Setup)
 for Offline Installation
 
 ### For running OpenELIS Global2 in Docker with default Settings out of the Box
@@ -129,11 +129,15 @@ accessing any of these links, simply follow these steps:
 
         mvn spotless:check
 
-2.  Run Build Check (Backend). This command builds the project similar to CI
+1.  Run Build Check (Backend). This command builds the project similar to CI
 
         mvn clean install -Dspotless.check.skip=true
 
-3.  Run Frontend Formatting, Build, and E2E Test Checks similar to CI
+1.  To run Individual Integration Test
+
+         mvn verify -Dit.test=<packageName>.<TestClassName>
+
+1.  Run Frontend Formatting, Build, and E2E Test Checks similar to CI
 
     > **Note:** Frontend checks will only pass successfully if your development
     > environment is properly set up and running without issues.

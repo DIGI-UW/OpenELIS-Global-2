@@ -51,6 +51,7 @@
         <mapping resource="hibernate/hbm/Person.hbm.xml" />
         <mapping resource="hibernate/hbm/Program.hbm.xml" />
         <mapping resource="hibernate/hbm/Project.hbm.xml" />
+        <mapping resource="hibernate/hbm/ProjectOrganization.hbm.xml" />
         <mapping resource="hibernate/hbm/Provider.hbm.xml" />
         <mapping resource="hibernate/hbm/QaEvent.hbm.xml" />
         <mapping resource="hibernate/hbm/ReferenceTables.hbm.xml" />

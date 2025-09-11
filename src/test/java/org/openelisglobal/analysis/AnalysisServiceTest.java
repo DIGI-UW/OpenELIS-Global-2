@@ -38,7 +38,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void init() throws Exception {
-        executeDataSetWithStateManagement("testdata/referral.xml");
+        executeDataSetWithStateManagement("testdata/analysis.xml");
     }
 
     @Test

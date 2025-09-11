@@ -1,4 +1,9 @@
 {
+  "dictionary.loincCode.invalid": " Format LOINC invalid (exemplu valid: 12345-6 sau LP12345-6)",
+  "dictionary.loincCode.helpText": "Identificator standard pentru observații de laborator",
+  "dictionary.loincCode": "Cod LOINC",
+  "dictionary.loincCode.placeholder": "ex: 12345-6",
+  "dictionary.loincCode.help": "Introduceți identificatorul LOINC standard",
   "language.select.label": "Română",
   "label.button.submit": "Trimite",
   "label.button.finish": "Finalizare",
@@ -11,6 +16,8 @@
   "label.button.confirm": "Confirmă",
   "label.button.cancel": "Anulează",
   "label.button.previous": "Înapoi",
+  "label.button.field": "Field",
+  "label.button.descritpion": "Description",
   "accept.action.button": "Acceptă",
   "reject.action.button": "Respinge",
   "label.button.confirmDelete": "Confirmă ștergerea",
@@ -366,6 +373,7 @@
   "label.button.uploadfile": "Încarcă fișier",
   "label.button.select": "Selectează",
   "label.button.add": "Adaugă",
+  "label.button.add.question": "Adaugă întrebare nouă",
   "order.title": "COMANDĂ",
   "label.text.generate": "generează",
   "label.order.scan.text": "Scanează SAU Introdu manual SAU",
@@ -448,7 +456,6 @@
   "patient.emergency.additional.maritalstatus": "Introdu starea civilă",
   "patient.emergency.additional.nationnality": "Introdu naționalitatea",
   "patient.emergency.additional.othernationality": "Introdu altă naționalitate",
-
   "referral.testresult.pastnote": "Note anterioare",
   "new.patient.label": "Pacient nou",
   "sample.select.type": "Selectează tipul probei",
@@ -544,6 +551,7 @@
   "search.label.loadnext": "Încarcă următoarele 99 înregistrări începând cu numărul laboratorului",
   "search.label.analysis": "Selectează starea analizei",
   "search.label.test": "Selectează numele testului",
+  "select.label.analyser": "Selectați analizorul",
   "search.label.sample": "Selectează starea probei",
   "pathology.label.report": "Raport patologic",
   "patient.natioanalid": "CNP",
@@ -1287,6 +1295,7 @@
   "manage.testing.algorithms.add.reflex.tests": "Gestionează algoritmi de testare și teste reflex",
   "configuration.test.management.organization": "Organizarea testelor",
   "configuration.test.management.spelling": "Corectarea denumirilor",
+  "configuration.test.management.ocl": "OCL Concept Import",
   "configuration.test.rename": "Redenumește teste existente",
   "configuration.test.rename.explain": "Redenumește testele doar pentru afișare, fără a le modifica.",
   "configuration.testSection.rename": "Redenumește secțiuni de test",
@@ -1443,5 +1452,10 @@
   "test.field.active": "Activ",
   "test.description.active": "Dacă testul este activ, poate fi comandat în formularul de comandă sau ca parte a unui algoritm de testare. Dacă nu este activ, nu poate fi comandat și nu poate face parte dintr-un algoritm de testare.\n \n\n \n ",
   "test.field.orderable": "Comandabil",
-  "test.description.orderable": "Daca un test este activ si comandabil, atunci poate fi comandat in formularul de comanda. Daca este activ, dar nu este comandabil, va fi efectuat doar daca este declansat reflex dintr-un alt test."
+  "test.description.orderable": "Daca un test este activ si comandabil, atunci poate fi comandat in formularul de comanda. Daca este activ, dar nu este comandabil, va fi efectuat doar daca este declansat reflex dintr-un alt test.",
+  "test.modify.header.modify": "Selectați analiza de modificat!",
+  "test.modify.header.test": "Analiză",
+  "test.modify.en": "en",
+  "test.modify.fr": "fr",
+  "test.show.guide": "Show Guide"
 }

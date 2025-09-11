@@ -19,6 +19,8 @@ import {
   Modal,
   TextInput,
   Dropdown,
+  Select,
+  SelectItem,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
@@ -74,6 +76,7 @@ function AnalyzerTestName() {
   const [selectedAnalyzerId, setSelectedAnalyzerId] = useState(null);
   const [selectedTest, setSelectedTest] = useState(null);
   const [selectedTestId, setSelectedTestId] = useState(null);
+  const [filterAnalyzer, setFilterAnalyser] = useState("");
 
   const handleMenuItems = (res) => {
     if (!res) {
@@ -87,9 +90,11 @@ function AnalyzerTestName() {
     componentMounted.current = true;
     setLoading(true);
     getFromOpenElisServer(
-      `/rest/AnalyzerTestNameMenu?paging=${paging}&startingRecNo=${startingRecNo}`,
+      `/rest/AnalyzerTestNameMenu?paging=${paging}&startingRecNo=${startingRecNo}&analyzerId=${filterAnalyzer}`,
       handleMenuItems,
     );
+    fetchDropdownData();
+    fetchDropdownDatatestlist();
     return () => {
       componentMounted.current = false;
       setLoading(false);
@@ -131,6 +136,14 @@ function AnalyzerTestName() {
     if (response) {
       setAnalyzerList(response.analyzerList || []);
       // setTestList(response.testList || []);
+      if (response.analyzerList.length == 0) {
+        setNotificationVisible(true);
+        addNotification({
+          kind: NotificationKinds.warning,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({ id: "message.noPluginFound" }),
+        });
+      }
     }
   }
 
@@ -141,6 +154,17 @@ function AnalyzerTestName() {
       setModifyButton(true);
     }
   }, [selectedRowIds]);
+
+  useEffect(() => {
+    setLoading(true);
+    setFromRecordCount("");
+    setToRecordCount("");
+    setTotalRecordCount("");
+    getFromOpenElisServer(
+      `/rest/AnalyzerTestNameMenu?analyzerId=${filterAnalyzer}`,
+      handleMenuItems,
+    );
+  }, [filterAnalyzer]);
 
   useEffect(() => {
     if (selectedRowIds.length === 0) {
@@ -204,8 +228,6 @@ function AnalyzerTestName() {
     setSelectedAnalyzerId(null);
     setSelectedTest(null);
     setSelectedTestId(null);
-    fetchDropdownData();
-    fetchDropdownDatatestlist();
     setIsAddModalOpen(true);
   };
 
@@ -214,8 +236,6 @@ function AnalyzerTestName() {
   };
 
   const openUpdateModal = (AnalyzerId) => {
-    fetchDropdownData();
-    fetchDropdownDatatestlist();
     setIsUpdateModalOpen(true);
   };
 
@@ -356,6 +376,7 @@ function AnalyzerTestName() {
           modalHeading="Add Analyzer Test Name"
           primaryButtonText="Add"
           secondaryButtonText="Cancel"
+          primaryButtonDisabled={analyzerList.length == 0}
           onRequestSubmit={handleAddAnalyzer}
           onRequestClose={closeAddModal}
         >
@@ -446,6 +467,33 @@ function AnalyzerTestName() {
         <div className="orderLegendBody">
           <>
             <Grid fullWidth={true} className="gridBoundary">
+              <Column lg={4} md={8} sm={4}>
+                <Select
+                  labelText={intl.formatMessage({
+                    id: "select.label.analyzer",
+                    defaultMessage: "Select Analyzer",
+                  })}
+                  value={filterAnalyzer}
+                  onChange={(e) => {
+                    setFilterAnalyser(e.target.value);
+                  }}
+                >
+                  <SelectItem
+                    value=""
+                    text={intl.formatMessage({
+                      id: "all.label",
+                    })}
+                  />
+                  {analyzerList.map((analyzer, analyzer_index) => (
+                    <SelectItem
+                      text={analyzer.name}
+                      value={analyzer.id}
+                      key={analyzer_index}
+                    />
+                  ))}
+                </Select>
+              </Column>
+              <Column lg={12} md={8} sm={4}></Column>
               <Column lg={16} md={8} sm={4}>
                 <DataTable
                   rows={AnalyzerTestNameShow.slice(

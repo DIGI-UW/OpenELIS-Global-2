@@ -27,8 +27,8 @@ class MenuConfigPage {
   }
 
   navigateToMainMenu() {
-    cy.get(this.selectors.menuButton).click();
     cy.wait(5000);
+    cy.get(this.selectors.menuButton).click();
   }
 
   turnOffToggleSwitch() {

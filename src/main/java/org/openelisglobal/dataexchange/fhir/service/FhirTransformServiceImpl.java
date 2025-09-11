@@ -1287,10 +1287,17 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             } else if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(result.getResultType())
                     && !"0".equals(result.getValue())) {
                 Dictionary dictionary = dictionaryService.getDataForId(result.getValue());
-                observation.setValue(new CodeableConcept(
+                CodeableConcept codeableConcept = new CodeableConcept();
+                if (dictionary.getLoincCode() != null && !dictionary.getLoincCode().isEmpty()) {
+                    codeableConcept.addCoding(new Coding("http://loinc.org", dictionary.getLoincCode(),
+                            dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
+                                    : dictionary.getLocalizedDictionaryName().getEnglish()));
+                }
+                codeableConcept.addCoding(
                         new Coding(fhirConfig.getOeFhirSystem() + "/dictionary_entry", dictionary.getDictEntry(),
                                 dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
-                                        : dictionary.getLocalizedDictionaryName().getEnglish())));
+                                        : dictionary.getLocalizedDictionaryName().getEnglish()));
+                observation.setValue(codeableConcept);
             } else if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())
                     && !"0".equals(result.getValue())) {
                 Dictionary dictionary = dictionaryService.getDataForId(result.getValue());
@@ -1304,6 +1311,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                         new Coding(fhirConfig.getOeFhirSystem() + "/dictionary_entry", dictionary.getDictEntry(),
                                 dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
                                         : dictionary.getLocalizedDictionaryName().getEnglish()));
+                observation.setValue(codeableConcept);
             } else if (TypeOfTestResultServiceImpl.ResultType.isNumeric(result.getResultType())) {
                 Quantity quantity = new Quantity();
                 quantity.setValue(new BigDecimal(result.getValue(true)));

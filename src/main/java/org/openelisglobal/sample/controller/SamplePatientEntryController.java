@@ -388,6 +388,16 @@ public class SamplePatientEntryController extends BaseSampleEntryController {
                         form.getSampleOrderItems().setReferringSiteId(organization.getId());
                     }
                 }
+                if (!task.getOwner().isEmpty()) {
+                    if (StringUtils.isBlank(form.getSampleOrderItems().getProviderPersonId())) {
+                        Reference providerReference = task.getOwner();
+                        Provider provider = providerService.getProviderByFhirId(
+                                UUID.fromString(providerReference.getReferenceElement().getIdPart()));
+                        if (provider != null) {
+                            form.getSampleOrderItems().setProviderPersonId(provider.getPerson().getId());
+                        }
+                    }
+                }
             }
         }
         form.setPatientProperties(new PatientManagementInfo());

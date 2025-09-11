@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <lab_component id="1" name="temperature monitor"
+        display_key="temp_monitor" lastmodified="2024-01-17 17:35:00" />
+    <lab_component id="2" name="ph meter"
+        display_key="ph_meter" lastmodified="2024-01-13 13:00:00" />
+    <lab_component id="3" name="centrifuge"
+        display_key="centrifuge" lastmodified="2024-01-12 11:15:00" />
+    <lab_component id="4" name="incubator"
+        display_key="autoclave" lastmodified="2024-01-13 13:00:00" />
+    <lab_component id="5" name="biosafety cabinet"
+        display_key="biosafety_cabinet" lastmodified="2024-01-14 14:20:00" />
+    <lab_component id="6" name="centrifuge"
+        display_key="incubator-centrifuge" lastmodified="2024-01-15 15:25:00" />
+    <lab_component id="7" name="balance scale"
+        display_key="balance_scale" lastmodified="2024-01-13 13:00:00" />
+    <lab_component id="8" name="freezer"
+        display_key="freezer" lastmodified="2024-01-17 17:35:00" />
+    <lab_component id="9" name="refrigerator"
+        display_key="refrigerator" lastmodified="2024-01-13 13:00:00" />
+    <lab_component id="10" name="incubator"
+        display_key="water_bath" lastmodified="2024-01-19 19:40:00" />
+</dataset>

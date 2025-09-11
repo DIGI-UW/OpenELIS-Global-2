@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <site_information_domain id="1" name="General"
+        description="General site information domain" />
+    <site_information_domain id="2" name="Clinical"
+        description="Clinical data domain" />
+    <site_information_domain id="3" name="Lab"
+        description="Laboratory-related domain" />
+    <site_information_domain id="4" name="Lab"
+        description="Clinical data domain" />
+    <site_information_domain id="5" name="General"
+        description="General site information domain" />
+</dataset>

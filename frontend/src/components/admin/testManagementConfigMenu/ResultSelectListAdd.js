@@ -65,6 +65,8 @@ function ResultSelectListAdd() {
   const [bothFilled, setBothFilled] = useState(false);
   const [englishLangPost, setEnglishLangPost] = useState("");
   const [frenchLangPost, setFrenchLangPost] = useState("");
+  const [loincCode, setLoincCode] = useState("");
+  const [loincCodeError, setLoincCodeError] = useState(false);
   const [inputError, setInputError] = useState(false);
   const [ResultSelectListRes, setResultSelectListRes] = useState({});
   const [resultTestsList, setResultTestsList] = useState([]);
@@ -83,12 +85,22 @@ function ResultSelectListAdd() {
       JSON.stringify({
         nameEnglish: englishLangPost,
         nameFrench: frenchLangPost,
+        loincCode: loincCode,
       }),
       (res) => {
         handlePostResultSelectListCallBack(res);
       },
     );
   };
+
+  useEffect(() => {
+    if (loincCode) {
+      const invalidLoinc = /^(?!-)(?:\d+-)*\d*$/.test(loincCode);
+      setLoincCodeError(!invalidLoinc);
+    } else {
+      setLoincCodeError(false);
+    }
+  }, [loincCode]);
 
   const handlePostResultSelectListCallBack = (res) => {
     if (res) {
@@ -117,6 +129,7 @@ function ResultSelectListAdd() {
       JSON.stringify({
         nameEnglish: englishLangPost,
         nameFrench: frenchLangPost,
+        loincCode: loincCode,
         testSelectListJson: JSON.stringify(testSelectListJsonPost),
       }),
       (res) => {
@@ -281,7 +294,7 @@ function ResultSelectListAdd() {
           <hr />
           <br />
           <Grid fullWidth={true}>
-            <Column lg={4} md={4} sm={4}>
+            <Column lg={2} md={4} sm={4}>
               <>
                 <FormattedMessage id="english.label" />
                 <span className="requiredlabel">*</span> :
@@ -303,7 +316,7 @@ function ResultSelectListAdd() {
                 invalidText={<FormattedMessage id="required.invalidtext" />}
               />
             </Column>
-            <Column lg={4} md={4} sm={4}>
+            <Column lg={2} md={4} sm={4}>
               <>
                 <FormattedMessage id="french.label" />
                 <span className="requiredlabel">*</span> :
@@ -323,6 +336,31 @@ function ResultSelectListAdd() {
                 required
                 invalid={inputError}
                 invalidText={<FormattedMessage id="required.invalidtext" />}
+              />
+            </Column>
+            <Column lg={16} md={4} sm={4}>
+              {" "}
+              <br></br>
+            </Column>
+            <Column lg={2} md={4} sm={4}>
+              <>
+                <FormattedMessage id="dictionary.loincCode" /> :
+              </>
+            </Column>
+            <Column lg={4} md={4} sm={4}>
+              <TextInput
+                id={`fr`}
+                labelText=""
+                disabled={bothFilled}
+                hideLabel
+                invalid={loincCodeError}
+                invalidText={
+                  <FormattedMessage id="dictionary.loincCode.invalid" />
+                }
+                value={`${loincCode}` || ""}
+                onChange={(e) => {
+                  setLoincCode(e.target.value);
+                }}
               />
             </Column>
           </Grid>
@@ -434,7 +472,7 @@ function ResultSelectListAdd() {
                 )}
                 <br />
                 <Grid fullWidth={true}>
-                  <Column lg={16} md={8} sm={4}>
+                  <Column lg={4} md={8} sm={4}>
                     <Button
                       onClick={() => {
                         if (englishLangPost && frenchLangPost !== "") {
@@ -454,7 +492,7 @@ function ResultSelectListAdd() {
                       <FormattedMessage id="next.action.button" />
                     </Button>
                   </Column>
-                  <Column lg={16} md={8} sm={4}>
+                  <Column lg={4} md={8} sm={4}>
                     <Button
                       type="button"
                       kind="tertiary"

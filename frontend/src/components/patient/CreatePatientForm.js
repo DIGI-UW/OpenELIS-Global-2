@@ -68,6 +68,10 @@ function CreatePatientForm(props) {
   );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [phoneValidation, setPhoneValidation] = useState({
+    primaryPhone: { body: "", status: true },
+    contactPhone: { body: "", status: true },
+  });
 
   const handleNationalIdChange = (event) => {
     const newValue = event.target.value;
@@ -209,6 +213,24 @@ function CreatePatientForm(props) {
     );
   };
 
+  const handlePhoneValidation = (e) => {
+    const { id, value } = e.target;
+    getFromOpenElisServer(
+      "/rest/PhoneNumberValidationProvider?fieldId=patientPhone&value=" +
+        encodeURIComponent(value),
+      (resp) => {
+        const validation = { ...phoneValidation };
+        validation[id] = resp;
+        setPhoneValidation(validation);
+      },
+    );
+  };
+
+  useEffect(() => {
+    if (typeof props.setPhoneValidation === "function") {
+      props.setPhoneValidation(phoneValidation);
+    }
+  }, [phoneValidation]);
   function handleFirstNameChange(event) {
     const regexFlags = "iu";
     const regex = new RegExp(
@@ -403,7 +425,7 @@ function CreatePatientForm(props) {
     if ("days" in values) {
       delete values.days;
     }
-    console.debug(JSON.stringify(values));
+    console.log(JSON.stringify(values));
     postToOpenElisServer(
       "/rest/PatientManagement",
       JSON.stringify(values),
@@ -616,6 +638,10 @@ function CreatePatientForm(props) {
                     <TextInput
                       value={values.primaryPhone || ""}
                       name={field.name}
+                      onBlur={(e) => {
+                        handlePhoneValidation(e);
+                      }}
+                      id="primaryPhone"
                       labelText={intl.formatMessage(
                         {
                           id: "patient.label.primaryphone",
@@ -623,9 +649,12 @@ function CreatePatientForm(props) {
                         },
                         { PHONE_FORMAT: configurationProperties.PHONE_FORMAT },
                       )}
-                      id={field.name}
-                      invalid={errors.primaryPhone && touched.primaryPhone}
-                      invalidText={errors.primaryPhone}
+                      invalid={!phoneValidation.primaryPhone.status}
+                      invalidText={
+                        phoneValidation.primaryPhone.status
+                          ? ""
+                          : phoneValidation.primaryPhone.body
+                      }
                       placeholder={intl.formatMessage({
                         id: "patient.information.primaryphone",
                       })}
@@ -835,6 +864,10 @@ function CreatePatientForm(props) {
                                 ""
                               }
                               name={field.name}
+                              id="contactPhone"
+                              onBlur={(e) => {
+                                handlePhoneValidation(e);
+                              }}
                               labelText={intl.formatMessage(
                                 {
                                   id: "patient.label.contactphone",
@@ -846,7 +879,12 @@ function CreatePatientForm(props) {
                                     configurationProperties.PHONE_FORMAT,
                                 },
                               )}
-                              id={field.name}
+                              invalid={!phoneValidation.contactPhone.status}
+                              invalidText={
+                                phoneValidation.contactPhone.status
+                                  ? ""
+                                  : phoneValidation.contactPhone.body
+                              }
                               placeholder={intl.formatMessage({
                                 id: "patient.emergency.phone",
                               })}
@@ -1101,7 +1139,16 @@ function CreatePatientForm(props) {
               {props.showActionsButton && (
                 <>
                   <Column lg={4} md={4} sm={4}>
-                    <Button type="submit" id="submit" disabled={isSubmitting}>
+                    <Button
+                      type="submit"
+                      id="submit"
+                      disabled={
+                        isSubmitting ||
+                        Object.values(phoneValidation).some(
+                          (item) => item.status === false,
+                        )
+                      }
+                    >
                       <FormattedMessage id="label.button.save" />
                     </Button>
                   </Column>

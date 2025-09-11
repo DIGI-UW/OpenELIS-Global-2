@@ -50,6 +50,10 @@ const Index = () => {
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [phoneValidation, setPhoneValidation] = useState({
+    primaryPhone: { body: "", status: true },
+    contactPhone: { body: "", status: true },
+  });
 
   let SampleTypes = [];
   let sampleTypeMap = {};
@@ -228,7 +232,7 @@ const Index = () => {
 
   const parsePatient = (newOrderFormValues, patient) => {
     newOrderFormValues.patientProperties = {
-      ...orderFormValues.patientProperties,
+      ...newOrderFormValues.patientProperties,
       guid: patient.guid,
     };
   };
@@ -237,7 +241,7 @@ const Index = () => {
     const providerId = requester.personId;
     if (providerId) {
       newOrderFormValues.sampleOrderItems = {
-        ...orderFormValues.sampleOrderItems,
+        ...newOrderFormValues.sampleOrderItems,
         providerId: providerId,
       };
       getFromOpenElisServer(
@@ -247,7 +251,8 @@ const Index = () => {
             ...orderFormValues,
             sampleOrderItems: {
               ...orderFormValues.sampleOrderItems,
-              providerId: providerId,
+              providerId: data.id,
+              providerPersonId: data.person.id,
               providerFirstName: data.person.firstName,
               providerLastName: data.person.lastName,
               providerWorkPhone: data.person.workPhone,
@@ -259,7 +264,7 @@ const Index = () => {
       );
     } else {
       newOrderFormValues.sampleOrderItems = {
-        ...orderFormValues.sampleOrderItems,
+        ...newOrderFormValues.sampleOrderItems,
         providerFirstName: requester.firstName,
         providerLastName: requester.lastName,
         providerWorkPhone: requester.phone,
@@ -271,7 +276,7 @@ const Index = () => {
 
   const parseRequestingOrg = (newOrderFormValues, requestingOrg) => {
     newOrderFormValues.sampleOrderItems = {
-      ...orderFormValues.sampleOrderItems,
+      ...newOrderFormValues.sampleOrderItems,
       referringSiteId: requestingOrg.id,
     };
     getFromOpenElisServer(
@@ -282,7 +287,7 @@ const Index = () => {
 
   const parseLocation = (newOrderFormValues, location) => {
     newOrderFormValues.sampleOrderItems = {
-      ...orderFormValues.sampleOrderItems,
+      ...newOrderFormValues.sampleOrderItems,
       referringSiteId: location.id,
     };
     getFromOpenElisServer(
@@ -760,6 +765,7 @@ const Index = () => {
                 orderFormValues={orderFormValues}
                 setOrderFormValues={setOrderFormValues}
                 error={elementError}
+                setPhoneValidation={setPhoneValidation}
               />
             )}
             {page === programPageNumber && (
@@ -817,7 +823,13 @@ const Index = () => {
                   kind="primary"
                   className="forwardButton"
                   disabled={
-                    isSubmitting || errors?.errors?.length > 0 ? true : false
+                    isSubmitting ||
+                    Object.values(phoneValidation).some(
+                      (item) => item.status === false,
+                    ) ||
+                    errors?.errors?.length > 0
+                      ? true
+                      : false
                   }
                   onClick={handleSubmitOrderForm}
                 >

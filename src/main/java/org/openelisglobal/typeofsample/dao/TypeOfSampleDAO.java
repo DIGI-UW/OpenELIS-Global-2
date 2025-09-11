@@ -14,6 +14,7 @@
 package org.openelisglobal.typeofsample.dao;
 
 import java.util.List;
+import java.util.Locale;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.test.valueholder.Test;
@@ -71,4 +72,6 @@ public interface TypeOfSampleDAO extends BaseDAO<TypeOfSample, String> {
     void clearMap();
 
     boolean duplicateTypeOfSampleExists(TypeOfSample typeOfSample) throws LIMSRuntimeException;
+
+    TypeOfSample getTypeOfSampleByLocalizedName(String typeOfSampleName, Locale locale);
 }
