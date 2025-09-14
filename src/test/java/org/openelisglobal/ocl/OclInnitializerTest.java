@@ -11,18 +11,21 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class OclInnitializerTest extends BaseWebContextSensitiveTest {
-    private static final Logger log = LoggerFactory.getLogger(OclZipImporterIntegrationTest.class);
+    private static final Logger log = LoggerFactory.getLogger(OclInnitializerTest.class);
 
     @Autowired
     private OclZipImporter oclZipImporter;
 
     @Autowired
-    OclImportInitializer oclImportInitializer;
+    private OclImportInitializer oclImportInitializer;
 
     private static String oclDirPath;
+    private static String sampleType = "Whole Blood";
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
+        executeDataSetWithStateManagement("testdata/ocl-import.xml");
+        executeDataSetWithStateManagement("testdata/type-of-testresult.xml");
         if (oclZipImporter == null) {
             fail("OclZipImporter bean not autowired. Check Spring configuration.");
         }
@@ -34,5 +37,4 @@ public class OclInnitializerTest extends BaseWebContextSensitiveTest {
         java.io.File tempFile = java.io.File.createTempFile("ocl_imported", ".flag");
         oclImportInitializer.performOclImport(oclDirPath, tempFile.getAbsolutePath());
     }
-
 }

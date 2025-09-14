@@ -1,30 +1,26 @@
-loinc_code,product_name,quantity,price_unit
-333-333,Albumine recherche miction,8,76
-718-7,Hémoglobine,8,73
-787-2,Volume Globulaire Moyen,8,69
-777-3,Plaquette,1,32
-736-9,Lymphocytes (%),3,15
-731-0,Lymphocytes (Abs),10,32
-742-7,Monocytes (Abs),5,44
-12-1234 ,Baso %,9,55
-1236884,Casey Test,2,67
-7855-0,DENGUE PCR,3,29
-10351-5,HIV VIRAL LOAD,10,11
-94500-6,COVID-19 PCR,10,22
-94547-7,COVID-19 ANITBODY IgG,1,81
-94547-7,COVID-19 ANITBODY IgM,8,69
-7855-0,DENGUE PCR,6,33
-29615-2,HEPATITIS B VIRAL LOAD,9,75
-11011-4,HEPATITIS C VIRAL LOAD,9,45
-10351-5,HIV VIRAL LOAD,2,90
-94500-6,COVID-19 PCR,10,44
-94500-6,COVID-19 PCR,3,49
-94547-7,COVID-19 ANITBODY IgG,7,79
-94547-7,COVID-19 ANITBODY IgM,9,25
-7855-0,DENGUE PCR,1,85
-29615-2,HEPATITIS B VIRAL LOAD,10,45
-11011-4,HEPATITIS C VIRAL LOAD,10,89
-10351-5,HIV VIRAL LOAD,7,97
-19-78965,Determine,10,93
-82092-8,Amylase updated,9,73
-15052-2,Bioline updated,3,18
+TEST_NAME,PRODUCT_NAME,QUANTITY,PRICE_UNIT
+ARV resistance,ARV resistance,1,57
+Basophiles (%),Basophiles (%),1,89
+Basophiles,Basophiles,1,34
+Bioline,Bioline,1,76
+CD4 Absolute count (mm3),CD4 Absolute count (mm3),1,42
+CD4 percent  (%),CD4 percent  (%),1,65
+CMCH,CMCH,1,28
+Eosinophiles (%),Eosinophiles (%),1,91
+Eosinophiles,Eosinophiles,1,38
+HIV rapid test HIV,HIV rapid test HIV,1,73
+Hematocrit,Hematocrit,1,52
+Hemoglobin,Hemoglobin,1,44
+Lymphocytes (%),Lymphocytes (%),1,60
+Lymphocytes (Abs),Lymphocytes (Abs),1,81
+Medium corpuscular volum,Medium corpuscular volum,1,33
+Monocytes (%),Monocytes (%),1,97
+Monocytes (Abs),Monocytes (Abs),1,26
+Neutrophiles (%),Neutrophiles (%),1,70
+Neutrophiles,Neutrophiles,1,55
+Platelets,Platelets,1,41
+Red Blood Cells Count (RBC),Red Blood Cells Count (RBC),1,63
+TMCH,TMCH,1,37
+Viral load,Viral load,1,85
+Vironostika,Vironostika,1,49
+White Blood Cells Count (WBC),White Blood Cells Count (WBC),1,66

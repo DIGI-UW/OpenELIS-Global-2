@@ -666,29 +666,15 @@ public class OclToOpenElisMapper {
         TypeOfSample typeOfSample = null;
         if (extras.has("sample_type")) {
             String ocltypeOfSample = getText(extras, "sample_type");
-            TypeOfSample tos = new TypeOfSample();
-            tos.setDescription(ocltypeOfSample);
-            typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(tos, true);
-
-            if (typeOfSample == null) {
-                typeOfSample = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain(ocltypeOfSample, "H");
-            }
+            typeOfSample = typeOfSampleService.getTypeOfSampleByLocalizedName(ocltypeOfSample, Locale.ENGLISH);
         }
 
         if (typeOfSample == null) {
-            TypeOfSample tos = new TypeOfSample();
-            tos.setDescription(defaultSampleType);
-            typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(tos, true);
-
-            if (typeOfSample == null) {
-                typeOfSample = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain(defaultSampleType, "H");
-            }
+            typeOfSample = typeOfSampleService.getTypeOfSampleByLocalizedName(defaultSampleType, Locale.ENGLISH);
         }
 
         if (typeOfSample == null) {
-            TypeOfSample tos = new TypeOfSample();
-            tos.setDescription("Whole Blood");
-            typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(tos, true);
+            typeOfSample = typeOfSampleService.getTypeOfSampleByLocalizedName("Whole Blood", Locale.ENGLISH);
         }
         return typeOfSample;
     }
