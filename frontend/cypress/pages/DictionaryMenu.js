@@ -101,8 +101,8 @@ class DictionaryMenuPage {
     cy.get(this.selectors.searchByDictEntry).clear();
   }
 
-  validateColumnContent(columnNum, value) {
-    cy.get(`td:nth-child(${columnNum})`).should("contain", value);
+  validateColumnContent(columnKey, rowId, value) {
+    cy.get(`[data-cy="cell-${columnKey}-${rowId}"]`).should("contain", value);
   }
 
   checkFirstDict() {
