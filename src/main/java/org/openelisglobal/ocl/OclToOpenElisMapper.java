@@ -154,15 +154,6 @@ public class OclToOpenElisMapper {
             String frenchName = names.get("frenchName");
             String description = names.get("description");
             String loinc = getLoinc(conceptId);
-
-            Test dbTest = testService.getTestByLocalizedName(englishName, Locale.ENGLISH);
-            if (dbTest != null) {
-                if (StringUtils.isNotBlank(loinc)) {
-                    dbTest.setLoinc(loinc);
-                    testService.update(dbTest);
-                }
-                return null;
-            }
             // Log detailed concept information for debugging
             logConceptDetails(concept);
 
@@ -209,6 +200,15 @@ public class OclToOpenElisMapper {
             if (conceptClass == null || !ALLOWED_CONCEPT_CLASSES.contains(conceptClass.toUpperCase())) {
                 log.info("Skipping concept " + conceptId + " (name: " + displayName + ") "
                         + "due to unsupported concept_class: " + conceptClass);
+                return null;
+            }
+
+            Test dbTest = testService.getTestByLocalizedName(englishName, Locale.ENGLISH);
+            if (dbTest != null) {
+                if (StringUtils.isNotBlank(loinc)) {
+                    dbTest.setLoinc(loinc);
+                    testService.update(dbTest);
+                }
                 return null;
             }
 
