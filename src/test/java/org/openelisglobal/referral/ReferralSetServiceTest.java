@@ -93,7 +93,6 @@ public class ReferralSetServiceTest extends BaseWebContextSensitiveTest {
         List<ObservationHistory> initialConditionList = new ArrayList<>();
         Map<String, String> testIdToUserSectionMap = new HashMap<>();
         Map<String, String> testIdToUserSampleTypeMap = new HashMap<>();
-
         return sampleAddService.new SampleTestCollection(new SampleItem(), tests, "2024-06-04", initialConditionList,
                 testIdToUserSectionMap, testIdToUserSampleTypeMap, new ObservationHistory());
     }
