@@ -74,10 +74,10 @@ public class TestProductMapping {
         int count = 0;
         try (CSVParser parser = CSVParser.parse(in, java.nio.charset.StandardCharsets.UTF_8, format)) {
             for (CSVRecord record : parser) {
-                String key = record.get("loinc_code").trim();
-                String productName = record.get("product_name").trim();
-                String quantityStr = record.get("quantity").trim();
-                String priceStr = record.get("price_unit").trim();
+                String key = record.get("TEST_NAME").trim();
+                String productName = record.get("PRODUCT_NAME").trim();
+                String quantityStr = record.get("QUANTITY").trim();
+                String priceStr = record.get("PRICE_UNIT").trim();
 
                 if (key.isEmpty() || productName.isEmpty()) {
                     continue;

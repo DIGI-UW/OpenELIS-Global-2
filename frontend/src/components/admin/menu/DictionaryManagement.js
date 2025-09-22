@@ -344,7 +344,11 @@ function DictionaryManagement() {
         </TableCell>
       );
     }
-    return <TableCell key={cell.id}>{cell.value}</TableCell>;
+    return (
+      <TableCell key={cell.id} data-cy={`cell-${cell.info.header}-${row.id}`}>
+        {cell.value}
+      </TableCell>
+    );
   };
 
   const handleDictionaryMenuItems = (res) => {

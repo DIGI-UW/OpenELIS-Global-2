@@ -67,11 +67,16 @@ export const extractAgeRangeParts = (rangeStr) => {
   return { low, high };
 };
 
+const isNumericRange = (str) => {
+  if (typeof str !== "string") {
+    return false;
+  }
+  const rangeRegex = /^\s*\d+(\.\d+)?\s*-\s*\d+(\.\d+)?\s*$/;
+  return rangeRegex.test(str);
+};
+
 const extractRange = (rangeStr) => {
-  if (
-    typeof rangeStr === "string" &&
-    rangeStr.trim().toLowerCase() === "any value"
-  ) {
+  if (!isNumericRange(rangeStr)) {
     return ["-Infinity", "Infinity"];
   }
 
@@ -152,11 +157,7 @@ export const mapTestCatBeanToFormData = (test) => {
               let low = "-Infinity",
                 high = "Infinity";
 
-              const isAnyValue =
-                typeof limit.normalRange === "string" &&
-                limit.normalRange.trim().toLowerCase() === "any value";
-
-              if (!isAnyValue && typeof limit.normalRange === "string") {
+              if (isNumericRange(limit.normalRange)) {
                 const parts = limit.normalRange.split("-");
                 low = parts[0]?.trim() || "-Infinity";
                 high = parts[1]?.trim() || "Infinity";

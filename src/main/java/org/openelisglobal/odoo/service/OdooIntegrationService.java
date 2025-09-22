@@ -3,6 +3,7 @@ package org.openelisglobal.odoo.service;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -20,6 +21,7 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
@@ -31,6 +33,8 @@ import org.springframework.stereotype.Service;
 public class OdooIntegrationService {
 
     private static final Logger log = LogManager.getLogger(OdooIntegrationService.class);
+    @Value("${org.openelisglobal.odoo.map.testname.locale:en}")
+    private String testMapLocale;
 
     @Autowired
     private OdooConnection odooConnection;
@@ -309,16 +313,14 @@ public class OdooIntegrationService {
             for (SampleTestCollection sampleTest : updateData.getSampleItemsTests()) {
                 for (Test test : sampleTest.tests) {
                     TestService testService = SpringContext.getBean(TestService.class);
-                    String testLoinc = testService.get(test.getId()).getLoinc();
-                    if (testLoinc == null) {
-                        continue;
-                    }
+                    String testName = testService.get(test.getId()).getLocalizedTestName()
+                            .getLocalizedValue(testMapLocale.equalsIgnoreCase("EN") ? Locale.ENGLISH : Locale.FRENCH);
 
-                    log.info("Processing test: ID={}", testLoinc);
+                    log.info("Processing test: Name={}", testName);
 
                     String mappingKey = null;
-                    if (testProductMapping.hasValidMapping(testLoinc)) {
-                        mappingKey = testLoinc;
+                    if (testProductMapping.hasValidMapping(testName)) {
+                        mappingKey = testName;
                     }
 
                     if (mappingKey != null) {
@@ -331,10 +333,10 @@ public class OdooIntegrationService {
                         invoiceLines.add(invoiceLine);
                         log.info(
                                 "Added invoice line for test: {} (mapped from: {}) with product: {}, quantity: {}, price: {}",
-                                testLoinc, mappingKey, productInfo.getProductName(), productInfo.getQuantity(),
+                                testName, mappingKey, productInfo.getProductName(), productInfo.getQuantity(),
                                 productInfo.getPriceUnit());
                     } else {
-                        log.warn("No Odoo product mapping found for test: {}", testLoinc);
+                        log.warn("No Odoo product mapping found for test: {}", testName);
                     }
                 }
             }

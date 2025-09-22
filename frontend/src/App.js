@@ -11,11 +11,7 @@ import ResultSearch from "./components/resultPage/ResultSearch";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import "./App.css";
-import messages_en from "./languages/en.json";
-import messages_fr from "./languages/fr.json";
-import messages_es from "./languages/es.json";
-import messages_id from "./languages/id.json";
-import messages_ro from "./languages/ro.json";
+import { languages } from "./languages";
 import config from "./config.json";
 import { SecureRoute } from "./components/security";
 import "./index.scss";
@@ -53,8 +49,11 @@ export default function App() {
   let i18nConfig = {
     locale: navigator.language.split(/[-_]/)[0],
     defaultLocale: "en",
-    messages: messages_en,
+    messages: languages["en"].messages,
   };
+
+  const defaultLocale =
+    localStorage.getItem("locale") || navigator.language.split(/[-_]/)[0];
 
   const [userSessionDetails, setUserSessionDetails] = useState({});
   const [errorLoadingSessionDetails, setErrorLoadingSessionDetails] =
@@ -120,28 +119,9 @@ export default function App() {
     return userSessionDetails;
   };
 
-  i18nConfig.locale =
-    localStorage.getItem("locale") || navigator.language.split(/[-_]/)[0];
-  switch (i18nConfig.locale) {
-    case "en":
-      i18nConfig.messages = messages_en;
-      break;
-    case "fr":
-      i18nConfig.messages = messages_fr;
-      break;
-    case "es":
-      i18nConfig.messages = messages_es;
-      break;
-    case "id":
-      i18nConfig.messages = messages_id;
-      break;
-    case "ro":
-      i18nConfig.messages = messages_ro;
-      break;
-    default:
-      i18nConfig.messages = messages_en;
-      break;
-  }
+  i18nConfig.locale = languages[defaultLocale] ? defaultLocale : "en";
+
+  i18nConfig.messages = languages[i18nConfig.locale].messages;
 
   const logout = () => {
     if (userSessionDetails.loginMethod === "SAML") {
@@ -194,29 +174,12 @@ export default function App() {
   };
 
   const changeLanguageReact = (lang) => {
-    switch (lang) {
-      case "en":
-        i18nConfig.messages = messages_en;
-        break;
-      case "fr":
-        i18nConfig.messages = messages_fr;
-        break;
-      case "es":
-        i18nConfig.messages = messages_es;
-        break;
-      case "id":
-        i18nConfig.messages = messages_id;
-        break;
-      case "ro":
-        i18nConfig.messages = messages_ro;
-        break;
-      default:
-        i18nConfig.messages = messages_en;
-        break;
+    if (!languages[lang]) {
+      lang = "en";
     }
+    i18nConfig.messages = languages[lang].messages;
     i18nConfig.locale = lang;
     localStorage.setItem("locale", lang);
-    //rerender the component on changing locale
     setLocale(lang);
   };
 
