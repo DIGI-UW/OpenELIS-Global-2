@@ -35,6 +35,7 @@ import ReferredOutTests from "./resultsReferredOut/ReferredOutTests";
 import { ConfigurationContext } from "../layout/Layout";
 import config from "../../config.json";
 import CustomDatePicker from "../common/CustomDatePicker";
+import CompactFileInput from "./fileUpload/FileInput";
 
 function ResultSearchPage() {
   const [originalResultForm, setOriginalResultForm] = useState({
@@ -874,6 +875,14 @@ export function SearchResults(props) {
     }
   };
 
+  const downloadFile = (fileName, base64Content, fileType) => {
+    const linkSource = `data:${fileType};base64,${base64Content.split(",")[1]}`;
+    const downloadLink = document.createElement("a");
+    downloadLink.href = linkSource;
+    downloadLink.download = fileName;
+    downloadLink.click();
+  };
+
   const addRejectResult = () => {
     const resultColumn = {
       id: "reject",
@@ -1274,49 +1283,28 @@ export function SearchResults(props) {
           </Select>
         </Column>
         <Column lg={2}>
-          <FileUploader
-            style={{ marginTop: "-10px" }}
-            buttonLabel="Upload File"
-            iconDescription="file upload"
-            multiple={false}
-            accept={["image/jpeg", "image/png", "application/pdf"]}
-            disabled={false}
-            name=""
-            buttonKind="primary"
-            size="lg"
-            filenameStatus="edit"
-            onChange={async (e) => {
-              e.preventDefault();
-              const file = e.target.files[0];
-              if (!file) return;
-              const base64Content = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = (err) => reject(err);
-              });
-              const updatedResults = { ...props.results };
-              if (!updatedResults.testResult[data.id].resultFiles) {
-                updatedResults.testResult[data.id].resultFiles = [];
-              }
-              updatedResults.testResult[data.id].resultFiles.push({
-                fileName: file.name,
-                fileType: file.type,
-                base64Content: base64Content,
-              });
-              props.setResultForm(updatedResults);
-              setUploadedFiles((prev) => ({
-                ...prev,
-                [data.id]: updatedResults.testResult[data.id].resultFiles,
-              }));
-            }}
+          <CompactFileInput
+            data={data}
+            results={props.results}
+            setResultForm={props.setResultForm}
           />
-
-          {uploadedFiles[data.id]?.map((file, index) => (
-            <div key={index} style={{ marginTop: "8px" }}>
-              <b>{file.fileName}</b>
-            </div>
-          ))}
+          {data.resultFiles &&
+            data.resultFiles.map((file, index) => (
+              <div key={index} style={{ marginTop: "8px" }}>
+                <Link
+                  onClick={() =>
+                    downloadFile(
+                      file.fileName,
+                      file.base64Content,
+                      file.fileType,
+                    )
+                  }
+                  style={{ fontSize: "12px" }}
+                >
+                  {file.fileName}
+                </Link>
+              </div>
+            ))}
         </Column>
         <Column lg={2}>
           <Checkbox
