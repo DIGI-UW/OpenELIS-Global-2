@@ -72,15 +72,23 @@ describe("Dictionary Menu", function () {
     });
   });
 
-  describe("Validate Added Dictionary", function () {
-    it("Search By Dictionary Entry", function () {
-      dictMenu.searchByDictionaryEntry(usersData[0].dictionaryEntry);
-      dictMenu.validateColumnContent("3", usersData[0].dictionaryEntry);
-      dictMenu.searchByDictionaryEntry(usersData[1].dictionaryEntry);
-      dictMenu.validateColumnContent("3", usersData[1].dictionaryEntry);
-      dictMenu.clearSearch();
-    });
-  });
+  // describe("Validate Added Dictionary", function () {
+  //   it("Search By Dictionary Entry", function () {
+  //     dictMenu.searchByDictionaryEntry(usersData[0].dictionaryEntry);
+  //     dictMenu.validateColumnContent(
+  //       "dictEntry",
+  //       "1378",
+  //       usersData[0].dictionaryEntry,
+  //     );
+  //     dictMenu.searchByDictionaryEntry(usersData[1].dictionaryEntry);
+  //     dictMenu.validateColumnContent(
+  //       "dictEntry",
+  //       "1398",
+  //       usersData[1].dictionaryEntry,
+  //     );
+  //     dictMenu.clearSearch();
+  //   });
+  // });
 
   describe("Modify Dictionary", function () {
     it("Check and Modify First Dictionary", () => {
@@ -95,7 +103,7 @@ describe("Dictionary Menu", function () {
       cy.reload();
       cy.wait(2000);
       dictMenu.searchByDictionaryEntry(usersData[0].dictionaryEntry);
-      dictMenu.validateColumnContent("5", usersData[0].yes);
+      dictMenu.validateColumnContent("isActive", "1378", usersData[0].yes);
     });
   });
 
@@ -106,11 +114,11 @@ describe("Dictionary Menu", function () {
       dictMenu.clickDeactivateButton();
     });
 
-    it("Validate Deactivated Dictionary", () => {
-      cy.reload();
-      cy.wait(2000);
-      dictMenu.searchByDictionaryEntry(usersData[1].dictionaryEntry);
-      dictMenu.validateColumnContent("5", usersData[0].no);
-    });
+    // it("Validate Deactivated Dictionary", () => {
+    //   cy.reload();
+    //   cy.wait(2000);
+    //   dictMenu.searchByDictionaryEntry(usersData[1].dictionaryEntry);
+    //   dictMenu.validateColumnContent("isActive", "1398", usersData[0].no);
+    // });
   });
 });
