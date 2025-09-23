@@ -15,7 +15,6 @@ import BatchTestReassignmentandCancelationPage from "./BatchTestReassignmentandC
 import TestNotificationConfigurationPage from "./TestNotificationConfigurationPage";
 import TestManagementPage from "./TestManagementPage";
 
-
 class AdminPage {
   constructor() {
     this.selectors = {
@@ -210,11 +209,11 @@ class AdminPage {
   goToTestNotificationConfigPage() {
     cy.get(this.selectors.testNotification).should("be.visible").click();
     return new TestNotificationConfigurationPage();
+  }
 
   goToTestManagementPage() {
     cy.get(this.selectors.testManagement).should("be.visible").click();
     return new TestManagementPage();
-
   }
 }
 
