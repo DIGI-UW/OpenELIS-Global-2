@@ -1,4 +1,4 @@
-package org.openelisglobal.testresult.valueholder;
+package org.openelisglobal.analysis.valueholder;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -40,10 +40,6 @@ public class ResultFile extends BaseObject<Integer> {
         return id;
     }
 
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
     public String getFileName() {
         return fileName;
     }
@@ -74,5 +70,11 @@ public class ResultFile extends BaseObject<Integer> {
 
     public void setUploadedAt(Timestamp uploadedAt) {
         this.uploadedAt = uploadedAt;
+    }
+
+    @Override
+    public void setId(Integer id) {
+        this.id = id;
+
     }
 }

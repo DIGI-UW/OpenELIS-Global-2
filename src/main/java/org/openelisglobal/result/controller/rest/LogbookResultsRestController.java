@@ -21,6 +21,7 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analysis.valueholder.ResultFile;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -95,12 +96,7 @@ import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestSectionService;
-import org.openelisglobal.test.service.TestService;
-import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
-import org.openelisglobal.testresult.service.TestResultService;
-import org.openelisglobal.testresult.valueholder.ResultFile;
-import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -186,10 +182,6 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
     private NotificationDAO notificationDAO;
     @Autowired
     private SystemUserService systemUserService;
-    @Autowired
-    private TestResultService testResultService;
-    @Autowired
-    private TestService testService;
 
     private final String RESULT_SUBJECT = "Result Note";
     private final String REFERRAL_CONFORMATION_ID;
@@ -558,7 +550,10 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
     private void createAnalysisOnlyUpdates(ResultsUpdateDataSet actionDataSet) {
         for (TestResultItem testResultItem : actionDataSet.getAnalysisOnlyChangeResults()) {
 
+            ResultFile resultFile = createResultFile(testResultItem.getResultFile());
+
             Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
+            analysis.setResultFile(resultFile);
             analysis.setSysUserId(getSysUserId(request));
             analysis.setCompletedDate(DateUtil.convertStringDateToSqlDate(testResultItem.getTestDate()));
             if (testResultItem.getAnalysisMethod() != null) {
@@ -599,15 +594,6 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                     }
                 }
             }
-            Test test = analysisService.getTest(analysis);
-            TestResult testResult = testResultService.getTestResultByTest(test);
-
-            if (testResultItem.getResultFiles() != null && !testResultItem.getResultFiles().isEmpty()) {
-                testResultItem.getResultFiles().stream().map(this::createResultFile)
-                        .forEach(testResult.getResultFiles()::add);
-            }
-
-            testResultService.save(testResult);
 
             ResultSaveBean bean = ResultSaveBeanAdapter.fromTestResultItem(testResultItem);
             ResultSaveService resultSaveService = new ResultSaveService(analysis, getSysUserId(request));
@@ -833,6 +819,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         if (testResultItem.getAnalysisMethod() != null) {
             analysis.setAnalysisType(testResultItem.getAnalysisMethod());
         }
+        ResultFile resultFile = createResultFile(testResultItem.getResultFile());
+        analysis.setResultFile(resultFile);
         // analysis.setStartedDateForDisplay(testDate);
 
         // This needs to be refactored -- part of the logic is in

@@ -23,6 +23,7 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import org.openelisglobal.analysis.valueholder.ResultFile;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.util.IdValuePair;
@@ -32,7 +33,6 @@ import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.result.action.util.ResultItem;
 import org.openelisglobal.result.form.LogbookResultsForm;
 import org.openelisglobal.result.valueholder.Result;
-import org.openelisglobal.testresult.valueholder.ResultFile;
 import org.openelisglobal.validation.annotations.SafeHtml;
 import org.openelisglobal.validation.annotations.ValidAccessionNumber;
 import org.openelisglobal.validation.annotations.ValidDate;
@@ -234,8 +234,7 @@ public class TestResultItem implements ResultItem, Serializable {
     private String defaultResultValue;
 
     private ReferralItem referralItem;
-
-    private List<ResultFileForm> resultFiles;
+    private ResultFileForm resultFile;
 
     public String getConsiderRejectReason() {
         return considerRejectReason;
@@ -981,12 +980,12 @@ public class TestResultItem implements ResultItem, Serializable {
         this.referralItem = referralItem;
     }
 
-    public List<ResultFileForm> getResultFiles() {
-        return resultFiles;
+    public ResultFileForm getResultFile() {
+        return resultFile;
     }
 
-    public void setResultFiles(List<ResultFileForm> resultFiles) {
-        this.resultFiles = resultFiles;
+    public void setResultFile(ResultFileForm resultFile) {
+        this.resultFile = resultFile;
     }
 
     public static class ResultFileForm extends ResultFile {

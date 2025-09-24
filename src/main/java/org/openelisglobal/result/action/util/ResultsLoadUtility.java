@@ -26,10 +26,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analysis.valueholder.ResultFile;
 import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -693,17 +693,13 @@ public class ResultsLoadUtility {
         if (resultDisplayType != ResultDisplayType.TEXT) {
             inventoryNeeded = true;
         }
-
-        TestResult testResult = testResultService.getTestResultByTest(test);
-        List<TestResultItem.ResultFileForm> files = testResult.getResultFiles().stream().map(file -> {
-            TestResultItem.ResultFileForm form = new TestResultItem.ResultFileForm();
-            form.setFileName(file.getFileName());
-            form.setFileType(file.getFileType());
-            form.setBase64Content(Base64.getEncoder().encodeToString(file.getContent()));
-            form.setUploadedAt(file.getUploadedAt());
-            form.setLastupdated(file.getLastupdated());
-            return form;
-        }).collect(Collectors.toList());
+        ResultFile file = analysis.getResultFile();
+        TestResultItem.ResultFileForm form = new TestResultItem.ResultFileForm();
+        form.setFileName(file.getFileName());
+        form.setFileType(file.getFileType());
+        form.setBase64Content(Base64.getEncoder().encodeToString(file.getContent()));
+        form.setUploadedAt(file.getUploadedAt());
+        form.setLastupdated(file.getLastupdated());
 
         TestResultItem testItem = new TestResultItem();
 
@@ -753,7 +749,7 @@ public class ResultsLoadUtility {
                 analysisService.getTriggeredReflex(analysis) && analysisService.resultIsConclusion(result, analysis));
         testItem.setPastNotes(notes);
         testItem.setDisplayResultAsLog(hasLogValue(test));
-        testItem.setResultFiles(files);
+        testItem.setResultFile(form);
         testItem.setNonconforming(
                 analysisService.isParentNonConforming(analysis) || SpringContext.getBean(IStatusService.class)
                         .matches(analysisService.getStatusId(analysis), AnalysisStatus.TechnicalRejected));

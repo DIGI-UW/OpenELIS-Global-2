@@ -117,8 +117,4 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         return testResults;
     }
 
-    @Override
-    public TestResult getTestResultByTest(Test test) {
-        return getBaseObjectDAO().getTestResultByTest(test);
-    }
 }
