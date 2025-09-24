@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect, useRef } from "react";
+import { useContext, useState, useEffect, useRef, useCallback } from "react";
 import {
   Heading,
   Loading,
@@ -23,6 +23,7 @@ import { CustomShowGuide } from "./customComponents/CustomShowGuide.js";
 import { CustomTestDataDisplay } from "./customComponents/CustomTestDataDisplay.js";
 import { TestStepForm } from "./customComponents/TestStepForm.js";
 import { mapTestCatBeanToFormData } from "./customComponents/TestFormData.js";
+import SearchTestNames from "./SearchTestNames";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -44,6 +45,7 @@ function TestModifyEntry() {
   const intl = useIntl();
   const [isLoading, setIsLoading] = useState(false);
   const [testMonifyList, setTestModifyList] = useState({});
+  const [filteredTests, setFilteredTests] = useState(testMonifyList?.testList);
   const [showGuide, setShowGuide] = useState(false);
   const [selectedTestIdToEdit, setSelectedTestIdToEdit] = useState(null);
 
@@ -52,6 +54,10 @@ function TestModifyEntry() {
   const handleToggleShowGuide = () => {
     setShowGuide(!showGuide);
   };
+
+  const handleTestsFilter = useCallback((filtered) => {
+    setFilteredTests(filtered);
+  }, []);
 
   const handleTestModifyEntryList = (res) => {
     if (!res) {
@@ -268,7 +274,7 @@ function TestModifyEntry() {
           ) : (
             <>
               <Grid fullWidth={true}>
-                <Column lg={16} md={8} sm={4}>
+                <Column lg={8} md={4} sm={2}>
                   <Section>
                     <Section>
                       <Section>
@@ -277,6 +283,16 @@ function TestModifyEntry() {
                         </Heading>
                       </Section>
                     </Section>
+                  </Section>
+                </Column>
+                <Column lg={8} md={4} sm={2}>
+                  <Section>
+                    <Heading>
+                      <SearchTestNames
+                        testNames={testMonifyList?.testList}
+                        onFilter={handleTestsFilter}
+                      />
+                    </Heading>
                   </Section>
                 </Column>
               </Grid>
@@ -301,7 +317,7 @@ function TestModifyEntry() {
               {testMonifyList && testMonifyList?.testList?.length > 0 ? (
                 <>
                   <Grid fullWidth={true}>
-                    {testMonifyList?.testList?.map((test) => (
+                    {filteredTests?.map((test) => (
                       <Column
                         style={{ margin: "2px" }}
                         lg={4}
