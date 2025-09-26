@@ -694,12 +694,15 @@ public class ResultsLoadUtility {
             inventoryNeeded = true;
         }
         ResultFile file = analysis.getResultFile();
+
         TestResultItem.ResultFileForm form = new TestResultItem.ResultFileForm();
-        form.setFileName(file.getFileName());
-        form.setFileType(file.getFileType());
-        form.setBase64Content(Base64.getEncoder().encodeToString(file.getContent()));
-        form.setUploadedAt(file.getUploadedAt());
-        form.setLastupdated(file.getLastupdated());
+        if (file != null) {
+            form.setFileName(file.getFileName());
+            form.setFileType(file.getFileType());
+            form.setBase64Content(Base64.getEncoder().encodeToString(file.getContent()));
+            form.setUploadedAt(file.getUploadedAt());
+            form.setLastupdated(file.getLastupdated());
+        }
 
         TestResultItem testItem = new TestResultItem();
 

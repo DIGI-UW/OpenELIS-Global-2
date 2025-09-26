@@ -115,9 +115,11 @@
             lazy="false">
             <column name="method_id" precision="10" scale="0" />
         </many-to-one>
-        <one-to-one name="resultFile"
+        <many-to-one name="resultFile"
             class="org.openelisglobal.analysis.valueholder.ResultFile"
-            cascade="all" lazy="false" constrained="false" />
+            fetch="select" cascade="all">
+            <column name="result_file_id" not-null="false" unique="true" />
+        </many-to-one>
 
     </class>
 

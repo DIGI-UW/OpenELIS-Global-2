@@ -1,8 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  FileUploader,
   Grid,
-  Column,
   FormGroup,
   Stack,
   FileUploaderItem,
@@ -11,69 +9,112 @@ import {
 } from "@carbon/react";
 
 const CompactFileInput = ({ data, results, setResultForm }) => {
-  const [uploadedFiles, setUploadedFiles] = useState({});
+  const [uploadedFile, setUploadedFile] = useState({});
 
-  const handleUpload = async (files) => {
-    const file = files[0];
-    if (!file) return;
-
-    const base64Content = await new Promise((resolve, reject) => {
+  const toBase64 = (file) =>
+    new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => resolve(reader.result);
       reader.onerror = (err) => reject(err);
     });
 
-    const updatedResults = { ...results };
-    if (!updatedResults.testResult[data.id].resultFiles) {
-      updatedResults.testResult[data.id].resultFiles = [];
+  const handleUpload = async (files) => {
+    const file = files[0];
+    if (!file) return;
+
+    const base64Content = await toBase64(file);
+
+    const updatedResults = structuredClone(results);
+
+    const testResultIndex = updatedResults.testResult.findIndex(
+      (item) => item.accessionNumber === data.accessionNumber,
+    );
+
+    if (testResultIndex === -1) {
+      console.error(
+        `Test result with accessionNumber ${data.accessionNumber} not found`,
+      );
+      return;
     }
 
-    updatedResults.testResult[data.id].resultFiles.push({
+    updatedResults.testResult[testResultIndex].resultFile = {
       fileName: file.name,
       fileType: file.type,
-      base64Content: base64Content,
-    });
+      base64Content,
+    };
 
     setResultForm(updatedResults);
-    setUploadedFiles((prev) => ({
+
+    setUploadedFile((prev) => ({
       ...prev,
-      [data.id]: updatedResults.testResult[data.id].resultFiles,
+      [data.accessionNumber]:
+        updatedResults.testResult[testResultIndex].resultFile,
     }));
   };
 
-  const handleDelete = (index) => {
-    const updatedResults = { ...results };
-    updatedResults.testResult[data.id].resultFiles.splice(index, 1);
+  const handleDelete = () => {
+    const updatedResults = structuredClone(results);
+
+    const testResultIndex = updatedResults.testResult.findIndex(
+      (item) => item.accessionNumber === data.accessionNumber,
+    );
+
+    if (testResultIndex === -1) return;
+
+    updatedResults.testResult[testResultIndex].resultFile = null;
 
     setResultForm(updatedResults);
-    setUploadedFiles((prev) => ({
+
+    setUploadedFile((prev) => ({
       ...prev,
-      [data.id]: updatedResults.testResult[data.id].resultFiles,
+      [data.accessionNumber]: null,
     }));
   };
+
+  useEffect(() => {
+    const testResult = results.testResult.find(
+      (item) => item.accessionNumber === data.accessionNumber,
+    );
+
+    if (testResult?.resultFile) {
+      setUploadedFile((prev) => ({
+        ...prev,
+        [data.accessionNumber]: testResult.resultFile,
+      }));
+    } else {
+      setUploadedFile((prev) => ({
+        ...prev,
+        [data.accessionNumber]: null,
+      }));
+    }
+  }, [results, data.accessionNumber]);
+
+  const file = uploadedFile[data.accessionNumber];
 
   return (
     <Grid narrow>
       <FormGroup legendText="">
         <Stack gap={5}>
           <FormLabel>Upload Results</FormLabel>
+
           <FileUploaderDropContainer
             accept={["image/jpeg", "image/png", "application/pdf"]}
-            labelText="Drag and drop files or click to upload"
+            labelText="Drag and drop a file or click to upload"
             multiple={false}
             onAddFiles={(e, { addedFiles }) => handleUpload(addedFiles)}
           />
+
           <div>
             <Stack gap={1}>
-              {uploadedFiles[data.id]?.map((file, index) => (
+              {file && (
                 <FileUploaderItem
-                  key={index}
+                  key={file.fileName}
                   name={file.fileName}
                   status="complete"
-                  onDelete={() => handleDelete(index)}
+                  onDelete={handleDelete}
                 />
-              ))}
+              )}
             </Stack>
           </div>
         </Stack>

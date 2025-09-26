@@ -1288,23 +1288,23 @@ export function SearchResults(props) {
             results={props.results}
             setResultForm={props.setResultForm}
           />
-          {data.resultFiles &&
-            data.resultFiles.map((file, index) => (
-              <div key={index} style={{ marginTop: "8px" }}>
-                <Link
-                  onClick={() =>
-                    downloadFile(
-                      file.fileName,
-                      file.base64Content,
-                      file.fileType,
-                    )
-                  }
-                  style={{ fontSize: "12px" }}
-                >
-                  {file.fileName}
-                </Link>
-              </div>
-            ))}
+
+          {data.resultFile && data.resultFile.fileName && (
+            <div style={{ marginTop: "8px" }}>
+              <Link
+                onClick={() =>
+                  downloadFile(
+                    data.resultFile.fileName,
+                    data.resultFile.base64Content,
+                    data.resultFile.fileType,
+                  )
+                }
+                style={{ fontSize: "12px" }}
+              >
+                {data.resultFile.fileName}
+              </Link>
+            </div>
+          )}
         </Column>
         <Column lg={2}>
           <Checkbox
