@@ -1464,7 +1464,6 @@
   "sidenav.label.generalprogramme": "General Programme",
   "sidenav.label.generalprogramme.tooltip": "Access the General Programme dashboard",
   "sidenav.label.generalprogramme.dashboard": "General Programme Dashboard",
-  "sidenav.label.generalprogramme.dashboard.tooltip": "View and manage General Programme order entries"
+  "sidenav.label.generalprogramme.dashboard.tooltip": "View and manage General Programme order entries",
   "input.placeholder.searchTestName": "Search testName Here"
-
 }

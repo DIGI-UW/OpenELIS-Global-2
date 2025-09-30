@@ -1463,7 +1463,6 @@
   "sidenav.label.generalprogramme": "Programme Général",
   "sidenav.label.generalprogramme.tooltip": "Accéder au tableau de bord du Programme Général",
   "sidenav.label.generalprogramme.dashboard": "Tableau de bord Programme Général",
-  "sidenav.label.generalprogramme.dashboard.tooltip": "Voir et gérer les entrées de commande du Programme Général"
+  "sidenav.label.generalprogramme.dashboard.tooltip": "Voir et gérer les entrées de commande du Programme Général",
   "input.placeholder.searchTestName": "Search testName Here"
-
 }
