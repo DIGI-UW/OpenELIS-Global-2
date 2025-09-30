@@ -25,6 +25,7 @@
   "label.button.confirmTitle": "Are You Sure ?",
   "label.button.generatePrintableVersion": "Generate Printable Version",
   "label.button.viewReport": "View Report",
+  "label.button.view": "View",
   "label.routine.Reports": "Routine Reports",
   "label.audittrail.Reports": "Audit Trail Reports",
   "report.label.site.onlyResults": "Only Reports with results",
@@ -66,6 +67,7 @@
   "admin.page.configuration.formEntryConfigMenu.button.save": "Save",
   "admin.page.configuration.formEntryConfigMenu.button.exit": "Exit",
   "banner.menu.billing": "Billing",
+  "banner.menu.generalProgramme": "General Programme",
   "label.page.patientHistory": "Patient History",
   "workplan.page.title": "Workplan {0}",
   "workplan.panel.title": "Workplan By Panel",
@@ -1457,5 +1459,10 @@
   "test.modify.header.test": "Test",
   "test.modify.en": "en",
   "test.modify.fr": "fr",
-  "test.show.guide": "Show Guide"
+  "test.show.guide": "Show Guide",
+  "menu.generalProgramme": "General Programme",
+  "sidenav.label.generalprogramme": "General Programme",
+  "sidenav.label.generalprogramme.tooltip": "Access the General Programme dashboard",
+  "sidenav.label.generalprogramme.dashboard": "General Programme Dashboard",
+  "sidenav.label.generalprogramme.dashboard.tooltip": "View and manage General Programme order entries"
 }

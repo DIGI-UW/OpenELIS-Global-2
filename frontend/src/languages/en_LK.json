@@ -66,6 +66,7 @@
   "admin.page.configuration.formEntryConfigMenu.button.save": "Save",
   "admin.page.configuration.formEntryConfigMenu.button.exit": "Exit",
   "banner.menu.billing": "Billing",
+  "banner.menu.generalProgramme": "General Programme",
   "label.page.patientHistory": "Patient History",
   "workplan.page.title": "Workplan {0}",
   "workplan.panel.title": "Workplan By Panel",

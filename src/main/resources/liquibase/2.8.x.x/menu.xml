@@ -184,6 +184,27 @@
             <column name="new_window" valueBoolean="false" />
             <column name="is_active" valueBoolean="true" />
         </insert>
+            <!-- General Programme dashboard menu option -->
+            <insert tableName="menu" schemaName="clinlims">
+                <column name="id" valueSequenceNext="menu_seq" />
+                <column name="presentation_order" value="11" />
+                <column name="element_id" value="menu_generalprogramme" />
+                <column name="display_key" value="sidenav.label.generalprogramme"  />
+                <column name="tool_tip_key" value="sidenav.label.generalprogramme.tooltip" />
+                <column name="new_window" valueBoolean="false" />
+                <column name="is_active" valueBoolean="true" />
+            </insert>
+            <insert tableName="menu" schemaName="clinlims">
+                <column name="id" valueSequenceNext="menu_seq" />
+                <column name="presentation_order" value="1" />
+                <column name="element_id" value="menu_generalprogrammedashboard" />
+                <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_generalprogramme')" />
+                <column name="action_url" value="/GeneralProgrammeDashboard" />
+                <column name="display_key" value="sidenav.label.generalprogramme.dashboard"  />
+                <column name="tool_tip_key" value="sidenav.label.generalprogramme.dashboard.tooltip" />
+                <column name="new_window" valueBoolean="false" />
+                <column name="is_active" valueBoolean="true" />
+            </insert>
     </changeSet>
 
     <changeSet author="csteele" id="9">
@@ -293,8 +314,8 @@
             <column name="hide_in_old_ui" type="BOOLEAN" defaultValueBoolean="false"/>
         </addColumn>
         <update tableName="menu" schemaName="clinlims">
-            <column name="hide_in_old_ui" valueBoolean="true" />
-            <where>element_id in ('menu_billing', 'menu_patienthistory', 'menu_pathology', 'menu_pathologydashboard', 'menu_immunochem', 'menu_immunochemdashboard', 'menu_cytology', 'menu_cytologydashboard', 'menu_results_search_testdate')</where>
+              <column name="hide_in_old_ui" valueBoolean="true" />
+              <where>element_id in ('menu_billing', 'menu_patienthistory', 'menu_pathology', 'menu_pathologydashboard', 'menu_immunochem', 'menu_immunochemdashboard', 'menu_cytology', 'menu_cytologydashboard', 'menu_generalprogramme', 'menu_generalprogrammedashboard', 'menu_results_search_testdate')</where>
         </update>
     </changeSet>
 

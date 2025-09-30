@@ -613,14 +613,65 @@ function OEHeader(props) {
                         isPersistent={false}
                       >
                         <SideNavItems>
-                          {menus["menu"].map((childMenuItem, index) => {
-                            return generateMenuItems(
-                              childMenuItem,
-                              index,
-                              0,
-                              "$.menu[" + index + "]",
-                            );
-                          })}
+                          {(() => {
+                            // Dashboard element IDs as defined in backend menu.xml
+                            const dashboardIds = [
+                              "menu_pathology",
+                              "menu_cytology",
+                              "menu_immunochem",
+                              // add more dashboard root IDs if needed
+                            ];
+                            const menuArr = menus["menu"] || [];
+                            // Find the last dashboard index
+                            let lastDashboardIdx = -1;
+                            menuArr.forEach((item, idx) => {
+                              if (dashboardIds.includes(item.menu.elementId)) {
+                                lastDashboardIdx = idx;
+                              }
+                            });
+                            // Build menu items, inserting General Programme after last dashboard
+                            const menuItems = [];
+                            menuArr.forEach((childMenuItem, index) => {
+                              menuItems.push(
+                                generateMenuItems(
+                                  childMenuItem,
+                                  index,
+                                  0,
+                                  `$.menu[${index}]`,
+                                ),
+                              );
+                              if (index === lastDashboardIdx) {
+                                menuItems.push(
+                                  <SideNavMenuItem
+                                    id="generalProgramme_nav"
+                                    href="/GeneralProgrammeDashboard"
+                                    className="top-level-menu-item"
+                                    key="generalProgramme_nav"
+                                  >
+                                    <span style={{ fontSize: "100%" }}>
+                                      <FormattedMessage id="menu.generalProgramme" />
+                                    </span>
+                                  </SideNavMenuItem>,
+                                );
+                              }
+                            });
+                            // If no dashboards found, append at the end (but not before Home)
+                            if (lastDashboardIdx === -1) {
+                              menuItems.push(
+                                <SideNavMenuItem
+                                  id="generalProgramme_nav"
+                                  href="/GeneralProgrammeDashboard"
+                                  className="top-level-menu-item"
+                                  key="generalProgramme_nav"
+                                >
+                                  <span style={{ fontSize: "100%" }}>
+                                    <FormattedMessage id="menu.generalProgramme" />
+                                  </span>
+                                </SideNavMenuItem>,
+                              );
+                            }
+                            return menuItems;
+                          })()}
                         </SideNavItems>
                       </SideNav>
                     </>

@@ -45,6 +45,10 @@ import ReferredOutTests from "./components/resultPage/resultsReferredOut/Referre
 import ChangePassword from "./components/ChangePassword.js";
 import { Roles } from "./components/utils/Utils";
 
+import GeneralProgrammeDashboard from "./components/generalProgramme/GeneralProgrammeDashboard";
+
+import GeneralProgrammeCaseView from "./components/generalProgramme/GeneralProgrammeCaseView";
+
 export default function App() {
   let i18nConfig = {
     locale: navigator.language.split(/[-_]/)[0],
@@ -238,6 +242,13 @@ export default function App() {
                   exact
                   component={() => <LandingPage />}
                 />
+                <SecureRoute
+                  path="/GeneralProgrammeDashboard"
+                  exact
+                  component={() => <GeneralProgrammeDashboard />}
+                  role=""
+                />
+
                 <SecureRoute
                   path="/"
                   exact
@@ -523,6 +534,12 @@ export default function App() {
                   exact
                   component={() => <AnalyserResultIndex />}
                   role={Roles.ANALYSER_IMPORT}
+                />
+                <SecureRoute
+                  path="/GeneralProgrammeCaseView/:programmeId"
+                  exact
+                  component={() => <GeneralProgrammeCaseView />}
+                  role=""
                 />
                 <Route path="*" component={() => <RedirectOldUI />} />
               </Switch>

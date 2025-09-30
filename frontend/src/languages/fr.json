@@ -66,6 +66,7 @@
   "admin.page.configuration.formEntryConfigMenu.button.save": "Enregistrer",
   "admin.page.configuration.formEntryConfigMenu.button.exit": "Quitter",
   "banner.menu.billing": "Facturation",
+  "banner.menu.generalProgramme": "Programme Général",
   "label.page.patientHistory": "Historique du patient",
   "workplan.page.title": "Plan de Travail {0}",
   "workplan.panel.title": "Plan de Travail par Panel",
@@ -1457,5 +1458,10 @@
   "test.modify.header.test": "Test",
   "test.modify.en": "An",
   "test.modify.fr": "Fr",
-  "test.show.guide": "Consulter l'aide"
+  "test.show.guide": "Consulter l'aide",
+  "menu.generalProgramme": "Programme Général",
+  "sidenav.label.generalprogramme": "Programme Général",
+  "sidenav.label.generalprogramme.tooltip": "Accéder au tableau de bord du Programme Général",
+  "sidenav.label.generalprogramme.dashboard": "Tableau de bord Programme Général",
+  "sidenav.label.generalprogramme.dashboard.tooltip": "Voir et gérer les entrées de commande du Programme Général"
 }
