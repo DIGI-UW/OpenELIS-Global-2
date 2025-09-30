@@ -79,6 +79,9 @@ public class RegisterFhirHooksTask {
                 && !fhirSubscriber.get().startsWith("https://")) {
             fhirSubscriber = Optional.of("https://" + fhirSubscriber.get());
         }
+        if (GenericValidator.isBlankOrNull(localFhirStorePath)) {
+            return;
+        }
 
         IGenericClient fhirClient = fhirUtil.getFhirClient(localFhirStorePath);
 
