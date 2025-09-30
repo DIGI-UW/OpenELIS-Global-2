@@ -45,7 +45,6 @@ public class ProgramController extends BaseRestController {
     @GetMapping(value = "/program/{id}/orders", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<OrderEntry> getOrderEntriesForProgram(@PathVariable String id) {
-        // Fetch all ProgramSample entries for this program
         List<ProgramSample> programSamples = programSampleService.getAll();
         List<OrderEntry> result = new java.util.ArrayList<>();
         for (ProgramSample ps : programSamples) {
@@ -54,7 +53,7 @@ public class ProgramController extends BaseRestController {
                 OrderEntry dto = new OrderEntry();
                 dto.setOrderId(ps.getId());
                 if (sample != null) {
-                    dto.setPatientName(sample.getClientReference()); // Adjust as needed
+                    dto.setPatientName(sample.getClientReference());
                     dto.setOrderDate(sample.getEnteredDateForDisplay());
                     dto.setStatus(sample.getStatus());
                     dto.setAccessionNumber(sample.getAccessionNumber());

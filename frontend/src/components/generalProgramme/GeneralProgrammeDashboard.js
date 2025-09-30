@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef, useContext } from "react";
-// ...existing imports...
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import {

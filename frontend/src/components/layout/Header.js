@@ -614,22 +614,18 @@ function OEHeader(props) {
                       >
                         <SideNavItems>
                           {(() => {
-                            // Dashboard element IDs as defined in backend menu.xml
                             const dashboardIds = [
                               "menu_pathology",
                               "menu_cytology",
                               "menu_immunochem",
-                              // add more dashboard root IDs if needed
                             ];
                             const menuArr = menus["menu"] || [];
-                            // Find the last dashboard index
                             let lastDashboardIdx = -1;
                             menuArr.forEach((item, idx) => {
                               if (dashboardIds.includes(item.menu.elementId)) {
                                 lastDashboardIdx = idx;
                               }
                             });
-                            // Build menu items, inserting General Programme after last dashboard
                             const menuItems = [];
                             menuArr.forEach((childMenuItem, index) => {
                               menuItems.push(
@@ -655,7 +651,6 @@ function OEHeader(props) {
                                 );
                               }
                             });
-                            // If no dashboards found, append at the end (but not before Home)
                             if (lastDashboardIdx === -1) {
                               menuItems.push(
                                 <SideNavMenuItem

@@ -6,7 +6,6 @@ public class OrderEntry {
     private String orderDate;
     private String status;
     private String accessionNumber;
-    // Add more fields as needed
 
     public Integer getOrderId() {
         return orderId;
