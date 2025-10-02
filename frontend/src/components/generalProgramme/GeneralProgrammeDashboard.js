@@ -26,11 +26,13 @@ import { Search } from "@carbon/react";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog } from "../common/CustomNotification";
+import { getFromOpenElisServer } from "../utils/Utils";
 
 function GeneralProgrammeDashboard() {
   const [orderEntries, setOrderEntries] = useState([]);
   const [selectedProgramme, setSelectedProgramme] = useState(null);
   const [orderEntriesLoading, setOrderEntriesLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("All");
   const componentMounted = useRef(false);
   const { notificationVisible } = useContext(NotificationContext);
   const [programmes, setProgrammes] = useState([]);
@@ -39,37 +41,53 @@ function GeneralProgrammeDashboard() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [statusCounts, setStatusCounts] = useState({});
   const intl = useIntl();
   const history = useHistory();
 
   useEffect(() => {
     componentMounted.current = true;
+    getFromOpenElisServer("/rest/programs/general", (data) => {
+      if (componentMounted.current) {
+        const filtered = data.filter(
+          (p) =>
+            !["Cytology", "ImmunoHistoChemistry", "Pathology"].includes(
+              p.name || p.programName,
+            ),
+        );
+        setProgrammes(filtered.map((p) => ({ ...p, id: p.id.toString() })));
+        setLoading(false);
+      }
+    });
+    // Fetch all orders for summary tiles
     fetch("/rest/programs/general")
       .then((res) => res.json())
-      .then((data) => {
-        if (componentMounted.current) {
-          setProgrammes(data.map((p) => ({ ...p, id: p.id.toString() })));
-          setLoading(false);
-        }
+      .then((programs) => {
+        const ids = programs.map((p) => p.id);
+        Promise.all(
+          ids.map((id) =>
+            fetch(`/rest/program/${id}/orders`).then((res) => res.json()),
+          ),
+        ).then((ordersArr) => {
+          const allOrders = ordersArr.flat();
+          setTotalOrders(allOrders.length);
+          // Count by status
+          const counts = {};
+          allOrders.forEach((o) => {
+            counts[o.status] = (counts[o.status] || 0) + 1;
+          });
+          setStatusCounts(counts);
+        });
       });
+    const failSafe = setTimeout(() => {
+      if (componentMounted.current && loading) setLoading(false);
+    }, 10000);
     return () => {
       componentMounted.current = false;
+      clearTimeout(failSafe);
     };
   }, []);
-  fetch("/rest/programs/general")
-    .then((res) => {
-      if (!res.ok) throw new Error("Failed to fetch programmes");
-      return res.json();
-    })
-    .then((data) => {
-      if (componentMounted.current) {
-        setProgrammes(data.map((p) => ({ ...p, id: p.id.toString() })));
-      }
-    })
-    .catch(() => {})
-    .finally(() => {
-      if (componentMounted.current) setLoading(false);
-    });
 
   useEffect(() => {
     if (searchTerm) {
@@ -108,6 +126,17 @@ function GeneralProgrammeDashboard() {
       title: intl.formatMessage({ id: "banner.menu.generalProgramme" }),
       count: filteredProgrammes.length,
     },
+    {
+      title: intl.formatMessage({
+        id: "label.total.orders",
+        defaultMessage: "Total Orders",
+      }),
+      count: totalOrders,
+    },
+    ...Object.keys(statusCounts).map((status) => ({
+      title: status,
+      count: statusCounts[status],
+    })),
   ];
 
   return (
@@ -148,6 +177,22 @@ function GeneralProgrammeDashboard() {
                 id: "label.search.labno.family",
               })}
             />
+            <Select
+              id="statusFilter"
+              name="statusFilter"
+              labelText={intl.formatMessage({
+                id: "label.filters.status",
+                defaultMessage: "Status",
+              })}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              noLabel
+            >
+              <SelectItem value="All" text="All" />
+              {Object.keys(statusCounts).map((status, idx) => (
+                <SelectItem key={idx} value={status} text={status} />
+              ))}
+            </Select>
           </Column>
           <Column lg={16} md={8} sm={4}>
             <DataTable
@@ -203,86 +248,6 @@ function GeneralProgrammeDashboard() {
                             >
                               <FormattedMessage id="label.button.view" />
                             </Button>
-
-                            {selectedProgramme && (
-                              <div style={{ marginTop: 32 }}>
-                                <h3>
-                                  {intl.formatMessage({
-                                    id: "label.order.entries.for",
-                                  })}
-                                  :{" "}
-                                  {selectedProgramme.name ||
-                                    selectedProgramme.programName}
-                                </h3>
-                                {orderEntriesLoading ? (
-                                  <Loading description="Loading Order Entries..." />
-                                ) : orderEntries.length === 0 ? (
-                                  <p>
-                                    No order entries found for this programme.
-                                  </p>
-                                ) : (
-                                  <DataTable
-                                    rows={orderEntries}
-                                    headers={[
-                                      { key: "orderId", header: "Order ID" },
-                                      {
-                                        key: "patientName",
-                                        header: "Patient Name",
-                                      },
-                                      {
-                                        key: "orderDate",
-                                        header: "Order Date",
-                                      },
-                                      { key: "status", header: "Status" },
-                                      {
-                                        key: "accessionNumber",
-                                        header: "Accession Number",
-                                      },
-                                    ]}
-                                    isSortable
-                                  >
-                                    {({
-                                      rows,
-                                      headers,
-                                      getHeaderProps,
-                                      getTableProps,
-                                    }) => (
-                                      <TableContainer title="" description="">
-                                        <Table {...getTableProps()}>
-                                          <TableHead>
-                                            <TableRow>
-                                              {headers.map((header) => (
-                                                <TableHeader
-                                                  key={header.key}
-                                                  {...getHeaderProps({
-                                                    header,
-                                                  })}
-                                                >
-                                                  {header.header}
-                                                </TableHeader>
-                                              ))}
-                                            </TableRow>
-                                          </TableHead>
-                                          <TableBody>
-                                            {rows.map((row) => (
-                                              <TableRow
-                                                key={row.id || row.orderId}
-                                              >
-                                                {row.cells.map((cell) => (
-                                                  <TableCell key={cell.id}>
-                                                    {cell.value}
-                                                  </TableCell>
-                                                ))}
-                                              </TableRow>
-                                            ))}
-                                          </TableBody>
-                                        </Table>
-                                      </TableContainer>
-                                    )}
-                                  </DataTable>
-                                )}
-                              </div>
-                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -291,6 +256,66 @@ function GeneralProgrammeDashboard() {
                 </TableContainer>
               )}
             </DataTable>
+            {selectedProgramme && (
+              <div style={{ marginTop: 32 }}>
+                <h3>
+                  {intl.formatMessage({
+                    id: "label.order.entries.for",
+                  })}
+                  : {selectedProgramme.name || selectedProgramme.programName}
+                </h3>
+                {orderEntriesLoading ? (
+                  <Loading description="Loading Order Entries..." />
+                ) : orderEntries.length === 0 ? (
+                  <p>No order entries found for this programme.</p>
+                ) : (
+                  <DataTable
+                    rows={orderEntries.filter(
+                      (entry) =>
+                        statusFilter === "All" || entry.status === statusFilter,
+                    )}
+                    headers={[
+                      { key: "orderId", header: "Order ID" },
+                      { key: "patientName", header: "Patient Name" },
+                      { key: "orderDate", header: "Order Date" },
+                      { key: "status", header: "Status" },
+                      { key: "accessionNumber", header: "Accession Number" },
+                    ]}
+                    isSortable
+                  >
+                    {({ rows, headers, getHeaderProps, getTableProps }) => (
+                      <TableContainer title="" description="">
+                        <Table {...getTableProps()}>
+                          <TableHead>
+                            <TableRow>
+                              {headers.map((header) => (
+                                <TableHeader
+                                  key={header.key}
+                                  {...getHeaderProps({ header })}
+                                >
+                                  {header.header}
+                                </TableHeader>
+                              ))}
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {rows.map((row) => (
+                              <TableRow key={row.id || row.orderId}>
+                                {row.cells.map((cell) => (
+                                  <TableCell key={cell.id}>
+                                    {cell.value}
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    )}
+                  </DataTable>
+                )}
+              </div>
+            )}
             <Pagination
               onChange={({ page, pageSize }) => {
                 setPage(page);
