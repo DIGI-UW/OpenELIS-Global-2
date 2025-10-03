@@ -1,7 +1,14 @@
 # OpenELIS Global 2
 
-This is the OpenELIS rewrite onto Java Spring, and with all new technology and
-features. Please vist our [website](http://www.openelis-global.org/) for more
+OpenELIS Global is open enterprise-level laboratory information system software tailored for public health laboratories. OpenELIS is used at a national scale in a variety of settings, from small general hospital labs, all the way up to national reference labs, and all sizes in between. 
+
+Thousands of users use OpenELIS daily to make their laboratory jobs easier by automating work plans, importing results from clinical analyzers, and supporting complex workflows like pathology and cytology, reducing turnaround times, and increasing result accuracy for better patient care.
+
+OpenELIS Global meets all relevant ISO and SLIPTA requirements for the accreditation of labs. 
+
+OpenELIS adheres to the strictest of security standards to keep your data safe and supports fully featured, standards-based interoperability to make it easy to receive lab orders and send results to other systems
+ 
+ Please vist our [website](http://www.openelis-global.org/) for more
 information.
 
 You can find more information on how to set up OpenELIS at our

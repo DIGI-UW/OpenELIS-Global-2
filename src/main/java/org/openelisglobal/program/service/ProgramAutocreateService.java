@@ -18,6 +18,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.util.validator.GenericValidator;
+import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.fhir.springserialization.QuestionnaireDeserializer;
@@ -45,11 +46,13 @@ public class ProgramAutocreateService {
     private TestSectionService testSectionService;
     @Autowired
     private FhirPersistanceService fhirPersistanceService;
+    @Autowired
+    private FhirConfig fhirConfig;
 
     @PostConstruct
     @Transactional
     public void autocreateProgram() {
-        if (autocreateOn) {
+        if (autocreateOn && StringUtils.isNotBlank(fhirConfig.getLocalFhirStorePath())) {
             for (Resource programResource : programResources) {
                 try (BufferedReader reader = new BufferedReader(
                         new InputStreamReader(programResource.getInputStream()))) {

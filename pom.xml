@@ -11,7 +11,7 @@
     <version>${major.version}.${minor.version}.${state.version}.${fix.version}</version>
     <packaging>war</packaging>
     <properties>
-        <maven.java.release>11</maven.java.release>
+        <maven.java.release>21</maven.java.release>
         <major.version>3</major.version>
         <minor.version>2</minor.version>
         <state.version>1</state.version>
@@ -986,13 +986,8 @@
         </plugins>
     </build>
 
-
     <dependencyManagement>
-
-
         <dependencies>
-
-
             <dependency>
                 <groupId>jakarta.activation</groupId>
                 <artifactId>jakarta.activation-api</artifactId>

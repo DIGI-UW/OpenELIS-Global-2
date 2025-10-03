@@ -484,7 +484,7 @@
   "pathology.label.slide.number": "numéro de diapositive",
   "pathology.label.location": "Emplacement",
   "workplan.panel.selection.error.msg": "Sélection du panneau invalide.",
-  "home.label": "Maison",
+  "home.label": "Accueil",
   "dashboard.in.progress.label": "En cours",
   "dashboard.in.progress.subtitle.label": "En attente de saisie des résultats",
   "dashboard.validation.ready.label": "Prêt pour la validation",
