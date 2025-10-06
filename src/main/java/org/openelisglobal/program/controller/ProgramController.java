@@ -4,7 +4,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.Questionnaire;
@@ -47,6 +46,9 @@ public class ProgramController extends BaseRestController {
     public List<OrderEntry> getOrderEntriesForProgram(@PathVariable String id) {
         List<ProgramSample> programSamples = programSampleService.getAll();
         List<OrderEntry> result = new java.util.ArrayList<>();
+        if (programSamples == null) {
+            return result;
+        }
         for (ProgramSample ps : programSamples) {
             if (ps.getProgram() != null && id.equals(ps.getProgram().getId())) {
                 Sample sample = ps.getSample();
@@ -83,11 +85,7 @@ public class ProgramController extends BaseRestController {
     @GetMapping(value = "/programs/general", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<Program> getGeneralPrograms() {
-        List<Program> allPrograms = programService.getAll();
-        return allPrograms.stream()
-                .filter(p -> p.getProgramName() != null
-                        && EXCLUDED_PROGRAM_NAMES.stream().noneMatch(ex -> p.getProgramName().equalsIgnoreCase(ex)))
-                .collect(Collectors.toList());
+        return programService.getGeneralPrograms(EXCLUDED_PROGRAM_NAMES);
     }
 
     @GetMapping(value = "/program/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
