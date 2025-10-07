@@ -23,6 +23,7 @@ import PatientHeader from "../common/PatientHeader";
 import QuestionnaireResponse from "../common/QuestionnaireResponse";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import "../pathology/PathologyDashboard.css";
+import { getFromOpenElisServer } from "../utils/Utils";
 
 function GeneralProgrammeCaseView() {
   const { programmeId } = useParams();
@@ -37,35 +38,28 @@ function GeneralProgrammeCaseView() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/rest/programs/${programmeId}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch programme");
-        return res.json();
-      })
-      .then((data) => {
+    getFromOpenElisServer(`/rest/programs/${programmeId}`, (data) => {
+      if (data) {
         setProgramme(data);
-        setLoading(false);
-      })
-      .catch(() => {
+      } else {
         setProgramme(null);
-        setLoading(false);
-      });
+      }
+      setLoading(false);
+    });
+
     setOrderLoading(true);
-    fetch(`/rest/program/${programmeId}/orders`)
-      .then((res) => res.json())
-      .then((data) => {
-        setOrderEntries(data);
-        setOrderLoading(false);
-      })
-      .catch(() => setOrderLoading(false));
+    getFromOpenElisServer(`/rest/program/${programmeId}/orders`, (data) => {
+      setOrderEntries(data || []);
+      setOrderLoading(false);
+    });
   }, [programmeId]);
 
-  // Fetch questionnaire response for selected order
   useEffect(() => {
     if (selectedOrder) {
-      fetch(`/rest/order/${selectedOrder.orderId}/questionnaireResponse`)
-        .then((res) => res.json())
-        .then((data) => setQuestionnaireResponse(data));
+      getFromOpenElisServer(
+        `/rest/order/${selectedOrder.orderId}/questionnaireResponse`,
+        (data) => setQuestionnaireResponse(data || null),
+      );
     }
   }, [selectedOrder]);
 

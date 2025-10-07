@@ -49,6 +49,10 @@ function GeneralProgrammeDashboard() {
   useEffect(() => {
     componentMounted.current = true;
     getFromOpenElisServer("/rest/programs/general", (data) => {
+      if (!data) {
+        if (componentMounted.current) setLoading(false);
+        return;
+      }
       if (componentMounted.current) {
         const filtered = data.filter(
           (p) =>
@@ -56,30 +60,31 @@ function GeneralProgrammeDashboard() {
               p.name || p.programName,
             ),
         );
-        setProgrammes(filtered.map((p) => ({ ...p, id: p.id.toString() })));
+        const progs = filtered.map((p) => ({ ...p, id: p.id.toString() }));
+        setProgrammes(progs);
         setLoading(false);
-      }
-    });
-    // Fetch all orders for summary tiles
-    fetch("/rest/programs/general")
-      .then((res) => res.json())
-      .then((programs) => {
-        const ids = programs.map((p) => p.id);
+
+        const ids = filtered.map((p) => p.id);
         Promise.all(
-          ids.map((id) =>
-            fetch(`/rest/program/${id}/orders`).then((res) => res.json()),
+          ids.map(
+            (id) =>
+              new Promise((resolve) => {
+                getFromOpenElisServer(`/rest/program/${id}/orders`, (orders) =>
+                  resolve(orders || []),
+                );
+              }),
           ),
         ).then((ordersArr) => {
           const allOrders = ordersArr.flat();
           setTotalOrders(allOrders.length);
-          // Count by status
           const counts = {};
           allOrders.forEach((o) => {
             counts[o.status] = (counts[o.status] || 0) + 1;
           });
           setStatusCounts(counts);
         });
-      });
+      }
+    });
     const failSafe = setTimeout(() => {
       if (componentMounted.current && loading) setLoading(false);
     }, 10000);
@@ -104,17 +109,15 @@ function GeneralProgrammeDashboard() {
   const handleProgrammeClick = (programme) => {
     setSelectedProgramme(programme);
     setOrderEntries([]);
-    setOrderEntriesLoading(false);
-    fetch(`/rest/program/${programme.id}/orders`)
-      .then((res) => res.json())
-      .then((data) => {
-        setOrderEntries(data);
-        setOrderEntriesLoading(false);
-      })
-      .catch(() => setOrderEntriesLoading(false));
+    setOrderEntriesLoading(true);
+    getFromOpenElisServer(`/rest/program/${programme.id}/orders`, (data) => {
+      setOrderEntries(data || []);
+      setOrderEntriesLoading(false);
+    });
   };
 
   const breadcrumbs = [
+    { label: "home.label", link: "/" },
     {
       label: "banner.menu.generalProgramme",
       link: "/GeneralProgrammeDashboard",
