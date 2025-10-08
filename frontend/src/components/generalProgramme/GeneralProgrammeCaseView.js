@@ -38,9 +38,10 @@ function GeneralProgrammeCaseView() {
 
   useEffect(() => {
     setLoading(true);
-    getFromOpenElisServer(`/rest/programs/${programmeId}`, (data) => {
+    getFromOpenElisServer(`/rest/program/${programmeId}`, (data) => {
       if (data) {
-        setProgramme(data);
+        // Backend returns an EditProgramForm with a `program` field
+        setProgramme(data.program || null);
       } else {
         setProgramme(null);
       }
