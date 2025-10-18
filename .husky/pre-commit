@@ -1,0 +1,13 @@
+
+
+echo "🔧 Running pre-commit hook: formatting frontend code..."
+
+cd frontend || exit 1
+
+# Run formatter
+npm run format
+
+# Stage changes if any were made
+git add .
+
+echo " Formatting complete. Proceeding with commit..."
