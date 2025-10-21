@@ -18,11 +18,18 @@ import configparser
 from string import ascii_letters
 from getpass import getpass
 import tarfile
+import json
+import urllib.request
+import urllib.error
 
 #About
 VERSION = ""
 APP_NAME = "OpenELIS-Global"
 LANG_NAME = "en_US.UTF-8"
+
+#Location Reporting
+LOCATION_REPORTING_SERVER = "https://hub.openelis-global.org/api/location-report"
+LOCATION_OPT_IN = True
 
 #Installer directories' names
 INSTALLER_CROSSTAB_DIR = "./crosstab/"
@@ -264,6 +271,8 @@ def do_install():
     start_docker_containers()
     
     create_db_backup_user()
+    
+    send_location_report()
 
 
 def install_files_from_templates():
@@ -803,6 +812,8 @@ def do_update():
     install_cron_tasks()
 
     time.sleep(10)
+    
+    send_location_report()
 
     log("Finished updating " + APP_NAME, PRINT_TO_CONSOLE)
     
@@ -1017,6 +1028,7 @@ def get_stored_user_values():
     get_set_timezone()
     get_set_extra_hosts()
     get_set_fhir_identifier()
+    get_set_location_reporting()
     find_password()
     find_backup_password()
 
@@ -1288,6 +1300,100 @@ def set_fhir_identifier():
     identifier = input("type a comma delimited list of fhir identifiers (format Practitioner/id1,Organization/id2...): ").split(',')
     with open(CONFIG_DIR + 'FHIR_IDENTIFIER', mode='wt') as file:
         file.write(','.join(identifier))
+
+
+def get_set_location_reporting():
+    if (not is_location_opt_in_set()):
+        set_location_opt_in()
+    get_location_opt_in()
+
+
+def is_location_opt_in_set():
+    return os.path.isfile(CONFIG_DIR + 'LOCATION_OPT_IN')
+
+
+def get_location_opt_in():
+    global LOCATION_OPT_IN
+    with open(CONFIG_DIR + 'LOCATION_OPT_IN') as file:
+        opt_in_value = file.readline().strip().lower()
+        LOCATION_OPT_IN = opt_in_value in ['y', 'yes', 'true', '1']
+
+
+def set_location_opt_in():
+    print("""
+================================================================================
+                    ANONYMOUS LOCATION REPORTING
+================================================================================
+
+To enhance our understanding of the geographical reach and scale of OpenELIS 
+usage, we kindly request your consent to collect anonymous location information. 
+
+Please be assured that this data will be used solely for statistical analysis 
+to improve our services. We want to emphasize that no clinical or personal 
+information will be collected or stored. 
+
+Your participation is entirely voluntary and will greatly contribute to 
+optimizing the effectiveness of OpenELIS. 
+
+If you agree to share this anonymous location data, please opt in by answering 
+Y or simply pressing enter. 
+
+Thank you for your support!
+================================================================================
+    """)
+    opt_in = input("Share anonymous location data? [Y/n]: ").strip().lower()
+    
+    # Default to 'y' if user just presses enter
+    if opt_in == '' or opt_in in ['y', 'yes']:
+        opt_in_value = 'true'
+    else:
+        opt_in_value = 'false'
+    
+    with open(CONFIG_DIR + 'LOCATION_OPT_IN', mode='wt') as file:
+        file.write(opt_in_value)
+    
+    log("Location reporting opt-in set to: " + opt_in_value, PRINT_TO_CONSOLE)
+
+
+def send_location_report():
+    """Send anonymous installation location data to central server"""
+    if not LOCATION_OPT_IN:
+        log("Location reporting opted out, skipping", PRINT_TO_CONSOLE)
+        return
+    
+    try:
+        # Prepare data to send
+        data = {
+            'site_id': SITE_ID if SITE_ID else 'unknown',
+            'version': VERSION,
+            'app_name': APP_NAME,
+            'timestamp': strftime("%Y-%m-%d %H:%M:%S", gmtime()),
+            'timezone': TIMEZONE if TIMEZONE else 'unknown'
+        }
+        
+        # Convert to JSON
+        json_data = json.dumps(data).encode('utf-8')
+        
+        # Create request
+        req = urllib.request.Request(
+            LOCATION_REPORTING_SERVER,
+            data=json_data,
+            headers={'Content-Type': 'application/json'},
+            method='POST'
+        )
+        
+        # Send request with timeout
+        log("Sending anonymous location data to central server...", PRINT_TO_CONSOLE)
+        with urllib.request.urlopen(req, timeout=10) as response:
+            if response.status == 200:
+                log("Location data sent successfully", PRINT_TO_CONSOLE)
+            else:
+                log("Location data submission returned status: " + str(response.status), PRINT_TO_CONSOLE)
+                
+    except urllib.error.URLError as e:
+        log("Could not send location data (network error): " + str(e), PRINT_TO_CONSOLE)
+    except Exception as e:
+        log("Could not send location data: " + str(e), PRINT_TO_CONSOLE)
     
 
 def create_db_backup_user(): 
