@@ -62,8 +62,6 @@ sudo python ./setup_OpenELIS.py -uninstall
 
 # Anonymous Location Reporting
 
-**Note**: Anonymous location reporting has been moved from the installer to the OpenELIS application itself. This allows all OpenELIS installations (not just those using the installer) to participate.
-
 ## How to Opt-In
 
 1. After installation, log in to OpenELIS as an administrator
