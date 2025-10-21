@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useContext } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import config from "../../config.json";
 import {
   Grid,
   Column,
@@ -15,7 +15,6 @@ import {
   TableHeader,
   TableBody,
   TableCell,
-  Checkbox,
   Select,
   SelectItem,
   Heading,
@@ -27,93 +26,64 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog } from "../common/CustomNotification";
 import { getFromOpenElisServer } from "../utils/Utils";
+import "./../pathology/PathologyDashboard.css";
 
 function GeneralProgrammeDashboard() {
-  const [orderEntries, setOrderEntries] = useState([]);
-  const [selectedProgramme, setSelectedProgramme] = useState(null);
-  const [orderEntriesLoading, setOrderEntriesLoading] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("All");
-  const componentMounted = useRef(false);
-  const { notificationVisible } = useContext(NotificationContext);
   const [programmes, setProgrammes] = useState([]);
   const [filteredProgrammes, setFilteredProgrammes] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [totalOrders, setTotalOrders] = useState(0);
-  const [statusCounts, setStatusCounts] = useState({});
+  const componentMounted = useRef(false);
+  const { notificationVisible } = useContext(NotificationContext);
   const intl = useIntl();
-  const history = useHistory();
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/programs/general", (data) => {
-      if (!data) {
-        if (componentMounted.current) setLoading(false);
-        return;
-      }
-      if (componentMounted.current) {
-        const filtered = data.filter(
-          (p) =>
-            !["Cytology", "ImmunoHistoChemistry", "Pathology"].includes(
-              p.name || p.programName,
-            ),
-        );
-        const progs = filtered.map((p) => ({ ...p, id: p.id.toString() }));
-        setProgrammes(progs);
-        setLoading(false);
 
-        const ids = filtered.map((p) => p.id);
-        Promise.all(
-          ids.map(
-            (id) =>
-              new Promise((resolve) => {
-                getFromOpenElisServer(`/rest/program/${id}/orders`, (orders) =>
-                  resolve(orders || []),
-                );
-              }),
-          ),
-        ).then((ordersArr) => {
-          const allOrders = ordersArr.flat();
-          setTotalOrders(allOrders.length);
-          const counts = {};
-          allOrders.forEach((o) => {
-            counts[o.status] = (counts[o.status] || 0) + 1;
-          });
-          setStatusCounts(counts);
-        });
+    getFromOpenElisServer("/rest/programs/general", (data) => {
+      if (componentMounted.current) {
+        if (data && Array.isArray(data)) {
+          const programmesWithIds = data.map((program) => ({
+            ...program,
+            id: program.id.toString(),
+            displayName:
+              program.name ||
+              program.programName ||
+              program.displayName ||
+              "Unknown Program",
+          }));
+          setProgrammes(programmesWithIds);
+          setFilteredProgrammes(programmesWithIds);
+        } else {
+          console.error("Invalid data received from API:", data);
+          setProgrammes([]);
+          setFilteredProgrammes([]);
+        }
+        setLoading(false);
       }
     });
-    const failSafe = setTimeout(() => {
-      if (componentMounted.current && loading) setLoading(false);
-    }, 10000);
+
     return () => {
       componentMounted.current = false;
-      clearTimeout(failSafe);
     };
   }, []);
 
   useEffect(() => {
     if (searchTerm) {
-      setFilteredProgrammes(
-        programmes.filter((p) =>
-          p.name.toLowerCase().includes(searchTerm.toLowerCase()),
-        ),
+      const filtered = programmes.filter((program) =>
+        program.displayName.toLowerCase().includes(searchTerm.toLowerCase()),
       );
+      setFilteredProgrammes(filtered);
     } else {
       setFilteredProgrammes(programmes);
     }
   }, [searchTerm, programmes]);
 
   const handleProgrammeClick = (programme) => {
-    setSelectedProgramme(programme);
-    setOrderEntries([]);
-    setOrderEntriesLoading(true);
-    getFromOpenElisServer(`/rest/program/${programme.id}/orders`, (data) => {
-      setOrderEntries(data || []);
-      setOrderEntriesLoading(false);
-    });
+    // Navigate to the case view for this programme
+    window.location.href = `/GeneralProgrammeCaseView/${programme.id}`;
   };
 
   const breadcrumbs = [
@@ -127,19 +97,12 @@ function GeneralProgrammeDashboard() {
   const tileList = [
     {
       title: intl.formatMessage({ id: "banner.menu.generalProgramme" }),
-      count: filteredProgrammes.length,
+      count: programmes.length,
     },
     {
-      title: intl.formatMessage({
-        id: "label.total.orders",
-        defaultMessage: "Total Orders",
-      }),
-      count: totalOrders,
+      title: intl.formatMessage({ id: "label.displayed.programmes" }),
+      count: filteredProgrammes.length,
     },
-    ...Object.keys(statusCounts).map((status) => ({
-      title: status,
-      count: statusCounts[status],
-    })),
   ];
 
   return (
@@ -147,17 +110,17 @@ function GeneralProgrammeDashboard() {
       {notificationVisible === true ? <AlertDialog /> : ""}
       {loading && <Loading description="Loading Dashboard..." />}
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
+
       <Grid fullWidth={true}>
         <Column lg={16}>
           <Section>
-            <Section>
-              <Heading>
-                <FormattedMessage id="banner.menu.generalProgramme" />
-              </Heading>
-            </Section>
+            <Heading>
+              <FormattedMessage id="banner.menu.generalProgramme" />
+            </Heading>
           </Section>
         </Column>
       </Grid>
+
       <div className="dashboard-container">
         {tileList.map((tile, index) => (
           <Tile key={index} className="dashboard-tile">
@@ -166,6 +129,7 @@ function GeneralProgrammeDashboard() {
           </Tile>
         ))}
       </div>
+
       <div className="orderLegendBody">
         <Grid fullWidth={true} className="gridBoundary">
           <Column lg={8} md={4} sm={2}>
@@ -173,30 +137,11 @@ function GeneralProgrammeDashboard() {
               size="sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={intl.formatMessage({
-                id: "label.search.labno.family",
-              })}
-              labelText={intl.formatMessage({
-                id: "label.search.labno.family",
-              })}
+              placeholder={intl.formatMessage({ id: "label.search.programme" })}
+              labelText={intl.formatMessage({ id: "label.search.programme" })}
             />
-            <Select
-              id="statusFilter"
-              name="statusFilter"
-              labelText={intl.formatMessage({
-                id: "label.filters.status",
-                defaultMessage: "Status",
-              })}
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              noLabel
-            >
-              <SelectItem value="All" text="All" />
-              {Object.keys(statusCounts).map((status, idx) => (
-                <SelectItem key={idx} value={status} text={status} />
-              ))}
-            </Select>
           </Column>
+
           <Column lg={16} md={8} sm={4}>
             <DataTable
               rows={filteredProgrammes.slice(
@@ -205,16 +150,12 @@ function GeneralProgrammeDashboard() {
               )}
               headers={[
                 {
-                  key: "name",
-                  header: intl.formatMessage({
-                    id: "admin.page.configuration.formEntryConfigMenu.name",
-                  }),
+                  key: "displayName",
+                  header: intl.formatMessage({ id: "programme.name" }),
                 },
                 {
                   key: "description",
-                  header: intl.formatMessage({
-                    id: "admin.page.configuration.formEntryConfigMenu.description",
-                  }),
+                  header: intl.formatMessage({ id: "programme.description" }),
                 },
               ]}
               isSortable
@@ -259,66 +200,7 @@ function GeneralProgrammeDashboard() {
                 </TableContainer>
               )}
             </DataTable>
-            {selectedProgramme && (
-              <div style={{ marginTop: 32 }}>
-                <h3>
-                  {intl.formatMessage({
-                    id: "label.order.entries.for",
-                  })}
-                  : {selectedProgramme.name || selectedProgramme.programName}
-                </h3>
-                {orderEntriesLoading ? (
-                  <Loading description="Loading Order Entries..." />
-                ) : orderEntries.length === 0 ? (
-                  <p>No order entries found for this programme.</p>
-                ) : (
-                  <DataTable
-                    rows={orderEntries.filter(
-                      (entry) =>
-                        statusFilter === "All" || entry.status === statusFilter,
-                    )}
-                    headers={[
-                      { key: "orderId", header: "Order ID" },
-                      { key: "patientName", header: "Patient Name" },
-                      { key: "orderDate", header: "Order Date" },
-                      { key: "status", header: "Status" },
-                      { key: "accessionNumber", header: "Accession Number" },
-                    ]}
-                    isSortable
-                  >
-                    {({ rows, headers, getHeaderProps, getTableProps }) => (
-                      <TableContainer title="" description="">
-                        <Table {...getTableProps()}>
-                          <TableHead>
-                            <TableRow>
-                              {headers.map((header) => (
-                                <TableHeader
-                                  key={header.key}
-                                  {...getHeaderProps({ header })}
-                                >
-                                  {header.header}
-                                </TableHeader>
-                              ))}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {rows.map((row) => (
-                              <TableRow key={row.id || row.orderId}>
-                                {row.cells.map((cell) => (
-                                  <TableCell key={cell.id}>
-                                    {cell.value}
-                                  </TableCell>
-                                ))}
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    )}
-                  </DataTable>
-                )}
-              </div>
-            )}
+
             <Pagination
               onChange={({ page, pageSize }) => {
                 setPage(page);
@@ -326,40 +208,10 @@ function GeneralProgrammeDashboard() {
               }}
               page={page}
               pageSize={pageSize}
-              pageSizes={[10, 20, 30, 50, 100]}
+              pageSizes={[10, 20, 30, 50]}
               totalItems={filteredProgrammes.length}
               forwardText={intl.formatMessage({ id: "pagination.forward" })}
               backwardText={intl.formatMessage({ id: "pagination.backward" })}
-              itemRangeText={(min, max, total) =>
-                intl.formatMessage(
-                  { id: "pagination.item-range" },
-                  { min: min, max: max, total: total },
-                )
-              }
-              itemsPerPageText={intl.formatMessage({
-                id: "pagination.items-per-page",
-              })}
-              itemText={(min, max) =>
-                intl.formatMessage(
-                  { id: "pagination.item" },
-                  { min: min, max: max },
-                )
-              }
-              pageNumberText={intl.formatMessage({
-                id: "pagination.page-number",
-              })}
-              pageRangeText={(_current, total) =>
-                intl.formatMessage(
-                  { id: "pagination.page-range" },
-                  { total: total },
-                )
-              }
-              pageText={(page, pagesUnknown) =>
-                intl.formatMessage(
-                  { id: "pagination.page" },
-                  { page: pagesUnknown ? "" : page },
-                )
-              }
             />
           </Column>
         </Grid>
@@ -367,4 +219,5 @@ function GeneralProgrammeDashboard() {
     </>
   );
 }
+
 export default GeneralProgrammeDashboard;

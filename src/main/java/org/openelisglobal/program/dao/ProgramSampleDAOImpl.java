@@ -37,6 +37,14 @@ public class ProgramSampleDAOImpl extends BaseDAOImpl<ProgramSample, Integer> im
         return programme;
     }
 
+    @Override
+    public java.util.List<ProgramSample> getProgramSamplesByProgramId(String programId) {
+        String sql = "from ProgramSample ps where ps.program.id = :programId";
+        Query<ProgramSample> query = entityManager.unwrap(Session.class).createQuery(sql, ProgramSample.class);
+        query.setParameter("programId", programId);
+        return query.getResultList();
+    }
+
     public String getTableName() {
         return "program_sample";
     }
