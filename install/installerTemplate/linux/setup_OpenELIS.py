@@ -18,11 +18,18 @@ import configparser
 from string import ascii_letters
 from getpass import getpass
 import tarfile
+import json
+import urllib.request
+import urllib.error
 
 #About
 VERSION = ""
 APP_NAME = "OpenELIS-Global"
 LANG_NAME = "en_US.UTF-8"
+
+#Location Reporting
+LOCATION_REPORTING_SERVER = "https://hub.openelis-global.org/api/location-report"
+LOCATION_OPT_IN = True
 
 #Installer directories' names
 INSTALLER_CROSSTAB_DIR = "./crosstab/"
@@ -51,8 +58,8 @@ CLEANUP_SCRIPT_NAME = "logCleanup.sh"
 OE_VAR_DIR = "/var/lib/openelis-global/"
 OE_ETC_DIR = "/etc/openelis-global/"
 #Install sub-directories (if running in docker, these directories will be mounted by the docker container)
-DB_BACKUPS_DIR = OE_VAR_DIR + "backups/"  
-DB_DATA_DIR = OE_VAR_DIR + "data/"  
+DB_BACKUPS_DIR = OE_VAR_DIR + "backups/"
+DB_DATA_DIR = OE_VAR_DIR + "data/"
 DB_ENVIRONMENT_DIR = OE_VAR_DIR + "database/env/"
 DB_PGPASS = OE_VAR_DIR + "database/.pgpass"
 DB_INIT_DIR = OE_VAR_DIR + "initDB/"
@@ -78,18 +85,18 @@ DB_PORT="5432"
 
 #Docker variables
 DOCKER_OE_REPO_NAME = "openelisglobal" #must match docker image name (not container name)
-DOCKER_OE_CONTAINER_NAME = "openelisglobal-webapp" 
+DOCKER_OE_CONTAINER_NAME = "openelisglobal-webapp"
 DOCKER_FHIR_API_CONTAINER_NAME = "external-fhir-api"
 DOCKER_NGINX_CONTAINER_NAME = "openelisglobal-proxy"
 DOCKER_FRONTEND_CONTAINER_NAME = "openelisglobal-frontend"
 DOCKER_ASTM_BRIDGE_CONTAINER_NAME = "astm-http-bridge"
 DOCKER_AUTOHEAL_CONTAINER_NAME = "autoheal-oe"
-DOCKER_DB_CONTAINER_NAME = "openelisglobal-database" 
+DOCKER_DB_CONTAINER_NAME = "openelisglobal-database"
 DOCKER_DB_BACKUPS_DIR = "/backups/"  # path in docker container
 DOCKER_DB_HOST_PORT = "5432"
 
 #Behaviour variables
-DOCKER_DB = False 
+DOCKER_DB = False
 ASTM_PROXY = False
 LOCAL_DB = True
 PRINT_TO_CONSOLE = True
@@ -134,32 +141,32 @@ setup_OpenELIS.py <options>
             update-install          - Installs OpenELIS or updates if already installed (default option)
 
             install                 - Installs OpenELIS.  Assumes that there is not a partial install
-            
+
             update                  - Updates OpenElis.  Checks to insure that the instance being updated is the same as the installed
-            
+
             uninstall               - Removes OpenELIS from the system optionally including the database. Make sure you have the clinlims password written down someplace
-            
+
         -f --file-config        - file that contains configuration settings
-        
+
         -v --version            - run in version mode
-        
+
         -h --help               - print help
         """)
 
 
 #this method is the starting point of the script (called at bottom of page)
-def main(argv):   
-    global MODE, DOCKER_DB     
+def main(argv):
+    global MODE, DOCKER_DB
     os.putenv("LANG", LANG_NAME)
     check_on_writable_system()
     open_log_file()
-    
+
     try:
         opts, args = getopt.getopt(argv,"m:vh",["mode=", "version", "help"])
     except getopt.GetoptError:
         write_help()
         sys.exit(2)
-            
+
     for opt, arg in opts:
         if opt in ("-m","--mode"):
             MODE = arg
@@ -171,44 +178,44 @@ def main(argv):
         elif opt in ("-h","--help"):
             write_help()()
             return
-          
+
     get_app_details()
     write_version()
-    
+
     write_setup_properties_file()
     read_setup_properties_file()
     ensure_dir_exists(INSTALLER_STAGING_DIR)
     ensure_dir_exists(INSTALLER_ROLLBACK_DIR)
-        
+
     #default mode
     if MODE == "update-install":
         if check_preconditions('install'):
             MODE = "install"
         elif check_preconditions('update'):
             MODE = "update"
-        
+
     if MODE == "install":
         log("install " + strftime("%a, %d %b %Y %H:%M:%S", gmtime()), not PRINT_TO_CONSOLE)
         install()
-        
+
     elif MODE == "installCrossTabs":
         log("installCrossTabs " + strftime("%a, %d %b %Y %H:%M:%S", gmtime()), not PRINT_TO_CONSOLE)
         install_crosstab()
-    
+
     elif MODE == "uninstall":
         log("uninstall " + strftime("%a, %d %b %Y %H:%M:%S", gmtime()), not PRINT_TO_CONSOLE)
         print("This will uninstall OpenELIS from this machine including **ALL** data from database and **ALL** local backups")
         remove = input("Do you want to continue with the uninstall? y/n: ")
         if remove.lower() == 'y':
             uninstall()
-    
+
     elif MODE == "update":
         log("update " + strftime("%a, %d %b %Y %H:%M:%S", gmtime()), not PRINT_TO_CONSOLE)
         update()
-        
+
     else: # if all else fails give help
         write_help()
-        
+
     # remove files that potentially contain passwords
     ensure_dir_not_exists(INSTALLER_STAGING_DIR)
     log("done", PRINT_TO_CONSOLE)
@@ -224,46 +231,48 @@ def install():
         print("Please either do an uninstall or update first")
         clean_exit()
     do_install()
-        
-    
+
+
 def do_install():
 
     log("installing " + APP_NAME, PRINT_TO_CONSOLE)
-    
+
     generate_passwords()
-    
+
     preserve_database_user_password()
-    
+
     preserve_database_backup_user_password()
-    
+
     get_stored_user_values()
-    
+
     install_docker()
-    
+
     install_files_from_templates()
-    
+
     install_site_info_config_file()
-    
+
     install_db()
-    
+
     install_crosstab()
 
     load_docker_image()
-    
+
     ensure_dir_exists(PLUGINS_DIR)
-    
+
     ensure_dir_exists(LOGS_DIR)
-    os.chmod(LOGS_DIR, 0o777) 
-    os.chown(LOGS_DIR, 8443, 8443)  
+    os.chmod(LOGS_DIR, 0o777)
+    os.chown(LOGS_DIR, 8443, 8443)
     ensure_dir_exists(TOMCAT_LOGS_DIR)
-    os.chmod(TOMCAT_LOGS_DIR, 0o777) 
-    os.chown(TOMCAT_LOGS_DIR, 8443, 8443)  
-    
+    os.chmod(TOMCAT_LOGS_DIR, 0o777)
+    os.chown(TOMCAT_LOGS_DIR, 8443, 8443)
+
     ensure_file_exists(DB_PGPASS)
 
     start_docker_containers()
-    
+
     create_db_backup_user()
+
+    send_location_report()
 
 
 def install_files_from_templates():
@@ -283,12 +292,12 @@ def create_docker_compose_file():
     global DB_HOST_FOR_DOCKER_SERVICES
     template_file = open(INSTALLER_TEMPLATE_DIR + "docker-compose.yml", "r")
     output_file = open("docker-compose.yml", "w")
-    
+
     if DOCKER_DB:
         DB_HOST_FOR_DOCKER_SERVICES = "db.openelis.org" #use docker network to connect by service name
     if DB_HOST == "localhost" or DB_HOST == "127.0.0.1":
         DB_HOST_FOR_DOCKER_SERVICES = get_docker_host_ip() #get docker host loopback
-    
+
     for line in template_file:
         #set docker db attributes
         if ASTM_PROXY:
@@ -299,29 +308,29 @@ def create_docker_compose_file():
             if line.find("#db") >= 0:
                 line = line.replace("#db", "")
             if line.find("[% db_env_dir %]")  >= 0:
-                line = line.replace("[% db_env_dir %]", DB_ENVIRONMENT_DIR)  
+                line = line.replace("[% db_env_dir %]", DB_ENVIRONMENT_DIR)
             if line.find("[% db_pgpass %]")  >= 0:
-                line = line.replace("[% db_pgpass %]", DB_PGPASS)  
+                line = line.replace("[% db_pgpass %]", DB_PGPASS)
             if line.find("[% db_data_dir %]")  >= 0:
-                line = line.replace("[% db_data_dir %]", DB_DATA_DIR)  
+                line = line.replace("[% db_data_dir %]", DB_DATA_DIR)
             if line.find("[% db_init_dir %]")  >= 0:
-                line = line.replace("[% db_init_dir %]", DB_INIT_DIR)  
+                line = line.replace("[% db_init_dir %]", DB_INIT_DIR)
             if line.find("[% docker_backups_dir %]")  >= 0:
-                line = line.replace("[% docker_backups_dir %]", DOCKER_DB_BACKUPS_DIR)  
+                line = line.replace("[% docker_backups_dir %]", DOCKER_DB_BACKUPS_DIR)
             if line.find("[% db_backups_dir %]")  >= 0:
                 line = line.replace("[% db_backups_dir %]", DB_BACKUPS_DIR)
             if line.find("[% db_host_port %]")  >= 0:
                 line = line.replace("[% db_host_port %]", DOCKER_DB_HOST_PORT)
             if line.find("[% db_name %]")  >= 0:
                 line = line.replace("[% db_name %]", DOCKER_DB_CONTAINER_NAME )
-        
+
         #common attributes
         if line.find("[% db_host %]")  >= 0:
-            line = line.replace("[% db_host %]", DB_HOST_FOR_DOCKER_SERVICES) 
+            line = line.replace("[% db_host %]", DB_HOST_FOR_DOCKER_SERVICES)
         if line.find("[% db_port %]")  >= 0:
-            line = line.replace("[% db_port %]", DB_PORT) 
+            line = line.replace("[% db_port %]", DB_PORT)
         if line.find("[% secrets_dir %]")  >= 0:
-            line = line.replace("[% secrets_dir %]", SECRETS_DIR)  
+            line = line.replace("[% secrets_dir %]", SECRETS_DIR)
         if line.find("[% plugins_dir %]")  >= 0:
             line = line.replace("[% plugins_dir %]", PLUGINS_DIR)
         if line.find("[% logs_dir %]")  >= 0:
@@ -346,21 +355,21 @@ def create_docker_compose_file():
             line = line.replace("[% truststore_password %]", TRUSTSTORE_PWD )
         if line.find("[% keystore_password %]")  >= 0:
             line = line.replace("[% keystore_password %]", KEYSTORE_PWD )
-            
+
         if len(EXTERNAL_HOSTS) > 0:
             if line.find("#eh") >= 0:
                 line = line.replace("#eh", "")
             docker_external_hosts = "      - " + "\n      - ".join(EXTERNAL_HOSTS)
             line = line.replace("[% extra_hosts %]", docker_external_hosts )
-        
+
         output_file.write(line)
 
     template_file.close()
     output_file.close()
     # copy file so even if installer is delted, we have a copy on the machine
     shutil.copyfile(os.getcwd() + "/docker-compose.yml", OE_VAR_DIR + "docker-compose.yml")
-    
-    
+
+
 def create_properties_files():
     ensure_dir_exists(SECRETS_DIR)
     template_file = open(INSTALLER_TEMPLATE_DIR + "common.properties", "r")
@@ -369,9 +378,9 @@ def create_properties_files():
     for line in template_file:
         #common attributes
         if line.find("[% db_host %]")  >= 0:
-            line = line.replace("[% db_host %]", DB_HOST_FOR_DOCKER_SERVICES) 
+            line = line.replace("[% db_host %]", DB_HOST_FOR_DOCKER_SERVICES)
         if line.find("[% db_port %]")  >= 0:
-            line = line.replace("[% db_port %]", DB_PORT) 
+            line = line.replace("[% db_port %]", DB_PORT)
         if line.find("[% db_password %]")  >= 0:
             line = line.replace("[% db_password %]", CLINLIMS_PWD)
         if line.find("[% truststore_password %]")  >= 0:
@@ -379,55 +388,55 @@ def create_properties_files():
         if line.find("[% keystore_password %]")  >= 0:
             line = line.replace("[% keystore_password %]", KEYSTORE_PWD)
         if line.find("[% encryption_key %]")  >= 0:
-            line = line.replace("[% encryption_key %]", ENCRYPTION_KEY) 
+            line = line.replace("[% encryption_key %]", ENCRYPTION_KEY)
         if line.find("[% local_fhir_server_address %]")  >= 0:
-            line = line.replace("[% local_fhir_server_address %]", LOCAL_FHIR_SERVER_ADDRESS) 
+            line = line.replace("[% local_fhir_server_address %]", LOCAL_FHIR_SERVER_ADDRESS)
         if line.find("[% remote_fhir_server_address %]")  >= 0:
-            line = line.replace("[% remote_fhir_server_address %]", ','.join(REMOTE_FHIR_SOURCE)) 
+            line = line.replace("[% remote_fhir_server_address %]", ','.join(REMOTE_FHIR_SOURCE))
         if line.find("[% remote_source_update_status %]")  >= 0:
-            line = line.replace("[% remote_source_update_status %]", REMOTE_FHIR_SOURCE_UPDATE_STATUS) 
+            line = line.replace("[% remote_source_update_status %]", REMOTE_FHIR_SOURCE_UPDATE_STATUS)
         if line.find("[% consolidated_server_address %]")  >= 0:
-            line = line.replace("[% consolidated_server_address %]", ','.join(CONSOLIDATED_SERVER_ADDRESS)) 
+            line = line.replace("[% consolidated_server_address %]", ','.join(CONSOLIDATED_SERVER_ADDRESS))
         if line.find("[% fhir_identifier %]")  >= 0:
-            line = line.replace("[% fhir_identifier %]", ','.join(FHIR_IDENTIFIER)) 
+            line = line.replace("[% fhir_identifier %]", ','.join(FHIR_IDENTIFIER))
 
         output_file.write(line)
 
     template_file.close()
     output_file.close()
-    os.chmod(SECRETS_DIR + "common.properties", 0o640)   
-    os.chown(SECRETS_DIR + 'common.properties', 8443, 8443) 
-    
+    os.chmod(SECRETS_DIR + "common.properties", 0o640)
+    os.chown(SECRETS_DIR + 'common.properties', 8443, 8443)
+
     if not os.path.exists(SECRETS_DIR + "extra.properties"):
         open(SECRETS_DIR + "extra.properties", "w").close()
-    os.chmod(SECRETS_DIR + "extra.properties", 0o640)   
-    os.chown(SECRETS_DIR + 'extra.properties', 8443, 8443) 
-    
+    os.chmod(SECRETS_DIR + "extra.properties", 0o640)
+    os.chown(SECRETS_DIR + 'extra.properties', 8443, 8443)
+
     template_file = open(INSTALLER_TEMPLATE_DIR + "hapi_application.yaml", "r")
     output_file = open(SECRETS_DIR + "hapi_application.yaml", "w")
 
     for line in template_file:
         #common attributes
         if line.find("[% db_host %]")  >= 0:
-            line = line.replace("[% db_host %]", DB_HOST_FOR_DOCKER_SERVICES) 
+            line = line.replace("[% db_host %]", DB_HOST_FOR_DOCKER_SERVICES)
         if line.find("[% db_port %]")  >= 0:
-            line = line.replace("[% db_port %]", DB_PORT) 
+            line = line.replace("[% db_port %]", DB_PORT)
         if line.find("[% db_password %]")  >= 0:
-            line = line.replace("[% db_password %]", CLINLIMS_PWD) 
+            line = line.replace("[% db_password %]", CLINLIMS_PWD)
         if line.find("[% truststore_password %]")  >= 0:
             line = line.replace("[% truststore_password %]", TRUSTSTORE_PWD)
         if line.find("[% keystore_password %]")  >= 0:
-            line = line.replace("[% keystore_password %]", KEYSTORE_PWD) 
+            line = line.replace("[% keystore_password %]", KEYSTORE_PWD)
         if line.find("[% local_fhir_server_address %]")  >= 0:
-            line = line.replace("[% local_fhir_server_address %]", LOCAL_FHIR_SERVER_ADDRESS) 
-        
+            line = line.replace("[% local_fhir_server_address %]", LOCAL_FHIR_SERVER_ADDRESS)
+
         output_file.write(line)
 
     template_file.close()
     output_file.close()
-    os.chmod(SECRETS_DIR + "hapi_application.yaml", 0o640)  
-    os.chown(SECRETS_DIR + 'hapi_application.yaml', 8443, 8443)   
-    
+    os.chmod(SECRETS_DIR + "hapi_application.yaml", 0o640)
+    os.chown(SECRETS_DIR + 'hapi_application.yaml', 8443, 8443)
+
 
 def create_server_xml_files():
     ensure_dir_exists(SECRETS_DIR)
@@ -438,15 +447,15 @@ def create_server_xml_files():
         if line.find("[% truststore_password %]")  >= 0:
             line = line.replace("[% truststore_password %]", TRUSTSTORE_PWD)
         if line.find("[% keystore_password %]")  >= 0:
-            line = line.replace("[% keystore_password %]", KEYSTORE_PWD) 
-        
+            line = line.replace("[% keystore_password %]", KEYSTORE_PWD)
+
         output_file.write(line)
 
     template_file.close()
     output_file.close()
-    os.chmod(OE_ETC_DIR + "oe_server.xml", 0o640) 
-    os.chown(OE_ETC_DIR + 'oe_server.xml', 8443, 8443)  
-    
+    os.chmod(OE_ETC_DIR + "oe_server.xml", 0o640)
+    os.chown(OE_ETC_DIR + 'oe_server.xml', 8443, 8443)
+
     template_file = open(INSTALLER_TEMPLATE_DIR + "hapi_server.xml", "r")
     output_file = open(OE_ETC_DIR + "hapi_server.xml", "w")
 
@@ -454,15 +463,15 @@ def create_server_xml_files():
         if line.find("[% truststore_password %]")  >= 0:
             line = line.replace("[% truststore_password %]", TRUSTSTORE_PWD)
         if line.find("[% keystore_password %]")  >= 0:
-            line = line.replace("[% keystore_password %]", KEYSTORE_PWD) 
-        
+            line = line.replace("[% keystore_password %]", KEYSTORE_PWD)
+
         output_file.write(line)
 
     template_file.close()
     output_file.close()
-    os.chmod(OE_ETC_DIR + "hapi_server.xml", 0o640) 
-    os.chown(OE_ETC_DIR + 'hapi_server.xml', 8443, 8443)   
-    
+    os.chmod(OE_ETC_DIR + "hapi_server.xml", 0o640)
+    os.chown(OE_ETC_DIR + 'hapi_server.xml', 8443, 8443)
+
     template_file = open(INSTALLER_TEMPLATE_DIR + "healthcheck.sh", "r")
     output_file = open(OE_ETC_DIR + "healthcheck.sh", "w")
 
@@ -470,16 +479,16 @@ def create_server_xml_files():
         if line.find("[% truststore_password %]")  >= 0:
             line = line.replace("[% truststore_password %]", TRUSTSTORE_PWD)
         if line.find("[% keystore_password %]")  >= 0:
-            line = line.replace("[% keystore_password %]", KEYSTORE_PWD) 
-        
+            line = line.replace("[% keystore_password %]", KEYSTORE_PWD)
+
         output_file.write(line)
 
     template_file.close()
     output_file.close()
-    os.chmod(OE_ETC_DIR + "healthcheck.sh", 0o750) 
-    os.chown(OE_ETC_DIR + 'healthcheck.sh', 8443, 8443)      
-    
-#this is somewhat unnecessary as we could just copy the file, but in case we start using variables in the file, this is being used    
+    os.chmod(OE_ETC_DIR + "healthcheck.sh", 0o750)
+    os.chown(OE_ETC_DIR + 'healthcheck.sh', 8443, 8443)
+
+#this is somewhat unnecessary as we could just copy the file, but in case we start using variables in the file, this is being used
 def create_nginx_files():
     ensure_dir_exists(SECRETS_DIR)
     template_file = open(INSTALLER_TEMPLATE_DIR + "nginx.conf", "r")
@@ -490,22 +499,22 @@ def create_nginx_files():
 
     template_file.close()
     output_file.close()
-    os.chmod(SECRETS_DIR + "common.properties", 0o640)   
-    os.chown(SECRETS_DIR + "nginx.conf", 8443, 8443) 
-    
+    os.chmod(SECRETS_DIR + "common.properties", 0o640)
+    os.chown(SECRETS_DIR + "nginx.conf", 8443, 8443)
+
 
 def install_cron_tasks():
     install_backup_script()
     install_log_cleanup_script()
     install_cron_file()
-        
+
 def install_backup_script():
     if os.path.exists(DB_BACKUPS_DIR + BACKUP_SCRIPT_NAME):
         over_ride = input("The backup script is already installed. Do you want to overwrite it? y/n ")
         if not over_ride.lower() == "y":
             return
-    
-    backup_script_template = INSTALLER_TEMPLATE_DIR + BACKUP_SCRIPT_NAME 
+
+    backup_script_template = INSTALLER_TEMPLATE_DIR + BACKUP_SCRIPT_NAME
     # make sure the template files for the backup exits
     if not os.path.exists(backup_script_template):
         log("Not installing backup. Script missing", PRINT_TO_CONSOLE)
@@ -520,7 +529,7 @@ def install_backup_script():
         return
     else:
         log("Curl found, continuing with backup installation", PRINT_TO_CONSOLE)
-      
+
     #create DatabaseBackup.pl from template
     ensure_dir_exists(DB_BACKUPS_DIR)
     template_file = open(backup_script_template, "r")
@@ -562,9 +571,9 @@ def install_backup_script():
         os.makedirs(DB_BACKUPS_DIR + "transmissionQueue", 0o640)
 
     shutil.copy(INSTALLER_STAGING_DIR + BACKUP_SCRIPT_NAME, DB_BACKUPS_DIR + BACKUP_SCRIPT_NAME)
-    os.chmod(DB_BACKUPS_DIR + BACKUP_SCRIPT_NAME, 0o744)    
-    
-    
+    os.chmod(DB_BACKUPS_DIR + BACKUP_SCRIPT_NAME, 0o744)
+
+
 def install_log_cleanup_script():
     ensure_dir_exists(LIBRARY_DIR)
     shutil.copy(INSTALLER_SCRIPTS_DIR + CLEANUP_SCRIPT_NAME, LIBRARY_DIR)
@@ -583,7 +592,7 @@ def install_cron_file():
     template_file.close()
     staging_file.close()
     shutil.copy(INSTALLER_STAGING_DIR + CRON_FILE_NAME, CRON_INSTALL_DIR)
-    
+
 
 def install_backup_config():
     # set values for database users
@@ -599,9 +608,9 @@ def install_backup_config():
         else:
             output_file.write(line)
     output_file.close()
-    backup_config.close() 
-    os.chmod(INSTALLER_DB_INIT_DIR + 'backupConfig.sql', 0o644)  
-    
+    backup_config.close()
+    os.chmod(INSTALLER_DB_INIT_DIR + 'backupConfig.sql', 0o644)
+
 
 def install_permissions_file():
     # set values for database users
@@ -620,10 +629,10 @@ def install_permissions_file():
         else:
             output_file.write(line)
     output_file.close()
-    pg_permissions.close() 
-    os.chmod(INSTALLER_DB_INIT_DIR + '1-pgsqlPermissions.sql', 0o640)  
-    
-    
+    pg_permissions.close()
+    os.chmod(INSTALLER_DB_INIT_DIR + '1-pgsqlPermissions.sql', 0o640)
+
+
 def install_environment_file():
     ensure_dir_exists(DB_ENVIRONMENT_DIR)
     # set values for database admin user if installing with docker
@@ -637,9 +646,9 @@ def install_environment_file():
             output_file.write(line)
     output_file.close()
     database_environment.close()
-    os.chmod(DB_ENVIRONMENT_DIR + 'database.env', 0o640) 
-        
-        
+    os.chmod(DB_ENVIRONMENT_DIR + 'database.env', 0o640)
+
+
 def install_site_info_config_file():
     log("installing site info config", PRINT_TO_CONSOLE)
     ensure_dir_exists(INSTALLER_DB_INIT_DIR)
@@ -647,20 +656,20 @@ def install_site_info_config_file():
     persist_site_information(site_file, 'siteNumber', 'The site number of the this lab', SITE_ID)
     persist_site_information(site_file, 'Accession number prefix',
                             'Prefix for SITEYEARNUM format.  Can not be changed if there are samples', SITE_ID)
-    site_file.close()   
+    site_file.close()
 
 
 def install_docker():
     cmd = 'sudo ' + INSTALLER_SCRIPTS_DIR + 'setupDocker.sh'
     os.system(cmd)
-    
+
     cmd = 'sudo ' + INSTALLER_SCRIPTS_DIR + 'setupTomcatDocker.sh'
     os.system(cmd)
-    
+
 
 def install_db():
     log("installing database", PRINT_TO_CONSOLE)
-    
+
     if DOCKER_DB:
         ensure_dir_not_exists(DB_INIT_DIR)
         #every .sql and .sh in db_init_dir will be auto run by docker on install
@@ -668,12 +677,12 @@ def install_db():
         #make sure docker can read this file to run it
         os.chown(DB_INIT_DIR + '1-pgsqlPermissions.sql', 0, 0)
         #TODO not the best for security. consider revisiting
-        os.chmod(DB_INIT_DIR + '1-pgsqlPermissions.sql', 0o644)  
+        os.chmod(DB_INIT_DIR + '1-pgsqlPermissions.sql', 0o644)
     elif LOCAL_DB:
         #configure the postgres installation to make sure it can be connected to from the docker container
         cmd = 'sudo ' + INSTALLER_SCRIPTS_DIR + 'configureHostPostgres.sh ' + POSTGRES_MAIN_DIR
         os.system(cmd)
-        
+
         cmd = 'su -c "createdb  clinlims" postgres'
         os.system(cmd)
         #make sure postgres can read this file to run it
@@ -699,8 +708,8 @@ def preserve_database_user_password():
     # own directory by tomcat user
     os.chown(SECRETS_DIR + 'datasource.password', 8443, 8443)
     os.chmod(SECRETS_DIR + 'datasource.password', 0o640)
-    
-    
+
+
 def preserve_database_backup_user_password():
     ensure_dir_exists(SECRETS_DIR)
     db_backup_user_password_file = open(SECRETS_DIR + 'backup_datasource.password', 'w')
@@ -708,30 +717,30 @@ def preserve_database_backup_user_password():
     db_backup_user_password_file.close()
 
     os.chmod(SECRETS_DIR + 'backup_datasource.password', 0o640)
-    
-    
+
+
 # note There is a fair amount of copying files, it should be re-written using shutil
 def install_crosstab():
     if LOCAL_DB:
         log("Checking if crosstab is installed in Postgres", True)
-    
+
         # this creates an empty file to write to
         result = open(INSTALLER_STAGING_DIR + 'crosstabResult.txt', 'wr')
         result.close()
         os.chmod(INSTALLER_STAGING_DIR + 'crosstabResult.txt', stat.S_IROTH | stat.S_IWOTH)
-    
+
         cmd = cmd = 'sudo -u postgres psql -d clinlims -o ' + INSTALLER_STAGING_DIR + 'crosstabResult.txt  -f' + INSTALLER_CROSSTAB_DIR + 'crosstabCheck.sql'
         os.system(cmd)
-    
+
         check_file = open(INSTALLER_STAGING_DIR + 'crosstabResult.txt')
-    
+
         for line in check_file:
             if line.find(EXPECTED_CROSSTAB_FUNCTIONS) != -1:
                 log("Crosstabs are installed", True)
                 return
-    
+
         log("Installing crosstabs", True)
-    
+
         # if tablefunc.so is not present in POSTGRES_LIB_DIR then copy it from INSTALLER_CROSSTAB_DIR
         # the version in INSTALLER_CROSSTAB_DIR is for 8.3 (assumes all new installs will be VM based)
         # if not os.path.exists(POSTGRES_LIB_DIR + "tablefunc.so") and "8.3" in POSTGRES_LIB_DIR:
@@ -741,7 +750,7 @@ def install_crosstab():
             # run the installer
         cmd = cmd = 'sudo -u postgres psql -d clinlims -f ' + INSTALLER_CROSSTAB_DIR + 'tablefunc.sql'
         os.system(cmd)
-        
+
 
 #---------------------------------------------------------------------
 #             UPDATE
@@ -768,34 +777,34 @@ def do_update():
             return
 
     backup_db()
-    
+
     uninstall_docker_images()
-    
+
     clean_docker_objects()
 
     load_docker_image()
-    
+
     ensure_dir_exists(PLUGINS_DIR)
-    
+
     ensure_dir_exists(LOGS_DIR)
-    os.chmod(LOGS_DIR, 0o777) 
+    os.chmod(LOGS_DIR, 0o777)
     os.chown(LOGS_DIR, 8443, 8443)
     ensure_dir_exists(TOMCAT_LOGS_DIR)
-    os.chmod(TOMCAT_LOGS_DIR, 0o777) 
-    os.chown(TOMCAT_LOGS_DIR, 8443, 8443)  
-    
+    os.chmod(TOMCAT_LOGS_DIR, 0o777)
+    os.chown(TOMCAT_LOGS_DIR, 8443, 8443)
+
     ensure_file_exists(DB_PGPASS)
-    
+
     get_stored_user_values()
-    
+
     create_nginx_certs()
-    
+
     create_nginx_files()
-    
+
     create_docker_compose_file()
-    
+
     create_properties_files()
-    
+
     create_server_xml_files()
 
     start_docker_containers()
@@ -804,8 +813,10 @@ def do_update():
 
     time.sleep(10)
 
+    send_location_report()
+
     log("Finished updating " + APP_NAME, PRINT_TO_CONSOLE)
-    
+
 
 #---------------------------------------------------------------------
 #             UNINSTALL
@@ -822,13 +833,13 @@ def uninstall():
 def do_uninstall():
     log("removing " + APP_NAME, PRINT_TO_CONSOLE)
     backup_db()
-    
+
     uninstall_docker_images()
-    
+
     delete_database()
-    
+
     uninstall_cron_tasks()
-    
+
     uninstall_program_files()
 
 
@@ -853,34 +864,34 @@ def uninstall_docker_images():
         log("stopping database docker image...", PRINT_TO_CONSOLE)
         cmd = 'docker rm $(docker stop $(docker ps -a -q --filter="name=' + DOCKER_DB_CONTAINER_NAME + '" --format="{{.ID}}"))'
         os.system(cmd)
-        
+
     log("removing openelis docker image...", PRINT_TO_CONSOLE)
     cmd = 'docker rm $(docker stop $(docker ps -a -q --filter="name=' + DOCKER_OE_CONTAINER_NAME + '" --format="{{.ID}}"))'
     os.system(cmd)
     cmd = 'docker rmi $(docker images \'' + DOCKER_OE_REPO_NAME + '\' -q)'
     os.system(cmd)
-    
+
     log("removing fhir api image...", PRINT_TO_CONSOLE)
     cmd = 'docker rm $(docker stop $(docker ps -a -q --filter="name=' + DOCKER_FHIR_API_CONTAINER_NAME + '" --format="{{.ID}}"))'
     os.system(cmd)
-    
+
     log("removing nginx proxy image...", PRINT_TO_CONSOLE)
     cmd = 'docker rm $(docker stop $(docker ps -a -q --filter="name=' + DOCKER_NGINX_CONTAINER_NAME + '" --format="{{.ID}}"))'
     os.system(cmd)
-    
+
     log("removing frontend image...", PRINT_TO_CONSOLE)
     cmd = 'docker rm $(docker stop $(docker ps -a -q --filter="name=' + DOCKER_FRONTEND_CONTAINER_NAME + '" --format="{{.ID}}"))'
     os.system(cmd)
-    
+
     if ASTM_PROXY:
         log("removing astm-bridge image...", PRINT_TO_CONSOLE)
         cmd = 'docker rm $(docker stop $(docker ps -a -q --filter="name=' + DOCKER_ASTM_BRIDGE_CONTAINER_NAME + '" --format="{{.ID}}"))'
         os.system(cmd)
-    
+
     log("removing autoheal image...", PRINT_TO_CONSOLE)
     cmd = 'docker rm $(docker stop $(docker ps -a -q --filter="name=' + DOCKER_AUTOHEAL_CONTAINER_NAME + '" --format="{{.ID}}"))'
     os.system(cmd)
-    
+
 
 def uninstall_cron_tasks():
     log("removing backup task " + APP_NAME, PRINT_TO_CONSOLE)
@@ -896,8 +907,8 @@ def uninstall_backups():
     if os.path.exists(DB_BACKUPS_DIR):
         log("removing backup", PRINT_TO_CONSOLE)
         shutil.rmtree(DB_BACKUPS_DIR)
-        
-        
+
+
 def uninstall_program_files():
     log("cleaning up various program files", PRINT_TO_CONSOLE)
     if os.path.exists(OE_ETC_DIR):
@@ -915,30 +926,30 @@ def read_setup_properties_file():
     global DB_HOST, DB_PORT
     global LOCAL_DB
     global ASTM_PROXY
-    
-    config = configparser.ConfigParser() 
+
+    config = configparser.ConfigParser()
     config.read(OE_ETC_DIR + SETUP_CONFIG_FILE_NAME)
-    
+
     install_dirs_info = "INSTALL_DIRS"
     DB_BACKUPS_DIR = ensure_dir_string(config.get(install_dirs_info, 'backup_dir'))
     SECRETS_DIR = ensure_dir_string(config.get(install_dirs_info,'secrets_dir'))
     PLUGINS_DIR = ensure_dir_string(config.get(install_dirs_info,'plugins_dir'))
-    
+
     database_info = "DATABASE_CONNECTION"
     DB_HOST = config.get(database_info, "host") # unused if docker_db
     DB_PORT = config.get(database_info, "port") # unused if docker_db
-    
+
     docker_db_info = "DOCKER_DB_VALUES"
     DOCKER_DB = is_true_string(config.get(docker_db_info, 'provide_database'))
     if DOCKER_DB:
         DB_HOST = "docker"
-        DB_PORT = "5432" 
+        DB_PORT = "5432"
     DOCKER_DB_HOST_PORT = config.get(docker_db_info,'host_port')
     DOCKER_DB_BACKUPS_DIR = ensure_dir_string(config.get(docker_db_info,'backups_dir'))
     DB_DATA_DIR = ensure_dir_string(config.get(docker_db_info,'host_data_dir'))
     DB_ENVIRONMENT_DIR = ensure_dir_string(config.get(docker_db_info,'host_env_dir'))
     DB_INIT_DIR = ensure_dir_string(config.get(docker_db_info,'host_init_dir'))
-    
+
     #if localhost database, get the docker host ip address so services can connect to db on host
     if DB_HOST == "localhost" or DB_HOST == "127.0.0.1":
         LOCAL_DB = True
@@ -947,17 +958,17 @@ def read_setup_properties_file():
 
     additional_services_info = "ADDITIONAL_SERVICES"
     ASTM_PROXY = is_true_string(config.get(additional_services_info,'activate_astm',fallback='False'))
-    
-    
+
+
 def write_setup_properties_file():
     ensure_dir_exists(OE_ETC_DIR)
     if os.path.exists(OE_ETC_DIR + SETUP_CONFIG_FILE_NAME):
         log(OE_ETC_DIR + SETUP_CONFIG_FILE_NAME + " already exists, using already installed version", PRINT_TO_CONSOLE)
         return
-    
+
     shutil.copy(SETUP_CONFIG_FILE_NAME, OE_ETC_DIR + SETUP_CONFIG_FILE_NAME)
 
-    
+
 def get_app_details():
     global APP_NAME, VERSION
 
@@ -972,9 +983,9 @@ def get_app_details():
             # get everything before final '-' (version delimiter) for APP_NAME
             while i < filename_parts_size - 1:
                 APP_NAME = APP_NAME + filename_parts[i] + "-"
-                i += 1                                   
-            APP_NAME = APP_NAME[:-1]                 
-            
+                i += 1
+            APP_NAME = APP_NAME[:-1]
+
             VERSION = filename_parts[len(filename_parts) - 1][:-7]  # strip .tar.gz off
             log("app name is: " + APP_NAME, PRINT_TO_CONSOLE)
             log("Version is: " + VERSION, PRINT_TO_CONSOLE)
@@ -991,8 +1002,8 @@ def find_password():
             return True
     except IOError:
         return False
-  
-    
+
+
 def find_backup_password():
     global BACKUP_PWD
     try:
@@ -1002,12 +1013,12 @@ def find_backup_password():
             BACKUP_PWD = line
             return True
     except IOError:
-        return False    
-    
+        return False
+
 
 def get_stored_user_values():
     ensure_dir_exists(CONFIG_DIR)
-    os.chmod(CONFIG_DIR, 0o640) 
+    os.chmod(CONFIG_DIR, 0o640)
     get_set_site_id()
     get_set_keystore_password()
     get_set_truststore_password()
@@ -1017,6 +1028,7 @@ def get_stored_user_values():
     get_set_timezone()
     get_set_extra_hosts()
     get_set_fhir_identifier()
+    get_set_location_reporting()
     find_password()
     find_backup_password()
 
@@ -1037,7 +1049,7 @@ def get_set_truststore_password():
     if (not is_truststore_password_set()):
         set_truststore_password()
     get_truststore_password()
-    
+
 
 def get_set_encryption_key():
     if (not is_encryption_key_set()):
@@ -1082,22 +1094,22 @@ def is_site_id_set():
 def get_site_id():
     global SITE_ID
     file = open(CONFIG_DIR + 'SITE_ID')
-    SITE_ID = file.readline()  
-    
-    
+    SITE_ID = file.readline()
+
+
 def set_site_id():
     # Get site specific information
     print("""
-    Some installations require configuration.  
+    Some installations require configuration.
         You will be asked for specific information which may or may not be needed for this installation.
         If you do not know if it is needed or you do not know the correct value it may be left blank.
         You can set the values after the installation is complete.
     """)
     site_id = input("site number for this lab (5 character): ")
     with open(CONFIG_DIR + 'SITE_ID', mode='wt') as file:
-        file.write(site_id)   
-    
-    
+        file.write(site_id)
+
+
 def is_keystore_password_set():
     return os.path.isfile(CONFIG_DIR + 'KEYSTORE_PASSWORD')
 
@@ -1105,9 +1117,9 @@ def is_keystore_password_set():
 def get_keystore_password():
     global KEYSTORE_PWD
     file = open(CONFIG_DIR + 'KEYSTORE_PASSWORD')
-    KEYSTORE_PWD = file.readline()  
-    
-    
+    KEYSTORE_PWD = file.readline()
+
+
 def set_keystore_password():
     print("keystore location: " + KEYSTORE_PATH)
     k_password = getpass("keystore password: ")
@@ -1119,8 +1131,8 @@ def set_keystore_password():
     else:
         with open(CONFIG_DIR + 'KEYSTORE_PASSWORD', mode='wt') as file:
             file.write(k_password)
-    
-    
+
+
 def is_truststore_password_set():
     return os.path.isfile(CONFIG_DIR + 'TRUSTSTORE_PASSWORD')
 
@@ -1141,19 +1153,19 @@ def set_truststore_password():
         set_truststore_password()
     else:
         with open(CONFIG_DIR + 'TRUSTSTORE_PASSWORD', mode='wt') as file:
-            file.write(t_password)    
+            file.write(t_password)
 
 
 def is_encryption_key_set():
     return os.path.isfile(CONFIG_DIR + 'ENCRYPTION_KEY')
-        
-        
+
+
 def get_encryption_key():
     global ENCRYPTION_KEY
     with open(CONFIG_DIR + 'ENCRYPTION_KEY') as file:
         ENCRYPTION_KEY = file.readline()
-        
-        
+
+
 def set_encryption_key():
     print("""
     Enter an encryption key that will be used to encrypt sensitive data.
@@ -1172,19 +1184,19 @@ def set_encryption_key():
 
 def is_remote_fhir_source_set():
     return os.path.isfile(CONFIG_DIR + 'REMOTE_FHIR_SOURCE')
-        
-        
+
+
 def get_remote_fhir_source():
     global REMOTE_FHIR_SOURCE
     REMOTE_FHIR_SOURCE = []
     with open(CONFIG_DIR + 'REMOTE_FHIR_SOURCE') as file:
         for line in file.readlines():
             REMOTE_FHIR_SOURCE.append(line.strip())
-        
-        
+
+
 def set_remote_fhir_source():
     print("""
-    Enter the full server path(s) to the remote fhir instance you'd like to poll for Fhir Tasks (eg. OpenMRS) . 
+    Enter the full server path(s) to the remote fhir instance you'd like to poll for Fhir Tasks (eg. OpenMRS) .
     Leave blank to disable polling a remote instance
     (entries should be comma delimited)
     """)
@@ -1197,7 +1209,7 @@ def set_remote_fhir_source():
                 remote_fhir_sources_with_protocol.append("https://" + remote_fhir_source)
             else:
                 remote_fhir_sources_with_protocol.append(remote_fhir_source)
-            
+
         with open(CONFIG_DIR + 'REMOTE_FHIR_SOURCE', mode='wt') as file:
             file.write('\n'.join(remote_fhir_sources_with_protocol))
     else:
@@ -1207,19 +1219,19 @@ def set_remote_fhir_source():
 
 def is_cs_server_set():
     return os.path.isfile(CONFIG_DIR + 'CS_SERVER')
-        
-        
+
+
 def get_cs_server():
     global CONSOLIDATED_SERVER_ADDRESS
     CONSOLIDATED_SERVER_ADDRESS = []
     with open(CONFIG_DIR + 'CS_SERVER') as file:
         for line in file.readlines():
             CONSOLIDATED_SERVER_ADDRESS.append(line.strip())
-        
-        
+
+
 def set_cs_server():
-    print(""" 
-    Enter the full server path to the consolidated server to send data to. 
+    print("""
+    Enter the full server path to the consolidated server to send data to.
     Leave blank to disable sending data to the Consolidated server
     """)
     user_input = input("Consolidated server address(es) (comma delimited): ")
@@ -1231,7 +1243,7 @@ def set_cs_server():
                 cs_addresses_with_protocol.append("https://" + cs_address)
             else:
                 cs_addresses_with_protocol.append(cs_address)
-                
+
         with open(CONFIG_DIR + 'CS_SERVER', mode='wt') as file:
             file.write('\n'.join(cs_addresses_with_protocol))
     else:
@@ -1241,22 +1253,22 @@ def set_cs_server():
 
 def is_timezone_set():
     return os.path.isfile(CONFIG_DIR + 'TZ')
-        
-        
+
+
 def get_timezone():
     global TIMEZONE
     with open(CONFIG_DIR + 'TZ') as file:
         TIMEZONE = file.readline()
 
-    
+
 def set_timezone():
     cmd = "tzselect >" + CONFIG_DIR + 'TZ'
     os.system(cmd)
-    
+
 
 def is_external_hosts_set():
     return os.path.isfile(CONFIG_DIR + 'EXTERNAL_HOSTS')
-    
+
 
 def get_external_hosts():
     global EXTERNAL_HOSTS
@@ -1264,17 +1276,17 @@ def get_external_hosts():
     with open(CONFIG_DIR + 'EXTERNAL_HOSTS') as file:
         for line in file.readlines():
             EXTERNAL_HOSTS.append(line.strip())
-    
 
-def set_external_hosts(): 
+
+def set_external_hosts():
     extra_hosts = input("type a comma delimited list of extra hosts (format DNS_ENTRY1:IP_ADDRESS1,DNS_ENTRY2:IP_ADDRESS2...): ").split(',')
     with open(CONFIG_DIR + 'EXTERNAL_HOSTS', mode='wt') as file:
         file.write('\n'.join(extra_hosts))
-    
+
 
 def is_fhir_identifier_set():
     return os.path.isfile(CONFIG_DIR + 'FHIR_IDENTIFIER')
-    
+
 
 def get_fhir_identifier():
     global FHIR_IDENTIFIER
@@ -1282,12 +1294,106 @@ def get_fhir_identifier():
     with open(CONFIG_DIR + 'FHIR_IDENTIFIER') as file:
         for line in file.readlines():
             FHIR_IDENTIFIER.append(line.strip())
-    
 
-def set_fhir_identifier(): 
+
+def set_fhir_identifier():
     identifier = input("type a comma delimited list of fhir identifiers (format Practitioner/id1,Organization/id2...): ").split(',')
     with open(CONFIG_DIR + 'FHIR_IDENTIFIER', mode='wt') as file:
         file.write(','.join(identifier))
+
+
+def get_set_location_reporting():
+    if (not is_location_opt_in_set()):
+        set_location_opt_in()
+    get_location_opt_in()
+
+
+def is_location_opt_in_set():
+    return os.path.isfile(CONFIG_DIR + 'LOCATION_OPT_IN')
+
+
+def get_location_opt_in():
+    global LOCATION_OPT_IN
+    with open(CONFIG_DIR + 'LOCATION_OPT_IN') as file:
+        opt_in_value = file.readline().strip().lower()
+        LOCATION_OPT_IN = opt_in_value in ['y', 'yes', 'true', '1']
+
+
+def set_location_opt_in():
+    print("""
+================================================================================
+                    ANONYMOUS LOCATION REPORTING
+================================================================================
+
+To enhance our understanding of the geographical reach and scale of OpenELIS
+usage, we kindly request your consent to collect anonymous location information.
+
+Please be assured that this data will be used solely for statistical analysis
+to improve our services. We want to emphasize that no clinical or personal
+information will be collected or stored.
+
+Your participation is entirely voluntary and will greatly contribute to
+optimizing the effectiveness of OpenELIS.
+
+If you agree to share this anonymous location data, please opt in by answering
+Y or simply pressing enter.
+
+Thank you for your support!
+================================================================================
+    """)
+    opt_in = input("Share anonymous location data? [Y/n]: ").strip().lower()
+
+    # Default to 'y' if user just presses enter
+    if opt_in == '' or opt_in in ['y', 'yes']:
+        opt_in_value = 'true'
+    else:
+        opt_in_value = 'false'
+
+    with open(CONFIG_DIR + 'LOCATION_OPT_IN', mode='wt') as file:
+        file.write(opt_in_value)
+
+    log("Location reporting opt-in set to: " + opt_in_value, PRINT_TO_CONSOLE)
+
+
+def send_location_report():
+    """Send anonymous installation location data to central server"""
+    if not LOCATION_OPT_IN:
+        log("Location reporting opted out, skipping", PRINT_TO_CONSOLE)
+        return
+
+    try:
+        # Prepare data to send
+        data = {
+            'site_id': SITE_ID if SITE_ID else 'unknown',
+            'version': VERSION,
+            'app_name': APP_NAME,
+            'timestamp': strftime("%Y-%m-%d %H:%M:%S", gmtime()),
+            'timezone': TIMEZONE if TIMEZONE else 'unknown'
+        }
+
+        # Convert to JSON
+        json_data = json.dumps(data).encode('utf-8')
+
+        # Create request
+        req = urllib.request.Request(
+            LOCATION_REPORTING_SERVER,
+            data=json_data,
+            headers={'Content-Type': 'application/json'},
+            method='POST'
+        )
+
+        # Send request with timeout
+        log("Sending anonymous location data to central server...", PRINT_TO_CONSOLE)
+        with urllib.request.urlopen(req, timeout=10) as response:
+            if response.status == 200:
+                log("Location data sent successfully", PRINT_TO_CONSOLE)
+            else:
+                log("Location data submission returned status: " + str(response.status), PRINT_TO_CONSOLE)
+
+    except urllib.error.URLError as e:
+        log("Could not send location data (network error): " + str(e), PRINT_TO_CONSOLE)
+    except Exception as e:
+        log("Could not send location data: " + str(e), PRINT_TO_CONSOLE)
     
 
 def create_db_backup_user(): 
