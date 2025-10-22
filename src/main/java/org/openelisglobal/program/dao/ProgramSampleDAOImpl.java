@@ -45,6 +45,14 @@ public class ProgramSampleDAOImpl extends BaseDAOImpl<ProgramSample, Integer> im
         return query.getResultList();
     }
 
+    @Override
+    public Long getCountByProgramId(String programId) {
+        String sql = "select count(*) from ProgramSample ps where ps.program.id = :programId";
+        Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
+        query.setParameter("programId", programId);
+        return query.uniqueResult();
+    }
+
     public String getTableName() {
         return "program_sample";
     }

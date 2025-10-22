@@ -8,4 +8,6 @@ public interface ProgramSampleService extends BaseObjectService<ProgramSample, I
     ProgramSample getProgrammeSampleBySample(Integer sampleId, String programName);
 
     List<ProgramSample> getProgramSamplesByProgramId(String programId);
+
+    Long getCountByProgramId(String programId);
 }

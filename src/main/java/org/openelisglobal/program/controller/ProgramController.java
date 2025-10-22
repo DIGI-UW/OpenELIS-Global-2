@@ -2,7 +2,6 @@ package org.openelisglobal.program.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
@@ -14,17 +13,21 @@ import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
+import org.openelisglobal.program.bean.GeneralProgramDashBoardCount;
+import org.openelisglobal.program.service.GeneralProgramDisplayService;
 import org.openelisglobal.program.service.ProgramSampleService;
 import org.openelisglobal.program.service.ProgramService;
 import org.openelisglobal.program.valueholder.OrderEntry;
 import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.program.valueholder.ProgramSampleQuestionnaireResponse;
+import org.openelisglobal.program.valueholder.generalProgram.GeneralProgramDisplayItem;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -81,25 +84,48 @@ public class ProgramController extends BaseRestController {
     private ProgramService programService;
     @Autowired
     private TestSectionService testSectionService;
+    @Autowired
+    private GeneralProgramDisplayService generalProgramDisplayService;
 
     private static final List<String> EXCLUDED_PROGRAM_NAMES = List.of("Cytology", "Immunohistochemistry",
             "Histopathology", "Pathology");
 
     @GetMapping(value = "/programs/general", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public List<Program> getGeneralPrograms() {
+    public List<GeneralProgramDisplayItem> getGeneralPrograms() {
         List<Program> programs = programService.getGeneralPrograms(EXCLUDED_PROGRAM_NAMES);
 
         if (programs == null || programs.isEmpty()) {
-            Program sampleProgram = new Program();
-            sampleProgram.setId("1");
-            sampleProgram.setCode("GEN");
-            sampleProgram.setProgramName("General Test Program");
-            sampleProgram.setManuallyChanged(true);
-            return Arrays.asList(sampleProgram);
+            return new java.util.ArrayList<>();
         }
 
-        return programs;
+        return generalProgramDisplayService.convertToDisplayItems(programs);
+    }
+
+    @GetMapping(value = "/programs/general/count", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<GeneralProgramDashBoardCount> getGeneralProgramsCount() {
+        GeneralProgramDashBoardCount count = new GeneralProgramDashBoardCount();
+        List<Program> programs = programService.getGeneralPrograms(EXCLUDED_PROGRAM_NAMES);
+
+        count.setTotalPrograms(programs != null ? (long) programs.size() : 0L);
+
+        long programsWithOrders = 0;
+        long totalOrders = 0;
+        if (programs != null) {
+            for (Program program : programs) {
+                Long orderCount = programSampleService.getCountByProgramId(program.getId());
+                if (orderCount != null && orderCount > 0) {
+                    programsWithOrders++;
+                    totalOrders += orderCount;
+                }
+            }
+        }
+
+        count.setProgramsWithOrders(programsWithOrders);
+        count.setTotalOrders(totalOrders);
+
+        return ResponseEntity.ok(count);
     }
 
     @GetMapping(value = "/program/{id}", produces = MediaType.APPLICATION_JSON_VALUE)

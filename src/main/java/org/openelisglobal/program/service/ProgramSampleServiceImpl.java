@@ -31,4 +31,9 @@ public class ProgramSampleServiceImpl extends AuditableBaseObjectServiceImpl<Pro
     public java.util.List<ProgramSample> getProgramSamplesByProgramId(String programId) {
         return getBaseObjectDAO().getProgramSamplesByProgramId(programId);
     }
+
+    @Override
+    public Long getCountByProgramId(String programId) {
+        return getBaseObjectDAO().getCountByProgramId(programId);
+    }
 }
