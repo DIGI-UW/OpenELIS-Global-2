@@ -1,4 +1,3 @@
-import React from "react";
 import { Select, SelectItem } from "@carbon/react";
 
 const CustomSelect = (props) => {

@@ -1,0 +1,61 @@
+[1mdiff --git a/frontend/src/components/common/ConfirmPopup.js b/frontend/src/components/common/ConfirmPopup.js[m
+[1mindex a0750a9b4..386cd24f8 100644[m
+[1m--- a/frontend/src/components/common/ConfirmPopup.js[m
+[1m+++ b/frontend/src/components/common/ConfirmPopup.js[m
+[36m@@ -1,4 +1,3 @@[m
+[31m-import React from "react";[m
+ import {[m
+   Button,[m
+   ComposedModal,[m
+[1mdiff --git a/frontend/src/components/common/CustomCheckBox.js b/frontend/src/components/common/CustomCheckBox.js[m
+[1mindex 0e4d689aa..75414d47d 100644[m
+[1m--- a/frontend/src/components/common/CustomCheckBox.js[m
+[1m+++ b/frontend/src/components/common/CustomCheckBox.js[m
+[36m@@ -1,4 +1,3 @@[m
+[31m-import React from "react";[m
+ import { Checkbox } from "@carbon/react";[m
+ [m
+ const CustomCheckBox = (props) => {[m
+[1mdiff --git a/frontend/src/components/common/CustomSelect.js b/frontend/src/components/common/CustomSelect.js[m
+[1mindex 5476bb37b..2b5b25463 100644[m
+[1m--- a/frontend/src/components/common/CustomSelect.js[m
+[1m+++ b/frontend/src/components/common/CustomSelect.js[m
+[36m@@ -1,4 +1,3 @@[m
+[31m-import React from "react";[m
+ import { Select, SelectItem } from "@carbon/react";[m
+ [m
+ const CustomSelect = (props) => {[m
+[1mdiff --git a/frontend/src/components/common/GlobalSideBar.js b/frontend/src/components/common/GlobalSideBar.js[m
+[1mindex 32f690fcf..4cb233fde 100644[m
+[1m--- a/frontend/src/components/common/GlobalSideBar.js[m
+[1m+++ b/frontend/src/components/common/GlobalSideBar.js[m
+[36m@@ -1,4 +1,3 @@[m
+[31m-import React from "react";[m
+ import {[m
+   Content,[m
+   SideNav,[m
+[1mdiff --git a/frontend/src/components/common/PageBreadCrumb.js b/frontend/src/components/common/PageBreadCrumb.js[m
+[1mindex 79d81daf8..bc6f16e40 100644[m
+[1m--- a/frontend/src/components/common/PageBreadCrumb.js[m
+[1m+++ b/frontend/src/components/common/PageBreadCrumb.js[m
+[36m@@ -1,5 +1,4 @@[m
+ import { Breadcrumb, BreadcrumbItem, Column, Grid } from "@carbon/react";[m
+[31m-import React from "react";[m
+ import { useIntl } from "react-intl";[m
+ [m
+ const PageBreadCrumb = ({ breadcrumbs }) => {[m
+[1mdiff --git a/frontend/src/components/utils/Utils.js b/frontend/src/components/utils/Utils.js[m
+[1mindex 85f461083..97666ea91 100644[m
+[1m--- a/frontend/src/components/utils/Utils.js[m
+[1m+++ b/frontend/src/components/utils/Utils.js[m
+[36m@@ -1,5 +1,4 @@[m
+ import config from "../../config.json";[m
+[31m-[m
+ export const getFromOpenElisServer = (endPoint, callback) => {[m
+   fetch([m
+     config.serverBaseUrl + endPoint,[m
+[36m@@ -369,3 +368,4 @@[m [mexport const Roles = {[m
+   VALIDATION: "Validation",[m
+   REPORTS: "Reports",[m
+ };[m
+[41m+[m

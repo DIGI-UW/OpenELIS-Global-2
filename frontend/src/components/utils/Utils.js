@@ -1,5 +1,4 @@
 import config from "../../config.json";
-
 export const getFromOpenElisServer = (endPoint, callback) => {
   fetch(
     config.serverBaseUrl + endPoint,
@@ -369,3 +368,4 @@ export const Roles = {
   VALIDATION: "Validation",
   REPORTS: "Reports",
 };
+
