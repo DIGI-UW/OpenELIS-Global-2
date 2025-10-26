@@ -230,8 +230,9 @@ public abstract class ConfigurationProperties {
         CONTACT_TRACING("contactTracingEnabled", "text"), //
         REQUIRE_LAB_UNIT_AT_LOGIN("requireLabUnitAtLogin", "text"), //
         ENABLE_CLIENT_REGISTRY("enableClientRegistry", "text"), // if true, then client registry search option is
-        ENABLE_OPENELIS_TO_ODOO_CONNECTION("enableOdooConnection", "text"), BAR_CODE_TYPE("BarCodeType", "text");
-
+        ENABLE_OPENELIS_TO_ODOO_CONNECTION("enableOdooConnection", "text"),
+        BAR_CODE_TYPE("BarCodeType", "text"),
+        ENABLE_ODOO_QUEUE("enableOdooQueue", "text"); // If true, failed Odoo syncs will be queued for retry
         // visible on
         // the ui
 

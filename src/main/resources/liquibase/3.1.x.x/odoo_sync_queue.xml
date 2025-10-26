@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="mherman22" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="odoo_sync_queue" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create odoo_sync_queue table for storing failed Odoo synchronization attempts</comment>
+
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="odoo_sync_queue_seq" startValue="1" />
+
+        <createTable schemaName="clinlims" tableName="odoo_sync_queue">
+            <column name="id" type="BIGINT" valueSequenceNext="odoo_sync_queue_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="accession_number" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="sample_id" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="invoice_data" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="retry_count" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="true"/>
+            </column>
+            <column name="max_retries" type="INTEGER" defaultValueNumeric="10">
+                <constraints nullable="true"/>
+            </column>
+            <column name="error_message" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_date" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_retry_date" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="completed_date" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="odoo_invoice_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="odoo_sync_queue"/>
+            <dropSequence schemaName="clinlims" sequenceName="odoo_sync_queue_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelis" id="2">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_odoo_sync_queue_status" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create index on status column for faster querying of pending sync requests</comment>
+
+        <createIndex indexName="idx_odoo_sync_queue_status" schemaName="clinlims" tableName="odoo_sync_queue">
+            <column name="status"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_odoo_sync_queue_status" schemaName="clinlims" tableName="odoo_sync_queue"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelis" id="3">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_odoo_sync_queue_accession" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create index on accession_number for faster lookups</comment>
+
+        <createIndex indexName="idx_odoo_sync_queue_accession" schemaName="clinlims" tableName="odoo_sync_queue">
+            <column name="accession_number"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_odoo_sync_queue_accession" schemaName="clinlims" tableName="odoo_sync_queue"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelis" id="4">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_odoo_sync_queue_created_date" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create index on created_date for ordering pending requests by creation time</comment>
+
+        <createIndex indexName="idx_odoo_sync_queue_created_date" schemaName="clinlims" tableName="odoo_sync_queue">
+            <column name="created_date"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_odoo_sync_queue_created_date" schemaName="clinlims" tableName="odoo_sync_queue"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

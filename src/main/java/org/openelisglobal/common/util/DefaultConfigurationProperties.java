@@ -307,6 +307,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.REQUIRE_LAB_UNIT_AT_LOGIN, "false");
         properties.setPropertyValue(Property.ENABLE_CLIENT_REGISTRY, "false");
         properties.setPropertyValue(Property.ENABLE_OPENELIS_TO_ODOO_CONNECTION, "false");
+        properties.setPropertyValue(Property.ENABLE_ODOO_QUEUE, "false");
         properties.setPropertyValue(Property.BAR_CODE_TYPE, "BARCODE");
         return properties;
     }
