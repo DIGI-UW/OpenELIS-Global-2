@@ -64,7 +64,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet author="openelis" id="2">
+    <changeSet author="mherman22" id="2">
         <preConditions onFail="MARK_RAN">
             <not>
                 <indexExists indexName="idx_odoo_sync_queue_status" schemaName="clinlims"/>
@@ -81,7 +81,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet author="openelis" id="3">
+    <changeSet author="mherman22" id="3">
         <preConditions onFail="MARK_RAN">
             <not>
                 <indexExists indexName="idx_odoo_sync_queue_accession" schemaName="clinlims"/>
@@ -98,7 +98,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet author="openelis" id="4">
+    <changeSet author="mherman22" id="4">
         <preConditions onFail="MARK_RAN">
             <not>
                 <indexExists indexName="idx_odoo_sync_queue_created_date" schemaName="clinlims"/>
