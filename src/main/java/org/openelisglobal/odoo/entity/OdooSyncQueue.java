@@ -18,8 +18,6 @@ import org.openelisglobal.common.valueholder.BaseObject;
 /**
  * Entity class for storing failed Odoo synchronization attempts. This allows
  * for automatic retry and recovery when Odoo is temporarily unavailable.
- * 
- * @author OpenELIS Team
  */
 @Entity
 @Table(name = "odoo_sync_queue")

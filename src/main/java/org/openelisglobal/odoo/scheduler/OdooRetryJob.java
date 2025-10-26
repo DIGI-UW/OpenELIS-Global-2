@@ -17,8 +17,6 @@ import org.springframework.stereotype.Component;
  * Scheduled job to retry failed Odoo synchronization attempts. Runs
  * periodically to process pending queue entries and attempt to sync them with
  * Odoo.
- * 
- * @author OpenELIS Team
  */
 @Component
 public class OdooRetryJob {
