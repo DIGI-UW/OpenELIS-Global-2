@@ -77,4 +77,5 @@ public class ResultFile extends BaseObject<Integer> {
         this.id = id;
 
     }
+
 }

@@ -117,7 +117,7 @@
         </many-to-one>
         <many-to-one name="resultFile"
             class="org.openelisglobal.analysis.valueholder.ResultFile"
-            fetch="select" cascade="all">
+            fetch="join" cascade="all">
             <column name="result_file_id" not-null="false" unique="true" />
         </many-to-one>
 
