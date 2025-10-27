@@ -1,39 +1,40 @@
-import React, { useContext, useEffect, useState, useRef } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import React, {useContext, useEffect, useRef, useState} from "react";
+import {FormattedMessage, injectIntl, useIntl} from "react-intl";
 import "../Style.css";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-  convertAlphaNumLabNumForDisplay,
-  Roles,
+    convertAlphaNumLabNumForDisplay,
+    getFromOpenElisServer,
+    postToOpenElisServerJsonResponse,
+    Roles,
 } from "../utils/Utils";
 import {
-  Form,
-  TextInput,
-  TextArea,
-  Checkbox,
-  Button,
-  Grid,
-  Column,
-  Stack,
-  Pagination,
-  Select,
-  SelectItem,
-  Loading,
-  Link,
+    Button,
+    Checkbox,
+    Column,
+    Form,
+    Grid, IconButton,
+    Link,
+    Loading,
+    Pagination,
+    Select,
+    SelectItem,
+    Stack,
+    Tag,
+    TextArea,
+    TextInput,
 } from "@carbon/react";
-import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
+import {ArrowLeft, ArrowRight, Copy} from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import DataTable from "react-data-table-component";
-import { Formik, Field } from "formik";
+import {Field, Formik} from "formik";
 import SearchResultFormValues from "../formModel/innitialValues/SearchResultFormValues";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
+import {AlertDialog, NotificationKinds} from "../common/CustomNotification";
+import {ConfigurationContext, NotificationContext} from "../layout/Layout";
 import SearchPatientForm from "../patient/SearchPatientForm";
 import ReferredOutTests from "./resultsReferredOut/ReferredOutTests";
-import { ConfigurationContext } from "../layout/Layout";
 import config from "../../config.json";
 import CustomDatePicker from "../common/CustomDatePicker";
+import {Add, Subtract} from "@carbon/react/icons";
 
 function ResultSearchPage() {
   const [originalResultForm, setOriginalResultForm] = useState({
@@ -783,6 +784,8 @@ export function SearchResults(props) {
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [multiSelectResultValues, setMultiSelectResultValues] = useState([]);
+  const [cascadingSelectResultValues, setCascadingSelectResultValues] = useState([]);
 
   const componentMounted = useRef(false);
 
@@ -817,6 +820,7 @@ export function SearchResults(props) {
   useEffect(() => {
     if (props.results.testResult) {
       let newValidationState = { ...validationState };
+      let updatedState = [];
       props.results.testResult.forEach((row) => {
         if (row.resultType === "N") {
           let value = row.resultValue;
@@ -843,10 +847,19 @@ export function SearchResults(props) {
                 : "var(--cds-field)",
           };
         }
+          if (row.resultType === "C") {
+              updatedState.push({
+                      parentId: row.id,
+                      parentResults: [],
+                      position: 0,
+                      children: []
+                  });
+          }
       });
       setValidationState(newValidationState);
+      setCascadingSelectResultValues(updatedState)
     }
-  }, [props.results]);
+  }, [props.results.testResult]);
 
   const loadReferalOrganizations = (values) => {
     if (componentMounted.current) {
@@ -1074,7 +1087,7 @@ export function SearchResults(props) {
               )}
             </Field>
             <br></br>
-            {rejectedItems[row.id] == true && (
+            {rejectedItems[row.id] === true && (
               <Select
                 id={"rejectReasonId" + row.id}
                 name={"testResult[" + row.id + "].rejectReasonId"}
@@ -1119,33 +1132,180 @@ export function SearchResults(props) {
         );
 
       case "result":
-        switch (row.resultType) {
-          case "M":
-          case "C":
-          case "D":
-            return (
-              <Select
-                className="result"
-                id={"resultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                noLabel={true}
-                onChange={(e) => validateResults(e, row.id)}
-                value={row.resultValue}
-              >
-                {/* {...updateShadowResult(e, this, param.rowId)} */}
-                <SelectItem text="" value="" />
-                {row.dictionaryResults.map(
-                  (dictionaryResult, dictionaryResult_index) => (
-                    <SelectItem
-                      text={dictionaryResult.value}
-                      value={dictionaryResult.id}
-                      key={dictionaryResult_index}
-                    />
-                  ),
-                )}
-              </Select>
-            );
+          const renderDictionarySelect = (resultType, position = 0) => {
+              return (
+                  <Select
+                      className="result"
+                      id={`resultValue${row.id}`}
+                      name={`testResult[${row.id}].resultValue`}
+                      noLabel
+                      onChange={(e) => validateResults(e, row.id, resultType, position)}
+                      value={row.resultValue}
+                  >
+                      <SelectItem text="" value="" />
 
+                      {row.dictionaryResults.map((dictionaryResult, index) => {
+                          const { id, value, position: dictPosition } = dictionaryResult;
+                          const sourceValues =
+                              resultType === "M"
+                                  ? multiSelectResultValues
+                                  : resultType === "C"
+                                      ? cascadingSelectResultValues
+                                      : [];
+                          const selectedItems = sourceValues.flatMap(item => {
+                              const matchesResultType =
+                                  resultType === "C"
+                                      ? Array.isArray(item.parentResults) &&
+                                      item.parentResults.some(pr => pr.id === id)
+                                      : item.id === id;
+
+                              if (!matchesResultType) return [];
+
+                              const parentPairs = Array.isArray(item.parentResults)
+                                  ? item.parentResults
+                                      .filter(pr => pr.id === id)
+                                      .map(pr => ({
+                                          id: pr.id,
+                                          position: item.position,
+                                      }))
+                                  : [];
+
+                              const childPairs = Array.isArray(item.children)
+                                  ? item.children.flatMap(child =>
+                                      Array.isArray(child.results)
+                                          ? child.results
+                                              .filter(r => r.id === id) // only relevant children.results
+                                              .map(r => ({
+                                                  id: r.id,
+                                                  position: child.position,
+                                              }))
+                                          : []
+                                  )
+                                  : [];
+
+                              return [...parentPairs, ...childPairs];
+                          });
+
+                          const isDisabled =
+                              selectedItems.some(
+                                  sel => sel.id === id && sel.position === (dictPosition ?? position)
+                              ) && resultType !== "D";
+
+                          return (
+                              <SelectItem
+                                  key={index}
+                                  text={value}
+                                  value={id}
+                                  disabled={isDisabled}
+                              />
+                          );
+                      })}
+                  </Select>
+              );
+          };
+
+          switch (row.resultType) {
+          case "M":
+              return (<div className="resultOptionsDisplay">
+                  <div className="resultSelectOption">
+                      {renderDictionarySelect("M",0)}
+                  </div>
+                  <div className="resultTagDisplay">
+                      {
+                          multiSelectResultValues
+                              .filter(tag => tag.testId === row.id)
+                              .map((tag, index) => (
+                              <Tag
+                                  filter
+                                  key={index}
+                                  onClose={() => handleTagClose(row.id, tag.id)}
+                                  style={{marginRight: "0.5rem"}}
+                                  type={"green"}>
+                                  {tag.result}
+                              </Tag>
+                          ))
+                      }
+                  </div>
+              </div>);
+          case "C":
+              const cascadingRender = cascadingSelectResultValues
+              .filter(item => item.parentId === row.id)
+              .map((item, i) => (
+                  <div key={i}>
+                      <div className="resultSelectOption" key={i + item.parentId}>
+                          {renderDictionarySelect("C",0 )}
+                          {
+                              item.parentResults.map((result, index) => (
+
+                                  <div className="resultOptionsDisplay" key={result.id + index}>
+                                      <Tag
+                                          filter
+                                          key={result.id + index}
+                                          onClose={() => handleCascadingTagClose(row.id, result.id, 0)}
+                                          style={{marginRight: "0.5rem", margin: "10px"}}
+                                          type={"green"}>
+                                          {result.name}
+                                      </Tag>
+                                  </div>
+                              ))
+                          }
+                          {!(cascadingSelectResultValues.find(p => p.parentId === item.parentId)?.children?.length > 0) && (
+                              <IconButton
+                                  size="sm"
+                                  kind="tertiary"
+                                  label=""
+                                  onClick={() => addCascadingOptions(item.parentId, item.position)}
+                              >
+                                  <Add />
+                              </IconButton>
+                          )}
+                      </div>
+                      {
+                          item.children.map((child, j) => (
+                              <div className="resultSelectOption" key={i + j}>
+                                  {renderDictionarySelect("C", j + 1)}
+                                  <IconButton
+                                      size="sm"
+                                      kind="tertiary"
+                                      label=""
+                                      onClick={() => addCascadingOptions(item.parentId, item.position)}
+                                  >
+                                      <Add />
+                                  </IconButton>
+
+                                  <IconButton
+                                      size="sm"
+                                      kind="tertiary"
+                                      label=""
+                                      onClick={() => addCascadingOptions(item.parentId, item.position)}
+                                  >
+                                      <Subtract />
+                                  </IconButton>
+                                  {
+                                      child.results.map((result, child_index) => (
+                                          <div className="resultOptionsDisplay" key={child_index}>
+                                              <Tag
+                                                  filter
+                                                  key={child_index}
+                                                  onClose={() => handleCascadingTagClose(row.id, result.id, 0)}
+                                                  style={{marginRight: "0.5rem", margin: "10px"}}
+                                                  type={"blue"}>
+                                                  {result.name}
+                                              </Tag>
+                                          </div>
+                                      ))
+                                  }
+                              </div>
+                          ))
+                      }
+                  </div>
+              ));
+              return (
+                  <div className="resultOptionsDisplay">
+                      { cascadingRender }
+                  </div>);
+          case "D":
+            return renderDictionarySelect("D");
           case "N":
             return (
               <TextInput
@@ -1359,11 +1519,107 @@ export function SearchResults(props) {
       </Grid>
     </>
   );
-  const validateResults = (e, rowId) => {
-    console.debug("validateResults:" + e.target.value);
-    // e.target.value;
-    handleChange(e, rowId);
-  };
+    const validateResults = (e, rowId, resultType, position) => {
+        const id = e.target.value;
+        const text = e.target.options[e.target.selectedIndex].text;
+        if (!id) return;
+        if (resultType === "M"){
+            setMultiSelectResultValues(prev => {
+                const existingTagsForRow = prev.filter(item => item.testId === rowId);
+                const exists = existingTagsForRow.some(item => item.id === id);
+                if (exists) return prev;
+                return [...prev, { id, result: text, testId: rowId }];
+            });
+        }else if(resultType === "C"){
+            setCascadingSelectResultValues(prevState =>
+                prevState.map(item => {
+                    if (item.parentId !== rowId) return item;
+
+                    // ---- CASE: position 0 => update parentResults ----
+                    if (position === 0) {
+                        const parentResults = item.parentResults || [];
+                        const exists = parentResults.some(pr => pr.id === id);
+
+                        return {
+                            ...item,
+                            parentResults: exists
+                                ? parentResults
+                                : [...parentResults, { id, name: text }]
+                        };
+                    }
+
+                    // ---- CASE: position >= 1 => update child.results ----
+                    const updatedChildren = (item.children || []).map(child => {
+                        if (child.position !== position) return child;
+
+                        const existingResults = child.results || [];
+                        const alreadyExists = existingResults.some(res => res.id === id);
+
+                        return {
+                            ...child,
+                            position: position,
+                            results: alreadyExists
+                                ? existingResults
+                                : [...existingResults, { id, name: text }]
+                        };
+                    });
+
+                    return {
+                        ...item,
+                        children: updatedChildren
+                    };
+                })
+            );
+
+            // setCascadingSelectResultValues(prevState =>
+            //     prevState.map(item => {
+            //         if (item.parentId === rowId) {
+            //             const parentResults = item.parentResults || [];
+            //             const exists = parentResults.some(pr => pr.id === id);
+            //             return {
+            //                 ...item,
+            //                 parentResults: exists
+            //                     ? parentResults
+            //                     : [...parentResults, {id, name: text }]
+            //             };
+            //         }
+            //         return item;
+            //     })
+            // );
+        }
+        handleChange(e, rowId);
+
+    };
+
+    const handleTagClose = (rowId, tagId) => {
+        setMultiSelectResultValues(prev =>
+            prev.filter(tag => !(tag.testId === rowId && tag.id === tagId))
+        );
+    };
+
+    const handleCascadingTagClose = (rowId, tagId, position) => {
+            setCascadingSelectResultValues(prev =>
+                prev.map(item => {
+                    if (position === 0) {
+                        return {
+                            ...item,
+                            parentResults: item.parentResults?.filter(pr => pr.id !== tagId) || []
+                        };
+                    } else {
+                        return item.id === tagId ? null : item;
+                    }
+                })
+            );
+        };
+    const addCascadingOptions  = (parentId, position) => {
+        setCascadingSelectResultValues(prev =>
+            prev.map(item =>
+                item.parentId === parentId
+                    ? {...item, children: [{childId: "", position: position + 1, results: []}]}
+                    : item
+            )
+        );
+    };
 
   const validateNumericResults = (value, row) => {
     //ignore < or > from the analyser on validation
