@@ -1,0 +1,15 @@
+echo "Running Spotless formatting before commit..."
+
+mvn spotless:apply
+
+if git diff --quiet; then
+    echo "No formatting changes needed."
+else
+    echo "Spotless made formatting changes. Staging formatted files..."
+    git add -u
+    
+    echo "Formatted files have been staged. Please commit again."
+    
+    echo "Code formatting completed. Please run git commit again to proceed with the formatted code."
+    exit 1
+fi

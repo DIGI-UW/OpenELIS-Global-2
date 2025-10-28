@@ -137,6 +137,16 @@ accessing any of these links, simply follow these steps:
 
         mvn spotless:apply
 
+### Pre-commit Hook Setup
+
+To enable automatic code formatting with Spotless before each commit:
+
+1. Copy the pre-commit hook:
+   ```bash
+   cp .githooks/pre-commit .git/hooks/
+   chmod +x .git/hooks/pre-commit
+   ```
+
 #### To ensure your code passes the same checks as the CI pipeline, you can run the following commands from your project directory
 
 1.  Run Code Formatting Check (Backend). This command checks code formatting and
