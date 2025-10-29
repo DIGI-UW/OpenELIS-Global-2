@@ -1,3 +1,4 @@
+ 
 package org.openelisglobal.result.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -135,10 +136,10 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             "testResult*.qualifiedResultValue", "testResult*.qualifiedResultValue", "testResult*.shadowReferredOut",
             "testResult*.referredOut", "testResult*.referralReasonId", "testResult*.technician",
             "testResult*.shadowRejected", "testResult*.rejected", "testResult*.rejectReasonId", "testResult*.note",
-            "paging.currentPage", //
-            "testResult*.refer", "testResult*.referralItem.referralReasonId",
-            "testResult*.referralItem.referredInstituteId", "testResult*.referralItem.referredTestId",
-            "testResult*.referralItem.referredSendDate" };
+            "paging.currentPage", "testResult*.resultFile", "testResult*.resultFile.fileName",
+            "testResult*.resultFile.fileType", "testResult*.resultFile.content", "testResult*.refer",
+            "testResult*.referralItem.referralReasonId", "testResult*.referralItem.referredInstituteId",
+            "testResult*.referralItem.referredTestId", "testResult*.referralItem.referredSendDate" };
 
     @Autowired
     private DictionaryService dictionaryService;
@@ -549,6 +550,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
     private void createAnalysisOnlyUpdates(ResultsUpdateDataSet actionDataSet) {
         for (TestResultItem testResultItem : actionDataSet.getAnalysisOnlyChangeResults()) {
+
             Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
             analysis.setSysUserId(getSysUserId(request));
             analysis.setCompletedDate(DateUtil.convertStringDateToSqlDate(testResultItem.getTestDate()));
@@ -626,7 +628,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
     private void handleReferrals(TestResultItem testResultItem, ReferralItem referralItem, List<Result> results,
             Analysis analysis, ResultsUpdateDataSet actionDataSet) {
-        // List<Referral> referrals = new ArrayList<>()
+        // List<Referral> referrals = new ArrayList<>();
         Referral referral = new Referral();
         referral.setFhirUuid(UUID.randomUUID());
         referral.setStatus(ReferralStatus.SENT);
@@ -709,7 +711,6 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         analysis.setEnteredDate(DateUtil.getNowAsTimestamp());
 
         if (newResult) {
-
             analysis.setEnteredDate(DateUtil.getNowAsTimestamp());
             analysis.setRevision("1");
         } else if (newAnalysisInLoop) {
