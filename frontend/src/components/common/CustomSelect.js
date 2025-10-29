@@ -10,11 +10,12 @@ const CustomSelect = (props) => {
     <>
       <Select
         onChange={handleSelect}
-        labelText=""
+        labelText={props.labelText || ""}
         id={props.id}
-        defaultValue={props.value ? props.value : null}
+        defaultValue={props.value ? props.value : ""}
         disabled={props.disabled}
       >
+        <SelectItem text={props.placeholder || "Select..."} value="" />
         {props.defaultSelect && (
           <SelectItem
             text={props.defaultSelect.value}

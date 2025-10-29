@@ -462,6 +462,7 @@
   "sample.type": "Sample Type",
   "sample.reject.label": "Reject Sample",
   "sample.collection.date": "Collection Date",
+  "sample.quantity.label": "Quantity",
   "sample.collection.time": "Collection Time",
   "collector.label": "Collector",
   "sample.search.panel.legend.text": "Search through the available panels",
