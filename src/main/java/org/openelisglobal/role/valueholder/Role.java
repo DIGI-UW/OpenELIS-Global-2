@@ -15,20 +15,50 @@
  */
 package org.openelisglobal.role.valueholder;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.systemusermodule.valueholder.PermissionAgent;
 
+@Entity
+@Table(name = "system_role")
 public class Role extends BaseObject<String> implements PermissionAgent {
 
     private static final long serialVersionUID = 1L;
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "system_role_seq_gen")
+    @SequenceGenerator(name = "system_role_seq_gen", sequenceName = "system_role_seq", allocationSize = 1)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "ID", precision = 10, scale = 0)
     private String id;
+
+    @Column(name = "name", nullable = false)
     private String name;
+
+    @Column(name = "description")
     private String description;
+
+    @Column(name = "is_grouping_role")
     private boolean groupingRole;
+
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "grouping_parent")
     private String groupingParent;
+
+    @Column(name = "display_key")
     private String displayKey;
+
+    @Column(name = "active")
     private boolean active;
+
+    @Column(name = "editable")
     private boolean editable;
 
     public String getId() {
