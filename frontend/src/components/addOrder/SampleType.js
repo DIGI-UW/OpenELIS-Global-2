@@ -534,6 +534,7 @@ const SampleType = (props) => {
             labelText={intl.formatMessage({ id: "sample.uom.label" })}
             options={uomList}
             disabled={false}
+            value={sampleXml.uom}
             onChange={(value) => handleUom(value)}
           />
         </div>
