@@ -358,6 +358,23 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     }
 
+    @Test
+    public void update_shouldUpdateAnalysis() {
+        Timestamp createAt = new Timestamp(System.currentTimeMillis());
+        Timestamp updatedAt = new Timestamp(System.currentTimeMillis());
+        Analysis analysis = aService.get("2");
+        ResultFile resultFile = new ResultFile();
+        resultFile.setFileName("resultfile.txt");
+        resultFile.setFileType("TEXT");
+        resultFile.setContent(fileContent);
+        resultFile.setLastupdated(updatedAt);
+        resultFile.setUploadedAt(createAt);
+        analysis.setResultFile(resultFile);
+        Analysis updatedAnalysis = aService.update(analysis);
+        Assert.assertEquals(analysis.getId(), updatedAnalysis.getId());
+        Assert.assertEquals("resultfile.txt", updatedAnalysis.getResultFile().getFileName());
+    }
+
     public Analysis createDemoAnalysis() {
         Analysis analysis1 = aService.getAnalysisById("2");
         aService.delete(analysis1);

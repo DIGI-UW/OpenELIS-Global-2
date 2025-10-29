@@ -549,11 +549,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
     private void createAnalysisOnlyUpdates(ResultsUpdateDataSet actionDataSet) {
         for (TestResultItem testResultItem : actionDataSet.getAnalysisOnlyChangeResults()) {
-
-            ResultFile resultFile = createResultFile(testResultItem.getResultFile());
-
             Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
-            analysis.setResultFile(resultFile);
             analysis.setSysUserId(getSysUserId(request));
             analysis.setCompletedDate(DateUtil.convertStringDateToSqlDate(testResultItem.getTestDate()));
             if (testResultItem.getAnalysisMethod() != null) {
@@ -630,7 +626,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
     private void handleReferrals(TestResultItem testResultItem, ReferralItem referralItem, List<Result> results,
             Analysis analysis, ResultsUpdateDataSet actionDataSet) {
-        // List<Referral> referrals = new ArrayList<>();
+        // List<Referral> referrals = new ArrayList<>()
         Referral referral = new Referral();
         referral.setFhirUuid(UUID.randomUUID());
         referral.setStatus(ReferralStatus.SENT);
@@ -699,11 +695,21 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         }
 
         ResultInventory testKit = createTestKitLinkIfNeeded(testResultItem, ResultsLoadUtility.TESTKIT);
+        if (testResultItem.getResultFile() != null) {
+            ResultFile existingFile = analysis.getResultFile();
+            if (existingFile == null || existingFile.getId() == null) {
+                ResultFile resultFile = createResultFile(testResultItem.getResultFile());
+                if (resultFile != null) {
+                    analysis.setResultFile(resultFile);
+                }
+            }
+        }
 
         analysis.setReferredOut(testResultItem.isReferredOut());
         analysis.setEnteredDate(DateUtil.getNowAsTimestamp());
 
         if (newResult) {
+
             analysis.setEnteredDate(DateUtil.getNowAsTimestamp());
             analysis.setRevision("1");
         } else if (newAnalysisInLoop) {
@@ -819,8 +825,6 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         if (testResultItem.getAnalysisMethod() != null) {
             analysis.setAnalysisType(testResultItem.getAnalysisMethod());
         }
-        ResultFile resultFile = createResultFile(testResultItem.getResultFile());
-        analysis.setResultFile(resultFile);
         // analysis.setStartedDateForDisplay(testDate);
 
         // This needs to be refactored -- part of the logic is in

@@ -1001,13 +1001,17 @@ public class TestResultItem implements ResultItem, Serializable {
             this.base64Content = base64Content;
             if (base64Content != null && base64Content.contains(";base64,")) {
                 String[] contentInfo = base64Content.split(";base64,", 2);
-
-                // Example: data:application/pdf;base64,...
                 String mimePart = contentInfo[0];
+
                 setFileType(mimePart.replace("data:", ""));
                 setContent(Base64.getDecoder().decode(contentInfo[1]));
+
+                if (getFileName() == null) {
+                    String extension = mimePart.contains("/") ? mimePart.split("/")[1] : "bin";
+                    setFileName("resultFile." + extension);
+                }
             }
         }
-    }
 
+    }
 }
