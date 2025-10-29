@@ -1242,6 +1242,7 @@
   "sample.search.title": "Search Sample",
   "sample.select.type": "Select sample type",
   "sample.type": "Sample Type",
+  "sample.voided.title": "Sample is voided",
   "sample.type.and.test.sort.order": "Sample type and test sort order",
   "sample.uom.label": "Sample Unit Of Measure",
   "sampleType.existing": "Existing Sample Types",

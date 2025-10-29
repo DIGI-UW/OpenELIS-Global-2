@@ -12,6 +12,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.validation.annotations.SafeHtml;
 
 @Entity
 @Table(name = "notebook_page")
@@ -24,12 +25,15 @@ public class NoteBookPage extends BaseObject<Integer> {
     private Integer id;
 
     @Column(name = "title")
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String title;
 
     @Column(name = "instructions")
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String instructions;
 
     @Column(name = "content")
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String content;
 
     @ManyToOne(fetch = FetchType.LAZY)

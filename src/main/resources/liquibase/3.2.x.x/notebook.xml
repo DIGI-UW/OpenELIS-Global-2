@@ -165,7 +165,7 @@
         <comment>insert NoteBook tab menu option</comment>
         <insert tableName="menu" schemaName="clinlims">
             <column name="id" valueSequenceNext="menu_seq" />
-            <column name="presentation_order" value="8" />
+            <column name="presentation_order" value="125" />
             <column name="element_id" value="menu_notebook" />
             <column name="display_key" value="sidenav.label.notebook"  />
             <column name="tool_tip_key" value="sidenav.label.notebook.tooltip" />

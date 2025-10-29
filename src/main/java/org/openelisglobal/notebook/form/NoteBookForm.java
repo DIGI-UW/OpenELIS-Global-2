@@ -1,20 +1,29 @@
 package org.openelisglobal.notebook.form;
 
+import jakarta.validation.constraints.NotNull;
 import java.util.Base64;
 import java.util.List;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 import org.openelisglobal.notebook.valueholder.NoteBookFile;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
+import org.openelisglobal.validation.annotations.SafeHtml;
 
 public class NoteBookForm {
     private Integer id;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String title;
     private Integer type;
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String project;
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String objective;
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String protocol;
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String content;
     private Integer technicianId;
+    @NotNull
     private Integer patientId;
     private Integer systemUserId;
     private NoteBookStatus status;
@@ -156,8 +165,10 @@ public class NoteBookForm {
 
         private static final long serialVersionUID = 3142138533368581327L;
 
+        @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
         private String base64File;
 
+        @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
         public String getBase64File() {
             return base64File;
         }

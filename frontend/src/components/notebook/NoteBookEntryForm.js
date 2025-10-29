@@ -89,9 +89,24 @@ const NoteBookEntryForm = () => {
     if (isSubmitting) {
       return;
     }
+    if (mode === MODES.CREATE) {
+      if (noteBookData.samples.length > 0) {
+        noteBookForm.patientId = noteBookData.samples[0].patientId;
+      } else {
+        addNotification({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({
+            id: "notebook.samples.none.title.selected",
+          }),
+        });
+        return;
+      }
+    } else {
+      noteBookForm.patientId = noteBookData.patientId;
+    }
     setIsSubmitting(true);
     noteBookForm.id = noteBookData.id;
-    noteBookForm.patientId = noteBookData.patientId;
     noteBookForm.title = noteBookData.title;
     noteBookForm.type = noteBookData.type;
     noteBookForm.project = noteBookData.project;
@@ -275,11 +290,6 @@ const NoteBookEntryForm = () => {
   };
 
   const getSelectedPatient = (patient) => {
-    setNoteBookData({
-      ...noteBookData,
-      patientId: patient.patientPK,
-    });
-
     getFromOpenElisServer(
       "/rest/notebook/samples?patientId=" + patient.patientPK,
       setSampleList,
@@ -320,15 +330,6 @@ const NoteBookEntryForm = () => {
       );
     }
   }, [notebookid]);
-
-  useEffect(() => {
-    if (mode === MODES.CREATE && sampleList && sampleList.length > 0) {
-      setNoteBookData({
-        ...noteBookData,
-        patientId: sampleList[0].patientId,
-      });
-    }
-  }, [sampleList]);
 
   const loadInitialData = (data) => {
     if (componentMounted.current) {
@@ -807,7 +808,9 @@ const NoteBookEntryForm = () => {
                   <Column key={sample.id} lg={16} md={8} sm={12}>
                     <Grid fullWidth={true} className="gridBoundary">
                       <Column lg={16} md={8} sm={4}>
-                        <h5>{sample.sampleType}</h5>
+                        <h5>
+                          {sample.sampleType} - {sample.externalId}
+                        </h5>
                       </Column>
                       <Column lg={2} md={8} sm={4}>
                         <h6>
@@ -876,7 +879,9 @@ const NoteBookEntryForm = () => {
                       >
                         <Grid fullWidth={true} className="gridBoundary">
                           <Column lg={16} md={8} sm={4}>
-                            <h5>{sample.sampleType}</h5>
+                            <h5>
+                              {sample.sampleType} - {sample.externalId}{" "}
+                            </h5>
                           </Column>
                           <Column lg={2} md={8} sm={4}>
                             <h6>
@@ -899,6 +904,23 @@ const NoteBookEntryForm = () => {
                           <Column lg={14} md={8} sm={4}>
                             {sample.results.length}
                           </Column>
+                          {sample.voided && (
+                            <>
+                              <Column lg={16} md={8} sm={4}>
+                                <InlineNotification
+                                  kind="warning"
+                                  title={intl.formatMessage({
+                                    id: "sample.voided.title",
+                                  })}
+                                  subtitle={sample.voidReason}
+                                  hideCloseButton
+                                />
+                              </Column>
+                              <Column lg={16} md={8} sm={4}>
+                                <br></br>
+                              </Column>
+                            </>
+                          )}
                           <Column lg={16} md={8} sm={4}>
                             <Button
                               kind="danger--tertiary"
@@ -1108,7 +1130,7 @@ const NoteBookEntryForm = () => {
               disabled={
                 isSubmitting ||
                 noteBookData.status === "ARCHIVED" ||
-                !noteBookData.patientId
+                noteBookData?.samples?.length === 0
               }
               onClick={() => handleSubmit()}
             >

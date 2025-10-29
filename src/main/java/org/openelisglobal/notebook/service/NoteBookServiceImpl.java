@@ -203,7 +203,9 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             sampleDisplayBean.setPatientId(Integer.valueOf(patient.getId()));
         }
         sampleDisplayBean.setCollectionDate(DateUtil.convertTimestampToStringDate(sampleItem.getLastupdated()));
-
+        sampleDisplayBean.setVoided(sampleItem.isVoided());
+        sampleDisplayBean.setVoidReason(sampleItem.getVoidReason());
+        sampleDisplayBean.setExternalId(sampleItem.getExternalId());
         List<Analysis> analyses = analysisService.getAnalysesBySampleItem(sampleItem);
         List<ResultDisplayBean> resultsDisplayBeans = new ArrayList<>();
         for (Analysis analysis : analyses) {
@@ -315,7 +317,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
         if (StringUtils.isNotBlank(patientId)) {
             patient = patientService.get(patientId);
-        } else if (StringUtils.isBlank(accession)) {
+        } else if (StringUtils.isNotBlank(accession)) {
             Sample sample = sampleService.getSampleByAccessionNumber(accession);
             if (sample != null) {
                 patient = sampleService.getPatient(sample);

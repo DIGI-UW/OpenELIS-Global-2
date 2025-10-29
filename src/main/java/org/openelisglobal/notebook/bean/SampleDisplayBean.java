@@ -8,7 +8,18 @@ public class SampleDisplayBean {
     private Integer patientId;
     private String sampleType;
     private String collectionDate;
+    private String externalId;
+    private Boolean voided;
+    private String voidReason;
     private List<ResultDisplayBean> results;
+
+    public String getExternalId() {
+        return externalId;
+    }
+
+    public void setExternalId(String externalId) {
+        this.externalId = externalId;
+    }
 
     public String getSampleType() {
         return sampleType;
@@ -50,6 +61,22 @@ public class SampleDisplayBean {
         this.patientId = patientId;
     }
 
+    public Boolean getVoided() {
+        return voided;
+    }
+
+    public void setVoided(Boolean voided) {
+        this.voided = voided;
+    }
+
+    public String getVoidReason() {
+        return voidReason;
+    }
+
+    public void setVoidReason(String voidReason) {
+        this.voidReason = voidReason;
+    }
+
     public static class ResultDisplayBean {
         private String test;
         private String result;
@@ -79,4 +106,5 @@ public class SampleDisplayBean {
             this.dateCreated = dateCreated;
         }
     }
+
 }

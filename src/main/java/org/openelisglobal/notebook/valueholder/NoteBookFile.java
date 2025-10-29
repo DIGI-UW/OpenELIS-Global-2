@@ -13,6 +13,7 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.validation.annotations.SafeHtml;
 
 @Entity
 @Table(name = "notebook_file")
@@ -29,9 +30,11 @@ public class NoteBookFile extends BaseObject<Integer> {
     private byte[] fileData;
 
     @Column(name = "file_type")
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String fileType;
 
     @Column(name = "file_name")
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String fileName;
 
     @ManyToOne(fetch = FetchType.LAZY)

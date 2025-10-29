@@ -552,6 +552,7 @@ export function SampleItemsDisplay(props) {
         message: intl.formatMessage({ id: "aliquot.save.success" }),
         kind: NotificationKinds.success,
       });
+      window.location.reload();
     } else {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
