@@ -1,0 +1,8 @@
+ANALYZER,ANALYZER_TEST_NAME,LOINC_CODE,ACTUAL_TEST_NAME
+GeneXpertAnalyzer,MTB,10835-4,Neutrophiles
+GeneXpertAnalyzer,MTB Trace,10836-2,Basophiles
+GeneXpertAnalyzer,RIF Resistance,10837-0,Eosinophiles
+PocH100iAnalyzer,MTB,10835-4,Neutrophiles
+PocH100iAnalyzer,MTB Trace,10836-2,Basophiles
+PocH100iAnalyzer,RIF Resistance,10837-0,Eosinophiles
+
