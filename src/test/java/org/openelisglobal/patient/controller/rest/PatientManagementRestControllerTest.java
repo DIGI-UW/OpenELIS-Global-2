@@ -1,9 +1,8 @@
 package org.openelisglobal.patient.controller.rest;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
@@ -18,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -69,8 +69,10 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
 
         String json = objectMapper.writeValueAsString(invalidPayload);
 
-        mockMvc.perform(post("/rest/PatientManagement").contentType(MediaType.APPLICATION_JSON).content(json))
-                .andDo(print()).andExpect(status().isOk());
+        MvcResult result = mockMvc
+                .perform(post("/rest/PatientManagement").contentType(MediaType.APPLICATION_JSON).content(json))
+                .andReturn();
+        assertEquals(200, result.getResponse().getStatus());
     }
 
     @Test
@@ -95,8 +97,10 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
 
         String json = objectMapper.writeValueAsString(payload);
 
-        mockMvc.perform(post("/rest/PatientManagement").contentType(MediaType.APPLICATION_JSON).content(json))
-                .andDo(print()).andExpect(status().isOk());
+        MvcResult result = mockMvc
+                .perform(post("/rest/PatientManagement").contentType(MediaType.APPLICATION_JSON).content(json))
+                .andReturn();
+        assertEquals(200, result.getResponse().getStatus());
     }
 
     @Test
@@ -111,8 +115,10 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
         patientContact.put("person", personMap);
         payload.put("patientContact", patientContact);
         String json = objectMapper.writeValueAsString(payload);
-        mockMvc.perform(post("/rest/PatientManagement").contentType(MediaType.APPLICATION_JSON).content(json))
-                .andDo(print()).andExpect(status().isOk());
+        MvcResult result = mockMvc
+                .perform(post("/rest/PatientManagement").contentType(MediaType.APPLICATION_JSON).content(json))
+                .andReturn();
+        assertEquals(200, result.getResponse().getStatus());
     }
 
     @Test
@@ -123,11 +129,13 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
         payload.put("patientPK", patientFromDb.getId());
         Map<String, Object> patientContact = new HashMap<>();
         Map<String, Object> personMap = new HashMap<>();
-        personMap.put("id", "3000"); // mismatched to real contact
+        personMap.put("id", "3000");
         patientContact.put("person", personMap);
         payload.put("patientContact", patientContact);
         String json = objectMapper.writeValueAsString(payload);
-        mockMvc.perform(post("/rest/PatientManagement").contentType(MediaType.APPLICATION_JSON).content(json))
-                .andDo(print()).andExpect(status().isOk());
+        MvcResult result = mockMvc
+                .perform(post("/rest/PatientManagement").contentType(MediaType.APPLICATION_JSON).content(json))
+                .andReturn();
+        assertEquals(200, result.getResponse().getStatus());
     }
 }
