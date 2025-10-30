@@ -369,3 +369,11 @@ export const Roles = {
   VALIDATION: "Validation",
   REPORTS: "Reports",
 };
+
+export const toBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+  });

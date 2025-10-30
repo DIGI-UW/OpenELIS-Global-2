@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.IdValuePair;
@@ -35,6 +37,7 @@ import org.openelisglobal.internationalization.GlobalLocaleResolver;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
+import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.util.OrganizationTypeList;
 import org.openelisglobal.organization.valueholder.Organization;
@@ -92,14 +95,14 @@ public class DisplayListService implements LocaleChangeListener {
         ELECTRONIC_ORDER_STATUSES, METHODS, METHODS_INACTIVE, METHOD_BY_NAME, PRACTITIONER_PERSONS, ORDER_PRIORITY,
         PROGRAM, IMMUNOHISTOCHEMISTRY_STATUS, PATHOLOGY_STATUS, CYTOLOGY_SPECIMEN_ADEQUACY_SATISFACTION,
         PATHOLOGY_TECHNIQUES, PATHOLOGIST_REQUESTS, PATHOLOGY_REQUEST_STATUS, PATHOLOGIST_CONCLUSIONS,
-        IMMUNOHISTOCHEMISTRY_REPORT_TYPES, IMMUNOHISTOCHEMISTRY_MARKERS_TESTS, CYTOLOGY_STATUS,
+        IMMUNOHISTOCHEMISTRY_REPORT_TYPES, IMMUNOHISTOCHEMISTRY_MARKERS_TESTS, CYTOLOGY_STATUS, NOTEBOOK_STATUS,
         CYTOLOGY_SATISFACTORY_FOR_EVALUATION, CYTOLOGY_UN_SATISFACTORY_FOR_EVALUATION, CYTOLOGY_REPORT_TYPES,
         CYTOLOGY_DIAGNOSIS_RESULT_EPITHELIAL_CELL_SQUAMOUS, CYTOLOGY_DIAGNOSIS_RESULT_EPITHELIAL_CELL_GLANDULAR,
         CYTOLOGY_DIAGNOSIS_RESULT_NON_NEO_PLASTIC_CELLULAR, CYTOLOGY_DIAGNOSIS_RESULT_REACTIVE_CELLULAR,
-        CYTOLOGY_DIAGNOSIS_RESULT_ORGANISMS, CYTOLOGY_DIAGNOSIS_RESULT_OTHER, TB_ORDER_REASONS, TB_DIAGNOSTIC_REASONS,
-        TB_FOLLOWUP_REASONS, TB_ANALYSIS_METHODS, TB_SAMPLE_ASPECTS, TB_FOLLOWUP_LINE1, TB_FOLLOWUP_LINE2, ARV_ORG_LIST,
-        ACTIVE_ORG_LIST, IHC_BREAST_CANCER_REPORT_INTENSITY, IHC_BREAST_CANCER_REPORT_CERBB2_PATTERN,
-        IHC_BREAST_CANCER_REPORT_MOLE_SUBTYPE;
+        NOTEBOOK_EXPT_TYPE, ANALYZER_LIST, CYTOLOGY_DIAGNOSIS_RESULT_ORGANISMS, CYTOLOGY_DIAGNOSIS_RESULT_OTHER,
+        TB_ORDER_REASONS, TB_DIAGNOSTIC_REASONS, TB_FOLLOWUP_REASONS, TB_ANALYSIS_METHODS, TB_SAMPLE_ASPECTS,
+        TB_FOLLOWUP_LINE1, TB_FOLLOWUP_LINE2, ARV_ORG_LIST, ACTIVE_ORG_LIST, IHC_BREAST_CANCER_REPORT_INTENSITY,
+        IHC_BREAST_CANCER_REPORT_CERBB2_PATTERN, IHC_BREAST_CANCER_REPORT_MOLE_SUBTYPE;
     }
 
     private static Map<ListType, List<IdValuePair>> typeToListMap;
@@ -137,6 +140,8 @@ public class DisplayListService implements LocaleChangeListener {
     private ProgramService programService;
     @Autowired
     private LocaleResolver localeResolver;
+    @Autowired
+    private AnalyzerService analyzerService;
 
     @PostConstruct
     private void setupGlobalVariables() {
@@ -224,6 +229,7 @@ public class DisplayListService implements LocaleChangeListener {
         typeToListMap.put(ListType.CYTOLOGY_SPECIMEN_ADEQUACY_SATISFACTION,
                 createCytologySpecimenAdequacySatisfactionList());
         typeToListMap.put(ListType.CYTOLOGY_STATUS, createCytologyStatusList());
+        typeToListMap.put(ListType.NOTEBOOK_STATUS, createNoteBookStatusList());
         typeToListMap.put(ListType.IMMUNOHISTOCHEMISTRY_STATUS, createImmunohistochemistryStatusList());
         typeToListMap.put(ListType.IMMUNOHISTOCHEMISTRY_REPORT_TYPES, createImmunohistochemistryReportTypeList());
         typeToListMap.put(ListType.CYTOLOGY_REPORT_TYPES, createCytologyReportTypeList());
@@ -249,6 +255,8 @@ public class DisplayListService implements LocaleChangeListener {
                 createDictionaryListForCategory("cytology_non-neoplastic_cellular_variations"));
         typeToListMap.put(ListType.CYTOLOGY_DIAGNOSIS_RESULT_REACTIVE_CELLULAR,
                 createDictionaryListForCategory("cytology_reactive_cellular_changes"));
+        typeToListMap.put(ListType.NOTEBOOK_EXPT_TYPE, createDictionaryListForCategory("notebook_experiment_type"));
+        typeToListMap.put(ListType.ANALYZER_LIST, createAnalyzerList());
         typeToListMap.put(ListType.CYTOLOGY_DIAGNOSIS_RESULT_ORGANISMS,
                 createDictionaryListForCategory("cytology_diagnosis_organisms"));
         typeToListMap.put(ListType.CYTOLOGY_DIAGNOSIS_RESULT_OTHER,
@@ -271,6 +279,11 @@ public class DisplayListService implements LocaleChangeListener {
 
     private List<IdValuePair> createCytologyStatusList() {
         return Arrays.asList(CytologySample.CytologyStatus.values()).stream()
+                .map(e -> new IdValuePair(e.name(), e.getDisplay())).collect(Collectors.toList());
+    }
+
+    private List<IdValuePair> createNoteBookStatusList() {
+        return Arrays.asList(NoteBook.NoteBookStatus.values()).stream()
                 .map(e -> new IdValuePair(e.name(), e.getDisplay())).collect(Collectors.toList());
     }
 
@@ -430,6 +443,7 @@ public class DisplayListService implements LocaleChangeListener {
 
     public synchronized void refreshLists() {
         typeToListMap = new HashMap<>();
+        typeToListMap.put(ListType.NOTEBOOK_STATUS, createNoteBookStatusList());
         typeToListMap.put(ListType.CYTOLOGY_STATUS, createCytologyStatusList());
         typeToListMap.put(ListType.PATHOLOGY_STATUS, createPathologyStatusList());
         typeToListMap.put(ListType.CYTOLOGY_SPECIMEN_ADEQUACY_SATISFACTION,
@@ -512,6 +526,8 @@ public class DisplayListService implements LocaleChangeListener {
                 createDictionaryListForCategory("cytology_non-neoplastic_cellular_variations"));
         typeToListMap.put(ListType.CYTOLOGY_DIAGNOSIS_RESULT_REACTIVE_CELLULAR,
                 createDictionaryListForCategory("cytology_reactive_cellular_changes"));
+        typeToListMap.put(ListType.NOTEBOOK_EXPT_TYPE, createDictionaryListForCategory("notebook_experiment_type"));
+        typeToListMap.put(ListType.ANALYZER_LIST, createAnalyzerList());
         typeToListMap.put(ListType.CYTOLOGY_DIAGNOSIS_RESULT_ORGANISMS,
                 createDictionaryListForCategory("cytology_diagnosis_organisms"));
         typeToListMap.put(ListType.CYTOLOGY_DIAGNOSIS_RESULT_OTHER,
@@ -1117,5 +1133,11 @@ public class DisplayListService implements LocaleChangeListener {
         priorities.add(
                 new IdValuePair(OrderPriority.FUTURE_STAT.name(), MessageUtil.getMessage("label.priority.futureStat")));
         return priorities;
+    }
+
+    private List<IdValuePair> createAnalyzerList() {
+        List<Analyzer> analyzerList = analyzerService.getAll();
+        return analyzerList.stream().map(analyzer -> new IdValuePair(analyzer.getId(), analyzer.getName()))
+                .collect(Collectors.toList());
     }
 }
