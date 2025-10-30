@@ -11,17 +11,14 @@ import ResultSearch from "./components/resultPage/ResultSearch";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import "./App.css";
-import messages_en from "./languages/en.json";
-import messages_fr from "./languages/fr.json";
-import messages_es from "./languages/es.json";
-import messages_id from "./languages/id.json";
-import messages_ro from "./languages/ro.json";
+import { languages } from "./languages";
 import config from "./config.json";
 import { SecureRoute } from "./components/security";
 import "./index.scss";
 import RedirectOldUI from "./RedirectOldUI";
 import PatientManagement from "./components/patient/PatientManagement";
 import PatientHistory from "./components/patient/PatientHistory";
+import Aliquot from "./components/sample/Aliquot";
 import Workplan from "./components/workplan/Workplan";
 import AddOrder from "./components/addOrder/Index";
 import FindOrder from "./components/modifyOrder/Index";
@@ -32,6 +29,8 @@ import StudyValidation from "./components/validation/Index";
 import AnalyserResultIndex from "./components/analyserResults/Index";
 import PathologyDashboard from "./components/pathology/PathologyDashboard";
 import CytologyDashboard from "./components/cytology/CytologyDashBoard";
+import NoteBookDashBoard from "./components/notebook/NoteBookDashBoard";
+import NoteBookEntryForm from "./components/notebook/NoteBookEntryForm";
 import CytologyCaseView from "./components/cytology/CytologyCaseView";
 import PathologyCaseView from "./components/pathology/PathologyCaseView";
 import ImmunohistochemistryDashboard from "./components/immunohistochemistry/ImmunohistochemistryDashboard";
@@ -53,8 +52,11 @@ export default function App() {
   let i18nConfig = {
     locale: navigator.language.split(/[-_]/)[0],
     defaultLocale: "en",
-    messages: messages_en,
+    messages: languages["en"].messages,
   };
+
+  const defaultLocale =
+    localStorage.getItem("locale") || navigator.language.split(/[-_]/)[0];
 
   const [userSessionDetails, setUserSessionDetails] = useState({});
   const [errorLoadingSessionDetails, setErrorLoadingSessionDetails] =
@@ -120,28 +122,9 @@ export default function App() {
     return userSessionDetails;
   };
 
-  i18nConfig.locale =
-    localStorage.getItem("locale") || navigator.language.split(/[-_]/)[0];
-  switch (i18nConfig.locale) {
-    case "en":
-      i18nConfig.messages = messages_en;
-      break;
-    case "fr":
-      i18nConfig.messages = messages_fr;
-      break;
-    case "es":
-      i18nConfig.messages = messages_es;
-      break;
-    case "id":
-      i18nConfig.messages = messages_id;
-      break;
-    case "ro":
-      i18nConfig.messages = messages_ro;
-      break;
-    default:
-      i18nConfig.messages = messages_en;
-      break;
-  }
+  i18nConfig.locale = languages[defaultLocale] ? defaultLocale : "en";
+
+  i18nConfig.messages = languages[i18nConfig.locale].messages;
 
   const logout = () => {
     if (userSessionDetails.loginMethod === "SAML") {
@@ -194,29 +177,12 @@ export default function App() {
   };
 
   const changeLanguageReact = (lang) => {
-    switch (lang) {
-      case "en":
-        i18nConfig.messages = messages_en;
-        break;
-      case "fr":
-        i18nConfig.messages = messages_fr;
-        break;
-      case "es":
-        i18nConfig.messages = messages_es;
-        break;
-      case "id":
-        i18nConfig.messages = messages_id;
-        break;
-      case "ro":
-        i18nConfig.messages = messages_ro;
-        break;
-      default:
-        i18nConfig.messages = messages_en;
-        break;
+    if (!languages[lang]) {
+      lang = "en";
     }
+    i18nConfig.messages = languages[lang].messages;
     i18nConfig.locale = lang;
     localStorage.setItem("locale", lang);
-    //rerender the component on changing locale
     setLocale(lang);
   };
 
@@ -335,6 +301,19 @@ export default function App() {
                   labUnitRole={{ Cytology: [Roles.RESULTS] }}
                 />
                 <SecureRoute
+                  path="/NoteBookDashboard"
+                  exact
+                  component={() => <NoteBookDashBoard />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/NoteBookEntryForm/:notebookid"
+                  exact
+                  component={() => <NoteBookEntryForm />}
+                  role=""
+                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                />
+                <SecureRoute
                   path="/CytologyCaseView/:cytologySampleId"
                   exact
                   component={() => <CytologyCaseView />}
@@ -416,6 +395,13 @@ export default function App() {
                   component={() => <PatientHistory />}
                   role={Roles.RECEPTION}
                 />
+                <SecureRoute
+                  path="/Aliquot"
+                  exact
+                  component={() => <Aliquot />}
+                  role={Roles.RECEPTION}
+                />
+
                 <SecureRoute
                   path="/PatientResults/:patientId"
                   exact

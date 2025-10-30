@@ -344,7 +344,11 @@ function DictionaryManagement() {
         </TableCell>
       );
     }
-    return <TableCell key={cell.id}>{cell.value}</TableCell>;
+    return (
+      <TableCell key={cell.id} data-cy={`cell-${cell.info.header}-${row.id}`}>
+        {cell.value}
+      </TableCell>
+    );
   };
 
   const handleDictionaryMenuItems = (res) => {
@@ -568,10 +572,10 @@ function DictionaryManagement() {
                     labelText="LOINC Code"
                     value={loincCode}
                     onChange={(e) => setLoincCode(e.target.value)}
-                    invalid={!/^(?!-)(?:\d+-)*\d*$/.test(loincCode)}
-                    invalidText={
-                      <FormattedMessage id="dictionary.loincCode.invalid" />
-                    }
+                    // invalid={!/^(?!-)(?:\d+-)*\d*$/.test(loincCode)}
+                    // invalidText={
+                    //   <FormattedMessage id="dictionary.loincCode.invalid" />
+                    // }
                     style={{
                       marginBottom: "1rem",
                     }}

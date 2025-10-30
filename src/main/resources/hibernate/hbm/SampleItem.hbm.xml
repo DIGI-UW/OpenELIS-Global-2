@@ -43,11 +43,16 @@
             <column name="TYPEOSAMP_ID" precision="10" scale="0" />
         </many-to-one>
 
+        <many-to-one name="unitOfMeasure"
+            class="org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure"
+            fetch="select" lazy="false">
+            <column name="UOM_ID" precision="10" scale="0" />
+        </many-to-one>
+
         <property name="sourceOther" type="java.lang.String">
             <column name="SOURCE_OTHER" length="40" />
         </property>
-        <property name="quantity"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+        <property name="quantity" type="double">
             <column name="QUANTITY" precision="22" scale="0" />
         </property>
 
@@ -65,5 +70,9 @@
             type="java.lang.Boolean" />
         <property name="rejectReasonId" column="reject_reason_id"
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+        <property name="voided" column="voided"
+            type="java.lang.Boolean" />
+        <property name="voidReason" column="void_reason"
+            type="java.lang.String" />
     </class>
 </hibernate-mapping>

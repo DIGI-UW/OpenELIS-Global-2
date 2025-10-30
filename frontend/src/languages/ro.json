@@ -16,6 +16,8 @@
   "label.button.confirm": "Confirmă",
   "label.button.cancel": "Anulează",
   "label.button.previous": "Înapoi",
+  "label.button.field": "Field",
+  "label.button.descritpion": "Description",
   "accept.action.button": "Acceptă",
   "reject.action.button": "Respinge",
   "label.button.confirmDelete": "Confirmă ștergerea",
@@ -1293,6 +1295,7 @@
   "manage.testing.algorithms.add.reflex.tests": "Gestionează algoritmi de testare și teste reflex",
   "configuration.test.management.organization": "Organizarea testelor",
   "configuration.test.management.spelling": "Corectarea denumirilor",
+  "configuration.test.management.ocl": "OCL Concept Import",
   "configuration.test.rename": "Redenumește teste existente",
   "configuration.test.rename.explain": "Redenumește testele doar pentru afișare, fără a le modifica.",
   "configuration.testSection.rename": "Redenumește secțiuni de test",
@@ -1453,5 +1456,7 @@
   "test.modify.header.modify": "Selectați analiza de modificat!",
   "test.modify.header.test": "Analiză",
   "test.modify.en": "en",
-  "test.modify.fr": "fr"
+  "test.modify.fr": "fr",
+  "test.show.guide": "Show Guide",
+  "input.placeholder.searchTestName": "Search testName Here"
 }

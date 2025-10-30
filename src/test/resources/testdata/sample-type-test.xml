@@ -1,5 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
+    <localization id="1" description="Whole blood sample"
+        english="Whole Blood" french="Sang Entier"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <localization id="2" description="Urine sample"
+        english="Urine" french="Urine" lastupdated="2023-11-01 12:00:00" />
 
     <type_of_sample id="1001" description="whole blood"
         domain="H" lastupdated="2023-11-01 12:00:00" local_abbrev="blood"

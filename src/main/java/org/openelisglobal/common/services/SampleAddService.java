@@ -43,6 +43,7 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
@@ -67,6 +68,7 @@ public class SampleAddService {
     private static PanelItemService panelItemService = SpringContext.getBean(PanelItemService.class);
     private static ObservationHistoryTypeService ohtService = SpringContext
             .getBean(ObservationHistoryTypeService.class);
+    private static UnitOfMeasureService unitOfMeasureService = SpringContext.getBean(UnitOfMeasureService.class);
 
     private static String getObservationHistoryTypeId(String name) {
         ObservationHistoryType oht;
@@ -149,6 +151,19 @@ public class SampleAddService {
                     item.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered));
                 }
                 item.setCollector(sampleItem.attributeValue("collector"));
+
+                String quantityStr = sampleItem.attributeValue("quantity");
+                if (quantityStr != null && !quantityStr.trim().isEmpty()) {
+                    item.setQuantity(Double.valueOf(quantityStr));
+                }
+
+                item.setExternalId(sample.getAccessionNumber() + "-" + sampleItemIdIndex);
+
+                String uomId = sampleItem.attributeValue("uom");
+                if (uomId != null && !uomId.trim().isEmpty()) {
+                    item.setUnitOfMeasure(unitOfMeasureService.getUnitOfMeasureById(uomId));
+                }
+
                 item.setRejected(rejected);
                 item.setRejectReasonId(rejectReasonId);
 

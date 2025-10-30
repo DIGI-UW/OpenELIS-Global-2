@@ -1,0 +1,152 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <localization id="1" english="Test Localization 1"
+        french="Localisation de Test 1" lastupdated="2023-12-01 12:00:00" />
+    <localization id="2" english="Test Localization 2"
+        french="Localisation de Test 2" lastupdated="2023-12-01 12:00:00" />
+
+    <type_of_sample id="901" description="Blood Sample"
+        name_localization_id="1" lastupdated="2023-12-01 12:00:00" />
+    <type_of_sample id="902" description="Urine Sample"
+        name_localization_id="2" lastupdated="2023-12-01 12:00:00" />
+
+    <status_of_sample id="1"
+        description="Sample is currently being processed" code="100"
+        status_type="EXTERNAL_ORDER" lastupdated="2024-01-01 10:00:00"
+        name="Entered" display_key="status.inprogress" is_active="Y" />
+
+    <status_of_sample id="2"
+        description="Sample analysis is finalized and ready for reporting"
+        code="200" status_type="ANALYSIS" lastupdated="2024-01-01 12:30:00"
+        name="Finalized" display_key="status.finalized" is_active="Y" />
+
+    <organization id="401" lastupdated="2024-06-03 12:00:00.0"
+        name="Global Health Org" city="New York" zip_code="10001"
+        mls_sentinel_lab_flag="Y" short_name="GHG" multiple_unit="NYC Unit"
+        street_address="123 Health St" state="NY" org_id="401"
+        internet_address="www.globalhealth.org" clia_num="CLIA12345"
+        pws_id="PWS123" mls_lab_flag="Y" is_active="Y" local_abbrev="1"
+        code="GHG001" fhir_uuid="f2cdeff8-8d5b-4023-bd7c-932b4b98b6d3" />
+    <organization id="402" lastupdated="2024-06-04 13:00:00.0"
+        name="Health Services Inc" city="Los Angeles" zip_code="90001"
+        mls_sentinel_lab_flag="N" short_name="HSI" multiple_unit="LA Unit"
+        street_address="456 Wellness Ave" state="CA" org_id="401"
+        internet_address="www.healthservices.org" clia_num="CLIA67890"
+        pws_id="PWS456" mls_lab_flag="N" is_active="Y" local_abbrev="2"
+        code="HSI002" fhir_uuid="a3bdeff8-8d5b-4023-bd7c-932b4b98b6d4" />
+
+    <test id="201" description="Blood Test" loinc="123456"
+        reporting_description="Complete Blood Count" sticker_req_flag="Y"
+        is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2025-12-31 12:00:00" is_reportable="N" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2025-03-20 12:00:00"
+        local_code="CBC" sort_order="2147483646" name="Complete Blood Count"
+        orderable="true" guid="abc-123" name_localization_id="1"
+        antimicrobial_resistance="true" />
+
+    <test id="202" description="Urine Test" loinc="543216"
+        reporting_description="Urinalysis" sticker_req_flag="N" is_active="Y"
+        active_begin="2025-02-01 12:00:00" active_end="2025-12-31 12:00:00"
+        is_reportable="Y" time_holding="25" time_wait="10"
+        time_ta_average="50" time_ta_warning="70" time_ta_max="90"
+        label_qty="1" lastupdated="2025-03-20 12:00:00" local_code="UA"
+        sort_order="2147483646" name="Urinalysis" orderable="true"
+        guid="def-456" name_localization_id="2"
+        antimicrobial_resistance="false" />
+
+    <result id="300" sort_order="1" result_type="N" value="85.0"
+        is_reportable="Y" lastupdated="2025-04-04 14:00:00" min_normal="70.0"
+        max_normal="100.0" significant_digits="1" grouping="0"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440003" />
+
+    <result id="301" sort_order="2" result_type="N" value="14.5"
+        is_reportable="Y" lastupdated="2025-07-07 14:00:00" min_normal="12.0"
+        max_normal="16.0" significant_digits="1" grouping="0"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
+
+    <sample id="1" accession_number="12345" status_id="1"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="2" accession_number="13333" status_id="2"
+        received_date="2024-06-04 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Sample Item -->
+    <sample_item id="201" sort_order="1" status_id="1"
+        samp_id="1" typeosamp_id="901" collection_date="2023-11-15 10:00:00"
+        lastupdated="2023-12-01 12:00:00" />
+    <sample_item id="202" sort_order="2" status_id="2"
+        samp_id="2" typeosamp_id="902" collection_date="2023-11-16 10:00:00"
+        lastupdated="2023-12-01 12:00:00" />
+    <!-- Analysis -->
+    <analysis id="701" sampitem_id="201" test_id="201"
+        revision="1" started_date="2023-11-15 12:00:00"
+        completed_date="2023-11-15 14:00:00" status="1"
+        released_date="2023-11-15 15:00:00" printed_date="2023-11-15 16:00:00"
+        is_reportable="Y" status_id="1" parent_analysis_id="701"
+        parent_result_id="300" entry_date="2023-11-15 12:00:00"
+        analysis_type="ROUTINE" lastupdated="2023-12-01 12:00:00" />
+    <analysis id="702" sampitem_id="202" test_id="202"
+        revision="2" started_date="2023-11-16 12:00:00"
+        completed_date="2023-11-16 14:00:00" status="2"
+        released_date="2023-11-16 15:00:00" printed_date="2023-11-16 16:00:00"
+        is_reportable="N" status_id="2" parent_analysis_id="701"
+        parent_result_id="301" entry_date="2023-11-16 12:00:00"
+        analysis_type="CONFIRM" lastupdated="2023-12-01 12:00:00" />
+
+    <referral_type id="1" name="Confirmation"
+        description="Sent out to confirm result"
+        display_key="referral.type.confirmation"
+        lastupdated="2018-02-16 20:45:59" />
+    <referral_type id="2" name="QA"
+        description="Quality assuranceAC" display_key="referral.type.qa"
+        lastupdated="2018-02-16 20:45:59" />
+
+    <referral id="101" analysis_id="701" organization_id="401"
+        organization_name="African Health Org"
+        send_ready_date="2018-02-16 23:45:59" sent_date="2018-02-16 22:45:59"
+        result_recieved_date="2018-02-16 23:45:59" referral_reason_id="1"
+        referral_type_id="1" requester_name="Doctor" Status="SENT"
+        lastUpdated="2018-02-16 23:45:59" canceled="false"
+        referral_request_date="2018-02-16 21:45:59"
+        fhir_uuid="436a353f-8ac9-4a30-86db-bb6eda979b57" />
+    <referral id="102" analysis_id="702" organization_id="402"
+        organization_name="Health Corporations Ltd"
+        send_ready_date="2018-02-16 23:45:59" sent_date="2018-02-16 22:45:59"
+        result_recieved_date="2018-02-16 23:45:59" referral_reason_id="2"
+        referral_type_id="2" requester_name="Doctor" status="RECEIVED"
+        lastUpdated="2018-02-16 23:45:59" canceled="false"
+        referral_request_date="2018-02-16 21:45:59"
+        fhir_uuid="386e3e0c-013b-425b-ab5f-46f40278c5d3" />
+    <referral id="103" analysis_id="701" organization_id="402"
+        organization_name="African Health Org"
+        send_ready_date="2018-02-16 23:45:59" sent_date="2018-02-16 22:45:59"
+        result_recieved_date="2018-02-16 23:45:59" referral_reason_id="1"
+        referral_type_id="1" requester_name="Doctor" Status="CREATED"
+        lastUpdated="2018-02-16 23:45:59" canceled="false"
+        referral_request_date="2018-02-16 21:45:59"
+        fhir_uuid="436a393f-8ac9-4a30-86db-bb6eda979b57" />
+
+    <referral_result id="901" referral_id="101"
+        test_id="202" referral_report_date="2024-07-01 10:00:00"
+        lastupdated="2024-07-01 10:30:00" />
+
+    <referral_result id="902" referral_id="102"
+        test_id="201" referral_report_date="2024-07-02 11:00:00"
+        lastupdated="2024-07-02 11:30:00" />
+
+    <referral_result id="903" referral_id="102"
+        test_id="201" result_id="301"
+        referral_report_date="2024-07-03 12:00:00"
+        lastupdated="2024-07-03 12:30:00" />
+
+    <referral_result id="904" referral_id="103"
+        test_id="202" referral_report_date="2025-01-02 11:00:00"
+        lastupdated="2025-07-02 11:30:00" />
+
+</dataset>

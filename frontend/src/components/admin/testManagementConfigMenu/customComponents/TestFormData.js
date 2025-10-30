@@ -27,7 +27,7 @@ export const TestFormData = {
   resultLimits: [
     {
       ageRange: "0",
-      highAgeRange: "0",
+      highAgeRange: "Infinity",
       gender: false,
       lowNormal: "-Infinity",
       highNormal: "Infinity",
@@ -61,13 +61,34 @@ export const extractAgeRangeParts = (rangeStr) => {
     return { raw: 0, unit: "Y" };
   };
 
-  const low = start ? parseAge(start) : "";
-  const high = end ? parseAge(end) : "";
+  const low = start ? parseAge(start) : { raw: "0", unit: "Y" };
+  const high = end ? parseAge(end) : { raw: "Infinity", unit: "Y" };
 
   return { low, high };
 };
 
+const isNumericRange = (str) => {
+  if (typeof str !== "string") {
+    return false;
+  }
+  const rangeRegex = /^\s*\d+(\.\d+)?\s*-\s*\d+(\.\d+)?\s*$/;
+  return rangeRegex.test(str);
+};
+
+const extractRange = (rangeStr) => {
+  if (!isNumericRange(rangeStr)) {
+    return ["-Infinity", "Infinity"];
+  }
+
+  const parts = rangeStr?.split("-") || [];
+  const low = parts[0]?.trim() || "-Infinity";
+  const high = parts[1]?.trim() || "Infinity";
+
+  return [low, high];
+};
+
 export const mapTestCatBeanToFormData = (test) => {
+  console.log(JSON.stringify(test));
   return {
     testId: test.id,
     testNameEnglish: test.localization?.english || "",
@@ -92,72 +113,71 @@ export const mapTestCatBeanToFormData = (test) => {
       test.referenceValue !== "n/a" ? test.referenceValue : "",
     defaultTestResult: "",
     sampleTypes: test.sampleType ? [test.sampleType] : [],
-    lowValid:
-      test.resultLimits?.[0]?.validRange !== "Any value"
-        ? test.resultLimits?.[0]?.validRange.split("-")?.[0] || "-Infinity"
-        : "-Infinity",
-    highValid:
-      test.resultLimits?.[0]?.validRange !== "Any value"
-        ? test.resultLimits?.[0]?.validRange.split("-")?.[1] || "Infinity"
-        : "Infinity",
-    lowReportingRange:
-      test.resultLimits?.[0]?.reportingRange !== "Any value"
-        ? test.resultLimits?.[0]?.reportingRange.split("-")?.[0] || "-Infinity"
-        : "-Infinity",
-    highReportingRange:
-      test.resultLimits?.[0]?.reportingRange !== "Any value"
-        ? test.resultLimits?.[0]?.reportingRange.split("-")?.[1] || "Infinity"
-        : "Infinity",
-    lowCritical:
-      test.resultLimits?.[0]?.criticalRange !== "Any value"
-        ? test.resultLimits?.[0]?.criticalRange.split("-")?.[0] || "-Infinity"
-        : "-Infinity",
-    highCritical:
-      test.resultLimits?.[0]?.criticalRange !== "Any value"
-        ? test.resultLimits?.[0]?.criticalRange.split("-")?.[1] || "Infinity"
-        : "Infinity",
-    significantDigits:
-      test.significantDigits !== "n/a" ? test.significantDigits : "0",
-    resultLimits: Object.entries(
-      (test.resultLimits || []).reduce((acc, limit) => {
-        const key = limit.ageRange;
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(limit);
-        return acc;
-      }, {}),
-    ).map(([ageRange, limits]) => {
-      const result = {
-        ageRange,
-        highAgeRange: "0",
-        gender: false,
-        lowNormal: "-Infinity",
-        highNormal: "Infinity",
-        lowNormalFemale: "-Infinity",
-        highNormalFemale: "Infinity",
-      };
+    lowValid: extractRange(test.resultLimits?.[0]?.validRange)[0],
+    highValid: extractRange(test.resultLimits?.[0]?.validRange)[1],
+    lowReportingRange: extractRange(test.resultLimits?.[0]?.reportingRange)[0],
+    highReportingRange: extractRange(test.resultLimits?.[0]?.reportingRange)[1],
+    lowCritical: extractRange(test.resultLimits?.[0]?.criticalRange)[0],
+    highCritical: extractRange(test.resultLimits?.[0]?.criticalRange)[1],
+    significantDigits: test.significantDigits
+      ? test.significantDigits !== "n/a"
+        ? test.significantDigits
+        : "0"
+      : "0",
+    resultLimits:
+      (test.resultLimits || []).length === 0
+        ? [
+            {
+              ageRange: "0",
+              highAgeRange: "Infinity",
+              gender: false,
+              lowNormal: "-Infinity",
+              highNormal: "Infinity",
+            },
+          ]
+        : Object.entries(
+            (test.resultLimits || []).reduce((acc, limit) => {
+              const key = limit.ageRange;
+              if (!acc[key]) acc[key] = [];
+              acc[key].push(limit);
+              return acc;
+            }, {}),
+          ).map(([ageRange, limits]) => {
+            const result = {
+              ageRange,
+              highAgeRange: "Infinity",
+              gender: false,
+              lowNormal: "-Infinity",
+              highNormal: "Infinity",
+              lowNormalFemale: "-Infinity",
+              highNormalFemale: "Infinity",
+            };
 
-      limits.forEach((limit) => {
-        let low = "-Infinity",
-          high = "Infinity";
-        if (limit.normalRange && limit.normalRange !== "Any value") {
-          [low, high] = limit.normalRange.split("-");
-        }
+            limits.forEach((limit) => {
+              let low = "-Infinity",
+                high = "Infinity";
 
-        if (limit.gender === "M") {
-          result.gender = true;
-          result.lowNormal = low || "-Infinity";
-          result.highNormal = high || "Infinity";
-        } else if (limit.gender === "F") {
-          result.gender = true;
-          result.lowNormalFemale = low || "-Infinity";
-          result.highNormalFemale = high || "Infinity";
-        } else if (limit.gender === "n/a") {
-          result.lowNormal = low || "-Infinity";
-          result.highNormal = high || "Infinity";
-        }
-      });
+              if (isNumericRange(limit.normalRange)) {
+                const parts = limit.normalRange.split("-");
+                low = parts[0]?.trim() || "-Infinity";
+                high = parts[1]?.trim() || "Infinity";
+              }
 
-      return result;
-    }),
+              if (limit.gender === "M") {
+                result.gender = true;
+                result.lowNormal = low || "-Infinity";
+                result.highNormal = high || "Infinity";
+              } else if (limit.gender === "F") {
+                result.gender = true;
+                result.lowNormalFemale = low || "-Infinity";
+                result.highNormalFemale = high || "Infinity";
+              } else if (limit.gender === "n/a") {
+                result.lowNormal = low || "-Infinity";
+                result.highNormal = high || "Infinity";
+              }
+            });
+
+            return result;
+          }),
   };
 };

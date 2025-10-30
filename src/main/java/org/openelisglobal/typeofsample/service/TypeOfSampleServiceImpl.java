@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.hibernate.Hibernate;
@@ -378,5 +379,10 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
         Localization localization = typeOfSample != null ? typeOfSample.getLocalization() : null;
         Hibernate.initialize(localization);
         return localization;
+    }
+
+    @Override
+    public TypeOfSample getTypeOfSampleByLocalizedName(String typeOfSampleName, Locale locale) {
+        return baseObjectDAO.getTypeOfSampleByLocalizedName(typeOfSampleName, locale);
     }
 }

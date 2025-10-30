@@ -94,6 +94,7 @@ const PatientInfo = (props) => {
             </Column>
             <Column lg={4} md={4} sm={2}>
               <Button
+                data-cy="searchPatientTabButton"
                 kind={searchPatientTab.kind}
                 onClick={handleSearchPatientTab}
               >
@@ -101,7 +102,11 @@ const PatientInfo = (props) => {
               </Button>
             </Column>
             <Column lg={4} md={4} sm={2}>
-              <Button kind={newPatientTab.kind} onClick={handleNewPatientTab}>
+              <Button
+                data-cy="newPatientTabButton"
+                kind={newPatientTab.kind}
+                onClick={handleNewPatientTab}
+              >
                 <FormattedMessage id="new.patient.label" />
               </Button>
             </Column>
