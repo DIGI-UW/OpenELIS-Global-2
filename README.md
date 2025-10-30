@@ -126,11 +126,19 @@ accessing any of these links, simply follow these steps:
 
 #### Formating the Source code after making changes
 
-1.  After making UI changes to the [frontend](./frontend/) directory , run the
-    formatter to properly format the Frontend code
+1.  Automatic Frontend Formatting (Husky Pre-Commit Hook)
+
+    The frontend uses a pre-commit hook powered by **Husky** to ensure consistent formatting.
+    This hook automatically runs `npm run format` before each commit and stages updated files,
+    preventing unformatted code from entering the repository.
+
+    **One-time setup (required after cloning or pulling the repo):**
 
         cd frontend
-        npm run format
+        npm install
+        npm run prepare   # installs Git hooks for Husky
+
+    After this setup, formatting will run automatically before each commit.
 
 2.  After making changes to the [backend](./src/) directory, run the formatter
     to properly format the Java code
