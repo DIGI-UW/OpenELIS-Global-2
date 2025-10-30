@@ -51,6 +51,21 @@ public class LocationReportingServiceImpl implements LocationReportingService {
     private static final String OPT_IN_SITE_INFO_NAME = "locationReportingOptIn";
     private static final String LAST_REPORT_SITE_INFO_NAME = "lastLocationReportDate";
 
+    private static final String SITE_ID_SYSTEM = "http://openelis-global.org/site-id";
+    private static final String SITE_LOCATION_ID_SYSTEM = "http://openelis-global.org/site-location-id";
+    private static final String DEFAULT_SITE_NAME = "OpenELIS Installation";
+    private static final String ORGANIZATION_TYPE_SYSTEM = "http://terminology.hl7.org/CodeSystem/organization-type";
+    private static final String ORGANIZATION_TYPE_CODE = "prov";
+    private static final String ORGANIZATION_TYPE_DISPLAY = "Healthcare Provider";
+    private static final String VERSION_SYSTEM = "http://openelis-global.org/version";
+    private static final String ADDRESS_FIELD_CITY = "facilityCity";
+    private static final String ADDRESS_FIELD_DISTRICT = "facilityDistrict";
+    private static final String ADDRESS_FIELD_COUNTRY = "facilityCountry";
+    private static final String SITE_PHONE = "facilityPhone";
+    private static final String SITE_NUMBER = "siteNumber";
+    private static final String SITE_NAME = "SiteName";
+    private static final String RELEASE_NAME_PREFIX = "OpenELIS Global ";
+
     @Override
     public boolean isOptedIn() {
         SiteInformation optInInfo = siteInformationService.getSiteInformationByName(OPT_IN_SITE_INFO_NAME);
@@ -153,23 +168,21 @@ public class LocationReportingServiceImpl implements LocationReportingService {
     private Organization createOrganizationResource() {
         Organization org = new Organization();
 
-        String siteId = getSiteInformationValue("siteNumber");
-        org.addIdentifier(new Identifier().setSystem("http://openelis-global.org/site-id")
-                .setValue(siteId != null ? siteId : "unknown"));
+        String siteId = getSiteInformationValue(SITE_NUMBER);
+        org.addIdentifier(new Identifier().setSystem(SITE_ID_SYSTEM).setValue(siteId != null ? siteId : "unknown"));
 
-        String siteName = getSiteInformationValue("SiteName");
-        org.setName(siteName != null ? siteName : "OpenELIS Installation");
+        String siteName = getSiteInformationValue(SITE_NAME);
+        org.setName(siteName != null ? siteName : DEFAULT_SITE_NAME);
 
         org.setActive(true);
 
-        org.addType(new CodeableConcept()
-                .addCoding(new Coding().setSystem("http://terminology.hl7.org/CodeSystem/organization-type")
-                        .setCode("prov").setDisplay("Healthcare Provider")));
+        org.addType(new CodeableConcept().addCoding(new Coding().setSystem(ORGANIZATION_TYPE_SYSTEM)
+                .setCode(ORGANIZATION_TYPE_CODE).setDisplay(ORGANIZATION_TYPE_DISPLAY)));
 
-        String description = "OpenELIS Global "
+        String description = RELEASE_NAME_PREFIX
                 + ConfigurationProperties.getInstance().getPropertyValue(Property.releaseNumber);
         org.getMeta()
-                .addTag(new Coding().setSystem("http://openelis-global.org/version")
+                .addTag(new Coding().setSystem(VERSION_SYSTEM)
                         .setCode(ConfigurationProperties.getInstance().getPropertyValue(Property.releaseNumber))
                         .setDisplay(description));
 
@@ -179,20 +192,20 @@ public class LocationReportingServiceImpl implements LocationReportingService {
     private Location createLocationResource(Organization organization) {
         Location location = new Location();
 
-        String siteId = getSiteInformationValue("siteNumber");
-        location.addIdentifier(new Identifier().setSystem("http://openelis-global.org/site-location-id")
-                .setValue(siteId != null ? siteId : "unknown"));
+        String siteId = getSiteInformationValue(SITE_NUMBER);
+        location.addIdentifier(
+                new Identifier().setSystem(SITE_LOCATION_ID_SYSTEM).setValue(siteId != null ? siteId : "unknown"));
 
-        String siteName = getSiteInformationValue("SiteName");
-        location.setName(siteName != null ? siteName : "OpenELIS Installation");
+        String siteName = getSiteInformationValue(SITE_NAME);
+        location.setName(siteName != null ? siteName : DEFAULT_SITE_NAME);
 
         location.setStatus(LocationStatus.ACTIVE);
 
         location.setManagingOrganization(new Reference().setIdentifier(organization.getIdentifierFirstRep()));
 
-        String city = getSiteInformationValue("facilityCity");
-        String district = getSiteInformationValue("facilityDistrict");
-        String country = getSiteInformationValue("facilityCountry");
+        String city = getSiteInformationValue(ADDRESS_FIELD_CITY);
+        String district = getSiteInformationValue(ADDRESS_FIELD_DISTRICT);
+        String country = getSiteInformationValue(ADDRESS_FIELD_COUNTRY);
 
         if (!GenericValidator.isBlankOrNull(city) || !GenericValidator.isBlankOrNull(district)
                 || !GenericValidator.isBlankOrNull(country)) {
@@ -200,7 +213,7 @@ public class LocationReportingServiceImpl implements LocationReportingService {
             location.getAddress().setCity(city).setDistrict(district).setCountry(country);
         }
 
-        String phone = getSiteInformationValue("facilityPhone");
+        String phone = getSiteInformationValue(SITE_PHONE);
         if (!GenericValidator.isBlankOrNull(phone)) {
             location.addTelecom(new ContactPoint().setSystem(ContactPoint.ContactPointSystem.PHONE).setValue(phone));
         }
