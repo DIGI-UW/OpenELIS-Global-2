@@ -27,4 +27,14 @@
     <!-- Patient Type -->
     <patient_type id="1000" type="D" description="Discharged"
         lastUpdated="2023-11-01 12:00:02" />
+
+    <!-- Patient Contact entry -->
+    <patient_contact id="2000" patient_id="1000"
+        person_id="1000" />
+
+    <!-- New Person for creation test -->
+    <person id="3000" last_name="Create" first_name="New"
+        middle_name="Unit" city="NewCity" />
+    <!-- Make id=3001 free for new patient creation -->
+    <!-- No <patient> with id="3001" in dataset. -->
 </dataset>

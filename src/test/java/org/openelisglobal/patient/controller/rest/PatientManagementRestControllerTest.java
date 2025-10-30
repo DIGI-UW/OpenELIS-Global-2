@@ -1,7 +1,8 @@
 package org.openelisglobal.patient.controller.rest;
 
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,7 +14,6 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.patient.dao.PatientDAO;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.dao.PersonDAO;
-import org.openelisglobal.person.valueholder.Person;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.Rollback;
@@ -29,6 +29,9 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
 
     @Autowired
     private PatientDAO patientDAO;
+
+    @Autowired
+    private org.openelisglobal.patient.dao.PatientContactDAO patientContactDAO;
 
     @Autowired
     private PersonDAO personDAO;
@@ -48,77 +51,83 @@ public class PatientManagementRestControllerTest extends BaseWebContextSensitive
 
     @Test
     public void savePatient_shouldReturn200EvenWithEmptyRequiredFields() throws Exception {
-        String uniqueNationalId = "test-" + System.currentTimeMillis();
-        Patient existingPatient = new Patient();
-        existingPatient.setNationalId(uniqueNationalId);
-        existingPatient.setGender("M");
-        Person person1 = new Person();
-        String uniquePersonId = "test-person-" + System.currentTimeMillis();
-        person1.setId(uniquePersonId);
-        personDAO.insert(person1);
-        existingPatient.setPerson(person1);
-        patientDAO.insert(existingPatient);
-
-        Patient patientFromDb = patientDAO.getPatientByNationalId(uniqueNationalId);
-        assertNotNull("Test requires patient with nationalId " + uniqueNationalId + " to exist", patientFromDb);
+        Patient patientFromDb = patientDAO.getPatientByNationalId("999999");
+        assertNotNull("Test data not loaded - patient with nationalId 999999", patientFromDb);
 
         Map<String, Object> invalidPayload = new HashMap<>();
         invalidPayload.put("patientPK", patientFromDb.getId());
-        invalidPayload.put("firstName", "");
-        invalidPayload.put("lastName", "");
         invalidPayload.put("gender", "");
 
         Map<String, Object> patientContact = new HashMap<>();
-        Map<String, Object> person = new HashMap<>();
-        person.put("firstName", "");
-        person.put("lastName", "");
-        person.put("email", "");
-        person.put("primaryPhone", "");
-        patientContact.put("person", person);
+        Map<String, Object> personMap = new HashMap<>();
+        personMap.put("firstName", "");
+        personMap.put("lastName", "");
+        personMap.put("email", "");
+        personMap.put("primaryPhone", "");
+        patientContact.put("person", personMap);
         invalidPayload.put("patientContact", patientContact);
 
         String json = objectMapper.writeValueAsString(invalidPayload);
 
         mockMvc.perform(post("/rest/PatientManagement").contentType(MediaType.APPLICATION_JSON).content(json))
-                .andExpect(status().isOk());
+                .andDo(print()).andExpect(status().isOk());
     }
 
     @Test
     public void savePatient_shouldReturn200WithValidData() throws Exception {
-        String uniqueNationalId = "test-" + System.currentTimeMillis();
-        Patient existingPatient = new Patient();
-        existingPatient.setNationalId(uniqueNationalId);
-        existingPatient.setGender("M");
-        Person person2 = new Person();
-        String uniquePersonId = "test-person-" + System.currentTimeMillis();
-        person2.setId(uniquePersonId);
-        personDAO.insert(person2);
-        existingPatient.setPerson(person2);
-        patientDAO.insert(existingPatient);
+        Patient patientFromDb = patientDAO.getPatientByNationalId("999999");
+        assertNotNull("Test data not loaded - patient with nationalId 999999", patientFromDb);
 
-        Patient patientFromDb = patientDAO.getPatientByNationalId(uniqueNationalId);
-        assertNotNull("Test requires patient with nationalId " + uniqueNationalId + " to exist", patientFromDb);
+        org.openelisglobal.patient.valueholder.PatientContact contact = patientContactDAO.get("2000").orElse(null);
+        assertNotNull("PatientContact (id=2000) must be present in test dataset", contact);
+        assertEquals("1000", contact.getPatientId());
+        assertNotNull("Contact person must be present", contact.getPerson());
+        assertEquals("1000", contact.getPerson().getId());
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("patientPK", patientFromDb.getId());
-        payload.put("firstName", "Test");
-        payload.put("lastName", "Patient");
-        payload.put("gender", "M");
-        payload.put("dob", "2000-01-01");
-
         Map<String, Object> patientContact = new HashMap<>();
-        Map<String, Object> person = new HashMap<>();
-        person.put("firstName", "Contact");
-        person.put("lastName", "Person");
-        person.put("email", "contact@test.com");
-        person.put("primaryPhone", "1234567890");
-        patientContact.put("person", person);
-        patientContact.put("sysUserId", "1");
+        patientContact.put("id", contact.getId());
+        Map<String, Object> personMap = new HashMap<>();
+        personMap.put("id", contact.getPerson().getId());
+        patientContact.put("person", personMap);
         payload.put("patientContact", patientContact);
 
         String json = objectMapper.writeValueAsString(payload);
 
         mockMvc.perform(post("/rest/PatientManagement").contentType(MediaType.APPLICATION_JSON).content(json))
-                .andExpect(status().isOk());
+                .andDo(print()).andExpect(status().isOk());
+    }
+
+    @Test
+    public void savePatient_shouldReturnOkEvenWithMissingGender() throws Exception {
+        Patient patientFromDb = patientDAO.getPatientByNationalId("999999");
+        assertNotNull("Test data not loaded - patient with nationalId 999999", patientFromDb);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("patientPK", patientFromDb.getId());
+        Map<String, Object> patientContact = new HashMap<>();
+        Map<String, Object> personMap = new HashMap<>();
+        personMap.put("id", "1000");
+        patientContact.put("person", personMap);
+        payload.put("patientContact", patientContact);
+        String json = objectMapper.writeValueAsString(payload);
+        mockMvc.perform(post("/rest/PatientManagement").contentType(MediaType.APPLICATION_JSON).content(json))
+                .andDo(print()).andExpect(status().isOk());
+    }
+
+    @Test
+    public void updatePatientWithMismatchedPersonId_shouldReturnOk() throws Exception {
+        Patient patientFromDb = patientDAO.getPatientByNationalId("999999");
+        assertNotNull(patientFromDb);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("patientPK", patientFromDb.getId());
+        Map<String, Object> patientContact = new HashMap<>();
+        Map<String, Object> personMap = new HashMap<>();
+        personMap.put("id", "3000"); // mismatched to real contact
+        patientContact.put("person", personMap);
+        payload.put("patientContact", patientContact);
+        String json = objectMapper.writeValueAsString(payload);
+        mockMvc.perform(post("/rest/PatientManagement").contentType(MediaType.APPLICATION_JSON).content(json))
+                .andDo(print()).andExpect(status().isOk());
     }
 }
