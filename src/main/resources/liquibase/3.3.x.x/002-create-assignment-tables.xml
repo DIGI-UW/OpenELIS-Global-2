@@ -16,7 +16,7 @@
             <column name="id" type="VARCHAR(36)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="sample_id" type="VARCHAR(36)">
+            <column name="sample_id" type="numeric(10,0)">
                 <constraints nullable="false" unique="true"
                     foreignKeyName="fk_assignment_sample" 
                     references="sample(id)" 
@@ -28,7 +28,7 @@
                     references="storage_position(id)" 
                     deleteCascade="false"/>
             </column>
-            <column name="assigned_by_user_id" type="INT">
+            <column name="assigned_by_user_id" type="numeric(10,0)">
                 <constraints nullable="false"
                     foreignKeyName="fk_assignment_user"
                     references="system_user(id)"/>
@@ -67,7 +67,7 @@
             <column name="id" type="VARCHAR(36)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="sample_id" type="VARCHAR(36)">
+            <column name="sample_id" type="numeric(10,0)">
                 <constraints nullable="false"
                     foreignKeyName="fk_movement_sample" 
                     references="sample(id)" 
@@ -83,7 +83,7 @@
                     references="storage_position(id)" 
                     deleteCascade="false"/>
             </column>
-            <column name="moved_by_user_id" type="INT">
+            <column name="moved_by_user_id" type="numeric(10,0)">
                 <constraints nullable="false"
                     foreignKeyName="fk_movement_user"
                     references="system_user(id)"/>
@@ -100,9 +100,11 @@
 
     <!-- Sample Storage Movement Constraints -->
     <changeSet id="storage-013a-add-movement-constraints" author="sample-storage-feature">
-        <addCheckConstraint tableName="sample_storage_movement" 
-            constraintName="chk_movement_has_position" 
-            checkCondition="previous_position_id IS NOT NULL OR new_position_id IS NOT NULL"/>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement 
+            ADD CONSTRAINT chk_movement_has_position 
+            CHECK (previous_position_id IS NOT NULL OR new_position_id IS NOT NULL);
+        </sql>
     </changeSet>
 
     <!-- Sample Storage Movement Sequence -->

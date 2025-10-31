@@ -29,7 +29,7 @@
             <column name="active" type="BOOLEAN" defaultValueBoolean="true">
                 <constraints nullable="false"/>
             </column>
-            <column name="sys_user_id" type="INT">
+            <column name="sys_user_id" type="numeric(10,0)">
                 <constraints nullable="false"/>
             </column>
             <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()">
@@ -88,7 +88,7 @@
                     references="storage_room(id)" 
                     deleteCascade="false"/>
             </column>
-            <column name="sys_user_id" type="INT">
+            <column name="sys_user_id" type="numeric(10,0)">
                 <constraints nullable="false"/>
             </column>
             <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()">
@@ -105,9 +105,11 @@
         <addUniqueConstraint tableName="storage_device" 
             columnNames="parent_room_id, code" 
             constraintName="uk_device_code_in_room"/>
-        <addCheckConstraint tableName="storage_device" 
-            constraintName="chk_device_type" 
-            checkCondition="type IN ('freezer', 'refrigerator', 'cabinet', 'other')"/>
+        <sql>
+            ALTER TABLE clinlims.storage_device 
+            ADD CONSTRAINT chk_device_type 
+            CHECK (type IN ('freezer', 'refrigerator', 'cabinet', 'other'));
+        </sql>
     </changeSet>
 
     <!-- Storage Device Sequence -->
@@ -150,7 +152,7 @@
                     references="storage_device(id)" 
                     deleteCascade="false"/>
             </column>
-            <column name="sys_user_id" type="INT">
+            <column name="sys_user_id" type="numeric(10,0)">
                 <constraints nullable="false"/>
             </column>
             <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()">
@@ -215,7 +217,7 @@
                     references="storage_shelf(id)" 
                     deleteCascade="false"/>
             </column>
-            <column name="sys_user_id" type="INT">
+            <column name="sys_user_id" type="numeric(10,0)">
                 <constraints nullable="false"/>
             </column>
             <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()">
@@ -232,9 +234,11 @@
         <addUniqueConstraint tableName="storage_rack" 
             columnNames="parent_shelf_id, label" 
             constraintName="uk_rack_label_in_shelf"/>
-        <addCheckConstraint tableName="storage_rack" 
-            constraintName="chk_rack_dimensions" 
-            checkCondition="rows >= 0 AND columns >= 0"/>
+        <sql>
+            ALTER TABLE clinlims.storage_rack 
+            ADD CONSTRAINT chk_rack_dimensions 
+            CHECK (rows >= 0 AND columns >= 0);
+        </sql>
     </changeSet>
 
     <!-- Storage Rack Sequence -->
@@ -278,7 +282,7 @@
                     references="storage_rack(id)" 
                     deleteCascade="true"/>
             </column>
-            <column name="sys_user_id" type="INT">
+            <column name="sys_user_id" type="numeric(10,0)">
                 <constraints nullable="false"/>
             </column>
             <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()">
