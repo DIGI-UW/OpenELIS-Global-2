@@ -443,7 +443,7 @@ Dr. Johnson needs to monitor freezer capacity across the laboratory to plan proc
 - **FR-065**: Dashboard MUST provide filters: Room, Device, Status, Date Range, Sample Type
 - **FR-066**: Multiple filters MUST combine with AND logic (all criteria must match)
 - **FR-067**: System MUST provide "Clear Filters" option to reset to show all records
-- **FR-068**: Search and filter operations MUST return results in <2 seconds (even with 100,000+ samples)
+- **FR-068**: Search and filter operations MUST return results in <2 seconds (even with 100,000+ samples) **[Aspirational - Not validated in POC. POC targets reasonable response times without specific optimization.]**
 
 #### Drill-Down Navigation
 
@@ -456,7 +456,7 @@ Dr. Johnson needs to monitor freezer capacity across the laboratory to plan proc
 
 - **FR-073**: Dashboard MUST provide CSV export of current filtered/visible data
 - **FR-074**: Export MUST include all table columns plus additional metadata (assigned by, timestamps, etc.)
-- **FR-075**: Export MUST complete in <10 seconds for 10,000 records
+- **FR-075**: Export MUST complete in <10 seconds for 10,000 records **[Aspirational - Not validated in POC. Export performance optimization deferred to post-POC.]**
 - **FR-076**: Export MUST handle large datasets (100,000+ records) via background processing with download link notification
 
 #### Grid Visualization (Optional Enhancement)

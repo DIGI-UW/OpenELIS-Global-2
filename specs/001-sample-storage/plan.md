@@ -493,8 +493,8 @@ Create `/contracts/fhir-mappings.md` documenting FHIR resource structure. This d
 - Position availability queries: `GET /fhir/Location?partOf={rack_fhir_uuid}&extension=position-occupancy|false`
 
 **FHIR Sync Strategy**:
-- Room, Device, Shelf, Rack: Sync immediately on entity create/update (low volume)
-- Position: **Batch sync** - Only sync positions when first assigned to sample (avoid syncing thousands of empty positions)
+- All entities (Room, Device, Shelf, Rack, Position): Sync immediately on entity create/update via @PostPersist/@PostUpdate hooks
+- Uses existing OpenELIS FHIR sync pattern (FhirTransformService + FhirPersistanceService)
 - Specimen: Update container extension on sample assignment/movement
 
 **Inline Location Creation**:
@@ -763,8 +763,8 @@ public SampleStorageAssignment assignSample(String sampleId, String positionId, 
         
         assignmentDAO.insert(assignment);
         
-        // Trigger FHIR position sync (batch)
-        fhirBatchService.queuePositionSync(positionId);
+        // FHIR sync happens automatically via @PostPersist hook on Position entity
+        // (Position.occupied changed triggers FHIR Location update)
         
         return assignment;
         
@@ -836,43 +836,39 @@ User (Browser)
     │                 │                 │                 │                 │ 19. INSERT movement
     │                 │                 │                 │                 <──────────┤
     │                 │                 │                 │
-    │                 │                 │                 │ 20. Queue FHIR batch sync
-    │                 │                 │                 ├──────────> FhirBatchService
-    │                 │                 │                 │                 │
-    │                 │                 │                 │                 │ 21. Add position to sync queue
-    │                 │                 │                 │                 <──────────┤
-    │                 │                 │                 │
-    │                 │                 │                 │ 22. Build hierarchical path
+    │                 │                 │                 │ 20. Build hierarchical path
     │                 │                 │                 ├──────────> buildHierarchicalPath()
     │                 │                 │                 │
-    │                 │                 │                 │ 23. Return assignment
+    │                 │                 │                 │ 21. Return assignment
     │                 │                 │                 <──────────┤
     │                 │                 │
-    │                 │                 │ 24. Return assignment JSON
+    │                 │                 │ 22. Return assignment JSON
     │                 │                 <──────────┤
     │                 │
-    │                 │ 25. Show success notification
+    │                 │ 23. Show success notification
     │                 <──────────┤
     │
-    │ 26. Display location in UI
+    │ 24. Display location in UI
     <──────────┤
 
-Background (async):
-FhirBatchService
+Automatic (via JPA hooks):
+StoragePosition entity
     │
-    │ 27. Batch sync positions (every 5 minutes or 100 positions)
-    ├──────────> StorageLocationFhirTransform
+    │ 25. @PostUpdate hook triggered (occupied changed)
+    ├──────────> StorageLocationFhirTransform.transformToFhirLocation(position)
     │                 │
-    │                 │ 28. Transform position to FHIR Location
+    │                 │ 26. Build FHIR Location resource with position-occupancy extension
     │                 │
-    │                 │ 29. POST Location to FHIR server
-    │                 ├──────────> FhirPersistanceService
-    │                 │                 │
-    │                 │                 │ 30. Create/Update FHIR Location
-    │                 │                 └──────────> HAPI FHIR Server
+    │                 │ 27. POST/PUT to FHIR server
+    │                 └──────────> FhirPersistanceService.save(location)
+    │                                   │
+    │                                   │ 28. Sync to HAPI FHIR Server
+    │                                   └──────────> https://fhir.openelis.org:8443/fhir/
+
+Specimen entity
     │
-    │ 31. Update Specimen.container reference
-    └──────────> Update Specimen resource with position Location reference
+    │ 29. @PostUpdate hook triggered (assignment created)
+    └──────────> Update Specimen.container.extension[storage-position-location] reference
 ```
 
 ### Sample Entity Integration

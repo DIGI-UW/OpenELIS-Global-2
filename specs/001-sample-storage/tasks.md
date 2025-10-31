@@ -59,9 +59,8 @@
 - [ ] T022 [P] Create StoragePosition entity `src/main/java/org/openelisglobal/storage/valueholder/StoragePosition.java` with coordinate (VARCHAR 50), fhir_uuid, occupied boolean, optional row_index/column_index
 - [ ] T023 [P] Create SampleStorageAssignment entity `src/main/java/org/openelisglobal/storage/valueholder/SampleStorageAssignment.java` linking Sample to StoragePosition
 - [ ] T024 [P] Create SampleStorageMovement entity `src/main/java/org/openelisglobal/storage/valueholder/SampleStorageMovement.java` for immutable audit trail
-- [ ] T025 Implement StorageLocationFhirTransform service `src/main/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransform.java` implementing FhirTransformService with methods: transformToFhirLocation() for each entity type, following FhirTransformServiceImpl.java pattern
-- [ ] T026 Implement FHIR batch sync service for positions: Create FhirBatchService with queuePositionSync() method, scheduled task to process queue every 5 minutes or 100 positions
-- [ ] T027 Run FHIR tests → Verify all PASS: `mvn test -Dtest="StorageLocationFhirTransformTest"`
+- [ ] T025 Implement StorageLocationFhirTransform service `src/main/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransform.java` implementing FhirTransformService with methods: transformToFhirLocation() for each entity type (Room, Device, Shelf, Rack, Position), following FhirTransformServiceImpl.java pattern
+- [ ] T026 Run FHIR tests → Verify all PASS: `mvn test -Dtest="StorageLocationFhirTransformTest"`
 
 **Checkpoint**: Entities created, Hibernate mappings functional, FHIR transform service working and validated
 
@@ -75,65 +74,64 @@
 
 ### Tests First - Storage Location CRUD (Write BEFORE implementation)
 
-- [ ] T028 [P] [US1] Write integration test `src/test/java/org/openelisglobal/storage/controller/StorageLocationRestControllerTest.java` for room CRUD: testCreateRoom_ValidInput_Returns201, testGetRooms_ReturnsAllRooms, testGetRoomById_ValidId_ReturnsRoom, testDeleteRoom_WithChildren_Returns409
-- [ ] T029 [P] [US1] Write integration test methods for device CRUD in StorageLocationRestControllerTest: testCreateDevice_ValidInput_Returns201, testGetDevices_FilterByRoomId_ReturnsFiltered, testCreateDevice_DuplicateCode_Returns400
-- [ ] T030 [P] [US1] Write integration test methods for shelf, rack, position CRUD in StorageLocationRestControllerTest following same pattern
-- [ ] T031 [P] [US1] Write unit test `src/test/java/org/openelisglobal/storage/service/StorageLocationServiceImplTest.java` for validation: testCreateDevice_DuplicateCodeInSameRoom_ThrowsException, testDeleteRoom_WithActiveDevices_ThrowsException, testDeactivateDevice_WithActiveSamples_ShowsWarning
-- [ ] T032 Run storage hierarchy tests → Verify all FAIL: `mvn test -Dtest="StorageLocation*Test"`
+- [ ] T027 [P] [US1] Write integration test `src/test/java/org/openelisglobal/storage/controller/StorageLocationRestControllerTest.java` for room CRUD: testCreateRoom_ValidInput_Returns201, testGetRooms_ReturnsAllRooms, testGetRoomById_ValidId_ReturnsRoom, testDeleteRoom_WithChildren_Returns409
+- [ ] T028 [P] [US1] Write integration test methods for device CRUD in StorageLocationRestControllerTest: testCreateDevice_ValidInput_Returns201, testGetDevices_FilterByRoomId_ReturnsFiltered, testCreateDevice_DuplicateCode_Returns400
+- [ ] T029 [P] [US1] Write integration test methods for shelf, rack, position CRUD in StorageLocationRestControllerTest following same pattern
+- [ ] T030 [P] [US1] Write unit test `src/test/java/org/openelisglobal/storage/service/StorageLocationServiceImplTest.java` for validation: testCreateDevice_DuplicateCodeInSameRoom_ThrowsException, testDeleteRoom_WithActiveDevices_ThrowsException, testDeactivateDevice_WithActiveSamples_ShowsWarning
+- [ ] T031 Run storage hierarchy tests → Verify all FAIL: `mvn test -Dtest="StorageLocation*Test"`
 
 ### Implementation - Storage Location Hierarchy
 
-- [ ] T033 [P] [US1] Create StorageRoomDAO interface and implementation in `src/main/java/org/openelisglobal/storage/dao/` extending BaseDAOImpl
-- [ ] T034 [P] [US1] Create StorageDeviceDAO interface and implementation extending BaseDAOImpl, add custom query: findByParentRoomId()
-- [ ] T035 [P] [US1] Create StorageShelfDAO interface and implementation, add custom query: findByParentDeviceId()
-- [ ] T036 [P] [US1] Create StorageRackDAO interface and implementation, add custom query: findByParentShelfId()
-- [ ] T037 [P] [US1] Create StoragePositionDAO interface and implementation, add custom queries: findByParentRackId(), countOccupied(rackId)
-- [ ] T038 [US1] Implement StorageLocationService interface and implementation `src/main/java/org/openelisglobal/storage/service/StorageLocationService.java` with CRUD methods for all hierarchy levels, add helper method buildHierarchicalPath(StoragePosition)
-- [ ] T039 [US1] Create Form objects in `src/main/java/org/openelisglobal/storage/form/`: StorageRoomForm, StorageDeviceForm, StorageShelfForm, StorageRackForm, StoragePositionForm with validation annotations
-- [ ] T040 [US1] Implement StorageLocationRestController `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java` extending BaseRestController with endpoints for room/device/shelf/rack/position CRUD per storage-api.json
-- [ ] T041 [US1] Add @PostPersist and @PostUpdate hooks to Room, Device, Shelf, Rack entities to trigger immediate FHIR sync via StorageLocationFhirTransform
-- [ ] T042 Run storage hierarchy tests → Verify all PASS: `mvn test -Dtest="StorageLocation*Test"`
+- [ ] T032 [P] [US1] Create StorageRoomDAO interface and implementation in `src/main/java/org/openelisglobal/storage/dao/` extending BaseDAOImpl
+- [ ] T033 [P] [US1] Create StorageDeviceDAO interface and implementation extending BaseDAOImpl, add custom query: findByParentRoomId()
+- [ ] T034 [P] [US1] Create StorageShelfDAO interface and implementation, add custom query: findByParentDeviceId()
+- [ ] T035 [P] [US1] Create StorageRackDAO interface and implementation, add custom query: findByParentShelfId()
+- [ ] T036 [P] [US1] Create StoragePositionDAO interface and implementation, add custom queries: findByParentRackId(), countOccupied(rackId)
+- [ ] T037 [US1] Implement StorageLocationService interface and implementation `src/main/java/org/openelisglobal/storage/service/StorageLocationService.java` with CRUD methods for all hierarchy levels, add helper method buildHierarchicalPath(StoragePosition)
+- [ ] T038 [US1] Create Form objects in `src/main/java/org/openelisglobal/storage/form/`: StorageRoomForm, StorageDeviceForm, StorageShelfForm, StorageRackForm, StoragePositionForm with validation annotations
+- [ ] T039 [US1] Implement StorageLocationRestController `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java` extending BaseRestController with endpoints for room/device/shelf/rack/position CRUD per storage-api.json
+- [ ] T040 [US1] Add @PostPersist and @PostUpdate hooks to ALL storage entities (Room, Device, Shelf, Rack, Position) to trigger immediate FHIR sync via StorageLocationFhirTransform (follow existing OpenELIS pattern from Patient/Specimen entities)
+- [ ] T041 Run storage hierarchy tests → Verify all PASS: `mvn test -Dtest="StorageLocation*Test"`
 
 ### Tests First - Sample Assignment (Write BEFORE implementation)
 
-- [ ] T043 [P] [US1] Write integration test `src/test/java/org/openelisglobal/storage/controller/SampleStorageRestControllerTest.java` for assignment: testAssignSample_ValidInput_Returns201, testAssignSample_OccupiedPosition_Returns400, testAssignSample_InactiveLocation_Returns400
-- [ ] T044 [P] [US1] Write unit test `src/test/java/org/openelisglobal/storage/service/SampleStorageServiceImplTest.java` for business logic: testAssignSample_ValidPosition_SetsOccupied, testAssignSample_CreatesAuditLog, testAssignSample_QueuesPositionFhirSync, testAssignSample_CalculatesCapacityWarnings, testAssignSample_ConcurrentAccess_ThrowsException
-- [ ] T045 Run assignment tests → Verify all FAIL: `mvn test -Dtest="SampleStorage*Test"`
+- [ ] T042 [P] [US1] Write integration test `src/test/java/org/openelisglobal/storage/controller/SampleStorageRestControllerTest.java` for assignment: testAssignSample_ValidInput_Returns201, testAssignSample_OccupiedPosition_Returns400, testAssignSample_InactiveLocation_Returns400
+- [ ] T043 [P] [US1] Write unit test `src/test/java/org/openelisglobal/storage/service/SampleStorageServiceImplTest.java` for business logic: testAssignSample_ValidPosition_SetsOccupied, testAssignSample_CreatesAuditLog, testAssignSample_CalculatesCapacityWarnings, testAssignSample_ConcurrentAccess_ThrowsException, testAssignSample_TriggersPositionFhirSync (verify @PostUpdate hook fires)
+- [ ] T044 Run assignment tests → Verify all FAIL: `mvn test -Dtest="SampleStorage*Test"`
 
 ### Implementation - Sample Assignment Backend
 
-- [ ] T046 [P] [US1] Create SampleStorageAssignmentDAO interface and implementation, add query: findBySampleId()
-- [ ] T047 [P] [US1] Create SampleStorageMovementDAO interface and implementation (insert-only for audit log)
-- [ ] T048 [US1] Implement SampleStorageService interface and implementation `src/main/java/org/openelisglobal/storage/service/SampleStorageService.java` with methods: assignSample(), calculateCapacity() (with 80/90/100% warnings), validateLocationActive(), handleOptimisticLocking() per plan.md enhancements
-- [ ] T049 [US1] Create SampleAssignmentForm `src/main/java/org/openelisglobal/storage/form/SampleAssignmentForm.java` with fields: sampleId, positionId, notes
-- [ ] T050 [US1] Implement SampleStorageRestController `src/main/java/org/openelisglobal/storage/controller/SampleStorageRestController.java` with POST /rest/storage/samples/assign endpoint
-- [ ] T051 [US1] Add batch sync trigger in SampleStorageService.assignSample() to call FhirBatchService.queuePositionSync() for position FHIR sync
-- [ ] T052 Run assignment tests → Verify all PASS: `mvn test -Dtest="SampleStorage*Test"`
+- [ ] T045 [P] [US1] Create SampleStorageAssignmentDAO interface and implementation, add query: findBySampleId()
+- [ ] T046 [P] [US1] Create SampleStorageMovementDAO interface and implementation (insert-only for audit log)
+- [ ] T047 [US1] Implement SampleStorageService interface and implementation `src/main/java/org/openelisglobal/storage/service/SampleStorageService.java` with methods: assignSample(), calculateCapacity() (with 80/90/100% warnings), validateLocationActive(), handleOptimisticLocking() per plan.md enhancements
+- [ ] T048 [US1] Create SampleAssignmentForm `src/main/java/org/openelisglobal/storage/form/SampleAssignmentForm.java` with fields: sampleId, positionId, notes
+- [ ] T049 [US1] Implement SampleStorageRestController `src/main/java/org/openelisglobal/storage/controller/SampleStorageRestController.java` with POST /rest/storage/samples/assign endpoint
+- [ ] T050 Run assignment tests → Verify all PASS: `mvn test -Dtest="SampleStorage*Test"`
 
 ### Tests First - Frontend Widget (Write BEFORE implementation)
 
-- [ ] T053 [P] [US1] Write unit test `frontend/src/components/storage/StorageLocationSelector/StorageLocationSelector.test.jsx` for widget behavior: testDisablesChildDropdownsUntilParentSelected, testFetchesDevicesWhenRoomSelected, testDisplaysHierarchicalPath, testHandlesInlineLocationCreation
-- [ ] T054 [P] [US1] Write unit test `frontend/src/components/storage/StorageLocationSelector/CascadingDropdownMode.test.jsx` for dropdown state management
-- [ ] T055 [P] [US1] Write unit test `frontend/src/components/storage/StorageLocationSelector/BarcodeScanMode.test.jsx` for barcode parsing and keyboard event handling
-- [ ] T056 [P] [US1] Write unit test `frontend/src/components/storage/hooks/useStorageLocations.test.js` for data fetching hook
-- [ ] T057 Run frontend tests → Verify all FAIL: `npm test -- components/storage`
+- [ ] T051 [P] [US1] Write unit test `frontend/src/components/storage/StorageLocationSelector/StorageLocationSelector.test.jsx` for widget behavior: testDisablesChildDropdownsUntilParentSelected, testFetchesDevicesWhenRoomSelected, testDisplaysHierarchicalPath, testHandlesInlineLocationCreation
+- [ ] T052 [P] [US1] Write unit test `frontend/src/components/storage/StorageLocationSelector/CascadingDropdownMode.test.jsx` for dropdown state management
+- [ ] T053 [P] [US1] Write unit test `frontend/src/components/storage/StorageLocationSelector/BarcodeScanMode.test.jsx` for barcode parsing and keyboard event handling
+- [ ] T054 [P] [US1] Write unit test `frontend/src/components/storage/hooks/useStorageLocations.test.js` for data fetching hook
+- [ ] T055 Run frontend tests → Verify all FAIL: `npm test -- components/storage`
 
 ### Implementation - Frontend Widget
 
-- [ ] T058 [P] [US1] Implement useStorageLocations hook `frontend/src/components/storage/hooks/useStorageLocations.js` using getFromOpenElisServer pattern per research.md (NOT SWR)
-- [ ] T059 [P] [US1] Implement useSampleStorage hook `frontend/src/components/storage/hooks/useSampleStorage.js` for assignment mutations using postToOpenElisServer
-- [ ] T060 [US1] Implement CascadingDropdownMode component `frontend/src/components/storage/StorageLocationSelector/CascadingDropdownMode.jsx` with Carbon Dropdown components, useEffect cascading pattern per research.md
-- [ ] T061 [US1] Implement AutocompleteMode component `frontend/src/components/storage/StorageLocationSelector/AutocompleteMode.jsx` with Carbon ComboBox for type-ahead search
-- [ ] T062 [US1] Implement BarcodeScanMode component `frontend/src/components/storage/StorageLocationSelector/BarcodeScanMode.jsx` with useBarcodeScanner hook (keyboard event listener, 50ms timeout) per research.md
-- [ ] T063 [US1] Implement main StorageLocationSelector component `frontend/src/components/storage/StorageLocationSelector/StorageLocationSelector.jsx` with mode switching (dropdown/autocomplete/barcode), hierarchical path display, optional prop for "Add New" inline creation
-- [ ] T064 [US1] Integrate StorageLocationSelector into SamplePatientEntry component `frontend/src/components/sample/SamplePatientEntry.jsx`: Add widget BELOW "Collector" field, BEFORE sample collection time, make optional (can be left blank)
-- [ ] T065 Run frontend tests → Verify all PASS: `npm test -- components/storage`
+- [ ] T056 [P] [US1] Implement useStorageLocations hook `frontend/src/components/storage/hooks/useStorageLocations.js` using getFromOpenElisServer pattern per research.md (NOT SWR)
+- [ ] T057 [P] [US1] Implement useSampleStorage hook `frontend/src/components/storage/hooks/useSampleStorage.js` for assignment mutations using postToOpenElisServer
+- [ ] T058 [US1] Implement CascadingDropdownMode component `frontend/src/components/storage/StorageLocationSelector/CascadingDropdownMode.jsx` with Carbon Dropdown components, useEffect cascading pattern per research.md
+- [ ] T059 [US1] Implement AutocompleteMode component `frontend/src/components/storage/StorageLocationSelector/AutocompleteMode.jsx` with Carbon ComboBox for type-ahead search
+- [ ] T060 [US1] Implement BarcodeScanMode component `frontend/src/components/storage/StorageLocationSelector/BarcodeScanMode.jsx` with useBarcodeScanner hook (keyboard event listener, 50ms timeout) per research.md
+- [ ] T061 [US1] Implement main StorageLocationSelector component `frontend/src/components/storage/StorageLocationSelector/StorageLocationSelector.jsx` with mode switching (dropdown/autocomplete/barcode), hierarchical path display, optional prop for "Add New" inline creation
+- [ ] T062 [US1] Integrate StorageLocationSelector into SamplePatientEntry component `frontend/src/components/sample/SamplePatientEntry.jsx`: Add widget BELOW "Collector" field, BEFORE sample collection time, make optional (can be left blank)
+- [ ] T063 Run frontend tests → Verify all PASS: `npm test -- components/storage`
 
 ### End-to-End Tests
 
-- [ ] T066 [US1] Write Cypress E2E test `frontend/cypress/e2e/storageAssignment.cy.js` for P1 user story: testAssignSampleViaCascadingDropdowns, testAssignSampleViaTypeAhead, testAssignSampleViaBarcodeScan, testInlineLocationCreation, testCapacityWarningDisplayed per research.md Cypress patterns
-- [ ] T067 [US1] Create Cypress page object `frontend/cypress/pages/StorageAssignmentPage.js` with methods: selectRoom(), selectDevice(), enterPosition(), clickSave() per research.md pattern
-- [ ] T068 [US1] Run Cypress test → Verify P1 scenario works end-to-end: `npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"`
+- [ ] T064 [US1] Write Cypress E2E test `frontend/cypress/e2e/storageAssignment.cy.js` for P1 user story: testAssignSampleViaCascadingDropdowns, testAssignSampleViaTypeAhead, testAssignSampleViaBarcodeScan, testInlineLocationCreation, testCapacityWarningDisplayed per research.md Cypress patterns
+- [ ] T065 [US1] Create Cypress page object `frontend/cypress/pages/StorageAssignmentPage.js` with methods: selectRoom(), selectDevice(), enterPosition(), clickSave() per research.md pattern
+- [ ] T066 [US1] Run Cypress test → Verify P1 scenario works end-to-end: `npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"`
 
 **Checkpoint**: User Story 1 (Basic Assignment) complete and independently testable. Can assign samples via dropdown/autocomplete/barcode, location saved with hierarchical path.
 
@@ -147,31 +145,31 @@
 
 ### Tests First (Write BEFORE implementation)
 
-- [ ] T069 [P] [US2A] Write integration test `src/test/java/org/openelisglobal/storage/controller/StorageSearchRestControllerTest.java` for search endpoints: testSearchSampleById_ExistingSample_ReturnsLocation, testSearchSampleById_NoLocation_Returns404, testFilterSamples_ByRoom_ReturnsMatching, testFilterSamples_MultipleFilters_CombinesWithAND
-- [ ] T070 [P] [US2A] Write unit test `src/test/java/org/openelisglobal/storage/service/StorageSearchServiceImplTest.java` for search logic: testGetSampleLocation_BuildsHierarchicalPath, testFilterSamples_ByLocationHierarchy_QueriesCorrectly
-- [ ] T071 Run search tests → Verify all FAIL: `mvn test -Dtest="StorageSearch*Test"`
+- [ ] T067 [P] [US2A] Write integration test `src/test/java/org/openelisglobal/storage/controller/StorageSearchRestControllerTest.java` for search endpoints: testSearchSampleById_ExistingSample_ReturnsLocation, testSearchSampleById_NoLocation_Returns404, testFilterSamples_ByRoom_ReturnsMatching, testFilterSamples_MultipleFilters_CombinesWithAND
+- [ ] T068 [P] [US2A] Write unit test `src/test/java/org/openelisglobal/storage/service/StorageSearchServiceImplTest.java` for search logic: testGetSampleLocation_BuildsHierarchicalPath, testFilterSamples_ByLocationHierarchy_QueriesCorrectly
+- [ ] T069 Run search tests → Verify all FAIL: `mvn test -Dtest="StorageSearch*Test"`
 
 ### Implementation - Sample Search Backend
 
-- [ ] T072 [US2A] Implement StorageSearchService interface and implementation `src/main/java/org/openelisglobal/storage/service/StorageSearchService.java` with methods: getSampleLocation(sampleId), filterSamples(filters), uses buildHierarchicalPath() helper from StorageLocationService
-- [ ] T073 [US2A] Implement StorageSearchRestController `src/main/java/org/openelisglobal/storage/controller/StorageSearchRestController.java` with GET /rest/storage/samples/search and GET /rest/storage/samples endpoints per storage-api.json
-- [ ] T074 Run search tests → Verify all PASS: `mvn test -Dtest="StorageSearch*Test"`
+- [ ] T070 [US2A] Implement StorageSearchService interface and implementation `src/main/java/org/openelisglobal/storage/service/StorageSearchService.java` with methods: getSampleLocation(sampleId), filterSamples(filters), uses buildHierarchicalPath() helper from StorageLocationService
+- [ ] T071 [US2A] Implement StorageSearchRestController `src/main/java/org/openelisglobal/storage/controller/StorageSearchRestController.java` with GET /rest/storage/samples/search and GET /rest/storage/samples endpoints per storage-api.json
+- [ ] T072 Run search tests → Verify all PASS: `mvn test -Dtest="StorageSearch*Test"`
 
 ### Tests First - Frontend Search Display
 
-- [ ] T075 [P] [US2A] Write unit test `frontend/src/components/storage/SampleStorage/StorageLocationDisplay.test.jsx` for location display component: testDisplaysHierarchicalPath, testShowsAssignmentMetadata (user, timestamp)
-- [ ] T076 Run frontend tests → Verify FAIL: `npm test -- StorageLocationDisplay.test.jsx`
+- [ ] T073 [P] [US2A] Write unit test `frontend/src/components/storage/SampleStorage/StorageLocationDisplay.test.jsx` for location display component: testDisplaysHierarchicalPath, testShowsAssignmentMetadata (user, timestamp)
+- [ ] T074 Run frontend tests → Verify FAIL: `npm test -- StorageLocationDisplay.test.jsx`
 
 ### Implementation - Frontend Search Display
 
-- [ ] T077 [US2A] Create StorageLocationDisplay component `frontend/src/components/storage/SampleStorage/StorageLocationDisplay.jsx` to show hierarchical path, assigned by, assigned date in read-only format
-- [ ] T078 [US2A] Integrate StorageLocationDisplay into LogbookResults component `frontend/src/components/logbook/LogbookResults.jsx`: Add in expanded sample details section, fetch location via API when sample expanded
-- [ ] T079 Run frontend tests → Verify PASS: `npm test -- StorageLocationDisplay.test.jsx`
+- [ ] T075 [US2A] Create StorageLocationDisplay component `frontend/src/components/storage/SampleStorage/StorageLocationDisplay.jsx` to show hierarchical path, assigned by, assigned date in read-only format
+- [ ] T076 [US2A] Integrate StorageLocationDisplay into LogbookResults component `frontend/src/components/logbook/LogbookResults.jsx`: Add in expanded sample details section, fetch location via API when sample expanded
+- [ ] T077 Run frontend tests → Verify PASS: `npm test -- StorageLocationDisplay.test.jsx`
 
 ### End-to-End Tests
 
-- [ ] T080 [US2A] Write Cypress E2E test `frontend/cypress/e2e/storageSearch.cy.js` for P2A user story: testSearchSampleById_DisplaysLocation, testFilterSamplesByRoom, testFilterSamplesByMultipleCriteria
-- [ ] T081 [US2A] Run Cypress test → Verify P2A scenario works: `npm run cy:run -- --spec "cypress/e2e/storageSearch.cy.js"`
+- [ ] T078 [US2A] Write Cypress E2E test `frontend/cypress/e2e/storageSearch.cy.js` for P2A user story: testSearchSampleById_DisplaysLocation, testFilterSamplesByRoom, testFilterSamplesByMultipleCriteria
+- [ ] T079 [US2A] Run Cypress test → Verify P2A scenario works: `npm run cy:run -- --spec "cypress/e2e/storageSearch.cy.js"`
 
 **Checkpoint**: User Story 2A (Search/Retrieval) complete. Can search samples by ID, view hierarchical location path, filter by room/device/status.
 
@@ -185,37 +183,37 @@
 
 ### Tests First (Write BEFORE implementation)
 
-- [ ] T082 [P] [US2B] Write integration test `src/test/java/org/openelisglobal/storage/controller/SampleMovementRestControllerTest.java` (extends SampleStorageRestControllerTest): testMoveSample_ValidTarget_Returns200, testMoveSample_OccupiedTarget_Returns400, testBulkMoveSamples_AutoAssignsPositions_Returns200, testBulkMoveSamples_InsufficientCapacity_ReturnsErrors
-- [ ] T083 [P] [US2B] Write unit test `src/test/java/org/openelisglobal/storage/service/SampleMovementServiceImplTest.java` (or add to SampleStorageServiceImplTest): testMoveSample_FreesPreviousPosition, testMoveSample_CreatesAuditLog, testBulkMove_AutoAssignsSequentialPositions, testBulkMove_AllowsManualOverride, testMoveSample_UpdatesSpecimenFhir
-- [ ] T084 Run movement tests → Verify all FAIL: `mvn test -Dtest="*Movement*Test"`
+- [ ] T080 [P] [US2B] Write integration test `src/test/java/org/openelisglobal/storage/controller/SampleMovementRestControllerTest.java` (extends SampleStorageRestControllerTest): testMoveSample_ValidTarget_Returns200, testMoveSample_OccupiedTarget_Returns400, testBulkMoveSamples_AutoAssignsPositions_Returns200, testBulkMoveSamples_InsufficientCapacity_ReturnsErrors
+- [ ] T081 [P] [US2B] Write unit test `src/test/java/org/openelisglobal/storage/service/SampleMovementServiceImplTest.java` (or add to SampleStorageServiceImplTest): testMoveSample_FreesPreviousPosition, testMoveSample_CreatesAuditLog, testBulkMove_AutoAssignsSequentialPositions, testBulkMove_AllowsManualOverride, testMoveSample_UpdatesSpecimenFhir
+- [ ] T082 Run movement tests → Verify all FAIL: `mvn test -Dtest="*Movement*Test"`
 
 ### Implementation - Sample Movement Backend
 
-- [ ] T085 [US2B] Add moveSample() method to SampleStorageService: Validate target location, free previous position (set occupied=false), occupy new position (set occupied=true), update SampleStorageAssignment, create SampleStorageMovement audit record, update Specimen FHIR resource
-- [ ] T086 [US2B] Add bulkMoveSamples() method to SampleStorageService: Auto-assign sequential available positions in target rack, allow manual position override via positionAssignments parameter, create individual audit records, return summary (total, successful, failed)
-- [ ] T087 [US2B] Add movement endpoints to SampleStorageRestController: POST /rest/storage/samples/move, POST /rest/storage/samples/bulk-move per storage-api.json
-- [ ] T088 [US2B] Create SampleMovementForm `src/main/java/org/openelisglobal/storage/form/SampleMovementForm.java` with fields: sampleId, targetPositionId, reason
-- [ ] T089 [US2B] Create BulkMovementForm with fields: sampleIds[], targetRackId, positionAssignments[], reason
-- [ ] T090 Run movement tests → Verify all PASS: `mvn test -Dtest="*Movement*Test"`
+- [ ] T083 [US2B] Add moveSample() method to SampleStorageService: Validate target location, free previous position (set occupied=false), occupy new position (set occupied=true), update SampleStorageAssignment, create SampleStorageMovement audit record, update Specimen FHIR resource
+- [ ] T084 [US2B] Add bulkMoveSamples() method to SampleStorageService: Auto-assign sequential available positions in target rack, allow manual position override via positionAssignments parameter, create individual audit records, return summary (total, successful, failed)
+- [ ] T085 [US2B] Add movement endpoints to SampleStorageRestController: POST /rest/storage/samples/move, POST /rest/storage/samples/bulk-move per storage-api.json
+- [ ] T086 [US2B] Create SampleMovementForm `src/main/java/org/openelisglobal/storage/form/SampleMovementForm.java` with fields: sampleId, targetPositionId, reason
+- [ ] T087 [US2B] Create BulkMovementForm with fields: sampleIds[], targetRackId, positionAssignments[], reason
+- [ ] T088 Run movement tests → Verify all PASS: `mvn test -Dtest="*Movement*Test"`
 
 ### Tests First - Frontend Movement UI
 
-- [ ] T091 [P] [US2B] Write unit test `frontend/src/components/storage/SampleStorage/MoveLocationModal.test.jsx` for single move modal: testDisplaysCurrentLocation, testAllowsTargetSelection, testSubmitsWithReason
-- [ ] T092 [P] [US2B] Write unit test `frontend/src/components/storage/SampleStorage/BulkMoveModal.test.jsx` for bulk move: testAutoAssignsPositions, testAllowsPositionEditing, testShowsPreview
-- [ ] T093 Run frontend tests → Verify FAIL: `npm test -- MoveLocationModal`
+- [ ] T089 [P] [US2B] Write unit test `frontend/src/components/storage/SampleStorage/MoveLocationModal.test.jsx` for single move modal: testDisplaysCurrentLocation, testAllowsTargetSelection, testSubmitsWithReason
+- [ ] T090 [P] [US2B] Write unit test `frontend/src/components/storage/SampleStorage/BulkMoveModal.test.jsx` for bulk move: testAutoAssignsPositions, testAllowsPositionEditing, testShowsPreview
+- [ ] T091 Run frontend tests → Verify FAIL: `npm test -- MoveLocationModal`
 
 ### Implementation - Frontend Movement UI
 
-- [ ] T094 [US2B] Implement MoveLocationModal component `frontend/src/components/storage/SampleStorage/MoveLocationModal.jsx` with current location display, StorageLocationSelector for target, reason TextInput, Carbon Modal wrapper
-- [ ] T095 [US2B] Implement BulkMoveModal component `frontend/src/components/storage/SampleStorage/BulkMoveModal.jsx` with auto-assign preview, editable position assignments, validation for sufficient capacity
-- [ ] T096 [US2B] Add "Move" action to LogbookResults component: Add overflow menu (⋮) to sample rows, trigger MoveLocationModal on click
-- [ ] T097 [US2B] Add "Bulk Move" action to LogbookResults component: Add bulk selection checkboxes, trigger BulkMoveModal with selected samples
-- [ ] T098 Run frontend tests → Verify PASS: `npm test -- MoveLocationModal`
+- [ ] T092 [US2B] Implement MoveLocationModal component `frontend/src/components/storage/SampleStorage/MoveLocationModal.jsx` with current location display, StorageLocationSelector for target, reason TextInput, Carbon Modal wrapper
+- [ ] T093 [US2B] Implement BulkMoveModal component `frontend/src/components/storage/SampleStorage/BulkMoveModal.jsx` with auto-assign preview, editable position assignments, validation for sufficient capacity
+- [ ] T094 [US2B] Add "Move" action to LogbookResults component: Add overflow menu (⋮) to sample rows, trigger MoveLocationModal on click
+- [ ] T095 [US2B] Add "Bulk Move" action to LogbookResults component: Add bulk selection checkboxes, trigger BulkMoveModal with selected samples
+- [ ] T096 Run frontend tests → Verify PASS: `npm test -- MoveLocationModal`
 
 ### End-to-End Tests
 
-- [ ] T099 [US2B] Write Cypress E2E test `frontend/cypress/e2e/storageMovement.cy.js` for P2B user story: testMoveSampleBetweenLocations_AuditTrailCreated, testBulkMoveSamples_AutoAssignsPositions, testBulkMove_ManuallyEditPositions, testMovement_PreviousPositionFreed
-- [ ] T100 [US2B] Run Cypress test → Verify P2B scenario works: `npm run cy:run -- --spec "cypress/e2e/storageMovement.cy.js"`
+- [ ] T097 [US2B] Write Cypress E2E test `frontend/cypress/e2e/storageMovement.cy.js` for P2B user story: testMoveSampleBetweenLocations_AuditTrailCreated, testBulkMoveSamples_AutoAssignsPositions, testBulkMove_ManuallyEditPositions, testMovement_PreviousPositionFreed
+- [ ] T098 [US2B] Run Cypress test → Verify P2B scenario works: `npm run cy:run -- --spec "cypress/e2e/storageMovement.cy.js"`
 
 **Checkpoint**: User Story 2B (Movement) complete. Can move single/bulk samples, previous positions freed, audit trail tracks all movements.
 
@@ -225,13 +223,13 @@
 
 **Purpose**: Final integration, optimization, and validation across all user stories
 
-- [ ] T101 [P] Add database indexes verification: Run EXPLAIN ANALYZE on common queries (sample search by location, hierarchical path lookups), verify indexes used
-- [ ] T102 [P] Verify internationalization completeness: Audit all UI components, confirm NO hardcoded English strings, all use React Intl message keys
-- [ ] T103 [P] Code formatting: Backend `mvn spotless:apply`, Frontend `npm run format`
-- [ ] T104 Test coverage report: Run `mvn verify` for JaCoCo coverage, verify >70% for new storage code, run `npm test -- --coverage` for Jest coverage
-- [ ] T105 FHIR validation end-to-end: Query FHIR server for all Location resources, verify hierarchy complete, verify Position batch sync working, verify Specimen.container links correct
-- [ ] T106 Run full test suite: `mvn clean install` (all backend tests) and `npm run cy:run` (all E2E tests), verify all pass
-- [ ] T107 Update documentation: Add any missing details to quickstart.md based on implementation learnings
+- [ ] T099 [P] Add database indexes verification: Run EXPLAIN ANALYZE on common queries (sample search by location, hierarchical path lookups), verify indexes used
+- [ ] T100 [P] Verify internationalization completeness: Audit all UI components, confirm NO hardcoded English strings, all use React Intl message keys
+- [ ] T101 [P] Code formatting: Backend `mvn spotless:apply`, Frontend `npm run format`
+- [ ] T102 Test coverage report: Run `mvn verify` for JaCoCo coverage, verify >70% for new storage code, run `npm test -- --coverage` for Jest coverage
+- [ ] T103 FHIR validation end-to-end: Query FHIR server for all Location resources, verify hierarchy complete, verify immediate FHIR sync working for all entities, verify Specimen.container links correct
+- [ ] T104 Run full test suite: `mvn clean install` (all backend tests) and `npm run cy:run` (all E2E tests), verify all pass
+- [ ] T105 Update documentation: Add any missing details to quickstart.md based on implementation learnings
 
 ---
 
@@ -241,14 +239,16 @@
 
 **Reference**: `.specify/memory/constitution.md`
 
-- [ ] T108 **Configuration-Driven**: Verify no country-specific code branches introduced, confirm position coordinates remain free-text (no validation)
-- [ ] T109 **Carbon Design System**: Audit all UI components, confirm @carbon/react used exclusively (NO Bootstrap/Tailwind/custom CSS)
-- [ ] T110 **FHIR/IHE Compliance**: Validate FHIR Location resources against R4 profiles using `curl -X POST https://fhir.openelis.org:8443/fhir/Location/$validate`, verify IHE mCSD hierarchical queries work
-- [ ] T111 **Layered Architecture**: Code review storage module, verify 5-layer pattern followed (NO DAO calls from controllers, NO business logic in DAOs, NO class-level variables in controllers)
-- [ ] T112 **Test Coverage**: Run coverage reports - confirm >70% for new storage code: `mvn jacoco:report` (check target/site/jacoco/index.html), `npm test -- --coverage`
-- [ ] T113 **Schema Management**: Verify ALL database changes used Liquibase changesets (NO direct SQL in code), verify rollback scripts present
-- [ ] T114 **Internationalization**: Grep for hardcoded strings: `grep -r '"[A-Z]' frontend/src/components/storage/` should return NO results (all strings via React Intl)
-- [ ] T115 **Security & Compliance**: Verify RBAC enforced on backend (permission checks in controllers), verify audit trail (all entities have sys_user_id + lastupdated), verify input validation (Hibernate Validator annotations present)
+**Note**: Permission enforcement testing deferred to post-POC
+
+- [ ] T106 **Configuration-Driven**: Verify no country-specific code branches introduced, confirm position coordinates remain free-text (no validation)
+- [ ] T107 **Carbon Design System**: Audit all UI components, confirm @carbon/react used exclusively (NO Bootstrap/Tailwind/custom CSS)
+- [ ] T108 **FHIR/IHE Compliance**: Validate FHIR Location resources against R4 profiles using `curl -X POST https://fhir.openelis.org:8443/fhir/Location/$validate`, verify IHE mCSD hierarchical queries work, verify immediate sync pattern working for all entities
+- [ ] T109 **Layered Architecture**: Code review storage module, verify 5-layer pattern followed (NO DAO calls from controllers, NO business logic in DAOs, NO class-level variables in controllers)
+- [ ] T110 **Test Coverage**: Run coverage reports - confirm >70% for new storage code: `mvn jacoco:report` (check target/site/jacoco/index.html), `npm test -- --coverage`
+- [ ] T111 **Schema Management**: Verify ALL database changes used Liquibase changesets (NO direct SQL in code), verify rollback scripts present
+- [ ] T112 **Internationalization**: Grep for hardcoded strings: `grep -r '"[A-Z]' frontend/src/components/storage/` should return NO results (all strings via React Intl)
+- [ ] T113 **Security & Compliance**: Verify audit trail (all entities have sys_user_id + lastupdated), verify input validation (Hibernate Validator annotations present). **Permission enforcement testing deferred to post-POC**
 
 **Verification Commands**:
 ```bash
@@ -406,8 +406,8 @@ Developer C: Phase 5 (US2B - Movement)
 
 **Minimal Viable Product Path**:
 1. Complete Phase 1: Setup (T001-T007)
-2. Complete Phase 2: Foundational (T008-T027) ← CRITICAL blocking phase
-3. Complete Phase 3: User Story 1 (T028-T068) ← Assignment workflow
+2. Complete Phase 2: Foundational (T008-T026) ← CRITICAL blocking phase
+3. Complete Phase 3: User Story 1 (T027-T066) ← Assignment workflow
 4. **STOP and VALIDATE**: Test US1 independently, demo basic assignment
 5. Deploy MVP if ready
 
@@ -420,11 +420,11 @@ Developer C: Phase 5 (US2B - Movement)
 ### Incremental Delivery (Add Stories Sequentially)
 
 **Path to Full POC**:
-1. Setup + Foundational → **Foundation ready** (no user value yet, but blocks removed)
-2. Add US1 (Assignment) → **MVP deployed** (can assign samples, 50% of value)
-3. Add US2A (Search) → **Search enabled** (can retrieve samples quickly, 80% of value)
-4. Add US2B (Movement) → **Full POC** (complete lifecycle: assign → search → move, 100% of POC value)
-5. Polish + Compliance → **Production-ready** (verified against constitution)
+1. Setup + Foundational (T001-T026) → **Foundation ready** (no user value yet, but blocks removed)
+2. Add US1 Assignment (T027-T066) → **MVP deployed** (can assign samples, 50% of value)
+3. Add US2A Search (T067-T079) → **Search enabled** (can retrieve samples quickly, 80% of value)
+4. Add US2B Movement (T080-T098) → **Full POC** (complete lifecycle: assign → search → move, 100% of POC value)
+5. Polish + Compliance (T099-T113) → **Production-ready** (verified against constitution)
 
 **Benefits**:
 - ✅ Early validation (test US1 before building US2)
@@ -440,9 +440,9 @@ Developer C: Phase 5 (US2B - Movement)
 
 | Developer | Phase | Tasks | Duration |
 |-----------|-------|-------|----------|
-| Dev A | US1 (Assignment) | T028-T068 (41 tasks) | ~3-4 days |
-| Dev B | US2A (Search) | T069-T081 (13 tasks) | ~1-2 days |
-| Dev C | US2B (Movement) | T082-T100 (19 tasks) | ~2-3 days |
+| Dev A | US1 (Assignment) | T027-T066 (40 tasks) | ~3-4 days |
+| Dev B | US2A (Search) | T067-T079 (13 tasks) | ~1-2 days |
+| Dev C | US2B (Movement) | T080-T098 (19 tasks) | ~2-3 days |
 
 **After individual completion**: Merge, run full test suite, polish together
 
@@ -455,26 +455,26 @@ Developer C: Phase 5 (US2B - Movement)
 
 ## Task Summary
 
-**Total Tasks**: 115
+**Total Tasks**: 113
 
 | Phase | Task Count | Parallel Opportunities | Test Tasks | Implementation Tasks |
 |-------|------------|------------------------|------------|---------------------|
 | Phase 1: Setup | 7 | 1 (T007) | 0 | 7 |
-| Phase 2: Foundational | 20 | 14 (Hibernate, entities) | 3 | 17 |
-| Phase 3: US1 (Assignment) | 41 | 16 (tests, DAOs, hooks) | 14 | 27 |
+| Phase 2: Foundational | 19 | 14 (Hibernate, entities) | 3 | 16 |
+| Phase 3: US1 (Assignment) | 40 | 16 (tests, DAOs, hooks) | 14 | 26 |
 | Phase 4: US2A (Search) | 13 | 4 (tests) | 4 | 9 |
 | Phase 5: US2B (Movement) | 19 | 6 (tests) | 5 | 14 |
 | Phase 6: Polish | 7 | 4 | 0 | 7 |
-| Phase 7: Compliance | 8 | 8 (all) | 0 | 8 |
-| **TOTAL** | **115** | **53 (46%)** | **26 (23%)** | **89 (77%)** |
+| Phase 7: Compliance | 8 | 7 (most) | 0 | 8 |
+| **TOTAL** | **113** | **52 (46%)** | **26 (23%)** | **87 (77%)** |
 
-**Test-to-Implementation Ratio**: 26 test tasks, 89 implementation tasks (1:3.4 ratio indicates strong test coverage)
+**Test-to-Implementation Ratio**: 26 test tasks, 87 implementation tasks (1:3.3 ratio indicates strong test coverage)
 
-**Parallelization**: 46% of tasks can run in parallel (53 marked with [P])
+**Parallelization**: 46% of tasks can run in parallel (52 marked with [P])
 
 **Story Breakdown**:
-- **US1**: 41 tasks (36% of total) - Largest story, most foundational
-- **US2A**: 13 tasks (11% of total) - Builds on US1
+- **US1**: 40 tasks (35% of total) - Largest story, most foundational
+- **US2A**: 13 tasks (12% of total) - Builds on US1
 - **US2B**: 19 tasks (17% of total) - Adds movement on top of assignment
 
 ---

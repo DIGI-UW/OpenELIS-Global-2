@@ -595,42 +595,21 @@ This document specifies how OpenELIS sample storage entities map to FHIR R4 Loca
 
 **FHIR Server**: https://fhir.openelis.org:8443/fhir/
 
-### Immediate Sync (Room, Device, Shelf, Rack)
+### Immediate Sync (All Entities)
 
 **Trigger**: On entity insert/update in OpenELIS database (via JPA lifecycle hooks)
 
 **Process**:
 1. Entity created/updated → `@PostPersist` / `@PostUpdate` hook triggered
-2. `StorageLocationFhirTransform.transformToFhir(entity)` called
+2. `StorageLocationFhirTransform.transformToFhirLocation(entity)` called
 3. FHIR Location resource created/updated
 4. `FhirPersistanceService.save(location)` → sync to FHIR server immediately
 
-**Rationale**: Low volume entities (typically <1000 total), immediate sync provides real-time FHIR availability
+**Applies To**:
+- ✅ Room, Device, Shelf, Rack - Immediate sync on create/update
+- ✅ Position - Immediate sync on create, sync on occupancy change (occupied ↔ empty)
 
-### Batch Sync (Position)
-
-**Trigger**: On sample assignment to position (not on position creation)
-
-**Process**:
-1. Sample assigned to position → `SampleStorageService.assignSample()` called
-2. Service queues position for FHIR sync: `FhirBatchService.queuePositionSync(positionId)`
-3. Background job runs periodically (every 5 minutes OR 100 positions queued)
-4. Batch transforms queued positions → FHIR Location resources
-5. Batch POST to FHIR server (Bundle transaction)
-
-**Rationale**: High volume entities (potentially 10,000+ positions), most never occupied. Only sync positions when first used to avoid unnecessary FHIR server load.
-
-**Position Sync Triggers**:
-- ✅ First assignment to position → Queue for sync
-- ✅ Position occupancy change (occupied ↔ empty) → Update existing FHIR Location
-- ❌ Empty position creation → NO sync (wait for assignment)
-
-**Batch Sync Configuration** (suggested):
-```properties
-# common.properties
-org.openelisglobal.storage.fhir.batch.interval=300000  # 5 minutes in ms
-org.openelisglobal.storage.fhir.batch.size=100          # Max positions per batch
-```
+**Rationale**: Uses existing OpenELIS FHIR sync pattern (same as Patient, Specimen, etc.). Simpler implementation, real-time FHIR availability, no batch queue infrastructure needed.
 
 ### Specimen Container Sync
 
