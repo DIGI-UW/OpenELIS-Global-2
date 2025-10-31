@@ -714,7 +714,9 @@ const AddOrder = (props) => {
                   id: "input.placeholder.provisionalClinicalDiagnosis",
                 })}
                 onChange={handleProvisionalClinicalDiagnosisChange}
-                value={orderFormValues.sampleOrderItems.provisionalClinicalDiagnosis}
+                value={
+                  orderFormValues.sampleOrderItems.provisionalClinicalDiagnosis
+                }
                 labelText={intl.formatMessage({
                   id: "order.requester.provisionalDiagnosis.label",
                 })}
