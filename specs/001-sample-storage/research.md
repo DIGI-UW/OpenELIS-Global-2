@@ -490,138 +490,163 @@ function useSampleAssignment() {
 
 ---
 
-## 6. Playwright E2E Configuration
+## 6. Cypress E2E Configuration
 
-**Status**: OpenELIS currently uses **Cypress** for E2E tests (not Playwright). User specified Playwright for this POC.
+**Status**: OpenELIS uses **Cypress 12.17.3** for E2E tests.
 
 **Current E2E Framework**: Cypress 12.17.3 (per constitution)
 - Tests in `frontend/cypress/e2e/`
 - Configuration: `frontend/cypress.config.js`
+- Existing tests: patientEntry.cy.js, orderEntity.cy.js, validation.cy.js, etc.
 
-**Migration Decision**: Since user explicitly specified Playwright, will need to:
-1. Add Playwright as dev dependency
-2. Create `playwright.config.ts` configuration
-3. Co-exist with Cypress (don't remove existing tests)
-4. Storage tests use Playwright only
+**Cypress Configuration** (existing):
 
-**Playwright Configuration** (new):
+```javascript
+// cypress.config.js
+const { defineConfig } = require("cypress");
 
-```typescript
-// playwright.config.ts
-import { defineConfig, devices } from '@playwright/test';
-
-export default defineConfig({
-  testDir: './tests/e2e',
-  fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
-  use: {
-    baseURL: 'https://localhost',
-    trace: 'on-first-retry',
-    ignoreHTTPSErrors: true, // OpenELIS dev uses self-signed cert
-  },
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+module.exports = defineConfig({
+  defaultCommandTimeout: 8000,
+  viewportWidth: 1200,
+  viewportHeight: 700,
+  video: false,
+  watchForFileChanges: false,
+  e2e: {
+    baseUrl: "https://localhost",
+    testIsolation: false,
+    env: {
+      STARTUP_WAIT_MILLISECONDS: 300000,
     },
-  ],
-  webServer: {
-    command: 'npm run start',
-    url: 'https://localhost',
-    reuseExistingServer: !process.env.CI,
-    ignoreHTTPSErrors: true,
   },
 });
 ```
 
-**Test Structure**:
+**Test Structure** (follow existing pattern):
 
 ```
-frontend/tests/e2e/storage/
-├── assignment.spec.ts
-├── search.spec.ts
-├── movement.spec.ts
-└── bulk-movement.spec.ts
+frontend/cypress/e2e/
+├── storageAssignment.cy.js (P1 - Storage Assignment)
+├── storageSearch.cy.js (P2A - Sample Search/Retrieval)
+└── storageMovement.cy.js (P2B - Sample Movement, including bulk)
 ```
 
-**Example Test**:
+**Example Test Pattern** (based on existing patientEntry.cy.js):
 
-```typescript
-// assignment.spec.ts
-import { test, expect } from '@playwright/test';
+```javascript
+// storageAssignment.cy.js
+import LoginPage from "../pages/LoginPage";
 
-test.describe('Sample Storage Assignment (P1)', () => {
-  test('should assign sample using cascading dropdowns', async ({ page }) => {
-    await page.goto('/sample-entry');
-    
+let homePage = null;
+let loginPage = null;
+let sampleEntryPage = null;
+
+before("login", () => {
+  loginPage = new LoginPage();
+  loginPage.visit();
+});
+
+describe("Sample Storage Assignment (P1)", function () {
+  it("User navigates to Sample Entry Page", () => {
+    homePage = loginPage.goToHomePage();
+    sampleEntryPage = homePage.goToSampleEntry();
+  });
+
+  it("Should assign sample using cascading dropdowns", function () {
     // Complete sample accessioning
-    await page.fill('[data-testid="accession-number"]', 'S-2025-001');
-    // ... more sample fields ...
+    sampleEntryPage.getAccessionNumberInput().type("S-2025-001");
+    // ... fill other sample fields ...
     
     // Open Storage Location Selector
-    await page.click('[data-testid="storage-location-selector"]');
+    cy.get('[data-testid="storage-location-selector"]').should("be.visible");
     
     // Select room
-    await page.click('[data-testid="room-dropdown"]');
-    await page.click('text=Main Laboratory');
+    cy.get('[data-testid="room-dropdown"]').click();
+    cy.contains("Main Laboratory").click();
     
     // Select device
-    await page.waitForSelector('[data-testid="device-dropdown"]:not([disabled])');
-    await page.click('[data-testid="device-dropdown"]');
-    await page.click('text=Freezer Unit 1');
+    cy.get('[data-testid="device-dropdown"]').should("not.be.disabled");
+    cy.get('[data-testid="device-dropdown"]').click();
+    cy.contains("Freezer Unit 1").click();
     
     // Select shelf
-    await page.waitForSelector('[data-testid="shelf-dropdown"]:not([disabled])');
-    await page.click('[data-testid="shelf-dropdown"]');
-    await page.click('text=Shelf-A');
+    cy.get('[data-testid="shelf-dropdown"]').should("not.be.disabled");
+    cy.get('[data-testid="shelf-dropdown"]').click();
+    cy.contains("Shelf-A").click();
     
     // Select rack
-    await page.waitForSelector('[data-testid="rack-dropdown"]:not([disabled])');
-    await page.click('[data-testid="rack-dropdown"]');
-    await page.click('text=Rack R1');
+    cy.get('[data-testid="rack-dropdown"]').should("not.be.disabled");
+    cy.get('[data-testid="rack-dropdown"]').click();
+    cy.contains("Rack R1").click();
     
     // Enter position
-    await page.fill('[data-testid="position-input"]', 'A5');
+    cy.get('[data-testid="position-input"]').type("A5");
     
     // Verify hierarchical path display
-    await expect(page.locator('[data-testid="location-path"]'))
-      .toHaveText('Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5');
+    cy.get('[data-testid="location-path"]')
+      .should("contain.text", "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5");
     
     // Save assignment
-    await page.click('[data-testid="save-button"]');
+    cy.get('[data-testid="save-button"]').click();
     
-    // Verify success message
-    await expect(page.locator('[data-testid="success-notification"]'))
-      .toBeVisible();
+    // Verify success notification
+    cy.get('div[role="status"]').should("be.visible");
   });
 });
 ```
 
-**Installation Commands**:
+**Page Object Pattern** (follow existing structure):
 
-```bash
-cd frontend
-npm install -D @playwright/test
-npx playwright install --with-deps chromium
+```javascript
+// cypress/pages/StorageAssignmentPage.js
+class StorageAssignmentPage {
+  getStorageLocationSelector() {
+    return cy.get('[data-testid="storage-location-selector"]');
+  }
+  
+  getRoomDropdown() {
+    return cy.get('[data-testid="room-dropdown"]');
+  }
+  
+  selectRoom(roomName) {
+    this.getRoomDropdown().click();
+    cy.contains(roomName).click();
+    return this;
+  }
+  
+  selectDevice(deviceName) {
+    cy.get('[data-testid="device-dropdown"]').click();
+    cy.contains(deviceName).click();
+    return this;
+  }
+  
+  enterPosition(coordinate) {
+    cy.get('[data-testid="position-input"]').type(coordinate);
+    return this;
+  }
+  
+  clickSave() {
+    cy.get('[data-testid="save-button"]').click();
+    return this;
+  }
+}
+
+export default StorageAssignmentPage;
 ```
 
 **Run Commands**:
 
 ```bash
-# Run all Playwright tests
-npx playwright test
+# Run all Cypress tests
+npm run cy:run
 
 # Run specific test file
-npx playwright test tests/e2e/storage/assignment.spec.ts
+npx cypress run --spec "cypress/e2e/storageAssignment.cy.js"
 
-# Run with UI mode
-npx playwright test --ui
+# Open Cypress UI for development
+npx cypress open
 
-# Generate test report
-npx playwright show-report
+# Run headed mode (see browser)
+npx cypress run --headed
 ```
 
 ---
@@ -635,15 +660,15 @@ npx playwright show-report
 | Carbon Dropdown Cascading | Controlled components, useEffect for child data fetching, disabled until parent selected | @carbon/react Dropdown API |
 | Barcode Scanner Integration | USB HID keyboard events, character buffer with 50ms timeout, detect Enter key | Browser keyboard event handling |
 | Frontend Data Fetching | Custom `getFromOpenElisServer` utility with useState/useEffect (NOT SWR) | Existing OpenELIS hooks |
-| Playwright E2E Setup | Add Playwright alongside existing Cypress, configure with ignoreHTTPSErrors for dev | New addition to OpenELIS |
+| Cypress E2E Setup | Use existing Cypress 12.17.3 framework, follow patientEntry.cy.js pattern | Existing OpenELIS E2E tests |
 
 **Decisions Made**:
 1. Follow existing Hibernate XML patterns for storage entities
-2. Map Room/Device/Shelf/Rack to FHIR Location resources, positions in database only
+2. Map Room/Device/Shelf/Rack/Position ALL to FHIR Location resources (positions as child locations with extensions)
 3. Use Carbon Dropdown with cascading state management
 4. Implement barcode scanner with keyboard event listener + character buffer
 5. Use existing `getFromOpenElisServer` pattern (no SWR dependency)
-6. Add Playwright for storage E2E tests (co-exist with Cypress)
+6. Use existing Cypress framework for E2E tests (NOT Playwright)
 
 **Next Steps**: Proceed to Phase 1 design artifacts (data-model.md, contracts/, quickstart.md)
 

@@ -235,11 +235,13 @@ SampleStorageAssignment ──> (N) SampleStorageMovement (audit log)
 | `column_index` | INT | NULL | Optional column number for grid visualization |
 | `occupied` | BOOLEAN | NOT NULL, DEFAULT false | Occupancy status |
 | `parent_rack_id` | VARCHAR(36) | NOT NULL, FK | Parent rack reference |
+| `fhir_uuid` | UUID | NOT NULL, UNIQUE | FHIR Location resource identifier |
 | `sys_user_id` | INT | NOT NULL | User who created/modified |
 | `lastupdated` | TIMESTAMP | NOT NULL, DEFAULT NOW() | Last modification timestamp |
 
 **Constraints**:
 - PRIMARY KEY (`id`)
+- UNIQUE (`fhir_uuid`)
 - FOREIGN KEY (`parent_rack_id`) REFERENCES `storage_rack(id)` ON DELETE CASCADE
 - FOREIGN KEY (`sys_user_id`) REFERENCES `system_user(id)`
 - NOTE: Duplicate coordinates within same rack allowed (flexible storage, per FR-014)
@@ -249,9 +251,15 @@ SampleStorageAssignment ──> (N) SampleStorageMovement (audit log)
 - One-to-One with `SampleStorageAssignment` (current assignment, if occupied)
 
 **FHIR Mapping**:
-- Positions NOT mapped to separate FHIR resources
-- Encoded in parent Rack's Location.extension[available-positions] as array
-- Individual position occupancy tracked in OpenELIS database only
+- Maps to FHIR R4 `Location` resource (child of Rack Location)
+- `Location.id` = `fhir_uuid`
+- `Location.identifier.value` = "{room_code}-{device_code}-{shelf_label}-{rack_label}-{coordinate}"
+- `Location.name` = `coordinate`
+- `Location.physicalType.code` = "co" (container)
+- `Location.partOf.reference` = "Location/{parent_rack_fhir_uuid}"
+- `Location.extension[position-occupancy].valueBoolean` = `occupied`
+- `Location.extension[position-grid-row].valueInteger` = `row_index` (if provided)
+- `Location.extension[position-grid-column].valueInteger` = `column_index` (if provided)
 
 **Validation Rules**:
 - Coordinate is free text, max 50 characters (per FR-010)
@@ -465,7 +473,7 @@ CREATE INDEX idx_position_occupied ON storage_position(parent_rack_id, occupied)
 
 **Entities**: 7 (5 hierarchy + 2 assignment/audit)  
 **Relationships**: 6 parent-child + 3 cross-entity  
-**FHIR Resources**: 4 Location resources (Room, Device, Shelf, Rack)  
+**FHIR Resources**: 5 Location resources (Room, Device, Shelf, Rack, Position)  
 **Audit Trail**: Complete (SampleStorageMovement immutable log)  
 **Flexibility**: Position coordinates free-text, duplicate positions allowed within racks  
 **Performance**: Indexed for common queries (parent traversal, sample lookup, audit queries)

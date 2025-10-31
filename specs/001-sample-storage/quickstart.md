@@ -14,6 +14,150 @@
 - ✅ Docker + Docker Compose
 - ✅ HAPI FHIR R4 server running at `https://fhir.openelis.org:8443/fhir/`
 
+## ⚠️ CRITICAL: Test-First Development
+
+**This POC follows strict Test-Driven Development (TDD)**. You MUST write tests BEFORE implementation code.
+
+### TDD Workflow (Red-Green-Refactor)
+
+1. **🔴 RED**: Write a failing test
+   - Write test for the behavior you want
+   - Run test → it should FAIL (code doesn't exist yet)
+   - Verify test fails for the right reason
+
+2. **🟢 GREEN**: Make the test pass
+   - Write minimal implementation code
+   - Run test → it should PASS
+   - Don't write extra code beyond what's needed
+
+3. **🔵 REFACTOR**: Improve code quality
+   - Clean up implementation
+   - Remove duplication
+   - Improve naming, structure
+   - Run tests → all should still PASS
+
+4. **Repeat** for next feature/behavior
+
+### Development Order for This POC
+
+**Step 1: Write FHIR Validation Tests** (spec → test)
+```bash
+# Create test file first
+src/test/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransformTest.java
+
+# Write test methods based on fhir-mappings.md contract
+# Example test:
+@Test
+public void testTransformStorageRoomToFhirLocation() {
+    // Given: StorageRoom entity
+    StorageRoom room = new StorageRoom();
+    room.setCode("MAIN");
+    room.setName("Main Laboratory");
+    
+    // When: Transform to FHIR
+    Location fhirLocation = transformer.transformToFhirLocation(room);
+    
+    // Then: Verify FHIR structure per contract
+    assertEquals(room.getFhirUuid().toString(), fhirLocation.getId());
+    assertEquals("MAIN", fhirLocation.getIdentifierFirstRep().getValue());
+    assertEquals("ro", fhirLocation.getPhysicalType().getCodingFirstRep().getCode());
+}
+
+# Run test → FAILS (transformer doesn't exist yet)
+mvn test -Dtest="StorageLocationFhirTransformTest"
+```
+
+**Step 2: Write Backend Integration Tests** (spec → test)
+```bash
+# Create test file
+src/test/java/org/openelisglobal/storage/controller/StorageLocationRestControllerTest.java
+
+# Write test methods based on storage-api.json contract
+# Example test:
+@Test
+public void testCreateRoom_ValidInput_Returns201() throws Exception {
+    mockMvc.perform(post("/rest/storage/rooms")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"name\":\"Test Room\",\"code\":\"TEST\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.id").exists())
+        .andExpect(jsonPath("$.code").value("TEST"));
+}
+
+# Run test → FAILS (controller doesn't exist yet)
+mvn test -Dtest="StorageLocationRestControllerTest"
+```
+
+**Step 3: Write Backend Unit Tests** (spec → test)
+```bash
+# Create test file
+src/test/java/org/openelisglobal/storage/service/SampleStorageServiceImplTest.java
+
+# Write test methods based on data-model.md validation rules
+# Example test:
+@Test
+public void testAssignSample_InactiveLocation_ThrowsException() {
+    // Given: Inactive position
+    StoragePosition position = new StoragePosition();
+    position.setActive(false);
+    
+    // When: Attempt to assign sample
+    // Then: Expect validation exception
+    assertThrows(ValidationException.class, () -> {
+        sampleStorageService.assignSample(sampleId, position.getId(), notes);
+    });
+}
+
+# Run test → FAILS (service doesn't exist yet)
+mvn test -Dtest="SampleStorageServiceImplTest"
+```
+
+**Step 4: Write Frontend Unit Tests** (spec → test)
+```bash
+# Create test file
+frontend/src/components/storage/StorageLocationSelector/StorageLocationSelector.test.jsx
+
+# Write test methods
+test('should disable device dropdown until room selected', () => {
+    render(<StorageLocationSelector />);
+    const deviceDropdown = screen.getByTestId('device-dropdown');
+    expect(deviceDropdown).toBeDisabled();
+});
+
+# Run test → FAILS (component doesn't exist yet)
+npm test -- StorageLocationSelector.test.jsx
+```
+
+**Step 5: Implement Code to Pass Tests**
+```bash
+# Only NOW write implementation code
+# Start with entities, then DAOs, then services, etc.
+
+# After each implementation, run tests
+mvn test  # Backend
+npm test  # Frontend
+
+# All tests should pass before moving to next component
+```
+
+**Step 6: Write E2E Tests** (after implementation)
+```bash
+# Create Cypress test
+frontend/cypress/e2e/storageAssignment.cy.js
+
+# Write test based on P1 user story
+describe("Sample Storage Assignment (P1)", () => {
+    it("Should assign sample using cascading dropdowns", () => {
+        // Test complete user workflow
+    });
+});
+
+# Run E2E test → Should PASS if implementation correct
+npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"
+```
+
+**REMEMBER**: Never write implementation code without a failing test first!
+
 ## Quick Navigation
 
 - [Backend Setup](#backend-setup)
@@ -148,9 +292,8 @@ cd frontend
 # Install dependencies (first time only)
 npm install
 
-# Install Playwright (for E2E tests)
-npm install -D @playwright/test
-npx playwright install --with-deps chromium
+# Cypress already installed (existing OpenELIS E2E framework)
+# No additional installation needed
 ```
 
 ### 2. Add Internationalization Keys
@@ -244,14 +387,14 @@ npm test -- components/storage
 # Run tests in watch mode
 npm test -- --watch
 
-# Run E2E tests (Playwright)
-npx playwright test tests/e2e/storage
+# Run E2E tests (Cypress)
+npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"
 
-# Run E2E tests with UI mode
-npx playwright test --ui
+# Run E2E tests with Cypress UI
+npx cypress open
 
-# Generate E2E test report
-npx playwright show-report
+# Run all storage E2E tests
+npx cypress run --spec "cypress/e2e/storage*.cy.js"
 ```
 
 ### 5. Lint and Format
@@ -296,6 +439,12 @@ curl -k https://fhir.openelis.org:8443/fhir/Location?partOf=Location/{room_fhir_
 
 # Get location by hierarchical code
 curl -k https://fhir.openelis.org:8443/fhir/Location?identifier=http://openelis.org/storage-location-code|MAIN-FRZ01
+
+# Get positions in a rack
+curl -k "https://fhir.openelis.org:8443/fhir/Location?partOf=Location/{rack_fhir_uuid}&_tag=http://openelis.org/fhir/tag/storage-hierarchy|position"
+
+# Get available (unoccupied) positions in a rack
+curl -k "https://fhir.openelis.org:8443/fhir/Location?partOf=Location/{rack_fhir_uuid}&extension=http://openelis.org/fhir/extension/position-occupancy|false"
 
 # Get full hierarchy for a location (includes parent references)
 curl -k https://fhir.openelis.org:8443/fhir/Location/{location_id}?_include=Location:partOf
@@ -372,14 +521,18 @@ curl -k -X POST https://fhir.openelis.org:8443/fhir/Location/\$validate \
 3. **Complete Sample Entry**:
    - Enter accession number (e.g., "S-2025-001")
    - Fill patient information
-   - Select tests
+   - Select sample type
+   - Select collector (existing field)
 
-4. **Assign Storage Location**:
-   - Scroll to Storage Location Selector widget
-   - Mode: Cascading Dropdowns
+4. **Assign Storage Location** (NEW - Below "Collector" field):
+   - **Storage Location Selector widget** appears after collector dropdown
+   - **Placement**: Between collector field and sample collection time
+   - **Behavior**: Optional (can leave blank and assign later)
+   - Mode: Cascading Dropdowns (default)
    - Select: Room → Device → Shelf → Rack
    - Enter Position: "A5"
    - Verify hierarchical path displays: "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5"
+   - Alternative: Click "Add New Room/Device/Shelf/Rack" for inline creation (uses same POST endpoints)
 
 5. **Save**: Click "Save" button
 
@@ -640,20 +793,21 @@ cat src/test/resources/application-test.properties
 mvn clean test
 ```
 
-**E2E tests failing (Playwright)**:
+**E2E tests failing (Cypress)**:
 
 ```bash
 # Run with headed browser (see what's happening)
-npx playwright test --headed
+npx cypress run --headed
 
-# Debug specific test
-npx playwright test assignment.spec.ts --debug
+# Debug specific test in Cypress UI
+npx cypress open
+# Then click on the test file to run in interactive mode
 
-# Update snapshots (if screenshot comparison fails)
-npx playwright test --update-snapshots
+# Check video recordings (if enabled in cypress.config.js)
+ls cypress/videos/
 
-# Check Playwright report
-npx playwright show-report
+# View screenshots of failures
+ls cypress/screenshots/
 ```
 
 ---

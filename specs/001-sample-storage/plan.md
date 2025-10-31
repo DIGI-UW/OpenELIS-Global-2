@@ -14,12 +14,12 @@ Implement POC for Sample Storage Management to track physical location of biolog
 **Language/Version**: Java 21 LTS (backend), React 17 (frontend)  
 **Primary Dependencies**: 
 - Backend: Spring Boot 3.x, Hibernate 6.x, HAPI FHIR R4 (v6.6.2), JPA
-- Frontend: @carbon/react v1.15.0, React Intl 5.20.12, Formik 2.2.9, SWR 2.0.3
+- Frontend: @carbon/react v1.15.0, React Intl 5.20.12, Formik 2.2.9, getFromOpenElisServer/postToOpenElisServer utilities
 
 **Storage**: PostgreSQL 14+ (existing OpenELIS database)  
 **Testing**: 
 - Backend: JUnit 5 + Mockito (unit/integration)
-- Frontend: Jest + React Testing Library (unit), Playwright (E2E - replacing Cypress per user specification)
+- Frontend: Jest + React Testing Library (unit), Cypress 12.17.3 (E2E - existing OpenELIS framework)
 - FHIR: Resource validation against R4 profiles
 
 **Target Platform**: Web application (Linux server deployment, browser-based UI)  
@@ -36,6 +36,12 @@ Implement POC for Sample Storage Management to track physical location of biolog
 - 1 reusable UI widget (Storage Location Selector)
 - 2 integration points (SamplePatientEntry, LogbookResults)
 
+**Development Approach**: Test-Driven Development (TDD)
+- Write tests BEFORE implementation code
+- Order: API contracts → FHIR validation tests → Integration tests → Unit tests → Implementation → E2E tests
+- All tests must pass before moving to next component
+- Target >70% coverage per OpenELIS constitution
+
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
@@ -44,10 +50,10 @@ Verify compliance with [OpenELIS Global 3.0 Constitution](../../.specify/memory/
 
 - [x] **Configuration-Driven**: Position naming free-text (no validation), capacity thresholds configurable
 - [x] **Carbon Design System**: UI uses @carbon/react exclusively (Tabs, DataTable, Modal, TextInput, Dropdown, OverflowMenu)
-- [x] **FHIR/IHE Compliance**: Storage entities map to FHIR Location resources, sample links via Specimen.container
+- [x] **FHIR/IHE Compliance**: All 5 hierarchy levels (Room, Device, Shelf, Rack, Position) map to FHIR Location resources, sample links via Specimen.container
 - [x] **Layered Architecture**: Backend follows 5-layer pattern (StorageRoom valueholder → DAO → Service → Controller → Form)
-- [x] **Test Coverage**: Unit + integration + Playwright E2E tests planned (>70% coverage goal per spec)
-- [x] **Schema Management**: Liquibase changesets for 5 entity tables + junction tables
+- [x] **Test Coverage**: Unit + integration + Cypress E2E tests planned (>70% coverage goal per spec)
+- [x] **Schema Management**: Liquibase changesets for 5 entity tables + junction tables, all with fhir_uuid columns
 - [x] **Internationalization**: All UI strings use React Intl message keys (en, fr, sw minimum)
 - [x] **Security & Compliance**: RBAC (Technicians/Managers/Admins), audit trail (sys_user_id, lastupdated), input validation
 
@@ -140,7 +146,7 @@ frontend/src/components/storage/
 │   ├── BulkMoveModal.jsx
 │   └── index.js
 └── hooks/
-    ├── useStorageLocations.js - SWR data fetching
+    ├── useStorageLocations.js - getFromOpenElisServer data fetching
     ├── useSampleStorage.js
     └── index.js
 
@@ -153,15 +159,95 @@ frontend/src/languages/
 frontend/src/components/sample/SamplePatientEntry.jsx
 frontend/src/components/logbook/LogbookResults.jsx
 
-# E2E Tests (Playwright)
-frontend/tests/e2e/storage/
-├── assignment.spec.js
-├── search.spec.js
-├── movement.spec.js
-└── bulk-movement.spec.js
+# E2E Tests (Cypress)
+frontend/cypress/e2e/
+├── storageAssignment.cy.js
+├── storageSearch.cy.js
+└── storageMovement.cy.js
 ```
 
 **Structure Decision**: Follows existing OpenELIS monolithic repository structure with clear module separation. Backend uses standard 5-layer pattern in `org.openelisglobal.storage.*` package. Frontend components in `frontend/src/components/storage/` with reusable widget design. Integration points modify existing sample entry/search components to embed Storage Location Selector widget.
+
+## Test-Driven Development Workflow
+
+**CRITICAL**: This POC follows **strict test-first development**. Tests are written BEFORE implementation code.
+
+### Development Order (Enforced)
+
+**Phase 1: Contracts & Test Specifications**
+1. ✅ API contracts (OpenAPI spec) - Define expected behavior
+2. ✅ FHIR mappings documentation - Define FHIR resource structure
+3. ✅ Data model documentation - Define entity relationships
+
+**Phase 2: Test Creation (BEFORE any implementation code)**
+1. **FHIR Validation Tests** - Write tests for FHIR Location resource creation/validation
+   - Test: `StorageLocationFhirTransformTest.java`
+   - Validates: Room/Device/Shelf/Rack/Position → Location resource structure
+   - Validates: IHE mCSD profile compliance
+   - Validates: Hierarchical partOf references correct
+
+2. **Backend Integration Tests** - Write tests for REST endpoints
+   - Test: `StorageLocationRestControllerTest.java`, `SampleStorageRestControllerTest.java`, `StorageSearchRestControllerTest.java`
+   - Validates: HTTP request/response contracts match OpenAPI spec
+   - Validates: Database persistence after API calls
+   - Validates: Error responses (400, 404, 409) for validation failures
+
+3. **Backend Unit Tests** - Write tests for service layer business logic
+   - Test: `StorageLocationServiceImplTest.java`, `SampleStorageServiceImplTest.java`, `StorageSearchServiceImplTest.java`
+   - Validates: Assignment validation logic (prevent inactive location, double-occupancy)
+   - Validates: Capacity calculation and warning thresholds (80/90/100%)
+   - Validates: Hierarchical path construction
+   - Validates: Bulk move auto-assignment logic
+   - Validates: Audit trail creation on movements
+
+4. **Frontend Unit Tests** - Write tests for React components
+   - Test: `StorageLocationSelector.test.jsx`, `CascadingDropdownMode.test.jsx`, etc.
+   - Validates: Cascading dropdown state management
+   - Validates: Barcode input parsing
+   - Validates: Hierarchical path display
+   - Validates: API error handling and user feedback
+
+**Phase 3: Implementation (Make tests pass)**
+1. **Backend Implementation** - Write code to pass tests
+   - Liquibase changesets (schema)
+   - Valueholder entities
+   - DAO implementations
+   - Service implementations
+   - Controller implementations
+   - FHIR transform service
+
+2. **Frontend Implementation** - Write code to pass tests
+   - Storage Location Selector widget
+   - Integration into SamplePatientEntry, LogbookResults
+   - Data fetching hooks
+
+**Phase 4: E2E Tests** - Validate complete workflows
+1. **Cypress E2E Tests** - Test user scenarios end-to-end
+   - Test: `storageAssignment.cy.js` (P1 user story)
+   - Test: `storageSearch.cy.js` (P2A user story)
+   - Test: `storageMovement.cy.js` (P2B user story)
+
+### Test-First Principles
+
+**MANDATORY RULES**:
+- ❌ **DO NOT** write implementation code before tests exist
+- ❌ **DO NOT** skip test creation "to move faster"
+- ✅ **DO** write failing tests first (Red phase)
+- ✅ **DO** write minimal implementation to pass tests (Green phase)
+- ✅ **DO** refactor after tests pass (Refactor phase)
+
+**Benefits for POC**:
+- Clear acceptance criteria (tests define "done")
+- Prevents scope creep (only implement what tests require)
+- Regression protection (catch breaks immediately)
+- Living documentation (tests show how code should be used)
+
+**Verification Gates**:
+- After FHIR tests: All FHIR resources validate against R4 spec
+- After integration tests: All API endpoints return correct responses per OpenAPI spec
+- After unit tests: All business logic validated (assignment rules, capacity warnings, audit trails)
+- After frontend tests: All UI components render correctly and handle user interactions
+- After E2E tests: All user scenarios (P1, P2A, P2B) work end-to-end
 
 ## Complexity Tracking
 
@@ -189,7 +275,7 @@ No NEEDS CLARIFICATION items in Technical Context - all technologies specified p
 
 5. **SWR Data Fetching Pattern**: How does existing OpenELIS frontend use SWR for API calls? (Examine existing hooks in `frontend/src/hooks/`)
 
-6. **Playwright E2E Setup**: What is the OpenELIS Playwright configuration for E2E tests? (Note: User specified Playwright instead of Cypress - verify if OpenELIS already uses Playwright or needs migration)
+6. **Cypress E2E Setup**: What is the OpenELIS Cypress configuration and test structure? (Examine existing cypress.config.js and test files in cypress/e2e/)
 
 ### Research Output Structure
 
@@ -223,23 +309,30 @@ Create `research.md` with sections:
 - **Caching Strategy**: [SWR cache key structure]
 - **Mutation Pattern**: [useSWRMutation for POST/PUT/DELETE]
 
-## 6. Playwright E2E Configuration
-- **Status**: [Check if OpenELIS uses Playwright or needs setup]
-- **Configuration**: [playwright.config.js structure if needed]
-- **Migration**: [If migrating from Cypress, document steps]
+## 6. Cypress E2E Configuration
+- **Status**: [Existing Cypress 12.17.3 framework in OpenELIS]
+- **Configuration**: [cypress.config.js structure and test patterns]
+- **Test Structure**: [Page object pattern from existing tests]
 ```
 
 **Deliverable**: `specs/001-sample-storage/research.md` with all 6 questions answered
 
 ---
 
-## Phase 1: Design & Contracts
+## Phase 1: Design & Contracts (Test Specifications)
 
 **Prerequisites**: research.md complete
 
-### Task 1.1: Generate Data Model
+**Objective**: Create design artifacts that serve as **test specifications**. These documents define WHAT to test BEFORE writing any code.
 
-Create `data-model.md` documenting:
+### Task 1.1: Generate Data Model (Test Specification)
+
+Create `data-model.md` documenting entity schemas, relationships, and validation rules. This document serves as the specification for:
+- **FHIR validation tests**: Verify entity → FHIR Location transformation correctness
+- **Integration tests**: Verify database persistence matches schema
+- **Unit tests**: Verify validation rules enforced
+
+**Content**:
 
 **Entities** (extract from spec.md Key Entities section):
 
@@ -265,10 +358,10 @@ Create `data-model.md` documenting:
    - Calculated: capacity = rows * columns (or 0 if no grid)
 
 5. **StoragePosition**
-   - Fields: id, coordinate (VARCHAR(50)), row_index (INT), column_index (INT), occupied (BOOLEAN DEFAULT false), parent_rack_id (FK), sys_user_id, lastupdated
-   - Constraints: NOT NULL (parent_rack_id), coordinate allows duplicates within same rack (flexible storage)
+   - Fields: id, fhir_uuid (UUID), coordinate (VARCHAR(50)), row_index (INT), column_index (INT), occupied (BOOLEAN DEFAULT false), parent_rack_id (FK), sys_user_id, lastupdated
+   - Constraints: NOT NULL (parent_rack_id), UNIQUE (fhir_uuid), coordinate allows duplicates within same rack (flexible storage)
    - Relationships: Many-to-One with StorageRack, One-to-One with SampleStorageAssignment (current)
-   - Note: fhir_uuid NOT needed (positions don't map to separate FHIR resources - encoded in parent Location)
+   - Note: Maps to FHIR Location resource (child of Rack Location) with occupancy extension
 
 6. **SampleStorageAssignment**
    - Fields: id, sample_id (FK to Sample), storage_position_id (FK), assigned_by_user_id (FK to SystemUser), assigned_date (TIMESTAMP), notes (TEXT)
@@ -294,9 +387,14 @@ Create `data-model.md` documenting:
 - Position: Empty (occupied=false) → Occupied (occupied=true) → Empty (on sample move/disposal)
 - Location hierarchy: Active → Inactive (deactivation requires no active samples or warning)
 
-### Task 1.2: Generate API Contracts
+### Task 1.2: Generate API Contracts (Test Specification)
 
-Create `/contracts/storage-api.json` (OpenAPI 3.0) with endpoints:
+Create `/contracts/storage-api.json` (OpenAPI 3.0) specification. This document serves as the contract for:
+- **Backend integration tests**: Verify REST endpoints match request/response schemas
+- **Frontend component tests**: Mock API responses match contract
+- **E2E tests**: Verify complete request/response flow
+
+**Endpoints**:
 
 **Storage Hierarchy Management**:
 - `GET /rest/storage/rooms` - List all rooms (with optional filters)
@@ -328,14 +426,16 @@ Create `/contracts/storage-api.json` (OpenAPI 3.0) with endpoints:
   - Request: `{ sample_ids: [], target_rack_id, position_assignments: [{sample_id, position_coordinate}] }`
   - Response: `{ movement_ids: [], summary: { total, successful, failed } }`
 
-**Barcode Generation**:
-- `POST /rest/storage/barcodes/generate` - Generate printable barcode labels
-  - Request: `{ location_type: "device"|"shelf"|"rack", location_id }`
-  - Response: `{ barcode_value, label_url (PDF/PNG) }`
+**Barcode Generation**: ⏸️ Deferred to post-POC (not in P1/P2A/P2B core workflows)
 
-### Task 1.3: Generate FHIR Mappings
+### Task 1.3: Generate FHIR Mappings (Test Specification)
 
-Create `/contracts/fhir-mappings.md` documenting:
+Create `/contracts/fhir-mappings.md` documenting FHIR resource structure. This document serves as the specification for:
+- **FHIR validation tests**: Verify transform service outputs match FHIR R4 Location spec
+- **IHE mCSD compliance tests**: Verify hierarchical queries work correctly
+- **Integration tests**: Verify FHIR sync occurs after entity persistence
+
+**Content**:
 
 **FHIR R4 Location Resource Mapping**:
 
@@ -371,23 +471,46 @@ Create `/contracts/fhir-mappings.md` documenting:
 - `Location.partOf.reference` = "Location/{parent_shelf_fhir_uuid}"
 - Custom extension for rows/columns: `extension[grid-dimensions]`
 
-## Position → Not Separate FHIR Resource
-- Positions encoded in Rack's Location.extension[available-positions]
-- Individual position occupancy tracked in OpenELIS database only
+## Position → FHIR Location (with Extensions)
+- Maps to FHIR R4 `Location` resource (child of Rack Location)
+- `Location.id` = StoragePosition.fhir_uuid
+- `Location.name` = position coordinate
+- `Location.identifier.value` = full hierarchical code (e.g., "MAIN-FRZ01-SHA-RKR1-A5")
+- `Location.partOf.reference` = "Location/{parent_rack_fhir_uuid}"
+- `Location.extension[position-occupancy].valueBoolean` = occupied status
+- `Location.extension[position-grid-row].valueInteger` = row index (optional)
+- `Location.extension[position-grid-column].valueInteger` = column index (optional)
 
 ## Sample-to-Location Link
 - `Specimen.container.identifier.value` = full hierarchical path
-- `Specimen.container.extension[storage-location].valueReference` = "Location/{rack_fhir_uuid}"
-- `Specimen.extension[storage-position].valueString` = position coordinate
+- `Specimen.container.extension[storage-position-location].valueReference` = "Location/{position_fhir_uuid}"
+- `Specimen.extension[storage-assigned-date].valueDateTime` = assignment timestamp
 ```
 
 **IHE mCSD Compliance**:
 - All Location resources queryable via `GET /fhir/Location?partOf={parent_id}`
 - Hierarchical queries supported: `GET /fhir/Location?_include=Location:partOf`
+- Position availability queries: `GET /fhir/Location?partOf={rack_fhir_uuid}&extension=position-occupancy|false`
 
-### Task 1.4: Generate Quickstart
+**FHIR Sync Strategy**:
+- Room, Device, Shelf, Rack: Sync immediately on entity create/update (low volume)
+- Position: **Batch sync** - Only sync positions when first assigned to sample (avoid syncing thousands of empty positions)
+- Specimen: Update container extension on sample assignment/movement
 
-Create `quickstart.md` with developer setup:
+**Inline Location Creation**:
+- Uses same REST endpoints (POST /storage/rooms, POST /storage/devices, etc.)
+- Frontend manages state to immediately show newly created location in selector dropdown
+- No special "inline" endpoints needed - standard CRUD operations
+
+**SamplePatientEntry Integration**:
+- **Integration Point**: Below "Collector" field in sample collection section
+- **Widget Placement**: After collector dropdown, before sample collection time
+- **Behavior**: Optional assignment (can be left blank and assigned later)
+- **Component**: Embeds `<StorageLocationSelector mode="assign" optional={true} />`
+
+### Task 1.4: Generate Quickstart (Test-First Development Guide)
+
+Create `quickstart.md` documenting test-first development workflow and environment setup. This guide emphasizes running tests BEFORE writing implementation code.
 
 ```markdown
 # Quickstart: Sample Storage Management POC
@@ -443,8 +566,8 @@ Create `quickstart.md` with developer setup:
    # Unit tests
    npm test -- components/storage
    
-   # E2E tests (Playwright)
-   npx playwright test tests/e2e/storage
+   # E2E tests (Cypress)
+   npm run cy:run -- --spec "cypress/e2e/storage*.cy.js"
    ```
 
 ## FHIR Validation
@@ -517,9 +640,9 @@ This script will:
 - Detect Cursor AI agent context file
 - Add new technology references from this plan:
   - Storage module package structure
-  - FHIR Location resource mapping
+  - FHIR Location resource mapping (all 5 hierarchy levels including positions)
   - Carbon Design System Storage Location Selector widget
-  - Playwright E2E testing configuration (if new to OpenELIS)
+  - Cypress E2E testing patterns (existing OpenELIS framework)
 - Preserve existing OpenELIS patterns and manual additions
 
 **Deliverables**:
@@ -545,10 +668,10 @@ Use `/speckit.tasks` command to generate detailed task breakdown from this plan.
 
 - [x] **Configuration-Driven**: Position coordinates remain free-text, no hardcoded validation
 - [x] **Carbon Design System**: Storage Location Selector uses @carbon/react Dropdown, TextInput, Button components
-- [x] **FHIR/IHE Compliance**: FHIR Location resources validated against R4 spec, IHE mCSD hierarchy supported
+- [x] **FHIR/IHE Compliance**: All 5 hierarchy levels (Room, Device, Shelf, Rack, Position) map to FHIR Location resources, IHE mCSD hierarchy supported
 - [x] **Layered Architecture**: All 5 layers present (Valueholder → DAO → Service → Controller → Form)
-- [x] **Test Coverage**: Unit/integration/E2E test structure defined in quickstart
-- [x] **Schema Management**: Liquibase changesets planned in `liquibase/storage/`
+- [x] **Test Coverage**: Unit/integration/Cypress E2E test structure defined in quickstart
+- [x] **Schema Management**: Liquibase changesets planned in `liquibase/storage/` with fhir_uuid columns
 - [x] **Internationalization**: Message keys documented for en/fr/sw in quickstart
 - [x] **Security & Compliance**: RBAC enforced in controllers, audit fields in all entities
 
@@ -556,5 +679,214 @@ Use `/speckit.tasks` command to generate detailed task breakdown from this plan.
 
 ---
 
-**Status**: Phase 0-1 Ready for Execution  
-**Next Command**: Continue below to execute research and design phases
+---
+
+## Implementation Enhancements
+
+### Helper Methods (Service Layer)
+
+**1. Hierarchical Path Builder**
+```java
+// In StorageLocationService
+public String buildHierarchicalPath(StoragePosition position) {
+    StringBuilder path = new StringBuilder();
+    
+    StorageRack rack = position.getParentRack();
+    StorageShelf shelf = rack.getParentShelf();
+    StorageDevice device = shelf.getParentDevice();
+    StorageRoom room = device.getParentRoom();
+    
+    path.append(room.getName())
+        .append(" > ")
+        .append(device.getName())
+        .append(" > ")
+        .append(shelf.getLabel())
+        .append(" > ")
+        .append(rack.getLabel())
+        .append(" > Position ")
+        .append(position.getCoordinate());
+    
+    return path.toString();
+}
+```
+
+**2. Capacity Calculator with Warnings**
+```java
+// In SampleStorageService
+public CapacityWarning calculateCapacity(StorageRack rack) {
+    int totalCapacity = rack.getRows() * rack.getColumns();
+    if (totalCapacity == 0) return null; // No grid
+    
+    int occupied = positionDAO.countOccupied(rack.getId());
+    int percentage = (occupied * 100) / totalCapacity;
+    
+    String warningMessage = null;
+    if (percentage >= 100) {
+        warningMessage = String.format("Rack %s is %d%% full. Consider using alternative storage.", 
+            rack.getLabel(), percentage);
+    } else if (percentage >= 90) {
+        warningMessage = String.format("Rack %s is %d%% full. Consider using alternative storage.", 
+            rack.getLabel(), percentage);
+    } else if (percentage >= 80) {
+        warningMessage = String.format("Rack %s is %d%% full. Consider using alternative storage.", 
+            rack.getLabel(), percentage);
+    }
+    
+    return new CapacityWarning(occupied, totalCapacity, percentage, warningMessage);
+}
+```
+
+**3. Optimistic Locking Handler**
+```java
+// In SampleStorageService
+@Transactional
+public SampleStorageAssignment assignSample(String sampleId, String positionId, String notes) 
+        throws ConcurrentModificationException {
+    try {
+        StoragePosition position = positionDAO.get(positionId);
+        
+        // Optimistic locking check via Hibernate version field (lastupdated)
+        if (position.isOccupied()) {
+            throw new ValidationException("Position " + position.getCoordinate() + 
+                " is already occupied");
+        }
+        
+        position.setOccupied(true);
+        positionDAO.update(position); // Will throw StaleObjectStateException if concurrent update
+        
+        // Create assignment
+        SampleStorageAssignment assignment = new SampleStorageAssignment();
+        assignment.setSampleId(sampleId);
+        assignment.setStoragePositionId(positionId);
+        assignment.setAssignedByUserId(getCurrentUserId());
+        assignment.setNotes(notes);
+        
+        assignmentDAO.insert(assignment);
+        
+        // Trigger FHIR position sync (batch)
+        fhirBatchService.queuePositionSync(positionId);
+        
+        return assignment;
+        
+    } catch (StaleObjectStateException e) {
+        throw new ConcurrentModificationException(
+            "Position was just modified by another user. Please refresh and try again.");
+    }
+}
+```
+
+### Sequence Diagram: Sample Assignment Workflow
+
+```
+User (Browser)
+    │
+    │ 1. Select location via widget (cascading dropdowns)
+    ├──────────> StorageLocationSelector.jsx
+    │                 │
+    │                 │ 2. GET /rest/storage/rooms
+    │                 ├──────────> StorageLocationRestController
+    │                 │                 │
+    │                 │                 │ 3. getRooms()
+    │                 │                 ├──────────> StorageLocationService
+    │                 │                 │                 │
+    │                 │                 │                 │ 4. Query DB
+    │                 │                 │                 ├──────────> StorageRoomDAO
+    │                 │                 │                 │
+    │                 │                 │                 │ 5. Return rooms
+    │                 │                 │                 <──────────┤
+    │                 │                 │
+    │                 │                 │ 6. Return rooms JSON
+    │                 │                 <──────────┤
+    │                 │
+    │                 │ 7. Populate room dropdown
+    │                 <──────────┤
+    │
+    │ ... (repeat for device, shelf, rack, position selection)
+    │
+    │ 8. Click "Save" with position selected
+    ├──────────> SamplePatientEntry.jsx
+    │                 │
+    │                 │ 9. POST /rest/storage/samples/assign
+    │                 │    { sampleId, positionId, notes }
+    │                 ├──────────> SampleStorageRestController
+    │                 │                 │
+    │                 │                 │ 10. assignSample()
+    │                 │                 ├──────────> SampleStorageService
+    │                 │                 │                 │
+    │                 │                 │                 │ 11. Validate location active
+    │                 │                 │                 │ 12. Check position not occupied
+    │                 │                 │                 │ 13. Calculate capacity warning
+    │                 │                 │                 │
+    │                 │                 │                 │ 14. Set position.occupied = true
+    │                 │                 │                 ├──────────> StoragePositionDAO
+    │                 │                 │                 │                 │
+    │                 │                 │                 │                 │ 15. UPDATE storage_position
+    │                 │                 │                 │                 │    (optimistic lock check)
+    │                 │                 │                 │                 <──────────┤
+    │                 │                 │                 │
+    │                 │                 │                 │ 16. Create assignment record
+    │                 │                 │                 ├──────────> SampleStorageAssignmentDAO
+    │                 │                 │                 │                 │
+    │                 │                 │                 │                 │ 17. INSERT assignment
+    │                 │                 │                 │                 <──────────┤
+    │                 │                 │                 │
+    │                 │                 │                 │ 18. Create movement audit
+    │                 │                 │                 ├──────────> SampleStorageMovementDAO
+    │                 │                 │                 │                 │
+    │                 │                 │                 │                 │ 19. INSERT movement
+    │                 │                 │                 │                 <──────────┤
+    │                 │                 │                 │
+    │                 │                 │                 │ 20. Queue FHIR batch sync
+    │                 │                 │                 ├──────────> FhirBatchService
+    │                 │                 │                 │                 │
+    │                 │                 │                 │                 │ 21. Add position to sync queue
+    │                 │                 │                 │                 <──────────┤
+    │                 │                 │                 │
+    │                 │                 │                 │ 22. Build hierarchical path
+    │                 │                 │                 ├──────────> buildHierarchicalPath()
+    │                 │                 │                 │
+    │                 │                 │                 │ 23. Return assignment
+    │                 │                 │                 <──────────┤
+    │                 │                 │
+    │                 │                 │ 24. Return assignment JSON
+    │                 │                 <──────────┤
+    │                 │
+    │                 │ 25. Show success notification
+    │                 <──────────┤
+    │
+    │ 26. Display location in UI
+    <──────────┤
+
+Background (async):
+FhirBatchService
+    │
+    │ 27. Batch sync positions (every 5 minutes or 100 positions)
+    ├──────────> StorageLocationFhirTransform
+    │                 │
+    │                 │ 28. Transform position to FHIR Location
+    │                 │
+    │                 │ 29. POST Location to FHIR server
+    │                 ├──────────> FhirPersistanceService
+    │                 │                 │
+    │                 │                 │ 30. Create/Update FHIR Location
+    │                 │                 └──────────> HAPI FHIR Server
+    │
+    │ 31. Update Specimen.container reference
+    └──────────> Update Specimen resource with position Location reference
+```
+
+### Sample Entity Integration
+
+**Existing Sample Entity**: `org.openelisglobal.sample.valueholder.Sample`
+- **No modifications required** - Sample entity remains unchanged
+- **Integration via junction table**: SampleStorageAssignment links Sample to StoragePosition
+- **Foreign key**: `SampleStorageAssignment.sample_id` → `Sample.id`
+- **Query pattern**: `JOIN sample_storage_assignment ON sample.id = sample_storage_assignment.sample_id`
+
+**Benefits**:
+- ✅ No impact on existing Sample entity code
+- ✅ Backward compatible (samples without location continue to work)
+- ✅ Easy to query samples by location (JOIN on assignment table)
+- ✅ Easy to query location for a sample (JOIN on assignment table)
+
+### Task 1.4: Generate Quickstart (Test-First Development Guide)

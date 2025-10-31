@@ -355,11 +355,105 @@ This document specifies how OpenELIS sample storage entities map to FHIR R4 Loca
 
 ---
 
-## 5. StoragePosition → NOT Mapped to FHIR
+## 5. StoragePosition → FHIR Location
 
-**Rationale**: Individual storage positions are too granular for external FHIR interoperability. Positions are tracked in OpenELIS database only and referenced via Specimen.container extension.
+**Physical Type**: `co` (container)
 
-**Alternative**: Position information encoded in Specimen resource via extensions.
+**Rationale**: Positions mapped to FHIR Location resources for complete storage hierarchy in FHIR server. Enables full interoperability and external query capabilities.
+
+```json
+{
+  "resourceType": "Location",
+  "id": "{fhir_uuid}",
+  "identifier": [{
+    "system": "http://openelis.org/storage-location-code",
+    "value": "{room_code}-{device_code}-{shelf_label}-{rack_label}-{coordinate}"
+  }],
+  "status": "active" | "inactive",
+  "name": "{coordinate}",
+  "mode": "instance",
+  "physicalType": {
+    "coding": [{
+      "system": "http://terminology.hl7.org/CodeSystem/location-physical-type",
+      "code": "co",
+      "display": "Container"
+    }],
+    "text": "Storage Position"
+  },
+  "partOf": {
+    "reference": "Location/{parent_rack_fhir_uuid}",
+    "display": "{parent_rack_label}"
+  },
+  "extension": [{
+    "url": "http://openelis.org/fhir/extension/position-occupancy",
+    "valueBoolean": true
+  }, {
+    "url": "http://openelis.org/fhir/extension/position-grid-row",
+    "valueInteger": 1
+  }, {
+    "url": "http://openelis.org/fhir/extension/position-grid-column",
+    "valueInteger": 5
+  }],
+  "meta": {
+    "profile": ["http://ihe.net/fhir/StructureDefinition/IHE.mCSD.Location"],
+    "tag": [{
+      "system": "http://openelis.org/fhir/tag/storage-hierarchy",
+      "code": "position"
+    }]
+  }
+}
+```
+
+**Mapping Table**:
+
+| OpenELIS Field | FHIR R4 Location Field | Notes |
+|----------------|------------------------|-------|
+| `fhir_uuid` | `Location.id` | Primary FHIR resource identifier |
+| Full hierarchical code | `Location.identifier[0].value` | Complete path code (e.g., "MAIN-FRZ01-SHA-RKR1-A5") |
+| `coordinate` | `Location.name` | Position coordinate (free-text) |
+| `active` | `Location.status` | Always "active" (positions don't have active/inactive state separately) |
+| `parent_rack.fhir_uuid` | `Location.partOf.reference` | Reference to parent Rack Location |
+| `occupied` | `Location.extension[position-occupancy]` | Boolean occupancy status |
+| `row_index` | `Location.extension[position-grid-row]` | Optional row number for grid visualization |
+| `column_index` | `Location.extension[position-grid-column]` | Optional column number for grid visualization |
+
+**Example**:
+
+```json
+{
+  "resourceType": "Location",
+  "id": "e5f6a7b8-c9d0-1234-efgh-i34567890124",
+  "identifier": [{
+    "system": "http://openelis.org/storage-location-code",
+    "value": "MAIN-FRZ01-SHA-RKR1-A5"
+  }],
+  "status": "active",
+  "name": "A5",
+  "mode": "instance",
+  "physicalType": {
+    "coding": [{
+      "system": "http://terminology.hl7.org/CodeSystem/location-physical-type",
+      "code": "co",
+      "display": "Container"
+    }],
+    "text": "Storage Position"
+  },
+  "partOf": {
+    "reference": "Location/d4e5f6a7-b8c9-0123-defg-h23456789012",
+    "display": "Rack R1"
+  },
+  "extension": [{
+    "url": "http://openelis.org/fhir/extension/position-occupancy",
+    "valueBoolean": true
+  }, {
+    "url": "http://openelis.org/fhir/extension/position-grid-row",
+    "valueInteger": 1
+  }, {
+    "url": "http://openelis.org/fhir/extension/position-grid-column",
+    "valueInteger": 5
+  }]
+}
+```
 
 ---
 
@@ -382,14 +476,11 @@ This document specifies how OpenELIS sample storage entities map to FHIR R4 Loca
       "value": "{hierarchical_location_path}"
     },
     "extension": [{
-      "url": "http://openelis.org/fhir/extension/storage-rack-location",
+      "url": "http://openelis.org/fhir/extension/storage-position-location",
       "valueReference": {
-        "reference": "Location/{rack_fhir_uuid}",
-        "display": "{hierarchical_path_to_rack}"
+        "reference": "Location/{position_fhir_uuid}",
+        "display": "{hierarchical_path_to_position}"
       }
-    }, {
-      "url": "http://openelis.org/fhir/extension/storage-position-coordinate",
-      "valueString": "{position_coordinate}"
     }, {
       "url": "http://openelis.org/fhir/extension/storage-assigned-by",
       "valueReference": {
@@ -411,8 +502,7 @@ This document specifies how OpenELIS sample storage entities map to FHIR R4 Loca
 | `sample.fhir_uuid` | `Specimen.id` | Sample FHIR identifier |
 | `sample.accession_number` | `Specimen.identifier[0].value` | Accession number |
 | Full hierarchical path | `Specimen.container.identifier.value` | "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5" |
-| `storage_position.parent_rack.fhir_uuid` | `Specimen.container.extension[storage-rack-location]` | Reference to Rack Location resource |
-| `storage_position.coordinate` | `Specimen.container.extension[storage-position-coordinate]` | Free-text position coordinate (e.g., "A5") |
+| `storage_position.fhir_uuid` | `Specimen.container.extension[storage-position-location]` | Reference to Position Location resource |
 | `assigned_by_user.fhir_uuid` | `Specimen.container.extension[storage-assigned-by]` | User who assigned |
 | `assigned_date` | `Specimen.container.extension[storage-assigned-date]` | Assignment timestamp |
 
@@ -439,14 +529,11 @@ This document specifies how OpenELIS sample storage entities map to FHIR R4 Loca
       "value": "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5"
     },
     "extension": [{
-      "url": "http://openelis.org/fhir/extension/storage-rack-location",
+      "url": "http://openelis.org/fhir/extension/storage-position-location",
       "valueReference": {
-        "reference": "Location/d4e5f6a7-b8c9-0123-defg-h23456789012",
-        "display": "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1"
+        "reference": "Location/e5f6a7b8-c9d0-1234-efgh-i34567890124",
+        "display": "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5"
       }
-    }, {
-      "url": "http://openelis.org/fhir/extension/storage-position-coordinate",
-      "valueString": "A5"
     }, {
       "url": "http://openelis.org/fhir/extension/storage-assigned-date",
       "valueDateTime": "2025-01-15T14:32:00Z"
@@ -480,33 +567,82 @@ This document specifies how OpenELIS sample storage entities map to FHIR R4 Loca
    GET /fhir/Location?partOf=Location/{room_fhir_uuid}
    ```
 
-3. **Get full hierarchy for a location**:
+3. **Get positions in a rack**:
+   ```
+   GET /fhir/Location?partOf=Location/{rack_fhir_uuid}&_tag=http://openelis.org/fhir/tag/storage-hierarchy|position
+   ```
+
+4. **Get full hierarchy for a location**:
    ```
    GET /fhir/Location/{location_id}?_include=Location:partOf&_revinclude=Location:partOf
    ```
 
-4. **Search by hierarchical code**:
+5. **Search by hierarchical code**:
    ```
-   GET /fhir/Location?identifier=http://openelis.org/storage-location-code|MAIN-FRZ01-SHA-RKR1
+   GET /fhir/Location?identifier=http://openelis.org/storage-location-code|MAIN-FRZ01-SHA-RKR1-A5
+   ```
+
+6. **Get available (unoccupied) positions in a rack**:
+   ```
+   GET /fhir/Location?partOf=Location/{rack_fhir_uuid}&extension=http://openelis.org/fhir/extension/position-occupancy|false
    ```
 
 ---
 
 ## 8. Sync Strategy
 
-**Trigger**: On entity insert/update in OpenELIS database (via JPA lifecycle hooks)
-
 **Service**: `StorageLocationFhirTransform` (implements `FhirTransformService` interface)
-
-**Process**:
-1. OpenELIS entity created/updated → `@PostPersist` / `@PostUpdate` hook triggered
-2. `StorageLocationFhirTransform.transformToFhir(entity)` called
-3. FHIR Location resource created/updated
-4. `FhirPersistanceService.save(location)` → sync to FHIR server
 
 **FHIR Server**: https://fhir.openelis.org:8443/fhir/
 
-**Note**: Positions NOT synced to FHIR. Only Room, Device, Shelf, Rack entities.
+### Immediate Sync (Room, Device, Shelf, Rack)
+
+**Trigger**: On entity insert/update in OpenELIS database (via JPA lifecycle hooks)
+
+**Process**:
+1. Entity created/updated → `@PostPersist` / `@PostUpdate` hook triggered
+2. `StorageLocationFhirTransform.transformToFhir(entity)` called
+3. FHIR Location resource created/updated
+4. `FhirPersistanceService.save(location)` → sync to FHIR server immediately
+
+**Rationale**: Low volume entities (typically <1000 total), immediate sync provides real-time FHIR availability
+
+### Batch Sync (Position)
+
+**Trigger**: On sample assignment to position (not on position creation)
+
+**Process**:
+1. Sample assigned to position → `SampleStorageService.assignSample()` called
+2. Service queues position for FHIR sync: `FhirBatchService.queuePositionSync(positionId)`
+3. Background job runs periodically (every 5 minutes OR 100 positions queued)
+4. Batch transforms queued positions → FHIR Location resources
+5. Batch POST to FHIR server (Bundle transaction)
+
+**Rationale**: High volume entities (potentially 10,000+ positions), most never occupied. Only sync positions when first used to avoid unnecessary FHIR server load.
+
+**Position Sync Triggers**:
+- ✅ First assignment to position → Queue for sync
+- ✅ Position occupancy change (occupied ↔ empty) → Update existing FHIR Location
+- ❌ Empty position creation → NO sync (wait for assignment)
+
+**Batch Sync Configuration** (suggested):
+```properties
+# common.properties
+org.openelisglobal.storage.fhir.batch.interval=300000  # 5 minutes in ms
+org.openelisglobal.storage.fhir.batch.size=100          # Max positions per batch
+```
+
+### Specimen Container Sync
+
+**Trigger**: On sample assignment or movement
+
+**Process**:
+1. Assignment/movement complete → Update existing Specimen resource
+2. Set `Specimen.container.extension[storage-position-location]` to position FHIR UUID
+3. Set `Specimen.container.identifier.value` to hierarchical path string
+4. `FhirPersistanceService.update(specimen)` → sync to FHIR server
+
+**Note**: Specimen sync is immediate (existing OpenELIS pattern for sample updates)
 
 ---
 
@@ -518,7 +654,7 @@ This document specifies how OpenELIS sample storage entities map to FHIR R4 Loca
 | StorageDevice | Location | ve (vehicle/equipment) | ✅ Yes |
 | StorageShelf | Location | co (container) | ✅ Yes |
 | StorageRack | Location | co (container) | ✅ Yes |
-| StoragePosition | N/A | N/A | ❌ No (database only) |
+| StoragePosition | Location | co (container) | ✅ Yes (with occupancy extension) |
 | SampleStorageAssignment | Specimen.container extension | N/A | ✅ Yes (via Specimen update) |
 
 **Extension URLs**:
@@ -526,8 +662,10 @@ This document specifies how OpenELIS sample storage entities map to FHIR R4 Loca
 - `http://openelis.org/fhir/extension/storage-capacity` - Location capacity limit
 - `http://openelis.org/fhir/extension/rack-grid-dimensions` - Rack grid dimensions
 - `http://openelis.org/fhir/extension/rack-position-schema-hint` - Position naming hint
-- `http://openelis.org/fhir/extension/storage-rack-location` - Specimen rack reference
-- `http://openelis.org/fhir/extension/storage-position-coordinate` - Specimen position coordinate
+- `http://openelis.org/fhir/extension/position-occupancy` - Position occupancy status (boolean)
+- `http://openelis.org/fhir/extension/position-grid-row` - Position row index (integer)
+- `http://openelis.org/fhir/extension/position-grid-column` - Position column index (integer)
+- `http://openelis.org/fhir/extension/storage-position-location` - Specimen position Location reference
 - `http://openelis.org/fhir/extension/storage-assigned-by` - User who assigned sample
 - `http://openelis.org/fhir/extension/storage-assigned-date` - Assignment timestamp
 
