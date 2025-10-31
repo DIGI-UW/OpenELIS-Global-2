@@ -98,17 +98,16 @@ const PatientHeader = (props) => {
                         </Tag>
                       )}
                       {orderDate && (
-                        <>
-                          <Tag size="lg" type="blue" style={tagStyle}>
-                            <FormattedMessage id="sample.label.orderdate" /> :{" "}
-                            <strong>{orderDate}</strong>
-                          </Tag>
-
-                          <Tag size="lg" type="blue" style={tagStyle}>
-                            <FormattedMessage id="sample.label.requester" />:{" "}
-                            <strong>{requester}</strong>
-                          </Tag>
-                        </>
+                        <Tag size="lg" type="blue" style={tagStyle}>
+                          <FormattedMessage id="sample.label.orderdate" /> :{" "}
+                          <strong>{orderDate}</strong>
+                        </Tag>
+                      )}
+                      {requester && (
+                        <Tag size="lg" type="blue" style={tagStyle}>
+                          <FormattedMessage id="sample.label.requester" />:{" "}
+                          <strong>{requester}</strong>
+                        </Tag>
                       )}
                       {referringFacility && (
                         <>

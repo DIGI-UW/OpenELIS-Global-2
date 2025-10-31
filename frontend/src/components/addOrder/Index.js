@@ -487,6 +487,8 @@ const Index = () => {
       sampleXML: {
         collectionDate: "",
         collector: "",
+        quantity: "",
+        uom: "",
         rejected: false,
         rejectionReason: "",
         collectionTime: "",
@@ -664,7 +666,7 @@ const Index = () => {
                 })
                 .join(",");
             }
-            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds=''/>`;
+            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' quantity='${sampleItem.sampleXML.quantity}' uom='${sampleItem.sampleXML.uom}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds=''/>`;
           }
           if (sampleItem.referralItems.length > 0) {
             const referredInstitutes = Object.keys(sampleItem.referralItems)
