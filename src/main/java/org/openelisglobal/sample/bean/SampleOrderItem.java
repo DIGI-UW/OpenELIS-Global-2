@@ -256,8 +256,11 @@ public class SampleOrderItem implements Serializable {
     public String getOrderType() {
         return orderType;
     }
-    public String getProvisionalClinicalDiagnosis() { return provisionalClinicalDiagnosis; }
-    
+
+    public String getProvisionalClinicalDiagnosis() {
+        return provisionalClinicalDiagnosis;
+    }
+
     public void setProvisionalClinicalDiagnosis(String provisionalClinicalDiagnosis) {
         this.provisionalClinicalDiagnosis = provisionalClinicalDiagnosis;
     }
