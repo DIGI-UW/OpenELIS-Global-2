@@ -8,6 +8,7 @@ import {
   SelectItem,
   Tag,
   Tile,
+  TextInput,
   Loading,
 } from "@carbon/react";
 import CustomCheckBox from "../common/CustomCheckBox";
@@ -57,6 +58,7 @@ const SampleType = (props) => {
   const [selectedPanels, setSelectedPanels] = useState([]);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
   const [searchBoxPanels, setSearchBoxPanels] = useState([]);
+  const [uomList, setUomList] = useState([]);
   const [sampleXml, setSampleXml] = useState(
     sample?.sampleXML != null
       ? sample.sampleXML
@@ -66,6 +68,8 @@ const SampleType = (props) => {
               ? configurationProperties.currentDateAsText
               : "",
           collector: "",
+          quantity: "",
+          uom: "",
           rejected: false,
           rejectionReason: "",
           collectionTime:
@@ -107,6 +111,20 @@ const SampleType = (props) => {
     setSampleXml({
       ...sampleXml,
       collector: value,
+    });
+  }
+
+  function handleQuantity(value) {
+    setSampleXml({
+      ...sampleXml,
+      quantity: value.target.value,
+    });
+  }
+
+  function handleUom(value) {
+    setSampleXml({
+      ...sampleXml,
+      uom: value,
     });
   }
 
@@ -397,6 +415,16 @@ const SampleType = (props) => {
   }, [selectedSampleType.id]);
 
   useEffect(() => {
+    getFromOpenElisServer(`/rest/UomCreate`, fetchUomCreate);
+  }, []);
+
+  const fetchUomCreate = (res) => {
+    if (componentMounted.current) {
+      setUomList(res.existingUomList || []);
+    }
+  };
+
+  useEffect(() => {
     props.sampleTypeObject({
       sampleRejected: rejectionReasonsDisabled,
       sampleObjectIndex: index,
@@ -485,7 +513,31 @@ const SampleType = (props) => {
             onChange={(e) => handleReasons(e)}
           />
         )}
+        <div className="inlineDiv" style={{ display: "flex", gap: "1rem" }}>
+          <TextInput
+            value={sampleXml.quantity}
+            name="quantity"
+            labelText={intl.formatMessage({
+              id: "sample.quantity.label",
+            })}
+            id="quantity"
+            type="number"
+            min="0"
+            onChange={(value) => handleQuantity(value)}
+            placeholder={intl.formatMessage({
+              id: "sample.quantity.label",
+            })}
+          />
 
+          <CustomSelect
+            id={"uomId_" + index}
+            labelText={intl.formatMessage({ id: "sample.uom.label" })}
+            options={uomList}
+            disabled={false}
+            value={sampleXml.uom}
+            onChange={(value) => handleUom(value)}
+          />
+        </div>
         <div className="inlineDiv">
           <CustomDatePicker
             id={"collectionDate_" + index}
