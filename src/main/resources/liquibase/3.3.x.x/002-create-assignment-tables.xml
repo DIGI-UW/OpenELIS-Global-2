@@ -93,12 +93,16 @@
             </column>
             <column name="reason" type="TEXT"/>
         </createTable>
-        <addCheckConstraint tableName="sample_storage_movement" 
-            constraintName="chk_movement_has_position" 
-            checkCondition="previous_position_id IS NOT NULL OR new_position_id IS NOT NULL"/>
         <rollback>
             <dropTable tableName="sample_storage_movement"/>
         </rollback>
+    </changeSet>
+
+    <!-- Sample Storage Movement Constraints -->
+    <changeSet id="storage-013a-add-movement-constraints" author="sample-storage-feature">
+        <addCheckConstraint tableName="sample_storage_movement" 
+            constraintName="chk_movement_has_position" 
+            checkCondition="previous_position_id IS NOT NULL OR new_position_id IS NOT NULL"/>
     </changeSet>
 
     <!-- Sample Storage Movement Sequence -->

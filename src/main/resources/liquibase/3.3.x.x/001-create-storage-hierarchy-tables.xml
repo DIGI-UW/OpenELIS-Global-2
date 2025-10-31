@@ -95,15 +95,19 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
+        <rollback>
+            <dropTable tableName="storage_device"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Storage Device Constraints -->
+    <changeSet id="storage-003a-add-device-constraints" author="sample-storage-feature">
         <addUniqueConstraint tableName="storage_device" 
             columnNames="parent_room_id, code" 
             constraintName="uk_device_code_in_room"/>
         <addCheckConstraint tableName="storage_device" 
             constraintName="chk_device_type" 
             checkCondition="type IN ('freezer', 'refrigerator', 'cabinet', 'other')"/>
-        <rollback>
-            <dropTable tableName="storage_device"/>
-        </rollback>
     </changeSet>
 
     <!-- Storage Device Sequence -->
@@ -153,12 +157,16 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <addUniqueConstraint tableName="storage_shelf" 
-            columnNames="parent_device_id, label" 
-            constraintName="uk_shelf_label_in_device"/>
         <rollback>
             <dropTable tableName="storage_shelf"/>
         </rollback>
+    </changeSet>
+
+    <!-- Storage Shelf Constraints -->
+    <changeSet id="storage-005a-add-shelf-constraints" author="sample-storage-feature">
+        <addUniqueConstraint tableName="storage_shelf" 
+            columnNames="parent_device_id, label" 
+            constraintName="uk_shelf_label_in_device"/>
     </changeSet>
 
     <!-- Storage Shelf Sequence -->
@@ -214,15 +222,19 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
+        <rollback>
+            <dropTable tableName="storage_rack"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Storage Rack Constraints -->
+    <changeSet id="storage-007a-add-rack-constraints" author="sample-storage-feature">
         <addUniqueConstraint tableName="storage_rack" 
             columnNames="parent_shelf_id, label" 
             constraintName="uk_rack_label_in_shelf"/>
         <addCheckConstraint tableName="storage_rack" 
             constraintName="chk_rack_dimensions" 
             checkCondition="rows >= 0 AND columns >= 0"/>
-        <rollback>
-            <dropTable tableName="storage_rack"/>
-        </rollback>
     </changeSet>
 
     <!-- Storage Rack Sequence -->

@@ -41,7 +41,7 @@ services:
         build:
             context: .
             dockerfile: Dockerfile.dev
-        image: itechuw/openelis-global-2-dev:develop 
+        # image: itechuw/openelis-global-2-dev:develop  # Using local build instead
         platform: linux/amd64
         depends_on:
             - database
