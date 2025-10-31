@@ -39,8 +39,8 @@ public class StorageLocationFhirTransformTest {
         testDevice.setFhirUuid(UUID.randomUUID());
         testDevice.setCode("FRZ01");
         testDevice.setName("Freezer Unit 1");
-        testDevice.setType("freezer");
-        testDevice.setTemperatureSetting(new BigDecimal("-80.0"));
+        testDevice.setType(StorageDevice.DeviceType.FREEZER);
+        testDevice.setTemperatureSetting(-80.0);
         testDevice.setActive(true);
         testDevice.setParentRoom(testRoom);
 

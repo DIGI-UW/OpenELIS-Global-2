@@ -1,45 +1,23 @@
 package org.openelisglobal.storage.valueholder;
 
 import java.sql.Timestamp;
-import jakarta.persistence.*;
+import jakarta.persistence.PrePersist;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.sample.valueholder.Sample;
-import org.hibernate.annotations.GenericGenerator;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 
-@Entity
-@Table(name = "sample_storage_assignment")
+/**
+ * SampleStorageAssignment entity - Current storage location for a sample
+ * Represents one-to-one relationship: one sample, one current location
+ */
 public class SampleStorageAssignment extends BaseObject<String> {
 
-    @Id
-    @GeneratedValue(generator = "sample_storage_assignment_generator")
-    @GenericGenerator(name = "sample_storage_assignment_generator", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", 
-        parameters = @org.hibernate.annotations.Parameter(name = "sequence_name", value = "sample_storage_assignment_seq"))
-    @Column(name = "id")
     private String id;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "sample_id", nullable = false, unique = true)
     private Sample sample;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "storage_position_id", nullable = false)
     private StoragePosition storagePosition;
-
-    @Column(name = "assigned_by_user_id", nullable = false)
-    private String assignedByUserId;
-
-    @Column(name = "assigned_date", nullable = false)
+    private SystemUser assignedByUser;
     private Timestamp assignedDate;
-
-    @Column(name = "notes")
     private String notes;
-
-    @PrePersist
-    protected void onCreate() {
-        if (assignedDate == null) {
-            assignedDate = new Timestamp(System.currentTimeMillis());
-        }
-    }
 
     @Override
     public String getId() {
@@ -59,10 +37,6 @@ public class SampleStorageAssignment extends BaseObject<String> {
         this.sample = sample;
     }
 
-    public String getSampleId() {
-        return sample != null ? sample.getId() : null;
-    }
-
     public StoragePosition getStoragePosition() {
         return storagePosition;
     }
@@ -71,16 +45,12 @@ public class SampleStorageAssignment extends BaseObject<String> {
         this.storagePosition = storagePosition;
     }
 
-    public String getStoragePositionId() {
-        return storagePosition != null ? storagePosition.getId() : null;
+    public SystemUser getAssignedByUser() {
+        return assignedByUser;
     }
 
-    public String getAssignedByUserId() {
-        return assignedByUserId;
-    }
-
-    public void setAssignedByUserId(String assignedByUserId) {
-        this.assignedByUserId = assignedByUserId;
+    public void setAssignedByUser(SystemUser assignedByUser) {
+        this.assignedByUser = assignedByUser;
     }
 
     public Timestamp getAssignedDate() {
@@ -98,5 +68,11 @@ public class SampleStorageAssignment extends BaseObject<String> {
     public void setNotes(String notes) {
         this.notes = notes;
     }
-}
 
+    @PrePersist
+    protected void onCreate() {
+        if (assignedDate == null) {
+            assignedDate = new Timestamp(System.currentTimeMillis());
+        }
+    }
+}

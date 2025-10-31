@@ -74,63 +74,63 @@
 
 ### Tests First - Storage Location CRUD (Write BEFORE implementation)
 
-- [ ] T027 [P] [US1] Write integration test `src/test/java/org/openelisglobal/storage/controller/StorageLocationRestControllerTest.java` for room CRUD: testCreateRoom_ValidInput_Returns201, testGetRooms_ReturnsAllRooms, testGetRoomById_ValidId_ReturnsRoom, testDeleteRoom_WithChildren_Returns409
-- [ ] T028 [P] [US1] Write integration test methods for device CRUD in StorageLocationRestControllerTest: testCreateDevice_ValidInput_Returns201, testGetDevices_FilterByRoomId_ReturnsFiltered, testCreateDevice_DuplicateCode_Returns400
-- [ ] T029 [P] [US1] Write integration test methods for shelf, rack, position CRUD in StorageLocationRestControllerTest following same pattern
-- [ ] T030 [P] [US1] Write unit test `src/test/java/org/openelisglobal/storage/service/StorageLocationServiceImplTest.java` for validation: testCreateDevice_DuplicateCodeInSameRoom_ThrowsException, testDeleteRoom_WithActiveDevices_ThrowsException, testDeactivateDevice_WithActiveSamples_ShowsWarning
+- [x] T027 [P] [US1] Write integration test `src/test/java/org/openelisglobal/storage/controller/StorageLocationRestControllerTest.java` for room CRUD: testCreateRoom_ValidInput_Returns201, testGetRooms_ReturnsAllRooms, testGetRoomById_ValidId_ReturnsRoom, testDeleteRoom_WithChildren_Returns409
+- [x] T028 [P] [US1] Write integration test methods for device CRUD in StorageLocationRestControllerTest: testCreateDevice_ValidInput_Returns201, testGetDevices_FilterByRoomId_ReturnsFiltered, testCreateDevice_DuplicateCode_Returns400
+- [x] T029 [P] [US1] Write integration test methods for shelf, rack, position CRUD in StorageLocationRestControllerTest following same pattern
+- [x] T030 [P] [US1] Write unit test `src/test/java/org/openelisglobal/storage/service/StorageLocationServiceImplTest.java` for validation: testCreateDevice_DuplicateCodeInSameRoom_ThrowsException, testDeleteRoom_WithActiveDevices_ThrowsException, testDeactivateDevice_WithActiveSamples_ShowsWarning
 - [ ] T031 Run storage hierarchy tests → Verify all FAIL: `mvn test -Dtest="StorageLocation*Test"`
 
 ### Implementation - Storage Location Hierarchy
 
-- [ ] T032 [P] [US1] Create StorageRoomDAO interface and implementation in `src/main/java/org/openelisglobal/storage/dao/` extending BaseDAOImpl
-- [ ] T033 [P] [US1] Create StorageDeviceDAO interface and implementation extending BaseDAOImpl, add custom query: findByParentRoomId()
-- [ ] T034 [P] [US1] Create StorageShelfDAO interface and implementation, add custom query: findByParentDeviceId()
-- [ ] T035 [P] [US1] Create StorageRackDAO interface and implementation, add custom query: findByParentShelfId()
-- [ ] T036 [P] [US1] Create StoragePositionDAO interface and implementation, add custom queries: findByParentRackId(), countOccupied(rackId)
-- [ ] T037 [US1] Implement StorageLocationService interface and implementation `src/main/java/org/openelisglobal/storage/service/StorageLocationService.java` with CRUD methods for all hierarchy levels, add helper method buildHierarchicalPath(StoragePosition)
-- [ ] T038 [US1] Create Form objects in `src/main/java/org/openelisglobal/storage/form/`: StorageRoomForm, StorageDeviceForm, StorageShelfForm, StorageRackForm, StoragePositionForm with validation annotations
-- [ ] T039 [US1] Implement StorageLocationRestController `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java` extending BaseRestController with endpoints for room/device/shelf/rack/position CRUD per storage-api.json
+- [x] T032 [P] [US1] Create StorageRoomDAO interface and implementation in `src/main/java/org/openelisglobal/storage/dao/` extending BaseDAOImpl
+- [x] T033 [P] [US1] Create StorageDeviceDAO interface and implementation extending BaseDAOImpl, add custom query: findByParentRoomId()
+- [x] T034 [P] [US1] Create StorageShelfDAO interface and implementation, add custom query: findByParentDeviceId()
+- [x] T035 [P] [US1] Create StorageRackDAO interface and implementation, add custom query: findByParentShelfId()
+- [x] T036 [P] [US1] Create StoragePositionDAO interface and implementation, add custom queries: findByParentRackId(), countOccupied(rackId)
+- [x] T037 [US1] Implement StorageLocationService interface and implementation `src/main/java/org/openelisglobal/storage/service/StorageLocationService.java` with CRUD methods for all hierarchy levels, add helper method buildHierarchicalPath(StoragePosition)
+- [x] T038 [US1] Create Form objects in `src/main/java/org/openelisglobal/storage/form/`: StorageRoomForm, StorageDeviceForm, StorageShelfForm, StorageRackForm, StoragePositionForm with validation annotations
+- [x] T039 [US1] Implement StorageLocationRestController `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java` extending BaseRestController with endpoints for room/device/shelf/rack/position CRUD per storage-api.json
 - [ ] T040 [US1] Add @PostPersist and @PostUpdate hooks to ALL storage entities (Room, Device, Shelf, Rack, Position) to trigger immediate FHIR sync via StorageLocationFhirTransform (follow existing OpenELIS pattern from Patient/Specimen entities)
 - [ ] T041 Run storage hierarchy tests → Verify all PASS: `mvn test -Dtest="StorageLocation*Test"`
 
 ### Tests First - Sample Assignment (Write BEFORE implementation)
 
-- [ ] T042 [P] [US1] Write integration test `src/test/java/org/openelisglobal/storage/controller/SampleStorageRestControllerTest.java` for assignment: testAssignSample_ValidInput_Returns201, testAssignSample_OccupiedPosition_Returns400, testAssignSample_InactiveLocation_Returns400
-- [ ] T043 [P] [US1] Write unit test `src/test/java/org/openelisglobal/storage/service/SampleStorageServiceImplTest.java` for business logic: testAssignSample_ValidPosition_SetsOccupied, testAssignSample_CreatesAuditLog, testAssignSample_CalculatesCapacityWarnings, testAssignSample_ConcurrentAccess_ThrowsException, testAssignSample_TriggersPositionFhirSync (verify @PostUpdate hook fires)
-- [ ] T044 Run assignment tests → Verify all FAIL: `mvn test -Dtest="SampleStorage*Test"`
+- [x] T042 [P] [US1] Write integration test `src/test/java/org/openelisglobal/storage/controller/SampleStorageRestControllerTest.java` for assignment: testAssignSample_ValidInput_Returns201, testAssignSample_OccupiedPosition_Returns400, testAssignSample_InactiveLocation_Returns400
+- [x] T043 [P] [US1] Write unit test `src/test/java/org/openelisglobal/storage/service/SampleStorageServiceImplTest.java` for business logic: testAssignSample_ValidPosition_SetsOccupied, testAssignSample_CreatesAuditLog, testAssignSample_CalculatesCapacityWarnings, testAssignSample_ConcurrentAccess_ThrowsException, testAssignSample_TriggersPositionFhirSync (verify @PostUpdate hook fires)
+- [x] T044 Run assignment tests → Verify all FAIL: `mvn test -Dtest="SampleStorage*Test"`
 
 ### Implementation - Sample Assignment Backend
 
-- [ ] T045 [P] [US1] Create SampleStorageAssignmentDAO interface and implementation, add query: findBySampleId()
-- [ ] T046 [P] [US1] Create SampleStorageMovementDAO interface and implementation (insert-only for audit log)
-- [ ] T047 [US1] Implement SampleStorageService interface and implementation `src/main/java/org/openelisglobal/storage/service/SampleStorageService.java` with methods: assignSample(), calculateCapacity() (with 80/90/100% warnings), validateLocationActive(), handleOptimisticLocking() per plan.md enhancements
-- [ ] T048 [US1] Create SampleAssignmentForm `src/main/java/org/openelisglobal/storage/form/SampleAssignmentForm.java` with fields: sampleId, positionId, notes
-- [ ] T049 [US1] Implement SampleStorageRestController `src/main/java/org/openelisglobal/storage/controller/SampleStorageRestController.java` with POST /rest/storage/samples/assign endpoint
+- [x] T045 [P] [US1] Create SampleStorageAssignmentDAO interface and implementation, add query: findBySampleId()
+- [x] T046 [P] [US1] Create SampleStorageMovementDAO interface and implementation (insert-only for audit log)
+- [x] T047 [US1] Implement SampleStorageService interface and implementation `src/main/java/org/openelisglobal/storage/service/SampleStorageService.java` with methods: assignSample(), calculateCapacity() (with 80/90/100% warnings), validateLocationActive(), handleOptimisticLocking() per plan.md enhancements
+- [x] T048 [US1] Create SampleAssignmentForm `src/main/java/org/openelisglobal/storage/form/SampleAssignmentForm.java` with fields: sampleId, positionId, notes
+- [x] T049 [US1] Implement SampleStorageRestController `src/main/java/org/openelisglobal/storage/controller/SampleStorageRestController.java` with POST /rest/storage/samples/assign endpoint
 - [ ] T050 Run assignment tests → Verify all PASS: `mvn test -Dtest="SampleStorage*Test"`
 
 ### Tests First - Frontend Widget (Write BEFORE implementation)
 
-- [ ] T051 [P] [US1] Write unit test `frontend/src/components/storage/StorageLocationSelector/StorageLocationSelector.test.jsx` for widget behavior: testDisablesChildDropdownsUntilParentSelected, testFetchesDevicesWhenRoomSelected, testDisplaysHierarchicalPath, testHandlesInlineLocationCreation
-- [ ] T052 [P] [US1] Write unit test `frontend/src/components/storage/StorageLocationSelector/CascadingDropdownMode.test.jsx` for dropdown state management
-- [ ] T053 [P] [US1] Write unit test `frontend/src/components/storage/StorageLocationSelector/BarcodeScanMode.test.jsx` for barcode parsing and keyboard event handling
-- [ ] T054 [P] [US1] Write unit test `frontend/src/components/storage/hooks/useStorageLocations.test.js` for data fetching hook
-- [ ] T055 Run frontend tests → Verify all FAIL: `npm test -- components/storage`
+- [x] T051 [P] [US1] Write unit test `frontend/src/components/storage/StorageLocationSelector/StorageLocationSelector.test.jsx` for widget behavior: testDisablesChildDropdownsUntilParentSelected, testFetchesDevicesWhenRoomSelected, testDisplaysHierarchicalPath, testHandlesInlineLocationCreation
+- [x] T052 [P] [US1] Write unit test `frontend/src/components/storage/StorageLocationSelector/CascadingDropdownMode.test.jsx` for dropdown state management
+- [x] T053 [P] [US1] Write unit test `frontend/src/components/storage/StorageLocationSelector/BarcodeScanMode.test.jsx` for barcode parsing and keyboard event handling
+- [x] T054 [P] [US1] Write unit test `frontend/src/components/storage/hooks/useStorageLocations.test.js` for data fetching hook
+- [x] T055 Run frontend tests → Verify all FAIL: `npm test -- components/storage`
 
 ### Implementation - Frontend Widget
 
-- [ ] T056 [P] [US1] Implement useStorageLocations hook `frontend/src/components/storage/hooks/useStorageLocations.js` using getFromOpenElisServer pattern per research.md (NOT SWR)
-- [ ] T057 [P] [US1] Implement useSampleStorage hook `frontend/src/components/storage/hooks/useSampleStorage.js` for assignment mutations using postToOpenElisServer
-- [ ] T058 [US1] Implement CascadingDropdownMode component `frontend/src/components/storage/StorageLocationSelector/CascadingDropdownMode.jsx` with Carbon Dropdown components, useEffect cascading pattern per research.md
-- [ ] T059 [US1] Implement AutocompleteMode component `frontend/src/components/storage/StorageLocationSelector/AutocompleteMode.jsx` with Carbon ComboBox for type-ahead search
-- [ ] T060 [US1] Implement BarcodeScanMode component `frontend/src/components/storage/StorageLocationSelector/BarcodeScanMode.jsx` with useBarcodeScanner hook (keyboard event listener, 50ms timeout) per research.md
-- [ ] T061 [US1] Implement main StorageLocationSelector component `frontend/src/components/storage/StorageLocationSelector/StorageLocationSelector.jsx` with mode switching (dropdown/autocomplete/barcode), hierarchical path display, optional prop for "Add New" inline creation
-- [ ] T062 [US1] Integrate StorageLocationSelector into SamplePatientEntry component `frontend/src/components/sample/SamplePatientEntry.jsx`: Add widget BELOW "Collector" field, BEFORE sample collection time, make optional (can be left blank)
+- [x] T056 [P] [US1] Implement useStorageLocations hook `frontend/src/components/storage/hooks/useStorageLocations.js` using getFromOpenElisServer pattern per research.md (NOT SWR)
+- [x] T057 [P] [US1] Implement useSampleStorage hook `frontend/src/components/storage/hooks/useSampleStorage.js` for assignment mutations using postToOpenElisServer
+- [x] T058 [US1] Implement CascadingDropdownMode component `frontend/src/components/storage/StorageLocationSelector/CascadingDropdownMode.jsx` with Carbon Dropdown components, useEffect cascading pattern per research.md
+- [x] T059 [US1] Implement AutocompleteMode component `frontend/src/components/storage/StorageLocationSelector/AutocompleteMode.jsx` with Carbon ComboBox for type-ahead search
+- [x] T060 [US1] Implement BarcodeScanMode component `frontend/src/components/storage/StorageLocationSelector/BarcodeScanMode.jsx` with useBarcodeScanner hook (keyboard event listener, 50ms timeout) per research.md
+- [x] T061 [US1] Implement main StorageLocationSelector component `frontend/src/components/storage/StorageLocationSelector/StorageLocationSelector.jsx` with mode switching (dropdown/autocomplete/barcode), hierarchical path display, optional prop for "Add New" inline creation
+- [x] T062 [US1] Integrate StorageLocationSelector into SampleType component `frontend/src/components/addOrder/SampleType.js`: Add widget BELOW "Collector" field, BEFORE test panels section, make optional (can be left blank)
 - [ ] T063 Run frontend tests → Verify all PASS: `npm test -- components/storage`
 
 ### End-to-End Tests
 
-- [ ] T064 [US1] Write Cypress E2E test `frontend/cypress/e2e/storageAssignment.cy.js` for P1 user story: testAssignSampleViaCascadingDropdowns, testAssignSampleViaTypeAhead, testAssignSampleViaBarcodeScan, testInlineLocationCreation, testCapacityWarningDisplayed per research.md Cypress patterns
-- [ ] T065 [US1] Create Cypress page object `frontend/cypress/pages/StorageAssignmentPage.js` with methods: selectRoom(), selectDevice(), enterPosition(), clickSave() per research.md pattern
+- [x] T064 [US1] Write Cypress E2E test `frontend/cypress/e2e/storageAssignment.cy.js` for P1 user story: testAssignSampleViaCascadingDropdowns, testAssignSampleViaTypeAhead, testAssignSampleViaBarcodeScan, testInlineLocationCreation, testCapacityWarningDisplayed per research.md Cypress patterns
+- [x] T065 [US1] Create Cypress page object `frontend/cypress/pages/StorageAssignmentPage.js` with methods: selectRoom(), selectDevice(), enterPosition(), clickSave() per research.md pattern
 - [ ] T066 [US1] Run Cypress test → Verify P1 scenario works end-to-end: `npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"`
 
 **Checkpoint**: User Story 1 (Basic Assignment) complete and independently testable. Can assign samples via dropdown/autocomplete/barcode, location saved with hierarchical path.

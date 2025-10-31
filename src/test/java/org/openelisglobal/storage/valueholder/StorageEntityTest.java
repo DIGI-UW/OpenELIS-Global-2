@@ -56,7 +56,7 @@ public class StorageEntityTest {
         StorageDevice device = new StorageDevice();
         device.setCode("FRZ01");
         device.setName("Freezer Unit 1");
-        device.setType("freezer");
+        device.setType(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(room);
         
         // Then: Parent relationship established
@@ -69,10 +69,10 @@ public class StorageEntityTest {
     public void testStorageDevice_TemperatureSetting_AcceptsNegativeValues() {
         // Given: Device with -80°C temperature
         StorageDevice device = new StorageDevice();
-        device.setTemperatureSetting(new BigDecimal("-80.0"));
+        device.setTemperatureSetting(-80.0);
         
         // Then: Temperature stored correctly
-        assertEquals(new BigDecimal("-80.0"), device.getTemperatureSetting());
+        assertEquals(Double.valueOf(-80.0), device.getTemperatureSetting());
     }
 
     @Test

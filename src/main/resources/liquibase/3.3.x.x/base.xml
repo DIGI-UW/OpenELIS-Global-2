@@ -8,6 +8,7 @@
   <include relativeToChangelogFile="true" file="001-create-storage-hierarchy-tables.xml"/>
   <include relativeToChangelogFile="true" file="002-create-assignment-tables.xml"/>
   <include relativeToChangelogFile="true" file="003-create-indexes.xml"/>
+  <include relativeToChangelogFile="true" file="004-insert-test-storage-data.xml" context="test"/>
 
 </databaseChangeLog>
 

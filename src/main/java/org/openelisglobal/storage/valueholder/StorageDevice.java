@@ -1,53 +1,50 @@
 package org.openelisglobal.storage.valueholder;
 
-import java.math.BigDecimal;
 import java.util.UUID;
-import jakarta.persistence.*;
+import jakarta.persistence.PrePersist;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.hibernate.annotations.GenericGenerator;
 
-@Entity
-@Table(name = "storage_device")
+/**
+ * StorageDevice entity - Storage equipment (freezers, refrigerators, cabinets)
+ * Maps to FHIR Location resource with physicalType = "ve" (vehicle/equipment)
+ */
 public class StorageDevice extends BaseObject<String> {
 
-    @Id
-    @GeneratedValue(generator = "storage_device_generator")
-    @GenericGenerator(name = "storage_device_generator", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", 
-        parameters = @org.hibernate.annotations.Parameter(name = "sequence_name", value = "storage_device_seq"))
-    @Column(name = "id")
-    private String id;
+    public enum DeviceType {
+        FREEZER("freezer"),
+        REFRIGERATOR("refrigerator"),
+        CABINET("cabinet"),
+        OTHER("other");
 
-    @Column(name = "fhir_uuid", nullable = false, unique = true)
-    private UUID fhirUuid;
+        private final String value;
 
-    @Column(name = "name", nullable = false, length = 255)
-    private String name;
+        DeviceType(String value) {
+            this.value = value;
+        }
 
-    @Column(name = "code", nullable = false, length = 50)
-    private String code;
+        public String getValue() {
+            return value;
+        }
 
-    @Column(name = "type", nullable = false, length = 20)
-    private String type; // freezer, refrigerator, cabinet, other
-
-    @Column(name = "temperature_setting", precision = 5, scale = 2)
-    private BigDecimal temperatureSetting;
-
-    @Column(name = "capacity_limit")
-    private Integer capacityLimit;
-
-    @Column(name = "active", nullable = false)
-    private Boolean active = true;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "parent_room_id", nullable = false)
-    private StorageRoom parentRoom;
-
-    @PrePersist
-    protected void onCreate() {
-        if (fhirUuid == null) {
-            fhirUuid = UUID.randomUUID();
+        public static DeviceType fromValue(String value) {
+            for (DeviceType type : values()) {
+                if (type.value.equals(value)) {
+                    return type;
+                }
+            }
+            throw new IllegalArgumentException("Invalid device type: " + value);
         }
     }
+
+    private String id;
+    private UUID fhirUuid;
+    private String name;
+    private String code;
+    private DeviceType type;
+    private Double temperatureSetting;
+    private Integer capacityLimit;
+    private Boolean active;
+    private StorageRoom parentRoom;
 
     @Override
     public String getId() {
@@ -67,10 +64,6 @@ public class StorageDevice extends BaseObject<String> {
         this.fhirUuid = fhirUuid;
     }
 
-    public String getFhirUuidAsString() {
-        return fhirUuid != null ? fhirUuid.toString() : null;
-    }
-
     public String getName() {
         return name;
     }
@@ -87,19 +80,19 @@ public class StorageDevice extends BaseObject<String> {
         this.code = code;
     }
 
-    public String getType() {
+    public DeviceType getType() {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(DeviceType type) {
         this.type = type;
     }
 
-    public BigDecimal getTemperatureSetting() {
+    public Double getTemperatureSetting() {
         return temperatureSetting;
     }
 
-    public void setTemperatureSetting(BigDecimal temperatureSetting) {
+    public void setTemperatureSetting(Double temperatureSetting) {
         this.temperatureSetting = temperatureSetting;
     }
 
@@ -119,10 +112,6 @@ public class StorageDevice extends BaseObject<String> {
         this.active = active;
     }
 
-    public boolean isActive() {
-        return active != null && active;
-    }
-
     public StorageRoom getParentRoom() {
         return parentRoom;
     }
@@ -130,5 +119,24 @@ public class StorageDevice extends BaseObject<String> {
     public void setParentRoom(StorageRoom parentRoom) {
         this.parentRoom = parentRoom;
     }
-}
 
+    @PrePersist
+    protected void onCreate() {
+        if (fhirUuid == null) {
+            fhirUuid = UUID.randomUUID();
+        }
+    }
+
+    // Helper methods for FHIR transform
+    public boolean isActive() {
+        return active != null && active;
+    }
+
+    public String getFhirUuidAsString() {
+        return fhirUuid != null ? fhirUuid.toString() : null;
+    }
+
+    public String getTypeAsString() {
+        return type != null ? type.getValue() : null;
+    }
+}

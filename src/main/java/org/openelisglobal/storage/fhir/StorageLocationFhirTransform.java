@@ -92,8 +92,8 @@ public class StorageLocationFhirTransform {
         CodeableConcept deviceType = new CodeableConcept();
         Coding typeCoding = new Coding();
         typeCoding.setSystem("http://openelis.org/fhir/CodeSystem/storage-device-type");
-        typeCoding.setCode(device.getType());
-        typeCoding.setDisplay(capitalizeFirst(device.getType()));
+        typeCoding.setCode(device.getTypeAsString());
+        typeCoding.setDisplay(capitalizeFirst(device.getTypeAsString()));
         deviceType.addCoding(typeCoding);
         location.addType(deviceType);
         

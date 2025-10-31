@@ -1,46 +1,22 @@
 package org.openelisglobal.storage.valueholder;
 
 import java.util.UUID;
-import jakarta.persistence.*;
+import jakarta.persistence.PrePersist;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.hibernate.annotations.GenericGenerator;
 
-@Entity
-@Table(name = "storage_position")
+/**
+ * StoragePosition entity - Specific location within a rack
+ * Maps to FHIR Location resource with occupancy extension
+ */
 public class StoragePosition extends BaseObject<String> {
 
-    @Id
-    @GeneratedValue(generator = "storage_position_generator")
-    @GenericGenerator(name = "storage_position_generator", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", 
-        parameters = @org.hibernate.annotations.Parameter(name = "sequence_name", value = "storage_position_seq"))
-    @Column(name = "id")
     private String id;
-
-    @Column(name = "fhir_uuid", nullable = false, unique = true)
     private UUID fhirUuid;
-
-    @Column(name = "coordinate", nullable = false, length = 50)
     private String coordinate;
-
-    @Column(name = "row_index")
     private Integer rowIndex;
-
-    @Column(name = "column_index")
     private Integer columnIndex;
-
-    @Column(name = "occupied", nullable = false)
-    private Boolean occupied = false;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "parent_rack_id", nullable = false)
+    private Boolean occupied;
     private StorageRack parentRack;
-
-    @PrePersist
-    protected void onCreate() {
-        if (fhirUuid == null) {
-            fhirUuid = UUID.randomUUID();
-        }
-    }
 
     @Override
     public String getId() {
@@ -58,10 +34,6 @@ public class StoragePosition extends BaseObject<String> {
 
     public void setFhirUuid(UUID fhirUuid) {
         this.fhirUuid = fhirUuid;
-    }
-
-    public String getFhirUuidAsString() {
-        return fhirUuid != null ? fhirUuid.toString() : null;
     }
 
     public String getCoordinate() {
@@ -96,10 +68,6 @@ public class StoragePosition extends BaseObject<String> {
         this.occupied = occupied;
     }
 
-    public boolean isOccupied() {
-        return occupied != null && occupied;
-    }
-
     public StorageRack getParentRack() {
         return parentRack;
     }
@@ -107,5 +75,20 @@ public class StoragePosition extends BaseObject<String> {
     public void setParentRack(StorageRack parentRack) {
         this.parentRack = parentRack;
     }
-}
 
+    @PrePersist
+    protected void onCreate() {
+        if (fhirUuid == null) {
+            fhirUuid = UUID.randomUUID();
+        }
+    }
+
+    // Helper methods for FHIR transform
+    public boolean isOccupied() {
+        return occupied != null && occupied;
+    }
+
+    public String getFhirUuidAsString() {
+        return fhirUuid != null ? fhirUuid.toString() : null;
+    }
+}
