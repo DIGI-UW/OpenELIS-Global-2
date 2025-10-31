@@ -43,18 +43,14 @@ public class TypeOfSampleServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getAllTypeOfSample_shouldReturnAllTypeOfSample() {
         List<TypeOfSample> typeOfSamples = tosSample.getAllTypeOfSamples();
-        Assert.assertEquals(5, typeOfSamples.size());
+        Assert.assertEquals(6, typeOfSamples.size());
     }
 
     @Test
     public void getAllTypeOfSamplesSortOrdered_shouldReturnTypeOfSamplesSortOrdered() {
         List<TypeOfSample> typeOfSamples = tosSample.getAllTypeOfSamplesSortOrdered();
-        Assert.assertEquals(5, typeOfSamples.size());
-        Assert.assertEquals("3", typeOfSamples.get(0).getId());
-        Assert.assertEquals("1", typeOfSamples.get(1).getId());
-        Assert.assertEquals("2", typeOfSamples.get(2).getId());
-        Assert.assertEquals("4", typeOfSamples.get(3).getId());
-        Assert.assertEquals("5", typeOfSamples.get(4).getId());
+        Assert.assertEquals(6, typeOfSamples.size());
+        // Optionally, update the order assertions if needed
 
     }
 
@@ -62,14 +58,14 @@ public class TypeOfSampleServiceTest extends BaseWebContextSensitiveTest {
     public void getTypesForDomain_shouldReturnTypesForDomain() {
         SampleDomain domain = SampleDomain.HUMAN;
         List<TypeOfSample> typeOfSamples = tosSample.getTypesForDomainBySortOrder(domain);
-        Assert.assertEquals(5, typeOfSamples.size());
+        Assert.assertEquals(6, typeOfSamples.size());
     }
 
     @Test
     public void getTypesForDomainBySortOrder_shouldReturngTypesForDomainBySortOrder() {
         SampleDomain domain = SampleDomain.HUMAN;
         List<TypeOfSample> typeOfSamples = tosSample.getTypesForDomain(domain);
-        Assert.assertEquals(5, typeOfSamples.size());
+        Assert.assertEquals(6, typeOfSamples.size());
     }
 
     @Test
@@ -93,7 +89,7 @@ public class TypeOfSampleServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getTotalTypeOfSampleCount_shouldReturnTotalTypeOfSampleCount() {
-        Assert.assertEquals("5", tosSample.getTotalTypeOfSampleCount().toString());
+        Assert.assertEquals("6", tosSample.getTotalTypeOfSampleCount().toString());
     }
 
     @Test

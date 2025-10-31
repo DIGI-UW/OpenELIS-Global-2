@@ -2,6 +2,8 @@ package org.openelisglobal.odoo.controller;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.odoo.client.OdooConnection;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +25,19 @@ public class HealthCheckController {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> odooHealth() {
         Map<String, Object> health = new HashMap<>();
+
+        // Check if Odoo integration is enabled in configuration
+        boolean odooEnabled = ConfigurationProperties.getInstance()
+                .isPropertyValueEqual(Property.ENABLE_OPENELIS_TO_ODOO_CONNECTION, "true");
+
+        health.put("enabled", odooEnabled);
+
+        if (!odooEnabled) {
+            health.put("status", "DISABLED");
+            health.put("odoo", "Integration disabled in configuration");
+            return ResponseEntity.ok(health);
+        }
+
         if (odooConnection.isAvailable()) {
             health.put("status", "UP");
             health.put("odoo", "Available");

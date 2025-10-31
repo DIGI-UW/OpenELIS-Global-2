@@ -437,6 +437,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.REQUIRE_LAB_UNIT_AT_LOGIN));
         configs.put(Property.ENABLE_CLIENT_REGISTRY.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ENABLE_CLIENT_REGISTRY));
+        configs.put(Property.ENABLE_OPENELIS_TO_ODOO_CONNECTION.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.ENABLE_OPENELIS_TO_ODOO_CONNECTION));
         return configs;
     }
 
