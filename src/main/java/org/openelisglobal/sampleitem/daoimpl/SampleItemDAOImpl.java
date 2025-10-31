@@ -19,6 +19,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -227,5 +228,91 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
         }
 
         return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SampleItem> getSampleItemsByExternalID(String externalId) throws LIMSRuntimeException {
+        List<SampleItem> sampleItems = null;
+        try {
+            String hql = "FROM SampleItem WHERE external_id = :externalId";
+            sampleItems = entityManager.unwrap(Session.class).createQuery(hql, SampleItem.class)
+                    .setParameter("externalId", externalId).getResultList();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in SampleItem readSampleItemsByExternalId()", e);
+        }
+
+        return sampleItems;
+    }
+
+    @Override
+    @Transactional
+    public boolean insertData(SampleItem sampleItem) throws LIMSRuntimeException {
+        try {
+            List<SampleItem> existingItems = getSampleItemsByExternalID(sampleItem.getExternalId());
+
+            if (existingItems.isEmpty()) {
+
+                entityManager.persist(sampleItem);
+            } else {
+                SampleItem existing = existingItems.getLast();
+
+                sampleItem.setId(existing.getId());
+                entityManager.merge(sampleItem);
+            }
+
+            return true;
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in SampleItem insertData()", e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public boolean insertAliquots(SampleItem lastSampleItem, List<SampleItem> sampleItemsToInsert,
+            List<List<String>> analysisGroups) throws LIMSRuntimeException {
+
+        try {
+            // 1. Update initial sample item
+            insertData(lastSampleItem);
+
+            // 2. Batch insert all aliquots first
+            for (SampleItem aliquot : sampleItemsToInsert) {
+                insertData(aliquot);
+            }
+
+            // 3. Flush to get IDs for all aliquots
+            entityManager.flush();
+
+            // 4. Batch update all analyses
+            for (int i = 0; i < sampleItemsToInsert.size(); i++) {
+                SampleItem aliquot = sampleItemsToInsert.get(i);
+                List<String> analysisIds = analysisGroups.get(i);
+
+                if (analysisIds != null && !analysisIds.isEmpty()) {
+                    updateAnalysesForAliquot(aliquot, analysisIds);
+                }
+            }
+
+            return true;
+
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in insertAliquots()", e);
+        }
+    }
+
+    @Transactional
+    protected void updateAnalysesForAliquot(SampleItem aliquot, List<String> analysisIds) {
+        if (analysisIds == null || analysisIds.isEmpty()) {
+            return;
+        }
+        List<Integer> analysisIdInts = analysisIds.stream().map(Integer::parseInt).collect(Collectors.toList());
+        Integer aliquotIdInt = Integer.parseInt(aliquot.getId().toString());
+        String updateQuery = "UPDATE analysis SET sampitem_id = :aliquotId WHERE id IN (:analysisIds)";
+        entityManager.createNativeQuery(updateQuery).setParameter("aliquotId", aliquotIdInt)
+                .setParameter("analysisIds", analysisIdInts).executeUpdate();
     }
 }

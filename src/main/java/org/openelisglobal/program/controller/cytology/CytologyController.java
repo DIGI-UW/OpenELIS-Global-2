@@ -49,7 +49,7 @@ public class CytologyController extends BaseRestController {
 
     @GetMapping(value = "/rest/cytology/dashboard/count", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<CytologyDashBoardCount> getFilteredCytologyEntries() {
+    public ResponseEntity<CytologyDashBoardCount> getCytologyDashBoardMetrics() {
         CytologyDashBoardCount count = new CytologyDashBoardCount();
         count.setInProgress(cytologySampleService
                 .getCountWithStatus(Arrays.asList(CytologyStatus.PREPARING_SLIDES, CytologyStatus.SCREENING)));
@@ -83,14 +83,13 @@ public class CytologyController extends BaseRestController {
 
     @GetMapping(value = "/rest/cytology/caseView/{cytologySampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public CytologyCaseViewDisplayItem getFilteredCytologyEntries(
-            @PathVariable("cytologySampleId") Integer cytologySampleId) {
+    public CytologyCaseViewDisplayItem getCytologyEntry(@PathVariable("cytologySampleId") Integer cytologySampleId) {
         return cytologyDisplayService.convertToCaseDisplayItem(cytologySampleId);
     }
 
     @PostMapping(value = "/rest/cytology/caseView/{cytologySampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public CytologySampleForm getFilteredCytologyEntries(@PathVariable("cytologySampleId") Integer cytologySampleId,
+    public CytologySampleForm createCytologyEntry(@PathVariable("cytologySampleId") Integer cytologySampleId,
             @RequestBody CytologySampleForm form, HttpServletRequest request) {
         form.setSystemUserId(this.getSysUserId(request));
         cytologySampleService.updateWithFormValues(cytologySampleId, form);
