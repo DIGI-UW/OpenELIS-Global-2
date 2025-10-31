@@ -2,13 +2,19 @@ package org.openelisglobal.notebook.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.notebook.bean.NoteBookDashboardMetrics;
 import org.openelisglobal.notebook.bean.NoteBookDisplayBean;
 import org.openelisglobal.notebook.bean.NoteBookFullDisplayBean;
@@ -17,7 +23,6 @@ import org.openelisglobal.notebook.form.NoteBookForm;
 import org.openelisglobal.notebook.service.NoteBookService;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,11 +46,37 @@ public class NoteBookRestController extends BaseRestController {
     public ResponseEntity<List<NoteBookDisplayBean>> getFilteredNoteBooks(
             @RequestParam(required = false) List<NoteBookStatus> statuses,
             @RequestParam(required = false) List<String> types, @RequestParam(required = false) List<String> tags,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date fromDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date toDate) {
-        List<NoteBookDisplayBean> results = noteBookService.filterNoteBooks(statuses, types, tags, fromDate, toDate)
-                .stream().map(e -> noteBookService.convertToDisplayBean(e.getId())).collect(Collectors.toList());
+            @RequestParam(required = false) String fromDate, @RequestParam(required = false) String toDate) {
+
+        List<NoteBookDisplayBean> results = noteBookService
+                .filterNoteBooks(statuses, types, tags, getFormatedDate(fromDate), getFormatedDate(toDate)).stream()
+                .map(e -> noteBookService.convertToDisplayBean(e.getId())).collect(Collectors.toList());
         return ResponseEntity.ok(results);
+    }
+
+    private Date getFormatedDate(String date) {
+        if (StringUtils.isBlank(date)) {
+            return null;
+        }
+
+        try {
+            String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE);
+
+            String pattern;
+            if ("fr-FR".equalsIgnoreCase(locale)) {
+                pattern = "dd/MM/yyyy";
+            } else {
+                pattern = "MM/dd/yyyy";
+            }
+
+            SimpleDateFormat sdf = new SimpleDateFormat(pattern);
+            sdf.setTimeZone(TimeZone.getTimeZone("UTC")); // normalize
+            return sdf.parse(date);
+
+        } catch (ParseException e) {
+            // consider logging or rethrowing
+            return null;
+        }
     }
 
     @GetMapping(value = "/dashboard/metrics", produces = MediaType.APPLICATION_JSON_VALUE)
