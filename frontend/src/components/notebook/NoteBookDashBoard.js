@@ -347,7 +347,7 @@ function NoteBookDashBoard() {
                   </Tag>
                 </Column>
                 <Column lg={2} md={8} sm={4}>
-                  <UserAvatarFilledAlt size={20} />
+                  <UserAvatarFilledAlt size={15} />
                 </Column>
                 <Column lg={14} md={8} sm={4}>
                   <div className="notebook-tile-subtitle">
@@ -355,13 +355,13 @@ function NoteBookDashBoard() {
                   </div>
                 </Column>
                 <Column lg={2} md={8} sm={4}>
-                  <Document size={20} />
+                  <Document size={15} />
                 </Column>
                 <Column lg={14} md={8} sm={4}>
                   <div className="notebook-tile-subtitle">{entry.typeName}</div>
                 </Column>
                 <Column lg={2} md={8} sm={4}>
-                  <Time size={20} />
+                  <Time size={15} />
                 </Column>
                 <Column lg={14} md={8} sm={4}>
                   <div className="notebook-tile-subtitle">
@@ -369,7 +369,7 @@ function NoteBookDashBoard() {
                   </div>
                 </Column>
                 <Column lg={2} md={8} sm={4}>
-                  <TagIcon size={20} />
+                  <TagIcon size={15} />
                 </Column>
                 <Column lg={14} md={8} sm={4}>
                   {entry.tags.map((tag) => (
