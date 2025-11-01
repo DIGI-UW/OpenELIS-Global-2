@@ -135,6 +135,31 @@ public void testAssignSample_InactiveLocation_ThrowsException() {
 mvn test -Dtest="SampleStorageServiceImplTest"
 ```
 
+**Step 3.5: Write ORM Validation Tests** (framework config → test)
+```bash
+# Create test file (per Constitution v1.2.0, Section V.4)
+src/test/java/org/openelisglobal/storage/HibernateMappingValidationTest.java
+
+# Write ORM validation test
+@Test
+public void testAllStorageHibernateMappingsLoadSuccessfully() {
+    Configuration config = new Configuration();
+    config.addResource("hibernate/hbm/StorageRoom.hbm.xml");
+    config.addResource("hibernate/hbm/StorageDevice.hbm.xml");
+    // ... add all 7 mappings ...
+    config.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
+    
+    SessionFactory sf = config.buildSessionFactory();
+    assertNotNull("All mappings should load", sf);
+    sf.close();
+}
+
+# Run test → Should PASS (validates mappings correct)
+# Catches: Getter conflicts, property mismatches, mapping errors
+# Executes in <5 seconds, no database required
+mvn test -Dtest="HibernateMappingValidationTest"
+```
+
 **Step 4: Write Frontend Unit Tests** (spec → test)
 ```bash
 # Create test file

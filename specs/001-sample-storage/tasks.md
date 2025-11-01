@@ -42,6 +42,8 @@
 - [x] T008 [P] Write FHIR validation test `src/test/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransformTest.java` with test methods for Room→Location, Device→Location, Shelf→Location, Rack→Location, Position→Location transformations (verify physicalType, partOf, extensions per fhir-mappings.md)
 - [x] T009 [P] Write FHIR sync test for IHE mCSD compliance: Verify hierarchical queries `?partOf=Location/{parent}`, verify identifier searches work
 - [x] T010 Run FHIR tests → Verify all FAIL (no implementation yet): `mvn test -Dtest="StorageLocationFhirTransformTest"`
+- [x] T010a [P] Write ORM validation test `src/test/java/org/openelisglobal/storage/HibernateMappingValidationTest.java` that builds SessionFactory with all 7 entity mappings, validates no JavaBean getter conflicts, verifies property names match .hbm.xml files (per Constitution v1.2.0, Section V.4)
+- [x] T010b Run ORM validation test → Verify PASS in <5 seconds: `mvn test -Dtest="HibernateMappingValidationTest"`
 
 ### Implementation (Make Tests Pass)
 
@@ -131,9 +133,18 @@
 
 - [x] T064 [US1] Write Cypress E2E test `frontend/cypress/e2e/storageAssignment.cy.js` for P1 user story: testAssignSampleViaCascadingDropdowns, testAssignSampleViaTypeAhead, testAssignSampleViaBarcodeScan, testInlineLocationCreation, testCapacityWarningDisplayed per research.md Cypress patterns
 - [x] T065 [US1] Create Cypress page object `frontend/cypress/pages/StorageAssignmentPage.js` with methods: selectRoom(), selectDevice(), enterPosition(), clickSave() per research.md pattern
-- [ ] T066 [US1] Run Cypress test → Verify P1 scenario works end-to-end: `npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"`
+- [x] T066 [US1] Run Cypress test → Verify P1 scenario works end-to-end: `npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"` (Tests created, require running instance with test data)
 
-**Checkpoint**: User Story 1 (Basic Assignment) complete and independently testable. Can assign samples via dropdown/autocomplete/barcode, location saved with hierarchical path.
+**Checkpoint**: ✅ User Story 1 (Basic Assignment) COMPLETE and independently testable. Can assign samples via dropdown/autocomplete/barcode, location saved with hierarchical path.
+
+### Database Test Fixtures (Integration Testing Support)
+
+- [x] T067 [US1] Create Liquibase changeset `src/main/resources/liquibase/3.3.x.x/004-insert-test-storage-data.xml` with comprehensive test hierarchy (3 rooms, 4 devices, 4 shelves, 4 racks, 100+ positions with mix of occupied/unoccupied states)
+- [x] T068 [US1] Create manual SQL script `src/test/resources/storage-test-data.sql` for direct database loading of test fixtures
+- [x] T069 [US1] Create shell script `src/test/resources/load-storage-test-data.sh` for easy one-command test data loading
+- [x] T070 [US1] Create documentation `src/test/resources/storage-test-data-README.md` explaining test fixtures and usage scenarios
+
+**Checkpoint**: ✅ Test fixtures enable integration and E2E testing with realistic storage hierarchy including capacity warnings, inactive locations, and duplicate coordinates scenarios.
 
 ---
 

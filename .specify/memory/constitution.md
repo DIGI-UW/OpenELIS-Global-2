@@ -1,6 +1,43 @@
 # OpenELIS Global 3.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - ORM Validation Test Layer
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.1.0 → 1.2.0
+Change Type: MINOR - New testing requirement for ORM projects
+Date: 2025-10-31
+
+Added Sections:
+  - Principle V > Section V.4: ORM Validation Tests
+    * Mandates framework validation tests between unit and integration tests
+    * Requires SessionFactory/EntityManagerFactory build test
+    * Requires JavaBean convention validation (no getter conflicts)
+    * Requires property name consistency checks
+    * Must execute in <5 seconds without database
+
+Rationale:
+  During Phase 3 implementation of feature 001-sample-storage, TDD successfully validated 
+  business logic via unit tests (17/17 passing) but missed ORM configuration errors:
+  1. Hibernate getter conflict: getActive() vs isActive()
+  2. Property name mismatch: movedByUser vs movedByUserId
+  These only appeared at application startup. A 2-second ORM test would catch immediately.
+
+Templates Requiring Updates:
+  ⚠️ .specify/templates/plan-template.md - Add ORM validation to test pyramid
+  ⚠️ .specify/templates/tasks-template.md - Add ORM validation task templates
+
+Impact:
+  - Future Hibernate/JPA features MUST include ORM validation tests
+  - Feature 001-sample-storage: ORM test added (HibernateMappingValidationTest.java)
+
+Commit Message:
+  docs: amend constitution to v1.2.0 (ORM validation test requirement)
+  
+  Add Principle V, Section V.4 mandating ORM validation tests
+  Fills gap between unit tests (mocked) and integration tests (full stack)
+  Catches mapping errors in <5s without database
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 SYNC IMPACT REPORT - Technical Stack Clarifications
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.0.0 → 1.1.0
@@ -195,6 +232,50 @@ org.openelisglobal.fhir.subscriber.resources=Task,Patient,ServiceRequest,Diagnos
 **Rationale**: Healthcare software failures impact patient care. Automated testing catches regressions, enforces contract compliance, and enables confident refactoring.
 
 **Reference**: [README.md Testing Section](https://github.com/DIGI-UW/OpenELIS-Global-2#to-ensure-your-code-passes-the-same-checks-as-the-ci-pipeline)
+
+#### Section V.4: ORM Validation Tests (ADDED 2025-10-31)
+
+**MANDATE**: For projects using Object-Relational Mapping frameworks (Hibernate/JPA, Entity Framework, TypeORM, SQLAlchemy), the test suite MUST include framework validation tests that verify ORM configuration correctness WITHOUT requiring database connection or full application context.
+
+**Purpose**: Fills critical gap between unit tests (pure mocks, no framework) and integration tests (full stack). Catches ORM configuration errors in <5 seconds rather than at deployment.
+
+**Requirements for Hibernate/JPA Projects**:
+- MUST include test that builds `SessionFactory` or `EntityManagerFactory`
+- MUST validate all entity mappings load without errors
+- MUST verify no JavaBean getter/setter conflicts (e.g., both `getActive()` and `isActive()`)
+- MUST verify property names match between entity classes and `.hbm.xml` mapping files
+- MUST execute in <5 seconds
+- MUST NOT require database connection
+
+**Requirements for Liquibase/Flyway Projects**:
+- SHOULD include test that parses changesets without executing them
+- SHOULD validate XML/SQL syntax
+- SHOULD check for common errors (unescaped operators like `<=`, missing CDATA)
+
+**Test Execution Order**:
+```
+1. Unit Tests (Mockito mocked) - Business logic validation
+2. ORM Validation Tests - Framework configuration validation
+3. Integration Tests (with database) - Full stack validation
+4. E2E Tests (Cypress) - User workflow validation
+```
+
+**Example** (Hibernate):
+```java
+@Test
+public void testHibernateMappingsLoadSuccessfully() {
+    Configuration config = new Configuration();
+    config.addResource("hibernate/hbm/Entity1.hbm.xml");
+    config.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
+    SessionFactory sf = config.buildSessionFactory();
+    assertNotNull("All mappings should load", sf);
+    sf.close();
+}
+```
+
+**Rationale**: During implementation of feature 001-sample-storage (Phase 3), pure unit tests with mocked DAOs successfully validated business logic but missed ORM configuration errors that only appeared at application startup: (1) Getter conflicts: `getActive()` (Boolean) vs `isActive()` (boolean) caused Hibernate introspection failure, (2) Property mismatches: Entity had `movedByUser`, mapping expected `movedByUserId`. A 2-second ORM validation test would have caught both immediately.
+
+**Exception**: Projects without ORM frameworks (pure JDBC, NoSQL, etc.) may skip this requirement.
 
 ---
 
@@ -517,10 +598,11 @@ docker-compose -f dev.docker-compose.yml up -d
 
 ---
 
-**Version**: 1.1.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-10-31
+**Version**: 1.2.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-10-31
 
 <!-- 
   Ratification Signatories: OpenELIS Global Core Team
+  Amendment v1.2.0: ORM validation test requirement (2025-10-31)
   Amendment v1.1.0: Technical stack clarifications (Java 21, JUnit 4, Jakarta EE 9)
   Next Review: 2026-01-30 (Quarterly)
 -->

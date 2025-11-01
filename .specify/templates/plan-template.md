@@ -37,7 +37,7 @@ Verify compliance with [OpenELIS Global 3.0 Constitution](../.specify/memory/con
 - [ ] **Carbon Design System**: UI uses @carbon/react exclusively (NO Bootstrap/Tailwind)
 - [ ] **FHIR/IHE Compliance**: External data integrates via FHIR R4 + IHE profiles
 - [ ] **Layered Architecture**: Backend follows 5-layer pattern (Valueholder→DAO→Service→Controller→Form)
-- [ ] **Test Coverage**: Unit + integration + E2E tests planned (>70% coverage goal)
+- [ ] **Test Coverage**: Unit + ORM validation (if applicable) + integration + E2E tests planned (>70% coverage goal per Constitution V.4)
 - [ ] **Schema Management**: Database changes via Liquibase changesets only
 - [ ] **Internationalization**: All UI strings use React Intl (no hardcoded text)
 - [ ] **Security & Compliance**: RBAC, audit trail, input validation included

@@ -83,7 +83,8 @@ Examples of foundational tasks (adjust based on your project):
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
+- [ ] T010 [P] [US1] Unit test for [service/component] in tests/unit/test_[name].py
+- [ ] T010a [P] [US1] ORM validation test (if using Hibernate/JPA/Entity Framework - per Constitution V.4): Build SessionFactory/DbContext, validate mappings, <5s execution
 - [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
 
 ### Implementation for User Story 1

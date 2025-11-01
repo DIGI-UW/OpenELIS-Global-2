@@ -186,19 +186,28 @@ frontend/cypress/e2e/
    - Validates: IHE mCSD profile compliance
    - Validates: Hierarchical partOf references correct
 
-2. **Backend Integration Tests** - Write tests for REST endpoints
-   - Test: `StorageLocationRestControllerTest.java`, `SampleStorageRestControllerTest.java`, `StorageSearchRestControllerTest.java`
-   - Validates: HTTP request/response contracts match OpenAPI spec
-   - Validates: Database persistence after API calls
-   - Validates: Error responses (400, 404, 409) for validation failures
-
-3. **Backend Unit Tests** - Write tests for service layer business logic
+2. **Backend Unit Tests** - Write tests for service layer business logic
    - Test: `StorageLocationServiceImplTest.java`, `SampleStorageServiceImplTest.java`, `StorageSearchServiceImplTest.java`
    - Validates: Assignment validation logic (prevent inactive location, double-occupancy)
    - Validates: Capacity calculation and warning thresholds (80/90/100%)
    - Validates: Hierarchical path construction
    - Validates: Bulk move auto-assignment logic
    - Validates: Audit trail creation on movements
+
+2.5. **ORM Validation Tests** (Hibernate framework validation - ADDED based on Phase 3 learnings)
+   - Test: `HibernateMappingValidationTest.java`
+   - Validates: All 7 storage entity Hibernate mappings load successfully
+   - Validates: SessionFactory builds without errors
+   - Validates: No JavaBean getter/setter conflicts (getActive vs isActive)
+   - Validates: Property names match between entities and .hbm.xml files
+   - Execution: <5 seconds, no database required
+   - **Purpose**: Catches ORM config errors before integration tests (fills gap between unit and integration)
+
+3. **Backend Integration Tests** - Write tests for REST endpoints
+   - Test: `StorageLocationRestControllerTest.java`, `SampleStorageRestControllerTest.java`, `StorageSearchRestControllerTest.java`
+   - Validates: HTTP request/response contracts match OpenAPI spec
+   - Validates: Database persistence after API calls
+   - Validates: Error responses (400, 404, 409) for validation failures
 
 4. **Frontend Unit Tests** - Write tests for React components
    - Test: `StorageLocationSelector.test.jsx`, `CascadingDropdownMode.test.jsx`, etc.
