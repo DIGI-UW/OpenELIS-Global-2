@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <report id="100" category="Lab Reports" sort_order="1"
+        menu_element_id="menu_report_100" display_key="report.test.labReport1"
+        name="Test Lab Report 1" is_visible="true" />
+
+    <report id="101" category="Lab Reports" sort_order="2"
+        menu_element_id="menu_report_101" display_key="report.test.labReport2"
+        name="Test Lab Report 2" is_visible="true" />
+
+    <report id="102" category="Financial Reports" sort_order="1"
+        menu_element_id="menu_report_102"
+        display_key="report.test.financialReport1"
+        name="Test Financial Report 1" is_visible="false" />
+
+    <report id="103" category="Patient Reports" sort_order="1"
+        menu_element_id="menu_report_103"
+        display_key="report.test.patientReport1" name="Test Patient Report 1"
+        is_visible="true" />
+</dataset>
