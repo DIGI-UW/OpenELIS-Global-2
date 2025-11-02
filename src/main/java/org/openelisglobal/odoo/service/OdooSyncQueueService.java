@@ -28,8 +28,7 @@ public class OdooSyncQueueService extends BaseObjectServiceImpl<OdooSyncQueue, L
     @Autowired
     private OdooSyncQueueDAO baseObjectDAO;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public OdooSyncQueueService() {
         super(OdooSyncQueue.class);
