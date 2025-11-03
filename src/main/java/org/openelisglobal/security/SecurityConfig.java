@@ -145,8 +145,8 @@ public class SecurityConfig {
                         .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.INCLUDE, DispatcherType.ERROR)
                         .permitAll().anyRequest().permitAll())
                 // disable csrf as it is not needed for open pages
-                .csrf(csrf -> csrf.disable())
-                .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
+                .csrf(csrf -> csrf.disable()).headers(headers -> headers.frameOptions(frame -> frame.sameOrigin())
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(CONTENT_SECURITY_POLICY)));
         return http.build();
     }
 
@@ -174,7 +174,8 @@ public class SecurityConfig {
 
                 .addFilterAt(SpringContext.getBean(BasicAuthFilter.class), BasicAuthenticationFilter.class)
                 // add security headers
-                .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
+                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin())
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(CONTENT_SECURITY_POLICY)));
         return http.build();
     }
 
@@ -346,7 +347,8 @@ public class SecurityConfig {
                         .successHandler(customOAuthAuthenticationSuccessHandler())) //
                 .logout(logout -> logout.logoutSuccessHandler(oidcLogoutSuccessHandler()))
                 // add security headers
-                .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
+                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin())
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(CONTENT_SECURITY_POLICY)));
         return http.build();
     }
 
@@ -421,7 +423,8 @@ public class SecurityConfig {
                         .sessionFixation().migrateSession())
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/ValidateLogin"))
                 // add security headers
-                .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
+                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin())
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(CONTENT_SECURITY_POLICY)));
         return http.build();
     }
 
