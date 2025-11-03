@@ -93,6 +93,12 @@
         is_active="true" sort_order="23" name_localization_id="5"
         display_key="sample.type.Tissue" />
 
+    <!-- Added for test consistency -->
+    <type_of_sample id="6" description="Fluidal acids"
+        domain="H" lastupdated="2025-10-02 12:00:00" local_abbrev="fluidal"
+        is_active="true" sort_order="24" name_localization_id="1"
+        display_key="sample.type.FluidalAcids" />
+
     <!-- TypeOfSampleTest entries -->
     <sampletype_test id="1" sample_type_id="1" test_id="1" />
     <sampletype_test id="2" sample_type_id="2" test_id="2" />

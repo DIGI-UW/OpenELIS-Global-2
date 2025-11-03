@@ -314,6 +314,13 @@ export default function App() {
                   labUnitRole={{ Cytology: [Roles.RESULTS] }}
                 />
                 <SecureRoute
+                  path="/NoteBookEntryForm"
+                  exact
+                  component={() => <NoteBookEntryForm />}
+                  role=""
+                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                />
+                <SecureRoute
                   path="/CytologyCaseView/:cytologySampleId"
                   exact
                   component={() => <CytologyCaseView />}

@@ -1,38 +1,33 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import {
-  Checkbox,
   Heading,
-  Select,
-  SelectItem,
   Button,
   Grid,
   Column,
   Section,
-  DataTable,
-  TableContainer,
-  Table,
-  TableHead,
-  TableRow,
-  TableHeader,
-  TableBody,
-  TableCell,
   Tile,
   Loading,
-  Pagination,
   FilterableMultiSelect,
+  TextInput,
+  Tag,
 } from "@carbon/react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { Search } from "@carbon/react";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServerFullResponse,
-  hasRole,
-} from "../utils/Utils";
+import { getFromOpenElisServer, hasRole } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import CustomDatePicker from "../common/CustomDatePicker";
+import {
+  UserAvatar,
+  Document,
+  Time,
+  UserAvatarFilledAlt,
+  Tag as TagIcon,
+} from "@carbon/react/icons";
+import "./NoteBook.css";
 
 function NoteBookDashBoard() {
   const componentMounted = useRef(false);
@@ -43,9 +38,9 @@ function NoteBookDashBoard() {
   const [noteBookEntries, setNoteBookEntries] = useState([]);
   const [types, setTypes] = useState([]);
   const [filters, setFilters] = useState({
-    searchTerm: "",
     statuses: [],
     types: [],
+    tags: "",
     fromdate: "",
     todate: "",
   });
@@ -67,18 +62,24 @@ function NoteBookDashBoard() {
     }
   };
 
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
-    }
+  const statusColors = {
+    DRAFT: "gray",
+    SUBMITTED: "cyan",
+    FINALIZED: "green",
+    LOCKED: "purple",
+    ARCHIVED: "gray",
   };
-
-  const renderCell = (cell, row) => {
-    return <TableCell key={cell.id}>{cell.value}</TableCell>;
+  const handleDatePickerChangeDate = (datePicker, date) => {
+    let obj = null;
+    switch (datePicker) {
+      case "startDate":
+        setFilters({ ...filters, fromdate: date });
+        break;
+      case "endDate":
+        setFilters({ ...filters, todate: date });
+        break;
+      default:
+    }
   };
 
   const setNoteBookEntriesWithIds = (entries) => {
@@ -105,7 +106,13 @@ function NoteBookDashBoard() {
         .map((entry) => {
           return entry.id;
         })
-        .join(",")
+        .join(",") +
+      "&fromDate=" +
+      filters.fromdate +
+      "&toDate=" +
+      filters.todate +
+      "&tags=" +
+      filters.tags
     );
   };
 
@@ -121,7 +128,7 @@ function NoteBookDashBoard() {
   };
 
   const openNoteBookEntryForm = () => {
-    window.location.href = "/NoteBookEntryForm/0";
+    window.location.href = "/NoteBookEntryForm";
   };
 
   useEffect(() => {
@@ -246,20 +253,6 @@ function NoteBookDashBoard() {
           </Column>
         </Grid>
         <Grid fullWidth={true} className="gridBoundary">
-          <Column lg={4} md={4} sm={2}>
-            <Search
-              value={filters.searchTerm}
-              // onChange={(e) =>
-              //   setFilters({ ...filters, searchTerm: e.target.value })
-              // }
-              placeholder={intl.formatMessage({
-                id: "label.search.labno.family",
-              })}
-              labelText={intl.formatMessage({
-                id: "label.search.labno.family",
-              })}
-            />
-          </Column>
           <Column lg={1} md={4} sm={2}>
             <FormattedMessage id="filters.label" />
           </Column>
@@ -269,6 +262,7 @@ function NoteBookDashBoard() {
               titleText={intl.formatMessage({ id: "label.filters.status" })}
               items={statuses}
               itemToString={(item) => (item ? item.value : "")}
+              initialSelectedItems={filters.statuses}
               onChange={(changes) => {
                 setFilters({ ...filters, statuses: changes.selectedItems });
               }}
@@ -282,6 +276,7 @@ function NoteBookDashBoard() {
                 id: "notebook.label.filter.types",
               })}
               items={types}
+              initialSelectedItems={filters.types}
               itemToString={(item) => (item ? item.value : "")}
               onChange={(changes) => {
                 setFilters({ ...filters, types: changes.selectedItems });
@@ -289,120 +284,129 @@ function NoteBookDashBoard() {
               selectionFeedback="top-after-reopen"
             />
           </Column>
-
-          <Column lg={16} md={8} sm={4}>
-            <DataTable
-              rows={noteBookEntries.slice(
-                (page - 1) * pageSize,
-                page * pageSize,
-              )}
-              headers={[
-                {
-                  key: "title",
-                  header: intl.formatMessage({ id: "Title" }),
-                },
-                {
-                  key: "typeName",
-                  header: intl.formatMessage({ id: "Experiment Type" }),
-                },
-                {
-                  key: "status",
-                  header: intl.formatMessage({ id: "Status" }),
-                },
-                {
-                  key: "firstName",
-                  header: intl.formatMessage({ id: "patient.first.name" }),
-                },
-                {
-                  key: "lastName",
-                  header: intl.formatMessage({ id: "patient.last.name" }),
-                },
-                {
-                  key: "gender",
-                  header: intl.formatMessage({ id: "patient.first.gender" }),
-                },
-
-                {
-                  key: "dateCreated",
-                  header: intl.formatMessage({ id: "Date Created" }),
-                },
-              ]}
-              isSortable
-            >
-              {({ rows, headers, getHeaderProps, getTableProps }) => (
-                <TableContainer title="" description="">
-                  <Table {...getTableProps()}>
-                    <TableHead>
-                      <TableRow>
-                        {headers.map((header) => (
-                          <TableHeader
-                            key={header.key}
-                            {...getHeaderProps({ header })}
-                          >
-                            {header.header}
-                          </TableHeader>
-                        ))}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      <>
-                        {rows.map((row) => (
-                          <TableRow
-                            key={row.id}
-                            onClick={() => {
-                              openNoteBookView(row.id);
-                            }}
-                          >
-                            {row.cells.map((cell) => renderCell(cell, row))}
-                          </TableRow>
-                        ))}
-                      </>
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-            </DataTable>
-            <Pagination
-              onChange={handlePageChange}
-              page={page}
-              pageSize={pageSize}
-              pageSizes={[10, 20, 30, 50, 100]}
-              totalItems={noteBookEntries.length}
-              forwardText={intl.formatMessage({ id: "pagination.forward" })}
-              backwardText={intl.formatMessage({ id: "pagination.backward" })}
-              itemRangeText={(min, max, total) =>
-                intl.formatMessage(
-                  { id: "pagination.item-range" },
-                  { min: min, max: max, total: total },
-                )
-              }
-              itemsPerPageText={intl.formatMessage({
-                id: "pagination.items-per-page",
+          <Column lg={3} md={4} sm={2}>
+            <TextInput
+              id="title"
+              name="title"
+              labelText={intl.formatMessage({
+                id: "notebook.tags.modal.add.label",
               })}
-              itemText={(min, max) =>
-                intl.formatMessage(
-                  { id: "pagination.item" },
-                  { min: min, max: max },
-                )
-              }
-              pageNumberText={intl.formatMessage({
-                id: "pagination.page-number",
-              })}
-              pageRangeText={(_current, total) =>
-                intl.formatMessage(
-                  { id: "pagination.page-range" },
-                  { total: total },
-                )
-              }
-              pageText={(page, pagesUnknown) =>
-                intl.formatMessage(
-                  { id: "pagination.page" },
-                  { page: pagesUnknown ? "" : page },
-                )
-              }
+              value={filters.tags}
+              onChange={(e) => {
+                setFilters({ ...filters, tags: e.target.value });
+              }}
+              required
             />
           </Column>
+          <Column lg={3} md={8} sm={4}>
+            <CustomDatePicker
+              key="startDate"
+              id={"startDate"}
+              labelText={intl.formatMessage({
+                id: "eorder.date.start",
+                defaultMessage: "Start Date",
+              })}
+              // disallowFutureDate={true}
+              autofillDate={true}
+              value={filters.statuses}
+              onChange={(date) => handleDatePickerChangeDate("startDate", date)}
+            />
+          </Column>
+          <Column lg={3} md={8} sm={4}>
+            <CustomDatePicker
+              key="endDate"
+              id={"endDate"}
+              labelText={intl.formatMessage({
+                id: "eorder.date.end",
+                defaultMessage: "End Date",
+              })}
+              //disallowFutureDate={true}
+              autofillDate={true}
+              value={filters.todate}
+              onChange={(date) => handleDatePickerChangeDate("endDate", date)}
+            />
+          </Column>
+
+          <Column lg={16} md={8} sm={4}></Column>
         </Grid>
+        <div className="notebook-dashboard-container">
+          {noteBookEntries.map((entry, index) => (
+            <Tile key={index} className="notebook-dashboard-tile">
+              <Grid>
+                <Column lg={8} md={8} sm={4}>
+                  <h3 className="notebook-tile-title">{entry.title}</h3>
+                </Column>
+                <Column lg={8} md={8} sm={4}>
+                  <Tag
+                    style={{
+                      fontWeight: "bold",
+                    }}
+                    type={statusColors[entry.status]}
+                  >
+                    {entry.status}
+                  </Tag>
+                </Column>
+                <Column lg={2} md={8} sm={4}>
+                  <UserAvatarFilledAlt size={15} />
+                </Column>
+                <Column lg={14} md={8} sm={4}>
+                  <div className="notebook-tile-subtitle">
+                    {entry.firstName} {entry.lastName}
+                  </div>
+                </Column>
+                <Column lg={2} md={8} sm={4}>
+                  <Document size={15} />
+                </Column>
+                <Column lg={14} md={8} sm={4}>
+                  <div className="notebook-tile-subtitle">{entry.typeName}</div>
+                </Column>
+                <Column lg={2} md={8} sm={4}>
+                  <Time size={15} />
+                </Column>
+                <Column lg={14} md={8} sm={4}>
+                  <div className="notebook-tile-subtitle">
+                    {entry.dateCreated}
+                  </div>
+                </Column>
+                <Column lg={2} md={8} sm={4}>
+                  <TagIcon size={15} />
+                </Column>
+                <Column lg={14} md={8} sm={4}>
+                  {entry.tags.map((tag) => (
+                    <Tag
+                      key={tag}
+                      style={{
+                        fontSize: "0.6rem",
+                      }}
+                    >
+                      {tag}
+                    </Tag>
+                  ))}
+                </Column>
+                <Column lg={8} md={8} sm={4}>
+                  <Button
+                    kind="secondary"
+                    size="sm"
+                    onClick={() => openNoteBookView(entry.id)}
+                  >
+                    View
+                  </Button>
+                </Column>
+                <Column lg={8} md={8} sm={4}>
+                  {entry.status === "DRAFT" && (
+                    <Button
+                      kind="primary"
+                      size="sm"
+                      onClick={() => openNoteBookView(entry.id)}
+                    >
+                      Edit
+                    </Button>
+                  )}
+                </Column>
+              </Grid>
+            </Tile>
+          ))}
+        </div>
       </div>
     </>
   );

@@ -130,6 +130,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         if (optionalNoteBook.isPresent()) {
             NoteBook noteBook = optionalNoteBook.get();
             Patient patient = patientService.getData(noteBook.getPatient().getId());
+            Hibernate.initialize(noteBook.getTags());
             displayBean.setId(noteBook.getId());
             displayBean.setTitle(noteBook.getTitle());
             displayBean.setType(Integer.valueOf(noteBook.getType()));

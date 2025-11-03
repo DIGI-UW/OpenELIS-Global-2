@@ -319,7 +319,7 @@ const NoteBookEntryForm = () => {
   }, []);
 
   useEffect(() => {
-    if (!notebookid || notebookid === "0") {
+    if (!notebookid) {
       setMode(MODES.CREATE);
     } else {
       setMode(MODES.EDIT);
