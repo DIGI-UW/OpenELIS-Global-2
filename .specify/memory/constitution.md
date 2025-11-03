@@ -1,51 +1,57 @@
 # OpenELIS Global 3.0 Constitution
 
 <!--
-SYNC IMPACT REPORT - Initial Constitution Creation
+SYNC IMPACT REPORT - Technical Stack Clarifications
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Version Change: NONE → 1.0.0 (Initial ratification)
-Change Type: MAJOR - Initial constitution establishment
-Date: 2025-10-30
+Version Change: 1.0.0 → 1.1.0
+Change Type: MINOR - Technical stack clarifications and corrections
+Date: 2025-10-31
 
-Principles Defined:
-  1. Configuration-Driven Variation (NO code fragmentation for country customization)
-  2. Carbon Design System First (official UI framework since Aug 2024)
-  3. FHIR/IHE Standards Compliance (interoperability mandate)
-  4. Layered Architecture Pattern (strict 5-layer backend structure)
-  5. Test-Driven Development (TDD for new features)
-  6. Database Schema Management (Liquibase-only, NO direct DDL/DML)
-  7. Internationalization First (React Intl for all UI strings)
-  8. Security & Compliance (SLIPTA/ISO accreditation requirements)
+Modified Sections:
+  - Technical Stack Constraints > Backend (Java): Enhanced Java version requirements
+    * Added CRITICAL warning about Java version incompatibility
+    * Added .sdkmanrc file reference for SDKMAN users
+    * Added verification commands
+    * Clarified Jakarta EE 9 requirement (jakarta.persistence NOT javax.persistence)
+  
+  - Technical Stack Constraints > Backend (Java): Corrected JUnit version
+    * CORRECTED: JUnit 4 (4.13.1) is actual OpenELIS standard (NOT JUnit 5)
+    * Added specific import examples (org.junit.Test vs org.junit.jupiter.api.Test)
+    * Added assertion syntax guidance (assertEquals parameter order)
+  
+  - Principle V (Test-Driven Development): Updated test framework requirements
+    * Corrected backend testing to JUnit 4 + Mockito 2.21.0
+    * Added JUnit 4 vs JUnit 5 import warnings
 
-Added Sections:
-  - Core Principles (8 principles)
-  - Technical Stack Constraints (non-negotiable tech requirements)
-  - Development Workflow (PR guidelines, code review, testing gates)
-  - Governance (amendment process, compliance verification)
+Rationale for Changes:
+  During sample storage POC implementation (001-sample-storage), developer encountered:
+  1. Build failure due to using Java 8 instead of Java 21
+  2. Test compilation errors due to using JUnit 5 instead of JUnit 4
+  3. Persistence API errors (javax.persistence vs jakarta.persistence confusion)
+  
+  These amendments make version requirements EXPLICIT and PROMINENT to prevent future mistakes.
 
 Templates Requiring Updates:
-  ✅ plan-template.md - Constitution Check section updated with 8-point checklist + complexity justification triggers
-  ✅ spec-template.md - Constitution Compliance Requirements section added (8 CR-XXX items)
-  ✅ tasks-template.md - Phase N+1: Constitution Compliance Verification tasks added with verification commands
-  ✅ agent-file-template.md - OpenELIS stack, backend patterns, development commands, and code conventions added
+  ⚠️ quickstart.md templates - Add Java version verification step
+  ⚠️ README.md - Emphasize Java 21 requirement in prerequisites
+  ⚠️ CONTRIBUTING.md - Add JUnit 4 testing examples
 
 Follow-up TODOs:
-  - Validate Carbon Design System migration completeness across all components
-  - Document FHIR resource mapping patterns for new entities
-  - Create developer onboarding checklist referencing this constitution
-  - Add principle compliance checks to CI/CD pipeline
+  - Create .sdkmanrc files in example projects/demos
+  - Add Java version check to CI/CD pipeline (fail if not Java 21)
+  - Update test templates to show JUnit 4 examples
+  - Document Jakarta EE 9 migration patterns for new developers
 
 Commit Message:
-  docs: establish OpenELIS Global 3.0 constitution v1.0.0
+  docs: amend constitution to v1.1.0 (Java 21 & JUnit 4 clarifications)
   
-  - Define 8 core development principles for enterprise LIS
-  - Mandate Carbon Design System for all new UI (Aug 2024 adoption)
-  - Enforce FHIR R4/IHE mCSD compliance for interoperability
-  - Document strict 5-layer backend architecture (JPA/Hibernate only)
-  - Require Liquibase for schema migrations (NO direct SQL)
-  - Establish configuration-driven variation (NO code fragmentation)
+  - Emphasize Java 21 MANDATORY requirement (incompatible with Java 8/11/17)
+  - Add .sdkmanrc reference for SDKMAN automatic version switching
+  - Clarify Jakarta EE 9 persistence API (jakarta.persistence)
+  - CORRECT JUnit version: JUnit 4 (NOT JUnit 5) per actual codebase
+  - Add JUnit 4 import examples to prevent test compilation errors
   
-  BREAKING: All new code must comply with constitution principles
+  Prevents build failures and test framework mismatches
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -->
 
@@ -167,9 +173,12 @@ org.openelisglobal.fhir.subscriber.resources=Task,Patient,ServiceRequest,Diagnos
 **MANDATE**: New features MUST include automated tests. TDD workflow ENCOURAGED for complex logic.
 
 **Requirements**:
-- **Backend**: JUnit 5 + Mockito for unit tests, integration tests for API endpoints
-- **Frontend**: Jest + React Testing Library for unit tests, Cypress for E2E tests
-- **FHIR**: Validate generated FHIR resources against profiles
+- **Backend**: JUnit 4 (4.13.1) + Mockito 2.21.0 for unit tests, integration tests for API endpoints
+  - ⚠️ Use `org.junit.Test` NOT `org.junit.jupiter.api.Test` (JUnit 5)
+  - Use `org.junit.Assert.*` NOT `org.junit.jupiter.api.Assertions.*`
+  - Assertion order: `assertEquals(expected, actual)` for JUnit 4
+- **Frontend**: Jest + React Testing Library for unit tests, Cypress 12.17.3 for E2E tests
+- **FHIR**: Validate generated FHIR resources against R4 profiles
 - **Coverage Goal**: >70% for new code (measured via JaCoCo)
 
 **Test Organization**:
@@ -285,17 +294,31 @@ org.openelisglobal.fhir.subscriber.resources=Task,Patient,ServiceRequest,Diagnos
 
 ### Backend (Java)
 
-- **Java 21 LTS** (OpenJDK/Temurin distribution)
+**CRITICAL: Java Version**
+- **Java 21 LTS** (OpenJDK/Temurin distribution) - **MANDATORY**
+- ⚠️ **NOT compatible with Java 8, 11, or 17** - Build will fail with older versions
+- Use `.sdkmanrc` file for automatic version switching with SDKMAN
+- Verify: `java -version` should show `openjdk version "21.x.x"`
+- Maven compiler plugin requires Java 21 for `--release 21` flag
+
+**Frameworks & Dependencies**
 - **Spring Boot 3.x** (Spring Framework 6.2.2)
 - **Hibernate 6.x** (Hibernate 5.6.15.Final ORM)
+- **Jakarta EE 9** persistence API (NOT javax.persistence - use jakarta.persistence)
 - **JPA** for all database operations (NO JDBC, NO native SQL in code)
 - **PostgreSQL 14+** (production database)
-- **Liquibase** for schema migrations
+- **Liquibase 4.8.0** for schema migrations
 - **HAPI FHIR R4** (version 6.6.2)
 - **Maven 3.8+** build system
 - **Spotless** code formatter (`tools/OpenELIS_java_formatter.xml`)
 - **Tomcat 10 / Jakarta EE 9** application server
-- **JUnit 5 + Mockito** testing framework
+
+**Testing Framework**
+- **JUnit 4** (4.13.1) - **NOT JUnit 5** - Existing codebase uses JUnit 4
+- **Mockito 2.21.0** for mocking
+- Use `org.junit.Test` (NOT `org.junit.jupiter.api.Test`)
+- Use `org.junit.Assert.*` assertions (NOT `org.junit.jupiter.api.Assertions.*`)
+- Spring test support: `@RunWith(SpringRunner.class)` for integration tests
 
 ### Frontend (React)
 
@@ -494,9 +517,10 @@ docker-compose -f dev.docker-compose.yml up -d
 
 ---
 
-**Version**: 1.0.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-10-30
+**Version**: 1.1.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-10-31
 
 <!-- 
   Ratification Signatories: OpenELIS Global Core Team
+  Amendment v1.1.0: Technical stack clarifications (Java 21, JUnit 4, Jakarta EE 9)
   Next Review: 2026-01-30 (Quarterly)
 -->

@@ -38,9 +38,9 @@ services:
             
     oe.openelis.org:
         container_name: openelisglobal-webapp 
-        # build:
-        #     context: .
-        #     dockerfile: Dockerfile.dev
+        build:
+            context: .
+            dockerfile: Dockerfile.dev
         image: itechuw/openelis-global-2-dev:develop 
         platform: linux/amd64
         depends_on:

@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="org.openelisglobal.storage.valueholder.StorageShelf"
+        table="STORAGE_SHELF" optimistic-lock="version" dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">storage_shelf_seq</param>
+            </generator>
+        </id>
+        <version name="lastupdated" column="LASTUPDATED"
+            type="timestamp" access="field" />
+
+        <property name="fhirUuid" type="java.util.UUID">
+            <column name="FHIR_UUID" not-null="true" unique="true" />
+        </property>
+        <property name="label" type="java.lang.String">
+            <column name="LABEL" length="100" not-null="true" />
+        </property>
+        <property name="capacityLimit" type="java.lang.Integer">
+            <column name="CAPACITY_LIMIT" />
+        </property>
+        <property name="active" type="java.lang.Boolean">
+            <column name="ACTIVE" not-null="true" />
+        </property>
+        <many-to-one name="parentDevice"
+            class="org.openelisglobal.storage.valueholder.StorageDevice" 
+            fetch="select" lazy="false">
+            <column name="PARENT_DEVICE_ID" precision="10" scale="0" not-null="true" />
+        </many-to-one>
+    </class>
+</hibernate-mapping>
+

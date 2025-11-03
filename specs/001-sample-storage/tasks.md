@@ -19,13 +19,13 @@
 
 **Purpose**: Initialize storage module structure and database foundation
 
-- [ ] T001 Create storage module package structure in `src/main/java/org/openelisglobal/storage/` with subdirectories: valueholder/, dao/, service/, controller/, form/, fhir/
-- [ ] T002 Create Liquibase changeset `src/main/resources/liquibase/storage/001-create-storage-hierarchy-tables.xml` for Room, Device, Shelf, Rack, Position tables with fhir_uuid columns
-- [ ] T003 Create Liquibase changeset `src/main/resources/liquibase/storage/002-create-assignment-tables.xml` for SampleStorageAssignment and SampleStorageMovement tables
-- [ ] T004 Create Liquibase changeset `src/main/resources/liquibase/storage/003-create-indexes.xml` for performance indexes (parent lookups, FHIR UUID, occupancy queries)
-- [ ] T005 Verify database migration: Run application, check `databasechangelog` table contains storage changesets, verify tables created with `\dt storage_*`
-- [ ] T006 Create frontend storage component directory structure in `frontend/src/components/storage/` with subdirectories: StorageLocationSelector/, SampleStorage/, hooks/
-- [ ] T007 [P] Add storage message keys to `frontend/src/languages/en.json`, `fr.json`, `sw.json` (internationalization strings from quickstart.md)
+- [x] T001 Create storage module package structure in `src/main/java/org/openelisglobal/storage/` with subdirectories: valueholder/, dao/, service/, controller/, form/, fhir/
+- [x] T002 Create Liquibase changeset `src/main/resources/liquibase/storage/001-create-storage-hierarchy-tables.xml` for Room, Device, Shelf, Rack, Position tables with fhir_uuid columns
+- [x] T003 Create Liquibase changeset `src/main/resources/liquibase/storage/002-create-assignment-tables.xml` for SampleStorageAssignment and SampleStorageMovement tables
+- [x] T004 Create Liquibase changeset `src/main/resources/liquibase/storage/003-create-indexes.xml` for performance indexes (parent lookups, FHIR UUID, occupancy queries)
+- [x] T005 Verify database migration: Run application, check `databasechangelog` table contains storage changesets, verify tables created with `\dt storage_*`
+- [x] T006 Create frontend storage component directory structure in `frontend/src/components/storage/` with subdirectories: StorageLocationSelector/, SampleStorage/, hooks/
+- [x] T007 [P] Add storage message keys to `frontend/src/languages/en.json`, `fr.json`, `sw.json` (internationalization strings from quickstart.md)
 
 **Checkpoint**: Database schema created, module structure initialized, i18n keys ready
 
@@ -39,28 +39,28 @@
 
 ### Tests First (Write BEFORE implementation)
 
-- [ ] T008 [P] Write FHIR validation test `src/test/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransformTest.java` with test methods for Room→Location, Device→Location, Shelf→Location, Rack→Location, Position→Location transformations (verify physicalType, partOf, extensions per fhir-mappings.md)
-- [ ] T009 [P] Write FHIR sync test for IHE mCSD compliance: Verify hierarchical queries `?partOf=Location/{parent}`, verify identifier searches work
-- [ ] T010 Run FHIR tests → Verify all FAIL (no implementation yet): `mvn test -Dtest="StorageLocationFhirTransformTest"`
+- [x] T008 [P] Write FHIR validation test `src/test/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransformTest.java` with test methods for Room→Location, Device→Location, Shelf→Location, Rack→Location, Position→Location transformations (verify physicalType, partOf, extensions per fhir-mappings.md)
+- [x] T009 [P] Write FHIR sync test for IHE mCSD compliance: Verify hierarchical queries `?partOf=Location/{parent}`, verify identifier searches work
+- [x] T010 Run FHIR tests → Verify all FAIL (no implementation yet): `mvn test -Dtest="StorageLocationFhirTransformTest"`
 
 ### Implementation (Make Tests Pass)
 
-- [ ] T011 [P] Create Hibernate mapping `src/main/resources/hibernate/hbm/StorageRoom.hbm.xml` (follow Person.hbm.xml pattern with StringSequenceGenerator, optimistic-lock, fhir_uuid property)
-- [ ] T012 [P] Create Hibernate mapping `src/main/resources/hibernate/hbm/StorageDevice.hbm.xml` with many-to-one to StorageRoom, enum type for device type
-- [ ] T013 [P] Create Hibernate mapping `src/main/resources/hibernate/hbm/StorageShelf.hbm.xml` with many-to-one to StorageDevice
-- [ ] T014 [P] Create Hibernate mapping `src/main/resources/hibernate/hbm/StorageRack.hbm.xml` with many-to-one to StorageShelf, rows/columns properties
-- [ ] T015 [P] Create Hibernate mapping `src/main/resources/hibernate/hbm/StoragePosition.hbm.xml` with many-to-one to StorageRack, fhir_uuid, occupied boolean
-- [ ] T016 [P] Create Hibernate mapping `src/main/resources/hibernate/hbm/SampleStorageAssignment.hbm.xml` with many-to-one to Sample and StoragePosition, unique constraint on sample_id
-- [ ] T017 [P] Create Hibernate mapping `src/main/resources/hibernate/hbm/SampleStorageMovement.hbm.xml` for audit log (previous_position_id, new_position_id can be NULL)
-- [ ] T018 [P] Create StorageRoom entity `src/main/java/org/openelisglobal/storage/valueholder/StorageRoom.java` extending BaseObject with fields: fhir_uuid, name, code, description, active
-- [ ] T019 [P] Create StorageDevice entity `src/main/java/org/openelisglobal/storage/valueholder/StorageDevice.java` with DeviceType enum, parent_room relationship
-- [ ] T020 [P] Create StorageShelf entity `src/main/java/org/openelisglobal/storage/valueholder/StorageShelf.java` with parent_device relationship
-- [ ] T021 [P] Create StorageRack entity `src/main/java/org/openelisglobal/storage/valueholder/StorageRack.java` with rows, columns, positionSchemaHint fields
-- [ ] T022 [P] Create StoragePosition entity `src/main/java/org/openelisglobal/storage/valueholder/StoragePosition.java` with coordinate (VARCHAR 50), fhir_uuid, occupied boolean, optional row_index/column_index
-- [ ] T023 [P] Create SampleStorageAssignment entity `src/main/java/org/openelisglobal/storage/valueholder/SampleStorageAssignment.java` linking Sample to StoragePosition
-- [ ] T024 [P] Create SampleStorageMovement entity `src/main/java/org/openelisglobal/storage/valueholder/SampleStorageMovement.java` for immutable audit trail
-- [ ] T025 Implement StorageLocationFhirTransform service `src/main/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransform.java` implementing FhirTransformService with methods: transformToFhirLocation() for each entity type (Room, Device, Shelf, Rack, Position), following FhirTransformServiceImpl.java pattern
-- [ ] T026 Run FHIR tests → Verify all PASS: `mvn test -Dtest="StorageLocationFhirTransformTest"`
+- [x] T011 [P] Create Hibernate mapping `src/main/resources/hibernate/hbm/StorageRoom.hbm.xml` (follow Person.hbm.xml pattern with StringSequenceGenerator, optimistic-lock, fhir_uuid property)
+- [x] T012 [P] Create Hibernate mapping `src/main/resources/hibernate/hbm/StorageDevice.hbm.xml` with many-to-one to StorageRoom, enum type for device type
+- [x] T013 [P] Create Hibernate mapping `src/main/resources/hibernate/hbm/StorageShelf.hbm.xml` with many-to-one to StorageDevice
+- [x] T014 [P] Create Hibernate mapping `src/main/resources/hibernate/hbm/StorageRack.hbm.xml` with many-to-one to StorageShelf, rows/columns properties
+- [x] T015 [P] Create Hibernate mapping `src/main/resources/hibernate/hbm/StoragePosition.hbm.xml` with many-to-one to StorageRack, fhir_uuid, occupied boolean
+- [x] T016 [P] Create Hibernate mapping `src/main/resources/hibernate/hbm/SampleStorageAssignment.hbm.xml` with many-to-one to Sample and StoragePosition, unique constraint on sample_id
+- [x] T017 [P] Create Hibernate mapping `src/main/resources/hibernate/hbm/SampleStorageMovement.hbm.xml` for audit log (previous_position_id, new_position_id can be NULL)
+- [x] T018 [P] Create StorageRoom entity `src/main/java/org/openelisglobal/storage/valueholder/StorageRoom.java` extending BaseObject with fields: fhir_uuid, name, code, description, active
+- [x] T019 [P] Create StorageDevice entity `src/main/java/org/openelisglobal/storage/valueholder/StorageDevice.java` with DeviceType enum, parent_room relationship
+- [x] T020 [P] Create StorageShelf entity `src/main/java/org/openelisglobal/storage/valueholder/StorageShelf.java` with parent_device relationship
+- [x] T021 [P] Create StorageRack entity `src/main/java/org/openelisglobal/storage/valueholder/StorageRack.java` with rows, columns, positionSchemaHint fields
+- [x] T022 [P] Create StoragePosition entity `src/main/java/org/openelisglobal/storage/valueholder/StoragePosition.java` with coordinate (VARCHAR 50), fhir_uuid, occupied boolean, optional row_index/column_index
+- [x] T023 [P] Create SampleStorageAssignment entity `src/main/java/org/openelisglobal/storage/valueholder/SampleStorageAssignment.java` linking Sample to StoragePosition
+- [x] T024 [P] Create SampleStorageMovement entity `src/main/java/org/openelisglobal/storage/valueholder/SampleStorageMovement.java` for immutable audit trail
+- [x] T025 Implement StorageLocationFhirTransform service `src/main/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransform.java` implementing FhirTransformService with methods: transformToFhirLocation() for each entity type (Room, Device, Shelf, Rack, Position), following FhirTransformServiceImpl.java pattern
+- [x] T026 Run FHIR tests → Verify all PASS: `mvn test -Dtest="StorageLocationFhirTransformTest"`
 
 **Checkpoint**: Entities created, Hibernate mappings functional, FHIR transform service working and validated
 

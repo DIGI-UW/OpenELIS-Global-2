@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="org.openelisglobal.storage.valueholder.SampleStorageAssignment"
+        table="SAMPLE_STORAGE_ASSIGNMENT" optimistic-lock="none" dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">sample_storage_assignment_seq</param>
+            </generator>
+        </id>
+
+        <many-to-one name="sample"
+            class="org.openelisglobal.sample.valueholder.Sample" 
+            fetch="select" lazy="false">
+            <column name="SAMPLE_ID" precision="10" scale="0" not-null="true" unique="true" />
+        </many-to-one>
+        <many-to-one name="storagePosition"
+            class="org.openelisglobal.storage.valueholder.StoragePosition" 
+            fetch="select" lazy="false">
+            <column name="STORAGE_POSITION_ID" precision="10" scale="0" not-null="true" />
+        </many-to-one>
+        <property name="assignedByUserId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ASSIGNED_BY_USER_ID" precision="10" scale="0" not-null="true" />
+        </property>
+        <property name="assignedDate" type="java.sql.Timestamp">
+            <column name="ASSIGNED_DATE" not-null="true" />
+        </property>
+        <property name="notes" type="java.lang.String">
+            <column name="NOTES" />
+        </property>
+    </class>
+</hibernate-mapping>
+

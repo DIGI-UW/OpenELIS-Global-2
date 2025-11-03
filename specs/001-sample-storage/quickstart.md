@@ -7,12 +7,29 @@
 
 ## Prerequisites
 
+**⚠️ CRITICAL: Java Version**
+- ✅ **Java 21 LTS** (OpenJDK/Temurin) - **MANDATORY** per constitution
+- ❌ **NOT compatible** with Java 8, 11, or 17 - build will fail
+- Verify: `java -version` should show `openjdk version "21.x.x"`
+- For SDKMAN users: `.sdkmanrc` file in project root auto-switches to Java 21
+
+**Other Prerequisites**
 - ✅ OpenELIS Global 3.0 development environment running (see [dev_setup.md](../../../docs/dev_setup.md))
 - ✅ PostgreSQL 14+ database accessible
-- ✅ Java 21 (OpenJDK), Maven 3.8+
+- ✅ Maven 3.8+
 - ✅ Node.js 16+, npm
 - ✅ Docker + Docker Compose
 - ✅ HAPI FHIR R4 server running at `https://fhir.openelis.org:8443/fhir/`
+
+**Setup Java 21** (if needed):
+```bash
+# With SDKMAN (recommended)
+sdk install java 21.0.5-tem
+cd /Users/pmanko/code/OpenELIS-Global-2
+sdk env  # Activates Java 21 from .sdkmanrc
+
+# Or download from: https://adoptium.net/temurin/releases/?version=21
+```
 
 ## ⚠️ CRITICAL: Test-First Development
 
@@ -45,6 +62,11 @@
 # Create test file first
 src/test/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransformTest.java
 
+# ⚠️ IMPORTANT: Use JUnit 4 (NOT JUnit 5)
+import org.junit.Test;  // ✅ Correct
+import org.junit.Assert.*;  // ✅ Correct
+// NOT: import org.junit.jupiter.api.Test;  ❌ Wrong
+
 # Write test methods based on fhir-mappings.md contract
 # Example test:
 @Test
@@ -58,6 +80,7 @@ public void testTransformStorageRoomToFhirLocation() {
     Location fhirLocation = transformer.transformToFhirLocation(room);
     
     // Then: Verify FHIR structure per contract
+    // JUnit 4 assertion syntax: assertEquals(expected, actual)
     assertEquals(room.getFhirUuid().toString(), fhirLocation.getId());
     assertEquals("MAIN", fhirLocation.getIdentifierFirstRep().getValue());
     assertEquals("ro", fhirLocation.getPhysicalType().getCodingFirstRep().getCode());
