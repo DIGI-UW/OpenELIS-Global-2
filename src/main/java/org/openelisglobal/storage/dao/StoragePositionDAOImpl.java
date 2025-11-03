@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Transactional
 public class StoragePositionDAOImpl extends BaseDAOImpl<StoragePosition, String> implements StoragePositionDAO {
-    
+
     public StoragePositionDAOImpl() {
         super(StoragePosition.class);
     }
@@ -21,9 +21,9 @@ public class StoragePositionDAOImpl extends BaseDAOImpl<StoragePosition, String>
     @Transactional(readOnly = true)
     public List<StoragePosition> findByParentRackId(String rackId) {
         try {
-            String hql = "FROM StoragePosition WHERE parentRack.id = :rackId";
+            String hql = "FROM StoragePosition p WHERE p.parentRack.id = :rackId";
             Query<StoragePosition> query = entityManager.unwrap(Session.class).createQuery(hql, StoragePosition.class);
-            query.setParameter("rackId", rackId);
+            query.setParameter("rackId", Integer.parseInt(rackId));
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error finding StoragePositions by rack ID", e);
@@ -34,9 +34,9 @@ public class StoragePositionDAOImpl extends BaseDAOImpl<StoragePosition, String>
     @Transactional(readOnly = true)
     public int countOccupied(String rackId) {
         try {
-            String hql = "SELECT COUNT(*) FROM StoragePosition WHERE parentRack.id = :rackId AND occupied = true";
+            String hql = "SELECT COUNT(*) FROM StoragePosition p WHERE p.parentRack.id = :rackId AND p.occupied = true";
             Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
-            query.setParameter("rackId", rackId);
+            query.setParameter("rackId", Integer.parseInt(rackId));
             Long count = query.uniqueResult();
             return count != null ? count.intValue() : 0;
         } catch (Exception e) {
@@ -48,10 +48,10 @@ public class StoragePositionDAOImpl extends BaseDAOImpl<StoragePosition, String>
     @Transactional(readOnly = true)
     public int countOccupiedInDevice(String deviceId) {
         try {
-            String hql = "SELECT COUNT(*) FROM StoragePosition p " +
-                        "WHERE p.parentRack.parentShelf.parentDevice.id = :deviceId AND p.occupied = true";
+            String hql = "SELECT COUNT(*) FROM StoragePosition p "
+                    + "WHERE p.parentRack.parentShelf.parentDevice.id = :deviceId AND p.occupied = true";
             Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
-            query.setParameter("deviceId", deviceId);
+            query.setParameter("deviceId", Integer.parseInt(deviceId));
             Long count = query.uniqueResult();
             return count != null ? count.intValue() : 0;
         } catch (Exception e) {
@@ -59,4 +59,3 @@ public class StoragePositionDAOImpl extends BaseDAOImpl<StoragePosition, String>
         }
     }
 }
-

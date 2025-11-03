@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { ComboBox } from '@carbon/react';
-import { FormattedMessage, useIntl } from 'react-intl';
+import React, { useState } from "react";
+import { ComboBox } from "@carbon/react";
+import { FormattedMessage, useIntl } from "react-intl";
 
 /**
  * Autocomplete/type-ahead mode for storage location selection
@@ -19,11 +19,13 @@ const AutocompleteMode = ({ onLocationChange }) => {
     <div className="autocomplete-container">
       <ComboBox
         id="location-search"
-        titleText={intl.formatMessage({ id: 'storage.location.label' })}
+        titleText={intl.formatMessage({ id: "storage.location.label" })}
         placeholder="Search for location..."
         items={searchResults}
-        itemToString={(item) => (item ? item.hierarchicalPath : '')}
-        onChange={({ selectedItem }) => onLocationChange && onLocationChange(selectedItem)}
+        itemToString={(item) => (item ? item.hierarchicalPath : "")}
+        onChange={({ selectedItem }) =>
+          onLocationChange && onLocationChange(selectedItem)
+        }
         onInputChange={handleSearch}
       />
     </div>
@@ -31,4 +33,3 @@ const AutocompleteMode = ({ onLocationChange }) => {
 };
 
 export default AutocompleteMode;
-

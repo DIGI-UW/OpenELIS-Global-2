@@ -1,6 +1,64 @@
 # OpenELIS Global 3.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - Annotation-Based Hibernate Mappings & Pre-Commit Formatting
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.2.0 → 1.3.0
+Change Type: MINOR - Technical stack requirement update + workflow enforcement
+Date: 2025-11-03
+
+Modified Sections:
+  - Principle IV (Layered Architecture) > Valueholders: Mandated annotation-based Hibernate mappings
+    * CHANGED: From "Hibernate XML mappings in `src/main/resources/hibernate/hbm/*.hbm.xml`"
+    * TO: "JPA/Hibernate annotations on entity classes (NO XML mapping files)"
+    * Rationale: Modern Hibernate best practice, better IDE support, compile-time validation
+    * Migration: Legacy code using XML mappings exempt until refactored
+
+  - Development Workflow > Pull Request Requirements: Enhanced pre-commit formatting requirement
+    * CHANGED: From "before committing" (recommended)
+    * TO: "MUST run before each commit" (mandatory enforcement)
+    * Added: Explicit requirement to run both `npm run format` AND `mvn spotless:apply`
+    * Rationale: Prevents formatting inconsistencies in PRs, reduces review noise
+
+  - Principle V > Section V.4 (ORM Validation Tests): Updated to reflect annotation-based mappings
+    * CHANGED: Example test from XML-based (`config.addResource("hibernate/hbm/Entity1.hbm.xml")`)
+    * TO: Annotation-based (`config.addAnnotatedClass(Entity1.class)`)
+    * Updated property validation to check annotations instead of XML files
+
+Rationale for Changes:
+  During feature 001-sample-storage implementation, use of XML mapping files created:
+  1. Maintenance overhead: changes required in both entity classes AND XML files
+  2. IDE limitations: reduced autocomplete and refactoring support
+  3. Debugging complexity: mapping errors only discovered at runtime
+  Annotation-based mappings provide compile-time validation and better developer experience.
+
+  Pre-commit formatting enforcement prevents common PR issues:
+  1. Formatting-only commits that clutter git history
+  2. Review time wasted on style discussions
+  3. CI/CD failures due to formatting violations
+
+Templates Requiring Updates:
+  ✅ .specify/templates/plan-template.md - Updated Constitution Check to reflect annotation requirement
+  ✅ .specify/templates/spec-template.md - Updated CR-003 to reflect annotation-based mappings
+  ✅ .specify/templates/tasks-template.md - Updated ORM validation test example to use annotations
+  ⚠️ README.md - Should mention annotation-based mappings in Hibernate section (pending)
+  ⚠️ CONTRIBUTING.md - Should emphasize pre-commit formatting requirement (pending)
+
+Follow-up TODOs:
+  - Create migration guide for converting existing XML mappings to annotations
+  - Add pre-commit hook script (.git/hooks/pre-commit) to enforce formatting
+  - Update CI/CD pipeline to fail fast on formatting violations
+  - Document annotation patterns for custom Hibernate types (e.g., LIMSStringNumberUserType)
+
+Commit Message:
+  docs: amend constitution to v1.3.0 (annotation-based mappings + pre-commit formatting)
+
+  - Mandate JPA/Hibernate annotations instead of XML mapping files
+  - Require `npm run format` and `mvn spotless:apply` before each commit
+  - Update ORM validation test examples to use annotations
+  - Improves developer experience and prevents formatting inconsistencies
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 SYNC IMPACT REPORT - ORM Validation Test Layer
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.1.0 → 1.2.0
@@ -16,7 +74,7 @@ Added Sections:
     * Must execute in <5 seconds without database
 
 Rationale:
-  During Phase 3 implementation of feature 001-sample-storage, TDD successfully validated 
+  During Phase 3 implementation of feature 001-sample-storage, TDD successfully validated
   business logic via unit tests (17/17 passing) but missed ORM configuration errors:
   1. Hibernate getter conflict: getActive() vs isActive()
   2. Property name mismatch: movedByUser vs movedByUserId
@@ -32,7 +90,7 @@ Impact:
 
 Commit Message:
   docs: amend constitution to v1.2.0 (ORM validation test requirement)
-  
+
   Add Principle V, Section V.4 mandating ORM validation tests
   Fills gap between unit tests (mocked) and integration tests (full stack)
   Catches mapping errors in <5s without database
@@ -50,12 +108,12 @@ Modified Sections:
     * Added .sdkmanrc file reference for SDKMAN users
     * Added verification commands
     * Clarified Jakarta EE 9 requirement (jakarta.persistence NOT javax.persistence)
-  
+
   - Technical Stack Constraints > Backend (Java): Corrected JUnit version
     * CORRECTED: JUnit 4 (4.13.1) is actual OpenELIS standard (NOT JUnit 5)
     * Added specific import examples (org.junit.Test vs org.junit.jupiter.api.Test)
     * Added assertion syntax guidance (assertEquals parameter order)
-  
+
   - Principle V (Test-Driven Development): Updated test framework requirements
     * Corrected backend testing to JUnit 4 + Mockito 2.21.0
     * Added JUnit 4 vs JUnit 5 import warnings
@@ -65,7 +123,7 @@ Rationale for Changes:
   1. Build failure due to using Java 8 instead of Java 21
   2. Test compilation errors due to using JUnit 5 instead of JUnit 4
   3. Persistence API errors (javax.persistence vs jakarta.persistence confusion)
-  
+
   These amendments make version requirements EXPLICIT and PROMINENT to prevent future mistakes.
 
 Templates Requiring Updates:
@@ -81,13 +139,13 @@ Follow-up TODOs:
 
 Commit Message:
   docs: amend constitution to v1.1.0 (Java 21 & JUnit 4 clarifications)
-  
+
   - Emphasize Java 21 MANDATORY requirement (incompatible with Java 8/11/17)
   - Add .sdkmanrc reference for SDKMAN automatic version switching
   - Clarify Jakarta EE 9 persistence API (jakarta.persistence)
   - CORRECT JUnit version: JUnit 4 (NOT JUnit 5) per actual codebase
   - Add JUnit 4 import examples to prevent test compilation errors
-  
+
   Prevents build failures and test framework mismatches
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -->
@@ -96,56 +154,84 @@ Commit Message:
 
 ### I. Configuration-Driven Variation
 
-**MANDATE**: Country-specific customizations (accession formats, phone formats, patient identifiers, address fields) MUST be implemented via configuration, NOT code branching.
+**MANDATE**: Country-specific customizations (accession formats, phone formats,
+patient identifiers, address fields) MUST be implemented via configuration, NOT
+code branching.
 
 **Rules**:
+
 - NO country-specific code branches or forks
-- Use database-driven configuration tables (`SystemConfiguration`, `LocalizationConfiguration`)
+- Use database-driven configuration tables (`SystemConfiguration`,
+  `LocalizationConfiguration`)
 - Validation patterns via properties files, NOT hardcoded logic
 - New variations require configuration schema extension, NOT code duplication
 
-**Rationale**: OpenELIS serves 30+ countries with diverse requirements. Code fragmentation creates unmaintainable technical debt. A unified codebase with configuration-driven variation enables centralized bug fixes and feature updates while respecting local needs.
+**Rationale**: OpenELIS serves 30+ countries with diverse requirements. Code
+fragmentation creates unmaintainable technical debt. A unified codebase with
+configuration-driven variation enables centralized bug fixes and feature updates
+while respecting local needs.
 
-**Example**: Accession number format "YYYY-NNNNN" vs "LAB-YYYY-MM-NNNNN" configured via `common.properties`, not separate Java classes.
+**Example**: Accession number format "YYYY-NNNNN" vs "LAB-YYYY-MM-NNNNN"
+configured via `common.properties`, not separate Java classes.
 
 ---
 
 ### II. Carbon Design System First
 
-**MANDATE** (Effective August 2024): All new UI components MUST use Carbon Design System exclusively. NO custom CSS frameworks, NO Bootstrap, NO Tailwind.
+**MANDATE** (Effective August 2024): All new UI components MUST use Carbon
+Design System exclusively. NO custom CSS frameworks, NO Bootstrap, NO Tailwind.
 
 **Rules**:
+
 - Use `@carbon/react` v1.15+ components exclusively for new features
 - Styling via Carbon tokens (`$spacing-*`, `$text-*`, `$layer-*`) ONLY
-- Typography: IBM Plex Sans (Carbon default) - NO custom fonts without justification
+- Typography: IBM Plex Sans (Carbon default) - NO custom fonts without
+  justification
 - Layout: Carbon Grid + Column system - NO flexbox/grid outside Carbon patterns
 - Icons: `@carbon/icons-react` v11.17+ - NO custom icon libraries
 - Customize via Carbon theme tokens, NOT custom CSS overrides
 
-**Rationale**: Strategic adoption of Carbon ensures UI/UX consistency, accessibility (WCAG 2.1 AA), and alignment with modern design systems used by major healthcare platforms. Ad-hoc styling creates maintenance debt and accessibility failures.
+**Rationale**: Strategic adoption of Carbon ensures UI/UX consistency,
+accessibility (WCAG 2.1 AA), and alignment with modern design systems used by
+major healthcare platforms. Ad-hoc styling creates maintenance debt and
+accessibility failures.
 
-**Migration**: Legacy components may use older frameworks until refactored. New features have NO exemption.
+**Migration**: Legacy components may use older frameworks until refactored. New
+features have NO exemption.
 
-**Reference**: [OpenELIS Carbon Design Guide](https://uwdigi.atlassian.net/wiki/spaces/OG/pages/621346838)
+**Reference**:
+[OpenELIS Carbon Design Guide](https://uwdigi.atlassian.net/wiki/spaces/OG/pages/621346838)
 
 ---
 
 ### III. FHIR/IHE Standards Compliance
 
-**MANDATE**: All healthcare data interoperability MUST use HL7 FHIR R4 + IHE profiles. NO proprietary APIs for external integration.
+**MANDATE**: All healthcare data interoperability MUST use HL7 FHIR R4 + IHE
+profiles. NO proprietary APIs for external integration.
 
 **Rules**:
-- **HAPI FHIR R4** (v6.6.2) for local FHIR store at `org.openelisglobal.fhirstore.uri`
-- **IHE mCSD** (Mobile Care Services Discovery) for Location/Organization resources
-- **IHE Lab** profiles for DiagnosticReport, Observation, Specimen, ServiceRequest
-- All entities with external exposure MUST have `fhir_uuid UUID` column + bidirectional transform
-- Use `FhirPersistanceService` for CRUD, `FhirTransformService` for entity ↔ FHIR conversion
-- Sync to consolidated server (SHR/IPS) on insert/update operations
-- Support subscriptions: Task, Patient, ServiceRequest, DiagnosticReport, Observation, Specimen, Practitioner, Encounter
 
-**Rationale**: National health information exchanges require standards-based interoperability. FHIR ensures OpenELIS integrates with OpenMRS 3.x (Lab on FHIR), facility registries (GoFR, OpenHIM), and SHR/IPS systems without custom adapters.
+- **HAPI FHIR R4** (v6.6.2) for local FHIR store at
+  `org.openelisglobal.fhirstore.uri`
+- **IHE mCSD** (Mobile Care Services Discovery) for Location/Organization
+  resources
+- **IHE Lab** profiles for DiagnosticReport, Observation, Specimen,
+  ServiceRequest
+- All entities with external exposure MUST have `fhir_uuid UUID` column +
+  bidirectional transform
+- Use `FhirPersistanceService` for CRUD, `FhirTransformService` for entity ↔
+  FHIR conversion
+- Sync to consolidated server (SHR/IPS) on insert/update operations
+- Support subscriptions: Task, Patient, ServiceRequest, DiagnosticReport,
+  Observation, Specimen, Practitioner, Encounter
+
+**Rationale**: National health information exchanges require standards-based
+interoperability. FHIR ensures OpenELIS integrates with OpenMRS 3.x (Lab on
+FHIR), facility registries (GoFR, OpenHIM), and SHR/IPS systems without custom
+adapters.
 
 **Configuration** (`common.properties`):
+
 ```properties
 org.openelisglobal.fhirstore.uri=https://fhir.openelis.org:8443/fhir/
 org.openelisglobal.fhir.subscriber=https://consolidated.openelis.org/fhir/
@@ -158,25 +244,32 @@ org.openelisglobal.fhir.subscriber.resources=Task,Patient,ServiceRequest,Diagnos
 
 ### IV. Layered Architecture Pattern
 
-**MANDATE**: All backend features MUST follow strict 5-layer structure. NO direct database access from controllers, NO business logic in DAOs.
+**MANDATE**: All backend features MUST follow strict 5-layer structure. NO
+direct database access from controllers, NO business logic in DAOs.
 
 **Layers**:
 
 1. **Valueholders** (JPA Entities): `org.openelisglobal.{module}.valueholder`
+
    - Extend `BaseObject<String>` (provides id, sys_user_id, lastupdated)
    - Include `fhir_uuid UUID` for FHIR-mapped entities
-   - Hibernate XML mappings in `src/main/resources/hibernate/hbm/*.hbm.xml`
+   - **MANDATORY**: Use JPA/Hibernate annotations on entity classes (`@Entity`,
+     `@Table`, `@Id`, `@Column`, `@ManyToOne`, etc.)
+   - **PROHIBITED**: NO XML mapping files (`.hbm.xml`) - legacy XML mappings
+     exempt until refactored
    - Validation annotations on fields (`@NotNull`, `@Size`, etc.)
    - ID generation via `@GenericGenerator` with sequence name
    - `@PrePersist` hook for fhir_uuid generation
 
 2. **DAOs** (Data Access): `org.openelisglobal.{module}.dao`
+
    - Interface + Implementation (extends `BaseDAOImpl<Entity, String>`)
    - Annotate with `@Component` + `@Transactional`
    - Methods: get, insert, update, delete, custom queries
    - Use HQL (Hibernate Query Language) ONLY - NO native SQL in code
 
 3. **Services** (Business Logic): `org.openelisglobal.{module}.service`
+
    - Interface + Implementation (annotate with `@Service` + `@Transactional`)
    - Transactions start here (NOT in controllers)
    - Call DAOs for persistence, FHIR services for sync
@@ -184,6 +277,7 @@ org.openelisglobal.fhir.subscriber.resources=Task,Patient,ServiceRequest,Diagnos
    - Logging via `LogEvent.logError()` for errors
 
 4. **Controllers** (REST Endpoints): `org.openelisglobal.{module}.controller`
+
    - Extend `BaseRestController`
    - Annotate with `@RestController` + `@RequestMapping("/rest/{module}")`
    - Methods: `@GetMapping`, `@PostMapping`, `@PutMapping`, `@DeleteMapping`
@@ -195,64 +289,87 @@ org.openelisglobal.fhir.subscriber.resources=Task,Patient,ServiceRequest,Diagnos
    - Simple beans for client ↔ server communication
    - Validation annotations validate client input
 
-**Rationale**: Layered architecture enforces separation of concerns, testability, and transaction boundary clarity. Prevents spaghetti code where SQL mixes with HTTP handling and business rules.
+**Rationale**: Layered architecture enforces separation of concerns,
+testability, and transaction boundary clarity. Prevents spaghetti code where SQL
+mixes with HTTP handling and business rules.
 
 **Anti-Patterns to Avoid**:
+
 - Controllers calling DAOs directly (bypasses business logic layer)
 - Business logic in DAOs (query methods should be data retrieval only)
-- Native SQL in Java code (breaks database portability, bypasses Hibernate caching)
+- Native SQL in Java code (breaks database portability, bypasses Hibernate
+  caching)
 - Class-level variables in controllers (thread safety violations)
 
 ---
 
 ### V. Test-Driven Development
 
-**MANDATE**: New features MUST include automated tests. TDD workflow ENCOURAGED for complex logic.
+**MANDATE**: New features MUST include automated tests. TDD workflow ENCOURAGED
+for complex logic.
 
 **Requirements**:
-- **Backend**: JUnit 4 (4.13.1) + Mockito 2.21.0 for unit tests, integration tests for API endpoints
+
+- **Backend**: JUnit 4 (4.13.1) + Mockito 2.21.0 for unit tests, integration
+  tests for API endpoints
   - ⚠️ Use `org.junit.Test` NOT `org.junit.jupiter.api.Test` (JUnit 5)
   - Use `org.junit.Assert.*` NOT `org.junit.jupiter.api.Assertions.*`
   - Assertion order: `assertEquals(expected, actual)` for JUnit 4
-- **Frontend**: Jest + React Testing Library for unit tests, Cypress 12.17.3 for E2E tests
+- **Frontend**: Jest + React Testing Library for unit tests, Cypress 12.17.3 for
+  E2E tests
 - **FHIR**: Validate generated FHIR resources against R4 profiles
 - **Coverage Goal**: >70% for new code (measured via JaCoCo)
 
 **Test Organization**:
+
 - Backend: `src/test/java/org/openelisglobal/{module}/`
 - Frontend: `frontend/src/components/{feature}/*.test.js`
 - E2E: `frontend/cypress/e2e/{feature}.cy.js`
 
 **CI/CD Gates**:
+
 - `mvn spotless:check` (code formatting)
 - `mvn clean install` (build + unit tests)
 - `npm run cy:run` (E2E tests)
 - All must pass before merge to `develop`
 
-**Rationale**: Healthcare software failures impact patient care. Automated testing catches regressions, enforces contract compliance, and enables confident refactoring.
+**Rationale**: Healthcare software failures impact patient care. Automated
+testing catches regressions, enforces contract compliance, and enables confident
+refactoring.
 
-**Reference**: [README.md Testing Section](https://github.com/DIGI-UW/OpenELIS-Global-2#to-ensure-your-code-passes-the-same-checks-as-the-ci-pipeline)
+**Reference**:
+[README.md Testing Section](https://github.com/DIGI-UW/OpenELIS-Global-2#to-ensure-your-code-passes-the-same-checks-as-the-ci-pipeline)
 
 #### Section V.4: ORM Validation Tests (ADDED 2025-10-31)
 
-**MANDATE**: For projects using Object-Relational Mapping frameworks (Hibernate/JPA, Entity Framework, TypeORM, SQLAlchemy), the test suite MUST include framework validation tests that verify ORM configuration correctness WITHOUT requiring database connection or full application context.
+**MANDATE**: For projects using Object-Relational Mapping frameworks
+(Hibernate/JPA, Entity Framework, TypeORM, SQLAlchemy), the test suite MUST
+include framework validation tests that verify ORM configuration correctness
+WITHOUT requiring database connection or full application context.
 
-**Purpose**: Fills critical gap between unit tests (pure mocks, no framework) and integration tests (full stack). Catches ORM configuration errors in <5 seconds rather than at deployment.
+**Purpose**: Fills critical gap between unit tests (pure mocks, no framework)
+and integration tests (full stack). Catches ORM configuration errors in <5
+seconds rather than at deployment.
 
 **Requirements for Hibernate/JPA Projects**:
+
 - MUST include test that builds `SessionFactory` or `EntityManagerFactory`
 - MUST validate all entity mappings load without errors
-- MUST verify no JavaBean getter/setter conflicts (e.g., both `getActive()` and `isActive()`)
-- MUST verify property names match between entity classes and `.hbm.xml` mapping files
+- MUST verify no JavaBean getter/setter conflicts (e.g., both `getActive()` and
+  `isActive()`)
+- MUST verify property names match between entity classes and annotations (for
+  annotation-based mappings)
 - MUST execute in <5 seconds
 - MUST NOT require database connection
 
 **Requirements for Liquibase/Flyway Projects**:
+
 - SHOULD include test that parses changesets without executing them
 - SHOULD validate XML/SQL syntax
 - SHOULD check for common errors (unescaped operators like `<=`, missing CDATA)
 
 **Test Execution Order**:
+
 ```
 1. Unit Tests (Mockito mocked) - Business logic validation
 2. ORM Validation Tests - Framework configuration validation
@@ -260,12 +377,14 @@ org.openelisglobal.fhir.subscriber.resources=Task,Patient,ServiceRequest,Diagnos
 4. E2E Tests (Cypress) - User workflow validation
 ```
 
-**Example** (Hibernate):
+**Example** (Hibernate with annotations):
+
 ```java
 @Test
 public void testHibernateMappingsLoadSuccessfully() {
     Configuration config = new Configuration();
-    config.addResource("hibernate/hbm/Entity1.hbm.xml");
+    config.addAnnotatedClass(Entity1.class);
+    config.addAnnotatedClass(Entity2.class);
     config.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
     SessionFactory sf = config.buildSessionFactory();
     assertNotNull("All mappings should load", sf);
@@ -273,17 +392,26 @@ public void testHibernateMappingsLoadSuccessfully() {
 }
 ```
 
-**Rationale**: During implementation of feature 001-sample-storage (Phase 3), pure unit tests with mocked DAOs successfully validated business logic but missed ORM configuration errors that only appeared at application startup: (1) Getter conflicts: `getActive()` (Boolean) vs `isActive()` (boolean) caused Hibernate introspection failure, (2) Property mismatches: Entity had `movedByUser`, mapping expected `movedByUserId`. A 2-second ORM validation test would have caught both immediately.
+**Rationale**: During implementation of feature 001-sample-storage (Phase 3),
+pure unit tests with mocked DAOs successfully validated business logic but
+missed ORM configuration errors that only appeared at application startup: (1)
+Getter conflicts: `getActive()` (Boolean) vs `isActive()` (boolean) caused
+Hibernate introspection failure, (2) Property mismatches: Entity had
+`movedByUser`, annotations expected `movedByUserId`. A 2-second ORM validation
+test would have caught both immediately.
 
-**Exception**: Projects without ORM frameworks (pure JDBC, NoSQL, etc.) may skip this requirement.
+**Exception**: Projects without ORM frameworks (pure JDBC, NoSQL, etc.) may skip
+this requirement.
 
 ---
 
 ### VI. Database Schema Management
 
-**MANDATE**: All database changes MUST go through Liquibase. NO direct DDL/DML in production.
+**MANDATE**: All database changes MUST go through Liquibase. NO direct DDL/DML
+in production.
 
 **Rules**:
+
 - Schema migrations in `src/main/resources/liquibase/{module}/`
 - Changesets MUST have unique IDs: `{module}-{sequence}-{description}`
 - Use Liquibase XML format (NOT raw SQL unless necessary for performance)
@@ -291,9 +419,12 @@ public void testHibernateMappingsLoadSuccessfully() {
 - Test migrations on empty database AND production-like data volume
 - NO `ALTER TABLE` or `CREATE TABLE` via psql/pgAdmin in deployed environments
 
-**Rationale**: Liquibase ensures repeatable deployments, version control for schema, and audit trail for compliance (SLIPTA/ISO requirements). Direct SQL bypasses these safeguards.
+**Rationale**: Liquibase ensures repeatable deployments, version control for
+schema, and audit trail for compliance (SLIPTA/ISO requirements). Direct SQL
+bypasses these safeguards.
 
 **Example Changeset**:
+
 ```xml
 <changeSet id="storage-001-create-storage-room-table" author="dev-team">
   <createTable tableName="storage_room">
@@ -311,19 +442,24 @@ public void testHibernateMappingsLoadSuccessfully() {
 
 ### VII. Internationalization First
 
-**MANDATE**: All user-facing strings MUST be externalized via React Intl. NO hardcoded English text in components.
+**MANDATE**: All user-facing strings MUST be externalized via React Intl. NO
+hardcoded English text in components.
 
 **Rules**:
+
 - Message files in `frontend/src/languages/{locale}.json`
 - Use `intl.formatMessage({ id: 'storage.location.label' })` for all text
-- Supported locales: en (English), fr (French), ar (Arabic), es (Spanish), hi (Hindi), pt (Portuguese), sw (Swahili)
+- Supported locales: en (English), fr (French), ar (Arabic), es (Spanish), hi
+  (Hindi), pt (Portuguese), sw (Swahili)
 - New features MUST provide translations for at least en + fr
 - Date/time formatting via `intl.formatDate()`, `intl.formatTime()`
 - Number formatting via `intl.formatNumber()`
 
-**Rationale**: OpenELIS operates in multilingual countries (e.g., Rwanda: en/fr, Kenya: en/sw). Hardcoded strings force costly retrofitting and delay deployment.
+**Rationale**: OpenELIS operates in multilingual countries (e.g., Rwanda: en/fr,
+Kenya: en/sw). Hardcoded strings force costly retrofitting and delay deployment.
 
 **Example**:
+
 ```javascript
 // ❌ BAD
 <Button>Save Location</Button>
@@ -333,6 +469,7 @@ public void testHibernateMappingsLoadSuccessfully() {
 ```
 
 **Translation Files** (`en.json`):
+
 ```json
 {
   "button.save.location": "Save Location",
@@ -345,47 +482,62 @@ public void testHibernateMappingsLoadSuccessfully() {
 
 ### VIII. Security & Compliance
 
-**MANDATE**: OpenELIS MUST meet SLIPTA (Stepwise Laboratory Quality Improvement Process Towards Accreditation) and ISO 15189 requirements.
+**MANDATE**: OpenELIS MUST meet SLIPTA (Stepwise Laboratory Quality Improvement
+Process Towards Accreditation) and ISO 15189 requirements.
 
 **Requirements**:
+
 - **Authentication**: Spring Security 6.0.4 + session management
 - **Authorization**: Role-based access control (RBAC) via `sys_role` table
-- **Audit Trail**: All data changes logged with user ID + timestamp (BaseObject.sys_user_id, BaseObject.lastupdated)
-- **Data Privacy**: PHI (Protected Health Information) access logged, GDPR-ready deletion workflows
-- **Secure Transport**: HTTPS enforced (Tomcat SSL/TLS config in `volume/tomcat/oe_server.xml`)
-- **Password Policy**: Configurable via `SystemConfiguration` (min length, complexity, expiry)
+- **Audit Trail**: All data changes logged with user ID + timestamp
+  (BaseObject.sys_user_id, BaseObject.lastupdated)
+- **Data Privacy**: PHI (Protected Health Information) access logged, GDPR-ready
+  deletion workflows
+- **Secure Transport**: HTTPS enforced (Tomcat SSL/TLS config in
+  `volume/tomcat/oe_server.xml`)
+- **Password Policy**: Configurable via `SystemConfiguration` (min length,
+  complexity, expiry)
 - **Input Validation**: Hibernate Validator + Formik validation on frontend
 
 **Compliance Checklist** (for new features):
+
 - [ ] Role-based access control implemented
 - [ ] Audit trail captures user actions
 - [ ] Input validated against injection attacks (SQL, XSS)
 - [ ] Sensitive data encrypted at rest (if applicable)
 - [ ] HTTPS endpoints only (NO HTTP for PHI)
 
-**Rationale**: Public health laboratories require accreditation to receive funding and participate in disease surveillance networks. Security failures risk patient data breaches and legal penalties.
+**Rationale**: Public health laboratories require accreditation to receive
+funding and participate in disease surveillance networks. Security failures risk
+patient data breaches and legal penalties.
 
-**Reference**: [OpenELIS Admin Manual Section 4: Security](https://docs.openelis-global.org/)
+**Reference**:
+[OpenELIS Admin Manual Section 4: Security](https://docs.openelis-global.org/)
 
 ---
 
 ## Technical Stack Constraints
 
-**NON-NEGOTIABLE**: All code MUST use these versions/frameworks. Exceptions require architecture review + documented justification.
+**NON-NEGOTIABLE**: All code MUST use these versions/frameworks. Exceptions
+require architecture review + documented justification.
 
 ### Backend (Java)
 
 **CRITICAL: Java Version**
+
 - **Java 21 LTS** (OpenJDK/Temurin distribution) - **MANDATORY**
-- ⚠️ **NOT compatible with Java 8, 11, or 17** - Build will fail with older versions
+- ⚠️ **NOT compatible with Java 8, 11, or 17** - Build will fail with older
+  versions
 - Use `.sdkmanrc` file for automatic version switching with SDKMAN
 - Verify: `java -version` should show `openjdk version "21.x.x"`
 - Maven compiler plugin requires Java 21 for `--release 21` flag
 
 **Frameworks & Dependencies**
+
 - **Spring Boot 3.x** (Spring Framework 6.2.2)
 - **Hibernate 6.x** (Hibernate 5.6.15.Final ORM)
-- **Jakarta EE 9** persistence API (NOT javax.persistence - use jakarta.persistence)
+- **Jakarta EE 9** persistence API (NOT javax.persistence - use
+  jakarta.persistence)
 - **JPA** for all database operations (NO JDBC, NO native SQL in code)
 - **PostgreSQL 14+** (production database)
 - **Liquibase 4.8.0** for schema migrations
@@ -395,6 +547,7 @@ public void testHibernateMappingsLoadSuccessfully() {
 - **Tomcat 10 / Jakarta EE 9** application server
 
 **Testing Framework**
+
 - **JUnit 4** (4.13.1) - **NOT JUnit 5** - Existing codebase uses JUnit 4
 - **Mockito 2.21.0** for mocking
 - Use `org.junit.Test` (NOT `org.junit.jupiter.api.Test`)
@@ -419,9 +572,11 @@ public void testHibernateMappingsLoadSuccessfully() {
 
 ### FHIR Integration
 
-- **HAPI FHIR R4 Server** (co-habitant at `https://fhir.openelis.org:8443/fhir/`)
+- **HAPI FHIR R4 Server** (co-habitant at
+  `https://fhir.openelis.org:8443/fhir/`)
 - **IHE mCSD Profile** for Location/Organization resources
-- **Consolidated Server** with SHR (Shared Health Record) + IPS (International Patient Summary)
+- **Consolidated Server** with SHR (Shared Health Record) + IPS (International
+  Patient Summary)
 - **OpenMRS 3.x Integration** via Lab on FHIR module
 - **Facility Registry Sync** (GoFR, OpenHIM supported)
 
@@ -441,7 +596,9 @@ public void testHibernateMappingsLoadSuccessfully() {
 - ❌ **Hardcoded Strings** - Use React Intl
 - ❌ **Class-level variables in Controllers** - Thread safety violation
 
-**Rationale**: Technology standardization reduces onboarding time, simplifies dependency management, and enables predictable troubleshooting. Deviation creates hidden maintenance costs.
+**Rationale**: Technology standardization reduces onboarding time, simplifies
+dependency management, and enables predictable troubleshooting. Deviation
+creates hidden maintenance costs.
 
 ---
 
@@ -451,27 +608,35 @@ public void testHibernateMappingsLoadSuccessfully() {
 
 - **`develop`** - Main development branch (all PRs target this)
 - **`main`** - Production releases only (reviewers backport from develop)
-- **Feature branches**: `issue-{###}-{feature-name}` (e.g., `issue-123-storage-management`)
+- **Feature branches**: `issue-{###}-{feature-name}` (e.g.,
+  `issue-123-storage-management`)
 - **Hotfix branches**: `hotfix-{description}` (merged to develop + main)
 
 ### Pull Request Requirements
 
 **MANDATORY CHECKLIST** (from [PULL_REQUEST_TIPS.md](PULL_REQUEST_TIPS.md)):
 
-1. **GitHub Issue**: PR MUST reference issue number in title (e.g., "issue-123: Add storage location widget")
+1. **GitHub Issue**: PR MUST reference issue number in title (e.g., "issue-123:
+   Add storage location widget")
 2. **Branch Naming**: Branch name matches `issue-{###}-{feature-name}`
 3. **Target Branch**: Always `develop` (unless hotfix)
-4. **Code Formatting**:
-   - Backend: `mvn spotless:apply` before committing
-   - Frontend: `npm run format` (Prettier) before committing
+4. **Code Formatting** (MANDATORY - MUST run before each commit):
+   - Backend: `mvn spotless:apply` - MUST run before committing
+   - Frontend: `npm run format` (Prettier) - MUST run before committing
+   - **ENFORCEMENT**: Pre-commit hooks recommended to prevent formatting-only
+     commits
+   - **CI/CD**: Formatting violations will cause build failures
 5. **Build Verification**: `mvn clean install -DskipTests` passes locally
-6. **Tests**: All new features include tests (unit + integration + E2E where applicable)
+6. **Tests**: All new features include tests (unit + integration + E2E where
+   applicable)
 7. **UI Screenshots**: Attach before/after images for UI changes
-8. **Single Concern**: PR addresses ONE issue only (NO mixed refactoring + features)
+8. **Single Concern**: PR addresses ONE issue only (NO mixed refactoring +
+   features)
 9. **Constitution Compliance**: Verify adherence to all 8 core principles
 10. **Review Assignment**: Request review from appropriate team members
 
 **CI/CD Pipeline** (GitHub Actions):
+
 - **`ci.yml`**: Maven build + JaCoCo coverage report
 - **`publish-and-test.yml`**: Docker image build + integration tests
 - **`frontend-qa.yml`**: Cypress E2E tests
@@ -482,6 +647,7 @@ All checks MUST pass before merge.
 ### Code Review Standards
 
 **Reviewers MUST verify**:
+
 - ✅ Constitution compliance (all 8 principles)
 - ✅ Layered architecture respected (no DAO calls from controllers)
 - ✅ FHIR resources validated if applicable
@@ -496,12 +662,14 @@ All checks MUST pass before merge.
 ### Development Environment Setup
 
 **Prerequisites**:
+
 - Docker + Docker Compose
 - Java 21 (OpenJDK)
 - Maven 3.8+
 - Node.js 16+ (for frontend)
 
 **Quick Start** (from [README.md](README.md)):
+
 ```bash
 # Clone + submodules
 git clone https://github.com/DIGI-UW/OpenELIS-Global-2.git
@@ -519,11 +687,13 @@ docker-compose -f dev.docker-compose.yml up -d
 ```
 
 **Access Points**:
+
 - React UI: https://localhost/
 - Legacy UI: https://localhost/api/OpenELIS-Global/
 - FHIR Server: https://fhir.openelis.org:8443/fhir/
 
 **Hot Reload**:
+
 - Frontend: Changes in `frontend/src/` auto-reload (Webpack HMR)
 - Backend: Rebuild WAR (`mvn clean install -DskipTests`) + recreate container:
   ```bash
@@ -538,24 +708,31 @@ docker-compose -f dev.docker-compose.yml up -d
 
 ### Constitution Authority
 
-**PRECEDENCE**: This constitution supersedes all other documentation, coding guidelines, and legacy patterns. In case of conflict, constitution wins.
+**PRECEDENCE**: This constitution supersedes all other documentation, coding
+guidelines, and legacy patterns. In case of conflict, constitution wins.
 
-**Scope**: Applies to all code merged to `develop` branch after ratification date (2025-10-30). Legacy code exempt until refactored.
+**Scope**: Applies to all code merged to `develop` branch after ratification
+date (2025-10-30). Legacy code exempt until refactored.
 
 ### Amendment Process
 
 **Proposing Amendments**:
+
 1. Create GitHub issue with `constitution-amendment` label
 2. Document principle change rationale, impact analysis, migration plan
 3. Architecture review team discusses in weekly sync
 4. Approval requires consensus (no blocking objections)
 
 **Versioning** (Semantic Versioning):
-- **MAJOR** (X.0.0): Backward incompatible governance/principle removal or redefinition
+
+- **MAJOR** (X.0.0): Backward incompatible governance/principle removal or
+  redefinition
 - **MINOR** (0.X.0): New principle/section added or materially expanded guidance
 - **PATCH** (0.0.X): Clarifications, wording, typos, non-semantic refinements
 
-**Change Log**: Maintain `SYNC IMPACT REPORT` HTML comment at top of this file documenting:
+**Change Log**: Maintain `SYNC IMPACT REPORT` HTML comment at top of this file
+documenting:
+
 - Version change (old → new)
 - Modified/added/removed principles
 - Templates requiring updates
@@ -564,6 +741,7 @@ docker-compose -f dev.docker-compose.yml up -d
 ### Compliance Verification
 
 **PR Review Checklist**: Reviewers MUST confirm:
+
 - [ ] Layered architecture respected (Principle IV)
 - [ ] Carbon Design System used exclusively (Principle II)
 - [ ] FHIR compliance for external data (Principle III)
@@ -573,35 +751,45 @@ docker-compose -f dev.docker-compose.yml up -d
 - [ ] Liquibase for schema changes (Principle VI)
 - [ ] Security/compliance requirements met (Principle VIII)
 
-**Quarterly Audits**: Architecture team samples merged PRs to verify constitution adherence. Violations trigger corrective actions (documentation updates, training, refactoring).
+**Quarterly Audits**: Architecture team samples merged PRs to verify
+constitution adherence. Violations trigger corrective actions (documentation
+updates, training, refactoring).
 
 **Non-Compliance Handling**:
-- **Minor violations** (e.g., missed translation): Fix in follow-up PR, document lesson learned
-- **Major violations** (e.g., native SQL in production code): Revert PR, architectural review required
+
+- **Minor violations** (e.g., missed translation): Fix in follow-up PR, document
+  lesson learned
+- **Major violations** (e.g., native SQL in production code): Revert PR,
+  architectural review required
 
 ### Developer Guidance
 
 **Onboarding**: New contributors MUST read:
+
 1. This constitution (`.specify/memory/constitution.md`)
 2. [README.md](README.md) - Project overview + setup
 3. [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution process
 4. [PULL_REQUEST_TIPS.md](PULL_REQUEST_TIPS.md) - PR guidelines
 5. [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) - Community standards
-6. [Carbon Design Guide](https://uwdigi.atlassian.net/wiki/spaces/OG/pages/621346838) - UI patterns
+6. [Carbon Design Guide](https://uwdigi.atlassian.net/wiki/spaces/OG/pages/621346838) -
+   UI patterns
 
 **Runtime Guidance**: For implementation patterns, see:
+
 - Backend: `src/main/java/org/openelisglobal/{module}/` existing code examples
 - Frontend: `frontend/src/components/` Carbon component usage
 - FHIR: `org.openelisglobal.fhir.FhirTransformServiceImpl` transform examples
 
-**Questions/Clarifications**: Post in GitHub Discussions or weekly developer sync.
+**Questions/Clarifications**: Post in GitHub Discussions or weekly developer
+sync.
 
 ---
 
-**Version**: 1.2.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-10-31
+**Version**: 1.3.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-11-03
 
-<!-- 
+<!--
   Ratification Signatories: OpenELIS Global Core Team
+  Amendment v1.3.0: Annotation-based Hibernate mappings + pre-commit formatting enforcement (2025-11-03)
   Amendment v1.2.0: ORM validation test requirement (2025-10-31)
   Amendment v1.1.0: Technical stack clarifications (Java 21, JUnit 4, Jakarta EE 9)
   Next Review: 2026-01-30 (Quarterly)

@@ -163,13 +163,7 @@
         <mapping resource="hibernate/hbm/PatientContact.hbm.xml" />
 
         <!-- Sample Storage Management mappings (001-sample-storage) -->
-        <mapping resource="hibernate/hbm/StorageRoom.hbm.xml" />
-        <mapping resource="hibernate/hbm/StorageDevice.hbm.xml" />
-        <mapping resource="hibernate/hbm/StorageShelf.hbm.xml" />
-        <mapping resource="hibernate/hbm/StorageRack.hbm.xml" />
-        <mapping resource="hibernate/hbm/StoragePosition.hbm.xml" />
-        <mapping resource="hibernate/hbm/SampleStorageAssignment.hbm.xml" />
-        <mapping resource="hibernate/hbm/SampleStorageMovement.hbm.xml" />
+        <!-- Moved to annotation-based mappings (JPA) - entities registered in persistence.xml -->
 
     </session-factory>
 

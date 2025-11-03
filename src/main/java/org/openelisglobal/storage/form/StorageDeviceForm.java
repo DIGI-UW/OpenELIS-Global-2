@@ -6,7 +6,8 @@ import jakarta.validation.constraints.Size;
 
 /**
  * Form object for StorageDevice entity - used for REST API input validation
- * Following OpenELIS pattern: Form objects for transport, entities for persistence
+ * Following OpenELIS pattern: Form objects for transport, entities for
+ * persistence
  */
 public class StorageDeviceForm {
 
@@ -21,8 +22,7 @@ public class StorageDeviceForm {
     private String code;
 
     @NotBlank(message = "Device type is required")
-    @Pattern(regexp = "freezer|refrigerator|cabinet|other", 
-             message = "Device type must be one of: freezer, refrigerator, cabinet, other")
+    @Pattern(regexp = "freezer|refrigerator|cabinet|other", message = "Device type must be one of: freezer, refrigerator, cabinet, other")
     private String type;
 
     private Double temperatureSetting;
@@ -100,4 +100,3 @@ public class StorageDeviceForm {
         this.parentRoomId = parentRoomId;
     }
 }
-

@@ -6,6 +6,6 @@ import org.openelisglobal.storage.valueholder.StorageDevice;
 
 public interface StorageDeviceDAO extends BaseDAO<StorageDevice, String> {
     List<StorageDevice> findByParentRoomId(String roomId);
+
     StorageDevice findByParentRoomIdAndCode(String roomId, String code);
 }
-

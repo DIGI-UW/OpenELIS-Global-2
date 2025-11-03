@@ -3,7 +3,6 @@
  * Provides reusable methods for Cypress E2E tests
  */
 class StorageAssignmentPage {
-  
   getStorageLocationSelector() {
     return cy.get('[data-testid="storage-location-selector"]');
   }
@@ -78,4 +77,3 @@ class StorageAssignmentPage {
 }
 
 export default StorageAssignmentPage;
-

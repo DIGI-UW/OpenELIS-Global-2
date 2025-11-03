@@ -2,7 +2,6 @@ package org.openelisglobal.storage.fhir;
 
 import static org.junit.Assert.*;
 
-import java.math.BigDecimal;
 import java.util.UUID;
 import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.Location.LocationStatus;
@@ -24,7 +23,7 @@ public class StorageLocationFhirTransformTest {
     public void setup() {
         // Initialize transformer
         transformer = new StorageLocationFhirTransform();
-        
+
         // Setup test data
         testRoom = new StorageRoom();
         testRoom.setId("1");
@@ -39,8 +38,8 @@ public class StorageLocationFhirTransformTest {
         testDevice.setFhirUuid(UUID.randomUUID());
         testDevice.setCode("FRZ01");
         testDevice.setName("Freezer Unit 1");
-        testDevice.setType(StorageDevice.DeviceType.FREEZER);
-        testDevice.setTemperatureSetting(-80.0);
+        testDevice.setTypeEnum(StorageDevice.DeviceType.FREEZER);
+        testDevice.setTemperatureSetting(java.math.BigDecimal.valueOf(-80.0));
         testDevice.setActive(true);
         testDevice.setParentRoom(testRoom);
 
@@ -78,20 +77,16 @@ public class StorageLocationFhirTransformTest {
 
         // Then: Verify FHIR Location structure per fhir-mappings.md
         assertNotNull("FHIR Location should not be null", fhirLocation);
-        assertEquals("Location.id should match entity fhir_uuid", 
-            testRoom.getFhirUuid().toString(), fhirLocation.getId());
-        assertEquals("Location.identifier should match room code", 
-            "MAIN", fhirLocation.getIdentifierFirstRep().getValue());
-        assertEquals("Location.name should match room name", 
-            testRoom.getName(), fhirLocation.getName());
-        assertEquals("Location.status should be active", 
-            LocationStatus.ACTIVE, fhirLocation.getStatus());
-        assertEquals("physicalType should be 'ro' (room)", 
-            "ro", fhirLocation.getPhysicalType().getCodingFirstRep().getCode());
-        assertEquals("Location.mode should be 'instance'", 
-            "instance", fhirLocation.getMode().toCode());
-        assertFalse("Room Location should NOT have partOf (top-level)", 
-            fhirLocation.hasPartOf());
+        assertEquals("Location.id should match entity fhir_uuid", testRoom.getFhirUuid().toString(),
+                fhirLocation.getId());
+        assertEquals("Location.identifier should match room code", "MAIN",
+                fhirLocation.getIdentifierFirstRep().getValue());
+        assertEquals("Location.name should match room name", testRoom.getName(), fhirLocation.getName());
+        assertEquals("Location.status should be active", LocationStatus.ACTIVE, fhirLocation.getStatus());
+        assertEquals("physicalType should be 'ro' (room)", "ro",
+                fhirLocation.getPhysicalType().getCodingFirstRep().getCode());
+        assertEquals("Location.mode should be 'instance'", "instance", fhirLocation.getMode().toCode());
+        assertFalse("Room Location should NOT have partOf (top-level)", fhirLocation.hasPartOf());
     }
 
     @Test
@@ -102,16 +97,15 @@ public class StorageLocationFhirTransformTest {
         // Then: Verify FHIR Location structure
         assertNotNull(fhirLocation);
         assertEquals(testDevice.getFhirUuid().toString(), fhirLocation.getId());
-        assertEquals("Identifier should be hierarchical: room-device", 
-            "MAIN-FRZ01", fhirLocation.getIdentifierFirstRep().getValue());
-        assertEquals("physicalType should be 've' (vehicle/equipment)", 
-            "ve", fhirLocation.getPhysicalType().getCodingFirstRep().getCode());
-        assertTrue("Device Location should have partOf reference to Room", 
-            fhirLocation.hasPartOf());
-        assertTrue("partOf should reference parent Room Location", 
-            fhirLocation.getPartOf().getReference().contains(testRoom.getFhirUuid().toString()));
-        assertEquals("Location.type should match device type", 
-            "freezer", fhirLocation.getTypeFirstRep().getCodingFirstRep().getCode());
+        assertEquals("Identifier should be hierarchical: room-device", "MAIN-FRZ01",
+                fhirLocation.getIdentifierFirstRep().getValue());
+        assertEquals("physicalType should be 've' (vehicle/equipment)", "ve",
+                fhirLocation.getPhysicalType().getCodingFirstRep().getCode());
+        assertTrue("Device Location should have partOf reference to Room", fhirLocation.hasPartOf());
+        assertTrue("partOf should reference parent Room Location",
+                fhirLocation.getPartOf().getReference().contains(testRoom.getFhirUuid().toString()));
+        assertEquals("Location.type should match device type", "freezer",
+                fhirLocation.getTypeFirstRep().getCodingFirstRep().getCode());
     }
 
     @Test
@@ -122,13 +116,13 @@ public class StorageLocationFhirTransformTest {
         // Then: Verify FHIR Location structure
         assertNotNull(fhirLocation);
         assertEquals(testShelf.getFhirUuid().toString(), fhirLocation.getId());
-        assertEquals("Identifier should be hierarchical: room-device-shelf", 
-            "MAIN-FRZ01-SHA", fhirLocation.getIdentifierFirstRep().getValue());
-        assertEquals("physicalType should be 'co' (container)", 
-            "co", fhirLocation.getPhysicalType().getCodingFirstRep().getCode());
+        assertEquals("Identifier should be hierarchical: room-device-shelf", "MAIN-FRZ01-SHA",
+                fhirLocation.getIdentifierFirstRep().getValue());
+        assertEquals("physicalType should be 'co' (container)", "co",
+                fhirLocation.getPhysicalType().getCodingFirstRep().getCode());
         assertTrue(fhirLocation.hasPartOf());
-        assertTrue("partOf should reference parent Device Location", 
-            fhirLocation.getPartOf().getReference().contains(testDevice.getFhirUuid().toString()));
+        assertTrue("partOf should reference parent Device Location",
+                fhirLocation.getPartOf().getReference().contains(testDevice.getFhirUuid().toString()));
     }
 
     @Test
@@ -139,15 +133,15 @@ public class StorageLocationFhirTransformTest {
         // Then: Verify FHIR Location structure
         assertNotNull(fhirLocation);
         assertEquals(testRack.getFhirUuid().toString(), fhirLocation.getId());
-        assertEquals("Identifier should be full hierarchical: room-device-shelf-rack", 
-            "MAIN-FRZ01-SHA-RKR1", fhirLocation.getIdentifierFirstRep().getValue());
+        assertEquals("Identifier should be full hierarchical: room-device-shelf-rack", "MAIN-FRZ01-SHA-RKR1",
+                fhirLocation.getIdentifierFirstRep().getValue());
         assertEquals("co", fhirLocation.getPhysicalType().getCodingFirstRep().getCode());
         assertTrue(fhirLocation.hasPartOf());
         assertTrue(fhirLocation.getPartOf().getReference().contains(testShelf.getFhirUuid().toString()));
-        
+
         // Verify grid dimensions extension
         boolean hasGridExtension = fhirLocation.getExtension().stream()
-            .anyMatch(ext -> ext.getUrl().contains("rack-grid-dimensions"));
+                .anyMatch(ext -> ext.getUrl().contains("rack-grid-dimensions"));
         assertTrue("Rack should have grid-dimensions extension", hasGridExtension);
     }
 
@@ -159,18 +153,17 @@ public class StorageLocationFhirTransformTest {
         // Then: Verify FHIR Location structure
         assertNotNull(fhirLocation);
         assertEquals(testPosition.getFhirUuid().toString(), fhirLocation.getId());
-        assertEquals("Identifier should include position coordinate", 
-            "MAIN-FRZ01-SHA-RKR1-A5", fhirLocation.getIdentifierFirstRep().getValue());
-        assertEquals("Location.name should be the position coordinate", 
-            "A5", fhirLocation.getName());
+        assertEquals("Identifier should include position coordinate", "MAIN-FRZ01-SHA-RKR1-A5",
+                fhirLocation.getIdentifierFirstRep().getValue());
+        assertEquals("Location.name should be the position coordinate", "A5", fhirLocation.getName());
         assertEquals("co", fhirLocation.getPhysicalType().getCodingFirstRep().getCode());
         assertTrue(fhirLocation.hasPartOf());
-        assertTrue("partOf should reference parent Rack Location", 
-            fhirLocation.getPartOf().getReference().contains(testRack.getFhirUuid().toString()));
-        
+        assertTrue("partOf should reference parent Rack Location",
+                fhirLocation.getPartOf().getReference().contains(testRack.getFhirUuid().toString()));
+
         // Verify occupancy extension
         boolean hasOccupancyExtension = fhirLocation.getExtension().stream()
-            .anyMatch(ext -> ext.getUrl().contains("position-occupancy"));
+                .anyMatch(ext -> ext.getUrl().contains("position-occupancy"));
         assertTrue("Position should have position-occupancy extension", hasOccupancyExtension);
     }
 
@@ -183,8 +176,8 @@ public class StorageLocationFhirTransformTest {
         Location fhirLocation = transformer.transformToFhirLocation(testRoom);
 
         // Then: Status should be inactive
-        assertEquals("Inactive entity should map to inactive FHIR status", 
-            LocationStatus.INACTIVE, fhirLocation.getStatus());
+        assertEquals("Inactive entity should map to inactive FHIR status", LocationStatus.INACTIVE,
+                fhirLocation.getStatus());
     }
 
     @Test
@@ -204,4 +197,3 @@ public class StorageLocationFhirTransformTest {
         assertEquals("MAIN-FRZ01-SHA-RKR1-A5", positionLocation.getIdentifierFirstRep().getValue());
     }
 }
-

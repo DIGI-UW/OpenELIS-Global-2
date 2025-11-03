@@ -36,4 +36,3 @@ public class CapacityWarning {
         return warningMessage != null && !warningMessage.isEmpty();
     }
 }
-

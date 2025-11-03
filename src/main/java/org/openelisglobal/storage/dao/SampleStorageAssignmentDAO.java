@@ -6,4 +6,3 @@ import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
 public interface SampleStorageAssignmentDAO extends BaseDAO<SampleStorageAssignment, String> {
     SampleStorageAssignment findBySampleId(String sampleId);
 }
-

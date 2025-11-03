@@ -1,33 +1,33 @@
-import React, { useState } from 'react';
-import { FormattedMessage, useIntl } from 'react-intl';
-import CascadingDropdownMode from './CascadingDropdownMode';
-import AutocompleteMode from './AutocompleteMode';
-import BarcodeScanMode from './BarcodeScanMode';
-import './StorageLocationSelector.css';
+import React, { useState } from "react";
+import { FormattedMessage, useIntl } from "react-intl";
+import CascadingDropdownMode from "./CascadingDropdownMode";
+import AutocompleteMode from "./AutocompleteMode";
+import BarcodeScanMode from "./BarcodeScanMode";
+import "./StorageLocationSelector.css";
 
 /**
  * Main Storage Location Selector Widget
  * Supports three input modes: dropdown, autocomplete, barcode
- * 
+ *
  * Props:
  * - mode: 'dropdown' | 'autocomplete' | 'barcode'
  * - onLocationChange: callback when location selected
  * - enableInlineCreation: boolean to show "Add New" buttons
  * - optional: boolean - can be left blank
  */
-const StorageLocationSelector = ({ 
-  mode = 'dropdown', 
+const StorageLocationSelector = ({
+  mode = "dropdown",
   onLocationChange,
   enableInlineCreation = false,
-  optional = true 
+  optional = true,
 }) => {
   const intl = useIntl();
   const [selectedLocation, setSelectedLocation] = useState(null);
-  const [hierarchicalPath, setHierarchicalPath] = useState('');
+  const [hierarchicalPath, setHierarchicalPath] = useState("");
 
   const handleLocationChange = (location) => {
     setSelectedLocation(location);
-    
+
     // Build hierarchical path
     if (location && location.position) {
       const path = `${location.room?.name} > ${location.device?.name} > ${location.shelf?.label} > ${location.rack?.label} > Position ${location.position.coordinate}`;
@@ -41,11 +41,14 @@ const StorageLocationSelector = ({
 
   const handleBarcodeScanned = (barcode) => {
     // TODO: Parse barcode and fetch location
-    console.log('Barcode scanned:', barcode);
+    console.log("Barcode scanned:", barcode);
   };
 
   return (
-    <div className="storage-location-selector" data-testid="storage-location-selector">
+    <div
+      className="storage-location-selector"
+      data-testid="storage-location-selector"
+    >
       <div className="selector-header">
         <h4>
           <FormattedMessage id="storage.location.label" />
@@ -54,18 +57,18 @@ const StorageLocationSelector = ({
       </div>
 
       <div className="selector-content">
-        {mode === 'dropdown' && (
+        {mode === "dropdown" && (
           <CascadingDropdownMode
             onLocationChange={handleLocationChange}
             enableInlineCreation={enableInlineCreation}
           />
         )}
 
-        {mode === 'autocomplete' && (
+        {mode === "autocomplete" && (
           <AutocompleteMode onLocationChange={handleLocationChange} />
         )}
 
-        {mode === 'barcode' && (
+        {mode === "barcode" && (
           <BarcodeScanMode onLocationScanned={handleBarcodeScanned} />
         )}
       </div>
@@ -83,4 +86,3 @@ const StorageLocationSelector = ({
 };
 
 export default StorageLocationSelector;
-

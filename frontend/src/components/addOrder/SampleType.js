@@ -587,7 +587,9 @@ const SampleType = (props) => {
             mode="dropdown"
             optional={true}
             enableInlineCreation={true}
-            onLocationChange={(location) => handleStorageLocationChange(location, index)}
+            onLocationChange={(location) =>
+              handleStorageLocationChange(location, index)
+            }
           />
         </div>
         <div className="testPanels">

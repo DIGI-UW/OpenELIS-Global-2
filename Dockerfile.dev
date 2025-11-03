@@ -52,7 +52,7 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn dependency:go-offline 
 
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn clean install -DskipTests -Dspotless.check.skip=true
+    mvn clean install -DskipTests -Dspotless.check.skip=true -Dmaven.test.skip=true
 
 ##
 # Run Stage

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { postToOpenElisServer } from '../../utils/Utils';
+import { useState } from "react";
+import { postToOpenElisServer } from "../../utils/Utils";
 
 /**
  * Hook for sample storage assignment and movement
@@ -15,7 +15,7 @@ export const useSampleStorage = () => {
 
     return new Promise((resolve, reject) => {
       postToOpenElisServer(
-        '/rest/storage/samples/assign',
+        "/rest/storage/samples/assign",
         JSON.stringify(assignmentData),
         (response) => {
           setIsSubmitting(false);
@@ -25,7 +25,7 @@ export const useSampleStorage = () => {
           setIsSubmitting(false);
           setError(error);
           reject(error);
-        }
+        },
       );
     });
   };
@@ -36,7 +36,7 @@ export const useSampleStorage = () => {
 
     return new Promise((resolve, reject) => {
       postToOpenElisServer(
-        '/rest/storage/samples/move',
+        "/rest/storage/samples/move",
         JSON.stringify(movementData),
         (response) => {
           setIsSubmitting(false);
@@ -46,7 +46,7 @@ export const useSampleStorage = () => {
           setIsSubmitting(false);
           setError(error);
           reject(error);
-        }
+        },
       );
     });
   };
@@ -55,4 +55,3 @@ export const useSampleStorage = () => {
 };
 
 export default useSampleStorage;
-

@@ -22,9 +22,15 @@
 
 ### The Paradigm Shift
 
-Spec-Driven Development (SDD) represents a fundamental inversion of the traditional software development model. For decades, **code has been king**—specifications served as transient scaffolding, discarded once implementation began. In SDD, **specifications become the source of truth**, with implementation as the continuously regenerable output.
+Spec-Driven Development (SDD) represents a fundamental inversion of the
+traditional software development model. For decades, **code has been
+king**—specifications served as transient scaffolding, discarded once
+implementation began. In SDD, **specifications become the source of truth**,
+with implementation as the continuously regenerable output.
 
-This is not waterfall planning or exhaustive documentation. SDD captures the "why" behind technical decisions in evolvable, version-controlled artifacts that grow with your understanding of the problem space.
+This is not waterfall planning or exhaustive documentation. SDD captures the
+"why" behind technical decisions in evolvable, version-controlled artifacts that
+grow with your understanding of the problem space.
 
 ### The Communication Problem SDD Solves
 
@@ -35,23 +41,31 @@ Consider a typical cross-functional failure scenario:
 - **Frontend Developer**: Assumes OS notification integration
 - **Designer**: Mocks up UI requiring user service refactor
 
-No individual made an unreasonable assumption. The failure was **lack of shared context**. SDD surfaces these assumptions early, when changing direction costs keystrokes rather than sprints.
+No individual made an unreasonable assumption. The failure was **lack of shared
+context**. SDD surfaces these assumptions early, when changing direction costs
+keystrokes rather than sprints.
 
 ### SDD in AI-Assisted Development
 
-SDD becomes **especially critical** when AI agents generate code. Specifications provide:
+SDD becomes **especially critical** when AI agents generate code. Specifications
+provide:
 
 1. **Steering Context**: Well-defined specs guide AI toward correct solutions
-2. **Multi-Variant Generation**: Easily explore multiple implementations from single spec
+2. **Multi-Variant Generation**: Easily explore multiple implementations from
+   single spec
 3. **Living Documentation**: Specs evolve alongside code, maintaining alignment
-4. **Shared Understanding**: Human teams and AI agents reference same source of truth
+4. **Shared Understanding**: Human teams and AI agents reference same source of
+   truth
 
-**Example**: Curious about performance differences between Rust and Go implementations? Generate both from the same specification. Exploring different UI approaches? Generate variants based on multiple Figma designs—all grounded in the same functional requirements.
+**Example**: Curious about performance differences between Rust and Go
+implementations? Generate both from the same specification. Exploring different
+UI approaches? Generate variants based on multiple Figma designs—all grounded in
+the same functional requirements.
 
 ### The SDD Workflow
 
 ```
-Idea (vague) 
+Idea (vague)
   → /speckit.specify → Functional Specification (PRD)
     → /speckit.clarify → Clarifications & Decisions
       → /speckit.plan → Technical Implementation Plan
@@ -60,7 +74,9 @@ Idea (vague)
             → Production Metrics → Spec Updates (continuous loop)
 ```
 
-**Key Insight**: Specifications are **living documents**, not dusty artifacts. Updating specs becomes as natural as refactoring code—without touching implementation.
+**Key Insight**: Specifications are **living documents**, not dusty artifacts.
+Updating specs becomes as natural as refactoring code—without touching
+implementation.
 
 ---
 
@@ -68,19 +84,23 @@ Idea (vague)
 
 ### Components
 
-**1. Specify CLI** (`uv tool install specify-cli --from git+https://github.com/github/spec-kit.git`):
+**1. Specify CLI**
+(`uv tool install specify-cli --from git+https://github.com/github/spec-kit.git`):
+
 - Bootstraps SDD project structure
 - Injects slash commands into your coding agent (Cursor, VS Code, etc.)
 - Manages feature numbering and branch creation
 - Downloads official templates
 
 **2. Templates & Scripts** (`.specify/` directory):
+
 - `feature-specification-template.md` - PRD structure
 - `memory/constitution.md` - Project principles, tech stack constraints
 - `scripts/` - Helper utilities
 - Custom prompts for each slash command
 
 **3. Slash Commands** (injected into Cursor/VS Code):
+
 - `/speckit.specify` - Generate functional specification
 - `/speckit.clarify` - Clarify ambiguities via structured Q&A
 - `/speckit.plan` - Create technical implementation plan
@@ -134,17 +154,22 @@ memory/constitution.md
 
 ### `/speckit.specify` - Functional Specification
 
-**Purpose**: Transform a feature description into a comprehensive PRD, **explicitly excluding technical decisions**.
+**Purpose**: Transform a feature description into a comprehensive PRD,
+**explicitly excluding technical decisions**.
 
 **What It Does**:
+
 1. Scans existing `specs/` to determine next feature number (001, 002, etc.)
 2. Creates semantic branch name from description
 3. Copies and customizes feature specification template
-4. Generates structured PRD with user stories, acceptance criteria, non-functional requirements
+4. Generates structured PRD with user stories, acceptance criteria,
+   non-functional requirements
 
-**Key Principle**: Focus on **"what" and "why"**, not **"how"**. No tech stack decisions at this stage.
+**Key Principle**: Focus on **"what" and "why"**, not **"how"**. No tech stack
+decisions at this stage.
 
 **Example Prompt**:
+
 ```
 /speckit.specify
 
@@ -175,23 +200,29 @@ Non-functional requirements:
 Base on .dev-docs/original-spec.md but integrate Box entity throughout.
 ```
 
-**Tip**: "Having a **very detailed first prompt** will produce a much better specification that the agent can use for further project buildouts." — Microsoft Spec Kit Blog
+**Tip**: "Having a **very detailed first prompt** will produce a much better
+specification that the agent can use for further project buildouts." — Microsoft
+Spec Kit Blog
 
 **Output**: `specs/001-sample-storage/spec.md`
 
 ### `/speckit.clarify` - Structured Clarification
 
-**Purpose**: Identify and resolve ambiguities **before** creating technical plan. Reduces downstream rework.
+**Purpose**: Identify and resolve ambiguities **before** creating technical
+plan. Reduces downstream rework.
 
 **What It Does**:
+
 1. Analyzes `spec.md` for ambiguous requirements
 2. Generates structured Q&A format (multiple choice when possible)
 3. Records decisions in `clarifications.md`
 4. Updates `spec.md` with refined requirements
 
-**When to Use**: **Required before `/speckit.plan`**. Skip only for spikes or exploratory prototypes (state explicitly).
+**When to Use**: **Required before `/speckit.plan`**. Skip only for spikes or
+exploratory prototypes (state explicitly).
 
 **Example Prompt**:
+
 ```
 /speckit.clarify
 
@@ -218,8 +249,10 @@ FHIR Integration:
 ```
 
 **Best Practice**: Use **structured Q&A format**:
+
 ```markdown
 **Q1: Box Mobility**
+
 - a) Boxes are fixed to racks (default)
 - b) Boxes can be moved between racks
 
@@ -230,11 +263,14 @@ FHIR Integration:
 
 ### `/speckit.plan` - Technical Implementation Plan
 
-**Purpose**: Translate functional requirements into **technical architecture** grounded in project constitution.
+**Purpose**: Translate functional requirements into **technical architecture**
+grounded in project constitution.
 
 **What It Does**:
+
 1. Reads `spec.md` and `clarifications.md`
-2. Applies constraints from `memory/constitution.md` (tech stack, patterns, standards)
+2. Applies constraints from `memory/constitution.md` (tech stack, patterns,
+   standards)
 3. Generates implementation plan with:
    - Database schema (Liquibase changesets)
    - API design (REST endpoints, OpenAPI spec)
@@ -249,6 +285,7 @@ FHIR Integration:
    - `quickstart.md` - Developer getting started guide
 
 **Example Prompt**:
+
 ```
 /speckit.plan
 
@@ -278,7 +315,8 @@ Research areas:
 - PostgreSQL hierarchical query performance (100k samples, 10k boxes)
 ```
 
-**Output**: 
+**Output**:
+
 - `specs/001-sample-storage/plan.md`
 - `specs/001-sample-storage/data-model.md`
 - `specs/001-sample-storage/contracts/`
@@ -287,12 +325,15 @@ Research areas:
 
 ### `/speckit.tasks` - Task Breakdown
 
-**Purpose**: Convert plan into phased, executable tasks with parallelization markers.
+**Purpose**: Convert plan into phased, executable tasks with parallelization
+markers.
 
 **What It Does**:
+
 1. Analyzes `plan.md`, `data-model.md`, `contracts/`
 2. Derives specific tasks from entities, endpoints, scenarios
-3. Identifies dependencies and marks independent tasks `[P]` for parallel execution
+3. Identifies dependencies and marks independent tasks `[P]` for parallel
+   execution
 4. Organizes by user story with checkpoint validations
 
 **Example Output Structure** (`tasks.md`):
@@ -301,50 +342,61 @@ Research areas:
 ## User Story 1: Location Management
 
 ### Task 1.1: Create StorageBox Entity [backend]
+
 **File**: `src/main/java/org/openelisglobal/storage/valueholder/StorageBox.java`
-**Dependencies**: None
-**Description**: Create JPA entity extending BaseObject with fhir_uuid, barcode, dimensions
-**Tests**: Unit test for calculateCapacity(), generateFhirUuid()
-**Estimate**: 2 hours
+**Dependencies**: None **Description**: Create JPA entity extending BaseObject
+with fhir_uuid, barcode, dimensions **Tests**: Unit test for
+calculateCapacity(), generateFhirUuid() **Estimate**: 2 hours
 
 ### Task 1.2: Create StorageBox Liquibase Changeset [backend] [P]
-**File**: `src/main/resources/liquibase/changelog/storage/001_create_storage_box.xml`
-**Dependencies**: None (parallel with 1.1)
-**Description**: CREATE TABLE storage_box with unique constraints on barcode, fhir_uuid
-**Tests**: Migration test (up/down)
+
+**File**:
+`src/main/resources/liquibase/changelog/storage/001_create_storage_box.xml`
+**Dependencies**: None (parallel with 1.1) **Description**: CREATE TABLE
+storage_box with unique constraints on barcode, fhir_uuid **Tests**: Migration
+test (up/down)
 
 ### Task 1.3: Create StorageBoxDAO [backend]
+
 **File**: `src/main/java/org/openelisglobal/storage/dao/StorageBoxDAO.java`
-**Dependencies**: 1.1, 1.2
-**Description**: DAO interface + implementation extending BaseDAOImpl
-**Tests**: Integration test for CRUD operations
+**Dependencies**: 1.1, 1.2 **Description**: DAO interface + implementation
+extending BaseDAOImpl **Tests**: Integration test for CRUD operations
 
 ### Checkpoint 1: Verify Box entity persistence
+
 - Run: `mvn test -Dtest=StorageBoxDAOTest`
-- Validate: Box with 9×9 dimensions persists, fhir_uuid generated, barcode unique
+- Validate: Box with 9×9 dimensions persists, fhir_uuid generated, barcode
+  unique
 
 ## User Story 2: FHIR Integration
 
 ### Task 2.1: Create StorageLocationFhirTransformService [backend]
-**File**: `src/main/java/org/openelisglobal/storage/fhir/service/StorageLocationFhirTransformService.java`
-**Dependencies**: 1.1 (StorageBox entity)
-**Description**: Transform StorageBox → FHIR Location with custom physicalType, barcode identifier, dimensions extension
-**Tests**: Unit test validates FHIR resource structure
+
+**File**:
+`src/main/java/org/openelisglobal/storage/fhir/service/StorageLocationFhirTransformService.java`
+**Dependencies**: 1.1 (StorageBox entity) **Description**: Transform StorageBox
+→ FHIR Location with custom physicalType, barcode identifier, dimensions
+extension **Tests**: Unit test validates FHIR resource structure
 
 ### Task 2.2: Integrate FHIR Sync in StorageBoxService [backend]
-**File**: `src/main/java/org/openelisglobal/storage/serviceimpl/StorageBoxServiceImpl.java`
-**Dependencies**: 2.1, 1.3
-**Description**: Call fhirService.syncBoxToFhir() after insert/update
-**Tests**: Integration test verifies Location resource created in FHIR store
+
+**File**:
+`src/main/java/org/openelisglobal/storage/serviceimpl/StorageBoxServiceImpl.java`
+**Dependencies**: 2.1, 1.3 **Description**: Call fhirService.syncBoxToFhir()
+after insert/update **Tests**: Integration test verifies Location resource
+created in FHIR store
 
 ### Checkpoint 2: Validate FHIR Location creation
-- Run: Query local FHIR `GET /fhir/Location?identifier=http://openelis-global.org/storage/box-barcode|TEST-BOX`
+
+- Run: Query local FHIR
+  `GET /fhir/Location?identifier=http://openelis-global.org/storage/box-barcode|TEST-BOX`
 - Validate: Location resource exists with correct physicalType, extensions
 
 ...
 ```
 
 **Prompt**:
+
 ```
 /speckit.tasks
 
@@ -362,29 +414,40 @@ Follow TDD: tests before implementation where applicable.
 ### Current State Analysis
 
 **What We Have**:
+
 - ✅ `memory/constitution.md` - OpenELIS tech stack, patterns, constraints
 - ✅ `.dev-docs/original-spec.md` - Original business requirements
-- ✅ `specs/001-sample-storage/spec.md` - Functional specification (generated via `/speckit.specify`)
+- ✅ `specs/001-sample-storage/spec.md` - Functional specification (generated
+  via `/speckit.specify`)
 - ✅ Figma design extracted (layout reference for Carbon implementation)
 
 **What We Need**:
-- ⏭️ `clarifications.md` - Resolve ambiguities (Box mobility, FHIR mapping, UI decisions)
-- ⏭️ `plan.md` - Technical plan (database schema, REST APIs, FHIR integration, Carbon components)
+
+- ⏭️ `clarifications.md` - Resolve ambiguities (Box mobility, FHIR mapping, UI
+  decisions)
+- ⏭️ `plan.md` - Technical plan (database schema, REST APIs, FHIR integration,
+  Carbon components)
 - ⏭️ `tasks.md` - Phased task breakdown with dependencies
-- ⏭️ Implementation artifacts (entities, services, controllers, React components)
+- ⏭️ Implementation artifacts (entities, services, controllers, React
+  components)
 
 ### Why Manual Plan Creation Was Premature
 
-**The Problem**: Creating `plan.md` manually bypasses the AI-powered analysis that:
+**The Problem**: Creating `plan.md` manually bypasses the AI-powered analysis
+that:
+
 - Reads `memory/constitution.md` to apply OpenELIS-specific constraints
 - Analyzes `spec.md` comprehensively for edge cases
 - Generates interconnected artifacts (data-model.md, contracts/, research.md)
 - Ensures consistency across functional requirements and technical decisions
 
 **The Spec Kit Way**: Use `/speckit.plan` with a **detailed prompt** that:
-- References specific tech stack decisions (Carbon Design System, HAPI FHIR R4, IHE mCSD)
+
+- References specific tech stack decisions (Carbon Design System, HAPI FHIR R4,
+  IHE mCSD)
 - Specifies integration points (LogbookResults, SamplePatientEntry)
-- Identifies research areas (Carbon DataTable patterns, FHIR Location custom codes)
+- Identifies research areas (Carbon DataTable patterns, FHIR Location custom
+  codes)
 - Defines success metrics (performance, coverage, accessibility)
 
 ### OpenELIS-Specific Considerations
@@ -393,19 +456,24 @@ Follow TDD: tests before implementation where applicable.
 
 ```markdown
 ## Tech Stack Constraints
+
 - Backend: Java 21, Spring Boot 3.x, Hibernate 6.x, PostgreSQL 14+
-- Frontend: React 17, **Carbon Design System v1.15** (official as of 3.0 release)
+- Frontend: React 17, **Carbon Design System v1.15** (official as of 3.0
+  release)
 - Database: Liquibase only (no direct SQL), PostgreSQL extensions allowed
 - FHIR: HAPI FHIR R4 local store, bidirectional sync
 
 ## Architectural Patterns
+
 - Entities: Extend BaseObject<String>, include fhir_uuid for FHIR mapping
 - Services: @Service + @Transactional, follow existing service patterns
 - REST: Extend BaseRestController, use OpenAPI annotations
 - Frontend: Functional components + hooks, Carbon components exclusively
-- FHIR: FhirPersistanceService for create/update, FhirTransformService for conversions
+- FHIR: FhirPersistanceService for create/update, FhirTransformService for
+  conversions
 
 ## Non-Negotiables
+
 - No class components in React (functional only)
 - No custom CSS frameworks (Carbon Design System exclusively)
 - No ORM bypass (Hibernate only, no JDBC)
@@ -420,15 +488,19 @@ Follow TDD: tests before implementation where applicable.
 **Existing OpenELIS FHIR Infrastructure** (leverage, don't rebuild):
 
 1. **Local HAPI FHIR R4 Store**: `https://fhir.openelis.org:8443/fhir/`
-   - Already configured in `volume/properties/common.properties`
-   - Stores Patient, Specimen, ServiceRequest, DiagnosticReport, Observation, Task resources
 
-2. **FhirPersistanceService**: 
+   - Already configured in `volume/properties/common.properties`
+   - Stores Patient, Specimen, ServiceRequest, DiagnosticReport, Observation,
+     Task resources
+
+2. **FhirPersistanceService**:
+
    - `createFhirResourceInFhirStore(Resource)` - Creates new FHIR resource
    - `updateFhirResourceInFhirStore(Resource)` - Updates existing FHIR resource
    - Pattern: Call after entity insert/update in service layer
 
-3. **FhirTransformService**: 
+3. **FhirTransformService**:
+
    - Bidirectional conversion: OpenELIS entity ↔ FHIR R4 resource
    - Example: `transformToOrganization(org.hl7.fhir.r4.model.Organization)`
 
@@ -438,17 +510,24 @@ Follow TDD: tests before implementation where applicable.
    - Can be extended for storage room sync
 
 **For Storage Management**:
-- Create `StorageLocationFhirTransformService` (similar to FhirTransformServiceImpl)
+
+- Create `StorageLocationFhirTransformService` (similar to
+  FhirTransformServiceImpl)
 - Map storage hierarchy to FHIR Location resources using **IHE mCSD profile**
 - Sync Box → FHIR Location with custom physicalType and extensions
 - Link Specimen → Position via `Specimen.container.extension:storageLocation`
 
 **IHE mCSD Profile** ([link](https://build.fhir.org/ig/IHE/ITI.mCSD/)):
-- **ITI-90**: Find Matching Care Services (query Location by physicalType, identifier, partOf)
-- **Location.physicalType**: Standard codes (ro=room, ve=vehicle/equipment, area) + custom codes (box, rack, position)
-- **Location.partOf**: Hierarchical relationships (Position partOf Box partOf Rack partOf ...)
+
+- **ITI-90**: Find Matching Care Services (query Location by physicalType,
+  identifier, partOf)
+- **Location.physicalType**: Standard codes (ro=room, ve=vehicle/equipment,
+  area) + custom codes (box, rack, position)
+- **Location.partOf**: Hierarchical relationships (Position partOf Box partOf
+  Rack partOf ...)
 - **Location.identifier**: Barcode identifiers for box/position lookups
-- **Location.extension**: Custom extensions for box dimensions, position coordinates
+- **Location.extension**: Custom extensions for box dimensions, position
+  coordinates
 
 ---
 
@@ -457,18 +536,21 @@ Follow TDD: tests before implementation where applicable.
 ### Prerequisites
 
 **Verify Spec Kit Installation**:
+
 ```bash
 cd /Users/pmanko/code/OpenELIS-Global-2
 specify --help
 ```
 
 **Verify Project Structure**:
+
 ```bash
 ls -la | grep -E "(specs|memory|scripts|.specify)"
 # Should show: specs/, memory/, scripts/, .specify/
 ```
 
 **Verify Constitution Exists**:
+
 ```bash
 cat memory/constitution.md
 # Should contain OpenELIS tech stack, patterns, constraints
@@ -477,11 +559,13 @@ cat memory/constitution.md
 ### Step 1: Review Existing Functional Specification
 
 **Command**: (manual review)
+
 ```bash
 cat specs/001-sample-storage/spec.md
 ```
 
 **Validate**:
+
 - ✓ User stories defined?
 - ✓ Box entity integrated into hierarchy?
 - ✓ Functional requirements (FR-1 to FR-24) complete?
@@ -493,6 +577,7 @@ cat specs/001-sample-storage/spec.md
 ### Step 2: Run Clarification Workflow
 
 **Command**: (in Cursor chat)
+
 ```
 /speckit.clarify
 
@@ -529,6 +614,7 @@ Record decisions with rationale.
 **Output**: `specs/001-sample-storage/clarifications.md`
 
 **Manual Validation**:
+
 ```bash
 cat specs/001-sample-storage/clarifications.md
 # Verify: All ambiguities addressed? Decisions logged with rationale?
@@ -537,6 +623,7 @@ cat specs/001-sample-storage/clarifications.md
 ### Step 3: Generate Technical Implementation Plan
 
 **Command**: (in Cursor chat)
+
 ```
 /speckit.plan
 
@@ -591,14 +678,17 @@ Research Areas:
 **Expected Duration**: 5-10 minutes of AI generation
 
 **Output**:
+
 - `specs/001-sample-storage/plan.md` (comprehensive technical plan)
 - `specs/001-sample-storage/data-model.md` (ERD, Liquibase changesets)
 - `specs/001-sample-storage/contracts/api-spec.json` (OpenAPI)
-- `specs/001-sample-storage/contracts/fhir-spec.md` (FHIR Location StructureDefinitions)
+- `specs/001-sample-storage/contracts/fhir-spec.md` (FHIR Location
+  StructureDefinitions)
 - `specs/001-sample-storage/research.md` (tech stack comparisons)
 - `specs/001-sample-storage/quickstart.md` (dev getting started guide)
 
 **Manual Validation**:
+
 ```bash
 # Review plan
 cat specs/001-sample-storage/plan.md
@@ -615,6 +705,7 @@ cat specs/001-sample-storage/plan.md
 ### Step 4: Generate Task Breakdown
 
 **Command**: (in Cursor chat)
+
 ```
 /speckit.tasks
 
@@ -642,6 +733,7 @@ Group tasks into phases:
 **Output**: `specs/001-sample-storage/tasks.md`
 
 **Manual Validation**:
+
 ```bash
 cat specs/001-sample-storage/tasks.md | grep "Task [0-9]"
 # Count tasks: Should be 40-60 tasks total
@@ -656,6 +748,7 @@ cat specs/001-sample-storage/tasks.md | grep "Checkpoint"
 ### Step 5: Execute Implementation
 
 **Command**: (in Cursor chat)
+
 ```
 /speckit.implement
 
@@ -671,6 +764,7 @@ Report progress with task completion status.
 ```
 
 **What the AI Will Do**:
+
 1. Parse `tasks.md`
 2. Execute tasks in dependency order
 3. Create files (entities, services, components)
@@ -679,11 +773,13 @@ Report progress with task completion status.
 6. Handle build/test errors
 7. Report progress
 
-**Expected Duration**: 2-4 hours (AI execution time), 8-10 weeks (calendar time with human review)
+**Expected Duration**: 2-4 hours (AI execution time), 8-10 weeks (calendar time
+with human review)
 
 ### Step 6: Review and Iterate
 
 **After Each Phase**:
+
 ```bash
 # Run tests
 mvn test
@@ -700,7 +796,8 @@ git diff
 # Re-run /speckit.plan or /speckit.tasks with refinements
 ```
 
-**SDD Principle**: Specs are **living documents**. If implementation reveals ambiguities or better approaches, update the spec and regenerate.
+**SDD Principle**: Specs are **living documents**. If implementation reveals
+ambiguities or better approaches, update the spec and regenerate.
 
 ---
 
@@ -709,9 +806,12 @@ git diff
 ### 1. Detailed First Prompts
 
 **From Microsoft Spec Kit Blog**:
-> "Having a **very detailed first prompt** will produce a much better specification that the agent can use for further project buildouts."
+
+> "Having a **very detailed first prompt** will produce a much better
+> specification that the agent can use for further project buildouts."
 
 **Good `/speckit.specify` Prompt**:
+
 ```
 /speckit.specify
 
@@ -724,6 +824,7 @@ git diff
 ```
 
 **Bad Prompt**:
+
 ```
 /speckit.specify
 Build a sample storage system.
@@ -732,16 +833,19 @@ Build a sample storage system.
 ### 2. Constitution Before Specification
 
 **Always create `memory/constitution.md` first**:
+
 - Tech stack locked-in decisions (Carbon Design System, HAPI FHIR R4)
 - Architectural patterns (BaseObject, @Transactional services)
 - Code standards (Spotless, Prettier)
 - Non-negotiables (no class components, Liquibase only, WCAG 2.1 AA)
 
-**Why**: `/speckit.plan` uses constitution to ground technical decisions. Without it, AI may suggest incompatible tech.
+**Why**: `/speckit.plan` uses constitution to ground technical decisions.
+Without it, AI may suggest incompatible tech.
 
 ### 3. Clarify Before Planning
 
 **Workflow**:
+
 ```
 /speckit.specify → spec.md
      ↓
@@ -750,16 +854,19 @@ Build a sample storage system.
 /speckit.plan → plan.md
 ```
 
-**Skipping clarification = rework downstream**. Box entity ambiguities discovered during implementation require plan regeneration.
+**Skipping clarification = rework downstream**. Box entity ambiguities
+discovered during implementation require plan regeneration.
 
 ### 4. Iterative Refinement
 
 **SDD is not waterfall**. Treat specs as code:
+
 - Review PRs for spec changes
 - Version specs in git
 - Iterate based on implementation feedback
 
 **Example**:
+
 ```bash
 # During implementation, discover performance issue
 # Update spec.md:
@@ -776,6 +883,7 @@ Build a sample storage system.
 ### 5. Checkpoint Validations
 
 **After each task phase**, run checkpoint:
+
 ```bash
 # Checkpoint: Verify Box entity persistence
 mvn test -Dtest=StorageBoxDAOTest
@@ -789,16 +897,20 @@ npm test -- StorageLocationWidget.test.js
 cypress run --spec "cypress/e2e/storage/location-widget.cy.js"
 ```
 
-**If checkpoint fails**: Stop, debug, update spec/plan if needed, re-generate tasks.
+**If checkpoint fails**: Stop, debug, update spec/plan if needed, re-generate
+tasks.
 
 ### 6. Research Artifacts
 
 **Use `/speckit.plan` to generate research**:
+
 - Compare libraries (ZXing vs barcode4j for barcode generation)
 - Benchmark approaches (PostgreSQL CTE vs recursive queries)
-- Validate compatibility (Carbon DataTable expandable rows + custom expansion content)
+- Validate compatibility (Carbon DataTable expandable rows + custom expansion
+  content)
 
-**Output**: `specs/001-sample-storage/research.md` documents trade-offs and decisions.
+**Output**: `specs/001-sample-storage/research.md` documents trade-offs and
+decisions.
 
 ---
 
@@ -806,11 +918,13 @@ cypress run --spec "cypress/e2e/storage/location-widget.cy.js"
 
 ### Step-by-Step Walkthrough
 
-**Context**: We have `spec.md` created. Now we need to clarify, plan, and implement the Box entity integration.
+**Context**: We have `spec.md` created. Now we need to clarify, plan, and
+implement the Box entity integration.
 
 #### Step 1: Run Clarification
 
 **In Cursor Chat**:
+
 ```
 /speckit.clarify
 
@@ -852,11 +966,13 @@ UI/UX:
 For each question, record decision with rationale in clarifications.md.
 ```
 
-**AI Response**: Generates structured Q&A in `clarifications.md` with decisions log.
+**AI Response**: Generates structured Q&A in `clarifications.md` with decisions
+log.
 
 #### Step 2: Run Technical Planning
 
 **In Cursor Chat**:
+
 ```
 /speckit.plan
 
@@ -909,7 +1025,9 @@ Generate artifacts:
 ```
 
 **Expected AI Artifacts**:
-- `plan.md` - 20-30 pages covering architecture, database, backend, frontend, FHIR, testing
+
+- `plan.md` - 20-30 pages covering architecture, database, backend, frontend,
+  FHIR, testing
 - `data-model.md` - ERD diagram, table schemas, Liquibase XML
 - `contracts/api-spec.json` - OpenAPI 3.0 spec for REST endpoints
 - `contracts/fhir-spec.md` - FHIR Location resource definitions, extensions
@@ -919,6 +1037,7 @@ Generate artifacts:
 #### Step 3: Generate Task Breakdown
 
 **In Cursor Chat**:
+
 ```
 /speckit.tasks
 
@@ -955,11 +1074,13 @@ Checkpoints:
 - After Phase 7: Full workflows complete end-to-end
 ```
 
-**Expected Output**: `tasks.md` with 40-60 tasks, organized, prioritized, estimated.
+**Expected Output**: `tasks.md` with 40-60 tasks, organized, prioritized,
+estimated.
 
 #### Step 4: Execute Implementation
 
 **In Cursor Chat**:
+
 ```
 /speckit.implement
 
@@ -991,6 +1112,7 @@ Start with Phase 1 (Database schema).
 **Symptom**: `/speckit.specify` shows "Unknown command"
 
 **Solution**:
+
 ```bash
 # Verify Spec Kit initialization
 ls -la .specify/
@@ -1005,11 +1127,13 @@ specify init . --ai cursor-agent
 **Symptom**: Plan includes Material-UI, Ant Design, or custom Tailwind
 
 **Solution**: Update `memory/constitution.md` with explicit constraint:
+
 ```markdown
 ## UI Framework (Non-Negotiable)
+
 - Carbon Design System v1.15 EXCLUSIVELY
 - No Material-UI, Ant Design, Bootstrap, Tailwind, or custom CSS frameworks
-- All styling via Carbon SCSS tokens ($spacing-*, $text-*, $layer-*)
+- All styling via Carbon SCSS tokens ($spacing-_, $text-_, $layer-\*)
 - Reference: OpenELIS Global 3.0 officially adopted Carbon (August 2024)
 ```
 
@@ -1020,6 +1144,7 @@ Re-run `/speckit.plan` after constitution update.
 **Symptom**: Plan lacks FHIR Location mappings
 
 **Solution**: Add to `/speckit.plan` prompt:
+
 ```
 CRITICAL: OpenELIS has existing HAPI FHIR R4 server.
 Use FhirPersistanceService.createFhirResourceInFhirStore() for sync.
@@ -1031,6 +1156,7 @@ Map all storage levels to FHIR Location resources per IHE mCSD profile.
 **Symptom**: `tasks.md` has 200+ micro-tasks or 5 giant tasks
 
 **Solution**: Refine `/speckit.tasks` prompt:
+
 ```
 Target: 40-60 tasks total
 Granularity: 2-8 hours per task
@@ -1041,19 +1167,21 @@ Group related operations (e.g., "Create StorageBox entity, DAO, service" = 1 tas
 
 ## Comparing Approaches: Manual vs CLI
 
-| Aspect | Manual Creation (What I Did) | CLI Slash Commands (Proper SDD) |
-|--------|------------------------------|----------------------------------|
-| **Generation** | Static markdown files | AI-powered with structured prompts |
-| **Consistency** | Manual effort to align | Template-based, consistent format |
-| **Completeness** | May miss edge cases | Systematic coverage via prompts |
-| **Interconnections** | Manual cross-references | Auto-generated references between artifacts |
-| **Constitution Grounding** | Manual application | Automatic constraint application |
-| **Research Artifacts** | Not generated | Auto-generates research.md, contracts/ |
-| **Time Investment** | Faster initial creation | Slower initial, faster iteration |
-| **Quality** | Depends on author expertise | Leverages AI pattern recognition |
-| **Maintenance** | Manual updates | Regenerate with refined prompts |
+| Aspect                     | Manual Creation (What I Did) | CLI Slash Commands (Proper SDD)             |
+| -------------------------- | ---------------------------- | ------------------------------------------- |
+| **Generation**             | Static markdown files        | AI-powered with structured prompts          |
+| **Consistency**            | Manual effort to align       | Template-based, consistent format           |
+| **Completeness**           | May miss edge cases          | Systematic coverage via prompts             |
+| **Interconnections**       | Manual cross-references      | Auto-generated references between artifacts |
+| **Constitution Grounding** | Manual application           | Automatic constraint application            |
+| **Research Artifacts**     | Not generated                | Auto-generates research.md, contracts/      |
+| **Time Investment**        | Faster initial creation      | Slower initial, faster iteration            |
+| **Quality**                | Depends on author expertise  | Leverages AI pattern recognition            |
+| **Maintenance**            | Manual updates               | Regenerate with refined prompts             |
 
-**Verdict**: **CLI approach is superior for SDD methodology**. Manual creation acceptable for quick prototypes or when CLI unavailable, but loses SDD's core benefits: AI-powered analysis, systematic completeness, constitution grounding.
+**Verdict**: **CLI approach is superior for SDD methodology**. Manual creation
+acceptable for quick prototypes or when CLI unavailable, but loses SDD's core
+benefits: AI-powered analysis, systematic completeness, constitution grounding.
 
 ---
 
@@ -1062,7 +1190,9 @@ Group related operations (e.g., "Create StorageBox entity, DAO, service" = 1 tas
 ### Recommended Workflow
 
 **Option A: Restart with Proper SDD** (Recommended):
-1. Keep existing `spec.md` (already good quality from initial `/speckit.specify`)
+
+1. Keep existing `spec.md` (already good quality from initial
+   `/speckit.specify`)
 2. Delete manually created `clarifications.md`, `plan.md`
 3. Run `/speckit.clarify` in Cursor chat with detailed Box entity questions
 4. Run `/speckit.plan` with comprehensive prompt (tech stack, FHIR, Carbon)
@@ -1070,49 +1200,59 @@ Group related operations (e.g., "Create StorageBox entity, DAO, service" = 1 tas
 6. Run `/speckit.implement` to execute
 
 **Option B: Hybrid Approach** (Faster, less systematic):
+
 1. Keep manually created artifacts
 2. Use as reference but still run CLI commands to validate completeness
 3. Merge AI-generated insights into manual artifacts
 4. Proceed to implementation
 
 **Option C: Manual Continuation** (Not recommended for SDD):
+
 1. Continue with manually created plan.md
 2. Implement directly without task breakdown
 3. Lose SDD benefits (systematic analysis, interconnected artifacts)
 
 ### My Recommendation
 
-**Run the CLI commands** in Cursor chat. The 10-20 minutes invested in proper SDD workflow will save hours of rework when implementation uncovers ambiguities that `/speckit.clarify` would have caught.
+**Run the CLI commands** in Cursor chat. The 10-20 minutes invested in proper
+SDD workflow will save hours of rework when implementation uncovers ambiguities
+that `/speckit.clarify` would have caught.
 
 ---
 
 ## Conclusion
 
-GitHub Spec Kit transforms SDD from a documentation burden into a **lightweight, AI-powered workflow** that produces:
+GitHub Spec Kit transforms SDD from a documentation burden into a **lightweight,
+AI-powered workflow** that produces:
+
 - **Better specifications** (systematic analysis catches edge cases)
 - **Grounded plans** (constitution ensures alignment with constraints)
 - **Executable tasks** (dependency-aware, parallelizable)
 - **Living documentation** (evolves with implementation)
 
 For OpenELIS storage management:
+
 - Spec Kit ensures Carbon Design System compliance
 - FHIR/mCSD integration follows existing patterns
 - Box entity ambiguities resolved before implementation
 - Multi-week project broken into manageable tasks
 
-**The power of SDD**: Specifications become the **source of truth**, with code as the regenerable output. Update specs, regenerate implementation—explore variants, refactor architecture, evolve with production feedback.
+**The power of SDD**: Specifications become the **source of truth**, with code
+as the regenerable output. Update specs, regenerate implementation—explore
+variants, refactor architecture, evolve with production feedback.
 
 ---
 
 **References**:
+
 - [GitHub Spec Kit Repository](https://github.com/github/spec-kit)
 - [Microsoft Spec Kit Blog](https://developer.microsoft.com/blog/spec-driven-development-spec-kit)
 - [IHE mCSD Profile](https://build.fhir.org/ig/IHE/ITI.mCSD/)
 - [OpenELIS Global Documentation](https://docs.openelis-global.org)
 - [Carbon Design System](https://carbondesignsystem.com)
 
-
 ---
+
 # Spec-Driven Development Cheat Sheet for OpenELIS Global
 
 **Quick reference for running GitHub Spec Kit workflow**
@@ -1146,7 +1286,7 @@ wc -l memory/constitution.md
 
 ### Step 1: Create Constitution
 
-```
+````
 /speckit.constitution
 
 Create a comprehensive constitution for OpenELIS Global 3.0 defining all technical constraints and development patterns.
@@ -1206,7 +1346,7 @@ Key Challenge: Support country-specific variations (accession number formats, ph
 
 ### Backend Layer Structure
 
-**Package Pattern**: `org.openelisglobal.{module}.{layer}`  
+**Package Pattern**: `org.openelisglobal.{module}.{layer}`
 Example: `org.openelisglobal.storage.valueholder`, `org.openelisglobal.storage.service`
 
 **Layers**:
@@ -1254,14 +1394,14 @@ public class StorageBox extends BaseObject<String> {
     @GenericGenerator(name = "storage_box_seq", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator",
         parameters = {@Parameter(name = "sequence_name", value = "storage_box_seq")})
     private String id;
-    
+
     @Column(name = "fhir_uuid", unique = true, nullable = false)
     private UUID fhirUuid;  // REQUIRED for FHIR-mapped entities
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "rack_id", nullable = false)
     private StorageRack rack;
-    
+
     @PrePersist
     public void generateFhirUuid() {
         if (this.fhirUuid == null) {
@@ -1269,13 +1409,14 @@ public class StorageBox extends BaseObject<String> {
         }
     }
 }
-```
+````
 
 ### Frontend Architecture
 
 **Component Pattern**: Functional components with hooks (NO class components)
 
 **File Structure**:
+
 ```
 frontend/src/components/{module}/
 ├── ComponentName.jsx          # Component
@@ -1285,36 +1426,48 @@ frontend/src/components/{module}/
 ```
 
 **React Patterns**:
+
 - Functional components only (`const Component = () => {}`)
 - Hooks: `useState`, `useEffect`, `useContext`, `useMemo`, `useCallback`
 - PropTypes for type validation (NOT TypeScript, though .tsx files exist)
-- SWR for data fetching: `const { data, error } = useSWR('/api/endpoint', fetcher)`
+- SWR for data fetching:
+  `const { data, error } = useSWR('/api/endpoint', fetcher)`
 - Formik for forms with Yup validation
 - React Intl for i18n (`useIntl()`, `<FormattedMessage id="key" />`)
 
 **Carbon Design System Requirements**:
+
 - **EXCLUSIVELY** use `@carbon/react` components
-- **NEVER** use Material-UI, Ant Design, Bootstrap, Tailwind, or custom CSS frameworks
-- Import components: `import { Button, DataTable, Grid, Column } from '@carbon/react'`
+- **NEVER** use Material-UI, Ant Design, Bootstrap, Tailwind, or custom CSS
+  frameworks
+- Import components:
+  `import { Button, DataTable, Grid, Column } from '@carbon/react'`
 - Import icons: `import { Add, Edit, Delete } from '@carbon/icons-react'`
 - Styling ONLY via Carbon SCSS tokens: `@import '@carbon/react/scss/spacing'`
 
 **Example Component**:
+
 ```jsx
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
-import { Dropdown, Button, Grid, Column } from '@carbon/react';
-import { Add } from '@carbon/icons-react';
-import './ComponentName.scss';
+import React, { useState } from "react";
+import PropTypes from "prop-types";
+import { Dropdown, Button, Grid, Column } from "@carbon/react";
+import { Add } from "@carbon/icons-react";
+import "./ComponentName.scss";
 
 const ComponentName = ({ value, onChange }) => {
   const [state, setState] = useState(value);
-  
+
   return (
     <Grid narrow>
       <Column lg={16}>
-        <Dropdown id="example" items={[]} onChange={({ selectedItem }) => onChange(selectedItem)} />
-        <Button kind="secondary" renderIcon={Add}>Add Item</Button>
+        <Dropdown
+          id="example"
+          items={[]}
+          onChange={({ selectedItem }) => onChange(selectedItem)}
+        />
+        <Button kind="secondary" renderIcon={Add}>
+          Add Item
+        </Button>
       </Column>
     </Grid>
   );
@@ -1329,15 +1482,16 @@ export default ComponentName;
 ```
 
 **Styling Pattern**:
+
 ```scss
-@import '@carbon/react/scss/spacing';
-@import '@carbon/react/scss/type';
-@import '@carbon/react/scss/colors';
+@import "@carbon/react/scss/spacing";
+@import "@carbon/react/scss/type";
+@import "@carbon/react/scss/colors";
 
 .component-name {
-  padding: $spacing-05;  // Carbon token, NOT hardcoded px
-  @include type-style('body-short-01');  // Carbon typography
-  color: $text-primary;  // Carbon color token
+  padding: $spacing-05; // Carbon token, NOT hardcoded px
+  @include type-style("body-short-01"); // Carbon typography
+  color: $text-primary; // Carbon color token
 }
 ```
 
@@ -1346,37 +1500,41 @@ export default ComponentName;
 **Existing Services** (leverage, don't rebuild):
 
 1. **FhirPersistanceService**: Create/update FHIR resources in local store
+
    ```java
    @Autowired
    private FhirPersistanceService fhirPersistanceService;
-   
+
    // After entity insert/update
    fhirPersistanceService.createFhirResourceInFhirStore(fhirLocation);
    ```
 
 2. **FhirTransformService**: Bidirectional OpenELIS ↔ FHIR R4 conversion
+
    - Pattern: Create `{Module}FhirTransformService` following this pattern
    - Example: `StorageLocationFhirTransformService.transformBoxToFhirLocation()`
 
-3. **OrganizationImportServiceImpl**: Imports FHIR Location/Organization from external registries
+3. **OrganizationImportServiceImpl**: Imports FHIR Location/Organization from
+   external registries
    - Method: `importLocationsFromBundle(IGenericClient, List<Bundle>)`
    - Pattern for facility registry synchronization
 
 **FHIR Sync Pattern**:
+
 ```java
 @Service
 public class StorageBoxServiceImpl implements StorageBoxService {
     @Autowired
     private FhirPersistanceService fhirPersistanceService;
-    
+
     @Autowired
     private StorageLocationFhirTransformService fhirTransformService;
-    
+
     @Override
     @Transactional
     public String insert(StorageBox box) {
         String id = storageBoxDAO.insert(box);
-        
+
         // Sync to FHIR (secondary - don't fail if FHIR sync fails)
         try {
             org.hl7.fhir.r4.model.Location fhirLocation = fhirTransformService.transformBoxToFhirLocation(box);
@@ -1385,7 +1543,7 @@ public class StorageBoxServiceImpl implements StorageBoxService {
             LogEvent.logError("Failed to sync to FHIR", e);
             // Continue - don't fail the transaction
         }
-        
+
         return id;
     }
 }
@@ -1396,12 +1554,14 @@ public class StorageBoxServiceImpl implements StorageBoxService {
 ### Backend Java
 
 **Formatting** (`tools/OpenELIS_java_formatter.xml`):
+
 ```bash
 mvn spotless:apply     # Auto-format code
 mvn spotless:check     # Verify formatting (CI check)
 ```
 
 **Build**:
+
 ```bash
 mvn clean install -DskipTests          # Build only
 mvn clean install                      # Build + tests
@@ -1409,12 +1569,14 @@ mvn verify -Dit.test={TestClassName}   # Integration tests
 ```
 
 **Testing Requirements**:
+
 - **Minimum 80% code coverage** (Jacoco enforced in CI)
 - JUnit 5 + Mockito for unit tests
 - Integration tests for service layer (`@SpringBootTest`)
 - Test naming: `{Class}Test.java` in `src/test/java/`
 
 **Validation**:
+
 - **Tight validation on all user input** (security requirement)
 - String data type most vulnerable - use whitelists when possible
 - Validation annotations on valueholders and forms
@@ -1423,17 +1585,20 @@ mvn verify -Dit.test={TestClassName}   # Integration tests
 ### Frontend React
 
 **Formatting** (`.prettierrc.json`):
+
 ```bash
 npm run format         # Auto-format code
 npm run check-format   # Verify formatting (CI check)
 ```
 
 **Linting** (`.eslintrc.js`):
+
 ```bash
 npm run lint           # Run ESLint
 ```
 
 **Testing**:
+
 ```bash
 npm test               # Jest unit tests
 npm run cy:run         # Cypress E2E (headless)
@@ -1441,12 +1606,14 @@ npm run cy:open        # Cypress E2E (interactive)
 ```
 
 **Prettier Config**:
+
 - Double quotes (NOT single quotes)
 - Spaces (NOT tabs), 2-space indentation
 - Semicolons required
 - 80 character line width
 
 **ESLint Rules**:
+
 - No unused vars (warn)
 - React prop-types off (but use PropTypes anyway)
 - React hooks exhaustive-deps off (but handle deps manually)
@@ -1459,6 +1626,7 @@ npm run cy:open        # Cypress E2E (interactive)
 **Location**: `src/main/resources/liquibase/changelog/`
 
 **Pattern**:
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog ...>
@@ -1472,13 +1640,14 @@ npm run cy:open        # Cypress E2E (interactive)
       </column>
       <!-- ... -->
     </createTable>
-    
+
     <createSequence sequenceName="storage_box_seq" startValue="1"/>
   </changeSet>
 </databaseChangeLog>
 ```
 
 **Include in master**:
+
 ```xml
 <!-- src/main/resources/liquibase/changelog/master-changelog.xml -->
 <include file="changelog/storage/001_create_storage_box.xml"/>
@@ -1487,6 +1656,7 @@ npm run cy:open        # Cypress E2E (interactive)
 ## Non-Negotiable Constraints
 
 ### Security & Compliance
+
 - **CSRF Protection**: Enabled globally (configured in `SecurityConfig`)
 - **Input Validation**: Whitelist approach for all user input
 - **String Sanitization**: Context-aware escaping (XML, HTML, JS)
@@ -1496,28 +1666,36 @@ npm run cy:open        # Cypress E2E (interactive)
 - **WCAG 2.1 AA**: Accessibility compliance
 
 ### Architecture
+
 - **No ORM Bypass**: Hibernate only, NO raw JDBC
 - **No Direct SQL**: Liquibase migrations only
-- **Transactional Boundaries**: `@Transactional` on service methods (NOT controllers)
+- **Transactional Boundaries**: `@Transactional` on service methods (NOT
+  controllers)
 - **Singleton Controllers**: NO class-level mutable state (thread safety)
-- **Service Interface Pattern**: Services as interfaces + implementations (Spring AOP)
+- **Service Interface Pattern**: Services as interfaces + implementations
+  (Spring AOP)
 
 ### UI/UX
+
 - **Carbon Design System EXCLUSIVELY**: No other CSS frameworks
 - **Functional Components Only**: NO class components
-- **Accessibility First**: Keyboard navigation, screen reader support, ARIA labels
+- **Accessibility First**: Keyboard navigation, screen reader support, ARIA
+  labels
 - **Responsive Design**: Mobile-first, works on any Chromium-based browser
 - **Internationalization**: All user-facing text via React Intl
 
 ### FHIR
+
 - **Sync on Mutations**: All entity create/update triggers FHIR sync
 - **Don't Fail Transactions**: FHIR sync errors logged, transaction continues
 - **IHE Profiles**: Follow mCSD for Location/Organization
-- **Resource Subscriptions**: Task, Patient, ServiceRequest, DiagnosticReport, Observation, Specimen, Practitioner, Encounter
+- **Resource Subscriptions**: Task, Patient, ServiceRequest, DiagnosticReport,
+  Observation, Specimen, Practitioner, Encounter
 
 ## Development Workflow
 
 ### Before Commit Checklist
+
 - [ ] `mvn spotless:apply` (backend)
 - [ ] `npm run format` (frontend)
 - [ ] `mvn test` passes (backend)
@@ -1528,6 +1706,7 @@ npm run cy:open        # Cypress E2E (interactive)
 - [ ] FHIR sync implemented for entity mutations
 
 ### Pull Request Requirements (per PULL_REQUEST_TIPS.md)
+
 - **Branch Naming**: `issue-{number}` (NOT Spec Kit branch naming for PRs)
 - **PR Title**: `issue-{number}: {summary}`
 - **Target Branch**: `develop` (NOT main/master)
@@ -1540,6 +1719,7 @@ npm run cy:open        # Cypress E2E (interactive)
 ## File Organization Standards
 
 ### Backend
+
 - **Controllers**: `src/main/java/org/openelisglobal/{module}/controller/rest/`
 - **Services**: `src/main/java/org/openelisglobal/{module}/service/`
 - **DAOs**: `src/main/java/org/openelisglobal/{module}/dao/` and `daoimpl/`
@@ -1549,6 +1729,7 @@ npm run cy:open        # Cypress E2E (interactive)
 - **Liquibase**: `src/main/resources/liquibase/changelog/{module}/`
 
 ### Frontend
+
 - **Components**: `frontend/src/components/{module}/`
 - **Styles**: Co-located `{Component}.scss` using Carbon tokens
 - **Tests**: Co-located `{Component}.test.js`
@@ -1558,20 +1739,24 @@ npm run cy:open        # Cypress E2E (interactive)
 ## Performance Requirements
 
 ### Backend
+
 - **API Response Time**: <500ms for standard queries
 - **Dashboard Load Time**: <2s with 100k records
 - **Database Indexing**: All foreign keys, frequently queried columns
 - **Query Optimization**: Use JPA Criteria API or HQL, avoid N+1 queries
 
 ### Frontend
+
 - **Bundle Size**: Code splitting, lazy loading routes
-- **Rendering**: Memoization for expensive computations (`useMemo`, `useCallback`)
+- **Rendering**: Memoization for expensive computations (`useMemo`,
+  `useCallback`)
 - **Data Fetching**: SWR caching, revalidation strategies
 - **Accessibility**: Lighthouse score ≥90
 
 ## Testing Strategy
 
 ### Backend Testing
+
 - **Unit Tests**: JUnit 5 + Mockito, test services in isolation
 - **Integration Tests**: `@SpringBootTest`, test full request flow
 - **Coverage**: Minimum 80% (Jacoco report in CI)
@@ -1579,6 +1764,7 @@ npm run cy:open        # Cypress E2E (interactive)
 - **Assertions**: AssertJ for fluent assertions
 
 ### Frontend Testing
+
 - **Unit Tests**: Jest + React Testing Library, test components in isolation
 - **E2E Tests**: Cypress, test full user workflows
 - **Visual Regression**: Cypress screenshot comparisons
@@ -1588,12 +1774,15 @@ npm run cy:open        # Cypress E2E (interactive)
 ## Configuration Management
 
 ### Environment-Specific Config
-- **Development**: `dev/properties/eclipse_common.properties` (Eclipse), `volume/properties/common.properties` (Docker)
+
+- **Development**: `dev/properties/eclipse_common.properties` (Eclipse),
+  `volume/properties/common.properties` (Docker)
 - **Production**: `volume/properties/common.properties` (mounted as secret)
 - **NEVER Commit**: Local paths, credentials, machine-specific config
 - **Symlinks for Dev**: Point `/run/secrets/` to local `dev/properties/`
 
 ### FHIR Server Config (`volume/properties/common.properties`):
+
 ```properties
 # Local FHIR store
 org.openelisglobal.fhirstore.uri=https://fhir.openelis.org:8443/fhir/
@@ -1610,6 +1799,7 @@ org.openelisglobal.fhir.subscriber.resources=Task,Patient,ServiceRequest,Diagnos
 ## Common Anti-Patterns to Avoid
 
 ### Backend
+
 - ❌ Native SQL queries in code (use HQL or Criteria API)
 - ❌ Direct JDBC connections (use Hibernate/JPA)
 - ❌ Business logic in controllers (put in services)
@@ -1619,15 +1809,17 @@ org.openelisglobal.fhir.subscriber.resources=Task,Patient,ServiceRequest,Diagnos
 - ❌ Forgetting `fhir_uuid` column on FHIR-mapped entities
 
 ### Frontend
+
 - ❌ Class components (use functional)
 - ❌ Direct DOM manipulation (React state only)
 - ❌ Non-Carbon components (Material-UI, custom frameworks)
-- ❌ Hardcoded px values (use Carbon $spacing-*)
-- ❌ Hardcoded colors (use Carbon $text-*, $layer-*)
+- ❌ Hardcoded px values (use Carbon $spacing-\*)
+- ❌ Hardcoded colors (use Carbon $text-_, $layer-_)
 - ❌ Missing PropTypes
 - ❌ Missing accessibility attributes (ARIA labels, roles)
 
 ### Database
+
 - ❌ Direct DDL/DML in code (use Liquibase)
 - ❌ Missing foreign key constraints
 - ❌ Missing indexes on frequently queried columns
@@ -1635,13 +1827,16 @@ org.openelisglobal.fhir.subscriber.resources=Task,Patient,ServiceRequest,Diagnos
 
 ## References
 
-- **OpenELIS Docs**: [docs.openelis-global.org](https://docs.openelis-global.org)
+- **OpenELIS Docs**:
+  [docs.openelis-global.org](https://docs.openelis-global.org)
 - **Dev Setup**: `docs/dev_setup.md`, `docs/dev.md`
 - **Carbon Design**: [carbondesignsystem.com](https://carbondesignsystem.com)
 - **FHIR R4**: [hl7.org/fhir/R4/](https://hl7.org/fhir/R4/)
-- **IHE mCSD**: [build.fhir.org/ig/IHE/ITI.mCSD/](https://build.fhir.org/ig/IHE/ITI.mCSD/)
+- **IHE mCSD**:
+  [build.fhir.org/ig/IHE/ITI.mCSD/](https://build.fhir.org/ig/IHE/ITI.mCSD/)
 - **Pull Request Guide**: `PULL_REQUEST_TIPS.md`
 - **Code of Conduct**: `CODE_OF_CONDUCT.md`
+
 ```
 
 ---
@@ -1660,3 +1855,4 @@ Copy the full `/speckit.constitution` command above, then proceed with:
 
 **Step 6**: `/speckit.implement` (line 1327)
 
+```

@@ -43,4 +43,3 @@ public class SampleAssignmentForm {
         this.notes = notes;
     }
 }
-

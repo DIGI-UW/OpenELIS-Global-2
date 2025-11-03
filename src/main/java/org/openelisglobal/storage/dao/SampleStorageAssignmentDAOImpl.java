@@ -11,9 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAssignment, String> 
+public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAssignment, String>
         implements SampleStorageAssignmentDAO {
-    
+
     public SampleStorageAssignmentDAOImpl() {
         super(SampleStorageAssignment.class);
     }
@@ -23,8 +23,8 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
     public SampleStorageAssignment findBySampleId(String sampleId) {
         try {
             String hql = "FROM SampleStorageAssignment WHERE sample.id = :sampleId";
-            Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class)
-                .createQuery(hql, SampleStorageAssignment.class);
+            Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    SampleStorageAssignment.class);
             query.setParameter("sampleId", sampleId);
             List<SampleStorageAssignment> results = query.list();
             return results.isEmpty() ? null : results.get(0);
@@ -33,4 +33,3 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
         }
     }
 }
-

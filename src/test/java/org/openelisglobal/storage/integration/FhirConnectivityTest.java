@@ -9,38 +9,36 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * Simple FHIR connectivity test without Spring context.
- * Validates FHIR server is accessible.
+ * Simple FHIR connectivity test without Spring context. Validates FHIR server
+ * is accessible.
  */
 public class FhirConnectivityTest {
 
     private FhirContext fhirContext;
     private IGenericClient fhirClient;
-    
+
     @Before
     public void setup() {
         fhirContext = FhirContext.forR4();
-        
+
         // Use localhost:8444 for FHIR server (mapped port from dev.docker-compose.yml)
         // Disable SSL validation for local testing
         fhirContext.getRestfulClientFactory().setSocketTimeout(5000);
-        
+
         // For dev environment, use HTTP endpoint
         fhirClient = fhirContext.newRestfulGenericClient("http://localhost:8081/fhir/");
     }
-    
+
     @Test
     public void testFhirServerIsAccessible() {
         try {
             // When: Query FHIR server capabilities
-            CapabilityStatement capabilities = fhirClient.capabilities()
-                .ofType(CapabilityStatement.class)
-                .execute();
-            
+            CapabilityStatement capabilities = fhirClient.capabilities().ofType(CapabilityStatement.class).execute();
+
             // Then: Should get response
             assertNotNull("FHIR server should return CapabilityStatement", capabilities);
             assertEquals("Should be FHIR R4", "4.0.1", capabilities.getFhirVersion().toString());
-            
+
             System.out.println("✅ FHIR server is accessible at http://localhost:8081/fhir/");
             System.out.println("FHIR Version: " + capabilities.getFhirVersion());
         } catch (Exception e) {
@@ -48,4 +46,3 @@ public class FhirConnectivityTest {
         }
     }
 }
-

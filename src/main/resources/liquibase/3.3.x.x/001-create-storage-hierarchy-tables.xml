@@ -13,7 +13,7 @@
             </not>
         </preConditions>
         <createTable tableName="storage_room">
-            <column name="id" type="VARCHAR(36)">
+            <column name="id" type="numeric(10,0)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="fhir_uuid" type="UUID">
@@ -62,7 +62,7 @@
             </not>
         </preConditions>
         <createTable tableName="storage_device">
-            <column name="id" type="VARCHAR(36)">
+            <column name="id" type="numeric(10,0)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="fhir_uuid" type="UUID">
@@ -82,10 +82,10 @@
             <column name="active" type="BOOLEAN" defaultValueBoolean="true">
                 <constraints nullable="false"/>
             </column>
-            <column name="parent_room_id" type="VARCHAR(36)">
-                <constraints nullable="false" 
-                    foreignKeyName="fk_device_room" 
-                    references="storage_room(id)" 
+            <column name="parent_room_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_device_room"
+                    references="storage_room(id)"
                     deleteCascade="false"/>
             </column>
             <column name="sys_user_id" type="numeric(10,0)">
@@ -102,12 +102,12 @@
 
     <!-- Storage Device Constraints -->
     <changeSet id="storage-003a-add-device-constraints" author="sample-storage-feature">
-        <addUniqueConstraint tableName="storage_device" 
-            columnNames="parent_room_id, code" 
+        <addUniqueConstraint tableName="storage_device"
+            columnNames="parent_room_id, code"
             constraintName="uk_device_code_in_room"/>
         <sql>
-            ALTER TABLE clinlims.storage_device 
-            ADD CONSTRAINT chk_device_type 
+            ALTER TABLE clinlims.storage_device
+            ADD CONSTRAINT chk_device_type
             CHECK (type IN ('freezer', 'refrigerator', 'cabinet', 'other'));
         </sql>
     </changeSet>
@@ -133,7 +133,7 @@
             </not>
         </preConditions>
         <createTable tableName="storage_shelf">
-            <column name="id" type="VARCHAR(36)">
+            <column name="id" type="numeric(10,0)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="fhir_uuid" type="UUID">
@@ -146,10 +146,10 @@
             <column name="active" type="BOOLEAN" defaultValueBoolean="true">
                 <constraints nullable="false"/>
             </column>
-            <column name="parent_device_id" type="VARCHAR(36)">
-                <constraints nullable="false" 
-                    foreignKeyName="fk_shelf_device" 
-                    references="storage_device(id)" 
+            <column name="parent_device_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_shelf_device"
+                    references="storage_device(id)"
                     deleteCascade="false"/>
             </column>
             <column name="sys_user_id" type="numeric(10,0)">
@@ -166,8 +166,8 @@
 
     <!-- Storage Shelf Constraints -->
     <changeSet id="storage-005a-add-shelf-constraints" author="sample-storage-feature">
-        <addUniqueConstraint tableName="storage_shelf" 
-            columnNames="parent_device_id, label" 
+        <addUniqueConstraint tableName="storage_shelf"
+            columnNames="parent_device_id, label"
             constraintName="uk_shelf_label_in_device"/>
     </changeSet>
 
@@ -192,7 +192,7 @@
             </not>
         </preConditions>
         <createTable tableName="storage_rack">
-            <column name="id" type="VARCHAR(36)">
+            <column name="id" type="numeric(10,0)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="fhir_uuid" type="UUID">
@@ -211,10 +211,10 @@
             <column name="active" type="BOOLEAN" defaultValueBoolean="true">
                 <constraints nullable="false"/>
             </column>
-            <column name="parent_shelf_id" type="VARCHAR(36)">
-                <constraints nullable="false" 
-                    foreignKeyName="fk_rack_shelf" 
-                    references="storage_shelf(id)" 
+            <column name="parent_shelf_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_rack_shelf"
+                    references="storage_shelf(id)"
                     deleteCascade="false"/>
             </column>
             <column name="sys_user_id" type="numeric(10,0)">
@@ -231,12 +231,12 @@
 
     <!-- Storage Rack Constraints -->
     <changeSet id="storage-007a-add-rack-constraints" author="sample-storage-feature">
-        <addUniqueConstraint tableName="storage_rack" 
-            columnNames="parent_shelf_id, label" 
+        <addUniqueConstraint tableName="storage_rack"
+            columnNames="parent_shelf_id, label"
             constraintName="uk_rack_label_in_shelf"/>
         <sql>
-            ALTER TABLE clinlims.storage_rack 
-            ADD CONSTRAINT chk_rack_dimensions 
+            ALTER TABLE clinlims.storage_rack
+            ADD CONSTRAINT chk_rack_dimensions
             CHECK (rows >= 0 AND columns >= 0);
         </sql>
     </changeSet>
@@ -262,7 +262,7 @@
             </not>
         </preConditions>
         <createTable tableName="storage_position">
-            <column name="id" type="VARCHAR(36)">
+            <column name="id" type="numeric(10,0)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="fhir_uuid" type="UUID">
@@ -276,10 +276,10 @@
             <column name="occupied" type="BOOLEAN" defaultValueBoolean="false">
                 <constraints nullable="false"/>
             </column>
-            <column name="parent_rack_id" type="VARCHAR(36)">
-                <constraints nullable="false" 
-                    foreignKeyName="fk_position_rack" 
-                    references="storage_rack(id)" 
+            <column name="parent_rack_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_position_rack"
+                    references="storage_rack(id)"
                     deleteCascade="true"/>
             </column>
             <column name="sys_user_id" type="numeric(10,0)">
@@ -308,4 +308,3 @@
     </changeSet>
 
 </databaseChangeLog>
-

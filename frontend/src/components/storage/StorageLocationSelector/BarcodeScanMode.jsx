@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { TextInput } from '@carbon/react';
-import { FormattedMessage, useIntl } from 'react-intl';
+import React, { useState, useEffect, useRef } from "react";
+import { TextInput } from "@carbon/react";
+import { FormattedMessage, useIntl } from "react-intl";
 
 /**
  * Barcode scan mode for storage location selection
@@ -8,8 +8,8 @@ import { FormattedMessage, useIntl } from 'react-intl';
  */
 const BarcodeScanMode = ({ onLocationScanned }) => {
   const intl = useIntl();
-  const [scannedCode, setScannedCode] = useState('');
-  const bufferRef = useRef('');
+  const [scannedCode, setScannedCode] = useState("");
+  const bufferRef = useRef("");
   const timeoutRef = useRef(null);
 
   useEffect(() => {
@@ -25,7 +25,7 @@ const BarcodeScanMode = ({ onLocationScanned }) => {
       }
 
       // Handle Enter key (scan complete)
-      if (event.key === 'Enter') {
+      if (event.key === "Enter") {
         event.preventDefault();
         if (bufferRef.current.length >= 3) {
           setScannedCode(bufferRef.current);
@@ -33,7 +33,7 @@ const BarcodeScanMode = ({ onLocationScanned }) => {
             onLocationScanned(bufferRef.current);
           }
         }
-        bufferRef.current = '';
+        bufferRef.current = "";
         return;
       }
 
@@ -55,15 +55,15 @@ const BarcodeScanMode = ({ onLocationScanned }) => {
               onLocationScanned(bufferRef.current);
             }
           }
-          bufferRef.current = '';
+          bufferRef.current = "";
         }, 50);
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown);
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
@@ -76,8 +76,10 @@ const BarcodeScanMode = ({ onLocationScanned }) => {
         id="barcode-input"
         data-barcode-input="true"
         data-testid="barcode-input"
-        labelText={intl.formatMessage({ id: 'storage.location.label' })}
-        placeholder={intl.formatMessage({ id: 'storage.barcode.scan.placeholder' })}
+        labelText={intl.formatMessage({ id: "storage.location.label" })}
+        placeholder={intl.formatMessage({
+          id: "storage.barcode.scan.placeholder",
+        })}
         value={scannedCode}
         onChange={(e) => setScannedCode(e.target.value)}
       />
@@ -86,4 +88,3 @@ const BarcodeScanMode = ({ onLocationScanned }) => {
 };
 
 export default BarcodeScanMode;
-

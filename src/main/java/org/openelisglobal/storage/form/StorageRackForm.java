@@ -90,4 +90,3 @@ public class StorageRackForm {
         this.parentShelfId = parentShelfId;
     }
 }
-

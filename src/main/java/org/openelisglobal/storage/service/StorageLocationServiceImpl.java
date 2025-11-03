@@ -1,5 +1,6 @@
 package org.openelisglobal.storage.service;
 
+import java.util.List;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.valueholder.*;
@@ -7,25 +8,22 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
-
 @Service
 @Transactional
 public class StorageLocationServiceImpl implements StorageLocationService {
-    
+
     @Autowired
     private StorageRoomDAO storageRoomDAO;
-    
+
     @Autowired
     private StorageDeviceDAO storageDeviceDAO;
-    
+
     @Autowired
     private StorageShelfDAO storageShelfDAO;
-    
+
     @Autowired
     private StorageRackDAO storageRackDAO;
-    
+
     @Autowired
     private StoragePositionDAO storagePositionDAO;
 
@@ -137,11 +135,10 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         } else if (entity instanceof StorageDevice) {
             StorageDevice device = (StorageDevice) entity;
             // Check for duplicate code in same room
-            StorageDevice existing = storageDeviceDAO.findByParentRoomIdAndCode(
-                device.getParentRoom().getId(), device.getCode());
+            StorageDevice existing = storageDeviceDAO.findByParentRoomIdAndCode(device.getParentRoom().getId(),
+                    device.getCode());
             if (existing != null) {
-                throw new LIMSRuntimeException("Device with code " + device.getCode() + 
-                    " already exists in this room");
+                throw new LIMSRuntimeException("Device with code " + device.getCode() + " already exists in this room");
             }
             return storageDeviceDAO.insert(device);
         } else if (entity instanceof StorageShelf) {
@@ -170,8 +167,8 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (!device.getActive()) {
                 int occupiedCount = storagePositionDAO.countOccupiedInDevice(device.getId());
                 if (occupiedCount > 0) {
-                    return "Warning: Device has " + occupiedCount + " active samples. " +
-                           "Please move or dispose samples before deactivating.";
+                    return "Warning: Device has " + occupiedCount + " active samples. "
+                            + "Please move or dispose samples before deactivating.";
                 }
             }
             storageDeviceDAO.update(device);
@@ -195,8 +192,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             StorageRoom room = (StorageRoom) entity;
             // Check for active child devices
             var devices = storageDeviceDAO.findByParentRoomId(room.getId());
-            boolean hasActiveDevices = devices.stream()
-                .anyMatch(d -> d.getActive() != null && d.getActive());
+            boolean hasActiveDevices = devices.stream().anyMatch(d -> d.getActive() != null && d.getActive());
             if (hasActiveDevices) {
                 throw new LIMSRuntimeException("Cannot delete room with active child devices");
             }
@@ -217,15 +213,15 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     @Override
     public Object get(String id, Class<?> entityClass) {
         if (entityClass == StorageRoom.class) {
-            return storageRoomDAO.get(id);
+            return storageRoomDAO.get(id).orElse(null);
         } else if (entityClass == StorageDevice.class) {
-            return storageDeviceDAO.get(id);
+            return storageDeviceDAO.get(id).orElse(null);
         } else if (entityClass == StorageShelf.class) {
-            return storageShelfDAO.get(id);
+            return storageShelfDAO.get(id).orElse(null);
         } else if (entityClass == StorageRack.class) {
-            return storageRackDAO.get(id);
+            return storageRackDAO.get(id).orElse(null);
         } else if (entityClass == StoragePosition.class) {
-            return storagePositionDAO.get(id);
+            return storagePositionDAO.get(id).orElse(null);
         }
         throw new LIMSRuntimeException("Unsupported entity class for get");
     }
@@ -235,29 +231,27 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         if (position == null || position.getParentRack() == null) {
             return false;
         }
-        
+
         StorageRack rack = position.getParentRack();
         if (rack.getParentShelf() == null) {
             return false;
         }
-        
+
         StorageShelf shelf = rack.getParentShelf();
         if (shelf.getParentDevice() == null) {
             return false;
         }
-        
+
         StorageDevice device = shelf.getParentDevice();
         if (device.getParentRoom() == null) {
             return false;
         }
-        
+
         StorageRoom room = device.getParentRoom();
-        
+
         // Check entire hierarchy is active
-        return room.getActive() != null && room.getActive() &&
-               device.getActive() != null && device.getActive() &&
-               shelf.getActive() != null && shelf.getActive() &&
-               rack.getActive() != null && rack.getActive();
+        return room.getActive() != null && room.getActive() && device.getActive() != null && device.getActive()
+                && shelf.getActive() != null && shelf.getActive() && rack.getActive() != null && rack.getActive();
     }
 
     @Override
@@ -265,31 +259,30 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         if (position == null) {
             return "Unknown Location";
         }
-        
+
         if (position.getParentRack() == null) {
             return "Unknown";
         }
-        
+
         StorageRack rack = position.getParentRack();
         if (rack.getParentShelf() == null) {
             return rack.getLabel() + " > Position " + position.getCoordinate();
         }
-        
+
         StorageShelf shelf = rack.getParentShelf();
         if (shelf.getParentDevice() == null) {
             return shelf.getLabel() + " > " + rack.getLabel() + " > Position " + position.getCoordinate();
         }
-        
+
         StorageDevice device = shelf.getParentDevice();
         if (device.getParentRoom() == null) {
-            return device.getName() + " > " + shelf.getLabel() + " > " + 
-                   rack.getLabel() + " > Position " + position.getCoordinate();
+            return device.getName() + " > " + shelf.getLabel() + " > " + rack.getLabel() + " > Position "
+                    + position.getCoordinate();
         }
-        
+
         StorageRoom room = device.getParentRoom();
-        
-        return room.getName() + " > " + device.getName() + " > " + 
-               shelf.getLabel() + " > " + rack.getLabel() + " > Position " + position.getCoordinate();
+
+        return room.getName() + " > " + device.getName() + " > " + shelf.getLabel() + " > " + rack.getLabel()
+                + " > Position " + position.getCoordinate();
     }
 }
-

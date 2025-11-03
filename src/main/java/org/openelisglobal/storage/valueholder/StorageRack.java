@@ -1,47 +1,95 @@
 package org.openelisglobal.storage.valueholder;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PostPersist;
+import jakarta.persistence.PostUpdate;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import java.util.UUID;
-import jakarta.persistence.*;
-import org.openelisglobal.common.valueholder.BaseObject;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
+import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.storage.fhir.StorageLocationFhirTransform;
 
+/**
+ * StorageRack entity - Storage rack/tray on a shelf with optional grid
+ * structure Maps to FHIR Location resource with physicalType = "co" (container)
+ */
 @Entity
-@Table(name = "storage_rack")
+@Table(name = "STORAGE_RACK")
+@DynamicUpdate
+@org.hibernate.annotations.OptimisticLocking(type = org.hibernate.annotations.OptimisticLockType.VERSION)
 public class StorageRack extends BaseObject<String> {
 
     @Id
-    @GeneratedValue(generator = "storage_rack_generator")
-    @GenericGenerator(name = "storage_rack_generator", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", 
-        parameters = @org.hibernate.annotations.Parameter(name = "sequence_name", value = "storage_rack_seq"))
-    @Column(name = "id")
+    @GeneratedValue(generator = "storage_rack_seq")
+    @GenericGenerator(name = "storage_rack_seq", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = {
+            @org.hibernate.annotations.Parameter(name = "sequence_name", value = "storage_rack_seq")
+    })
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "ID", precision = 10, scale = 0)
     private String id;
-
-    @Column(name = "fhir_uuid", nullable = false, unique = true)
+    
+    @Column(name = "FHIR_UUID", nullable = false, unique = true)
     private UUID fhirUuid;
-
-    @Column(name = "label", nullable = false, length = 100)
+    
+    @Column(name = "LABEL", length = 100, nullable = false)
     private String label;
-
-    @Column(name = "rows", nullable = false)
-    private Integer rows = 0;
-
-    @Column(name = "columns", nullable = false)
-    private Integer columns = 0;
-
-    @Column(name = "position_schema_hint", length = 50)
+    
+    @Column(name = "ROWS", nullable = false)
+    private Integer rows;
+    
+    @Column(name = "COLUMNS", nullable = false)
+    private Integer columns;
+    
+    @Column(name = "POSITION_SCHEMA_HINT", length = 50)
     private String positionSchemaHint;
-
-    @Column(name = "active", nullable = false)
-    private Boolean active = true;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "parent_shelf_id", nullable = false)
+    
+    @Column(name = "ACTIVE", nullable = false)
+    private Boolean active;
+    
+    @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
+    @JoinColumn(name = "PARENT_SHELF_ID", nullable = false)
     private StorageShelf parentShelf;
+    
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "SYS_USER_ID", precision = 10, scale = 0, nullable = false)
+    private String sysUserId;
 
     @PrePersist
     protected void onCreate() {
         if (fhirUuid == null) {
             fhirUuid = UUID.randomUUID();
+        }
+    }
+
+    @PostPersist
+    protected void onPostPersist() {
+        syncToFhir(true);
+    }
+
+    @PostUpdate
+    protected void onPostUpdate() {
+        syncToFhir(false);
+    }
+
+    private void syncToFhir(boolean isCreate) {
+        try {
+            StorageLocationFhirTransform transformService = SpringContext.getBean(StorageLocationFhirTransform.class);
+            if (transformService != null) {
+                transformService.syncToFhir(this, isCreate);
+            }
+        } catch (Exception e) {
+            // Log error but don't fail the transaction
+            // Errors are logged in the syncToFhir method
+            // In test contexts, SpringContext may not be available - ignore silently
         }
     }
 
@@ -121,5 +169,12 @@ public class StorageRack extends BaseObject<String> {
     public void setParentShelf(StorageShelf parentShelf) {
         this.parentShelf = parentShelf;
     }
-}
 
+    public String getSysUserId() {
+        return sysUserId;
+    }
+
+    public void setSysUserId(String sysUserId) {
+        this.sysUserId = sysUserId;
+    }
+}

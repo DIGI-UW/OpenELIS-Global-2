@@ -14,8 +14,8 @@ import org.openelisglobal.storage.fhir.StorageLocationFhirTransform;
 import org.openelisglobal.storage.valueholder.StorageRoom;
 
 /**
- * Integration test for FHIR Location resource creation.
- * Tests FHIR server connectivity and Location resource structure.
+ * Integration test for FHIR Location resource creation. Tests FHIR server
+ * connectivity and Location resource structure.
  * 
  * Uses HTTP endpoint to avoid SSL certificate complexity in tests.
  */
@@ -24,21 +24,21 @@ public class StorageFhirIntegrationTest {
     private FhirContext fhirContext;
     private IGenericClient fhirClient;
     private StorageLocationFhirTransform storageLocationFhirTransform;
-    
+
     private StorageRoom testRoom;
-    
+
     @Before
     public void setup() {
         // Initialize FHIR context and client
         fhirContext = FhirContext.forR4();
         fhirContext.getRestfulClientFactory().setSocketTimeout(5000);
-        
+
         // Use HTTP endpoint for testing (port 8081 mapped from container)
         fhirClient = fhirContext.newRestfulGenericClient("http://localhost:8081/fhir/");
-        
+
         // Initialize transform service
         storageLocationFhirTransform = new StorageLocationFhirTransform();
-        
+
         // Create test data
         testRoom = new StorageRoom();
         testRoom.setId("TEST-" + System.currentTimeMillis());
@@ -48,15 +48,13 @@ public class StorageFhirIntegrationTest {
         testRoom.setDescription("Created by integration test");
         testRoom.setActive(true);
     }
-    
+
     @Test
     public void testFhirServerConnectivity() {
         try {
             // When: Query FHIR server capabilities
-            CapabilityStatement capabilities = fhirClient.capabilities()
-                .ofType(CapabilityStatement.class)
-                .execute();
-            
+            CapabilityStatement capabilities = fhirClient.capabilities().ofType(CapabilityStatement.class).execute();
+
             // Then: Should get response
             assertNotNull("FHIR server should return CapabilityStatement", capabilities);
             System.out.println("✅ FHIR server accessible. Version: " + capabilities.getFhirVersion());
@@ -64,48 +62,41 @@ public class StorageFhirIntegrationTest {
             fail("FHIR server not accessible: " + e.getMessage());
         }
     }
-    
+
     @Test
     public void testTransformAndPersistStorageRoom() {
         try {
             // When: Transform StorageRoom to FHIR Location
             Location fhirLocation = storageLocationFhirTransform.transformToFhirLocation(testRoom);
-            
+
             // Then: Location should be valid
             assertNotNull("FHIR Location should not be null", fhirLocation);
-            assertEquals("Location ID should match entity fhir_uuid", 
-                testRoom.getFhirUuid().toString(), fhirLocation.getId());
-            
+            assertEquals("Location ID should match entity fhir_uuid", testRoom.getFhirUuid().toString(),
+                    fhirLocation.getId());
+
             // And: Create resource on FHIR server
-            Location created = (Location) fhirClient.create()
-                .resource(fhirLocation)
-                .execute()
-                .getResource();
-            
+            Location created = (Location) fhirClient.create().resource(fhirLocation).execute().getResource();
+
             assertNotNull("Created Location should be returned", created);
             System.out.println("✅ Successfully created Location on FHIR server: " + created.getId());
-            
+
         } catch (Exception e) {
             fail("FHIR persistence test failed: " + e.getMessage());
         }
     }
-    
+
     @Test
     public void testQueryStorageLocationsByPhysicalType() {
         try {
             // When: Query for rooms (physicalType=ro)
-            Bundle results = fhirClient.search()
-                .forResource(Location.class)
-                .returnBundle(Bundle.class)
-                .execute();
-            
+            Bundle results = fhirClient.search().forResource(Location.class).returnBundle(Bundle.class).execute();
+
             // Then: Should get results (may be empty if no data yet)
             assertNotNull("Bundle should be returned", results);
             System.out.println("✅ FHIR query successful. Found " + results.getTotal() + " locations");
-            
+
         } catch (Exception e) {
             fail("FHIR query test failed: " + e.getMessage());
         }
     }
 }
-

@@ -10,7 +10,7 @@
 
     <changeSet id="storage-test-001-insert-test-rooms" author="sample-storage-feature" context="test">
         <comment>Insert test rooms for integration testing</comment>
-        
+
         <insert tableName="storage_room">
             <column name="id" value="1"/>
             <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
@@ -47,7 +47,7 @@
 
     <changeSet id="storage-test-002-insert-test-devices" author="sample-storage-feature" context="test">
         <comment>Insert test devices (freezers, refrigerators) for integration testing</comment>
-        
+
         <insert tableName="storage_device">
             <column name="id" value="10"/>
             <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
@@ -103,7 +103,7 @@
 
     <changeSet id="storage-test-003-insert-test-shelves" author="sample-storage-feature" context="test">
         <comment>Insert test shelves for integration testing</comment>
-        
+
         <insert tableName="storage_shelf">
             <column name="id" value="20"/>
             <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
@@ -149,7 +149,7 @@
 
     <changeSet id="storage-test-004-insert-test-racks" author="sample-storage-feature" context="test">
         <comment>Insert test racks with various grid configurations</comment>
-        
+
         <!-- 8x12 grid rack (96 positions) -->
         <insert tableName="storage_rack">
             <column name="id" value="30"/>
@@ -206,7 +206,7 @@
 
     <changeSet id="storage-test-005-insert-test-positions" author="sample-storage-feature" context="test">
         <comment>Insert test positions - mix of occupied and unoccupied</comment>
-        
+
         <!-- Rack R1 (8x12 grid) - First few positions -->
         <insert tableName="storage_position">
             <column name="id" value="100"/>
@@ -327,11 +327,11 @@
 
     <changeSet id="storage-test-006-insert-additional-positions-for-capacity" author="sample-storage-feature" context="test">
         <comment>Insert additional positions for capacity testing (80% threshold)</comment>
-        
+
         <!-- Add 80 more positions to Rack R2 to test capacity warnings -->
         <sql><![CDATA[
             INSERT INTO storage_position (id, fhir_uuid, coordinate, row_index, column_index, occupied, parent_rack_id, sys_user_id, lastupdated)
-            SELECT 
+            SELECT
                 200 + row_num * 10 + col_num,
                 gen_random_uuid(),
                 row_num || '-' || col_num,
@@ -349,7 +349,7 @@
 
     <changeSet id="storage-test-007-update-sequences" author="sample-storage-feature" context="test">
         <comment>Update sequences to avoid ID conflicts with test data</comment>
-        
+
         <sql>
             SELECT setval('storage_room_seq', 1000, false);
             SELECT setval('storage_device_seq', 1000, false);
@@ -372,4 +372,3 @@
     </changeSet>
 
 </databaseChangeLog>
-

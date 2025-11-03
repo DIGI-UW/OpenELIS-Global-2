@@ -10,4 +10,3 @@ import org.openelisglobal.storage.valueholder.SampleStorageMovement;
 public interface SampleStorageMovementDAO extends BaseDAO<SampleStorageMovement, String> {
     List<SampleStorageMovement> findBySampleId(String sampleId);
 }
-

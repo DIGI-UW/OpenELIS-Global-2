@@ -11,9 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class SampleStorageMovementDAOImpl extends BaseDAOImpl<SampleStorageMovement, String> 
+public class SampleStorageMovementDAOImpl extends BaseDAOImpl<SampleStorageMovement, String>
         implements SampleStorageMovementDAO {
-    
+
     public SampleStorageMovementDAOImpl() {
         super(SampleStorageMovement.class);
     }
@@ -23,8 +23,8 @@ public class SampleStorageMovementDAOImpl extends BaseDAOImpl<SampleStorageMovem
     public List<SampleStorageMovement> findBySampleId(String sampleId) {
         try {
             String hql = "FROM SampleStorageMovement WHERE sample.id = :sampleId ORDER BY movementDate DESC";
-            Query<SampleStorageMovement> query = entityManager.unwrap(Session.class)
-                .createQuery(hql, SampleStorageMovement.class);
+            Query<SampleStorageMovement> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    SampleStorageMovement.class);
             query.setParameter("sampleId", sampleId);
             return query.list();
         } catch (Exception e) {
@@ -32,4 +32,3 @@ public class SampleStorageMovementDAOImpl extends BaseDAOImpl<SampleStorageMovem
         }
     }
 }
-

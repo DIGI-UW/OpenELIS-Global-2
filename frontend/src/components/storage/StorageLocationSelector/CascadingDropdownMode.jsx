@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Dropdown } from '@carbon/react';
-import { FormattedMessage, useIntl } from 'react-intl';
-import { getFromOpenElisServer } from '../../utils/Utils';
+import React, { useState, useEffect } from "react";
+import { Dropdown } from "@carbon/react";
+import { FormattedMessage, useIntl } from "react-intl";
+import { getFromOpenElisServer } from "../../utils/Utils";
 
 /**
  * Cascading dropdown mode for storage location selection
@@ -24,7 +24,7 @@ const CascadingDropdownMode = ({ onLocationChange, enableInlineCreation }) => {
 
   // Load rooms on mount
   useEffect(() => {
-    getFromOpenElisServer('/rest/storage/rooms', setRooms, () => {});
+    getFromOpenElisServer("/rest/storage/rooms", setRooms, () => {});
   }, []);
 
   // Load devices when room selected
@@ -33,7 +33,7 @@ const CascadingDropdownMode = ({ onLocationChange, enableInlineCreation }) => {
       getFromOpenElisServer(
         `/rest/storage/devices?roomId=${selectedRoom.id}`,
         setDevices,
-        () => {}
+        () => {},
       );
       // Reset child selections
       setSelectedDevice(null);
@@ -52,7 +52,7 @@ const CascadingDropdownMode = ({ onLocationChange, enableInlineCreation }) => {
       getFromOpenElisServer(
         `/rest/storage/shelves?deviceId=${selectedDevice.id}`,
         setShelves,
-        () => {}
+        () => {},
       );
       setSelectedShelf(null);
       setSelectedRack(null);
@@ -68,7 +68,7 @@ const CascadingDropdownMode = ({ onLocationChange, enableInlineCreation }) => {
       getFromOpenElisServer(
         `/rest/storage/racks?shelfId=${selectedShelf.id}`,
         setRacks,
-        () => {}
+        () => {},
       );
       setSelectedRack(null);
       setSelectedPosition(null);
@@ -82,7 +82,7 @@ const CascadingDropdownMode = ({ onLocationChange, enableInlineCreation }) => {
       getFromOpenElisServer(
         `/rest/storage/positions?rackId=${selectedRack.id}&occupied=false`,
         setPositions,
-        () => {}
+        () => {},
       );
       setSelectedPosition(null);
     }
@@ -106,10 +106,10 @@ const CascadingDropdownMode = ({ onLocationChange, enableInlineCreation }) => {
       <Dropdown
         id="room-dropdown"
         data-testid="room-dropdown"
-        titleText={intl.formatMessage({ id: 'storage.room.label' })}
-        label={intl.formatMessage({ id: 'storage.room.label' })}
+        titleText={intl.formatMessage({ id: "storage.room.label" })}
+        label={intl.formatMessage({ id: "storage.room.label" })}
         items={rooms || []}
-        itemToString={(item) => (item ? item.name : '')}
+        itemToString={(item) => (item ? item.name : "")}
         onChange={({ selectedItem }) => setSelectedRoom(selectedItem)}
         selectedItem={selectedRoom}
       />
@@ -117,10 +117,10 @@ const CascadingDropdownMode = ({ onLocationChange, enableInlineCreation }) => {
       <Dropdown
         id="device-dropdown"
         data-testid="device-dropdown"
-        titleText={intl.formatMessage({ id: 'storage.device.label' })}
-        label={intl.formatMessage({ id: 'storage.device.label' })}
+        titleText={intl.formatMessage({ id: "storage.device.label" })}
+        label={intl.formatMessage({ id: "storage.device.label" })}
         items={devices || []}
-        itemToString={(item) => (item ? item.name : '')}
+        itemToString={(item) => (item ? item.name : "")}
         onChange={({ selectedItem }) => setSelectedDevice(selectedItem)}
         selectedItem={selectedDevice}
         disabled={!selectedRoom}
@@ -129,10 +129,10 @@ const CascadingDropdownMode = ({ onLocationChange, enableInlineCreation }) => {
       <Dropdown
         id="shelf-dropdown"
         data-testid="shelf-dropdown"
-        titleText={intl.formatMessage({ id: 'storage.shelf.label' })}
-        label={intl.formatMessage({ id: 'storage.shelf.label' })}
+        titleText={intl.formatMessage({ id: "storage.shelf.label" })}
+        label={intl.formatMessage({ id: "storage.shelf.label" })}
         items={shelves || []}
-        itemToString={(item) => (item ? item.label : '')}
+        itemToString={(item) => (item ? item.label : "")}
         onChange={({ selectedItem }) => setSelectedShelf(selectedItem)}
         selectedItem={selectedShelf}
         disabled={!selectedDevice}
@@ -141,10 +141,10 @@ const CascadingDropdownMode = ({ onLocationChange, enableInlineCreation }) => {
       <Dropdown
         id="rack-dropdown"
         data-testid="rack-dropdown"
-        titleText={intl.formatMessage({ id: 'storage.rack.label' })}
-        label={intl.formatMessage({ id: 'storage.rack.label' })}
+        titleText={intl.formatMessage({ id: "storage.rack.label" })}
+        label={intl.formatMessage({ id: "storage.rack.label" })}
         items={racks || []}
-        itemToString={(item) => (item ? item.label : '')}
+        itemToString={(item) => (item ? item.label : "")}
         onChange={({ selectedItem }) => setSelectedRack(selectedItem)}
         selectedItem={selectedRack}
         disabled={!selectedShelf}
@@ -153,10 +153,10 @@ const CascadingDropdownMode = ({ onLocationChange, enableInlineCreation }) => {
       <Dropdown
         id="position-dropdown"
         data-testid="position-dropdown"
-        titleText={intl.formatMessage({ id: 'storage.position.label' })}
-        label={intl.formatMessage({ id: 'storage.position.label' })}
+        titleText={intl.formatMessage({ id: "storage.position.label" })}
+        label={intl.formatMessage({ id: "storage.position.label" })}
         items={positions || []}
-        itemToString={(item) => (item ? item.coordinate : '')}
+        itemToString={(item) => (item ? item.coordinate : "")}
         onChange={({ selectedItem }) => setSelectedPosition(selectedItem)}
         selectedItem={selectedPosition}
         disabled={!selectedRack}
@@ -172,4 +172,3 @@ const CascadingDropdownMode = ({ onLocationChange, enableInlineCreation }) => {
 };
 
 export default CascadingDropdownMode;
-

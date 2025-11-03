@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Transactional
 public class StorageRoomDAOImpl extends BaseDAOImpl<StorageRoom, String> implements StorageRoomDAO {
-    
+
     public StorageRoomDAOImpl() {
         super(StorageRoom.class);
     }
@@ -32,4 +32,3 @@ public class StorageRoomDAOImpl extends BaseDAOImpl<StorageRoom, String> impleme
         }
     }
 }
-

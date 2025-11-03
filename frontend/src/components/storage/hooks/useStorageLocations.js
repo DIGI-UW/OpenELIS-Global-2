@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { getFromOpenElisServer } from '../../utils/Utils';
+import { useState, useEffect } from "react";
+import { getFromOpenElisServer } from "../../utils/Utils";
 
 /**
  * Hook for fetching storage location hierarchy
@@ -18,7 +18,7 @@ export const useStorageLocations = (type, parentId) => {
     setIsLoading(true);
     setError(null);
 
-    const url = parentId 
+    const url = parentId
       ? `/rest/storage/${type}?parentId=${parentId}`
       : `/rest/storage/${type}`;
 
@@ -31,7 +31,7 @@ export const useStorageLocations = (type, parentId) => {
       (error) => {
         setError(error);
         setIsLoading(false);
-      }
+      },
     );
   }, [type, parentId]);
 
@@ -39,4 +39,3 @@ export const useStorageLocations = (type, parentId) => {
 };
 
 export default useStorageLocations;
-

@@ -1,10 +1,12 @@
 # Storage Test Data Fixtures
 
-This directory contains test data fixtures for integration testing the Storage Management POC feature.
+This directory contains test data fixtures for integration testing the Storage
+Management POC feature.
 
 ## Overview
 
-The test data provides a complete storage hierarchy for testing User Story P1 (Basic Assignment):
+The test data provides a complete storage hierarchy for testing User Story P1
+(Basic Assignment):
 
 ```
 Main Laboratory (MAIN)
@@ -45,7 +47,8 @@ mvn spring-boot:run -Dspring.profiles.active=test
 # liquibase.contexts=test
 ```
 
-**Note**: The changeset `004-insert-test-storage-data.xml` has `context="test"`, so it only runs when test context is active.
+**Note**: The changeset `004-insert-test-storage-data.xml` has `context="test"`,
+so it only runs when test context is active.
 
 ### Method 2: Manual SQL Script
 
@@ -77,23 +80,29 @@ docker exec -it database.openelis.org psql -U clinlims -d clinlims -f /tmp/stora
 ## Test Data Details
 
 ### Rooms (3)
+
 - **Main Laboratory (MAIN)**: Active, primary test location
 - **Secondary Laboratory (SEC)**: Active, alternative location
 - **Inactive Room (INACTIVE)**: Inactive for testing validation
 
 ### Devices (4)
+
 - **Freezer Unit 1 (FRZ01)**: -80°C, 500 capacity
 - **Refrigerator Unit 1 (REF01)**: +4°C, 300 capacity
 - **Cabinet Unit 1 (CAB01)**: Room temperature
 - **Inactive Freezer**: For testing inactive device validation
 
 ### Racks (4)
+
 - **Rack R1** (Shelf-A): 8x12 grid (96 positions) - Low occupancy
-- **Rack R2** (Shelf-A): 10x10 grid (100 positions) - **80% occupied** for capacity warning testing
-- **Rack R3** (Shelf-B): No grid (flexible positions) - For testing duplicate coordinates
+- **Rack R2** (Shelf-A): 10x10 grid (100 positions) - **80% occupied** for
+  capacity warning testing
+- **Rack R3** (Shelf-B): No grid (flexible positions) - For testing duplicate
+  coordinates
 - **Rack R1** (Shelf-1): 8x12 grid - Alternative location
 
 ### Positions (100+)
+
 - **8 positions** in Rack R1 (A1-A8)
 - **100 positions** in Rack R2 (1-1 through 10-10) - 80 occupied, 20 empty
 - **3 positions** in Rack R3 (RED-01, RED-02, RED-01 duplicate)
@@ -102,18 +111,25 @@ docker exec -it database.openelis.org psql -U clinlims -d clinlims -f /tmp/stora
 ## Test Scenarios Enabled
 
 ### ✅ Basic Assignment (T042-T050)
-- **Valid assignment**: Use position `A5` in Rack R1 (MAIN > FRZ01 > Shelf-A > Rack R1 > A5)
+
+- **Valid assignment**: Use position `A5` in Rack R1 (MAIN > FRZ01 > Shelf-A >
+  Rack R1 > A5)
 - **Occupied position**: Use position `A3` in Rack R1 (should fail with 400)
-- **Inactive location**: Use position `X1` in Inactive Room (should fail with 400)
+- **Inactive location**: Use position `X1` in Inactive Room (should fail
+  with 400)
 
 ### ✅ Capacity Warnings (T043)
+
 - **80% warning**: Assign to Rack R2 (80/100 occupied)
 - **Normal capacity**: Assign to Rack R1 (<10% occupied)
 
 ### ✅ Duplicate Coordinates (T029)
-- **Flexible storage**: Both `RED-01` positions in Rack R3 are valid (duplicates allowed)
+
+- **Flexible storage**: Both `RED-01` positions in Rack R3 are valid (duplicates
+  allowed)
 
 ### ✅ Cascading Dropdowns (T064 Cypress)
+
 - Full hierarchy available for selection testing
 - Multiple rooms/devices/shelves for dropdown population
 
@@ -121,7 +137,7 @@ docker exec -it database.openelis.org psql -U clinlims -d clinlims -f /tmp/stora
 
 ```sql
 -- View all storage locations
-SELECT r.name AS room, d.name AS device, s.label AS shelf, k.label AS rack, 
+SELECT r.name AS room, d.name AS device, s.label AS shelf, k.label AS rack,
        COUNT(p.id) AS total_positions,
        SUM(CASE WHEN p.occupied THEN 1 ELSE 0 END) AS occupied
 FROM storage_room r
@@ -133,7 +149,7 @@ GROUP BY r.name, d.name, s.label, k.label
 ORDER BY r.name, d.name, s.label, k.label;
 
 -- Check capacity for Rack R2 (should show 80%)
-SELECT 
+SELECT
     k.label,
     k.rows * k.columns AS total_capacity,
     COUNT(p.id) AS position_count,
@@ -145,7 +161,7 @@ WHERE k.id = '31'
 GROUP BY k.id, k.label, k.rows, k.columns;
 
 -- List available (unoccupied) positions
-SELECT 
+SELECT
     r.code || ' > ' || d.code || ' > ' || s.label || ' > ' || k.label || ' > ' || p.coordinate AS hierarchical_path,
     p.id AS position_id
 FROM storage_position p
@@ -189,10 +205,13 @@ mvn test -Dtest="SampleStorageRestControllerTest" -Dspring.profiles.active=test 
 With these fixtures loaded:
 
 1. **testCreateRoom_ValidInput_Returns201**: ✅ Creates new room (ID > 1000)
-2. **testCreateDevice_DuplicateCode_Returns400**: ✅ Fails when creating device with code "FRZ01" in room "1"
+2. **testCreateDevice_DuplicateCode_Returns400**: ✅ Fails when creating device
+   with code "FRZ01" in room "1"
 3. **testAssignSample_ValidInput_Returns201**: ✅ Assigns to position "104" (A5)
-4. **testAssignSample_OccupiedPosition_Returns400**: ✅ Fails when assigning to position "102" (A3 - occupied)
-5. **testAssignSample_InactiveLocation_Returns400**: ✅ Fails when assigning to position "120" (in inactive room)
+4. **testAssignSample_OccupiedPosition_Returns400**: ✅ Fails when assigning to
+   position "102" (A3 - occupied)
+5. **testAssignSample_InactiveLocation_Returns400**: ✅ Fails when assigning to
+   position "120" (in inactive room)
 
 ## Cypress E2E Test Usage
 
@@ -237,4 +256,3 @@ EOF
 **Created**: 2025-10-31  
 **Feature**: Sample Storage Management POC (001-sample-storage)  
 **Purpose**: Enable integration and E2E testing with realistic storage hierarchy
-

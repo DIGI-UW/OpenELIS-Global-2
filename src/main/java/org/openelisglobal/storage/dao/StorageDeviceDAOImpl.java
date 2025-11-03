@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Transactional
 public class StorageDeviceDAOImpl extends BaseDAOImpl<StorageDevice, String> implements StorageDeviceDAO {
-    
+
     public StorageDeviceDAOImpl() {
         super(StorageDevice.class);
     }
@@ -21,9 +21,9 @@ public class StorageDeviceDAOImpl extends BaseDAOImpl<StorageDevice, String> imp
     @Transactional(readOnly = true)
     public List<StorageDevice> findByParentRoomId(String roomId) {
         try {
-            String hql = "FROM StorageDevice WHERE parentRoom.id = :roomId";
+            String hql = "FROM StorageDevice d WHERE d.parentRoom.id = :roomId";
             Query<StorageDevice> query = entityManager.unwrap(Session.class).createQuery(hql, StorageDevice.class);
-            query.setParameter("roomId", roomId);
+            query.setParameter("roomId", Integer.parseInt(roomId));
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error finding StorageDevices by room ID", e);
@@ -34,9 +34,9 @@ public class StorageDeviceDAOImpl extends BaseDAOImpl<StorageDevice, String> imp
     @Transactional(readOnly = true)
     public StorageDevice findByParentRoomIdAndCode(String roomId, String code) {
         try {
-            String hql = "FROM StorageDevice WHERE parentRoom.id = :roomId AND code = :code";
+            String hql = "FROM StorageDevice d WHERE d.parentRoom.id = :roomId AND d.code = :code";
             Query<StorageDevice> query = entityManager.unwrap(Session.class).createQuery(hql, StorageDevice.class);
-            query.setParameter("roomId", roomId);
+            query.setParameter("roomId", Integer.parseInt(roomId));
             query.setParameter("code", code);
             query.setMaxResults(1);
             List<StorageDevice> results = query.list();
@@ -46,4 +46,3 @@ public class StorageDeviceDAOImpl extends BaseDAOImpl<StorageDevice, String> imp
         }
     }
 }
-

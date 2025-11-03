@@ -1,20 +1,38 @@
 package org.openelisglobal.storage.valueholder;
 
-import java.util.UUID;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PostPersist;
+import jakarta.persistence.PostUpdate;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.util.UUID;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.storage.fhir.StorageLocationFhirTransform;
 
 /**
  * StorageDevice entity - Storage equipment (freezers, refrigerators, cabinets)
  * Maps to FHIR Location resource with physicalType = "ve" (vehicle/equipment)
  */
+@Entity
+@Table(name = "STORAGE_DEVICE")
+@DynamicUpdate
+@org.hibernate.annotations.OptimisticLocking(type = org.hibernate.annotations.OptimisticLockType.VERSION)
 public class StorageDevice extends BaseObject<String> {
 
     public enum DeviceType {
-        FREEZER("freezer"),
-        REFRIGERATOR("refrigerator"),
-        CABINET("cabinet"),
-        OTHER("other");
+        FREEZER("freezer"), REFRIGERATOR("refrigerator"), CABINET("cabinet"), OTHER("other");
 
         private final String value;
 
@@ -36,15 +54,43 @@ public class StorageDevice extends BaseObject<String> {
         }
     }
 
+    @Id
+    @GeneratedValue(generator = "storage_device_seq")
+    @GenericGenerator(name = "storage_device_seq", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = {
+            @org.hibernate.annotations.Parameter(name = "sequence_name", value = "storage_device_seq")
+    })
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "ID", precision = 10, scale = 0)
     private String id;
+    
+    @Column(name = "FHIR_UUID", nullable = false, unique = true)
     private UUID fhirUuid;
+    
+    @Column(name = "NAME", length = 255, nullable = false)
     private String name;
+    
+    @Column(name = "CODE", length = 50, nullable = false)
     private String code;
-    private DeviceType type;
-    private Double temperatureSetting;
+    
+    @Column(name = "TYPE", length = 20, nullable = false)
+    private String type; // Stored as String in DB, use getTypeEnum() and setTypeEnum() for enum access
+    
+    @Column(name = "TEMPERATURE_SETTING", precision = 5, scale = 2)
+    private BigDecimal temperatureSetting;
+    
+    @Column(name = "CAPACITY_LIMIT")
     private Integer capacityLimit;
+    
+    @Column(name = "ACTIVE", nullable = false)
     private Boolean active;
+    
+    @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
+    @JoinColumn(name = "PARENT_ROOM_ID", nullable = false)
     private StorageRoom parentRoom;
+    
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "SYS_USER_ID", precision = 10, scale = 0, nullable = false)
+    private String sysUserId;
 
     @Override
     public String getId() {
@@ -80,19 +126,27 @@ public class StorageDevice extends BaseObject<String> {
         this.code = code;
     }
 
-    public DeviceType getType() {
+    public String getType() {
         return type;
     }
 
-    public void setType(DeviceType type) {
+    public void setType(String type) {
         this.type = type;
     }
 
-    public Double getTemperatureSetting() {
+    public DeviceType getTypeEnum() {
+        return type != null ? DeviceType.fromValue(type) : null;
+    }
+
+    public void setTypeEnum(DeviceType typeEnum) {
+        this.type = typeEnum != null ? typeEnum.getValue() : null;
+    }
+
+    public BigDecimal getTemperatureSetting() {
         return temperatureSetting;
     }
 
-    public void setTemperatureSetting(Double temperatureSetting) {
+    public void setTemperatureSetting(BigDecimal temperatureSetting) {
         this.temperatureSetting = temperatureSetting;
     }
 
@@ -120,6 +174,14 @@ public class StorageDevice extends BaseObject<String> {
         this.parentRoom = parentRoom;
     }
 
+    public String getSysUserId() {
+        return sysUserId;
+    }
+
+    public void setSysUserId(String sysUserId) {
+        this.sysUserId = sysUserId;
+    }
+
     @PrePersist
     protected void onCreate() {
         if (fhirUuid == null) {
@@ -133,6 +195,29 @@ public class StorageDevice extends BaseObject<String> {
     }
 
     public String getTypeAsString() {
-        return type != null ? type.getValue() : null;
+        return type; // type is already a String
+    }
+
+    @PostPersist
+    protected void onPostPersist() {
+        syncToFhir(true);
+    }
+
+    @PostUpdate
+    protected void onPostUpdate() {
+        syncToFhir(false);
+    }
+
+    private void syncToFhir(boolean isCreate) {
+        try {
+            StorageLocationFhirTransform transformService = SpringContext.getBean(StorageLocationFhirTransform.class);
+            if (transformService != null) {
+                transformService.syncToFhir(this, isCreate);
+            }
+        } catch (Exception e) {
+            // Log error but don't fail the transaction
+            // Errors are logged in the syncToFhir method
+            // In test contexts, SpringContext may not be available - ignore silently
+        }
     }
 }

@@ -13,19 +13,19 @@
             </not>
         </preConditions>
         <createTable tableName="sample_storage_assignment">
-            <column name="id" type="VARCHAR(36)">
+            <column name="id" type="numeric(10,0)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="sample_id" type="numeric(10,0)">
                 <constraints nullable="false" unique="true"
-                    foreignKeyName="fk_assignment_sample" 
-                    references="sample(id)" 
+                    foreignKeyName="fk_assignment_sample"
+                    references="sample(id)"
                     deleteCascade="true"/>
             </column>
-            <column name="storage_position_id" type="VARCHAR(36)">
-                <constraints nullable="false" 
-                    foreignKeyName="fk_assignment_position" 
-                    references="storage_position(id)" 
+            <column name="storage_position_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_assignment_position"
+                    references="storage_position(id)"
                     deleteCascade="false"/>
             </column>
             <column name="assigned_by_user_id" type="numeric(10,0)">
@@ -64,23 +64,23 @@
             </not>
         </preConditions>
         <createTable tableName="sample_storage_movement">
-            <column name="id" type="VARCHAR(36)">
+            <column name="id" type="numeric(10,0)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="sample_id" type="numeric(10,0)">
                 <constraints nullable="false"
-                    foreignKeyName="fk_movement_sample" 
-                    references="sample(id)" 
+                    foreignKeyName="fk_movement_sample"
+                    references="sample(id)"
                     deleteCascade="true"/>
             </column>
-            <column name="previous_position_id" type="VARCHAR(36)">
-                <constraints foreignKeyName="fk_movement_previous_position" 
-                    references="storage_position(id)" 
+            <column name="previous_position_id" type="numeric(10,0)">
+                <constraints foreignKeyName="fk_movement_previous_position"
+                    references="storage_position(id)"
                     deleteCascade="false"/>
             </column>
-            <column name="new_position_id" type="VARCHAR(36)">
-                <constraints foreignKeyName="fk_movement_new_position" 
-                    references="storage_position(id)" 
+            <column name="new_position_id" type="numeric(10,0)">
+                <constraints foreignKeyName="fk_movement_new_position"
+                    references="storage_position(id)"
                     deleteCascade="false"/>
             </column>
             <column name="moved_by_user_id" type="numeric(10,0)">
@@ -101,8 +101,8 @@
     <!-- Sample Storage Movement Constraints -->
     <changeSet id="storage-013a-add-movement-constraints" author="sample-storage-feature">
         <sql>
-            ALTER TABLE clinlims.sample_storage_movement 
-            ADD CONSTRAINT chk_movement_has_position 
+            ALTER TABLE clinlims.sample_storage_movement
+            ADD CONSTRAINT chk_movement_has_position
             CHECK (previous_position_id IS NOT NULL OR new_position_id IS NOT NULL);
         </sql>
     </changeSet>
@@ -121,4 +121,3 @@
     </changeSet>
 
 </databaseChangeLog>
-

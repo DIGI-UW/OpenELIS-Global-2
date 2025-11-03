@@ -63,4 +63,3 @@ public class StorageShelfForm {
         this.parentDeviceId = parentDeviceId;
     }
 }
-

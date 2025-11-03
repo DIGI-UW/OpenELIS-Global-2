@@ -12,4 +12,3 @@
   <include relativeToChangelogFile="true" file="005-add-storage-menu-item.xml"/>
 
 </databaseChangeLog>
-

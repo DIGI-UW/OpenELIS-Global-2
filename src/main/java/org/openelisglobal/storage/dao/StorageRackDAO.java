@@ -7,4 +7,3 @@ import org.openelisglobal.storage.valueholder.StorageRack;
 public interface StorageRackDAO extends BaseDAO<StorageRack, String> {
     List<StorageRack> findByParentShelfId(String shelfId);
 }
-

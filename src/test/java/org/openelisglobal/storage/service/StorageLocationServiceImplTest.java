@@ -5,8 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -14,21 +12,21 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
-import org.openelisglobal.storage.dao.StorageRoomDAO;
 import org.openelisglobal.storage.dao.StorageDeviceDAO;
-import org.openelisglobal.storage.dao.StorageShelfDAO;
-import org.openelisglobal.storage.dao.StorageRackDAO;
 import org.openelisglobal.storage.dao.StoragePositionDAO;
-import org.openelisglobal.storage.valueholder.StorageRoom;
+import org.openelisglobal.storage.dao.StorageRackDAO;
+import org.openelisglobal.storage.dao.StorageRoomDAO;
+import org.openelisglobal.storage.dao.StorageShelfDAO;
 import org.openelisglobal.storage.valueholder.StorageDevice;
-import org.openelisglobal.storage.valueholder.StorageShelf;
-import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StoragePosition;
+import org.openelisglobal.storage.valueholder.StorageRack;
+import org.openelisglobal.storage.valueholder.StorageRoom;
+import org.openelisglobal.storage.valueholder.StorageShelf;
 
 /**
- * Unit tests for StorageLocationService implementation
- * Following TDD: Write tests BEFORE implementation
- * Tests business logic validation rules per data-model.md
+ * Unit tests for StorageLocationService implementation Following TDD: Write
+ * tests BEFORE implementation Tests business logic validation rules per
+ * data-model.md
  */
 @RunWith(MockitoJUnitRunner.class)
 public class StorageLocationServiceImplTest {
@@ -69,7 +67,7 @@ public class StorageLocationServiceImplTest {
         testDevice.setId("2");
         testDevice.setCode("TEST-DEV");
         testDevice.setName("Test Device");
-        testDevice.setType(StorageDevice.DeviceType.FREEZER);
+        testDevice.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         testDevice.setParentRoom(testRoom);
         testDevice.setActive(true);
 
@@ -99,14 +97,13 @@ public class StorageLocationServiceImplTest {
         existingDevice.setCode("FRZ01");
         existingDevice.setParentRoom(testRoom);
 
-        when(storageDeviceDAO.findByParentRoomIdAndCode(testRoom.getId(), "FRZ01"))
-            .thenReturn(existingDevice);
+        when(storageDeviceDAO.findByParentRoomIdAndCode(testRoom.getId(), "FRZ01")).thenReturn(existingDevice);
 
         // Given: New device with same code in same room
         StorageDevice newDevice = new StorageDevice();
         newDevice.setCode("FRZ01"); // Duplicate
         newDevice.setName("New Freezer");
-        newDevice.setType(StorageDevice.DeviceType.FREEZER);
+        newDevice.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         newDevice.setParentRoom(testRoom);
 
         // When: Attempt to create device
@@ -115,8 +112,8 @@ public class StorageLocationServiceImplTest {
     }
 
     /**
-     * T030: Test device code unique across different rooms succeeds
-     * Validation: Device code only needs to be unique WITHIN a room, not globally
+     * T030: Test device code unique across different rooms succeeds Validation:
+     * Device code only needs to be unique WITHIN a room, not globally
      */
     @Test
     public void testCreateDevice_SameCodeDifferentRoom_Succeeds() {
@@ -137,14 +134,12 @@ public class StorageLocationServiceImplTest {
         StorageDevice deviceRoom2 = new StorageDevice();
         deviceRoom2.setCode("FRZ01");
         deviceRoom2.setName("Freezer in Room 2");
-        deviceRoom2.setType(StorageDevice.DeviceType.FREEZER);
+        deviceRoom2.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         deviceRoom2.setParentRoom(room2);
 
         // Mock: No device with this code exists in room2
-        when(storageDeviceDAO.findByParentRoomIdAndCode(room2.getId(), "FRZ01"))
-            .thenReturn(null);
-        when(storageDeviceDAO.insert(any(StorageDevice.class)))
-            .thenReturn("device-id-123");
+        when(storageDeviceDAO.findByParentRoomIdAndCode(room2.getId(), "FRZ01")).thenReturn(null);
+        when(storageDeviceDAO.insert(any(StorageDevice.class))).thenReturn("device-id-123");
 
         // When: Create device in room 2
         // Then: Should succeed (same code allowed in different rooms)
@@ -169,15 +164,14 @@ public class StorageLocationServiceImplTest {
     }
 
     /**
-     * T030: Test deleting room with inactive devices succeeds
-     * Validation: Room can be deleted if all child devices are inactive
+     * T030: Test deleting room with inactive devices succeeds Validation: Room can
+     * be deleted if all child devices are inactive
      */
     @Test
     public void testDeleteRoom_AllDevicesInactive_Succeeds() {
         // Given: Room with only inactive devices
         testDevice.setActive(false);
-        when(storageDeviceDAO.findByParentRoomId(testRoom.getId()))
-            .thenReturn(Arrays.asList(testDevice));
+        when(storageDeviceDAO.findByParentRoomId(testRoom.getId())).thenReturn(Arrays.asList(testDevice));
 
         // When: Delete room
         storageLocationService.delete(testRoom);
@@ -187,8 +181,8 @@ public class StorageLocationServiceImplTest {
     }
 
     /**
-     * T030: Test deactivating device with active samples shows warning
-     * Validation per data-model.md: Warn when deactivating location with active samples
+     * T030: Test deactivating device with active samples shows warning Validation
+     * per data-model.md: Warn when deactivating location with active samples
      */
     @Test
     public void testDeactivateDevice_WithActiveSamples_ShowsWarning() {
@@ -197,8 +191,7 @@ public class StorageLocationServiceImplTest {
         position.setParentRack(testRack);
         position.setOccupied(true);
 
-        when(storagePositionDAO.countOccupiedInDevice(testDevice.getId()))
-            .thenReturn(5); // 5 active samples
+        when(storagePositionDAO.countOccupiedInDevice(testDevice.getId())).thenReturn(5); // 5 active samples
 
         // When: Deactivate device
         testDevice.setActive(false);
@@ -206,8 +199,7 @@ public class StorageLocationServiceImplTest {
 
         // Then: Expect warning message about active samples
         assertNotNull("Warning should be returned", warning);
-        assertTrue("Warning should mention active samples", 
-            warning.contains("5 active samples"));
+        assertTrue("Warning should mention active samples", warning.contains("5 active samples"));
     }
 
     /**
@@ -229,8 +221,8 @@ public class StorageLocationServiceImplTest {
     }
 
     /**
-     * T030: Test buildHierarchicalPath returns correct path format
-     * Helper method validation: Path should be "Room > Device > Shelf > Rack > Position"
+     * T030: Test buildHierarchicalPath returns correct path format Helper method
+     * validation: Path should be "Room > Device > Shelf > Rack > Position"
      */
     @Test
     public void testBuildHierarchicalPath_ReturnsCorrectFormat() {
@@ -248,8 +240,8 @@ public class StorageLocationServiceImplTest {
     }
 
     /**
-     * T030: Test buildHierarchicalPath handles null parent gracefully
-     * Edge case: Position without full hierarchy should not crash
+     * T030: Test buildHierarchicalPath handles null parent gracefully Edge case:
+     * Position without full hierarchy should not crash
      */
     @Test
     public void testBuildHierarchicalPath_NullParent_HandlesGracefully() {
@@ -263,13 +255,12 @@ public class StorageLocationServiceImplTest {
 
         // Then: Expect partial path or error indication
         assertNotNull("Path should not be null", path);
-        assertTrue("Path should indicate missing parent", 
-            path.contains("Unknown") || path.contains("A5"));
+        assertTrue("Path should indicate missing parent", path.contains("Unknown") || path.contains("A5"));
     }
 
     /**
-     * T030: Test validateLocationActive checks entire hierarchy
-     * Validation: All parent locations must be active to assign sample
+     * T030: Test validateLocationActive checks entire hierarchy Validation: All
+     * parent locations must be active to assign sample
      */
     @Test
     public void testValidateLocationActive_InactiveParent_ReturnsFalse() {
@@ -309,4 +300,3 @@ public class StorageLocationServiceImplTest {
         assertTrue("Position should be valid with all active parents", isActive);
     }
 }
-

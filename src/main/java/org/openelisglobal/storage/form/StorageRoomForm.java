@@ -5,7 +5,8 @@ import jakarta.validation.constraints.Size;
 
 /**
  * Form object for StorageRoom entity - used for REST API input validation
- * Following OpenELIS pattern: Form objects for transport, entities for persistence
+ * Following OpenELIS pattern: Form objects for transport, entities for
+ * persistence
  */
 public class StorageRoomForm {
 
@@ -66,4 +67,3 @@ public class StorageRoomForm {
         this.active = active;
     }
 }
-

@@ -1,12 +1,12 @@
 package org.openelisglobal.storage.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import jakarta.validation.Valid;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.form.*;
@@ -20,9 +20,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST Controller for Storage Location management
- * Handles CRUD operations for all storage hierarchy levels:
- * Room, Device, Shelf, Rack, Position
+ * REST Controller for Storage Location management Handles CRUD operations for
+ * all storage hierarchy levels: Room, Device, Shelf, Rack, Position
  */
 @RestController
 @RequestMapping("/rest/storage")
@@ -46,14 +45,23 @@ public class StorageLocationRestController extends BaseRestController {
             room.setDescription(form.getDescription());
             room.setActive(form.getActive() != null ? form.getActive() : true);
             room.setFhirUuid(UUID.randomUUID());
+            room.setSysUserId("1"); // Default system user for REST API (should come from security context in
+                                    // production)
 
             StorageRoom createdRoom = storageLocationService.createRoom(room);
 
             Map<String, Object> response = entityToMap(createdRoom);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            logger.error("Error creating room: " + e.getMessage(), e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         } catch (Exception e) {
             logger.error("Error creating room", e);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         }
     }
 
@@ -88,7 +96,7 @@ public class StorageLocationRestController extends BaseRestController {
 
     @PutMapping("/rooms/{id}")
     public ResponseEntity<Map<String, Object>> updateRoom(@PathVariable String id,
-                                                            @Valid @RequestBody StorageRoomForm form) {
+            @Valid @RequestBody StorageRoomForm form) {
         try {
             StorageRoom roomToUpdate = new StorageRoom();
             roomToUpdate.setName(form.getName());
@@ -112,10 +120,16 @@ public class StorageLocationRestController extends BaseRestController {
         try {
             storageLocationService.deleteRoom(id);
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            logger.error("Error deleting room: " + e.getMessage(), e);
+            // Conflict if room has children (checked in service layer)
+            if (e.getMessage() != null && e.getMessage().contains("active child")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             logger.error("Error deleting room", e);
-            // Conflict if room has children
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -127,11 +141,14 @@ public class StorageLocationRestController extends BaseRestController {
             StorageDevice device = new StorageDevice();
             device.setName(form.getName());
             device.setCode(form.getCode());
-            device.setType(StorageDevice.DeviceType.fromValue(form.getType()));
-            device.setTemperatureSetting(form.getTemperatureSetting());
+            device.setType(form.getType()); // Store as String to match database constraint
+            device.setTemperatureSetting(
+                    form.getTemperatureSetting() != null ? java.math.BigDecimal.valueOf(form.getTemperatureSetting())
+                            : null);
             device.setCapacityLimit(form.getCapacityLimit());
             device.setActive(form.getActive() != null ? form.getActive() : true);
             device.setFhirUuid(UUID.randomUUID());
+            device.setSysUserId("1"); // Default system user for REST API
 
             // Set parent room
             StorageRoom parentRoom = storageLocationService.getRoom(form.getParentRoomId());
@@ -146,9 +163,21 @@ public class StorageLocationRestController extends BaseRestController {
             Map<String, Object> response = entityToMap(device);
             response.put("parentRoomId", form.getParentRoomId());
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (jakarta.persistence.PersistenceException e) {
+            logger.error("Error creating device: " + e.getMessage(), e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Database constraint violation: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            logger.error("Error creating device: " + e.getMessage(), e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         } catch (Exception e) {
             logger.error("Error creating device", e);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         }
     }
 
@@ -187,8 +216,10 @@ public class StorageLocationRestController extends BaseRestController {
             shelf.setCapacityLimit(form.getCapacityLimit());
             shelf.setActive(form.getActive() != null ? form.getActive() : true);
             shelf.setFhirUuid(UUID.randomUUID());
+            shelf.setSysUserId("1"); // Default system user for REST API
 
-            StorageDevice parentDevice = (StorageDevice) storageLocationService.get(form.getParentDeviceId(), StorageDevice.class);
+            StorageDevice parentDevice = (StorageDevice) storageLocationService.get(form.getParentDeviceId(),
+                    StorageDevice.class);
             if (parentDevice == null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent device not found"));
             }
@@ -237,8 +268,10 @@ public class StorageLocationRestController extends BaseRestController {
             rack.setPositionSchemaHint(form.getPositionSchemaHint());
             rack.setActive(form.getActive() != null ? form.getActive() : true);
             rack.setFhirUuid(UUID.randomUUID());
+            rack.setSysUserId("1"); // Default system user for REST API
 
-            StorageShelf parentShelf = (StorageShelf) storageLocationService.get(form.getParentShelfId(), StorageShelf.class);
+            StorageShelf parentShelf = (StorageShelf) storageLocationService.get(form.getParentShelfId(),
+                    StorageShelf.class);
             if (parentShelf == null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent shelf not found"));
             }
@@ -286,8 +319,10 @@ public class StorageLocationRestController extends BaseRestController {
             position.setColumnIndex(form.getColumnIndex());
             position.setOccupied(form.getOccupied() != null ? form.getOccupied() : false);
             position.setFhirUuid(UUID.randomUUID());
+            position.setSysUserId("1"); // Default system user for REST API
 
-            StorageRack parentRack = (StorageRack) storageLocationService.get(form.getParentRackId(), StorageRack.class);
+            StorageRack parentRack = (StorageRack) storageLocationService.get(form.getParentRackId(),
+                    StorageRack.class);
             if (parentRack == null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent rack not found"));
             }
@@ -304,8 +339,7 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @GetMapping("/positions")
-    public ResponseEntity<List<Map<String, Object>>> getPositions(
-            @RequestParam(required = false) String rackId,
+    public ResponseEntity<List<Map<String, Object>>> getPositions(@RequestParam(required = false) String rackId,
             @RequestParam(required = false) Boolean occupied) {
         try {
             List<StoragePosition> positions;
@@ -334,7 +368,7 @@ public class StorageLocationRestController extends BaseRestController {
 
     private Map<String, Object> entityToMap(Object entity) {
         Map<String, Object> map = new HashMap<>();
-        
+
         if (entity instanceof StorageRoom) {
             StorageRoom room = (StorageRoom) entity;
             map.put("id", room.getId());
@@ -378,8 +412,7 @@ public class StorageLocationRestController extends BaseRestController {
             map.put("occupied", position.getOccupied());
             map.put("fhirUuid", position.getFhirUuidAsString());
         }
-        
+
         return map;
     }
 }
-

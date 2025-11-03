@@ -26,7 +26,7 @@ describe("Storage Assignment - Cascading Dropdowns (P1)", function () {
 
     // Fill in sample information
     cy.get('[data-testid="accession-number"]').type("S-2025-TEST-001");
-    
+
     // Locate storage location selector
     cy.get('[data-testid="storage-location-selector"]').should("be.visible");
 
@@ -54,7 +54,7 @@ describe("Storage Assignment - Cascading Dropdowns (P1)", function () {
     // Verify hierarchical path displays correctly
     cy.get('[data-testid="location-path"]').should(
       "contain.text",
-      "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5"
+      "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5",
     );
 
     // Save sample
@@ -102,8 +102,9 @@ describe("Storage Assignment - Barcode Scan (P1)", function () {
 
     // Switch to barcode mode
     // Simulate barcode scan (rapid keyboard input)
-    cy.get('[data-testid="barcode-input"]')
-      .type("MAIN-FRZ01-SHA-RKR1-A5{enter}");
+    cy.get('[data-testid="barcode-input"]').type(
+      "MAIN-FRZ01-SHA-RKR1-A5{enter}",
+    );
 
     // Verify location parsed and displayed
     cy.get('[data-testid="location-path"]').should("contain.text", "A5");
@@ -154,4 +155,3 @@ describe("Storage Assignment - Capacity Warning (P1)", function () {
       .and("contain.text", "85%");
   });
 });
-

@@ -17,12 +17,11 @@ import org.openelisglobal.sample.dao.SampleDAO;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.dao.SampleStorageMovementDAO;
-import org.openelisglobal.storage.dao.StoragePositionDAO;
 import org.openelisglobal.storage.valueholder.*;
 
 /**
- * Unit tests for SampleStorageService - Sample Assignment Logic
- * Following TDD: Write tests BEFORE implementation
+ * Unit tests for SampleStorageService - Sample Assignment Logic Following TDD:
+ * Write tests BEFORE implementation
  */
 @RunWith(MockitoJUnitRunner.class)
 public class SampleStorageServiceImplTest {
@@ -62,7 +61,7 @@ public class SampleStorageServiceImplTest {
         testDevice.setId("device-1");
         testDevice.setCode("FRZ01");
         testDevice.setName("Freezer Unit 1");
-        testDevice.setType(StorageDevice.DeviceType.FREEZER);
+        testDevice.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         testDevice.setParentRoom(testRoom);
         testDevice.setActive(true);
 
@@ -132,8 +131,8 @@ public class SampleStorageServiceImplTest {
     }
 
     /**
-     * T043: Test assigning sample to occupied position throws exception
-     * Validation: Prevent double-occupancy
+     * T043: Test assigning sample to occupied position throws exception Validation:
+     * Prevent double-occupancy
      */
     @Test(expected = LIMSRuntimeException.class)
     public void testAssignSample_OccupiedPosition_ThrowsException() {
@@ -148,8 +147,8 @@ public class SampleStorageServiceImplTest {
     }
 
     /**
-     * T043: Test assigning sample to inactive location throws exception
-     * Validation: Cannot assign to inactive hierarchy
+     * T043: Test assigning sample to inactive location throws exception Validation:
+     * Cannot assign to inactive hierarchy
      */
     @Test(expected = LIMSRuntimeException.class)
     public void testAssignSample_InactiveLocation_ThrowsException() {
@@ -229,4 +228,3 @@ public class SampleStorageServiceImplTest {
             testPosition.getOccupied());
     }
 }
-

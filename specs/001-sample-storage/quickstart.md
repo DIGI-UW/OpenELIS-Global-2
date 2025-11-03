@@ -8,13 +8,16 @@
 ## Prerequisites
 
 **⚠️ CRITICAL: Java Version**
+
 - ✅ **Java 21 LTS** (OpenJDK/Temurin) - **MANDATORY** per constitution
 - ❌ **NOT compatible** with Java 8, 11, or 17 - build will fail
 - Verify: `java -version` should show `openjdk version "21.x.x"`
 - For SDKMAN users: `.sdkmanrc` file in project root auto-switches to Java 21
 
 **Other Prerequisites**
-- ✅ OpenELIS Global 3.0 development environment running (see [dev_setup.md](../../../docs/dev_setup.md))
+
+- ✅ OpenELIS Global 3.0 development environment running (see
+  [dev_setup.md](../../../docs/dev_setup.md))
 - ✅ PostgreSQL 14+ database accessible
 - ✅ Maven 3.8+
 - ✅ Node.js 16+, npm
@@ -22,6 +25,7 @@
 - ✅ HAPI FHIR R4 server running at `https://fhir.openelis.org:8443/fhir/`
 
 **Setup Java 21** (if needed):
+
 ```bash
 # With SDKMAN (recommended)
 sdk install java 21.0.5-tem
@@ -33,21 +37,25 @@ sdk env  # Activates Java 21 from .sdkmanrc
 
 ## ⚠️ CRITICAL: Test-First Development
 
-**This POC follows strict Test-Driven Development (TDD)**. You MUST write tests BEFORE implementation code.
+**This POC follows strict Test-Driven Development (TDD)**. You MUST write tests
+BEFORE implementation code.
 
 ### TDD Workflow (Red-Green-Refactor)
 
 1. **🔴 RED**: Write a failing test
+
    - Write test for the behavior you want
    - Run test → it should FAIL (code doesn't exist yet)
    - Verify test fails for the right reason
 
 2. **🟢 GREEN**: Make the test pass
+
    - Write minimal implementation code
    - Run test → it should PASS
    - Don't write extra code beyond what's needed
 
 3. **🔵 REFACTOR**: Improve code quality
+
    - Clean up implementation
    - Remove duplication
    - Improve naming, structure
@@ -58,6 +66,7 @@ sdk env  # Activates Java 21 from .sdkmanrc
 ### Development Order for This POC
 
 **Step 1: Write FHIR Validation Tests** (spec → test)
+
 ```bash
 # Create test file first
 src/test/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransformTest.java
@@ -75,10 +84,10 @@ public void testTransformStorageRoomToFhirLocation() {
     StorageRoom room = new StorageRoom();
     room.setCode("MAIN");
     room.setName("Main Laboratory");
-    
+
     // When: Transform to FHIR
     Location fhirLocation = transformer.transformToFhirLocation(room);
-    
+
     // Then: Verify FHIR structure per contract
     // JUnit 4 assertion syntax: assertEquals(expected, actual)
     assertEquals(room.getFhirUuid().toString(), fhirLocation.getId());
@@ -91,6 +100,7 @@ mvn test -Dtest="StorageLocationFhirTransformTest"
 ```
 
 **Step 2: Write Backend Integration Tests** (spec → test)
+
 ```bash
 # Create test file
 src/test/java/org/openelisglobal/storage/controller/StorageLocationRestControllerTest.java
@@ -112,6 +122,7 @@ mvn test -Dtest="StorageLocationRestControllerTest"
 ```
 
 **Step 3: Write Backend Unit Tests** (spec → test)
+
 ```bash
 # Create test file
 src/test/java/org/openelisglobal/storage/service/SampleStorageServiceImplTest.java
@@ -123,7 +134,7 @@ public void testAssignSample_InactiveLocation_ThrowsException() {
     // Given: Inactive position
     StoragePosition position = new StoragePosition();
     position.setActive(false);
-    
+
     // When: Attempt to assign sample
     // Then: Expect validation exception
     assertThrows(ValidationException.class, () -> {
@@ -136,6 +147,7 @@ mvn test -Dtest="SampleStorageServiceImplTest"
 ```
 
 **Step 3.5: Write ORM Validation Tests** (framework config → test)
+
 ```bash
 # Create test file (per Constitution v1.2.0, Section V.4)
 src/test/java/org/openelisglobal/storage/HibernateMappingValidationTest.java
@@ -148,7 +160,7 @@ public void testAllStorageHibernateMappingsLoadSuccessfully() {
     config.addResource("hibernate/hbm/StorageDevice.hbm.xml");
     // ... add all 7 mappings ...
     config.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
-    
+
     SessionFactory sf = config.buildSessionFactory();
     assertNotNull("All mappings should load", sf);
     sf.close();
@@ -161,6 +173,7 @@ mvn test -Dtest="HibernateMappingValidationTest"
 ```
 
 **Step 4: Write Frontend Unit Tests** (spec → test)
+
 ```bash
 # Create test file
 frontend/src/components/storage/StorageLocationSelector/StorageLocationSelector.test.jsx
@@ -177,6 +190,7 @@ npm test -- StorageLocationSelector.test.jsx
 ```
 
 **Step 5: Implement Code to Pass Tests**
+
 ```bash
 # Only NOW write implementation code
 # Start with entities, then DAOs, then services, etc.
@@ -189,6 +203,7 @@ npm test  # Frontend
 ```
 
 **Step 6: Write E2E Tests** (after implementation)
+
 ```bash
 # Create Cypress test
 frontend/cypress/e2e/storageAssignment.cy.js
@@ -220,7 +235,8 @@ npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"
 
 ### 1. Database Migration
 
-Liquibase changesets automatically run on application startup. Verify migration success:
+Liquibase changesets automatically run on application startup. Verify migration
+success:
 
 ```bash
 # Connect to PostgreSQL
@@ -271,6 +287,7 @@ mvn clean install -pl :openelisglobal -am -DskipTests
 ```
 
 **Expected Output**:
+
 ```
 [INFO] BUILD SUCCESS
 [INFO] Total time: 2:15 min
@@ -309,6 +326,7 @@ docker logs -f oe.openelis.org
 ```
 
 **Access Points**:
+
 - **Backend API**: https://localhost/rest/storage/rooms
 - **Legacy UI**: https://localhost/api/OpenELIS-Global/
 - **React UI**: https://localhost/
@@ -349,6 +367,7 @@ npm install
 Edit translation files to add storage-specific message keys:
 
 **frontend/src/languages/en.json**:
+
 ```json
 {
   "storage.location.label": "Storage Location",
@@ -369,6 +388,7 @@ Edit translation files to add storage-specific message keys:
 ```
 
 **frontend/src/languages/fr.json** (French):
+
 ```json
 {
   "storage.location.label": "Emplacement de stockage",
@@ -389,6 +409,7 @@ Edit translation files to add storage-specific message keys:
 ```
 
 **frontend/src/languages/sw.json** (Swahili):
+
 ```json
 {
   "storage.location.label": "Mahali pa Uhifadhi",
@@ -419,6 +440,7 @@ npm start
 ```
 
 **Expected Output**:
+
 ```
 webpack compiled successfully
 ```
@@ -505,19 +527,23 @@ Create `test-room.json`:
 ```json
 {
   "resourceType": "Location",
-  "identifier": [{
-    "system": "http://openelis.org/storage-location-code",
-    "value": "TEST-ROOM"
-  }],
+  "identifier": [
+    {
+      "system": "http://openelis.org/storage-location-code",
+      "value": "TEST-ROOM"
+    }
+  ],
   "status": "active",
   "name": "Test Room",
   "mode": "instance",
   "physicalType": {
-    "coding": [{
-      "system": "http://terminology.hl7.org/CodeSystem/location-physical-type",
-      "code": "ro",
-      "display": "Room"
-    }]
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/location-physical-type",
+        "code": "ro",
+        "display": "Room"
+      }
+    ]
   }
 }
 ```
@@ -551,48 +577,55 @@ curl -k -X POST https://fhir.openelis.org:8443/fhir/Location/\$validate \
 **Workflow**: Assign sample to storage location via cascading dropdowns
 
 1. **Setup**: Create storage hierarchy in database or via API
+
    ```bash
    # Using curl to create locations
    curl -k -X POST https://localhost/rest/storage/rooms \
      -H "Content-Type: application/json" \
      -d '{"name":"Main Laboratory","code":"MAIN","active":true}'
-   
+
    curl -k -X POST https://localhost/rest/storage/devices \
      -H "Content-Type: application/json" \
      -d '{"name":"Freezer Unit 1","code":"FRZ01","type":"freezer","parentRoomId":"{room_id}","active":true}'
-   
+
    # Continue for shelf, rack, position...
    ```
 
 2. **Navigate**: https://localhost/sample-entry
 
 3. **Complete Sample Entry**:
+
    - Enter accession number (e.g., "S-2025-001")
    - Fill patient information
    - Select sample type
    - Select collector (existing field)
 
 4. **Assign Storage Location** (NEW - Below "Collector" field):
+
    - **Storage Location Selector widget** appears after collector dropdown
    - **Placement**: Between collector field and sample collection time
    - **Behavior**: Optional (can leave blank and assign later)
    - Mode: Cascading Dropdowns (default)
    - Select: Room → Device → Shelf → Rack
    - Enter Position: "A5"
-   - Verify hierarchical path displays: "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5"
-   - Alternative: Click "Add New Room/Device/Shelf/Rack" for inline creation (uses same POST endpoints)
+   - Verify hierarchical path displays: "Main Laboratory > Freezer Unit 1 >
+     Shelf-A > Rack R1 > Position A5"
+   - Alternative: Click "Add New Room/Device/Shelf/Rack" for inline creation
+     (uses same POST endpoints)
 
 5. **Save**: Click "Save" button
 
 6. **Verify**:
+
    ```bash
    # Query sample location
    curl -k https://localhost/rest/storage/samples/search?sampleId={sample_id}
-   
+
    # Expected: JSON with full location hierarchy
    ```
 
-**Expected Result**: Sample assigned to storage location, hierarchical path displayed, assignment timestamp recorded.
+**Expected Result**: Sample assigned to storage location, hierarchical path
+displayed, assignment timestamp recorded.
 
 ---
 
@@ -603,15 +636,18 @@ curl -k -X POST https://fhir.openelis.org:8443/fhir/Location/\$validate \
 1. **Navigate**: https://localhost/logbook
 
 2. **Search Sample**:
+
    - Enter sample ID: "S-2025-001"
    - Click Search
 
 3. **Expand Results**:
+
    - Click on sample row to expand details
    - Scroll to Storage Location section
 
 4. **Verify Location Displayed**:
-   - Hierarchical path: "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5"
+   - Hierarchical path: "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 >
+     Position A5"
    - Assigned by: User name
    - Assigned date: Timestamp
 
@@ -628,7 +664,8 @@ curl -k "https://localhost/rest/storage/samples?roomId={room_id}&deviceId={devic
 curl -k "https://localhost/rest/storage/samples?fromDate=2025-01-01&toDate=2025-01-31"
 ```
 
-**Expected Result**: Sample location retrieved in <2 seconds, hierarchical path displayed correctly.
+**Expected Result**: Sample location retrieved in <2 seconds, hierarchical path
+displayed correctly.
 
 ---
 
@@ -641,11 +678,14 @@ curl -k "https://localhost/rest/storage/samples?fromDate=2025-01-01&toDate=2025-
 2. **Find Sample**: Search for "S-2025-001"
 
 3. **Initiate Move**:
+
    - Click Actions menu (⋮) on sample row
    - Select "Move"
 
 4. **Move Dialog**:
-   - Current location displayed: "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5"
+
+   - Current location displayed: "Main Laboratory > Freezer Unit 1 > Shelf-A >
+     Rack R1 > Position A5"
    - Select target location using cascading dropdowns:
      - Room: Main Laboratory
      - Device: Refrigerator 2
@@ -671,7 +711,8 @@ curl -k https://localhost/rest/storage/samples/search?sampleId=S-2025-001
 curl -k https://localhost/rest/storage/samples/S-2025-001/movements
 ```
 
-**Expected Result**: Sample moved to new location, previous position freed (occupied=false), audit trail created with user/timestamp/reason.
+**Expected Result**: Sample moved to new location, previous position freed
+(occupied=false), audit trail created with user/timestamp/reason.
 
 ---
 
@@ -684,10 +725,12 @@ curl -k https://localhost/rest/storage/samples/S-2025-001/movements
 2. **Navigate**: https://localhost/logbook
 
 3. **Select Samples**:
+
    - Use checkboxes to select 5 samples
    - Click Actions → "Bulk Move"
 
 4. **Bulk Move Dialog**:
+
    - Select target rack: "Main Laboratory > Refrigerator 2 > Shelf-1 > Rack R3"
    - System auto-assigns positions: A1, A2, A3, A4, A5 (preview shown)
    - User can edit positions if needed
@@ -700,7 +743,8 @@ curl -k https://localhost/rest/storage/samples/S-2025-001/movements
    - Individual audit records created
    - Previous positions freed
 
-**Expected Result**: Bulk move completes, each sample receives individual audit record, dashboard updates immediately.
+**Expected Result**: Bulk move completes, each sample receives individual audit
+record, dashboard updates immediately.
 
 ---
 
@@ -865,12 +909,14 @@ ls cypress/screenshots/
 ### Quick Iteration Cycle
 
 **Backend changes**:
+
 1. Edit Java file
 2. `mvn clean install -DskipTests -pl :openelisglobal -am`
 3. `docker-compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org`
 4. Test in browser
 
 **Frontend changes**:
+
 1. Edit .jsx file
 2. Webpack auto-reloads in browser
 3. Test immediately (no rebuild needed)
@@ -899,7 +945,7 @@ JOIN storage_room r ON r.id = d.parent_room_id
 ORDER BY sa.assigned_date DESC;
 
 -- View movement audit trail
-SELECT sm.id, s.accession_number, sm.movement_date, sm.reason, 
+SELECT sm.id, s.accession_number, sm.movement_date, sm.reason,
        p_prev.coordinate AS prev_position, p_new.coordinate AS new_position
 FROM sample_storage_movement sm
 JOIN sample s ON s.id = sm.sample_id
@@ -912,7 +958,8 @@ ORDER BY sm.movement_date DESC;
 
 - **Components**: https://react.carbondesignsystem.com/
 - **Icons**: https://www.carbondesignsystem.com/guidelines/icons/library/
-- **Design Tokens**: https://www.carbondesignsystem.com/guidelines/color/overview/
+- **Design Tokens**:
+  https://www.carbondesignsystem.com/guidelines/color/overview/
 
 ---
 
@@ -920,14 +967,19 @@ ORDER BY sm.movement_date DESC;
 
 After completing quickstart:
 
-1. **Review Code**: Examine generated code in `src/main/java/org/openelisglobal/storage/` and `frontend/src/components/storage/`
-2. **Run Full Test Suite**: `mvn clean install` (backend) + `npm test` (frontend) + `npx playwright test` (E2E)
+1. **Review Code**: Examine generated code in
+   `src/main/java/org/openelisglobal/storage/` and
+   `frontend/src/components/storage/`
+2. **Run Full Test Suite**: `mvn clean install` (backend) + `npm test`
+   (frontend) + `npx playwright test` (E2E)
 3. **Check Coverage**: Review JaCoCo report for >70% coverage
-4. **FHIR Validation**: Verify all Location resources sync correctly to FHIR server
+4. **FHIR Validation**: Verify all Location resources sync correctly to FHIR
+   server
 5. **User Testing**: Run through all user scenarios (P1, P2A, P2B)
-6. **Documentation**: Review [plan.md](./plan.md), [data-model.md](./data-model.md), [contracts/](./contracts/)
+6. **Documentation**: Review [plan.md](./plan.md),
+   [data-model.md](./data-model.md), [contracts/](./contracts/)
 
 ---
 
-**Support**: For issues, see [Troubleshooting](#troubleshooting) or OpenELIS documentation at https://docs.openelis-global.org/
-
+**Support**: For issues, see [Troubleshooting](#troubleshooting) or OpenELIS
+documentation at https://docs.openelis-global.org/

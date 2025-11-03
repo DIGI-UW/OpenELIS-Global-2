@@ -2,13 +2,15 @@
 
 Auto-generated from all feature plans. Last updated: [DATE]
 
-**Constitution**: See `.specify/memory/constitution.md` for non-negotiable development principles.
+**Constitution**: See `.specify/memory/constitution.md` for non-negotiable
+development principles.
 
 ## Active Technologies
 
 [EXTRACTED FROM ALL PLAN.MD FILES]
 
 **OpenELIS Global 3.0 Stack**:
+
 - Backend: Java 21 + Spring Boot 3.x + Hibernate 6.x + JPA + PostgreSQL 14+
 - Frontend: React 17 + **Carbon Design System v1.15** (OFFICIAL UI framework)
 - FHIR: HAPI FHIR R4 v6.6.2 + IHE mCSD profile
@@ -22,13 +24,16 @@ Auto-generated from all feature plans. Last updated: [DATE]
 ```
 
 **OpenELIS Backend Pattern**: `org.openelisglobal.{module}.{layer}`
-- Layers: valueholder (JPA entities) → dao (data access) → service (business logic) → controller (REST) → form (DTOs)
+
+- Layers: valueholder (JPA entities) → dao (data access) → service (business
+  logic) → controller (REST) → form (DTOs)
 
 ## Commands
 
 [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES]
 
 **OpenELIS Development Commands**:
+
 ```bash
 # Backend formatting + build
 mvn spotless:apply && mvn clean install -DskipTests
@@ -48,11 +53,16 @@ mvn clean install -DskipTests && docker-compose -f dev.docker-compose.yml up -d 
 [LANGUAGE-SPECIFIC, ONLY FOR LANGUAGES IN USE]
 
 **OpenELIS Conventions**:
-- **Java**: Use Spotless formatter (`tools/OpenELIS_java_formatter.xml`), NO native SQL in code
-- **React**: Use Prettier, ALL UI components from `@carbon/react`, ALL strings via React Intl
-- **FHIR**: Extend `FhirTransformService` for entity↔FHIR conversion, sync via `FhirPersistanceService`
+
+- **Java**: Use Spotless formatter (`tools/OpenELIS_java_formatter.xml`), NO
+  native SQL in code
+- **React**: Use Prettier, ALL UI components from `@carbon/react`, ALL strings
+  via React Intl
+- **FHIR**: Extend `FhirTransformService` for entity↔FHIR conversion, sync via
+  `FhirPersistanceService`
 - **Database**: Liquibase changesets ONLY (NO direct DDL/DML)
-- **Tests**: JUnit 5 for backend, Jest + Cypress for frontend, >70% coverage goal
+- **Tests**: JUnit 5 for backend, Jest + Cypress for frontend, >70% coverage
+  goal
 
 ## Recent Changes
 

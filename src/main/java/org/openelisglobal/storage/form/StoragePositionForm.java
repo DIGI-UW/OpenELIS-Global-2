@@ -73,4 +73,3 @@ public class StoragePositionForm {
         this.parentRackId = parentRackId;
     }
 }
-
