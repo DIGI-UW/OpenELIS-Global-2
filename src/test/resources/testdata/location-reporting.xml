@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
     <site_information id="100"
-        name="location_reporting_opt_in"
+        name="locationReportingOptIn"
         description="Anonymous location reporting opt-in status" value="true"
         encrypted="false" value_type="text" lastupdated="2025-01-01 10:00:00" />
 
     <site_information id="101"
-        name="location_reporting_last_report"
+        name="lastLocationReportDate"
         description="Last location report timestamp" value="1735732800000"
         encrypted="false" value_type="text" lastupdated="2025-01-01 10:00:00" />
 
