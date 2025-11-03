@@ -114,10 +114,6 @@ public class StorageRack extends BaseObject<String> {
         this.active = active;
     }
 
-    public boolean isActive() {
-        return active != null && active;
-    }
-
     public StorageShelf getParentShelf() {
         return parentShelf;
     }

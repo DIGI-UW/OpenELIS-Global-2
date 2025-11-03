@@ -38,6 +38,7 @@ public class StorageDeviceDAOImpl extends BaseDAOImpl<StorageDevice, String> imp
             Query<StorageDevice> query = entityManager.unwrap(Session.class).createQuery(hql, StorageDevice.class);
             query.setParameter("roomId", roomId);
             query.setParameter("code", code);
+            query.setMaxResults(1);
             List<StorageDevice> results = query.list();
             return results.isEmpty() ? null : results.get(0);
         } catch (Exception e) {

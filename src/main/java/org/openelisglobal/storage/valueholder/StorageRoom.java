@@ -75,10 +75,6 @@ public class StorageRoom extends BaseObject<String> {
     }
 
     // Helper methods for FHIR transform
-    public boolean isActive() {
-        return active != null && active;
-    }
-
     public String getFhirUuidAsString() {
         return fhirUuid != null ? fhirUuid.toString() : null;
     }

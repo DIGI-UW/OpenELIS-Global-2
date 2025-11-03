@@ -340,6 +340,13 @@ Dr. Johnson needs to monitor freezer capacity across the laboratory to plan proc
 - **FR-008**: **Rack** entity MUST include: Label/ID, dimensions (rows and columns as positive integers), optional position schema hint, active/inactive status, parent shelf reference
 - **FR-009**: **Position** entity MUST include: Free-text coordinate (NO enforced format/validation), optional row/column integers for grid visualization, occupancy state (empty/occupied), parent rack reference
 
+#### Navigation and Access
+
+- **FR-009a**: Storage management link MUST appear in main side navigation menu
+- **FR-009b**: Storage link MUST be positioned directly below "Patients" menu item
+- **FR-009c**: Storage link MUST be accessible to users with Technician, Lab Manager, or Admin roles
+- **FR-009d**: Clicking storage link MUST navigate to Storage Dashboard (for P4) or storage management page
+
 #### Flexible Position Schema (CRITICAL)
 
 - **FR-010**: Position coordinate MUST accept free text up to 50 characters without format validation (supports any naming convention: A1, 1-1, RED-12, ZONE-A-03, etc.)

@@ -41,6 +41,9 @@ public class HibernateMappingValidationTest {
         configuration.addResource("hibernate/hbm/SampleStorageAssignment.hbm.xml");
         configuration.addResource("hibernate/hbm/SampleStorageMovement.hbm.xml");
         
+        // Add dependent entity mappings
+        configuration.addResource("hibernate/hbm/Sample.hbm.xml");
+        
         // Configure minimal properties (no actual DB connection)
         configuration.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
         

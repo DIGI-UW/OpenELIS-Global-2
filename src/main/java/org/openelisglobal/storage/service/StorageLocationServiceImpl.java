@@ -7,6 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Optional;
+
 @Service
 @Transactional
 public class StorageLocationServiceImpl implements StorageLocationService {
@@ -25,6 +28,101 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     
     @Autowired
     private StoragePositionDAO storagePositionDAO;
+
+    @Override
+    public List<StorageRoom> getRooms() {
+        return storageRoomDAO.getAll();
+    }
+
+    @Override
+    public StorageRoom getRoom(String id) {
+        return storageRoomDAO.get(id).orElse(null);
+    }
+
+    @Override
+    public StorageRoom createRoom(StorageRoom room) {
+        // Check for duplicate code
+        StorageRoom existing = storageRoomDAO.findByCode(room.getCode());
+        if (existing != null) {
+            throw new LIMSRuntimeException("Room with code " + room.getCode() + " already exists");
+        }
+        String id = storageRoomDAO.insert(room);
+        room.setId(id);
+        return room;
+    }
+
+    @Override
+    public StorageRoom updateRoom(String id, StorageRoom room) {
+        StorageRoom existingRoom = storageRoomDAO.get(id).orElse(null);
+        if (existingRoom == null) {
+            // Or throw an exception
+            return null;
+        }
+        existingRoom.setName(room.getName());
+        existingRoom.setCode(room.getCode());
+        existingRoom.setDescription(room.getDescription());
+        existingRoom.setActive(room.getActive());
+        storageRoomDAO.update(existingRoom);
+        return existingRoom;
+    }
+
+    @Override
+    public void deleteRoom(String id) {
+        StorageRoom room = storageRoomDAO.get(id).orElse(null);
+        if (room != null) {
+            delete(room);
+        }
+    }
+
+    @Override
+    public List<StorageDevice> getDevicesByRoom(String roomId) {
+        return storageDeviceDAO.findByParentRoomId(roomId);
+    }
+
+    @Override
+    public List<StorageDevice> getAllDevices() {
+        return storageDeviceDAO.getAll();
+    }
+
+    @Override
+    public List<StorageShelf> getShelvesByDevice(String deviceId) {
+        return storageShelfDAO.findByParentDeviceId(deviceId);
+    }
+
+    @Override
+    public List<StorageShelf> getAllShelves() {
+        return storageShelfDAO.getAll();
+    }
+
+    @Override
+    public List<StorageRack> getRacksByShelf(String shelfId) {
+        return storageRackDAO.findByParentShelfId(shelfId);
+    }
+
+    @Override
+    public List<StorageRack> getAllRacks() {
+        return storageRackDAO.getAll();
+    }
+
+    @Override
+    public List<StoragePosition> getPositionsByRack(String rackId) {
+        return storagePositionDAO.findByParentRackId(rackId);
+    }
+
+    @Override
+    public List<StoragePosition> getAllPositions() {
+        return storagePositionDAO.getAll();
+    }
+
+    @Override
+    public int countOccupiedInDevice(String deviceId) {
+        return storagePositionDAO.countOccupiedInDevice(deviceId);
+    }
+
+    @Override
+    public int countOccupied(String rackId) {
+        return storagePositionDAO.countOccupied(rackId);
+    }
 
     @Override
     public String insert(Object entity) {

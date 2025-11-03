@@ -3,20 +3,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { IntlProvider } from 'react-intl';
 import StorageLocationSelector from './StorageLocationSelector';
+import { getFromOpenElisServer } from '../../utils/Utils';
+import messages from '../../../languages/en.json';
 
 // Mock the API utilities
-jest.mock('../../../common/services/useGetFromOpenElisServer', () => ({
+jest.mock('../../utils/Utils', () => ({
   getFromOpenElisServer: jest.fn(),
 }));
-
-const messages = {
-  'storage.room.label': 'Room',
-  'storage.device.label': 'Device',
-  'storage.shelf.label': 'Shelf',
-  'storage.rack.label': 'Rack',
-  'storage.position.label': 'Position',
-  'storage.hierarchical.path': 'Location Path',
-};
 
 const renderWithIntl = (component) => {
   return render(
@@ -52,7 +45,7 @@ describe('StorageLocationSelector', () => {
     ];
 
     // Mock API responses
-    const { getFromOpenElisServer } = require('../../../common/services/useGetFromOpenElisServer');
+    const { getFromOpenElisServer } = require('../../utils/Utils');
     getFromOpenElisServer
       .mockImplementationOnce((url, callback) => callback(mockRooms))  // Rooms
       .mockImplementationOnce((url, callback) => callback(mockDevices)); // Devices

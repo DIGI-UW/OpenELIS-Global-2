@@ -6,12 +6,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.form.*;
 import org.openelisglobal.storage.service.StorageLocationService;
 import org.openelisglobal.storage.valueholder.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,23 +28,10 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/rest/storage")
 public class StorageLocationRestController extends BaseRestController {
 
+    private static final Logger logger = LoggerFactory.getLogger(StorageLocationRestController.class);
+
     @Autowired
     private StorageLocationService storageLocationService;
-
-    @Autowired
-    private StorageRoomDAO storageRoomDAO;
-
-    @Autowired
-    private StorageDeviceDAO storageDeviceDAO;
-
-    @Autowired
-    private StorageShelfDAO storageShelfDAO;
-
-    @Autowired
-    private StorageRackDAO storageRackDAO;
-
-    @Autowired
-    private StoragePositionDAO storagePositionDAO;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -58,12 +47,12 @@ public class StorageLocationRestController extends BaseRestController {
             room.setActive(form.getActive() != null ? form.getActive() : true);
             room.setFhirUuid(UUID.randomUUID());
 
-            String id = storageLocationService.insert(room);
-            room.setId(id);
+            StorageRoom createdRoom = storageLocationService.createRoom(room);
 
-            Map<String, Object> response = entityToMap(room);
+            Map<String, Object> response = entityToMap(createdRoom);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (Exception e) {
+            logger.error("Error creating room", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
@@ -71,13 +60,14 @@ public class StorageLocationRestController extends BaseRestController {
     @GetMapping("/rooms")
     public ResponseEntity<List<Map<String, Object>>> getRooms() {
         try {
-            List<StorageRoom> rooms = storageRoomDAO.getAll();
+            List<StorageRoom> rooms = storageLocationService.getRooms();
             List<Map<String, Object>> response = new ArrayList<>();
             for (StorageRoom room : rooms) {
                 response.add(entityToMap(room));
             }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            logger.error("Error getting rooms", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -85,33 +75,34 @@ public class StorageLocationRestController extends BaseRestController {
     @GetMapping("/rooms/{id}")
     public ResponseEntity<Map<String, Object>> getRoomById(@PathVariable String id) {
         try {
-            StorageRoom room = storageRoomDAO.get(id).orElse(null);
+            StorageRoom room = storageLocationService.getRoom(id);
             if (room == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
             return ResponseEntity.ok(entityToMap(room));
         } catch (Exception e) {
+            logger.error("Error getting room by id", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
     @PutMapping("/rooms/{id}")
-    public ResponseEntity<Map<String, Object>> updateRoom(@PathVariable String id, 
+    public ResponseEntity<Map<String, Object>> updateRoom(@PathVariable String id,
                                                             @Valid @RequestBody StorageRoomForm form) {
         try {
-            StorageRoom room = storageRoomDAO.get(id).orElse(null);
-            if (room == null) {
+            StorageRoom roomToUpdate = new StorageRoom();
+            roomToUpdate.setName(form.getName());
+            roomToUpdate.setCode(form.getCode());
+            roomToUpdate.setDescription(form.getDescription());
+            roomToUpdate.setActive(form.getActive());
+
+            StorageRoom updatedRoom = storageLocationService.updateRoom(id, roomToUpdate);
+            if (updatedRoom == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
-
-            room.setName(form.getName());
-            room.setCode(form.getCode());
-            room.setDescription(form.getDescription());
-            room.setActive(form.getActive());
-
-            storageLocationService.update(room);
-            return ResponseEntity.ok(entityToMap(room));
+            return ResponseEntity.ok(entityToMap(updatedRoom));
         } catch (Exception e) {
+            logger.error("Error updating room", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
@@ -119,13 +110,10 @@ public class StorageLocationRestController extends BaseRestController {
     @DeleteMapping("/rooms/{id}")
     public ResponseEntity<Void> deleteRoom(@PathVariable String id) {
         try {
-            StorageRoom room = storageRoomDAO.get(id).orElse(null);
-            if (room == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            storageLocationService.delete(room);
+            storageLocationService.deleteRoom(id);
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (Exception e) {
+            logger.error("Error deleting room", e);
             // Conflict if room has children
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
@@ -146,7 +134,10 @@ public class StorageLocationRestController extends BaseRestController {
             device.setFhirUuid(UUID.randomUUID());
 
             // Set parent room
-            StorageRoom parentRoom = storageRoomDAO.get(form.getParentRoomId()).orElse(null);
+            StorageRoom parentRoom = storageLocationService.getRoom(form.getParentRoomId());
+            if (parentRoom == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent room not found"));
+            }
             device.setParentRoom(parentRoom);
 
             String id = storageLocationService.insert(device);
@@ -156,6 +147,7 @@ public class StorageLocationRestController extends BaseRestController {
             response.put("parentRoomId", form.getParentRoomId());
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (Exception e) {
+            logger.error("Error creating device", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
@@ -165,9 +157,9 @@ public class StorageLocationRestController extends BaseRestController {
         try {
             List<StorageDevice> devices;
             if (roomId != null) {
-                devices = storageDeviceDAO.findByParentRoomId(roomId);
+                devices = storageLocationService.getDevicesByRoom(roomId);
             } else {
-                devices = storageDeviceDAO.getAll();
+                devices = storageLocationService.getAllDevices();
             }
 
             List<Map<String, Object>> response = new ArrayList<>();
@@ -180,6 +172,7 @@ public class StorageLocationRestController extends BaseRestController {
             }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            logger.error("Error getting devices", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -195,7 +188,10 @@ public class StorageLocationRestController extends BaseRestController {
             shelf.setActive(form.getActive() != null ? form.getActive() : true);
             shelf.setFhirUuid(UUID.randomUUID());
 
-            StorageDevice parentDevice = storageDeviceDAO.get(form.getParentDeviceId()).orElse(null);
+            StorageDevice parentDevice = (StorageDevice) storageLocationService.get(form.getParentDeviceId(), StorageDevice.class);
+            if (parentDevice == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent device not found"));
+            }
             shelf.setParentDevice(parentDevice);
 
             String id = storageLocationService.insert(shelf);
@@ -203,6 +199,7 @@ public class StorageLocationRestController extends BaseRestController {
 
             return ResponseEntity.status(HttpStatus.CREATED).body(entityToMap(shelf));
         } catch (Exception e) {
+            logger.error("Error creating shelf", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
@@ -212,9 +209,9 @@ public class StorageLocationRestController extends BaseRestController {
         try {
             List<StorageShelf> shelves;
             if (deviceId != null) {
-                shelves = storageShelfDAO.findByParentDeviceId(deviceId);
+                shelves = storageLocationService.getShelvesByDevice(deviceId);
             } else {
-                shelves = storageShelfDAO.getAll();
+                shelves = storageLocationService.getAllShelves();
             }
 
             List<Map<String, Object>> response = new ArrayList<>();
@@ -223,6 +220,7 @@ public class StorageLocationRestController extends BaseRestController {
             }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            logger.error("Error getting shelves", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -240,7 +238,10 @@ public class StorageLocationRestController extends BaseRestController {
             rack.setActive(form.getActive() != null ? form.getActive() : true);
             rack.setFhirUuid(UUID.randomUUID());
 
-            StorageShelf parentShelf = storageShelfDAO.get(form.getParentShelfId()).orElse(null);
+            StorageShelf parentShelf = (StorageShelf) storageLocationService.get(form.getParentShelfId(), StorageShelf.class);
+            if (parentShelf == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent shelf not found"));
+            }
             rack.setParentShelf(parentShelf);
 
             String id = storageLocationService.insert(rack);
@@ -248,6 +249,7 @@ public class StorageLocationRestController extends BaseRestController {
 
             return ResponseEntity.status(HttpStatus.CREATED).body(entityToMap(rack));
         } catch (Exception e) {
+            logger.error("Error creating rack", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
@@ -257,9 +259,9 @@ public class StorageLocationRestController extends BaseRestController {
         try {
             List<StorageRack> racks;
             if (shelfId != null) {
-                racks = storageRackDAO.findByParentShelfId(shelfId);
+                racks = storageLocationService.getRacksByShelf(shelfId);
             } else {
-                racks = storageRackDAO.getAll();
+                racks = storageLocationService.getAllRacks();
             }
 
             List<Map<String, Object>> response = new ArrayList<>();
@@ -268,6 +270,7 @@ public class StorageLocationRestController extends BaseRestController {
             }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            logger.error("Error getting racks", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -284,7 +287,10 @@ public class StorageLocationRestController extends BaseRestController {
             position.setOccupied(form.getOccupied() != null ? form.getOccupied() : false);
             position.setFhirUuid(UUID.randomUUID());
 
-            StorageRack parentRack = storageRackDAO.get(form.getParentRackId()).orElse(null);
+            StorageRack parentRack = (StorageRack) storageLocationService.get(form.getParentRackId(), StorageRack.class);
+            if (parentRack == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent rack not found"));
+            }
             position.setParentRack(parentRack);
 
             String id = storageLocationService.insert(position);
@@ -292,6 +298,7 @@ public class StorageLocationRestController extends BaseRestController {
 
             return ResponseEntity.status(HttpStatus.CREATED).body(entityToMap(position));
         } catch (Exception e) {
+            logger.error("Error creating position", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
@@ -303,13 +310,13 @@ public class StorageLocationRestController extends BaseRestController {
         try {
             List<StoragePosition> positions;
             if (rackId != null) {
-                positions = storagePositionDAO.findByParentRackId(rackId);
+                positions = storageLocationService.getPositionsByRack(rackId);
                 // Filter by occupied status if specified
                 if (occupied != null) {
                     positions.removeIf(p -> p.getOccupied() != occupied);
                 }
             } else {
-                positions = storagePositionDAO.getAll();
+                positions = storageLocationService.getAllPositions();
             }
 
             List<Map<String, Object>> response = new ArrayList<>();
@@ -318,6 +325,7 @@ public class StorageLocationRestController extends BaseRestController {
             }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            logger.error("Error getting positions", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

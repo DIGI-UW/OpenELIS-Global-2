@@ -329,7 +329,7 @@
         <comment>Insert additional positions for capacity testing (80% threshold)</comment>
         
         <!-- Add 80 more positions to Rack R2 to test capacity warnings -->
-        <sql>
+        <sql><![CDATA[
             INSERT INTO storage_position (id, fhir_uuid, coordinate, row_index, column_index, occupied, parent_rack_id, sys_user_id, lastupdated)
             SELECT 
                 200 + row_num * 10 + col_num,
@@ -344,7 +344,7 @@
             FROM generate_series(1, 10) AS row_num
             CROSS JOIN generate_series(2, 10) AS col_num
             WHERE (row_num * 10 + col_num) <= 100;
-        </sql>
+        ]]></sql>
     </changeSet>
 
     <changeSet id="storage-test-007-update-sequences" author="sample-storage-feature" context="test">

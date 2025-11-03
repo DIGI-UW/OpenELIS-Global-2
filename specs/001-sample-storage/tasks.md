@@ -80,7 +80,7 @@
 - [x] T028 [P] [US1] Write integration test methods for device CRUD in StorageLocationRestControllerTest: testCreateDevice_ValidInput_Returns201, testGetDevices_FilterByRoomId_ReturnsFiltered, testCreateDevice_DuplicateCode_Returns400
 - [x] T029 [P] [US1] Write integration test methods for shelf, rack, position CRUD in StorageLocationRestControllerTest following same pattern
 - [x] T030 [P] [US1] Write unit test `src/test/java/org/openelisglobal/storage/service/StorageLocationServiceImplTest.java` for validation: testCreateDevice_DuplicateCodeInSameRoom_ThrowsException, testDeleteRoom_WithActiveDevices_ThrowsException, testDeactivateDevice_WithActiveSamples_ShowsWarning
-- [ ] T031 Run storage hierarchy tests → Verify all FAIL: `mvn test -Dtest="StorageLocation*Test"`
+- [x] T031 Run storage hierarchy tests → Verify all FAIL: `mvn test -Dtest="StorageLocation*Test"`
 
 ### Implementation - Storage Location Hierarchy
 
@@ -93,7 +93,7 @@
 - [x] T038 [US1] Create Form objects in `src/main/java/org/openelisglobal/storage/form/`: StorageRoomForm, StorageDeviceForm, StorageShelfForm, StorageRackForm, StoragePositionForm with validation annotations
 - [x] T039 [US1] Implement StorageLocationRestController `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java` extending BaseRestController with endpoints for room/device/shelf/rack/position CRUD per storage-api.json
 - [ ] T040 [US1] Add @PostPersist and @PostUpdate hooks to ALL storage entities (Room, Device, Shelf, Rack, Position) to trigger immediate FHIR sync via StorageLocationFhirTransform (follow existing OpenELIS pattern from Patient/Specimen entities)
-- [ ] T041 Run storage hierarchy tests → Verify all PASS: `mvn test -Dtest="StorageLocation*Test"`
+- [x] T041 Run storage hierarchy tests → Verify all PASS: `mvn test -Dtest="StorageLocation*Test"`
 
 ### Tests First - Sample Assignment (Write BEFORE implementation)
 
@@ -127,7 +127,8 @@
 - [x] T060 [US1] Implement BarcodeScanMode component `frontend/src/components/storage/StorageLocationSelector/BarcodeScanMode.jsx` with useBarcodeScanner hook (keyboard event listener, 50ms timeout) per research.md
 - [x] T061 [US1] Implement main StorageLocationSelector component `frontend/src/components/storage/StorageLocationSelector/StorageLocationSelector.jsx` with mode switching (dropdown/autocomplete/barcode), hierarchical path display, optional prop for "Add New" inline creation
 - [x] T062 [US1] Integrate StorageLocationSelector into SampleType component `frontend/src/components/addOrder/SampleType.js`: Add widget BELOW "Collector" field, BEFORE test panels section, make optional (can be left blank)
-- [ ] T063 Run frontend tests → Verify all PASS: `npm test -- components/storage`
+- [x] T062a [US1] Add Storage navigation link to side menu: Update main navigation config to add "Storage" link below "Patients" menu item, accessible to Technician/Manager/Admin roles (per FR-009a, FR-009b, FR-009c)
+- [x] T063 Run frontend tests → Verify all PASS: `npm test -- components/storage`
 
 ### End-to-End Tests
 

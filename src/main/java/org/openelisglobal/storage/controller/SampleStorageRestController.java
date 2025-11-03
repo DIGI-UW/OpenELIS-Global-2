@@ -29,9 +29,6 @@ public class SampleStorageRestController extends BaseRestController {
     @Autowired
     private StorageLocationService storageLocationService;
 
-    @Autowired
-    private StoragePositionDAO storagePositionDAO;
-
     /**
      * Assign sample to storage position
      * POST /rest/storage/samples/assign
@@ -46,7 +43,7 @@ public class SampleStorageRestController extends BaseRestController {
             );
 
             // Build hierarchical path
-            StoragePosition position = storagePositionDAO.get(form.getPositionId()).orElse(null);
+            StoragePosition position = (StoragePosition) storageLocationService.get(form.getPositionId(), StoragePosition.class);
             String hierarchicalPath = position != null ? 
                 storageLocationService.buildHierarchicalPath(position) : "Unknown";
 

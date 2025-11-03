@@ -36,7 +36,7 @@ public class StorageLocationFhirTransform {
         Location location = new Location();
         
         location.setId(room.getFhirUuidAsString());
-        location.setStatus(room.isActive() ? LocationStatus.ACTIVE : LocationStatus.INACTIVE);
+        location.setStatus(room.getActive() != null && room.getActive() ? LocationStatus.ACTIVE : LocationStatus.INACTIVE);
         location.setName(room.getName());
         location.setDescription(room.getDescription());
         location.setMode(LocationMode.INSTANCE);
@@ -67,7 +67,7 @@ public class StorageLocationFhirTransform {
         Location location = new Location();
         
         location.setId(device.getFhirUuidAsString());
-        location.setStatus(device.isActive() ? LocationStatus.ACTIVE : LocationStatus.INACTIVE);
+        location.setStatus(device.getActive() != null && device.getActive() ? LocationStatus.ACTIVE : LocationStatus.INACTIVE);
         location.setName(device.getName());
         location.setMode(LocationMode.INSTANCE);
         
@@ -125,7 +125,7 @@ public class StorageLocationFhirTransform {
         Location location = new Location();
         
         location.setId(shelf.getFhirUuidAsString());
-        location.setStatus(shelf.isActive() ? LocationStatus.ACTIVE : LocationStatus.INACTIVE);
+        location.setStatus(shelf.getActive() != null && shelf.getActive() ? LocationStatus.ACTIVE : LocationStatus.INACTIVE);
         location.setName(shelf.getLabel());
         location.setMode(LocationMode.INSTANCE);
         
@@ -171,7 +171,7 @@ public class StorageLocationFhirTransform {
         Location location = new Location();
         
         location.setId(rack.getFhirUuidAsString());
-        location.setStatus(rack.isActive() ? LocationStatus.ACTIVE : LocationStatus.INACTIVE);
+        location.setStatus(rack.getActive() != null && rack.getActive() ? LocationStatus.ACTIVE : LocationStatus.INACTIVE);
         location.setName(rack.getLabel());
         location.setMode(LocationMode.INSTANCE);
         
@@ -262,7 +262,7 @@ public class StorageLocationFhirTransform {
         
         // Extensions: Occupancy and grid position
         Extension occExt = new Extension(EXT_POSITION_OCCUPANCY);
-        occExt.setValue(new BooleanType(position.isOccupied()));
+        occExt.setValue(new BooleanType(position.getOccupied() != null && position.getOccupied()));
         location.addExtension(occExt);
         
         if (position.getRowIndex() != null) {

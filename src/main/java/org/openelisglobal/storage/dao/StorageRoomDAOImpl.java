@@ -24,6 +24,7 @@ public class StorageRoomDAOImpl extends BaseDAOImpl<StorageRoom, String> impleme
             String hql = "FROM StorageRoom WHERE code = :code";
             Query<StorageRoom> query = entityManager.unwrap(Session.class).createQuery(hql, StorageRoom.class);
             query.setParameter("code", code);
+            query.setMaxResults(1); // Ensure only one result is returned
             List<StorageRoom> results = query.list();
             return results.isEmpty() ? null : results.get(0);
         } catch (Exception e) {

@@ -19,6 +19,13 @@ liqubase.properties
 # Maven Files #
 *target/
 
+# Node / Frontend artifacts
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 #Developer specific docker-compose
 /docker-compose.yml
 dev/

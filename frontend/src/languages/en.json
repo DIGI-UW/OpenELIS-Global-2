@@ -54,7 +54,9 @@
   "back.action.button": "Back",
   "banner.menu.administration": "Admin",
   "banner.menu.aliquot": "Aliquot",
+  "banner.menu.aliquot.tooltip": "Sample Aliquot",
   "banner.menu.billing": "Billing",
+  "banner.menu.billing.tooltip": "Billing",
   "banner.menu.createDouble": "Double Entry",
   "banner.menu.createInitial": "Initial Entry",
   "banner.menu.eorders": "Incoming Orders",
@@ -1595,5 +1597,7 @@
   "storage.assigned.by": "Assigned By",
   "storage.assigned.date": "Assigned Date",
   "storage.current.location": "Current Location",
-  "storage.target.location": "Target Location"
+  "storage.target.location": "Target Location",
+  "banner.menu.storage": "Storage",
+  "banner.menu.storage.tooltip": "Sample Storage Management"
 }

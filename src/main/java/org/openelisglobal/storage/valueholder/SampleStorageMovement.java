@@ -4,7 +4,6 @@ import java.sql.Timestamp;
 import jakarta.persistence.PrePersist;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.sample.valueholder.Sample;
-import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 /**
  * SampleStorageMovement entity - Immutable audit log of sample movements
@@ -16,7 +15,7 @@ public class SampleStorageMovement extends BaseObject<String> {
     private Sample sample;
     private StoragePosition previousPosition;
     private StoragePosition newPosition;
-    private SystemUser movedByUser;
+    private String movedByUserId;
     private Timestamp movementDate;
     private String reason;
 
@@ -54,12 +53,12 @@ public class SampleStorageMovement extends BaseObject<String> {
         this.newPosition = newPosition;
     }
 
-    public SystemUser getMovedByUser() {
-        return movedByUser;
+    public String getMovedByUserId() {
+        return movedByUserId;
     }
 
-    public void setMovedByUser(SystemUser movedByUser) {
-        this.movedByUser = movedByUser;
+    public void setMovedByUserId(String movedByUserId) {
+        this.movedByUserId = movedByUserId;
     }
 
     public Timestamp getMovementDate() {

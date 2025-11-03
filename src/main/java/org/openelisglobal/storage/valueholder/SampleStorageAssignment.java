@@ -4,7 +4,6 @@ import java.sql.Timestamp;
 import jakarta.persistence.PrePersist;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.sample.valueholder.Sample;
-import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 /**
  * SampleStorageAssignment entity - Current storage location for a sample
@@ -15,7 +14,7 @@ public class SampleStorageAssignment extends BaseObject<String> {
     private String id;
     private Sample sample;
     private StoragePosition storagePosition;
-    private SystemUser assignedByUser;
+    private String assignedByUserId;
     private Timestamp assignedDate;
     private String notes;
 
@@ -45,12 +44,12 @@ public class SampleStorageAssignment extends BaseObject<String> {
         this.storagePosition = storagePosition;
     }
 
-    public SystemUser getAssignedByUser() {
-        return assignedByUser;
+    public String getAssignedByUserId() {
+        return assignedByUserId;
     }
 
-    public void setAssignedByUser(SystemUser assignedByUser) {
-        this.assignedByUser = assignedByUser;
+    public void setAssignedByUserId(String assignedByUserId) {
+        this.assignedByUserId = assignedByUserId;
     }
 
     public Timestamp getAssignedDate() {

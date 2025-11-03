@@ -22,9 +22,6 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     private SampleDAO sampleDAO;
 
     @Autowired
-    private StoragePositionDAO storagePositionDAO;
-
-    @Autowired
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
 
     @Autowired
@@ -40,8 +37,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             Sample sample = sampleDAO.get(sampleId).orElseThrow(
                 () -> new LIMSRuntimeException("Sample not found: " + sampleId));
             
-            StoragePosition position = storagePositionDAO.get(positionId).orElseThrow(
-                () -> new LIMSRuntimeException("Position not found: " + positionId));
+            StoragePosition position = (StoragePosition) storageLocationService.get(positionId, StoragePosition.class);
+            if (position == null) {
+                throw new LIMSRuntimeException("Position not found: " + positionId);
+            }
 
             // Validate position not occupied
             if (position.getOccupied() != null && position.getOccupied()) {
@@ -56,7 +55,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
             // Mark position as occupied
             position.setOccupied(true);
-            storagePositionDAO.update(position);
+            storageLocationService.update(position);
 
             // Create assignment record
             SampleStorageAssignment assignment = new SampleStorageAssignment();
@@ -93,7 +92,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         String assignmentId = assignSample(sampleId, positionId, notes);
 
         // Then check capacity and return warning if needed
-        StoragePosition position = storagePositionDAO.get(positionId).orElse(null);
+        StoragePosition position = (StoragePosition) storageLocationService.get(positionId, StoragePosition.class);
         if (position != null && position.getParentRack() != null) {
             CapacityWarning warning = calculateCapacity(position.getParentRack());
             if (warning != null && warning.hasWarning()) {
@@ -117,7 +116,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             return null; // No grid defined
         }
 
-        int occupied = storagePositionDAO.countOccupied(rack.getId());
+        int occupied = storageLocationService.countOccupied(rack.getId());
         int percentage = (occupied * 100) / totalCapacity;
 
         String warningMessage = null;

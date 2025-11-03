@@ -84,10 +84,6 @@ public class StoragePosition extends BaseObject<String> {
     }
 
     // Helper methods for FHIR transform
-    public boolean isOccupied() {
-        return occupied != null && occupied;
-    }
-
     public String getFhirUuidAsString() {
         return fhirUuid != null ? fhirUuid.toString() : null;
     }

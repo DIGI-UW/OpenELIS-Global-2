@@ -58,6 +58,14 @@
     "format": "prettier ./ --write",
     "check-format": "prettier ./ --check"
   },
+  "jest": {
+    "transformIgnorePatterns": [
+      "node_modules/(?!lodash-es)"
+    ],
+    "moduleNameMapper": {
+      "\\\\.(css|less|scss|sass)$": "<rootDir>/src/__mocks__/styleMock.js"
+    }
+  },
   "eslintConfig": {
     "extends": [
       "react-app",
