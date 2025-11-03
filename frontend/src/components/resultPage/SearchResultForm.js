@@ -17,6 +17,7 @@ import {
   Column,
   Stack,
   Pagination,
+  FileUploader,
   Select,
   SelectItem,
   Loading,
@@ -1356,6 +1357,21 @@ export function SearchResults(props) {
             disallowFutureDate={true}
           />
         </Column>
+         <Column lg={3} >
+           <FileUploader
+             style={{ marginTop: "5px" }}
+             buttonLabel={<FormattedMessage id="label.button.uploadfile" />}
+             iconDescription="file upload"
+             multiple={false}
+             accept={["image/jpeg", "image/png", "application/pdf"]}
+             name=""
+             buttonKind="primary"
+             size="lg"
+             filenameStatus="edit"
+
+           />
+         </Column>
+
       </Grid>
     </>
   );
