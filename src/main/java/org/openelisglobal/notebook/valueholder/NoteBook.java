@@ -53,6 +53,9 @@ public class NoteBook extends BaseObject<Integer> {
     @SequenceGenerator(name = "notebook_generator", sequenceName = "notebook_seq", allocationSize = 1)
     private Integer id;
 
+    @Column(name = "is_template")
+    private Boolean isTemplate;
+
     @Column(name = "title")
     private String title;
 
@@ -107,6 +110,10 @@ public class NoteBook extends BaseObject<Integer> {
 
     @OneToMany(mappedBy = "notebook", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<NoteBookFile> files;
+
+    @OneToMany
+    @JoinTable(name = "notebook_entries", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "entry_id"))
+    private List<NoteBook> entries;
 
     @Override
     public Integer getId() {
@@ -251,6 +258,25 @@ public class NoteBook extends BaseObject<Integer> {
 
     public void setStatus(NoteBookStatus status) {
         this.status = status;
+    }
+
+    public List<NoteBook> getEntries() {
+        if (entries == null) {
+            entries = new ArrayList<>();
+        }
+        return entries;
+    }
+
+    public void setEntries(List<NoteBook> entries) {
+        this.entries = entries;
+    }
+
+    public Boolean getIsTemplate() {
+        return isTemplate;
+    }
+
+    public void setIsTemplate(Boolean isTemplate) {
+        this.isTemplate = isTemplate;
     }
 
 }

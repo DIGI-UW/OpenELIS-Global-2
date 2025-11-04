@@ -13,8 +13,12 @@ import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 
 public interface NoteBookService extends BaseObjectService<NoteBook, Integer> {
 
-    List<NoteBook> filterNoteBooks(List<NoteBookStatus> statuses, List<String> types, List<String> tags, Date fromDate,
-            Date toDate);
+    List<NoteBook> filterNoteBookEntries(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
+            Date fromDate, Date toDate, Integer noteBookId);
+
+    List<NoteBook> getAllTemplateNoteBooks();
+
+    List<NoteBook> getNoteBookEntries(Integer templateId);
 
     void updateWithStatus(Integer noteBookId, NoteBookStatus status);
 

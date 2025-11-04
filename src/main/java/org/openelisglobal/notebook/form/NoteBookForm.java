@@ -32,6 +32,8 @@ public class NoteBookForm {
     private List<NoteBookPage> pages;
     private List<NoteBookFileForm> files;
     private List<Integer> analyzerIds;
+    private Integer templateId;
+    private Boolean isTemplate;
 
     public String getTitle() {
         return title;
@@ -159,6 +161,22 @@ public class NoteBookForm {
 
     public void setStatus(NoteBookStatus status) {
         this.status = status;
+    }
+
+    public Integer getTemplateId() {
+        return templateId;
+    }
+
+    public void setTemplateId(Integer templateId) {
+        this.templateId = templateId;
+    }
+
+    public Boolean getIsTemplate() {
+        return isTemplate;
+    }
+
+    public void setIsTemplate(Boolean isTemplate) {
+        this.isTemplate = isTemplate;
     }
 
     public static class NoteBookFileForm extends NoteBookFile {

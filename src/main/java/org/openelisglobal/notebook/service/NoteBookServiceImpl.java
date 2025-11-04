@@ -87,9 +87,17 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
     @Override
     @Transactional
-    public List<NoteBook> filterNoteBooks(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
-            Date fromDate, Date toDate) {
-        return baseObjectDAO.filterNoteBooks(statuses, types, tags, fromDate, toDate);
+    public List<NoteBook> filterNoteBookEntries(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
+            Date fromDate, Date toDate, Integer noteBookId) {
+        List<Integer> entryIds = new ArrayList<>();
+        if (noteBookId != null) {
+            entryIds = getNoteBookEntries(noteBookId).stream().map(e -> e.getId()).collect(Collectors.toList());
+        }
+        if (noteBookId != null && entryIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        return baseObjectDAO.filterNoteBookEntries(statuses, types, tags, fromDate, toDate, entryIds);
     }
 
     @Override
@@ -108,7 +116,14 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     public void createWithFormValues(NoteBookForm form) {
         NoteBook noteBook = new NoteBook();
         noteBook = createNoteBookFromForm(noteBook, form);
-        save(noteBook);
+        noteBook = save(noteBook);
+        if (!noteBook.getIsTemplate()) {
+            NoteBook templateNoteBook = get(form.getTemplateId());
+            if (templateNoteBook != null && templateNoteBook.getIsTemplate()) {
+                templateNoteBook.getEntries().add(noteBook);
+                update(templateNoteBook);
+            }
+        }
     }
 
     @Override
@@ -131,6 +146,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             NoteBook noteBook = optionalNoteBook.get();
             Patient patient = patientService.getData(noteBook.getPatient().getId());
             Hibernate.initialize(noteBook.getTags());
+            Hibernate.initialize(noteBook.getEntries());
             displayBean.setId(noteBook.getId());
             displayBean.setTitle(noteBook.getTitle());
             displayBean.setType(Integer.valueOf(noteBook.getType()));
@@ -141,6 +157,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             displayBean.setDateCreated(DateUtil.formatDateAsText(noteBook.getDateCreated()));
             displayBean.setStatus(noteBook.getStatus());
             displayBean.setTypeName(dictionaryService.get(noteBook.getType().toString()).getDictEntry());
+            displayBean.setIsTemplate(noteBook.getIsTemplate());
+            displayBean.setEntriesCount(noteBook.getEntries().size());
         }
         return displayBean;
     }
@@ -149,14 +167,14 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     @Transactional
     public NoteBookFullDisplayBean convertToFullDisplayBean(Integer noteBookId) {
         NoteBookFullDisplayBean fullDisplayBean = new NoteBookFullDisplayBean();
-        Optional<NoteBook> optionalNoteBook = baseObjectDAO.get(noteBookId);
-        if (optionalNoteBook.isPresent()) {
-            NoteBook noteBook = optionalNoteBook.get();
+        NoteBook noteBook = get(noteBookId);
+        if (noteBook != null) {
             Hibernate.initialize(noteBook.getAnalysers());
             Hibernate.initialize(noteBook.getSamples());
             Hibernate.initialize(noteBook.getPages());
             Hibernate.initialize(noteBook.getFiles());
             Hibernate.initialize(noteBook.getTags());
+            Hibernate.initialize(noteBook.getEntries());
             patient = patientService.getData(noteBook.getPatient().getId());
             fullDisplayBean.setId(noteBook.getId());
             fullDisplayBean.setTitle(noteBook.getTitle());
@@ -182,6 +200,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             fullDisplayBean.setFiles(noteBook.getFiles());
             fullDisplayBean.setTechnicianName(noteBook.getTechnician().getDisplayName());
             fullDisplayBean.setTechnicianId(Integer.valueOf(noteBook.getTechnician().getId()));
+            fullDisplayBean.setIsTemplate(noteBook.getIsTemplate());
+            fullDisplayBean.setEntriesCount(noteBook.getEntries().size());
 
             List<SampleDisplayBean> sampleDisplayBeans = new ArrayList<>();
 
@@ -246,7 +266,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         if (!GenericValidator.isBlankOrNull(form.getProject())) {
             noteBook.setProject(form.getProject());
         }
-
+        noteBook.setIsTemplate(form.getIsTemplate());
         if (noteBook.getId() == null) {
             noteBook.setDateCreated(new Date());
             noteBook.setStatus(NoteBookStatus.DRAFT);
@@ -331,6 +351,23 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
         return samples.stream().flatMap(sample -> sampleItemService.getSampleItemsBySampleId(sample.getId()).stream())
                 .map(this::convertSampleToDisplayBean).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public List<NoteBook> getAllTemplateNoteBooks() {
+        return baseObjectDAO.getAllMatching("isTemplate", true);
+    }
+
+    @Override
+    @Transactional
+    public List<NoteBook> getNoteBookEntries(Integer templateId) {
+        NoteBook template = get(templateId);
+        if (template != null && template.getIsTemplate()) {
+            Hibernate.initialize(template.getEntries());
+            return template.getEntries();
+        }
+        return new ArrayList<>();
     }
 
 }

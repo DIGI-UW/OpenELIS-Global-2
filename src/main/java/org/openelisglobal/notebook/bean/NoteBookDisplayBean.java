@@ -14,6 +14,8 @@ public class NoteBookDisplayBean {
     private List<String> tags;
     private String typeName;
     private NoteBookStatus status;
+    private Boolean isTemplate;
+    private Integer entriesCount;
 
     public String getTitle() {
         return title;
@@ -95,4 +97,19 @@ public class NoteBookDisplayBean {
         this.status = status;
     }
 
+    public Boolean getIsTemplate() {
+        return isTemplate;
+    }
+
+    public void setIsTemplate(Boolean isTemplate) {
+        this.isTemplate = isTemplate;
+    }
+
+    public Integer getEntriesCount() {
+        return entriesCount;
+    }
+
+    public void setEntriesCount(Integer entriesCount) {
+        this.entriesCount = entriesCount;
+    }
 }

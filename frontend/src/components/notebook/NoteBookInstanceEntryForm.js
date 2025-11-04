@@ -50,7 +50,7 @@ import { fil } from "date-fns/locale";
 import { Add } from "@carbon/icons-react";
 import PatientHeader from "../common/PatientHeader";
 
-const NoteBookEntryForm = () => {
+const NoteBookInstanceEntryForm = () => {
   let breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "notebook.label.dashboard", link: "/NoteBookDashboard" },
@@ -69,6 +69,7 @@ const NoteBookEntryForm = () => {
   const componentMounted = useRef(false);
   const [mode, setMode] = useState(MODES.CREATE);
   const { notebookid } = useParams();
+  const { notebookentryid } = useParams();
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -109,7 +110,8 @@ const NoteBookEntryForm = () => {
     }
     setIsSubmitting(true);
     noteBookForm.id = noteBookData.id;
-    noteBookForm.isTemplate = true;
+    noteBookForm.isTemplate = false;
+    noteBookForm.templateId = notebookid;
     noteBookForm.title = noteBookData.title;
     noteBookForm.type = noteBookData.type;
     noteBookForm.project = noteBookData.project;
@@ -130,7 +132,7 @@ const NoteBookEntryForm = () => {
     console.log(JSON.stringify(noteBookForm));
     var url =
       mode === MODES.EDIT
-        ? "/rest/notebook/update/" + notebookid
+        ? "/rest/notebook/update/" + notebookentryid
         : "/rest/notebook/create";
     postToOpenElisServer(url, JSON.stringify(noteBookForm), handleSubmited);
   };
@@ -335,17 +337,44 @@ const NoteBookEntryForm = () => {
   }, []);
 
   useEffect(() => {
-    if (!notebookid) {
+    if (!notebookentryid) {
       setMode(MODES.CREATE);
     } else {
       setMode(MODES.EDIT);
       setLoading(true);
       getFromOpenElisServer(
-        "/rest/notebook/view/" + notebookid,
+        "/rest/notebook/view/" + notebookentryid,
         loadInitialData,
       );
     }
-  }, [notebookid]);
+  }, [notebookentryid]);
+
+  useEffect(() => {
+    if (notebookid) {
+      setLoading(true);
+      getFromOpenElisServer(
+        "/rest/notebook/view/" + notebookid,
+        loadInitialProjectData,
+      );
+    }
+  }, []);
+
+  const loadInitialProjectData = (data) => {
+    if (componentMounted.current) {
+      if (data && data.id) {
+        noteBookData.isTemplate = false;
+        noteBookData.content = data.content;
+        noteBookData.title = data.title;
+        noteBookData.project = data.project;
+        noteBookData.protocol = data.rotocol;
+        noteBookData.dateCreated = null;
+        noteBookData.objective = data.objective;
+        noteBookData.type = data.type;
+        setNoteBookData(noteBookData);
+        setLoading(false);
+      }
+    }
+  };
 
   const loadInitialData = (data) => {
     if (componentMounted.current) {
@@ -1186,4 +1215,4 @@ const NoteBookEntryForm = () => {
   );
 };
 
-export default NoteBookEntryForm;
+export default NoteBookInstanceEntryForm;

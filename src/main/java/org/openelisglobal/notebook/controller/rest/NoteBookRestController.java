@@ -41,15 +41,36 @@ public class NoteBookRestController extends BaseRestController {
     @Autowired
     private NoteBookService noteBookService;
 
-    @GetMapping(value = "/dashboard/items", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/dashboard/entries", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<List<NoteBookDisplayBean>> getFilteredNoteBooks(
             @RequestParam(required = false) List<NoteBookStatus> statuses,
             @RequestParam(required = false) List<String> types, @RequestParam(required = false) List<String> tags,
-            @RequestParam(required = false) String fromDate, @RequestParam(required = false) String toDate) {
+            @RequestParam(required = false) String fromDate, @RequestParam(required = false) String toDate,
+            @RequestParam(required = false) Integer noteBookId) {
 
         List<NoteBookDisplayBean> results = noteBookService
-                .filterNoteBooks(statuses, types, tags, getFormatedDate(fromDate), getFormatedDate(toDate)).stream()
+                .filterNoteBookEntries(statuses, types, tags, getFormatedDate(fromDate), getFormatedDate(toDate),
+                        noteBookId)
+                .stream().map(e -> noteBookService.convertToDisplayBean(e.getId())).collect(Collectors.toList());
+        return ResponseEntity.ok(results);
+    }
+
+    @GetMapping(value = "/dashboard/notebooks", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<NoteBookDisplayBean>> getAllNoteBooks() {
+
+        List<NoteBookDisplayBean> results = noteBookService.getAllTemplateNoteBooks().stream()
+                .map(e -> noteBookService.convertToDisplayBean(e.getId())).collect(Collectors.toList());
+        return ResponseEntity.ok(results);
+    }
+
+    @GetMapping(value = "/dashboard/entries/{noteBookId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<NoteBookDisplayBean>> getNoteBookEntries(
+            @PathVariable("noteBookId") Integer noteBookId) {
+
+        List<NoteBookDisplayBean> results = noteBookService.getNoteBookEntries(noteBookId).stream()
                 .map(e -> noteBookService.convertToDisplayBean(e.getId())).collect(Collectors.toList());
         return ResponseEntity.ok(results);
     }

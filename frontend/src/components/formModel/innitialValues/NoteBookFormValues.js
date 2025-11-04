@@ -13,6 +13,8 @@ export const NoteBookFormValues = {
   sampleIds: [],
   tags: [],
   analyzerIds: [],
+  isTemplate: null,
+  templateId: null,
   pages: [
     {
       title: "",
@@ -50,6 +52,7 @@ export const NoteBookInitialData = {
   analyzers: [],
   pages: [],
   files: [],
+  isTemplate: null,
 };
 
 // export const NoteBookInitialData = {
