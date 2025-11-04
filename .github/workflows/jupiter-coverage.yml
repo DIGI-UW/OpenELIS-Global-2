@@ -1,0 +1,65 @@
+name: JUnit 5 Coverage Badge
+
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  jupiter-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Cache local Maven repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Initialize and build submodules
+        run: |
+          cd dataexport
+          mvn -q clean install -DskipTests
+          cd ..
+
+      - name: Run only JUnit 5 tests and generate JaCoCo report
+        run: mvn -q -DfailIfNoTests=false -Dtest='**/*JupiterTest' test jacoco:report
+
+      - name: Generate JaCoCo badge (JUnit 5)
+        uses: cicirello/jacoco-badge-generator@v2
+        with:
+          jacoco-csv-file: target/site/jacoco/jacoco.csv
+          badges-dir: target/html/badges
+          coverage-badge-filename: jacoco-jupiter.svg
+
+      - name: Upload badge artifact for GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: target/html
+
+  deploy-badge:
+    needs: jupiter-coverage
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
+
+

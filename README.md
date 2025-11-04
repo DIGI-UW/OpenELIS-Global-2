@@ -26,6 +26,8 @@ You can find more information on how to set up OpenELIS at our
 
 [![Maven Build Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/ci.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/ci.yml)
 ![Coverage](https://raw.githubusercontent.com/DIGI-UW/OpenELIS-Global-2/refs/heads/gh-pages/badges/jacoco.svg)
+![JUnit 5 Coverage](https://DIGI-UW.github.io/OpenELIS-Global-2/badges/jacoco-jupiter.svg)
+![JUnit 5 Coverage Workflow](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/jupiter-coverage.yml/badge.svg)
 
 [![Publish OpenELIS WebApp Docker Image Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/publish-and-test.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/publish-and-test.yml)
 
