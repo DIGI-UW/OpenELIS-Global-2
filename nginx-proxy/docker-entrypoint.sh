@@ -26,4 +26,3 @@ nginx -t -c /tmp/nginx.conf
 
 # Start nginx with the modified config
 exec nginx -g "daemon off;" -c /tmp/nginx.conf
-
