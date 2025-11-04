@@ -282,6 +282,12 @@ hierarchical path and timestamp
       navigation config to add "Storage" link below "Patients" menu item,
       accessible to Technician/Manager/Admin roles (per FR-009a, FR-009b,
       FR-009c)
+- [x] T062b [US1/P4] Create StorageDashboard component
+      `frontend/src/components/storage/StorageDashboard.jsx` with 4 metric cards
+      (Total Samples, Active, Disposed, Storage Locations), 5 tabs (Samples,
+      Rooms, Devices, Shelves, Racks), data tables with occupancy display, search
+      and filter functionality (per FR-057, FR-058, FR-059, FR-060, FR-061,
+      FR-064, FR-065)
 - [x] T063 Run frontend tests → Verify all PASS:
       `npm test -- components/storage`
 
@@ -299,6 +305,9 @@ hierarchical path and timestamp
 - [x] T066 [US1] Run Cypress test → Verify P1 scenario works end-to-end:
       `npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"` (Tests
       created, require running instance with test data)
+- [x] T066a [P4] Create and pass Cypress test for Storage Dashboard:
+      `frontend/cypress/e2e/storageDashboard.cy.js` validates dashboard loads,
+      metric cards visible, tabs functional, search/filter controls present
 
 **Checkpoint**: ✅ User Story 1 (Basic Assignment) COMPLETE and independently
 testable. Can assign samples via dropdown/autocomplete/barcode, location saved
@@ -387,12 +396,13 @@ sample ID, verify hierarchical location path displays correctly
 
 ### End-to-End Tests
 
-- [ ] T078 [US2A] Write Cypress E2E test
+- [x] T078 [US2A] Write Cypress E2E test
       `frontend/cypress/e2e/storageSearch.cy.js` for P2A user story:
       testSearchSampleById_DisplaysLocation, testFilterSamplesByRoom,
       testFilterSamplesByMultipleCriteria
 - [ ] T079 [US2A] Run Cypress test → Verify P2A scenario works:
       `npm run cy:run -- --spec "cypress/e2e/storageSearch.cy.js"`
+      **Note**: Requires Xvfb for headless execution or Docker environment
 
 **Checkpoint**: User Story 2A (Search/Retrieval) complete. Can search samples by
 ID, view hierarchical location path, filter by room/device/status.
@@ -477,13 +487,14 @@ audit log records movement
 
 ### End-to-End Tests
 
-- [ ] T097 [US2B] Write Cypress E2E test
+- [x] T097 [US2B] Write Cypress E2E test
       `frontend/cypress/e2e/storageMovement.cy.js` for P2B user story:
       testMoveSampleBetweenLocations_AuditTrailCreated,
       testBulkMoveSamples_AutoAssignsPositions,
       testBulkMove_ManuallyEditPositions, testMovement_PreviousPositionFreed
 - [ ] T098 [US2B] Run Cypress test → Verify P2B scenario works:
       `npm run cy:run -- --spec "cypress/e2e/storageMovement.cy.js"`
+      **Note**: Requires Xvfb for headless execution or Docker environment
 
 **Checkpoint**: User Story 2B (Movement) complete. Can move single/bulk samples,
 previous positions freed, audit trail tracks all movements.

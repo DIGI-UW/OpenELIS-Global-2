@@ -1,6 +1,7 @@
 package org.openelisglobal.storage.service;
 
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StoragePosition;
 import org.openelisglobal.storage.valueholder.StorageRack;
@@ -11,47 +12,56 @@ public interface StorageLocationService {
     // Room methods
     List<StorageRoom> getRooms();
 
-    StorageRoom getRoom(String id);
+    StorageRoom getRoom(Integer id);
 
     StorageRoom createRoom(StorageRoom room);
 
-    StorageRoom updateRoom(String id, StorageRoom room);
+    StorageRoom updateRoom(Integer id, StorageRoom room);
 
-    void deleteRoom(String id);
+    void deleteRoom(Integer id);
 
     // Device methods
-    List<StorageDevice> getDevicesByRoom(String roomId);
+    List<StorageDevice> getDevicesByRoom(Integer roomId);
 
     List<StorageDevice> getAllDevices();
 
     // Shelf methods
-    List<StorageShelf> getShelvesByDevice(String deviceId);
+    List<StorageShelf> getShelvesByDevice(Integer deviceId);
 
     List<StorageShelf> getAllShelves();
 
     // Rack methods
-    List<StorageRack> getRacksByShelf(String shelfId);
+    List<StorageRack> getRacksByShelf(Integer shelfId);
 
     List<StorageRack> getAllRacks();
 
     // Position methods
-    List<StoragePosition> getPositionsByRack(String rackId);
+    List<StoragePosition> getPositionsByRack(Integer rackId);
 
     List<StoragePosition> getAllPositions();
 
-    // Count methods
-    int countOccupiedInDevice(String deviceId);
+    // REST API methods - return fully prepared Maps with all relationship data
+    List<Map<String, Object>> getRoomsForAPI();
 
-    int countOccupied(String rackId);
+    List<Map<String, Object>> getDevicesForAPI(Integer roomId);
+
+    List<Map<String, Object>> getShelvesForAPI(Integer deviceId);
+
+    List<Map<String, Object>> getRacksForAPI(Integer shelfId);
+
+    // Count methods
+    int countOccupiedInDevice(Integer deviceId);
+
+    int countOccupied(Integer rackId);
 
     // Generic CRUD methods
-    String insert(Object entity);
+    Integer insert(Object entity);
 
-    String update(Object entity);
+    Integer update(Object entity);
 
     void delete(Object entity);
 
-    Object get(String id, Class<?> entityClass);
+    Object get(Integer id, Class<?> entityClass);
 
     // Validation methods
     boolean validateLocationActive(StoragePosition position);

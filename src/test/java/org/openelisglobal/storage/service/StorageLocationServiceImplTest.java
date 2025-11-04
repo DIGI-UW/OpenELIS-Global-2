@@ -58,13 +58,13 @@ public class StorageLocationServiceImplTest {
     public void setUp() {
         // Create test hierarchy
         testRoom = new StorageRoom();
-        testRoom.setId("1");
+        testRoom.setId(1);
         testRoom.setCode("TEST-ROOM");
         testRoom.setName("Test Room");
         testRoom.setActive(true);
 
         testDevice = new StorageDevice();
-        testDevice.setId("2");
+        testDevice.setId(2);
         testDevice.setCode("TEST-DEV");
         testDevice.setName("Test Device");
         testDevice.setTypeEnum(StorageDevice.DeviceType.FREEZER);
@@ -72,13 +72,13 @@ public class StorageLocationServiceImplTest {
         testDevice.setActive(true);
 
         testShelf = new StorageShelf();
-        testShelf.setId("3");
+        testShelf.setId(3);
         testShelf.setLabel("Shelf-A");
         testShelf.setParentDevice(testDevice);
         testShelf.setActive(true);
 
         testRack = new StorageRack();
-        testRack.setId("4");
+        testRack.setId(4);
         testRack.setLabel("Rack R1");
         testRack.setRows(8);
         testRack.setColumns(12);
@@ -119,7 +119,7 @@ public class StorageLocationServiceImplTest {
     public void testCreateDevice_SameCodeDifferentRoom_Succeeds() {
         // Given: Room 1 with device code "FRZ01"
         StorageRoom room1 = new StorageRoom();
-        room1.setId("1");
+        room1.setId(1);
         room1.setCode("ROOM1");
 
         StorageDevice deviceRoom1 = new StorageDevice();
@@ -128,7 +128,7 @@ public class StorageLocationServiceImplTest {
 
         // Given: Room 2 with device code "FRZ01" (same code, different room)
         StorageRoom room2 = new StorageRoom();
-        room2.setId("2");
+        room2.setId(2);
         room2.setCode("ROOM2");
 
         StorageDevice deviceRoom2 = new StorageDevice();
@@ -139,13 +139,13 @@ public class StorageLocationServiceImplTest {
 
         // Mock: No device with this code exists in room2
         when(storageDeviceDAO.findByParentRoomIdAndCode(room2.getId(), "FRZ01")).thenReturn(null);
-        when(storageDeviceDAO.insert(any(StorageDevice.class))).thenReturn("device-id-123");
+        when(storageDeviceDAO.insert(any(StorageDevice.class))).thenReturn(123);
 
         // When: Create device in room 2
         // Then: Should succeed (same code allowed in different rooms)
-        String insertedId = storageLocationService.insert(deviceRoom2);
+        Integer insertedId = storageLocationService.insert(deviceRoom2);
         assertNotNull("Device should be inserted successfully", insertedId);
-        assertEquals("device-id-123", insertedId);
+        assertEquals(Integer.valueOf(123), insertedId);
     }
 
     /**
@@ -195,11 +195,14 @@ public class StorageLocationServiceImplTest {
 
         // When: Deactivate device
         testDevice.setActive(false);
-        String warning = storageLocationService.update(testDevice);
+        try {
+            storageLocationService.update(testDevice);
+            fail("Expected LIMSRuntimeException for device with active samples");
+        } catch (LIMSRuntimeException e) {
+            assertTrue("Warning should mention active samples", e.getMessage().contains("active samples"));
+        }
 
-        // Then: Expect warning message about active samples
-        assertNotNull("Warning should be returned", warning);
-        assertTrue("Warning should mention active samples", warning.contains("5 active samples"));
+        // Then: Exception should have been thrown with warning message
     }
 
     /**

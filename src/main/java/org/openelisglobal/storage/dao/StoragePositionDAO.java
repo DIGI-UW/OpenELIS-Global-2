@@ -4,10 +4,10 @@ import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.storage.valueholder.StoragePosition;
 
-public interface StoragePositionDAO extends BaseDAO<StoragePosition, String> {
-    List<StoragePosition> findByParentRackId(String rackId);
+public interface StoragePositionDAO extends BaseDAO<StoragePosition, Integer> {
+    List<StoragePosition> findByParentRackId(Integer rackId);
 
-    int countOccupied(String rackId);
+    int countOccupied(Integer rackId);
 
-    int countOccupiedInDevice(String deviceId);
+    int countOccupiedInDevice(Integer deviceId);
 }

@@ -4,6 +4,7 @@ import { IntlProvider } from "react-intl";
 import { confirmAlert } from "react-confirm-alert";
 import Layout from "./components/layout/Layout";
 import Home from "./components/Home";
+import StorageDashboard from "./components/storage/StorageDashboard";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
 import { Admin } from "./components";
@@ -399,7 +400,12 @@ export default function App() {
                 <SecureRoute
                   path="/Storage"
                   exact
-                  component={() => <Home />}
+                  component={() => <StorageDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/:tab"
+                  component={() => <StorageDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute

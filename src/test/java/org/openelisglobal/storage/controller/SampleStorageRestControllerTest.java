@@ -97,7 +97,7 @@ public class SampleStorageRestControllerTest extends BaseWebContextSensitiveTest
                         .content(objectMapper.writeValueAsString(positionForm)))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 
-        String positionId = objectMapper.readTree(positionResponse).get("id").asText();
+        String positionId = objectMapper.readTree(positionResponse).get("id").asInt() + "";
 
         // Given: Valid assignment form
         SampleAssignmentForm form = new SampleAssignmentForm();
@@ -140,7 +140,7 @@ public class SampleStorageRestControllerTest extends BaseWebContextSensitiveTest
                         .content(objectMapper.writeValueAsString(form)))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 
-        return objectMapper.readTree(response).get("id").asText();
+        return objectMapper.readTree(response).get("id").asInt() + "";
     }
 
     private String createDeviceAndGetId(String name, String code, String type, String roomId) throws Exception {
@@ -156,7 +156,7 @@ public class SampleStorageRestControllerTest extends BaseWebContextSensitiveTest
                         .content(objectMapper.writeValueAsString(form)))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 
-        return objectMapper.readTree(response).get("id").asText();
+        return objectMapper.readTree(response).get("id").asInt() + "";
     }
 
     private String createShelfAndGetId(String label, String deviceId) throws Exception {
@@ -170,7 +170,7 @@ public class SampleStorageRestControllerTest extends BaseWebContextSensitiveTest
                         .content(objectMapper.writeValueAsString(form)))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 
-        return objectMapper.readTree(response).get("id").asText();
+        return objectMapper.readTree(response).get("id").asInt() + "";
     }
 
     private String createRackAndGetId(String label, int rows, int columns, String shelfId) throws Exception {
@@ -186,7 +186,7 @@ public class SampleStorageRestControllerTest extends BaseWebContextSensitiveTest
                         .content(objectMapper.writeValueAsString(form)))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 
-        return objectMapper.readTree(response).get("id").asText();
+        return objectMapper.readTree(response).get("id").asInt() + "";
     }
 
     /**
@@ -239,7 +239,7 @@ public class SampleStorageRestControllerTest extends BaseWebContextSensitiveTest
     public void testAssignSample_MissingRequiredFields_Returns400() throws Exception {
         // Given: Form with missing sampleId
         SampleAssignmentForm form = new SampleAssignmentForm();
-        form.setPositionId("position-123");
+        form.setPositionId("123");
         // sampleId is null
 
         String requestBody = objectMapper.writeValueAsString(form);

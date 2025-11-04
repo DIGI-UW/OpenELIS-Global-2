@@ -137,7 +137,7 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
                 .perform(post("/rest/storage/rooms").contentType(MediaType.APPLICATION_JSON).content(requestBody))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 
-        String roomId = objectMapper.readTree(response).get("id").asText();
+        String roomId = objectMapper.readTree(response).get("id").asInt() + "";
 
         // When: GET /rest/storage/rooms/{id}
         // Then: Expect 200 OK with room data
@@ -312,6 +312,37 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     /**
+     * T028: Test getting all devices returns HTTP 200 with array Contract: GET
+     * /rest/storage/devices → 200 + array of devices
+     */
+    @Test
+    public void testGetDevices_ReturnsAllDevices() throws Exception {
+        // Given: At least one device exists in database (from fixtures or previous
+        // tests)
+
+        // When: GET /rest/storage/devices (without roomId parameter)
+        // Then: Expect 200 OK with array of devices
+        // CRITICAL: This test validates that getAllDevices() DAO query works without
+        // type mismatch errors (VARCHAR vs NUMERIC). If type mapping is wrong,
+        // this will fail with "operator does not exist: character varying = integer"
+        mockMvc.perform(get("/rest/storage/devices").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray());
+
+        // Additional validation: Verify response contains device data with parentRoom
+        // relationships
+        // This ensures lazy loading of relationships works without type errors
+        String response = mockMvc.perform(get("/rest/storage/devices").contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse().getContentAsString();
+
+        // If devices exist, verify parentRoom data is populated (proves relationship
+        // loading works)
+        if (response.length() > 10) { // Non-empty array
+            mockMvc.perform(get("/rest/storage/devices").contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$[0].roomName").exists());
+        }
+    }
+
+    /**
      * T028: Test getting devices filtered by room ID returns only devices in that
      * room Contract: GET /rest/storage/devices?roomId={id} → 200 + filtered array
      */
@@ -428,6 +459,59 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     // ========== T029: Shelf, Rack, Position CRUD Tests ==========
+
+    /**
+     * T029: Test getting all shelves returns HTTP 200 with array Contract: GET
+     * /rest/storage/shelves → 200 + array of shelves
+     */
+    @Test
+    public void testGetShelves_ReturnsAllShelves() throws Exception {
+        // Given: At least one shelf exists in database
+
+        // When: GET /rest/storage/shelves (without deviceId parameter)
+        // Then: Expect 200 OK with array of shelves
+        // CRITICAL: This validates getAllShelves() DAO query and parentDevice
+        // relationship
+        // loading without type mismatch errors
+        mockMvc.perform(get("/rest/storage/shelves").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray());
+
+        // Verify parentDevice relationships can be loaded (proves foreign key type
+        // matching)
+        String response = mockMvc.perform(get("/rest/storage/shelves").contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse().getContentAsString();
+
+        if (response.length() > 10) { // Non-empty array
+            mockMvc.perform(get("/rest/storage/shelves").contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$[0].deviceName").exists());
+        }
+    }
+
+    /**
+     * T029: Test getting all racks returns HTTP 200 with array Contract: GET
+     * /rest/storage/racks → 200 + array of racks
+     */
+    @Test
+    public void testGetRacks_ReturnsAllRacks() throws Exception {
+        // Given: At least one rack exists in database
+
+        // When: GET /rest/storage/racks (without shelfId parameter)
+        // Then: Expect 200 OK with array of racks
+        // CRITICAL: This validates getAllRacks() DAO query and parentShelf relationship
+        // loading without type mismatch errors
+        mockMvc.perform(get("/rest/storage/racks").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray());
+
+        // Verify parentShelf relationships can be loaded (proves foreign key type
+        // matching)
+        String response = mockMvc.perform(get("/rest/storage/racks").contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse().getContentAsString();
+
+        if (response.length() > 10) { // Non-empty array
+            mockMvc.perform(get("/rest/storage/racks").contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$[0].shelfLabel").exists());
+        }
+    }
 
     /**
      * T029: Test creating shelf with valid input returns HTTP 201 Contract: POST
@@ -596,7 +680,7 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
                         .content(objectMapper.writeValueAsString(roomForm)))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 
-        return objectMapper.readTree(response).get("id").asText();
+        return objectMapper.readTree(response).get("id").asInt() + "";
     }
 
     private String createDeviceAndGetId(String name, String code, String type, String roomId) throws Exception {
@@ -612,7 +696,7 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
                         .content(objectMapper.writeValueAsString(deviceForm)))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 
-        return objectMapper.readTree(response).get("id").asText();
+        return objectMapper.readTree(response).get("id").asInt() + "";
     }
 
     private String createShelfAndGetId(String label, String deviceId) throws Exception {
@@ -626,7 +710,7 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
                         .content(objectMapper.writeValueAsString(shelfForm)))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 
-        return objectMapper.readTree(response).get("id").asText();
+        return objectMapper.readTree(response).get("id").asInt() + "";
     }
 
     private String createRackAndGetId(String label, int rows, int columns, String shelfId) throws Exception {
@@ -642,6 +726,6 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
                         .content(objectMapper.writeValueAsString(rackForm)))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 
-        return objectMapper.readTree(response).get("id").asText();
+        return objectMapper.readTree(response).get("id").asInt() + "";
     }
 }

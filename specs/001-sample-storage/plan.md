@@ -8,9 +8,10 @@
 
 Implement POC for Sample Storage Management to track physical location of
 biological samples through a 5-level hierarchy (Room → Device → Shelf → Rack →
-Position). POC scope limited to core tracking workflows: assignment (P1),
-search/retrieval (P2A), and movement (P2B). Defers disposal workflow (P3) and
-dashboard monitoring (P4) to post-POC iterations.
+Position). POC scope includes core tracking workflows: assignment (P1),
+search/retrieval (P2A), movement (P2B), and basic Storage Dashboard (P4 - metrics
+cards, tabs, data tables). Defers disposal workflow (P3) and advanced dashboard
+features (drill-down navigation, CSV export) to post-POC iterations.
 
 **Technical Approach**: Leverage existing OpenELIS infrastructure (5-layer
 backend architecture, HAPI FHIR R4 server, Carbon Design System UI) to add

@@ -26,7 +26,7 @@ public class StorageLocationFhirTransformTest {
 
         // Setup test data
         testRoom = new StorageRoom();
-        testRoom.setId("1");
+        testRoom.setId(1);
         testRoom.setFhirUuid(UUID.randomUUID());
         testRoom.setCode("MAIN");
         testRoom.setName("Main Laboratory");
@@ -34,7 +34,7 @@ public class StorageLocationFhirTransformTest {
         testRoom.setActive(true);
 
         testDevice = new StorageDevice();
-        testDevice.setId("2");
+        testDevice.setId(2);
         testDevice.setFhirUuid(UUID.randomUUID());
         testDevice.setCode("FRZ01");
         testDevice.setName("Freezer Unit 1");
@@ -44,14 +44,14 @@ public class StorageLocationFhirTransformTest {
         testDevice.setParentRoom(testRoom);
 
         testShelf = new StorageShelf();
-        testShelf.setId("3");
+        testShelf.setId(3);
         testShelf.setFhirUuid(UUID.randomUUID());
         testShelf.setLabel("SHA");
         testShelf.setActive(true);
         testShelf.setParentDevice(testDevice);
 
         testRack = new StorageRack();
-        testRack.setId("4");
+        testRack.setId(4);
         testRack.setFhirUuid(UUID.randomUUID());
         testRack.setLabel("RKR1");
         testRack.setRows(9);
@@ -61,7 +61,7 @@ public class StorageLocationFhirTransformTest {
         testRack.setParentShelf(testShelf);
 
         testPosition = new StoragePosition();
-        testPosition.setId("5");
+        testPosition.setId(5);
         testPosition.setFhirUuid(UUID.randomUUID());
         testPosition.setCoordinate("A5");
         testPosition.setRowIndex(1);

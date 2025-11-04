@@ -3,17 +3,17 @@ package org.openelisglobal.storage.valueholder;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PostPersist;
 import jakarta.persistence.PostUpdate;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import java.util.UUID;
 import org.hibernate.annotations.DynamicUpdate;
-import org.hibernate.annotations.GenericGenerator;
-import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.storage.fhir.StorageLocationFhirTransform;
@@ -26,47 +26,43 @@ import org.openelisglobal.storage.fhir.StorageLocationFhirTransform;
 @Table(name = "STORAGE_POSITION")
 @DynamicUpdate
 @org.hibernate.annotations.OptimisticLocking(type = org.hibernate.annotations.OptimisticLockType.VERSION)
-public class StoragePosition extends BaseObject<String> {
+public class StoragePosition extends BaseObject<Integer> {
 
     @Id
-    @GeneratedValue(generator = "storage_position_seq")
-    @GenericGenerator(name = "storage_position_seq", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = {
-            @org.hibernate.annotations.Parameter(name = "sequence_name", value = "storage_position_seq")
-    })
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
-    @Column(name = "ID", precision = 10, scale = 0)
-    private String id;
-    
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "storage_position_seq")
+    @SequenceGenerator(name = "storage_position_seq", sequenceName = "storage_position_seq", allocationSize = 1)
+    @Column(name = "ID")
+    private Integer id;
+
     @Column(name = "FHIR_UUID", nullable = false, unique = true)
     private UUID fhirUuid;
-    
+
     @Column(name = "COORDINATE", length = 50, nullable = false)
     private String coordinate;
-    
+
     @Column(name = "ROW_INDEX")
     private Integer rowIndex;
-    
+
     @Column(name = "COLUMN_INDEX")
     private Integer columnIndex;
-    
+
     @Column(name = "OCCUPIED", nullable = false)
     private Boolean occupied;
-    
+
     @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
     @JoinColumn(name = "PARENT_RACK_ID", nullable = false)
     private StorageRack parentRack;
-    
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
-    @Column(name = "SYS_USER_ID", precision = 10, scale = 0, nullable = false)
-    private String sysUserId;
+
+    @Column(name = "SYS_USER_ID", nullable = false)
+    private Integer sysUserId;
 
     @Override
-    public String getId() {
+    public Integer getId() {
         return id;
     }
 
     @Override
-    public void setId(String id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
@@ -118,12 +114,22 @@ public class StoragePosition extends BaseObject<String> {
         this.parentRack = parentRack;
     }
 
-    public String getSysUserId() {
+    public Integer getSysUserIdValue() {
         return sysUserId;
     }
 
-    public void setSysUserId(String sysUserId) {
+    public void setSysUserIdValue(Integer sysUserId) {
         this.sysUserId = sysUserId;
+    }
+
+    @Override
+    public String getSysUserId() {
+        return sysUserId != null ? sysUserId.toString() : null;
+    }
+
+    @Override
+    public void setSysUserId(String sysUserId) {
+        this.sysUserId = sysUserId != null ? Integer.parseInt(sysUserId) : null;
     }
 
     @PrePersist

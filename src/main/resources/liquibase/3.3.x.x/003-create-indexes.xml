@@ -7,6 +7,11 @@
 
     <!-- Hierarchy Traversal Indexes (Parent Lookups) -->
     <changeSet id="storage-015-create-hierarchy-indexes" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_device_parent_room" tableName="storage_device"/>
+            </not>
+        </preConditions>
         <createIndex indexName="idx_device_parent_room" tableName="storage_device">
             <column name="parent_room_id"/>
         </createIndex>
@@ -29,6 +34,11 @@
 
     <!-- FHIR UUID Lookup Indexes -->
     <changeSet id="storage-016-create-fhir-uuid-indexes" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_room_fhir_uuid" tableName="storage_room"/>
+            </not>
+        </preConditions>
         <createIndex indexName="idx_room_fhir_uuid" tableName="storage_room">
             <column name="fhir_uuid"/>
         </createIndex>
@@ -55,6 +65,11 @@
 
     <!-- Sample Assignment Lookup Indexes -->
     <changeSet id="storage-017-create-assignment-indexes" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_assignment_sample" tableName="sample_storage_assignment"/>
+            </not>
+        </preConditions>
         <createIndex indexName="idx_assignment_sample" tableName="sample_storage_assignment">
             <column name="sample_id"/>
         </createIndex>
@@ -69,6 +84,11 @@
 
     <!-- Movement Audit Query Indexes -->
     <changeSet id="storage-018-create-movement-indexes" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_movement_sample" tableName="sample_storage_movement"/>
+            </not>
+        </preConditions>
         <createIndex indexName="idx_movement_sample" tableName="sample_storage_movement">
             <column name="sample_id"/>
         </createIndex>
@@ -83,6 +103,11 @@
 
     <!-- Active Status Filter Indexes -->
     <changeSet id="storage-019-create-active-status-indexes" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_room_active" tableName="storage_room"/>
+            </not>
+        </preConditions>
         <createIndex indexName="idx_room_active" tableName="storage_room">
             <column name="active"/>
         </createIndex>
@@ -105,6 +130,11 @@
 
     <!-- Position Occupancy Query Index -->
     <changeSet id="storage-020-create-position-occupancy-index" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_position_occupied" tableName="storage_position"/>
+            </not>
+        </preConditions>
         <createIndex indexName="idx_position_occupied" tableName="storage_position">
             <column name="parent_rack_id"/>
             <column name="occupied"/>

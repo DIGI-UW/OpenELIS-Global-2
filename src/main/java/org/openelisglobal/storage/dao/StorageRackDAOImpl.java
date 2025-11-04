@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class StorageRackDAOImpl extends BaseDAOImpl<StorageRack, String> implements StorageRackDAO {
+public class StorageRackDAOImpl extends BaseDAOImpl<StorageRack, Integer> implements StorageRackDAO {
 
     public StorageRackDAOImpl() {
         super(StorageRack.class);
@@ -19,9 +19,21 @@ public class StorageRackDAOImpl extends BaseDAOImpl<StorageRack, String> impleme
 
     @Override
     @Transactional(readOnly = true)
-    public List<StorageRack> findByParentShelfId(String shelfId) {
+    public List<StorageRack> getAll() {
         try {
-            String hql = "FROM StorageRack WHERE parentShelf.id = :shelfId";
+            String hql = "FROM StorageRack r ORDER BY r.id";
+            Query<StorageRack> query = entityManager.unwrap(Session.class).createQuery(hql, StorageRack.class);
+            return query.list();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting all StorageRacks", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StorageRack> findByParentShelfId(Integer shelfId) {
+        try {
+            String hql = "FROM StorageRack r WHERE r.parentShelf.id = :shelfId";
             Query<StorageRack> query = entityManager.unwrap(Session.class).createQuery(hql, StorageRack.class);
             query.setParameter("shelfId", shelfId);
             return query.list();

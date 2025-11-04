@@ -41,7 +41,7 @@ public class StorageFhirIntegrationTest {
 
         // Create test data
         testRoom = new StorageRoom();
-        testRoom.setId("TEST-" + System.currentTimeMillis());
+        testRoom.setId((int) (System.currentTimeMillis() % Integer.MAX_VALUE));
         testRoom.setFhirUuid(UUID.randomUUID());
         testRoom.setCode("TEST-FHIR-INT");
         testRoom.setName("Test FHIR Integration Room");

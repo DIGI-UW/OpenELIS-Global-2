@@ -38,7 +38,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             Sample sample = sampleDAO.get(sampleId)
                     .orElseThrow(() -> new LIMSRuntimeException("Sample not found: " + sampleId));
 
-            StoragePosition position = (StoragePosition) storageLocationService.get(positionId, StoragePosition.class);
+            Integer positionIdInt = Integer.parseInt(positionId);
+            StoragePosition position = (StoragePosition) storageLocationService.get(positionIdInt,
+                    StoragePosition.class);
             if (position == null) {
                 throw new LIMSRuntimeException("Position not found: " + positionId);
             }
@@ -63,9 +65,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             assignment.setStoragePosition(position);
             assignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
             assignment.setNotes(notes);
-            assignment.setAssignedByUserId("1"); // Default to system user for tests
+            assignment.setAssignedByUserId(1); // Default to system user for tests
 
-            String assignmentId = sampleStorageAssignmentDAO.insert(assignment);
+            Integer assignmentIdInt = sampleStorageAssignmentDAO.insert(assignment);
+            String assignmentId = assignmentIdInt != null ? assignmentIdInt.toString() : null;
 
             // Create audit log entry
             SampleStorageMovement movement = new SampleStorageMovement();
@@ -74,7 +77,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             movement.setNewPosition(position);
             movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
             movement.setReason(notes);
-            movement.setMovedByUserId("1"); // Default to system user for tests
+            movement.setMovedByUserId(1); // Default to system user for tests
 
             sampleStorageMovementDAO.insert(movement);
 
@@ -87,12 +90,33 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     }
 
     @Override
+    @Transactional
+    public java.util.Map<String, Object> assignSampleWithDetails(String sampleId, String positionId, String notes) {
+        // Assign the sample (this handles all the business logic)
+        String assignmentId = assignSample(sampleId, positionId, notes);
+
+        // Build hierarchical path within same transaction
+        Integer positionIdInt = Integer.parseInt(positionId);
+        StoragePosition position = (StoragePosition) storageLocationService.get(positionIdInt, StoragePosition.class);
+        String hierarchicalPath = storageLocationService.buildHierarchicalPath(position);
+
+        // Prepare response data
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("assignmentId", assignmentId);
+        response.put("hierarchicalPath", hierarchicalPath != null ? hierarchicalPath : "Unknown");
+        response.put("assignedDate", new java.sql.Timestamp(System.currentTimeMillis()).toString());
+
+        return response;
+    }
+
+    @Override
     public String assignSampleWithCapacityCheck(String sampleId, String positionId, String notes) {
         // First do the assignment
         String assignmentId = assignSample(sampleId, positionId, notes);
 
         // Then check capacity and return warning if needed
-        StoragePosition position = (StoragePosition) storageLocationService.get(positionId, StoragePosition.class);
+        Integer positionIdInt = Integer.parseInt(positionId);
+        StoragePosition position = (StoragePosition) storageLocationService.get(positionIdInt, StoragePosition.class);
         if (position != null && position.getParentRack() != null) {
             CapacityWarning warning = calculateCapacity(position.getParentRack());
             if (warning != null && warning.hasWarning()) {

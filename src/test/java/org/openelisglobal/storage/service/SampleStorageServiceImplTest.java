@@ -52,13 +52,13 @@ public class SampleStorageServiceImplTest {
     public void setUp() {
         // Create test hierarchy
         testRoom = new StorageRoom();
-        testRoom.setId("room-1");
+        testRoom.setId(1);
         testRoom.setCode("MAIN");
         testRoom.setName("Main Laboratory");
         testRoom.setActive(true);
 
         testDevice = new StorageDevice();
-        testDevice.setId("device-1");
+        testDevice.setId(10);
         testDevice.setCode("FRZ01");
         testDevice.setName("Freezer Unit 1");
         testDevice.setTypeEnum(StorageDevice.DeviceType.FREEZER);
@@ -66,13 +66,13 @@ public class SampleStorageServiceImplTest {
         testDevice.setActive(true);
 
         testShelf = new StorageShelf();
-        testShelf.setId("shelf-1");
+        testShelf.setId(20);
         testShelf.setLabel("Shelf-A");
         testShelf.setParentDevice(testDevice);
         testShelf.setActive(true);
 
         testRack = new StorageRack();
-        testRack.setId("rack-1");
+        testRack.setId(30);
         testRack.setLabel("Rack R1");
         testRack.setRows(8);
         testRack.setColumns(12);
@@ -80,7 +80,7 @@ public class SampleStorageServiceImplTest {
         testRack.setActive(true);
 
         testPosition = new StoragePosition();
-        testPosition.setId("position-1");
+        testPosition.setId(40);
         testPosition.setCoordinate("A5");
         testPosition.setOccupied(false);
         testPosition.setParentRack(testRack);
@@ -96,14 +96,14 @@ public class SampleStorageServiceImplTest {
     @Test
     public void testAssignSample_ValidPosition_SetsOccupied() {
         // Given: Unoccupied position
-        when(storageLocationService.get(eq("position-1"), eq(StoragePosition.class))).thenReturn(testPosition);
+        when(storageLocationService.get(eq(40), eq(StoragePosition.class))).thenReturn(testPosition);
         when(sampleDAO.get("sample-123")).thenReturn(Optional.of(testSample));
         when(storageLocationService.validateLocationActive(testPosition)).thenReturn(true);
         when(sampleStorageAssignmentDAO.insert(any(SampleStorageAssignment.class)))
-            .thenReturn("assignment-id");
+            .thenReturn(100);
 
         // When: Assign sample
-        String assignmentId = sampleStorageService.assignSample("sample-123", "position-1", "Test assignment");
+        String assignmentId = sampleStorageService.assignSample("sample-123", "40", "Test assignment");
 
         // Then: Position should be marked as occupied
         assertTrue("Position should be marked occupied", testPosition.getOccupied());
@@ -117,14 +117,14 @@ public class SampleStorageServiceImplTest {
     @Test
     public void testAssignSample_CreatesAuditLog() {
         // Given: Valid assignment
-        when(storageLocationService.get(eq("position-1"), eq(StoragePosition.class))).thenReturn(testPosition);
+        when(storageLocationService.get(eq(40), eq(StoragePosition.class))).thenReturn(testPosition);
         when(sampleDAO.get("sample-123")).thenReturn(Optional.of(testSample));
         when(storageLocationService.validateLocationActive(testPosition)).thenReturn(true);
         when(sampleStorageAssignmentDAO.insert(any(SampleStorageAssignment.class)))
-            .thenReturn("assignment-id");
+            .thenReturn(100);
 
         // When: Assign sample
-        sampleStorageService.assignSample("sample-123", "position-1", "Test assignment");
+        sampleStorageService.assignSample("sample-123", "40", "Test assignment");
 
         // Then: Audit log entry should be created
         verify(sampleStorageMovementDAO, times(1)).insert(any(SampleStorageMovement.class));
@@ -138,12 +138,12 @@ public class SampleStorageServiceImplTest {
     public void testAssignSample_OccupiedPosition_ThrowsException() {
         // Given: Position is already occupied
         testPosition.setOccupied(true);
-        when(storageLocationService.get(eq("position-1"), eq(StoragePosition.class))).thenReturn(testPosition);
+        when(storageLocationService.get(eq(40), eq(StoragePosition.class))).thenReturn(testPosition);
         when(sampleDAO.get("sample-123")).thenReturn(Optional.of(testSample));
 
         // When: Attempt to assign to occupied position
         // Then: Expect exception
-        sampleStorageService.assignSample("sample-123", "position-1", "Should fail");
+        sampleStorageService.assignSample("sample-123", "40", "Should fail");
     }
 
     /**
@@ -154,13 +154,13 @@ public class SampleStorageServiceImplTest {
     public void testAssignSample_InactiveLocation_ThrowsException() {
         // Given: Position in inactive hierarchy
         testDevice.setActive(false); // Inactive device
-        when(storageLocationService.get(eq("position-1"), eq(StoragePosition.class))).thenReturn(testPosition);
+        when(storageLocationService.get(eq(40), eq(StoragePosition.class))).thenReturn(testPosition);
         when(sampleDAO.get("sample-123")).thenReturn(Optional.of(testSample));
         when(storageLocationService.validateLocationActive(testPosition)).thenReturn(false);
 
         // When: Attempt to assign to inactive location
         // Then: Expect exception
-        sampleStorageService.assignSample("sample-123", "position-1", "Should fail");
+        sampleStorageService.assignSample("sample-123", "40", "Should fail");
     }
 
     /**
@@ -170,15 +170,15 @@ public class SampleStorageServiceImplTest {
     @Test
     public void testAssignSample_CalculatesCapacityWarnings() {
         // Given: Rack at 85% capacity (82 of 96 positions occupied)
-        when(storageLocationService.get(eq("position-1"), eq(StoragePosition.class))).thenReturn(testPosition);
+        when(storageLocationService.get(eq(40), eq(StoragePosition.class))).thenReturn(testPosition);
         when(sampleDAO.get("sample-123")).thenReturn(Optional.of(testSample));
         when(storageLocationService.validateLocationActive(testPosition)).thenReturn(true);
         when(storageLocationService.countOccupied(testRack.getId())).thenReturn(82);
         when(sampleStorageAssignmentDAO.insert(any(SampleStorageAssignment.class)))
-            .thenReturn("assignment-id");
+            .thenReturn(100);
 
         // When: Assign sample
-        String warning = sampleStorageService.assignSampleWithCapacityCheck("sample-123", "position-1", "Test");
+        String warning = sampleStorageService.assignSampleWithCapacityCheck("sample-123", "40", "Test");
 
         // Then: Expect capacity warning
         assertNotNull("Warning should be returned", warning);
@@ -192,17 +192,17 @@ public class SampleStorageServiceImplTest {
     @Test(expected = LIMSRuntimeException.class)
     public void testAssignSample_ConcurrentAccess_ThrowsException() {
         // Given: Position that will be modified concurrently
-        when(storageLocationService.get(eq("position-1"), eq(StoragePosition.class))).thenReturn(testPosition);
+        when(storageLocationService.get(eq(40), eq(StoragePosition.class))).thenReturn(testPosition);
         when(sampleDAO.get("sample-123")).thenReturn(Optional.of(testSample));
         when(storageLocationService.validateLocationActive(testPosition)).thenReturn(true);
         
         // Simulate optimistic locking exception
-        doThrow(new org.hibernate.StaleObjectStateException("StoragePosition", "position-1"))
+        doThrow(new org.hibernate.StaleObjectStateException("StoragePosition", "40"))
             .when(storageLocationService).update(testPosition);
 
         // When: Attempt to assign (concurrent modification)
         // Then: Expect exception
-        sampleStorageService.assignSample("sample-123", "position-1", "Concurrent assignment");
+        sampleStorageService.assignSample("sample-123", "40", "Concurrent assignment");
     }
 
     /**
@@ -213,14 +213,14 @@ public class SampleStorageServiceImplTest {
     @Test
     public void testAssignSample_TriggersPositionUpdate() {
         // Given: Valid assignment
-        when(storageLocationService.get(eq("position-1"), eq(StoragePosition.class))).thenReturn(testPosition);
+        when(storageLocationService.get(eq(40), eq(StoragePosition.class))).thenReturn(testPosition);
         when(sampleDAO.get("sample-123")).thenReturn(Optional.of(testSample));
         when(storageLocationService.validateLocationActive(testPosition)).thenReturn(true);
         when(sampleStorageAssignmentDAO.insert(any(SampleStorageAssignment.class)))
-            .thenReturn("assignment-id");
+            .thenReturn(100);
 
         // When: Assign sample
-        sampleStorageService.assignSample("sample-123", "position-1", "Test");
+        sampleStorageService.assignSample("sample-123", "40", "Test");
 
         // Then: Position should be updated (which triggers @PostUpdate FHIR sync)
         verify(storageLocationService, times(1)).update(testPosition);

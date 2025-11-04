@@ -29,10 +29,10 @@
             <column name="active" type="BOOLEAN" defaultValueBoolean="true">
                 <constraints nullable="false"/>
             </column>
-            <column name="sys_user_id" type="numeric(10,0)">
+            <column name="sys_user_id" type="VARCHAR(36)">
                 <constraints nullable="false"/>
             </column>
-            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
                 <constraints nullable="false"/>
             </column>
         </createTable>
@@ -88,10 +88,10 @@
                     references="storage_room(id)"
                     deleteCascade="false"/>
             </column>
-            <column name="sys_user_id" type="numeric(10,0)">
+            <column name="sys_user_id" type="VARCHAR(36)">
                 <constraints nullable="false"/>
             </column>
-            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
                 <constraints nullable="false"/>
             </column>
         </createTable>
@@ -102,6 +102,11 @@
 
     <!-- Storage Device Constraints -->
     <changeSet id="storage-003a-add-device-constraints" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sqlCheck expectedResult="1">SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_name = 'uk_device_code_in_room' AND table_name = 'storage_device'</sqlCheck>
+            </not>
+        </preConditions>
         <addUniqueConstraint tableName="storage_device"
             columnNames="parent_room_id, code"
             constraintName="uk_device_code_in_room"/>
@@ -152,10 +157,10 @@
                     references="storage_device(id)"
                     deleteCascade="false"/>
             </column>
-            <column name="sys_user_id" type="numeric(10,0)">
+            <column name="sys_user_id" type="VARCHAR(36)">
                 <constraints nullable="false"/>
             </column>
-            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
                 <constraints nullable="false"/>
             </column>
         </createTable>
@@ -166,6 +171,11 @@
 
     <!-- Storage Shelf Constraints -->
     <changeSet id="storage-005a-add-shelf-constraints" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sqlCheck expectedResult="1">SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_name = 'uk_shelf_label_in_device' AND table_name = 'storage_shelf'</sqlCheck>
+            </not>
+        </preConditions>
         <addUniqueConstraint tableName="storage_shelf"
             columnNames="parent_device_id, label"
             constraintName="uk_shelf_label_in_device"/>
@@ -217,10 +227,10 @@
                     references="storage_shelf(id)"
                     deleteCascade="false"/>
             </column>
-            <column name="sys_user_id" type="numeric(10,0)">
+            <column name="sys_user_id" type="VARCHAR(36)">
                 <constraints nullable="false"/>
             </column>
-            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
                 <constraints nullable="false"/>
             </column>
         </createTable>
@@ -231,6 +241,11 @@
 
     <!-- Storage Rack Constraints -->
     <changeSet id="storage-007a-add-rack-constraints" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sqlCheck expectedResult="1">SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_name = 'uk_rack_label_in_shelf' AND table_name = 'storage_rack'</sqlCheck>
+            </not>
+        </preConditions>
         <addUniqueConstraint tableName="storage_rack"
             columnNames="parent_shelf_id, label"
             constraintName="uk_rack_label_in_shelf"/>
@@ -282,10 +297,10 @@
                     references="storage_rack(id)"
                     deleteCascade="true"/>
             </column>
-            <column name="sys_user_id" type="numeric(10,0)">
+            <column name="sys_user_id" type="VARCHAR(36)">
                 <constraints nullable="false"/>
             </column>
-            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
                 <constraints nullable="false"/>
             </column>
         </createTable>

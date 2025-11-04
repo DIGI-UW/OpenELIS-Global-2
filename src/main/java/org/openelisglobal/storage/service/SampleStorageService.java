@@ -15,6 +15,15 @@ public interface SampleStorageService {
     String assignSample(String sampleId, String positionId, String notes);
 
     /**
+     * Assign a sample to a storage position and return complete assignment data
+     * including hierarchical path. All relationships are resolved within service
+     * transaction.
+     * 
+     * @return Map containing assignmentId, hierarchicalPath, and assignedDate
+     */
+    java.util.Map<String, Object> assignSampleWithDetails(String sampleId, String positionId, String notes);
+
+    /**
      * Assign sample with capacity check
      * 
      * @return warning message if capacity threshold exceeded, null otherwise

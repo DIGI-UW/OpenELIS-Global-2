@@ -1,0 +1,22 @@
+.storage-dashboard {
+  padding: 1rem;
+}
+
+.metric-value {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-top: 0.5rem;
+  color: var(--cds-text-primary);
+}
+
+.storage-dashboard .cds--tile {
+  min-height: 120px;
+}
+
+.storage-dashboard .cds--data-table {
+  margin-top: 1rem;
+}
+
+.storage-dashboard .cds--search {
+  margin-bottom: 1rem;
+}

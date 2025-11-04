@@ -13,7 +13,7 @@
             </not>
         </preConditions>
         <createTable tableName="sample_storage_assignment">
-            <column name="id" type="numeric(10,0)">
+                <column name="id" type="numeric(10,0)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="sample_id" type="numeric(10,0)">
@@ -22,13 +22,13 @@
                     references="sample(id)"
                     deleteCascade="true"/>
             </column>
-            <column name="storage_position_id" type="numeric(10,0)">
+                <column name="storage_position_id" type="numeric(10,0)">
                 <constraints nullable="false"
                     foreignKeyName="fk_assignment_position"
                     references="storage_position(id)"
                     deleteCascade="false"/>
             </column>
-            <column name="assigned_by_user_id" type="numeric(10,0)">
+                <column name="assigned_by_user_id" type="numeric(10,0)">
                 <constraints nullable="false"
                     foreignKeyName="fk_assignment_user"
                     references="system_user(id)"/>
@@ -64,7 +64,7 @@
             </not>
         </preConditions>
         <createTable tableName="sample_storage_movement">
-            <column name="id" type="numeric(10,0)">
+                <column name="id" type="numeric(10,0)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="sample_id" type="numeric(10,0)">
@@ -73,17 +73,17 @@
                     references="sample(id)"
                     deleteCascade="true"/>
             </column>
-            <column name="previous_position_id" type="numeric(10,0)">
+                <column name="previous_position_id" type="numeric(10,0)">
                 <constraints foreignKeyName="fk_movement_previous_position"
                     references="storage_position(id)"
                     deleteCascade="false"/>
             </column>
-            <column name="new_position_id" type="numeric(10,0)">
+                <column name="new_position_id" type="numeric(10,0)">
                 <constraints foreignKeyName="fk_movement_new_position"
                     references="storage_position(id)"
                     deleteCascade="false"/>
             </column>
-            <column name="moved_by_user_id" type="numeric(10,0)">
+                <column name="moved_by_user_id" type="numeric(10,0)">
                 <constraints nullable="false"
                     foreignKeyName="fk_movement_user"
                     references="system_user(id)"/>
@@ -100,6 +100,11 @@
 
     <!-- Sample Storage Movement Constraints -->
     <changeSet id="storage-013a-add-movement-constraints" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sqlCheck expectedResult="1">SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_name = 'chk_movement_has_position' AND table_name = 'sample_storage_movement'</sqlCheck>
+            </not>
+        </preConditions>
         <sql>
             ALTER TABLE clinlims.sample_storage_movement
             ADD CONSTRAINT chk_movement_has_position
@@ -117,6 +122,38 @@
         <createSequence sequenceName="sample_storage_movement_seq" startValue="1" incrementBy="1"/>
         <rollback>
             <dropSequence sequenceName="sample_storage_movement_seq"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Add last_updated column to sample_storage_assignment (required by BaseObject) -->
+    <changeSet id="storage-015-add-last-updated-to-assignment" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_storage_assignment"/>
+            <not>
+                <columnExists tableName="sample_storage_assignment" columnName="last_updated"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="sample_storage_assignment">
+            <column name="last_updated" type="TIMESTAMP"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="sample_storage_assignment" columnName="last_updated"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Add last_updated column to sample_storage_movement (required by BaseObject) -->
+    <changeSet id="storage-016-add-last-updated-to-movement" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_storage_movement"/>
+            <not>
+                <columnExists tableName="sample_storage_movement" columnName="last_updated"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="sample_storage_movement">
+            <column name="last_updated" type="TIMESTAMP"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="sample_storage_movement" columnName="last_updated"/>
         </rollback>
     </changeSet>
 

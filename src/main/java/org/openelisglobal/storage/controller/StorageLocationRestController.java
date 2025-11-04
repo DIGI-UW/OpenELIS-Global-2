@@ -68,11 +68,8 @@ public class StorageLocationRestController extends BaseRestController {
     @GetMapping("/rooms")
     public ResponseEntity<List<Map<String, Object>>> getRooms() {
         try {
-            List<StorageRoom> rooms = storageLocationService.getRooms();
-            List<Map<String, Object>> response = new ArrayList<>();
-            for (StorageRoom room : rooms) {
-                response.add(entityToMap(room));
-            }
+            // Service layer prepares all data including relationships and counts
+            List<Map<String, Object>> response = storageLocationService.getRoomsForAPI();
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting rooms", e);
@@ -83,7 +80,8 @@ public class StorageLocationRestController extends BaseRestController {
     @GetMapping("/rooms/{id}")
     public ResponseEntity<Map<String, Object>> getRoomById(@PathVariable String id) {
         try {
-            StorageRoom room = storageLocationService.getRoom(id);
+            Integer idInt = Integer.parseInt(id);
+            StorageRoom room = storageLocationService.getRoom(idInt);
             if (room == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
@@ -98,13 +96,14 @@ public class StorageLocationRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> updateRoom(@PathVariable String id,
             @Valid @RequestBody StorageRoomForm form) {
         try {
+            Integer idInt = Integer.parseInt(id);
             StorageRoom roomToUpdate = new StorageRoom();
             roomToUpdate.setName(form.getName());
             roomToUpdate.setCode(form.getCode());
             roomToUpdate.setDescription(form.getDescription());
             roomToUpdate.setActive(form.getActive());
 
-            StorageRoom updatedRoom = storageLocationService.updateRoom(id, roomToUpdate);
+            StorageRoom updatedRoom = storageLocationService.updateRoom(idInt, roomToUpdate);
             if (updatedRoom == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
@@ -118,7 +117,8 @@ public class StorageLocationRestController extends BaseRestController {
     @DeleteMapping("/rooms/{id}")
     public ResponseEntity<Void> deleteRoom(@PathVariable String id) {
         try {
-            storageLocationService.deleteRoom(id);
+            Integer idInt = Integer.parseInt(id);
+            storageLocationService.deleteRoom(idInt);
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
             logger.error("Error deleting room: " + e.getMessage(), e);
@@ -151,17 +151,18 @@ public class StorageLocationRestController extends BaseRestController {
             device.setSysUserId("1"); // Default system user for REST API
 
             // Set parent room
-            StorageRoom parentRoom = storageLocationService.getRoom(form.getParentRoomId());
+            Integer parentRoomId = form.getParentRoomId() != null ? Integer.parseInt(form.getParentRoomId()) : null;
+            StorageRoom parentRoom = storageLocationService.getRoom(parentRoomId);
             if (parentRoom == null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent room not found"));
             }
             device.setParentRoom(parentRoom);
 
-            String id = storageLocationService.insert(device);
+            Integer id = storageLocationService.insert(device);
             device.setId(id);
 
             Map<String, Object> response = entityToMap(device);
-            response.put("parentRoomId", form.getParentRoomId());
+            response.put("parentRoomId", parentRoomId);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (jakarta.persistence.PersistenceException e) {
             logger.error("Error creating device: " + e.getMessage(), e);
@@ -184,25 +185,14 @@ public class StorageLocationRestController extends BaseRestController {
     @GetMapping("/devices")
     public ResponseEntity<List<Map<String, Object>>> getDevices(@RequestParam(required = false) String roomId) {
         try {
-            List<StorageDevice> devices;
-            if (roomId != null) {
-                devices = storageLocationService.getDevicesByRoom(roomId);
-            } else {
-                devices = storageLocationService.getAllDevices();
-            }
-
-            List<Map<String, Object>> response = new ArrayList<>();
-            for (StorageDevice device : devices) {
-                Map<String, Object> map = entityToMap(device);
-                if (device.getParentRoom() != null) {
-                    map.put("parentRoomId", device.getParentRoom().getId());
-                }
-                response.add(map);
-            }
+            // Service layer prepares all data including relationships and counts
+            Integer roomIdInt = roomId != null ? Integer.parseInt(roomId) : null;
+            List<Map<String, Object>> response = storageLocationService.getDevicesForAPI(roomIdInt);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting devices", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            // Return empty array instead of 500 so frontend can display empty table
+            return ResponseEntity.ok(new ArrayList<>());
         }
     }
 
@@ -218,14 +208,16 @@ public class StorageLocationRestController extends BaseRestController {
             shelf.setFhirUuid(UUID.randomUUID());
             shelf.setSysUserId("1"); // Default system user for REST API
 
-            StorageDevice parentDevice = (StorageDevice) storageLocationService.get(form.getParentDeviceId(),
+            Integer parentDeviceId = form.getParentDeviceId() != null ? Integer.parseInt(form.getParentDeviceId())
+                    : null;
+            StorageDevice parentDevice = (StorageDevice) storageLocationService.get(parentDeviceId,
                     StorageDevice.class);
             if (parentDevice == null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent device not found"));
             }
             shelf.setParentDevice(parentDevice);
 
-            String id = storageLocationService.insert(shelf);
+            Integer id = storageLocationService.insert(shelf);
             shelf.setId(id);
 
             return ResponseEntity.status(HttpStatus.CREATED).body(entityToMap(shelf));
@@ -238,21 +230,14 @@ public class StorageLocationRestController extends BaseRestController {
     @GetMapping("/shelves")
     public ResponseEntity<List<Map<String, Object>>> getShelves(@RequestParam(required = false) String deviceId) {
         try {
-            List<StorageShelf> shelves;
-            if (deviceId != null) {
-                shelves = storageLocationService.getShelvesByDevice(deviceId);
-            } else {
-                shelves = storageLocationService.getAllShelves();
-            }
-
-            List<Map<String, Object>> response = new ArrayList<>();
-            for (StorageShelf shelf : shelves) {
-                response.add(entityToMap(shelf));
-            }
+            // Service layer prepares all data including relationships and counts
+            Integer deviceIdInt = deviceId != null ? Integer.parseInt(deviceId) : null;
+            List<Map<String, Object>> response = storageLocationService.getShelvesForAPI(deviceIdInt);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting shelves", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            // Return empty array instead of 500 so frontend can display empty table
+            return ResponseEntity.ok(new ArrayList<>());
         }
     }
 
@@ -270,14 +255,14 @@ public class StorageLocationRestController extends BaseRestController {
             rack.setFhirUuid(UUID.randomUUID());
             rack.setSysUserId("1"); // Default system user for REST API
 
-            StorageShelf parentShelf = (StorageShelf) storageLocationService.get(form.getParentShelfId(),
-                    StorageShelf.class);
+            Integer parentShelfId = form.getParentShelfId() != null ? Integer.parseInt(form.getParentShelfId()) : null;
+            StorageShelf parentShelf = (StorageShelf) storageLocationService.get(parentShelfId, StorageShelf.class);
             if (parentShelf == null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent shelf not found"));
             }
             rack.setParentShelf(parentShelf);
 
-            String id = storageLocationService.insert(rack);
+            Integer id = storageLocationService.insert(rack);
             rack.setId(id);
 
             return ResponseEntity.status(HttpStatus.CREATED).body(entityToMap(rack));
@@ -290,21 +275,14 @@ public class StorageLocationRestController extends BaseRestController {
     @GetMapping("/racks")
     public ResponseEntity<List<Map<String, Object>>> getRacks(@RequestParam(required = false) String shelfId) {
         try {
-            List<StorageRack> racks;
-            if (shelfId != null) {
-                racks = storageLocationService.getRacksByShelf(shelfId);
-            } else {
-                racks = storageLocationService.getAllRacks();
-            }
-
-            List<Map<String, Object>> response = new ArrayList<>();
-            for (StorageRack rack : racks) {
-                response.add(entityToMap(rack));
-            }
+            // Service layer prepares all data including relationships and counts
+            Integer shelfIdInt = shelfId != null ? Integer.parseInt(shelfId) : null;
+            List<Map<String, Object>> response = storageLocationService.getRacksForAPI(shelfIdInt);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting racks", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            // Return empty array instead of 500 so frontend can display empty table
+            return ResponseEntity.ok(new ArrayList<>());
         }
     }
 
@@ -321,14 +299,14 @@ public class StorageLocationRestController extends BaseRestController {
             position.setFhirUuid(UUID.randomUUID());
             position.setSysUserId("1"); // Default system user for REST API
 
-            StorageRack parentRack = (StorageRack) storageLocationService.get(form.getParentRackId(),
-                    StorageRack.class);
+            Integer parentRackId = form.getParentRackId() != null ? Integer.parseInt(form.getParentRackId()) : null;
+            StorageRack parentRack = (StorageRack) storageLocationService.get(parentRackId, StorageRack.class);
             if (parentRack == null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent rack not found"));
             }
             position.setParentRack(parentRack);
 
-            String id = storageLocationService.insert(position);
+            Integer id = storageLocationService.insert(position);
             position.setId(id);
 
             return ResponseEntity.status(HttpStatus.CREATED).body(entityToMap(position));
@@ -344,7 +322,8 @@ public class StorageLocationRestController extends BaseRestController {
         try {
             List<StoragePosition> positions;
             if (rackId != null) {
-                positions = storageLocationService.getPositionsByRack(rackId);
+                Integer rackIdInt = Integer.parseInt(rackId);
+                positions = storageLocationService.getPositionsByRack(rackIdInt);
                 // Filter by occupied status if specified
                 if (occupied != null) {
                     positions.removeIf(p -> p.getOccupied() != occupied);

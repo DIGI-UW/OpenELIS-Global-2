@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class StorageShelfDAOImpl extends BaseDAOImpl<StorageShelf, String> implements StorageShelfDAO {
+public class StorageShelfDAOImpl extends BaseDAOImpl<StorageShelf, Integer> implements StorageShelfDAO {
 
     public StorageShelfDAOImpl() {
         super(StorageShelf.class);
@@ -19,9 +19,21 @@ public class StorageShelfDAOImpl extends BaseDAOImpl<StorageShelf, String> imple
 
     @Override
     @Transactional(readOnly = true)
-    public List<StorageShelf> findByParentDeviceId(String deviceId) {
+    public List<StorageShelf> getAll() {
         try {
-            String hql = "FROM StorageShelf WHERE parentDevice.id = :deviceId";
+            String hql = "FROM StorageShelf s ORDER BY s.id";
+            Query<StorageShelf> query = entityManager.unwrap(Session.class).createQuery(hql, StorageShelf.class);
+            return query.list();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting all StorageShelves", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StorageShelf> findByParentDeviceId(Integer deviceId) {
+        try {
+            String hql = "FROM StorageShelf s WHERE s.parentDevice.id = :deviceId";
             Query<StorageShelf> query = entityManager.unwrap(Session.class).createQuery(hql, StorageShelf.class);
             query.setParameter("deviceId", deviceId);
             return query.list();

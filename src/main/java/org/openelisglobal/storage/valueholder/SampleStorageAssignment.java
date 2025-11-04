@@ -3,15 +3,15 @@ package org.openelisglobal.storage.valueholder;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import java.sql.Timestamp;
 import org.hibernate.annotations.DynamicUpdate;
-import org.hibernate.annotations.GenericGenerator;
-import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.sample.valueholder.Sample;
 
@@ -22,42 +22,38 @@ import org.openelisglobal.sample.valueholder.Sample;
 @Entity
 @Table(name = "SAMPLE_STORAGE_ASSIGNMENT")
 @DynamicUpdate
-public class SampleStorageAssignment extends BaseObject<String> {
+public class SampleStorageAssignment extends BaseObject<Integer> {
 
     @Id
-    @GeneratedValue(generator = "sample_storage_assignment_seq")
-    @GenericGenerator(name = "sample_storage_assignment_seq", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = {
-            @org.hibernate.annotations.Parameter(name = "sequence_name", value = "sample_storage_assignment_seq")
-    })
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
-    @Column(name = "ID", precision = 10, scale = 0)
-    private String id;
-    
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "sample_storage_assignment_seq")
+    @SequenceGenerator(name = "sample_storage_assignment_seq", sequenceName = "sample_storage_assignment_seq", allocationSize = 1)
+    @Column(name = "ID")
+    private Integer id;
+
     @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
     @JoinColumn(name = "SAMPLE_ID", nullable = false, unique = true)
     private Sample sample;
-    
+
     @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
     @JoinColumn(name = "STORAGE_POSITION_ID", nullable = false)
     private StoragePosition storagePosition;
-    
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
-    @Column(name = "ASSIGNED_BY_USER_ID", precision = 10, scale = 0, nullable = false)
-    private String assignedByUserId;
-    
+
+    @Column(name = "ASSIGNED_BY_USER_ID", nullable = false)
+    private Integer assignedByUserId;
+
     @Column(name = "ASSIGNED_DATE", nullable = false)
     private Timestamp assignedDate;
-    
+
     @Column(name = "NOTES")
     private String notes;
 
     @Override
-    public String getId() {
+    public Integer getId() {
         return id;
     }
 
     @Override
-    public void setId(String id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
@@ -77,11 +73,11 @@ public class SampleStorageAssignment extends BaseObject<String> {
         this.storagePosition = storagePosition;
     }
 
-    public String getAssignedByUserId() {
+    public Integer getAssignedByUserId() {
         return assignedByUserId;
     }
 
-    public void setAssignedByUserId(String assignedByUserId) {
+    public void setAssignedByUserId(Integer assignedByUserId) {
         this.assignedByUserId = assignedByUserId;
     }
 

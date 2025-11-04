@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAssignment, String>
+public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAssignment, Integer>
         implements SampleStorageAssignmentDAO {
 
     public SampleStorageAssignmentDAOImpl() {
