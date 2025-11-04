@@ -1,0 +1,122 @@
+package org.openelisglobal;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.dbunit.DatabaseUnitException;
+import org.dbunit.database.DatabaseConfig;
+import org.dbunit.database.DatabaseConnection;
+import org.dbunit.database.IDatabaseConnection;
+import org.dbunit.dataset.IDataSet;
+import org.dbunit.dataset.xml.FlatXmlDataSet;
+import org.dbunit.ext.postgresql.PostgresqlDataTypeFactory;
+import org.dbunit.operation.DatabaseOperation;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.test.context.web.WebAppConfiguration;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import javax.sql.DataSource;
+import java.io.IOException;
+import java.io.InputStream;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+@ExtendWith(SpringExtension.class)
+@ContextConfiguration(classes = { BaseTestConfig.class, AppTestConfig.class })
+@WebAppConfiguration
+@TestPropertySource("classpath:common.properties")
+@ActiveProfiles("test")
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
+public abstract class BaseWebContextSensitiveJupiterTests {
+
+    @Autowired
+    protected WebApplicationContext webApplicationContext;
+
+    @Autowired
+    protected DataSource dataSource;
+
+    protected MockMvc mockMvc;
+
+    protected void setUp() throws Exception {
+        mockMvc = MockMvcBuilders.webAppContextSetup(this.webApplicationContext).build();
+    }
+
+    Logger logger = LoggerFactory.getLogger(getClass());
+
+    protected String mapToJson(Object obj) throws JsonProcessingException {
+        MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter();
+        ObjectMapper objectMapper = jsonConverter.getObjectMapper();
+        return objectMapper.writeValueAsString(obj);
+    }
+
+    public <T> T mapFromJson(String json, Class<T> clazz) throws IOException {
+        MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter();
+        ObjectMapper objectMapper = jsonConverter.getObjectMapper();
+        objectMapper.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
+        return objectMapper.readValue(json, clazz);
+    }
+
+    protected void executeDataSetWithStateManagement(String datasetFileName) throws Exception {
+        if (datasetFileName == null) {
+            throw new NullPointerException("Please provide test dataset file to execute!");
+        }
+
+        IDatabaseConnection connection = null;
+        InputStream inputStream = null;
+
+        try {
+            connection = new DatabaseConnection(dataSource.getConnection());
+            DatabaseConfig config = connection.getConfig();
+            config.setProperty(DatabaseConfig.FEATURE_ALLOW_EMPTY_FIELDS, true);
+            config.setProperty(DatabaseConfig.FEATURE_CASE_SENSITIVE_TABLE_NAMES, true);
+            config.setProperty(DatabaseConfig.PROPERTY_DATATYPE_FACTORY, new PostgresqlDataTypeFactory());
+
+            inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName);
+
+            if (inputStream == null) {
+                throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
+            }
+
+            IDataSet dataset = new FlatXmlDataSet(inputStream);
+            String[] tableNames = dataset.getTableNames();
+            cleanRowsInCurrentConnection(tableNames);
+
+            DatabaseOperation.REFRESH.execute(connection, dataset);
+        } finally {
+            if (inputStream != null) {
+                inputStream.close();
+            }
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    protected void cleanRowsInCurrentConnection(String[] tableNames) throws SQLException, DatabaseUnitException {
+        IDatabaseConnection connection = new DatabaseConnection(dataSource.getConnection());
+        try (Connection conn = connection.getConnection(); Statement stmt = conn.createStatement()) {
+            for (String tableName : tableNames) {
+                String truncateQuery = "TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE";
+                logger.info("Truncating table: {}", tableName);
+                stmt.execute(truncateQuery);
+            }
+        }
+    }
+
+ }
+ 
+
+
