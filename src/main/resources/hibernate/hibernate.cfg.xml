@@ -163,7 +163,8 @@
         <mapping resource="hibernate/hbm/PatientContact.hbm.xml" />
 
         <!-- Sample Storage Management mappings (001-sample-storage) -->
-        <!-- Moved to annotation-based mappings (JPA) - entities registered in persistence.xml -->
+        <!-- Moved to annotation-based mappings (JPA) - entities registered in
+            persistence.xml -->
 
     </session-factory>
 

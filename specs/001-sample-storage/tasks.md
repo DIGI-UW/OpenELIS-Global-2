@@ -285,9 +285,9 @@ hierarchical path and timestamp
 - [x] T062b [US1/P4] Create StorageDashboard component
       `frontend/src/components/storage/StorageDashboard.jsx` with 4 metric cards
       (Total Samples, Active, Disposed, Storage Locations), 5 tabs (Samples,
-      Rooms, Devices, Shelves, Racks), data tables with occupancy display, search
-      and filter functionality (per FR-057, FR-058, FR-059, FR-060, FR-061,
-      FR-064, FR-065)
+      Rooms, Devices, Shelves, Racks), data tables with occupancy display,
+      search and filter functionality (per FR-057, FR-058, FR-059, FR-060,
+      FR-061, FR-064, FR-065)
 - [x] T063 Run frontend tests → Verify all PASS:
       `npm test -- components/storage`
 
@@ -401,8 +401,8 @@ sample ID, verify hierarchical location path displays correctly
       testSearchSampleById_DisplaysLocation, testFilterSamplesByRoom,
       testFilterSamplesByMultipleCriteria
 - [ ] T079 [US2A] Run Cypress test → Verify P2A scenario works:
-      `npm run cy:run -- --spec "cypress/e2e/storageSearch.cy.js"`
-      **Note**: Requires Xvfb for headless execution or Docker environment
+      `npm run cy:run -- --spec "cypress/e2e/storageSearch.cy.js"` **Note**:
+      Requires Xvfb for headless execution or Docker environment
 
 **Checkpoint**: User Story 2A (Search/Retrieval) complete. Can search samples by
 ID, view hierarchical location path, filter by room/device/status.
@@ -493,8 +493,8 @@ audit log records movement
       testBulkMoveSamples_AutoAssignsPositions,
       testBulkMove_ManuallyEditPositions, testMovement_PreviousPositionFreed
 - [ ] T098 [US2B] Run Cypress test → Verify P2B scenario works:
-      `npm run cy:run -- --spec "cypress/e2e/storageMovement.cy.js"`
-      **Note**: Requires Xvfb for headless execution or Docker environment
+      `npm run cy:run -- --spec "cypress/e2e/storageMovement.cy.js"` **Note**:
+      Requires Xvfb for headless execution or Docker environment
 
 **Checkpoint**: User Story 2B (Movement) complete. Can move single/bulk samples,
 previous positions freed, audit trail tracks all movements.

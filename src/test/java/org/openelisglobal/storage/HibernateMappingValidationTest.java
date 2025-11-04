@@ -33,7 +33,8 @@ public class HibernateMappingValidationTest {
     public static void buildSessionFactory() {
         Configuration configuration = new Configuration();
 
-        // Add all storage entity mappings using annotation-based approach (per Constitution v1.3.0)
+        // Add all storage entity mappings using annotation-based approach (per
+        // Constitution v1.3.0)
         configuration.addAnnotatedClass(StorageRoom.class);
         configuration.addAnnotatedClass(StorageDevice.class);
         configuration.addAnnotatedClass(StorageShelf.class);
