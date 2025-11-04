@@ -20,15 +20,28 @@ const renderWithIntl = (component) => {
 };
 
 describe("StorageLocationSelector", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   /**
    * T051: Test device dropdown is disabled until room is selected
    * Cascading dropdown behavior
    */
   test("should disable device dropdown until room selected", () => {
+    // Mock empty rooms list
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/rest/storage/rooms")) {
+        callback([]);
+      }
+    });
+
     renderWithIntl(<StorageLocationSelector mode="dropdown" />);
 
-    const deviceDropdown = screen.queryByTestId("device-dropdown");
-    expect(deviceDropdown).toBeDisabled();
+    const deviceDropdown = screen.getByTestId("device-dropdown");
+    // Carbon Dropdown may set disabled on button or input inside
+    const button = deviceDropdown.querySelector("button") || deviceDropdown;
+    expect(button.hasAttribute("disabled")).toBe(true);
   });
 
   /**
@@ -42,24 +55,50 @@ describe("StorageLocationSelector", () => {
       { id: "2", name: "Freezer Unit 1", code: "FRZ01", type: "freezer" },
     ];
 
-    // Mock API responses
-    const { getFromOpenElisServer } = require("../../utils/Utils");
-    getFromOpenElisServer
-      .mockImplementationOnce((url, callback) => callback(mockRooms)) // Rooms
-      .mockImplementationOnce((url, callback) => callback(mockDevices)); // Devices
+    // Mock API responses - set up before rendering
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/rest/storage/rooms")) {
+        callback(mockRooms);
+      } else if (url.includes("/rest/storage/devices")) {
+        callback(mockDevices);
+      }
+    });
 
     renderWithIntl(<StorageLocationSelector mode="dropdown" />);
 
-    // Select room
-    const roomDropdown = screen.getByTestId("room-dropdown");
-    fireEvent.click(roomDropdown);
-    fireEvent.click(screen.getByText("Main Laboratory"));
+    // Wait for rooms API call (mocked function is called synchronously)
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      "/rest/storage/rooms",
+      expect.any(Function),
+      expect.any(Function),
+    );
 
-    // Wait for devices to load
-    await waitFor(() => {
-      const deviceDropdown = screen.getByTestId("device-dropdown");
-      expect(deviceDropdown).not.toBeDisabled();
-    });
+    // Wait a bit for component to update after rooms load
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Select room - Carbon Dropdown requires clicking the button first
+    const roomDropdown = screen.getByTestId("room-dropdown");
+    const roomButton = roomDropdown.querySelector("button") || roomDropdown;
+    fireEvent.click(roomButton);
+
+    // Wait for dropdown options to appear and click the option
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const mainLabOption = screen.getByText("Main Laboratory");
+    fireEvent.click(mainLabOption);
+
+    // Wait for devices API call
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      expect.stringContaining("/rest/storage/devices"),
+      expect.any(Function),
+      expect.any(Function),
+    );
+
+    // Wait for device dropdown to be enabled
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const deviceDropdown = screen.getByTestId("device-dropdown");
+    const button = deviceDropdown.querySelector("button") || deviceDropdown;
+    expect(button.hasAttribute("disabled")).toBe(false);
   });
 
   /**
@@ -89,7 +128,7 @@ describe("StorageLocationSelector", () => {
 
     // Should show "Add New Room" button
     const addRoomButton = screen.queryByText(/add new room/i);
-    expect(addRoomButton).toBeInTheDocument();
+    expect(addRoomButton).toBeTruthy();
   });
 
   /**
@@ -99,20 +138,20 @@ describe("StorageLocationSelector", () => {
   test("should render cascading dropdowns in dropdown mode", () => {
     renderWithIntl(<StorageLocationSelector mode="dropdown" />);
 
-    expect(screen.getByTestId("room-dropdown")).toBeInTheDocument();
+    expect(screen.getByTestId("room-dropdown")).toBeTruthy();
   });
 
   test("should render autocomplete in autocomplete mode", () => {
     renderWithIntl(<StorageLocationSelector mode="autocomplete" />);
 
     const autocompleteInput = screen.queryByPlaceholderText(/search/i);
-    expect(autocompleteInput).toBeInTheDocument();
+    expect(autocompleteInput).toBeTruthy();
   });
 
   test("should render barcode input in barcode mode", () => {
     renderWithIntl(<StorageLocationSelector mode="barcode" />);
 
     const barcodeInput = screen.queryByPlaceholderText(/scan barcode/i);
-    expect(barcodeInput).toBeInTheDocument();
+    expect(barcodeInput).toBeTruthy();
   });
 });

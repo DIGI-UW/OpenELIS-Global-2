@@ -63,7 +63,8 @@
       "node_modules/(?!lodash-es)"
     ],
     "moduleNameMapper": {
-      "\\\\.(css|less|scss|sass)$": "<rootDir>/src/__mocks__/styleMock.js"
+      "\\.(css|less|scss|sass)$": "<rootDir>/src/__mocks__/styleMock.js",
+      "^react-confirm-alert/src/react-confirm-alert\\.css$": "<rootDir>/src/__mocks__/styleMock.js"
     }
   },
   "eslintConfig": {

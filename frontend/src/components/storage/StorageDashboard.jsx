@@ -685,7 +685,7 @@ const StorageDashboard = () => {
                         <TableHead>
                           <TableRow>
                             {headers.map((header) => (
-                              <TableHeader {...getHeaderProps({ header })}>
+                              <TableHeader key={header.key || header.id || header.header} {...getHeaderProps({ header })}>
                                 {header.header}
                               </TableHeader>
                             ))}
@@ -693,7 +693,7 @@ const StorageDashboard = () => {
                         </TableHead>
                         <TableBody>
                           {rows.map((row) => (
-                            <TableRow {...getRowProps({ row })}>
+                            <TableRow key={row.id || row.key} {...getRowProps({ row })}>
                               {row.cells.map((cell) => (
                                 <TableCell key={cell.id}>
                                   {cell.value}
@@ -725,7 +725,7 @@ const StorageDashboard = () => {
                         <TableHead>
                           <TableRow>
                             {headers.map((header) => (
-                              <TableHeader {...getHeaderProps({ header })}>
+                              <TableHeader key={header.key || header.id || header.header} {...getHeaderProps({ header })}>
                                 {header.header}
                               </TableHeader>
                             ))}
@@ -733,7 +733,7 @@ const StorageDashboard = () => {
                         </TableHead>
                         <TableBody>
                           {rows.map((row) => (
-                            <TableRow {...getRowProps({ row })}>
+                            <TableRow key={row.id || row.key} {...getRowProps({ row })}>
                               {row.cells.map((cell) => (
                                 <TableCell key={cell.id}>
                                   {cell.value}
@@ -765,7 +765,7 @@ const StorageDashboard = () => {
                         <TableHead>
                           <TableRow>
                             {headers.map((header) => (
-                              <TableHeader {...getHeaderProps({ header })}>
+                              <TableHeader key={header.key || header.id || header.header} {...getHeaderProps({ header })}>
                                 {header.header}
                               </TableHeader>
                             ))}
@@ -773,7 +773,7 @@ const StorageDashboard = () => {
                         </TableHead>
                         <TableBody>
                           {rows.map((row) => (
-                            <TableRow {...getRowProps({ row })}>
+                            <TableRow key={row.id || row.key} {...getRowProps({ row })}>
                               {row.cells.map((cell) => (
                                 <TableCell key={cell.id}>
                                   {cell.value}
@@ -805,7 +805,7 @@ const StorageDashboard = () => {
                         <TableHead>
                           <TableRow>
                             {headers.map((header) => (
-                              <TableHeader {...getHeaderProps({ header })}>
+                              <TableHeader key={header.key || header.id || header.header} {...getHeaderProps({ header })}>
                                 {header.header}
                               </TableHeader>
                             ))}
@@ -813,7 +813,7 @@ const StorageDashboard = () => {
                         </TableHead>
                         <TableBody>
                           {rows.map((row) => (
-                            <TableRow {...getRowProps({ row })}>
+                            <TableRow key={row.id || row.key} {...getRowProps({ row })}>
                               {row.cells.map((cell) => (
                                 <TableCell key={cell.id}>
                                   {cell.value}
@@ -845,7 +845,7 @@ const StorageDashboard = () => {
                         <TableHead>
                           <TableRow>
                             {headers.map((header) => (
-                              <TableHeader {...getHeaderProps({ header })}>
+                              <TableHeader key={header.key || header.id || header.header} {...getHeaderProps({ header })}>
                                 {header.header}
                               </TableHeader>
                             ))}
@@ -853,7 +853,7 @@ const StorageDashboard = () => {
                         </TableHead>
                         <TableBody>
                           {rows.map((row) => (
-                            <TableRow {...getRowProps({ row })}>
+                            <TableRow key={row.id || row.key} {...getRowProps({ row })}>
                               {row.cells.map((cell) => (
                                 <TableCell key={cell.id}>
                                   {cell.value}
