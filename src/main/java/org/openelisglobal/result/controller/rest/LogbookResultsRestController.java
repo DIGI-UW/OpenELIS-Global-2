@@ -885,6 +885,11 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
     }
 
     private ResultFile createResultFile(TestResultItem.ResultFileForm fileForm) {
+        if (fileForm == null || GenericValidator.isBlankOrNull(fileForm.getFileName())
+                || GenericValidator.isBlankOrNull(fileForm.getFileType()) || fileForm.getContent() == null
+                || fileForm.getContent().length == 0) {
+            return null;
+        }
         ResultFile file = new ResultFile();
         file.setFileName(fileForm.getFileName());
         file.setFileType(fileForm.getFileType());
