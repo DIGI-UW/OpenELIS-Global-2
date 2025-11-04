@@ -11,6 +11,7 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.form.*;
 import org.openelisglobal.storage.service.StorageLocationService;
+import org.openelisglobal.storage.service.StorageDashboardService;
 import org.openelisglobal.storage.valueholder.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,9 @@ public class StorageLocationRestController extends BaseRestController {
 
     @Autowired
     private StorageLocationService storageLocationService;
+
+    @Autowired
+    private StorageDashboardService storageDashboardService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -65,11 +69,28 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
+    /**
+     * Get rooms with optional status filter (FR-065: Rooms tab - filter by status)
+     */
     @GetMapping("/rooms")
-    public ResponseEntity<List<Map<String, Object>>> getRooms() {
+    public ResponseEntity<List<Map<String, Object>>> getRooms(
+            @RequestParam(required = false) String status) {
         try {
-            // Service layer prepares all data including relationships and counts
-            List<Map<String, Object>> response = storageLocationService.getRoomsForAPI();
+            List<Map<String, Object>> response;
+            if (status != null && !status.isEmpty()) {
+                // Filter by status
+                Boolean activeStatus = "active".equalsIgnoreCase(status) ? true
+                        : "inactive".equalsIgnoreCase(status) ? false : null;
+                List<StorageRoom> filteredRooms = storageDashboardService.filterRooms(activeStatus);
+                // Convert to API format
+                response = new ArrayList<>();
+                for (StorageRoom room : filteredRooms) {
+                    response.add(entityToMap(room));
+                }
+            } else {
+                // No filter - return all rooms
+                response = storageLocationService.getRoomsForAPI();
+            }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting rooms", e);
@@ -182,16 +203,38 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
+    /**
+     * Get devices with optional filters (FR-065: Devices tab - filter by type, room, and status)
+     */
     @GetMapping("/devices")
-    public ResponseEntity<List<Map<String, Object>>> getDevices(@RequestParam(required = false) String roomId) {
+    public ResponseEntity<List<Map<String, Object>>> getDevices(
+            @RequestParam(required = false) String roomId,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status) {
         try {
-            // Service layer prepares all data including relationships and counts
-            Integer roomIdInt = roomId != null ? Integer.parseInt(roomId) : null;
-            List<Map<String, Object>> response = storageLocationService.getDevicesForAPI(roomIdInt);
+            List<Map<String, Object>> response;
+            if (type != null || roomId != null || status != null) {
+                // Apply filters
+                StorageDevice.DeviceType deviceType = type != null ? StorageDevice.DeviceType.valueOf(type) : null;
+                Integer roomIdInt = roomId != null ? Integer.parseInt(roomId) : null;
+                Boolean activeStatus = status != null && !status.isEmpty()
+                        ? ("active".equalsIgnoreCase(status) ? true : "inactive".equalsIgnoreCase(status) ? false : null)
+                        : null;
+                    List<StorageDevice> filteredDevices = storageDashboardService.filterDevices(deviceType, roomIdInt,
+                            activeStatus);
+                    // Convert to API format (entityToMap will add roomId automatically)
+                    response = new ArrayList<>();
+                    for (StorageDevice device : filteredDevices) {
+                        response.add(entityToMap(device));
+                    }
+            } else {
+                // No filters - return all devices
+                Integer roomIdInt = roomId != null ? Integer.parseInt(roomId) : null;
+                response = storageLocationService.getDevicesForAPI(roomIdInt);
+            }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting devices", e);
-            // Return empty array instead of 500 so frontend can display empty table
             return ResponseEntity.ok(new ArrayList<>());
         }
     }
@@ -227,16 +270,38 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
+    /**
+     * Get shelves with optional filters (FR-065: Shelves tab - filter by device, room, and status)
+     */
     @GetMapping("/shelves")
-    public ResponseEntity<List<Map<String, Object>>> getShelves(@RequestParam(required = false) String deviceId) {
+    public ResponseEntity<List<Map<String, Object>>> getShelves(
+            @RequestParam(required = false) String deviceId,
+            @RequestParam(required = false) String roomId,
+            @RequestParam(required = false) String status) {
         try {
-            // Service layer prepares all data including relationships and counts
-            Integer deviceIdInt = deviceId != null ? Integer.parseInt(deviceId) : null;
-            List<Map<String, Object>> response = storageLocationService.getShelvesForAPI(deviceIdInt);
+            List<Map<String, Object>> response;
+            if (deviceId != null || roomId != null || status != null) {
+                // Apply filters
+                Integer deviceIdInt = deviceId != null ? Integer.parseInt(deviceId) : null;
+                Integer roomIdInt = roomId != null ? Integer.parseInt(roomId) : null;
+                Boolean activeStatus = status != null && !status.isEmpty()
+                        ? ("active".equalsIgnoreCase(status) ? true : "inactive".equalsIgnoreCase(status) ? false : null)
+                        : null;
+                List<StorageShelf> filteredShelves = storageDashboardService.filterShelves(deviceIdInt, roomIdInt,
+                        activeStatus);
+                // Convert to API format
+                response = new ArrayList<>();
+                for (StorageShelf shelf : filteredShelves) {
+                    response.add(entityToMap(shelf));
+                }
+            } else {
+                // No filters - return all shelves
+                Integer deviceIdInt = deviceId != null ? Integer.parseInt(deviceId) : null;
+                response = storageLocationService.getShelvesForAPI(deviceIdInt);
+            }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting shelves", e);
-            // Return empty array instead of 500 so frontend can display empty table
             return ResponseEntity.ok(new ArrayList<>());
         }
     }
@@ -272,16 +337,48 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
+    /**
+     * Get racks with optional filters (FR-065: Racks tab - filter by room, shelf, device, and status)
+     * Returns racks with roomId column (FR-065a)
+     */
     @GetMapping("/racks")
-    public ResponseEntity<List<Map<String, Object>>> getRacks(@RequestParam(required = false) String shelfId) {
+    public ResponseEntity<List<Map<String, Object>>> getRacks(
+            @RequestParam(required = false) String shelfId,
+            @RequestParam(required = false) String deviceId,
+            @RequestParam(required = false) String roomId,
+            @RequestParam(required = false) String status) {
         try {
-            // Service layer prepares all data including relationships and counts
-            Integer shelfIdInt = shelfId != null ? Integer.parseInt(shelfId) : null;
-            List<Map<String, Object>> response = storageLocationService.getRacksForAPI(shelfIdInt);
+            List<Map<String, Object>> response;
+            if (shelfId != null || deviceId != null || roomId != null || status != null) {
+                // Apply filters using dashboard service (includes roomId column per FR-065a)
+                Integer shelfIdInt = shelfId != null ? Integer.parseInt(shelfId) : null;
+                Integer deviceIdInt = deviceId != null ? Integer.parseInt(deviceId) : null;
+                Integer roomIdInt = roomId != null ? Integer.parseInt(roomId) : null;
+                Boolean activeStatus = status != null && !status.isEmpty()
+                        ? ("active".equalsIgnoreCase(status) ? true : "inactive".equalsIgnoreCase(status) ? false : null)
+                        : null;
+                response = storageDashboardService.getRacksForAPI(roomIdInt, shelfIdInt, deviceIdInt, activeStatus);
+            } else {
+                // No filters - return all racks with roomId column (FR-065a)
+                Integer shelfIdInt = shelfId != null ? Integer.parseInt(shelfId) : null;
+                response = storageLocationService.getRacksForAPI(shelfIdInt);
+                // Ensure roomId column is present
+                for (Map<String, Object> rack : response) {
+                    if (!rack.containsKey("roomId")) {
+                        // Extract roomId from hierarchy if missing
+                        StorageRack rackEntity = (StorageRack) storageLocationService.get(
+                                (Integer) rack.get("id"), StorageRack.class);
+                        if (rackEntity != null && rackEntity.getParentShelf() != null
+                                && rackEntity.getParentShelf().getParentDevice() != null
+                                && rackEntity.getParentShelf().getParentDevice().getParentRoom() != null) {
+                            rack.put("roomId", rackEntity.getParentShelf().getParentDevice().getParentRoom().getId());
+                        }
+                    }
+                }
+            }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting racks", e);
-            // Return empty array instead of 500 so frontend can display empty table
             return ResponseEntity.ok(new ArrayList<>());
         }
     }
@@ -366,6 +463,10 @@ public class StorageLocationRestController extends BaseRestController {
             map.put("capacityLimit", device.getCapacityLimit());
             map.put("active", device.getActive());
             map.put("fhirUuid", device.getFhirUuidAsString());
+            // Add parent room for filtering (FR-065: filter by room)
+            if (device.getParentRoom() != null) {
+                map.put("roomId", device.getParentRoom().getId());
+            }
         } else if (entity instanceof StorageShelf) {
             StorageShelf shelf = (StorageShelf) entity;
             map.put("id", shelf.getId());
@@ -373,6 +474,13 @@ public class StorageLocationRestController extends BaseRestController {
             map.put("capacityLimit", shelf.getCapacityLimit());
             map.put("active", shelf.getActive());
             map.put("fhirUuid", shelf.getFhirUuidAsString());
+            // Add parent relationships for filtering (FR-065: filter by device and room)
+            if (shelf.getParentDevice() != null) {
+                map.put("deviceId", shelf.getParentDevice().getId());
+                if (shelf.getParentDevice().getParentRoom() != null) {
+                    map.put("roomId", shelf.getParentDevice().getParentRoom().getId());
+                }
+            }
         } else if (entity instanceof StorageRack) {
             StorageRack rack = (StorageRack) entity;
             map.put("id", rack.getId());

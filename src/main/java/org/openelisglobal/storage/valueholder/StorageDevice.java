@@ -79,7 +79,7 @@ public class StorageDevice extends BaseObject<Integer> {
     @Column(name = "ACTIVE", nullable = false)
     private Boolean active;
 
-    @ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
     @JoinColumn(name = "PARENT_ROOM_ID", nullable = false)
     private StorageRoom parentRoom;
 

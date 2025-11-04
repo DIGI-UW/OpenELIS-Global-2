@@ -288,6 +288,67 @@ hierarchical path and timestamp
       Rooms, Devices, Shelves, Racks), data tables with occupancy display,
       search and filter functionality (per FR-057, FR-058, FR-059, FR-060,
       FR-061, FR-064, FR-065)
+
+### Tests First - Dashboard Tab-Specific Filters (Write BEFORE implementation)
+
+- [x] T062c [P] [P4] Write integration test
+      `src/test/java/org/openelisglobal/storage/controller/StorageDashboardRestControllerTest.java`
+      for dashboard filtering endpoints:
+      testGetSamples_FilterByLocation_ReturnsFiltered,
+      testGetSamples_FilterByStatus_ReturnsFiltered,
+      testGetRooms_FilterByStatus_ReturnsFiltered,
+      testGetDevices_FilterByTypeRoomStatus_ReturnsFiltered,
+      testGetShelves_FilterByDeviceRoomStatus_ReturnsFiltered,
+      testGetRacks_FilterByRoomShelfDeviceStatus_ReturnsFiltered,
+      testGetRacks_ReturnsRoomColumn
+- [x] T062d [P] [P4] Write unit test
+      `src/test/java/org/openelisglobal/storage/service/StorageDashboardServiceImplTest.java`
+      for filter logic:
+      testFilterSamples_ByLocationAndStatus_CombinesWithAND,
+      testFilterRooms_ByStatus_ReturnsMatching,
+      testFilterDevices_ByTypeRoomStatus_CombinesWithAND,
+      testFilterShelves_ByDeviceRoomStatus_CombinesWithAND,
+      testFilterRacks_ByRoomShelfDeviceStatus_CombinesWithAND,
+      testGetRacks_IncludesRoomColumn
+- [ ] T062e Run dashboard filter tests → Verify all FAIL:
+      `mvn test -Dtest="StorageDashboard*Test"`
+
+### Implementation - Dashboard Tab-Specific Filters
+
+- [x] T062f [P4] Enhance StorageDashboardRestController
+      `src/main/java/org/openelisglobal/storage/controller/StorageDashboardRestController.java`
+      to support tab-specific filter parameters:
+      - Samples: `?location={locationId}&status={status}`
+      - Rooms: `?status={status}`
+      - Devices: `?type={deviceType}&roomId={roomId}&status={status}`
+      - Shelves: `?deviceId={deviceId}&roomId={roomId}&status={status}`
+      - Racks: `?roomId={roomId}&shelfId={shelfId}&deviceId={deviceId}&status={status}`
+- [x] T062g [P4] Enhance StorageDashboardService (or create if not exists)
+      `src/main/java/org/openelisglobal/storage/service/StorageDashboardService.java`
+      with filter methods: filterSamples(), filterRooms(), filterDevices(),
+      filterShelves(), filterRacks() implementing AND logic per FR-066
+- [ ] T062h [P4] Update StorageDashboard component
+      `frontend/src/components/storage/StorageDashboard.jsx` to:
+      - Add filter controls for each tab (location dropdown, status dropdown,
+        type dropdown, room dropdown, device dropdown, shelf dropdown as
+        appropriate per FR-065)
+      - Add room column to Racks tab table (per FR-065a)
+      - Implement filter state management and API calls with filter parameters
+      - Display "Clear Filters" button (per FR-067)
+- [ ] T062i [P4] Write unit test
+      `frontend/src/components/storage/StorageDashboard.test.jsx` for filter UI:
+      testSamplesTab_ShowsLocationAndStatusFilters,
+      testRoomsTab_ShowsStatusFilter,
+      testDevicesTab_ShowsTypeRoomStatusFilters,
+      testShelvesTab_ShowsDeviceRoomStatusFilters,
+      testRacksTab_ShowsRoomShelfDeviceStatusFilters,
+      testRacksTab_DisplaysRoomColumn,
+      testClearFilters_ResetsAllFilters
+- [ ] T062j Run dashboard filter tests → Verify all PASS:
+      `mvn test -Dtest="StorageDashboard*Test"`
+- [ ] T062k Run frontend tests → Verify all PASS:
+      `npm test -- StorageDashboard.test.jsx`
+
 - [x] T063 Run frontend tests → Verify all PASS:
       `npm test -- components/storage`
 
@@ -308,10 +369,21 @@ hierarchical path and timestamp
 - [x] T066a [P4] Create and pass Cypress test for Storage Dashboard:
       `frontend/cypress/e2e/storageDashboard.cy.js` validates dashboard loads,
       metric cards visible, tabs functional, search/filter controls present
+- [ ] T066b [P4] Enhance Cypress E2E test for tab-specific filters:
+      `frontend/cypress/e2e/storageDashboard.cy.js` add test cases:
+      testSamplesTab_FilterByLocationAndStatus_ShowsFilteredResults,
+      testRoomsTab_FilterByStatus_ShowsFilteredResults,
+      testDevicesTab_FilterByTypeRoomStatus_ShowsFilteredResults,
+      testShelvesTab_FilterByDeviceRoomStatus_ShowsFilteredResults,
+      testRacksTab_FilterByRoomShelfDeviceStatus_ShowsFilteredResults,
+      testRacksTab_DisplaysRoomColumn,
+      testClearFilters_ResetsAllFilters
+- [ ] T066c [P4] Run Cypress test → Verify tab-specific filter scenarios work:
+      `npm run cy:run -- --spec "cypress/e2e/storageDashboard.cy.js"`
 
 **Checkpoint**: ✅ User Story 1 (Basic Assignment) COMPLETE and independently
 testable. Can assign samples via dropdown/autocomplete/barcode, location saved
-with hierarchical path.
+with hierarchical path. Dashboard tab-specific filters implemented with TDD.
 
 ### Database Test Fixtures (Integration Testing Support)
 

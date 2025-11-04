@@ -32,4 +32,7 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
             throw new LIMSRuntimeException("Error finding SampleStorageAssignment by sample ID", e);
         }
     }
+
+    // No override needed - BaseDAOImpl.getAll() uses entity fetch strategies
+    // All relationships are EAGER at entity level, so they load automatically
 }

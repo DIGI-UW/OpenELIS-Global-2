@@ -1,6 +1,8 @@
 package org.openelisglobal.storage.service;
 
 import java.sql.Timestamp;
+import java.util.List;
+import java.util.Map;
 import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.sample.dao.SampleDAO;
@@ -156,5 +158,81 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         }
 
         return new CapacityWarning(occupied, totalCapacity, percentage, warningMessage);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getAllSamplesWithAssignments() {
+        // DAO.getAll() now eagerly fetches entire hierarchy (Sample, Position, Rack, Shelf, Device, Room)
+        // All data is loaded within this transaction, so no lazy loading issues
+        List<SampleStorageAssignment> assignments = sampleStorageAssignmentDAO.getAll();
+        List<Map<String, Object>> response = new java.util.ArrayList<>();
+
+        for (SampleStorageAssignment assignment : assignments) {
+            // Skip assignments without samples (data integrity issue)
+            if (assignment.getSample() == null) {
+                continue;
+            }
+
+            // Skip assignments without storage positions (invalid state)
+            if (assignment.getStoragePosition() == null) {
+                continue;
+            }
+
+            // CRITICAL: Force initialization of all relationships by accessing them
+            // within the transaction. This ensures proxies are fully loaded.
+            StoragePosition position = assignment.getStoragePosition();
+            StorageRack rack = position.getParentRack();
+            if (rack == null) {
+                continue; // Invalid position without rack
+            }
+            
+            // Access properties to force initialization - do this within transaction
+            StorageShelf shelf = rack.getParentShelf();
+            StorageDevice device = shelf != null ? shelf.getParentDevice() : null;
+            StorageRoom room = device != null ? device.getParentRoom() : null;
+
+            // Build hierarchical path directly from already-initialized entities
+            // This avoids calling buildHierarchicalPath which might trigger lazy loading
+            String hierarchicalPath = buildPathFromEntities(position, rack, shelf, device, room);
+
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("id", assignment.getSample().getId());
+            map.put("sampleId", assignment.getSample().getId());
+            map.put("type",
+                    assignment.getSample().getAccessionNumber() != null
+                            ? assignment.getSample().getAccessionNumber()
+                            : "");
+            map.put("status",
+                    assignment.getSample().getStatus() != null ? assignment.getSample().getStatus()
+                            : "active");
+            map.put("location", hierarchicalPath);
+            map.put("assignedBy", assignment.getAssignedByUserId());
+            map.put("date",
+                    assignment.getAssignedDate() != null ? assignment.getAssignedDate().toString() : "");
+
+            response.add(map);
+        }
+
+        return response;
+    }
+
+    /**
+     * Build hierarchical path from already-initialized entities.
+     * This method assumes all entities are already loaded (not proxies).
+     */
+    private String buildPathFromEntities(StoragePosition position, StorageRack rack, 
+                                         StorageShelf shelf, StorageDevice device, StorageRoom room) {
+        if (room != null && device != null && shelf != null) {
+            return room.getName() + " > " + device.getName() + " > " + shelf.getLabel() + " > " 
+                   + rack.getLabel() + " > Position " + position.getCoordinate();
+        } else if (device != null && shelf != null) {
+            return device.getName() + " > " + shelf.getLabel() + " > " + rack.getLabel() 
+                   + " > Position " + position.getCoordinate();
+        } else if (shelf != null) {
+            return shelf.getLabel() + " > " + rack.getLabel() + " > Position " + position.getCoordinate();
+        } else {
+            return rack.getLabel() + " > Position " + position.getCoordinate();
+        }
     }
 }

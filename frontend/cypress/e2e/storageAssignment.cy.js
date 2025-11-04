@@ -1,5 +1,7 @@
 import LoginPage from "../pages/LoginPage";
 import StorageAssignmentPage from "../pages/StorageAssignmentPage";
+import OrderEntityPage from "../pages/OrderEntityPage";
+import PatientEntryPage from "../pages/PatientEntryPage";
 
 /**
  * E2E Tests for User Story P1 - Basic Storage Assignment
@@ -9,26 +11,92 @@ import StorageAssignmentPage from "../pages/StorageAssignmentPage";
 let homePage = null;
 let loginPage = null;
 let storageAssignmentPage = null;
+let orderEntityPage = null;
+let patientEntryPage = null;
 
-before("Login", () => {
+before("Login and Load Test Fixtures", () => {
   loginPage = new LoginPage();
   loginPage.visit();
   homePage = loginPage.goToHomePage();
+  
+  // Load storage test fixtures (includes patients, samples, and storage hierarchy)
+  cy.loadStorageFixtures();
+});
+
+after("Clean up test fixtures", () => {
+  // Clean up test fixtures after all tests complete (optional, controlled by CYPRESS_CLEANUP_FIXTURES env var)
+  // Set CYPRESS_CLEANUP_FIXTURES=false to keep fixtures for manual testing
+  // Default: true (cleanup enabled)
+  if (Cypress.env("CLEANUP_FIXTURES")) {
+    cy.cleanStorageFixtures();
+  } else {
+    cy.log("Skipping fixture cleanup (CYPRESS_CLEANUP_FIXTURES=false) - fixtures preserved for manual testing");
+  }
 });
 
 describe("Storage Assignment - Cascading Dropdowns (P1)", function () {
   it("Should navigate through order entry workflow to sample entry step", () => {
-    cy.visit("/SamplePatientEntry");
-    cy.wait(3000); // Wait for page to load
-
-    // The StorageLocationSelector appears in the sample entry step
-    // We need to progress through: Patient Info → Program Selection → Sample Entry
-    // For now, we'll test if the selector is accessible once we reach that step
-    // Note: This test may need a patient/program selection workflow similar to orderEntity.cy.js
+    // Navigate to order entry page
+    orderEntityPage = homePage.goToOrderPage();
+    cy.wait(1000);
+    
+    // Navigate to patient entry step
+    patientEntryPage = orderEntityPage.getPatientPage();
+    cy.wait(1000);
+    
+    // Search for E2E test patient
+    cy.fixture("Patient").then((patient) => {
+      // Use E2E test patient (Smith)
+      patientEntryPage.searchPatientByFirstAndLastName("John", "Smith");
+      patientEntryPage.clickSearchPatientButton();
+      cy.wait(2000);
+      
+      // Select patient from search results
+      patientEntryPage.selectPatientFromSearchResults();
+      cy.wait(300);
+      
+      // Verify patient is selected
+      patientEntryPage.getFirstName().should("have.value", "John");
+      patientEntryPage.getLastName().should("have.value", "Smith");
+    });
+    
+    // Proceed to program selection
+    orderEntityPage.clickNextButton();
+    cy.wait(1000);
+    
+    // Select program (Cytology or any available program)
+    orderEntityPage.selectCytology();
+    cy.wait(200);
+    orderEntityPage.clickNextButton();
+    cy.wait(1000);
+    
+    // Now we should be on the sample entry step where StorageLocationSelector is visible
+    // Verify we can see the storage location selector
+    cy.get('[data-testid="storage-location-selector"]', { timeout: 10000 })
+      .should("be.visible");
   });
 
   it("Should assign sample to storage location using cascading dropdowns", function () {
     storageAssignmentPage = new StorageAssignmentPage();
+    
+    // Navigate through workflow (reuse from previous test)
+    orderEntityPage = homePage.goToOrderPage();
+    cy.wait(1000);
+    patientEntryPage = orderEntityPage.getPatientPage();
+    cy.wait(1000);
+    
+    // Search and select E2E test patient
+    patientEntryPage.searchPatientByFirstAndLastName("John", "Smith");
+    patientEntryPage.clickSearchPatientButton();
+    cy.wait(2000);
+    patientEntryPage.selectPatientFromSearchResults();
+    cy.wait(300);
+    orderEntityPage.clickNextButton();
+    cy.wait(1000);
+    orderEntityPage.selectCytology();
+    cy.wait(200);
+    orderEntityPage.clickNextButton();
+    cy.wait(1000);
 
     // Navigate to sample entry step (assuming workflow navigation is handled)
     // StorageLocationSelector appears in SampleType component within AddSample
@@ -85,13 +153,24 @@ describe("Storage Assignment - Cascading Dropdowns (P1)", function () {
 
 describe("Storage Assignment - Type-Ahead Autocomplete (P1)", function () {
   beforeEach(function () {
-    // Navigate to sample entry step for each test
-    cy.visit("/SamplePatientEntry");
+    // Navigate through order entry workflow to sample entry step
+    orderEntityPage = homePage.goToOrderPage();
+    cy.wait(1000);
+    patientEntryPage = orderEntityPage.getPatientPage();
+    cy.wait(1000);
+    
+    // Search and select E2E test patient
+    patientEntryPage.searchPatientByFirstAndLastName("John", "Smith");
+    patientEntryPage.clickSearchPatientButton();
     cy.wait(2000);
-
-    // Navigate through workflow if needed
-    // This is a simplified approach - in practice, you might want to reuse the navigation steps
-    // For now, assuming we can navigate directly or reuse state from previous tests
+    patientEntryPage.selectPatientFromSearchResults();
+    cy.wait(300);
+    orderEntityPage.clickNextButton();
+    cy.wait(1000);
+    orderEntityPage.selectCytology();
+    cy.wait(200);
+    orderEntityPage.clickNextButton();
+    cy.wait(1000);
   });
 
   it("Should assign sample using type-ahead search", function () {
@@ -124,8 +203,28 @@ describe("Storage Assignment - Type-Ahead Autocomplete (P1)", function () {
 });
 
 describe("Storage Assignment - Barcode Scan (P1)", function () {
+  beforeEach(function () {
+    // Navigate through order entry workflow to sample entry step
+    orderEntityPage = homePage.goToOrderPage();
+    cy.wait(1000);
+    patientEntryPage = orderEntityPage.getPatientPage();
+    cy.wait(1000);
+    
+    // Search and select E2E test patient
+    patientEntryPage.searchPatientByFirstAndLastName("John", "Smith");
+    patientEntryPage.clickSearchPatientButton();
+    cy.wait(2000);
+    patientEntryPage.selectPatientFromSearchResults();
+    cy.wait(300);
+    orderEntityPage.clickNextButton();
+    cy.wait(1000);
+    orderEntityPage.selectCytology();
+    cy.wait(200);
+    orderEntityPage.clickNextButton();
+    cy.wait(1000);
+  });
+  
   it("Should assign sample using barcode scanner", function () {
-    // Reuse navigation from previous describe block or navigate again
     storageAssignmentPage = new StorageAssignmentPage();
 
     // Wait for storage location selector
@@ -149,6 +248,27 @@ describe("Storage Assignment - Barcode Scan (P1)", function () {
 });
 
 describe("Storage Assignment - Inline Location Creation (P1)", function () {
+  beforeEach(function () {
+    // Navigate through order entry workflow to sample entry step
+    orderEntityPage = homePage.goToOrderPage();
+    cy.wait(1000);
+    patientEntryPage = orderEntityPage.getPatientPage();
+    cy.wait(1000);
+    
+    // Search and select E2E test patient
+    patientEntryPage.searchPatientByFirstAndLastName("John", "Smith");
+    patientEntryPage.clickSearchPatientButton();
+    cy.wait(2000);
+    patientEntryPage.selectPatientFromSearchResults();
+    cy.wait(300);
+    orderEntityPage.clickNextButton();
+    cy.wait(1000);
+    orderEntityPage.selectCytology();
+    cy.wait(200);
+    orderEntityPage.clickNextButton();
+    cy.wait(1000);
+  });
+  
   it("Should allow inline creation of new room", function () {
     storageAssignmentPage = new StorageAssignmentPage();
 
@@ -183,6 +303,27 @@ describe("Storage Assignment - Inline Location Creation (P1)", function () {
 });
 
 describe("Storage Assignment - Capacity Warning (P1)", function () {
+  beforeEach(function () {
+    // Navigate through order entry workflow to sample entry step
+    orderEntityPage = homePage.goToOrderPage();
+    cy.wait(1000);
+    patientEntryPage = orderEntityPage.getPatientPage();
+    cy.wait(1000);
+    
+    // Search and select E2E test patient
+    patientEntryPage.searchPatientByFirstAndLastName("John", "Smith");
+    patientEntryPage.clickSearchPatientButton();
+    cy.wait(2000);
+    patientEntryPage.selectPatientFromSearchResults();
+    cy.wait(300);
+    orderEntityPage.clickNextButton();
+    cy.wait(1000);
+    orderEntityPage.selectCytology();
+    cy.wait(200);
+    orderEntityPage.clickNextButton();
+    cy.wait(1000);
+  });
+  
   it("Should display capacity warning when rack is 80% full", function () {
     storageAssignmentPage = new StorageAssignmentPage();
 

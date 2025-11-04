@@ -53,6 +53,20 @@ managers
   integration per constitution (map entities to FHIR Location resources, sync to
   FHIR server, support IHE mCSD queries)
 
+### Session 2025-11-04
+
+- Q: What are the location creation/management interfaces? → A: Two distinct
+  interfaces required: (1) Inline quick creation via widget on orders/results
+  pages for immediate location creation during workflow, (2) Dashboard-based
+  location management form page accessible via "Add Location" button on Storage
+  Dashboard (positioned to right of tabs, next to Export button)
+- Q: What are the filter requirements for each dashboard tab table? → A:
+  Tab-specific filtering requirements: (1) Samples tab - filter by location and by
+  status, (2) Rooms tab - filter by status, (3) Devices tab - filter by type and
+  room and status, (4) Shelves tab - filter by device and room and status, (5)
+  Racks tab - show room column, filter by room, filter by shelf, device, and
+  status
+
 ## POC Scope
 
 **In Scope for POC**:
@@ -403,9 +417,10 @@ procurement of additional storage equipment.
 
    **Racks Tab**:
 
-   - Shows: Label | Shelf | Device | Dimensions | Occupancy | Status | Actions
-   - Example row: "Rack R1" | Shelf-A | Freezer Unit 1 | 9 × 9 | 23/81 (28%)
-     [progress bar] | Active | [⋮]
+   - Shows: Label | Shelf | Device | Room | Dimensions | Occupancy | Status |
+     Actions
+   - Example row: "Rack R1" | Shelf-A | Freezer Unit 1 | Main Laboratory | 9 × 9
+     | 23/81 (28%) [progress bar] | Active | [⋮]
 
    **Samples Tab**:
 
@@ -633,10 +648,15 @@ samples are assigned/moved/disposed.
   levels including human-readable text and barcode
 - **FR-027**: System MUST support printing individual or batch labels
 
-#### Inline Location Creation
+#### Inline Location Creation (Widget-Based)
+
+**Context**: Available within the Storage Location Selector widget on Sample
+Patient Entry (orders) and Logbook Results pages to enable quick location
+creation during sample assignment workflow.
 
 - **FR-028**: Users MUST be able to create new locations (Room, Device, Shelf,
-  Rack) inline from the location selector without leaving current workflow
+  Rack) inline from the location selector widget without leaving current
+  workflow (Sample Patient Entry or Logbook Results page)
 - **FR-029**: Quick-add dialog MUST require minimum information: Identifying
   name/label (required), parent relationship (auto-selected from current
   context), type-specific attributes (e.g., device type, rack dimensions),
@@ -647,6 +667,28 @@ samples are assigned/moved/disposed.
   page refresh
 - **FR-032**: Failed validation MUST show error inline (e.g., "Code 'FRZ01'
   already exists in room 'Main Laboratory'")
+
+#### Dashboard-Based Location Management
+
+**Context**: Full location management interface accessible from Storage
+Dashboard for comprehensive location creation, editing, and management
+operations.
+
+- **FR-028a**: Storage Dashboard MUST provide "Add Location" button positioned
+  to the right of the tabs (Samples | Rooms | Devices | Shelves | Racks),
+  adjacent to the "Export" button
+- **FR-028b**: Clicking "Add Location" button MUST navigate to a dedicated
+  location management form page
+- **FR-028c**: Location management form page MUST support creating new locations
+  (Room, Device, Shelf, Rack) with full attribute editing (name, code, type,
+  dimensions, capacity, active/inactive status)
+- **FR-028d**: Location management form page MUST support editing existing
+  locations (update attributes, deactivate/reactivate)
+- **FR-028e**: Location management form page MUST validate parent-child
+  relationships and code uniqueness within parent scope
+- **FR-028f**: Location management form page MUST display hierarchical
+  breadcrumb navigation showing current location context within the 5-level
+  hierarchy
 
 #### Sample Assignment
 
@@ -727,6 +769,10 @@ samples are assigned/moved/disposed.
   with relevant columns
 - **FR-060**: Tab selection state MUST be visually distinct (active tab
   highlighted)
+- **FR-060a**: Dashboard MUST provide action buttons positioned to the right of
+  the tabs: "Add Location" button (navigates to location management form page)
+  and "Export" button (exports current filtered table data to CSV), both
+  visible on all tabs
 
 #### Occupancy Display
 
@@ -740,8 +786,14 @@ samples are assigned/moved/disposed.
 #### Filters and Search
 
 - **FR-064**: Dashboard MUST provide search by sample ID and location name/code
-- **FR-065**: Dashboard MUST provide filters: Room, Device, Status, Date Range,
-  Sample Type
+- **FR-065**: Dashboard MUST provide tab-specific filters:
+  - **Samples tab**: Filter by location and by status
+  - **Rooms tab**: Filter by status
+  - **Devices tab**: Filter by type and room and status
+  - **Shelves tab**: Filter by device and room and status
+  - **Racks tab**: Filter by room, filter by shelf, device, and status
+- **FR-065a**: Dashboard MUST display room column in Racks tab table (shows parent
+  room for each rack)
 - **FR-066**: Multiple filters MUST combine with AND logic (all criteria must
   match)
 - **FR-067**: System MUST provide "Clear Filters" option to reset to show all
@@ -961,6 +1013,18 @@ functional design:_
   - Features: Cascading dropdowns, type-ahead autocomplete, barcode scan, inline
     location creation
   - Localized: All labels/tooltips use message keys
+
+- **INT-003a**: Create **Location Management Form Page**
+
+  - Route: `/storage/locations/new` (create) and `/storage/locations/:id/edit`
+    (edit)
+  - Accessible from: Storage Dashboard "Add Location" button (FR-028a)
+  - Features: Full CRUD form for Room, Device, Shelf, Rack entities with
+    hierarchical parent selection, attribute editing, validation, breadcrumb
+    navigation
+  - Integration: Uses same REST endpoints as inline creation (POST/PUT
+    /rest/storage/rooms, /rest/storage/devices, etc.)
+  - Localized: All form labels, validation messages use React Intl message keys
 
 - **INT-004**: Leverage existing **FHIR infrastructure**
 

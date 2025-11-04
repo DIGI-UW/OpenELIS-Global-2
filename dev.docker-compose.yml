@@ -63,7 +63,7 @@ services:
             - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
             - ./volume/logs/tomcatLogs/:/usr/local/tomcat/logs
             - ./volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
-            # - ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war  # Commented out - using WAR built in Docker image
+            - ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war  # Mount locally built WAR for development
             - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
             - ./volume/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
             -  lucene_index-vol:/var/lib/lucene_index
@@ -128,7 +128,6 @@ services:
             - certs-vol:/etc/nginx/certs/
             - keys-vol:/etc/nginx/keys/
             - ./volume/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-            - ./volume/letsencrypt:/etc/letsencrypt:ro
             - ./volume/nginx/certbot:/var/www/certbot
         networks:
             - default

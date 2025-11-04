@@ -627,6 +627,7 @@
   "label.all": "All",
   "label.active": "Active",
   "label.inactive": "Inactive",
+  "label.clear": "Clear Filters",
   "labno.alt.prefix.instruction": "Prefix for pre-printed barcode labels (4 characters) :",
   "labno.alt.prefix.note": "NOTE: If this prefix has already been used, the numbering will continue from the last number generated.",
   "labno.alt.prefix.use": "Use the same accession number format and pool of available numbers as Order Entry Generation.",

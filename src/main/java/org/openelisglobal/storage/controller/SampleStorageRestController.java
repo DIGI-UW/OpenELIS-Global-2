@@ -9,6 +9,7 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.form.SampleAssignmentForm;
 import org.openelisglobal.storage.service.SampleStorageService;
+import org.openelisglobal.storage.service.StorageDashboardService;
 import org.openelisglobal.storage.service.StorageLocationService;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
 import org.slf4j.Logger;
@@ -16,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -37,11 +39,23 @@ public class SampleStorageRestController extends BaseRestController {
     @Autowired
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
 
+    @Autowired
+    private StorageDashboardService storageDashboardService;
+
     /**
      * Get all samples with storage assignments GET /rest/storage/samples
+     * Supports filtering by location and status (FR-065)
+     * 
+     * @param countOnly If "true", returns metrics only
+     * @param location  Optional location filter (hierarchical path substring)
+     * @param status    Optional status filter (active, disposed, etc.)
      */
     @GetMapping("")
-    public ResponseEntity<List<Map<String, Object>>> getSamples(@RequestParam(required = false) String countOnly) {
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<Map<String, Object>>> getSamples(
+            @RequestParam(required = false) String countOnly,
+            @RequestParam(required = false) String location,
+            @RequestParam(required = false) String status) {
         try {
             if ("true".equals(countOnly)) {
                 // Return count metrics only
@@ -71,37 +85,17 @@ public class SampleStorageRestController extends BaseRestController {
                 response.add(metrics);
                 return ResponseEntity.ok(response);
             } else {
-                // Return full list of samples with assignments
-                List<SampleStorageAssignment> assignments = sampleStorageAssignmentDAO.getAll();
-                List<Map<String, Object>> response = new ArrayList<>();
-
-                for (SampleStorageAssignment assignment : assignments) {
-                    Map<String, Object> map = new HashMap<>();
-                    if (assignment.getSample() != null) {
-                        map.put("id", assignment.getSample().getId());
-                        map.put("sampleId", assignment.getSample().getId());
-                        // Sample type is not directly available on Sample - would require SampleItem
-                        // relationship
-                        // For now, return empty string or use accession number as identifier
-                        map.put("type",
-                                assignment.getSample().getAccessionNumber() != null
-                                        ? assignment.getSample().getAccessionNumber()
-                                        : "");
-                        map.put("status",
-                                assignment.getSample().getStatus() != null ? assignment.getSample().getStatus()
-                                        : "active");
-                    }
-                    if (assignment.getStoragePosition() != null) {
-                        String hierarchicalPath = storageLocationService
-                                .buildHierarchicalPath(assignment.getStoragePosition());
-                        map.put("location", hierarchicalPath);
-                    }
-                    map.put("assignedBy", assignment.getAssignedByUserId());
-                    map.put("date",
-                            assignment.getAssignedDate() != null ? assignment.getAssignedDate().toString() : "");
-                    response.add(map);
+                // Apply filters if provided (FR-065: Samples tab - filter by location and status)
+                List<Map<String, Object>> response;
+                if (location != null || status != null) {
+                    response = storageDashboardService.filterSamples(location, status);
+                    logger.info("Returning {} filtered samples (location={}, status={})", response.size(), location,
+                            status);
+                } else {
+                    // No filters - return all samples
+                    response = sampleStorageService.getAllSamplesWithAssignments();
+                    logger.info("Returning {} samples with storage assignments", response.size());
                 }
-
                 return ResponseEntity.ok(response);
             }
         } catch (Exception e) {

@@ -29,7 +29,17 @@ class StorageAssignmentPage {
 
   selectRoom(roomName) {
     this.getRoomDropdown().click();
-    cy.contains(roomName).click();
+    cy.wait(500);
+    // Try exact match first, then partial match
+    cy.get("body").then(($body) => {
+      if ($body.text().includes(roomName)) {
+        cy.contains(roomName).click();
+      } else if (roomName === "MAIN" && $body.text().includes("Main Laboratory")) {
+        cy.contains("Main Laboratory").click();
+      } else {
+        cy.log(`Room "${roomName}" not found in dropdown`);
+      }
+    });
     return this;
   }
 

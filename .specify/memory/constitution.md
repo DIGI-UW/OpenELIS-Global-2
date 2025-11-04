@@ -1,6 +1,55 @@
 # OpenELIS Global 3.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - Service Layer Data Compilation Requirement
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.3.0 → 1.4.0
+Change Type: MINOR - Critical architectural principle added
+Date: 2025-11-04
+
+Added Sections:
+  - Principle IV (Layered Architecture) > Services: Data Compilation Rule
+    * NEW: Services MUST eagerly fetch and compile ALL data needed for responses
+    * NEW: Controllers MUST NOT traverse entity relationships
+    * NEW: Services must return complete DTOs/maps with all hierarchical data resolved
+    * Rationale: Prevents LazyInitializationException when transactions close
+
+  - Principle IV > Anti-Patterns: Added "Controllers accessing entity relationships"
+    * Explicit prohibition of relationship traversal in controllers
+    * Example: `position.getParentRack().getParentShelf()` is anti-pattern
+
+Rationale for Changes:
+  During Phase 3 implementation of feature 001-sample-storage, controller attempted
+  to build hierarchical paths by traversing relationships:
+  `assignment.getStoragePosition().getParentRack().getParentShelf().getParentDevice().getParentRoom()`
+  This caused LazyInitializationException because parent relationships are LAZY-loaded
+  and the service transaction had already closed. The fix required moving all data
+  compilation to the service layer using JOIN FETCH queries to eagerly load the
+  entire hierarchy within the transaction.
+
+  This is a fundamental requirement for transactional Hibernate/JPA applications:
+  - Lazy loading only works within active transactions
+  - Controllers are outside transaction boundaries
+  - Services must return complete, ready-to-use data structures
+
+Templates Requiring Updates:
+  ⚠️ .specify/templates/plan-template.md - Add service layer data compilation to Constitution Check
+  ⚠️ .specify/templates/spec-template.md - Add requirement for service methods to return complete DTOs
+  ⚠️ .specify/templates/tasks-template.md - Add task template for service layer data compilation
+
+Follow-up TODOs:
+  - Document HQL JOIN FETCH patterns for eager loading hierarchies
+  - Add code examples showing service method returning complete maps/DTOs
+  - Review existing controllers for relationship traversal violations
+
+Commit Message:
+  docs: amend constitution to v1.4.0 (service layer data compilation requirement)
+
+  - Add critical rule: Services must compile all data within transaction
+  - Prohibit relationship traversal in controllers
+  - Prevents LazyInitializationException in transactional Hibernate applications
+  - Based on Phase 3 implementation experience (001-sample-storage)
+
 SYNC IMPACT REPORT - Annotation-Based Hibernate Mappings & Pre-Commit Formatting
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.2.0 → 1.3.0
@@ -275,6 +324,8 @@ direct database access from controllers, NO business logic in DAOs.
    - Call DAOs for persistence, FHIR services for sync
    - Validation logic before persistence
    - Logging via `LogEvent.logError()` for errors
+   - **CRITICAL - Data Compilation Rule**: Services MUST eagerly fetch and compile ALL data needed for the response within the service transaction. Controllers MUST NOT traverse entity relationships (e.g., `assignment.getStoragePosition().getParentRack().getParentShelf()`). Services must return complete DTOs/maps with all hierarchical data already resolved. This prevents lazy loading exceptions when transactions close.
+   - **Rationale**: Hibernate lazy loading only works within an active transaction. If controllers access relationships after the service transaction commits, `LazyInitializationException` occurs. Services must use `JOIN FETCH` in HQL queries to eagerly load all required relationships.
 
 4. **Controllers** (REST Endpoints): `org.openelisglobal.{module}.controller`
 
@@ -300,6 +351,7 @@ mixes with HTTP handling and business rules.
 - Native SQL in Java code (breaks database portability, bypasses Hibernate
   caching)
 - Class-level variables in controllers (thread safety violations)
+- **Controllers accessing entity relationships** (e.g., `position.getParentRack().getParentShelf()`) - Services must return complete data structures with all relationships resolved within the transaction
 
 ---
 
@@ -785,10 +837,11 @@ sync.
 
 ---
 
-**Version**: 1.3.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-11-03
+**Version**: 1.4.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-11-04
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team
+  Amendment v1.4.0: Service layer data compilation requirement (2025-11-04)
   Amendment v1.3.0: Annotation-based Hibernate mappings + pre-commit formatting enforcement (2025-11-03)
   Amendment v1.2.0: ORM validation test requirement (2025-10-31)
   Amendment v1.1.0: Technical stack clarifications (Java 21, JUnit 4, Jakarta EE 9)
