@@ -862,12 +862,14 @@ audit log records movement
       `frontend/src/components/storage/SampleStorage/BulkMoveModal.jsx` with
       auto-assign preview, editable position assignments, validation for
       sufficient capacity
-- [ ] T094 [US2B] Integrate SampleActionsOverflowMenu into StorageDashboard samples table
+- [x] T094 [US2B] Integrate SampleActionsOverflowMenu into StorageDashboard samples table
       `frontend/src/components/storage/StorageDashboard.jsx`: Add overflow menu (⋮) to Actions column,
       trigger MoveSampleModal, DisposeSampleModal, ViewStorageModal on corresponding menu item clicks
+      - **Note**: Used SampleActionsContainer component to encapsulate menu and modals
 - [ ] T095 [US2B] Add "Bulk Move" action to StorageDashboard component: Add bulk
       selection checkboxes, trigger BulkMoveModal with selected samples
-- [ ] T096 Run frontend tests → Verify PASS: `npm test -- MoveLocationModal SampleActionsOverflowMenu`
+- [x] T096 Run frontend tests → Verify PASS: `npm test -- MoveLocationModal SampleActionsOverflowMenu`
+      - **Note**: All 7 tests passing for SampleActionsOverflowMenu, all modal tests passing
 
 ### End-to-End Tests
 
@@ -876,20 +878,20 @@ audit log records movement
       testMoveSampleBetweenLocations_AuditTrailCreated,
       testBulkMoveSamples_AutoAssignsPositions,
       testBulkMove_ManuallyEditPositions, testMovement_PreviousPositionFreed
-- [ ] T097a [US2B] Enhance Cypress E2E test
+- [x] T097a [US2B] Enhance Cypress E2E test
       `frontend/cypress/e2e/storageMovement.cy.js` to include overflow menu tests:
       testOverflowMenu_ShowsAllFourItems, testOverflowMenu_ViewAuditIsDisabled,
       testOverflowMenu_MoveOpensMoveModal, testOverflowMenu_DisposeOpensDisposeModal,
       testOverflowMenu_ViewStorageOpensViewStorageModal
-- [ ] T097b [US2B] Enhance Cypress E2E test
+- [x] T097b [US2B] Enhance Cypress E2E test
       `frontend/cypress/e2e/storageMovement.cy.js` to include move modal UI tests:
       testMoveModal_DisplaysCurrentLocation, testMoveModal_DisplaysDownwardArrow,
       testMoveModal_UpdatesSelectedLocationPreview, testMoveModal_ValidatesDifferentLocation
-- [ ] T097c [US2B] Create Cypress E2E test
+- [x] T097c [US2B] Create Cypress E2E test
       `frontend/cypress/e2e/storageDisposal.cy.js` for dispose modal UI (deferred workflow):
       testDisposeModal_DisplaysWarningAlert, testDisposeModal_RequiresConfirmationCheckbox,
       testDisposeModal_ConfirmButtonDisabledUntilChecked, testDisposeModal_DisplaysDestructiveStyling
-- [ ] T097d [US2B] Create Cypress E2E test
+- [x] T097d [US2B] Create Cypress E2E test
       `frontend/cypress/e2e/storageViewStorage.cy.js` for view storage modal:
       testViewStorageModal_DisplaysSampleInfo, testViewStorageModal_DisplaysCurrentLocation,
       testViewStorageModal_AllowsEditingAssignment, testViewStorageModal_SavesChanges
