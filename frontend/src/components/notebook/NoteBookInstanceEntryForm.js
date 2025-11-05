@@ -678,31 +678,39 @@ const NoteBookInstanceEntryForm = () => {
                         <Column lg={14} md={8} sm={4}>
                           {page.content}
                         </Column>
-                        {page.tests && Array.isArray(page.tests) && page.tests.length > 0 && (
-                          <>
-                            <Column lg={2} md={8} sm={4}>
-                              <h6>
-                                {intl.formatMessage({
-                                  id: "barcode.label.info.tests",
-                                })}
-                              </h6>
-                            </Column>
-                            <Column lg={14} md={8} sm={4}>
-                              <div>
-                                {page.tests.map((testId, testIndex) => {
-                                  const test = allTests.find(
-                                    (t) => t.id === testId,
-                                  );
-                                  return test ? (
-                                    <Tag key={testIndex} type="blue" size="sm">
-                                      {test.value}
-                                    </Tag>
-                                  ) : null;
-                                })}
-                              </div>
-                            </Column>
-                          </>
-                        )}
+                        {page.tests &&
+                          Array.isArray(page.tests) &&
+                          page.tests.length > 0 && (
+                            <>
+                              <Column lg={2} md={8} sm={4}>
+                                <h6>
+                                  {intl.formatMessage({
+                                    id: "barcode.label.info.tests",
+                                  })}
+                                </h6>
+                              </Column>
+                              <Column lg={14} md={8} sm={4}>
+                                <div>
+                                  {page.tests.map((testId, testIndex) => {
+                                    const test = allTests.find(
+                                      (t) => t.id == testId,
+                                    );
+                                    return test ? (
+                                      <Tag
+                                        key={testIndex}
+                                        type="blue"
+                                        size="sm"
+                                      >
+                                        {test.value}
+                                      </Tag>
+                                    ) : (
+                                      <></>
+                                    );
+                                  })}
+                                </div>
+                              </Column>
+                            </>
+                          )}
                         <Column lg={16} md={8} sm={4}>
                           <br />
                           <Button

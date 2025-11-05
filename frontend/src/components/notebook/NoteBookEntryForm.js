@@ -664,7 +664,7 @@ const NoteBookEntryForm = () => {
                                 <div>
                                   {page.tests.map((testId, testIndex) => {
                                     const test = allTests.find(
-                                      (t) => t.id === testId,
+                                      (t) => t.id == testId,
                                     );
                                     return test ? (
                                       <Tag
@@ -674,7 +674,9 @@ const NoteBookEntryForm = () => {
                                       >
                                         {test.value}
                                       </Tag>
-                                    ) : null;
+                                    ) : (
+                                      <></>
+                                    );
                                   })}
                                 </div>
                               </Column>
