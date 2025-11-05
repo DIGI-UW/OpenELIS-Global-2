@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <property name="now" value="now()" dbms="postgresql" />
+
+    <changeSet id="23-10-2025" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <columnExists columnName="external_id" schemaName="clinlims" tableName="sample_item" />
+                <sqlCheck expectedResult="0"> SELECT COUNT(*) FROM information_schema.columns WHERE
+                    table_schema = 'clinlims' AND table_name = 'sample_item' AND column_name =
+                    'external_id' AND character_maximum_length >= 40 </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Modify external_id column length from 20 to 40</comment>
+        <modifyDataType schemaName="clinlims"
+            tableName="sample_item"
+            columnName="external_id"
+            newDataType="varchar(40)" />
+    </changeSet>
+
+    <changeSet id="add-voided-22-10-2025" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists columnName="voided" schemaName="clinlims" tableName="sample_item" />
+            </not>
+        </preConditions>
+
+        <comment>Add voided column to sample_item table</comment>
+        <addColumn tableName="sample_item">
+            <column name="voided" type="boolean" defaultValueBoolean="false" />
+        </addColumn>
+        <update tableName="sample_item">
+            <column name="voided" valueBoolean="false" />
+        </update>
+    </changeSet>
+
+    <changeSet id="add-void-reason-23-10-2025" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists columnName="void_reason" schemaName="clinlims"
+                    tableName="sample_item" />
+            </not>
+        </preConditions>
+        <comment>Add void_reason column to sample_item table</comment>
+        <addColumn tableName="sample_item">
+            <column name="void_reason" type="varchar(200)" />
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

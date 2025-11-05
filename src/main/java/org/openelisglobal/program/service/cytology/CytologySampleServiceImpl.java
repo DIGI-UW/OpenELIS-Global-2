@@ -113,6 +113,7 @@ public class CytologySampleServiceImpl extends AuditableBaseObjectServiceImpl<Cy
     public void assignCytoPathologist(Integer cytologySampleId, SystemUser systemUser) {
         CytologySample cytologySample = get(cytologySampleId);
         cytologySample.setCytoPathologist(systemUser);
+        update(cytologySample);
     }
 
     @Override
@@ -146,9 +147,10 @@ public class CytologySampleServiceImpl extends AuditableBaseObjectServiceImpl<Cy
         }
 
         cytologySample.getReports().removeAll(cytologySample.getReports());
-        if (form.getReports() != null)
+        if (form.getReports() != null) {
             form.getReports().stream().forEach(e -> e.setId(null));
-        cytologySample.getReports().addAll(form.getReports());
+            cytologySample.getReports().addAll(form.getReports());
+        }
 
         if (form.getDiagnosis() != null) {
             cytologySample.setDiagnosis(form.getDiagnosis());
