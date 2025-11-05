@@ -1,6 +1,58 @@
 # OpenELIS Global 3.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - Transaction Management in Service Layer Only
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.4.0 → 1.5.0
+Change Type: MINOR - Explicit prohibition of transaction annotations in controllers
+Date: 2025-11-05
+
+Added Sections:
+  - Principle IV (Layered Architecture) > Controllers: Explicit prohibition of @Transactional
+    * NEW: Controllers MUST NOT use @Transactional annotations
+    * NEW: All transaction management MUST be in service layer only
+    * Rationale: Transaction boundaries belong in service layer, not controller layer
+
+  - Principle IV > Anti-Patterns: Added "@Transactional annotations in controllers"
+    * Explicit prohibition: @Transactional in controller methods is anti-pattern
+    * Example: `@GetMapping("/endpoint") @Transactional(readOnly = true)` is prohibited
+
+Modified Sections:
+  - Principle IV > Services: Strengthened transaction rule language
+    * CHANGED: "Transactions start here (NOT in controllers)" to "Transactions start here (NOT in controllers) - @Transactional annotations MUST be on service methods only, NEVER on controller methods"
+
+Rationale for Changes:
+  During Phase 3.1 implementation of feature 001-sample-storage (search functionality),
+  @Transactional annotations were incorrectly placed on controller methods. This violates
+  the layered architecture principle that transaction boundaries belong in the service layer,
+  not the controller layer. Controllers should be thin and delegate to services, which
+  manage transaction boundaries.
+
+  This is a fundamental architectural principle:
+  - Controllers handle HTTP request/response mapping only
+  - Services handle business logic AND transaction management
+  - Transaction boundaries must be at the service layer for proper error handling and rollback
+  - Mixing transaction management in controllers creates unclear boundaries and violates separation of concerns
+
+Templates Requiring Updates:
+  ✅ .specify/templates/plan-template.md - Added explicit prohibition of @Transactional in controllers to Constitution Check
+  ✅ .specify/templates/spec-template.md - Added transaction management rule to architectural constraints (CR-003)
+  ⚠️ .specify/templates/tasks-template.md - Add verification task for transaction annotation placement (pending)
+
+Follow-up TODOs:
+  - Review existing controllers for @Transactional violations (SampleStorageRestController has one remaining)
+  - Add code review checklist item: "Verify no @Transactional in controllers"
+  - Document transaction rollback behavior in service layer
+
+Commit Message:
+  docs: amend constitution to v1.5.0 (explicit prohibition of @Transactional in controllers)
+
+  - Add explicit rule: Controllers MUST NOT use @Transactional annotations
+  - Add anti-pattern: @Transactional in controller methods
+  - Strengthen service layer transaction rule language
+  - Clarifies transaction boundary management in layered architecture
+  - Based on Phase 3.1 implementation experience (001-sample-storage search functionality)
+
 SYNC IMPACT REPORT - Service Layer Data Compilation Requirement
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.3.0 → 1.4.0
@@ -320,7 +372,7 @@ direct database access from controllers, NO business logic in DAOs.
 3. **Services** (Business Logic): `org.openelisglobal.{module}.service`
 
    - Interface + Implementation (annotate with `@Service` + `@Transactional`)
-   - Transactions start here (NOT in controllers)
+   - **Transactions start here (NOT in controllers)** - `@Transactional` annotations MUST be on service methods only, NEVER on controller methods
    - Call DAOs for persistence, FHIR services for sync
    - Validation logic before persistence
    - Logging via `LogEvent.logError()` for errors
@@ -335,6 +387,7 @@ direct database access from controllers, NO business logic in DAOs.
    - **Controllers are singletons** - NO class-level variables (thread safety)
    - Responsibilities: Form validation, request/response mapping, service calls
    - NOT for business logic (delegate to services)
+   - **PROHIBITED**: NO `@Transactional` annotations on controller methods - transaction management belongs in service layer only
 
 5. **Forms/DTOs**: `org.openelisglobal.{module}.form`
    - Simple beans for client ↔ server communication
@@ -352,6 +405,7 @@ mixes with HTTP handling and business rules.
   caching)
 - Class-level variables in controllers (thread safety violations)
 - **Controllers accessing entity relationships** (e.g., `position.getParentRack().getParentShelf()`) - Services must return complete data structures with all relationships resolved within the transaction
+- **@Transactional annotations in controllers** - Transaction management MUST be in service layer only. Controllers delegate to services, which manage transaction boundaries. Example anti-pattern: `@GetMapping("/endpoint") @Transactional(readOnly = true)`
 
 ---
 
@@ -837,10 +891,11 @@ sync.
 
 ---
 
-**Version**: 1.4.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-11-04
+**Version**: 1.5.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-11-05
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team
+  Amendment v1.5.0: Explicit prohibition of @Transactional in controllers (2025-11-05)
   Amendment v1.4.0: Service layer data compilation requirement (2025-11-04)
   Amendment v1.3.0: Annotation-based Hibernate mappings + pre-commit formatting enforcement (2025-11-03)
   Amendment v1.2.0: ORM validation test requirement (2025-10-31)

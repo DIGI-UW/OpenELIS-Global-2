@@ -51,7 +51,6 @@ public class SampleStorageRestController extends BaseRestController {
      * @param status    Optional status filter (active, disposed, etc.)
      */
     @GetMapping("")
-    @Transactional(readOnly = true)
     public ResponseEntity<List<Map<String, Object>>> getSamples(
             @RequestParam(required = false) String countOnly,
             @RequestParam(required = false) String location,

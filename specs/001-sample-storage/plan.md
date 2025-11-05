@@ -16,9 +16,13 @@ dashboard features (drill-down navigation, CSV export) to post-POC iterations.
 **Technical Approach**: Leverage existing OpenELIS infrastructure (5-layer
 backend architecture, HAPI FHIR R4 server, Carbon Design System UI) to add
 storage location tracking. Create reusable Storage Location Selector widget with
-three input modes (cascading dropdowns, type-ahead autocomplete, barcode
-scanning). Integrate widget into existing sample entry and search workflows. Map
-storage entities to FHIR Location resources for external interoperability.
+two-tier design (compact inline view + expanded modal) supporting cascading
+dropdowns, type-ahead autocomplete, and quick-find search. Widget used in both
+orders (SamplePatientEntry) and results (LogbookResults) workflows. Implement
+samples table overflow menu with Move, Dispose, View Audit (placeholder), and
+View Storage actions. Create three modals (Move, Dispose, View Storage) matching
+Figma designs with detailed UI specifications. Map storage entities to FHIR
+Location resources for external interoperability.
 
 ## Technical Context
 
@@ -52,7 +56,9 @@ searches/saves), no optimization required
 
 - 5 storage entity types (Room, Device, Shelf, Rack, Position)
 - 3 REST API endpoint groups (hierarchy CRUD, assignment, movement)
-- 1 reusable UI widget (Storage Location Selector)
+- 1 reusable UI widget (Storage Location Selector with two-tier design)
+- 3 modal components (Move, Dispose, View Storage)
+- 1 overflow menu component (samples table row actions)
 - 2 integration points (SamplePatientEntry, LogbookResults)
 
 **Development Approach**: Test-Driven Development (TDD)
@@ -166,22 +172,29 @@ src/test/java/org/openelisglobal/storage/
 # Frontend (React) - OpenELIS Global existing structure
 frontend/src/components/storage/
 ├── StorageLocationSelector/
-│   ├── StorageLocationSelector.jsx - Main reusable widget
-│   ├── CascadingDropdownMode.jsx
-│   ├── AutocompleteMode.jsx
-│   ├── BarcodeScanMode.jsx
+│   ├── StorageLocationSelector.jsx - Main reusable widget (two-tier: compact + modal)
+│   ├── CompactLocationView.jsx - Compact inline view showing location path + expand button
+│   ├── LocationSelectorModal.jsx - Expanded modal view with full assignment form
+│   ├── QuickFindSearch.jsx - Quick-find search component (type-ahead autocomplete)
+│   ├── CascadingDropdownMode.jsx - Cascading dropdowns for expanded modal
+│   ├── AutocompleteMode.jsx - Type-ahead autocomplete for expanded modal
+│   ├── BarcodeScanMode.jsx - Barcode scan input (deferred to later stage)
 │   ├── StorageLocationSelector.test.jsx
 │   └── index.js
 ├── StorageDashboard/
 │   ├── StorageDashboard.jsx - Main dashboard component
+│   ├── StorageLocationsMetricCard.jsx - Color-coded metric card showing location breakdown by type
 │   ├── LocationFilterDropdown.jsx - Single location dropdown with autocomplete and tree view
 │   ├── LocationTreeView.jsx - Hierarchical tree view component (expand/collapse)
 │   ├── LocationAutocomplete.jsx - Autocomplete search component (flat list with full paths)
 │   ├── LocationFilterDropdown.test.jsx
+│   ├── StorageLocationsMetricCard.test.jsx
 │   └── index.js
 ├── SampleStorage/
-│   ├── AssignLocationModal.jsx
-│   ├── MoveLocationModal.jsx
+│   ├── MoveSampleModal.jsx - Move sample modal with current/new location selectors
+│   ├── DisposeSampleModal.jsx - Dispose sample modal with reason/method/confirmation
+│   ├── ViewStorageModal.jsx - View/edit storage location assignment modal
+│   ├── SampleActionsOverflowMenu.jsx - Overflow menu component for samples table rows
 │   ├── BulkMoveModal.jsx
 │   └── index.js
 └── hooks/
@@ -267,12 +280,29 @@ Phase 3 learnings)
    - Validates: Error responses (400, 404, 409) for validation failures
 
 4. **Frontend Unit Tests** - Write tests for React components
-   - Test: `StorageLocationSelector.test.jsx`, `CascadingDropdownMode.test.jsx`,
-     etc.
+   - Test: `StorageLocationSelector.test.jsx`, `CompactLocationView.test.jsx`, `LocationSelectorModal.test.jsx`, `QuickFindSearch.test.jsx`, `CascadingDropdownMode.test.jsx`, etc.
+   - Validates: Compact inline view displays location path correctly
+   - Validates: Expand button opens modal
+   - Validates: Quick-find search filters locations correctly
    - Validates: Cascading dropdown state management
-   - Validates: Barcode input parsing
+   - Validates: Barcode input parsing (deferred functionality)
    - Validates: Hierarchical path display
    - Validates: API error handling and user feedback
+   - Test: `SampleActionsOverflowMenu.test.jsx`
+   - Validates: Menu renders with all four items (Move, Dispose, View Audit placeholder, View Storage)
+   - Validates: "View Audit" is disabled
+   - Test: `MoveSampleModal.test.jsx`
+   - Validates: Modal renders with current location, new location selector, preview section
+   - Validates: Location selection updates preview
+   - Validates: Validation prevents moving to same location
+   - Test: `DisposeSampleModal.test.jsx`
+   - Validates: Modal renders with warning alert, sample info, disposal form fields
+   - Validates: "Confirm Disposal" button disabled until checkbox checked
+   - Validates: Validation requires reason and method selection
+   - Test: `ViewStorageModal.test.jsx`
+   - Validates: Modal renders with sample info, current location, full assignment form
+   - Validates: Form pre-populates with current location
+   - Validates: Validation requires room selection
 
 **Phase 3: Implementation (Make tests pass)**
 
@@ -290,7 +320,313 @@ Phase 3 learnings)
    - Integration into SamplePatientEntry, LogbookResults
    - Data fetching hooks
 
-**Phase 4: E2E Tests** - Validate complete workflows
+### Phase 3.1: Tab-Specific Search Functionality Implementation (FR-064(a))
+
+### Objective
+
+Implement tab-specific search functionality per FR-064 and FR-064a:
+- **Samples tab**: Debounced live search (300-500ms) by sample ID, accession number type/prefix, and assigned location (full hierarchical path)
+- **Rooms tab**: Search by name and code
+- **Devices tab**: Search by name, code, and type
+- **Shelves tab**: Search by name (label)
+- **Racks tab**: Search by name (label)
+
+All searches use case-insensitive partial/substring matching with OR logic (matches any of the specified fields).
+
+### TDD Approach
+
+Following strict test-first development:
+
+1. **Write failing tests** (Red phase)
+2. **Implement minimal code to pass** (Green phase)
+3. **Refactor while keeping tests green** (Refactor phase)
+
+### Test Specifications
+
+#### Backend Integration Tests (Write First)
+
+**File**: `src/test/java/org/openelisglobal/storage/controller/StorageSearchRestControllerTest.java`
+
+**Test Cases**:
+
+1. **Samples Search Tests**:
+   - `testSearchSamples_BySampleId_ReturnsMatching()` - Search by exact sample ID
+   - `testSearchSamples_ByAccessionPrefix_ReturnsMatching()` - Search by accession prefix (e.g., "S-2025" matches "S-2025-001")
+   - `testSearchSamples_ByLocationPath_ReturnsMatching()` - Search by location path substring (e.g., "Freezer" matches "Main Laboratory > Freezer Unit 1 > ...")
+   - `testSearchSamples_CombinedFields_OR_Logic()` - Search matches ANY of the three fields (OR logic)
+   - `testSearchSamples_CaseInsensitive()` - "freezer" matches "Freezer Unit 1"
+   - `testSearchSamples_PartialMatch()` - "S-202" matches "S-2025-001"
+   - `testSearchSamples_EmptyQuery_ReturnsAll()` - Empty search returns all samples
+   - `testSearchSamples_NoMatches_ReturnsEmpty()` - No matches returns empty array
+
+2. **Rooms Search Tests**:
+   - `testSearchRooms_ByName_ReturnsMatching()` - Search by name (case-insensitive partial)
+   - `testSearchRooms_ByCode_ReturnsMatching()` - Search by code (case-insensitive partial)
+   - `testSearchRooms_CombinedFields_OR_Logic()` - Matches name OR code
+
+3. **Devices Search Tests**:
+   - `testSearchDevices_ByName_ReturnsMatching()` - Search by name
+   - `testSearchDevices_ByCode_ReturnsMatching()` - Search by code
+   - `testSearchDevices_ByType_ReturnsMatching()` - Search by type (freezer, refrigerator, etc.)
+   - `testSearchDevices_CombinedFields_OR_Logic()` - Matches name OR code OR type
+
+4. **Shelves Search Tests**:
+   - `testSearchShelves_ByLabel_ReturnsMatching()` - Search by label (case-insensitive partial)
+
+5. **Racks Search Tests**:
+   - `testSearchRacks_ByLabel_ReturnsMatching()` - Search by label (case-insensitive partial)
+
+**Test Data Setup**:
+- Use JDBC to insert test data (rooms, devices, shelves, racks, samples, assignments)
+- Ensure test data covers:
+  - Multiple samples with different accession prefixes
+  - Samples in different locations (different hierarchical paths)
+  - Entities with various names/codes/types for testing partial matches
+
+**API Contract**:
+- `GET /rest/storage/samples/search?q={searchTerm}` - Search samples
+- `GET /rest/storage/rooms/search?q={searchTerm}` - Search rooms
+- `GET /rest/storage/devices/search?q={searchTerm}` - Search devices
+- `GET /rest/storage/shelves/search?q={searchTerm}` - Search shelves
+- `GET /rest/storage/racks/search?q={searchTerm}` - Search racks
+
+**Expected Response Format**:
+- All endpoints return `List<Map<String, Object>>` matching existing API format
+- Samples: Include sample ID, type, status, location (full path), assigned by, date
+- Rooms: Include id, name, code, description, active
+- Devices: Include id, name, code, type, roomId, roomName, active
+- Shelves: Include id, label, deviceId, deviceName, roomId, roomName, active
+- Racks: Include id, label, shelfId, shelfLabel, deviceId, deviceName, roomId, roomName, active
+
+#### Backend Service Unit Tests (Write First)
+
+**File**: `src/test/java/org/openelisglobal/storage/service/StorageSearchServiceImplTest.java`
+
+**Test Cases**:
+
+1. **Sample Search Service Tests**:
+   - `testSearchSamples_FiltersBySampleId()` - Filter samples by ID substring
+   - `testSearchSamples_FiltersByAccessionPrefix()` - Filter by accession prefix
+   - `testSearchSamples_FiltersByLocationPath()` - Filter by location path substring
+   - `testSearchSamples_OR_Logic()` - Matches if ANY field matches
+   - `testSearchSamples_CaseInsensitive()` - Case-insensitive matching
+   - `testSearchSamples_EmptyQuery_ReturnsAll()` - Empty query returns all
+   - `testSearchSamples_NullQuery_ReturnsAll()` - Null query returns all
+
+2. **Room Search Service Tests**:
+   - `testSearchRooms_FiltersByNameOrCode()` - Matches name OR code
+
+3. **Device Search Service Tests**:
+   - `testSearchDevices_FiltersByNameCodeOrType()` - Matches name OR code OR type
+
+4. **Shelf Search Service Tests**:
+   - `testSearchShelves_FiltersByLabel()` - Matches label
+
+5. **Rack Search Service Tests**:
+   - `testSearchRacks_FiltersByLabel()` - Matches label
+
+**Mock Strategy**:
+- Mock DAO calls to return test data
+- Verify service calls DAO methods with correct filters
+- Test search logic in isolation
+
+#### Frontend Unit Tests (Write First)
+
+**File**: `frontend/src/components/storage/__tests__/StorageDashboardSearch.test.jsx`
+
+**Test Cases**:
+
+1. **Search Input Component Tests**:
+   - `testSearchInput_RendersCorrectly()` - Renders search input with placeholder
+   - `testSearchInput_UpdatesOnChange()` - Updates state on input change
+   - `testSearchInput_DebouncedForSamples()` - Debounces input for samples tab (300-500ms)
+   - `testSearchInput_ImmediateForOtherTabs()` - Immediate or submit-button for other tabs
+
+2. **Search Results Tests**:
+   - `testSearchResults_FiltersSamples()` - Filters samples by search term
+   - `testSearchResults_FiltersRooms()` - Filters rooms by search term
+   - `testSearchResults_FiltersDevices()` - Filters devices by search term
+   - `testSearchResults_FiltersShelves()` - Filters shelves by search term
+   - `testSearchResults_FiltersRacks()` - Filters racks by search term
+   - `testSearchResults_CaseInsensitive()` - Case-insensitive matching
+   - `testSearchResults_PartialMatch()` - Partial substring matching
+   - `testSearchResults_EmptySearch_ShowsAll()` - Empty search shows all items
+
+3. **Tab-Specific Search Tests**:
+   - `testSamplesTab_SearchesByIdLocationPrefix()` - Samples tab searches by ID, accession prefix, location
+   - `testRoomsTab_SearchesByNameCode()` - Rooms tab searches by name and code
+   - `testDevicesTab_SearchesByNameCodeType()` - Devices tab searches by name, code, type
+   - `testShelvesTab_SearchesByLabel()` - Shelves tab searches by label
+   - `testRacksTab_SearchesByLabel()` - Racks tab searches by label
+
+**Mock Strategy**:
+- Mock API calls (`getFromOpenElisServer`)
+- Use React Testing Library for component rendering
+- Test user interactions (typing, debouncing)
+
+#### Frontend E2E Tests (Write First)
+
+**File**: `frontend/cypress/e2e/storageSearch.cy.js` (update existing)
+
+**Test Cases**:
+
+1. **Samples Tab Search E2E**:
+   - `testSamplesSearch_BySampleId()` - Search by sample ID, verify results
+   - `testSamplesSearch_ByAccessionPrefix()` - Search by accession prefix, verify results
+   - `testSamplesSearch_ByLocationPath()` - Search by location path, verify results
+   - `testSamplesSearch_Debounced()` - Verify debounced search (300-500ms delay)
+   - `testSamplesSearch_CaseInsensitive()` - Verify case-insensitive matching
+   - `testSamplesSearch_PartialMatch()` - Verify partial substring matching
+
+2. **Rooms Tab Search E2E**:
+   - `testRoomsSearch_ByName()` - Search rooms by name
+   - `testRoomsSearch_ByCode()` - Search rooms by code
+
+3. **Devices Tab Search E2E**:
+   - `testDevicesSearch_ByName()` - Search devices by name
+   - `testDevicesSearch_ByCode()` - Search devices by code
+   - `testDevicesSearch_ByType()` - Search devices by type
+
+4. **Shelves Tab Search E2E**:
+   - `testShelvesSearch_ByLabel()` - Search shelves by label
+
+5. **Racks Tab Search E2E**:
+   - `testRacksSearch_ByLabel()` - Search racks by label
+
+**Test Strategy**:
+- Load test fixtures with known data
+- Intercept API calls to verify search parameters
+- Verify UI updates with filtered results
+- Verify search persists across tab switches
+
+### Implementation Tasks (After Tests Pass)
+
+#### Backend Implementation
+
+1. **Create Search Service Interface** (`StorageSearchService.java`):
+   ```java
+   List<Map<String, Object>> searchSamples(String query);
+   List<StorageRoom> searchRooms(String query);
+   List<StorageDevice> searchDevices(String query);
+   List<StorageShelf> searchShelves(String query);
+   List<StorageRack> searchRacks(String query);
+   ```
+
+2. **Implement Search Service** (`StorageSearchServiceImpl.java`):
+   - Sample search: Query by sample ID, accession prefix, location path (OR logic)
+   - Room search: Query by name OR code (case-insensitive LIKE)
+   - Device search: Query by name OR code OR type (case-insensitive LIKE)
+   - Shelf search: Query by label (case-insensitive LIKE)
+   - Rack search: Query by label (case-insensitive LIKE)
+   - All searches use case-insensitive substring matching
+
+3. **Update REST Controllers**:
+   - Add `GET /rest/storage/samples/search?q={term}` endpoint
+   - Add `GET /rest/storage/rooms/search?q={term}` endpoint
+   - Add `GET /rest/storage/devices/search?q={term}` endpoint
+   - Add `GET /rest/storage/shelves/search?q={term}` endpoint
+   - Add `GET /rest/storage/racks/search?q={term}` endpoint
+   - All endpoints return JSON arrays matching existing API format
+
+4. **Query Optimization**:
+   - Use database indexes on searchable columns (name, code, type, label)
+   - For samples location search: Use full-text search on hierarchical path or JOIN through hierarchy
+   - Consider PostgreSQL `ILIKE` for case-insensitive matching
+
+#### Frontend Implementation
+
+1. **Update Search Component** (`StorageDashboard.jsx`):
+   - Add search input field (already exists, update logic)
+   - Implement debounced search for samples tab (300-500ms delay)
+   - Implement search logic for each tab:
+     - Samples: Search by ID, accession prefix, location path
+     - Rooms: Search by name and code
+     - Devices: Search by name, code, and type
+     - Shelves: Search by label
+     - Racks: Search by label
+   - Use case-insensitive partial matching
+   - Combine search with existing filters (AND logic)
+
+2. **API Integration**:
+   - Call search endpoints when search term is entered
+   - For samples: Use debounced API calls (300-500ms delay)
+   - For other tabs: Use debounced or submit-button search
+   - Update table data with filtered results
+
+3. **Search State Management**:
+   - Store search term in component state
+   - Clear search when switching tabs
+   - Persist search term within tab (optional enhancement)
+
+### Testing Checklist
+
+- [ ] All backend integration tests pass
+- [ ] All backend service unit tests pass
+- [ ] All frontend unit tests pass
+- [ ] All E2E tests pass
+- [ ] Search works correctly for samples (ID, accession prefix, location)
+- [ ] Search works correctly for rooms (name, code)
+- [ ] Search works correctly for devices (name, code, type)
+- [ ] Search works correctly for shelves (label)
+- [ ] Search works correctly for racks (label)
+- [ ] Case-insensitive matching verified
+- [ ] Partial/substring matching verified
+- [ ] Debounced search (300-500ms) verified for samples tab
+- [ ] Empty search shows all items
+- [ ] Search combines correctly with filters (AND logic)
+- [ ] Performance acceptable (<2 seconds for 100,000+ records)
+
+### Dependencies
+
+- Existing filter functionality (FR-065) - search must work alongside filters
+- Existing API endpoints for fetching data
+- Existing table rendering components
+
+### Success Criteria
+
+- All tests pass (integration, unit, E2E)
+- Search functionality works for all 5 tabs per FR-064
+- Debounced search implemented for samples tab (300-500ms)
+- Case-insensitive partial matching working
+- Search combines with filters (AND logic)
+- Performance meets requirements (<2 seconds)
+
+---
+
+**Phase 4: Dashboard Storage Locations Metric Card & E2E Tests**
+
+### Dashboard Storage Locations Metric Card Implementation
+
+**Objective**: Implement color-coded Storage Locations metric card with breakdown by type and matching tab accents per FR-057 and FR-057a.
+
+**Requirements**:
+- Display formatted text list: "X rooms, Y devices, Z shelves, W racks" (active locations only)
+- Color-code text using Carbon Design System tokens:
+  - Rooms: `blue-70` (blue-70)
+  - Devices: `teal-70` (teal-70)
+  - Shelves: `purple-70` (purple-70)
+  - Racks: `orange-70` (orange-70)
+- Apply matching subtle accent colors to corresponding tab labels/backgrounds:
+  - Rooms tab: subtle blue accent matching "X rooms" text color
+  - Devices tab: subtle teal accent matching "Y devices" text color
+  - Shelves tab: subtle purple accent matching "Z shelves" text color
+  - Racks tab: subtle orange accent matching "W racks" text color
+- Tab coloring must be very subtle (light background tint or border accent, not overpowering)
+
+**Implementation Tasks**:
+1. Update `StorageDashboard.jsx` to calculate active location counts by type (Room, Device, Shelf, Rack)
+2. Create `StorageLocationsMetricCard.jsx` component displaying formatted breakdown with color-coded text
+3. Apply Carbon color tokens to metric card text using Carbon `Text` component or inline styles
+4. Update tab styling to include subtle accent colors matching metric card colors
+5. Ensure colorblind accessibility (Carbon tokens are WCAG compliant)
+
+**Testing**:
+- Verify metric card displays correct counts for active locations only
+- Verify color-coding matches Carbon Design System tokens
+- Verify tab accent colors are subtle and match metric card colors
+- Verify colorblind accessibility (test with colorblind simulation tools)
+
+### E2E Tests - Validate complete workflows
 
 1. **Cypress E2E Tests** - Test user scenarios end-to-end
    - Test: `storageAssignment.cy.js` (P1 user story)
@@ -304,6 +640,12 @@ Phase 3 learnings)
      - Test inactive location display (visual distinction)
      - Test combination of location filter and status filter
      - Verify Position-level locations excluded from dropdown (only Room/Device/Shelf/Rack)
+   - Test: `storageDashboardMetrics.cy.js` (Storage Locations metric card)
+     - Verify metric card displays formatted breakdown: "X rooms, Y devices, Z shelves, W racks"
+     - Verify color-coding matches specification (blue-70, teal-70, purple-70, orange-70)
+     - Verify only active locations included in counts
+     - Verify tab accent colors match metric card colors and are subtle
+     - Verify colorblind accessibility
 
 ### Test-First Principles
 
@@ -586,6 +928,22 @@ serves as the contract for:
     `{ sample_ids: [], target_rack_id, position_assignments: [{sample_id, position_coordinate}] }`
   - Response: `{ movement_ids: [], summary: { total, successful, failed } }`
 
+**Sample Disposal**:
+
+- `POST /rest/storage/samples/dispose` - Dispose sample
+  - Request: `{ sample_id, reason, method, notes, date_time }`
+  - Response: `{ disposal_id, sample_id, disposed_date, location_at_disposal }`
+  - Validation: Requires authorization (role-based permission check), reason and method required
+  - Note: Disposal workflow deferred to post-POC (P3), but endpoint structure defined
+
+**Location Quick-Find Search**:
+
+- `GET /rest/storage/locations/search?q={term}` - Search locations at any hierarchy level
+  - Query parameter: `q` - search term (location name or code)
+  - Response: `[{ id, name, code, type, hierarchical_path, level }]` - Array of matching locations with full hierarchical paths
+  - Behavior: Case-insensitive partial matching across Room, Device, Shelf, and Rack levels
+  - Example: `GET /rest/storage/locations/search?q=freezer` returns devices matching "freezer" with full paths like "Main Laboratory > Freezer Unit 1"
+
 **Barcode Generation**: ⏸️ Deferred to post-POC (not in P1/P2A/P2B core
 workflows)
 
@@ -683,13 +1041,23 @@ document serves as the specification for:
   dropdown
 - No special "inline" endpoints needed - standard CRUD operations
 
-**SamplePatientEntry Integration**:
+**SamplePatientEntry Integration** (Orders Workflow):
 
 - **Integration Point**: Below "Collector" field in sample collection section
 - **Widget Placement**: After collector dropdown, before sample collection time
 - **Behavior**: Optional assignment (can be left blank and assigned later)
-- **Component**: Embeds
-  `<StorageLocationSelector mode="assign" optional={true} />`
+- **Widget Structure**: Compact inline view showing selected location path (or "Not assigned") with "Expand" button
+- **Expanded Modal**: Opens full location assignment modal matching View Storage modal structure (sample info, current location, full assignment form)
+- **Component**: Embeds `<StorageLocationSelector workflow="orders" optional={true} />`
+
+**LogbookResults Integration** (Results Workflow):
+
+- **Integration Point**: Below existing referral/test result fields in expanded sample details
+- **Widget Structure**: Compact inline view with quick-find search input (type-ahead autocomplete) for rapidly finding existing locations + "Expand" button
+- **Quick-Find Search**: Matches location names/codes at any hierarchy level (Room, Device, Shelf, or Rack) using case-insensitive partial matching, displays full hierarchical path in results
+- **Expanded Modal**: Opens full location assignment modal matching View Storage modal structure (sample info, current location, full assignment form)
+- **Behavior**: Shows current location (read-only or editable based on permissions), allows Move action via overflow menu
+- **Component**: Embeds `<StorageLocationSelector workflow="results" showQuickFind={true} />`
 
 ### Task 1.4: Generate Quickstart (Test-First Development Guide)
 
@@ -720,7 +1088,7 @@ implementation code.
 
    ```bash
    cd /Users/pmanko/code/OpenELIS-Global-2
-   mvn clean install -DskipTests
+   mvn clean install -DskipTests -Dmaven.test.skip=true
    ```
 
 3. **Run Tests**
@@ -797,17 +1165,23 @@ implementation code.
 1. Navigate to Sample Patient Entry
 2. Complete sample accessioning
 3. In Storage Location Selector widget:
-   - Try cascading dropdown mode
-   - Try type-ahead autocomplete
-   - Try barcode scan (if scanner available)
+   - Verify compact inline view shows "Not assigned" initially
+   - Click "Expand" button to open full location assignment modal
+   - In expanded modal, try cascading dropdown mode (Room → Device → Shelf → Rack → Position)
+   - Try type-ahead autocomplete in expanded modal
+   - Verify modal shows sample info box and current location section
+   - Select location and verify hierarchical path updates in compact view
 4. Verify assignment saved with hierarchical path
 
 ### P2A: Sample Search/Retrieval
 
 1. Navigate to Logbook Results
 2. Search for sample ID
-3. Verify location displays in expanded view
-4. Navigate to Storage Dashboard, Samples tab
+3. Verify location displays in compact inline view (with quick-find search input)
+4. Test quick-find search: Type location name/code, verify autocomplete results show full hierarchical paths
+5. Select location from quick-find results, verify compact view updates
+6. Click "Expand" button to open full location assignment modal
+7. Navigate to Storage Dashboard, Samples tab
 5. Test single location dropdown filter:
    - Open location dropdown
    - Test autocomplete search (type "Freezer" to find devices)
@@ -819,12 +1193,61 @@ implementation code.
 
 ### P2B: Sample Movement
 
-1. Find sample with assigned location
-2. Click Actions → Move
-3. Select new location
-4. Enter reason
-5. Confirm move
-6. Verify audit trail updated
+1. Navigate to Storage Dashboard, Samples tab
+2. Find sample with assigned location
+3. Click overflow menu (⋮) in Actions column
+4. Verify menu shows: Move, Dispose, View Audit (placeholder/disabled), View Storage
+5. Click "Move" from overflow menu
+6. Verify Move modal opens with:
+   - Modal title "Move Sample" with subtitle
+   - Current location displayed in gray box
+   - Downward arrow icon separator
+   - New location selector in bordered box (Room/Device/Shelf/Rack dropdowns)
+   - "Selected Location" preview box (shows "Not selected" initially)
+   - Optional "Reason for Move" textarea
+   - Cancel and "Confirm Move" buttons
+7. Select new location, verify "Selected Location" preview updates
+8. Enter reason (optional)
+9. Click "Confirm Move"
+10. Verify audit trail updated
+
+### P2B Extended: View Storage Modal
+
+1. Navigate to Storage Dashboard, Samples tab
+2. Find sample with assigned location
+3. Click overflow menu (⋮) in Actions column
+4. Click "View Storage"
+5. Verify View Storage modal opens with:
+   - Modal title "Storage Location Assignment"
+   - Sample information section (Sample ID, Type, Status) in highlighted box
+   - Current Location section showing full hierarchical path in gray box
+   - Visual separator
+   - Full location assignment form (barcode scan input, Room/Device/Shelf/Rack/Position selectors, condition notes)
+   - Cancel and "Assign Storage Location" buttons
+6. Edit location assignment using form
+7. Verify changes saved
+
+### P3: Sample Disposal (Deferred to Post-POC)
+
+1. Navigate to Storage Dashboard, Samples tab
+2. Find sample to dispose
+3. Click overflow menu (⋮) in Actions column
+4. Click "Dispose"
+5. Verify Dispose modal opens with:
+   - Modal title "Dispose Sample" with subtitle
+   - Red warning alert at top ("This action cannot be undone")
+   - Sample information section (Sample ID, Type, Status) in gray box
+   - Current Storage Location section with location pin icon
+   - Disposal instructions info box
+   - Required "Disposal Reason" dropdown
+   - Required "Disposal Method" dropdown
+   - Optional "Additional Notes" textarea
+   - Confirmation checkbox ("I confirm...")
+   - Cancel and "Confirm Disposal" button (red/destructive styling, disabled until checkbox checked)
+6. Select reason and method
+7. Check confirmation checkbox
+8. Click "Confirm Disposal"
+9. Verify sample marked as disposed
 
 ## Troubleshooting
 
@@ -902,6 +1325,177 @@ _Re-verify compliance after design artifacts generated:_
 ---
 
 ---
+
+## Phase 5: Overflow Menu and Modal Components Implementation
+
+### Objective
+
+Implement samples table row overflow menu with four actions (Move, Dispose, View Audit placeholder, View Storage) and three modal components (Move, Dispose, View Storage) matching Figma design specifications.
+
+### Overflow Menu Component
+
+**Component**: `SampleActionsOverflowMenu.jsx`
+
+**Requirements**:
+- Uses Carbon Design System `OverflowMenu` component
+- Displays four menu items:
+  1. **Move** - Opens Move modal
+  2. **Dispose** - Opens Dispose modal
+  3. **View Audit** - Placeholder (disabled or with visual indicator)
+  4. **View Storage** - Opens View Storage modal
+- Accessible via keyboard navigation and screen readers
+- Integrated into samples table Actions column
+
+**Implementation**:
+```jsx
+import { OverflowMenu, OverflowMenuItem } from '@carbon/react';
+
+<OverflowMenu>
+  <OverflowMenuItem itemText="Move" onClick={() => openMoveModal(sample)} />
+  <OverflowMenuItem itemText="Dispose" onClick={() => openDisposeModal(sample)} />
+  <OverflowMenuItem itemText="View Audit" disabled />
+  <OverflowMenuItem itemText="View Storage" onClick={() => openViewStorageModal(sample)} />
+</OverflowMenu>
+```
+
+**Testing**:
+- Unit test: Menu renders with all four items
+- Unit test: "View Audit" is disabled
+- E2E test: Clicking menu items opens corresponding modals
+
+### Move Sample Modal Component
+
+**Component**: `MoveSampleModal.jsx`
+
+**Requirements** (per FR-040a through FR-040h):
+- Modal title: "Move Sample" with subtitle "Move sample [Sample ID] to a new storage location"
+- **Current Location** section: Full hierarchical path in highlighted gray background box
+- Downward-pointing arrow icon as visual separator
+- **New Location** section in bordered box:
+  - Barcode scan input field (deferred to later stage - field present but not functional)
+  - Room dropdown (required, initially shows "Select room..." placeholder)
+  - Device dropdown (disabled until room selected, shows "Select device..." placeholder)
+  - Shelf dropdown (disabled until device selected, shows "Select shelf..." placeholder)
+  - Rack dropdown (disabled until shelf selected, shows "Select rack..." placeholder)
+- **Selected Location** preview section: Gray background box showing selected hierarchical path (displays "Not selected" until location chosen)
+- Optional "Reason for Move" textarea field
+- Footer buttons: Cancel and "Confirm Move" (primary/dark styling)
+- Uses Carbon Design System `Modal` component with proper accessibility attributes
+
+**Implementation Notes**:
+- Reuses `LocationSelectorModal` component for new location selection
+- Updates "Selected Location" preview in real-time as user selects location
+- Validates new location is different from current location
+- Calls `POST /rest/storage/samples/move` endpoint on confirm
+
+**Testing**:
+- Unit test: Modal renders with all required sections
+- Unit test: Location selection updates preview
+- Unit test: Validation prevents moving to same location
+- E2E test: Complete move workflow with audit trail verification
+
+### Dispose Sample Modal Component
+
+**Component**: `DisposeSampleModal.jsx`
+
+**Requirements** (per FR-051a through FR-051k):
+- Modal title: "Dispose Sample" with subtitle "Permanently dispose of sample [Sample ID]"
+- Red warning alert box at top: "This action cannot be undone. The sample will be marked as disposed and removed from storage."
+- **Sample Information** section: Gray background box showing Sample ID, Type, Status
+- **Current Storage Location** section:
+  - Location pin icon
+  - Full hierarchical path in gray background box
+  - Helper text: "Sample will be removed from this location upon disposal"
+- Disposal instructions info box (blue/info styling) with sample-specific instructions
+- Horizontal separator line
+- Required fields:
+  - "Disposal Reason *" dropdown (required, marked with asterisk, initially shows "Select reason..." placeholder)
+  - "Disposal Method *" dropdown (required, marked with asterisk, initially shows "Select method..." placeholder)
+- Optional "Additional Notes (optional)" textarea field
+- Confirmation checkbox: "I confirm that I want to permanently dispose of this sample. This action cannot be undone."
+- Footer buttons:
+  - Cancel button
+  - "Confirm Disposal" button:
+    - Red/destructive action styling (e.g., rgba(231,0,11,0.6) background)
+    - Disabled until confirmation checkbox checked
+- Uses Carbon Design System `Modal` component with proper accessibility attributes
+
+**Implementation Notes**:
+- Dropdown values:
+  - Disposal Reason: Expired, Contaminated, Patient Request, Testing Complete, Other
+  - Disposal Method: Biohazard Autoclave, Chemical Neutralization, Incineration, Other
+- Date/Time auto-set to current timestamp (editable for backdating if needed)
+- Authorization check via role-based permissions
+- Calls `POST /rest/storage/samples/dispose` endpoint on confirm
+
+**Testing**:
+- Unit test: Modal renders with all required sections
+- Unit test: "Confirm Disposal" button disabled until checkbox checked
+- Unit test: Validation requires reason and method selection
+- E2E test: Complete disposal workflow with audit trail verification
+
+### View Storage Modal Component
+
+**Component**: `ViewStorageModal.jsx`
+
+**Requirements** (per FR-056b through FR-056i):
+- Modal title: "Storage Location Assignment"
+- **Sample Information** section: Highlighted/background box showing Sample ID, Type, Status
+- **Current Location** section: Full hierarchical path (Room > Device > Shelf > Rack > Position) in highlighted gray background box
+- Visual separator between current location and assignment form
+- **Full Location Assignment Form**:
+  - Barcode scan input field (Quick Assign) - deferred to later stage (field present but not functional)
+  - Room dropdown selector (required, marked with *)
+  - Device dropdown selector
+  - Shelf dropdown selector
+  - Rack/Box dropdown selector
+  - Position text input (optional, with format hint)
+  - Condition Notes textarea (optional)
+- Footer buttons: Cancel and "Assign Storage Location"
+- Uses Carbon Design System `Modal` component with proper accessibility attributes
+- Allows editing/changing storage location assignment using same form controls as initial assignment
+
+**Implementation Notes**:
+- Reuses `LocationSelectorModal` component for location selection
+- Pre-populates form with current location if sample has assignment
+- Calls `POST /rest/storage/samples/assign` or `PUT /rest/storage/samples/assign` endpoint on confirm
+
+**Testing**:
+- Unit test: Modal renders with all required sections
+- Unit test: Form pre-populates with current location
+- Unit test: Validation requires room selection
+- E2E test: View and edit storage location assignment
+
+### Storage Location Selector Widget Structure Updates
+
+**Component Updates**: `StorageLocationSelector.jsx`, `CompactLocationView.jsx`, `LocationSelectorModal.jsx`, `QuickFindSearch.jsx`
+
+**Two-Tier Design**:
+1. **Compact Inline View** (`CompactLocationView.jsx`):
+   - Displays selected location hierarchical path (or "Not assigned" if no location)
+   - Shows "Expand" or "Edit" button
+   - Results workflow: Includes quick-find search input (`QuickFindSearch.jsx`)
+   - Quick-find: Type-ahead autocomplete matching Room/Device/Shelf/Rack levels, displays full hierarchical paths in results
+
+2. **Expanded Modal View** (`LocationSelectorModal.jsx`):
+   - Matches View Storage modal structure
+   - Sample information section
+   - Current location display
+   - Full assignment form (barcode scan input, Room/Device/Shelf/Rack/Position selectors, condition notes)
+   - Cancel and action buttons
+
+**Implementation Notes**:
+- Same widget component used in both SamplePatientEntry (orders) and LogbookResults (results)
+- Quick-find search only shown in results workflow (`showQuickFind={true}` prop)
+- Quick-find calls `GET /rest/storage/locations/search?q={term}` endpoint
+- Barcode scan input present but functionality deferred to later stage
+
+**Testing**:
+- Unit test: Compact view displays location path correctly
+- Unit test: Expand button opens modal
+- Unit test: Quick-find search filters locations correctly
+- Unit test: Modal structure matches View Storage modal
+- E2E test: Complete assignment workflow in both orders and results contexts
 
 ## Implementation Enhancements
 

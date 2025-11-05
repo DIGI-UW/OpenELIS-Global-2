@@ -465,10 +465,12 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
             // Add relationship data - all accessed within transaction
             if (parentDevice != null) {
+                map.put("deviceId", parentDevice.getId());
                 map.put("deviceName", parentDevice.getName());
                 map.put("parentDeviceName", parentDevice.getName());
             }
             if (parentRoom != null) {
+                map.put("roomId", parentRoom.getId());
                 map.put("roomName", parentRoom.getName());
             }
 
@@ -530,12 +532,27 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             map.put("fhirUuid", rack.getFhirUuidAsString());
 
             // Add relationship data - all accessed within transaction
+            StorageRoom parentRoom = null;
+            if (parentDevice != null) {
+                parentRoom = parentDevice.getParentRoom();
+                if (parentRoom != null) {
+                    parentRoom.getName(); // Trigger lazy load
+                }
+            }
+            
             if (parentShelf != null) {
+                map.put("shelfId", parentShelf.getId());
                 map.put("shelfLabel", parentShelf.getLabel());
                 map.put("parentShelfLabel", parentShelf.getLabel());
             }
             if (parentDevice != null) {
+                map.put("deviceId", parentDevice.getId());
                 map.put("deviceName", parentDevice.getName());
+            }
+            // FR-065a: Include roomId column and room name
+            if (parentRoom != null) {
+                map.put("roomId", parentRoom.getId());
+                map.put("roomName", parentRoom.getName());
             }
 
             // Add occupied count

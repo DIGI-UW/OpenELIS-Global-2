@@ -10,7 +10,7 @@ DELETE FROM sample_storage_movement WHERE sample_id IN (
 DELETE FROM sample_storage_assignment WHERE sample_id IN (
   SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
 );
-DELETE FROM sample_item WHERE sample_id IN (
+DELETE FROM sample_item WHERE samp_id IN (
   SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
 );
 DELETE FROM sample_human WHERE samp_id IN (
@@ -58,7 +58,8 @@ INSERT INTO storage_rack (id, fhir_uuid, label, rows, columns, position_schema_h
 (30, gen_random_uuid(), 'Rack R1', 8, 12, 'A1', true, 20, 1, CURRENT_TIMESTAMP),
 (31, gen_random_uuid(), 'Rack R2', 10, 10, '1-1', true, 20, 1, CURRENT_TIMESTAMP),
 (32, gen_random_uuid(), 'Rack R3', 0, 0, NULL, true, 21, 1, CURRENT_TIMESTAMP),
-(33, gen_random_uuid(), 'Rack R1', 8, 12, NULL, true, 22, 1, CURRENT_TIMESTAMP);
+(33, gen_random_uuid(), 'Rack R1', 8, 12, NULL, true, 22, 1, CURRENT_TIMESTAMP),
+(34, gen_random_uuid(), 'Rack R1', 8, 12, 'A1', true, 23, 1, CURRENT_TIMESTAMP);
 
 -- Insert Test Positions
 INSERT INTO storage_position (id, fhir_uuid, coordinate, row_index, column_index, occupied, parent_rack_id, sys_user_id, last_updated) VALUES
@@ -80,8 +81,14 @@ INSERT INTO storage_position (id, fhir_uuid, coordinate, row_index, column_index
 (111, gen_random_uuid(), 'RED-02', NULL, NULL, false, 32, 1, CURRENT_TIMESTAMP),
 (112, gen_random_uuid(), 'RED-01', NULL, NULL, false, 32, 1, CURRENT_TIMESTAMP), -- Duplicate coordinate (allowed)
 
--- Position in inactive location
-(120, gen_random_uuid(), 'X1', NULL, NULL, false, 33, 1, CURRENT_TIMESTAMP);
+-- Position in rack 33 (Refrigerator Unit 1 > Shelf-1 > Rack R1)
+(120, gen_random_uuid(), 'X1', NULL, NULL, false, 33, 1, CURRENT_TIMESTAMP),
+(121, gen_random_uuid(), 'A1', 1, 1, false, 33, 1, CURRENT_TIMESTAMP),
+
+-- Positions in rack 34 (Secondary Lab > Cabinet > Shelf-1 > Rack R1)
+(130, gen_random_uuid(), 'A1', 1, 1, false, 34, 1, CURRENT_TIMESTAMP),
+(131, gen_random_uuid(), 'A2', 1, 2, false, 34, 1, CURRENT_TIMESTAMP),
+(132, gen_random_uuid(), 'A3', 1, 3, false, 34, 1, CURRENT_TIMESTAMP);
 
 -- Add more positions to Rack R2 for capacity testing (80 occupied out of 100 = 80%)
 INSERT INTO storage_position (id, fhir_uuid, coordinate, row_index, column_index, occupied, parent_rack_id, sys_user_id, last_updated)
@@ -313,6 +320,135 @@ BEGIN
   (1001, 1001, NULL, 101, CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
   (1002, 1002, NULL, 103, CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
   (1003, 1004, NULL, 104, CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP)
+  ON CONFLICT (id) DO UPDATE SET
+    new_position_id = EXCLUDED.new_position_id,
+    last_updated = CURRENT_TIMESTAMP;
+
+  -- ============================================================================
+  -- Additional samples for filter testing (different locations and statuses)
+  -- ============================================================================
+
+  -- Sample 6: In Secondary Laboratory (active status)
+  INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
+                       received_date, lastupdated, is_confirmation)
+  VALUES
+  (1005, 'E2E-006', gen_random_uuid(), 'H', status_id_val,
+   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+  ON CONFLICT (id) DO UPDATE SET
+    accession_number = EXCLUDED.accession_number,
+    lastupdated = CURRENT_TIMESTAMP;
+
+  -- Sample 7: In Secondary Laboratory (active status)
+  INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
+                       received_date, lastupdated, is_confirmation)
+  VALUES
+  (1006, 'E2E-007', gen_random_uuid(), 'H', status_id_val,
+   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+  ON CONFLICT (id) DO UPDATE SET
+    accession_number = EXCLUDED.accession_number,
+    lastupdated = CURRENT_TIMESTAMP;
+
+  -- Sample 8: In Main Laboratory (for testing - will have NULL status = active)
+  INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
+                       received_date, lastupdated, is_confirmation)
+  VALUES
+  (1007, 'E2E-008', gen_random_uuid(), 'H', status_id_val,
+   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+  ON CONFLICT (id) DO UPDATE SET
+    accession_number = EXCLUDED.accession_number,
+    lastupdated = CURRENT_TIMESTAMP;
+  -- Note: Status column is only 1 character, so we can't set "disposed" here
+  -- The code will default NULL status to "active" in the API response
+
+  -- Sample 9: In Secondary Laboratory (for testing - will have NULL status = active)
+  INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
+                       received_date, lastupdated, is_confirmation)
+  VALUES
+  (1008, 'E2E-009', gen_random_uuid(), 'H', status_id_val,
+   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+  ON CONFLICT (id) DO UPDATE SET
+    accession_number = EXCLUDED.accession_number,
+    lastupdated = CURRENT_TIMESTAMP;
+  -- Note: Status column is only 1 character, so we can't set "disposed" here
+  -- The code will default NULL status to "active" in the API response
+
+  -- Sample 10: In Main Laboratory > Refrigerator (different device)
+  INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
+                       received_date, lastupdated, is_confirmation)
+  VALUES
+  (1009, 'E2E-010', gen_random_uuid(), 'H', status_id_val,
+   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+  ON CONFLICT (id) DO UPDATE SET
+    accession_number = EXCLUDED.accession_number,
+    lastupdated = CURRENT_TIMESTAMP;
+
+  -- Create sample_human links for new samples
+  INSERT INTO sample_human (id, samp_id, patient_id, lastupdated)
+  VALUES
+  (1005, 1005, 1000, CURRENT_TIMESTAMP),
+  (1006, 1006, 1001, CURRENT_TIMESTAMP),
+  (1007, 1007, 1002, CURRENT_TIMESTAMP),
+  (1008, 1008, 1000, CURRENT_TIMESTAMP),
+  (1009, 1009, 1001, CURRENT_TIMESTAMP)
+  ON CONFLICT (id) DO UPDATE SET
+    patient_id = EXCLUDED.patient_id,
+    lastupdated = CURRENT_TIMESTAMP;
+
+  -- Assignments for new samples:
+  -- Assignment 5: Sample E2E-006 to Secondary Lab > Cabinet > Shelf-1 > Rack R1 (position_id = 130)
+  INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
+                                         assigned_by_user_id, notes, last_updated)
+  VALUES (1004, 1005, 130, CURRENT_TIMESTAMP, 1, 'E2E test - Secondary Lab', CURRENT_TIMESTAMP)
+  ON CONFLICT (id) DO UPDATE SET
+    storage_position_id = EXCLUDED.storage_position_id,
+    last_updated = CURRENT_TIMESTAMP;
+  UPDATE storage_position SET occupied = true WHERE id = 130;
+
+  -- Assignment 6: Sample E2E-007 to Secondary Lab > Cabinet > Shelf-1 > Rack R1 (position_id = 131)
+  INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
+                                         assigned_by_user_id, notes, last_updated)
+  VALUES (1005, 1006, 131, CURRENT_TIMESTAMP, 1, 'E2E test - Secondary Lab', CURRENT_TIMESTAMP)
+  ON CONFLICT (id) DO UPDATE SET
+    storage_position_id = EXCLUDED.storage_position_id,
+    last_updated = CURRENT_TIMESTAMP;
+  UPDATE storage_position SET occupied = true WHERE id = 131;
+
+  -- Assignment 7: Sample E2E-008 (disposed) to Main Lab > Freezer > Shelf-A > Rack R1 > A6 (position_id = 105)
+  INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
+                                         assigned_by_user_id, notes, last_updated)
+  VALUES (1006, 1007, 105, CURRENT_TIMESTAMP, 1, 'E2E test - Disposed sample', CURRENT_TIMESTAMP)
+  ON CONFLICT (id) DO UPDATE SET
+    storage_position_id = EXCLUDED.storage_position_id,
+    last_updated = CURRENT_TIMESTAMP;
+  UPDATE storage_position SET occupied = true WHERE id = 105;
+
+  -- Assignment 8: Sample E2E-009 (disposed) to Secondary Lab > Cabinet > Shelf-1 > Rack R1 (position_id = 132)
+  INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
+                                         assigned_by_user_id, notes, last_updated)
+  VALUES (1007, 1008, 132, CURRENT_TIMESTAMP, 1, 'E2E test - Disposed in Secondary', CURRENT_TIMESTAMP)
+  ON CONFLICT (id) DO UPDATE SET
+    storage_position_id = EXCLUDED.storage_position_id,
+    last_updated = CURRENT_TIMESTAMP;
+  UPDATE storage_position SET occupied = true WHERE id = 132;
+
+  -- Assignment 9: Sample E2E-010 to Main Lab > Refrigerator > Shelf-1 > Rack R1 (position_id = 121)
+  INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
+                                         assigned_by_user_id, notes, last_updated)
+  VALUES (1008, 1009, 121, CURRENT_TIMESTAMP, 1, 'E2E test - Refrigerator', CURRENT_TIMESTAMP)
+  ON CONFLICT (id) DO UPDATE SET
+    storage_position_id = EXCLUDED.storage_position_id,
+    last_updated = CURRENT_TIMESTAMP;
+  UPDATE storage_position SET occupied = true WHERE id = 121;
+
+  -- Create storage movement audit logs for new samples
+  INSERT INTO sample_storage_movement (id, sample_id, previous_position_id, new_position_id,
+                                       movement_date, moved_by_user_id, reason, last_updated)
+  VALUES
+  (1004, 1005, NULL, 130, CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
+  (1005, 1006, NULL, 131, CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
+  (1006, 1007, NULL, 105, CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
+  (1007, 1008, NULL, 132, CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
+  (1008, 1009, NULL, 121, CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
     new_position_id = EXCLUDED.new_position_id,
     last_updated = CURRENT_TIMESTAMP;

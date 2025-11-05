@@ -12,12 +12,14 @@ import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.form.*;
 import org.openelisglobal.storage.service.StorageLocationService;
 import org.openelisglobal.storage.service.StorageDashboardService;
+import org.openelisglobal.storage.service.StorageSearchService;
 import org.openelisglobal.storage.valueholder.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -35,6 +37,9 @@ public class StorageLocationRestController extends BaseRestController {
 
     @Autowired
     private StorageDashboardService storageDashboardService;
+
+    @Autowired
+    private StorageSearchService storageSearchService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -78,15 +83,10 @@ public class StorageLocationRestController extends BaseRestController {
         try {
             List<Map<String, Object>> response;
             if (status != null && !status.isEmpty()) {
-                // Filter by status
+                // Filter by status - service returns Maps with all data resolved
                 Boolean activeStatus = "active".equalsIgnoreCase(status) ? true
                         : "inactive".equalsIgnoreCase(status) ? false : null;
-                List<StorageRoom> filteredRooms = storageDashboardService.filterRooms(activeStatus);
-                // Convert to API format
-                response = new ArrayList<>();
-                for (StorageRoom room : filteredRooms) {
-                    response.add(entityToMap(room));
-                }
+                response = storageDashboardService.filterRoomsForAPI(activeStatus);
             } else {
                 // No filter - return all rooms
                 response = storageLocationService.getRoomsForAPI();
@@ -214,19 +214,13 @@ public class StorageLocationRestController extends BaseRestController {
         try {
             List<Map<String, Object>> response;
             if (type != null || roomId != null || status != null) {
-                // Apply filters
+                // Apply filters - service returns Maps with all data resolved
                 StorageDevice.DeviceType deviceType = type != null ? StorageDevice.DeviceType.valueOf(type) : null;
                 Integer roomIdInt = roomId != null ? Integer.parseInt(roomId) : null;
                 Boolean activeStatus = status != null && !status.isEmpty()
                         ? ("active".equalsIgnoreCase(status) ? true : "inactive".equalsIgnoreCase(status) ? false : null)
                         : null;
-                    List<StorageDevice> filteredDevices = storageDashboardService.filterDevices(deviceType, roomIdInt,
-                            activeStatus);
-                    // Convert to API format (entityToMap will add roomId automatically)
-                    response = new ArrayList<>();
-                    for (StorageDevice device : filteredDevices) {
-                        response.add(entityToMap(device));
-                    }
+                response = storageDashboardService.filterDevicesForAPI(deviceType, roomIdInt, activeStatus);
             } else {
                 // No filters - return all devices
                 Integer roomIdInt = roomId != null ? Integer.parseInt(roomId) : null;
@@ -287,13 +281,8 @@ public class StorageLocationRestController extends BaseRestController {
                 Boolean activeStatus = status != null && !status.isEmpty()
                         ? ("active".equalsIgnoreCase(status) ? true : "inactive".equalsIgnoreCase(status) ? false : null)
                         : null;
-                List<StorageShelf> filteredShelves = storageDashboardService.filterShelves(deviceIdInt, roomIdInt,
-                        activeStatus);
-                // Convert to API format
-                response = new ArrayList<>();
-                for (StorageShelf shelf : filteredShelves) {
-                    response.add(entityToMap(shelf));
-                }
+                // Service returns Maps with all data resolved
+                response = storageDashboardService.filterShelvesForAPI(deviceIdInt, roomIdInt, activeStatus);
             } else {
                 // No filters - return all shelves
                 Integer deviceIdInt = deviceId != null ? Integer.parseInt(deviceId) : null;
@@ -360,21 +349,9 @@ public class StorageLocationRestController extends BaseRestController {
                 response = storageDashboardService.getRacksForAPI(roomIdInt, shelfIdInt, deviceIdInt, activeStatus);
             } else {
                 // No filters - return all racks with roomId column (FR-065a)
+                // Service layer already includes roomId in getRacksForAPI response
                 Integer shelfIdInt = shelfId != null ? Integer.parseInt(shelfId) : null;
                 response = storageLocationService.getRacksForAPI(shelfIdInt);
-                // Ensure roomId column is present
-                for (Map<String, Object> rack : response) {
-                    if (!rack.containsKey("roomId")) {
-                        // Extract roomId from hierarchy if missing
-                        StorageRack rackEntity = (StorageRack) storageLocationService.get(
-                                (Integer) rack.get("id"), StorageRack.class);
-                        if (rackEntity != null && rackEntity.getParentShelf() != null
-                                && rackEntity.getParentShelf().getParentDevice() != null
-                                && rackEntity.getParentShelf().getParentDevice().getParentRoom() != null) {
-                            rack.put("roomId", rackEntity.getParentShelf().getParentDevice().getParentRoom().getId());
-                        }
-                    }
-                }
             }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -463,9 +440,14 @@ public class StorageLocationRestController extends BaseRestController {
             map.put("capacityLimit", device.getCapacityLimit());
             map.put("active", device.getActive());
             map.put("fhirUuid", device.getFhirUuidAsString());
-            // Add parent room for filtering (FR-065: filter by room)
-            if (device.getParentRoom() != null) {
-                map.put("roomId", device.getParentRoom().getId());
+            // Add parent room for filtering (FR-065: filter by room) and display
+            StorageRoom parentRoom = device.getParentRoom();
+            if (parentRoom != null) {
+                // Trigger lazy load within transaction
+                parentRoom.getName();
+                map.put("roomId", parentRoom.getId());
+                map.put("roomName", parentRoom.getName());
+                map.put("parentRoomName", parentRoom.getName());
             }
         } else if (entity instanceof StorageShelf) {
             StorageShelf shelf = (StorageShelf) entity;
@@ -474,11 +456,22 @@ public class StorageLocationRestController extends BaseRestController {
             map.put("capacityLimit", shelf.getCapacityLimit());
             map.put("active", shelf.getActive());
             map.put("fhirUuid", shelf.getFhirUuidAsString());
-            // Add parent relationships for filtering (FR-065: filter by device and room)
-            if (shelf.getParentDevice() != null) {
-                map.put("deviceId", shelf.getParentDevice().getId());
-                if (shelf.getParentDevice().getParentRoom() != null) {
-                    map.put("roomId", shelf.getParentDevice().getParentRoom().getId());
+            // Add parent relationships for filtering (FR-065: filter by device and room) and display
+            StorageDevice parentDevice = shelf.getParentDevice();
+            StorageRoom parentRoom = null;
+            if (parentDevice != null) {
+                // Trigger lazy load within transaction
+                parentDevice.getName();
+                map.put("deviceId", parentDevice.getId());
+                map.put("deviceName", parentDevice.getName());
+                map.put("parentDeviceName", parentDevice.getName());
+                
+                parentRoom = parentDevice.getParentRoom();
+                if (parentRoom != null) {
+                    // Trigger lazy load within transaction
+                    parentRoom.getName();
+                    map.put("roomId", parentRoom.getId());
+                    map.put("roomName", parentRoom.getName());
                 }
             }
         } else if (entity instanceof StorageRack) {
@@ -490,6 +483,34 @@ public class StorageLocationRestController extends BaseRestController {
             map.put("positionSchemaHint", rack.getPositionSchemaHint());
             map.put("active", rack.getActive());
             map.put("fhirUuid", rack.getFhirUuidAsString());
+            
+            // Add parent relationships for filtering (FR-065: filter by room, shelf, device) and display
+            StorageShelf parentShelf = rack.getParentShelf();
+            StorageDevice parentDevice = null;
+            StorageRoom parentRoom = null;
+            if (parentShelf != null) {
+                // Trigger lazy load within transaction
+                parentShelf.getLabel();
+                map.put("shelfId", parentShelf.getId());
+                map.put("shelfLabel", parentShelf.getLabel());
+                map.put("parentShelfLabel", parentShelf.getLabel());
+                
+                parentDevice = parentShelf.getParentDevice();
+                if (parentDevice != null) {
+                    // Trigger lazy load within transaction
+                    parentDevice.getName();
+                    map.put("deviceId", parentDevice.getId());
+                    map.put("deviceName", parentDevice.getName());
+                    
+                    parentRoom = parentDevice.getParentRoom();
+                    if (parentRoom != null) {
+                        // Trigger lazy load within transaction
+                        parentRoom.getName();
+                        map.put("roomId", parentRoom.getId());
+                        map.put("roomName", parentRoom.getName());
+                    }
+                }
+            }
         } else if (entity instanceof StoragePosition) {
             StoragePosition position = (StoragePosition) entity;
             map.put("id", position.getId());
@@ -501,5 +522,114 @@ public class StorageLocationRestController extends BaseRestController {
         }
 
         return map;
+    }
+
+    // ========== Search Endpoints (FR-064, FR-064a - Phase 3.1) ==========
+
+    /**
+     * Search samples by sample ID, accession number type/prefix, and assigned
+     * location (full hierarchical path). Matches ANY of these fields (OR logic).
+     * GET /rest/storage/samples/search?q={searchTerm}
+     */
+    @GetMapping("/samples/search")
+    public ResponseEntity<List<Map<String, Object>>> searchSamples(@RequestParam(required = false) String q) {
+        try {
+            List<Map<String, Object>> results = storageSearchService.searchSamples(q);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            logger.error("Error searching samples with query: " + q, e);
+            e.printStackTrace(); // Temporary debugging
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            error.put("type", e.getClass().getName());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ArrayList<>());
+        }
+    }
+
+    /**
+     * Search rooms by name and code. Matches name OR code (OR logic).
+     * GET /rest/storage/rooms/search?q={searchTerm}
+     */
+    @GetMapping("/rooms/search")
+    public ResponseEntity<List<Map<String, Object>>> searchRooms(@RequestParam(required = false) String q) {
+        try {
+            List<Map<String, Object>> response = storageSearchService.searchRooms(q);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error searching rooms", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Search devices by name, code, and type. Matches name OR code OR type (OR logic).
+     * GET /rest/storage/devices/search?q={searchTerm}
+     */
+    @GetMapping("/devices/search")
+    public ResponseEntity<List<Map<String, Object>>> searchDevices(@RequestParam(required = false) String q) {
+        try {
+            List<Map<String, Object>> response = storageSearchService.searchDevices(q);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error searching devices", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Search shelves by label (name).
+     * GET /rest/storage/shelves/search?q={searchTerm}
+     */
+    @GetMapping("/shelves/search")
+    public ResponseEntity<List<Map<String, Object>>> searchShelves(@RequestParam(required = false) String q) {
+        try {
+            List<Map<String, Object>> response = storageSearchService.searchShelves(q);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error searching shelves", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Search racks by label (name).
+     * GET /rest/storage/racks/search?q={searchTerm}
+     */
+    @GetMapping("/racks/search")
+    public ResponseEntity<List<Map<String, Object>>> searchRacks(@RequestParam(required = false) String q) {
+        try {
+            List<Map<String, Object>> response = storageSearchService.searchRacks(q);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error searching racks", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    // ========== Dashboard Endpoints ==========
+
+    /**
+     * Get location counts by type for active locations only (FR-057, FR-057a).
+     * GET /rest/storage/dashboard/location-counts
+     * Returns counts for Room, Device, Shelf, and Rack levels (Position excluded).
+     * Only counts active (non-decommissioned) locations.
+     * 
+     * @return JSON map with keys: "rooms", "devices", "shelves", "racks" and integer count values
+     */
+    @GetMapping("/dashboard/location-counts")
+    public ResponseEntity<Map<String, Integer>> getLocationCounts() {
+        try {
+            Map<String, Integer> counts = storageDashboardService.getLocationCountsByType();
+            return ResponseEntity.ok(counts);
+        } catch (Exception e) {
+            logger.error("Error getting location counts", e);
+            // Return empty counts on error
+            Map<String, Integer> emptyCounts = new HashMap<>();
+            emptyCounts.put("rooms", 0);
+            emptyCounts.put("devices", 0);
+            emptyCounts.put("shelves", 0);
+            emptyCounts.put("racks", 0);
+            return ResponseEntity.ok(emptyCounts);
+        }
     }
 }

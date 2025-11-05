@@ -49,6 +49,7 @@ Verify compliance with
       (Valueholder→DAO→Service→Controller→Form)
   - **Valueholders MUST use JPA/Hibernate annotations** (NO XML mapping files -
     legacy exempt until refactored)
+  - **Transaction management MUST be in service layer only** - NO `@Transactional` annotations on controller methods
 - [ ] **Test Coverage**: Unit + ORM validation (if applicable) + integration +
       E2E tests planned (>70% coverage goal per Constitution V.4)
 - [ ] **Schema Management**: Database changes via Liquibase changesets only

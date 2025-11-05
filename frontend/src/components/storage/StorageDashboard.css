@@ -102,10 +102,15 @@
 .storage-dashboard .cds--tabs .cds--tabs__nav-link {
   padding: 1.25rem 2rem;
   font-size: 1.125rem !important;
-  font-weight: 600 !important;
+  font-weight: 400 !important;
   border-radius: 0 !important;
   border: none !important;
   min-width: 120px;
+  /* Allow tab-specific borders to override */
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
 }
 
 /* Blue top border for active tabs only - explicitly override any default borders */
@@ -196,3 +201,4 @@
 .storage-dashboard .cds--table-container {
   margin-top: 0;
 }
+

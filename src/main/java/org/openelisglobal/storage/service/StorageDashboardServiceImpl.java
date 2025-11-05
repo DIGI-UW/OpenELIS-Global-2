@@ -32,11 +32,34 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
         List<Map<String, Object>> allSamples = sampleStorageService.getAllSamplesWithAssignments();
         List<Map<String, Object>> filtered = new ArrayList<>();
 
+        // Normalize location filter (case-insensitive, trim whitespace)
+        String normalizedLocation = (location != null && !location.isEmpty()) 
+                ? location.trim().toLowerCase() 
+                : null;
+
         for (Map<String, Object> sample : allSamples) {
-            boolean matchesLocation = location == null || location.isEmpty()
-                    || ((String) sample.get("location")).contains(location);
-            boolean matchesStatus = status == null || status.isEmpty()
-                    || status.equalsIgnoreCase((String) sample.get("status"));
+            // Location filtering: case-insensitive substring match
+            boolean matchesLocation = true;
+            if (normalizedLocation != null) {
+                String sampleLocation = (String) sample.get("location");
+                if (sampleLocation == null) {
+                    matchesLocation = false;
+                } else {
+                    // Case-insensitive contains check
+                    matchesLocation = sampleLocation.toLowerCase().contains(normalizedLocation);
+                }
+            }
+
+            // Status filtering: case-insensitive exact match
+            boolean matchesStatus = true;
+            if (status != null && !status.isEmpty()) {
+                String sampleStatus = (String) sample.get("status");
+                if (sampleStatus == null) {
+                    matchesStatus = false;
+                } else {
+                    matchesStatus = status.trim().equalsIgnoreCase(sampleStatus);
+                }
+            }
 
             if (matchesLocation && matchesStatus) {
                 filtered.add(sample);
@@ -54,7 +77,22 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
             return allRooms;
         }
         return allRooms.stream()
-                .filter(room -> room.getActive().equals(activeStatus))
+                .filter(room -> room.getActive() != null && room.getActive().equals(activeStatus))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> filterRoomsForAPI(Boolean activeStatus) {
+        List<Map<String, Object>> allRooms = storageLocationService.getRoomsForAPI();
+        if (activeStatus == null) {
+            return allRooms;
+        }
+        return allRooms.stream()
+                .filter(room -> {
+                    Boolean active = (Boolean) room.get("active");
+                    return active != null && active.equals(activeStatus);
+                })
                 .collect(Collectors.toList());
     }
 
@@ -82,6 +120,49 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Map<String, Object>> filterDevicesForAPI(StorageDevice.DeviceType deviceType, Integer roomId,
+            Boolean activeStatus) {
+        List<Map<String, Object>> allDevices = storageLocationService.getDevicesForAPI(null);
+        List<Map<String, Object>> filtered = new ArrayList<>();
+
+        for (Map<String, Object> device : allDevices) {
+            boolean matchesType = true;
+            if (deviceType != null) {
+                String typeStr = (String) device.get("type");
+                if (typeStr == null) {
+                    matchesType = false;
+                } else {
+                    try {
+                        StorageDevice.DeviceType deviceTypeFromMap = StorageDevice.DeviceType.valueOf(typeStr.toUpperCase());
+                        matchesType = deviceTypeFromMap.equals(deviceType);
+                    } catch (IllegalArgumentException e) {
+                        matchesType = false;
+                    }
+                }
+            }
+            
+            boolean matchesRoom = true;
+            if (roomId != null) {
+                Integer deviceRoomId = (Integer) device.get("roomId");
+                matchesRoom = deviceRoomId != null && deviceRoomId.equals(roomId);
+            }
+            
+            boolean matchesStatus = true;
+            if (activeStatus != null) {
+                Boolean deviceActive = (Boolean) device.get("active");
+                matchesStatus = deviceActive != null && deviceActive.equals(activeStatus);
+            }
+
+            if (matchesType && matchesRoom && matchesStatus) {
+                filtered.add(device);
+            }
+        }
+
+        return filtered;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<StorageShelf> filterShelves(Integer deviceId, Integer roomId, Boolean activeStatus) {
         List<StorageShelf> allShelves = storageLocationService.getAllShelves();
         List<StorageShelf> filtered = new ArrayList<>();
@@ -93,6 +174,39 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
                     || (shelf.getParentDevice() != null && shelf.getParentDevice().getParentRoom() != null
                             && shelf.getParentDevice().getParentRoom().getId().equals(roomId));
             boolean matchesStatus = activeStatus == null || shelf.getActive().equals(activeStatus);
+
+            if (matchesDevice && matchesRoom && matchesStatus) {
+                filtered.add(shelf);
+            }
+        }
+
+        return filtered;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> filterShelvesForAPI(Integer deviceId, Integer roomId, Boolean activeStatus) {
+        List<Map<String, Object>> allShelves = storageLocationService.getShelvesForAPI(null);
+        List<Map<String, Object>> filtered = new ArrayList<>();
+
+        for (Map<String, Object> shelf : allShelves) {
+            boolean matchesDevice = true;
+            if (deviceId != null) {
+                Integer shelfDeviceId = (Integer) shelf.get("deviceId");
+                matchesDevice = shelfDeviceId != null && shelfDeviceId.equals(deviceId);
+            }
+            
+            boolean matchesRoom = true;
+            if (roomId != null) {
+                Integer shelfRoomId = (Integer) shelf.get("roomId");
+                matchesRoom = shelfRoomId != null && shelfRoomId.equals(roomId);
+            }
+            
+            boolean matchesStatus = true;
+            if (activeStatus != null) {
+                Boolean shelfActive = (Boolean) shelf.get("active");
+                matchesStatus = shelfActive != null && shelfActive.equals(activeStatus);
+            }
 
             if (matchesDevice && matchesRoom && matchesStatus) {
                 filtered.add(shelf);
@@ -136,25 +250,81 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (StorageRack rack : racks) {
+            // Initialize relationships within transaction to trigger lazy loading
+            StorageShelf parentShelf = rack.getParentShelf();
+            StorageDevice parentDevice = null;
+            StorageRoom parentRoom = null;
+            if (parentShelf != null) {
+                parentShelf.getLabel(); // Trigger lazy load
+                parentDevice = parentShelf.getParentDevice();
+                if (parentDevice != null) {
+                    parentDevice.getName(); // Trigger lazy load
+                    parentRoom = parentDevice.getParentRoom();
+                    if (parentRoom != null) {
+                        parentRoom.getName(); // Trigger lazy load
+                    }
+                }
+            }
+
             Map<String, Object> rackMap = new HashMap<>();
             rackMap.put("id", rack.getId());
             rackMap.put("label", rack.getLabel());
-            rackMap.put("shelfId", rack.getParentShelf() != null ? rack.getParentShelf().getId() : null);
-            rackMap.put("deviceId", rack.getParentShelf() != null && rack.getParentShelf().getParentDevice() != null
-                    ? rack.getParentShelf().getParentDevice().getId() : null);
-            // FR-065a: Include roomId column
-            rackMap.put("roomId",
-                    rack.getParentShelf() != null && rack.getParentShelf().getParentDevice() != null
-                            && rack.getParentShelf().getParentDevice().getParentRoom() != null
-                                    ? rack.getParentShelf().getParentDevice().getParentRoom().getId()
-                                    : null);
             rackMap.put("rows", rack.getRows());
             rackMap.put("columns", rack.getColumns());
             rackMap.put("active", rack.getActive());
+            rackMap.put("fhirUuid", rack.getFhirUuidAsString());
+
+            // Add relationship data with IDs and names for filtering and display
+            if (parentShelf != null) {
+                rackMap.put("shelfId", parentShelf.getId());
+                rackMap.put("shelfLabel", parentShelf.getLabel());
+                rackMap.put("parentShelfLabel", parentShelf.getLabel());
+            }
+            if (parentDevice != null) {
+                rackMap.put("deviceId", parentDevice.getId());
+                rackMap.put("deviceName", parentDevice.getName());
+            }
+            // FR-065a: Include roomId column and room name
+            if (parentRoom != null) {
+                rackMap.put("roomId", parentRoom.getId());
+                rackMap.put("roomName", parentRoom.getName());
+            }
+
             result.add(rackMap);
         }
 
         return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Integer> getLocationCountsByType() {
+        Map<String, Integer> counts = new HashMap<>();
+
+        // Count active rooms only (FR-057 - active locations only)
+        // Use Boolean.TRUE.equals() for null-safe comparison
+        List<StorageRoom> activeRooms = filterRooms(true);
+        counts.put("rooms", activeRooms.size());
+
+        // Count active devices only - use Boolean.TRUE.equals() for null-safe comparison
+        List<StorageDevice> activeDevices = storageLocationService.getAllDevices().stream()
+                .filter(device -> Boolean.TRUE.equals(device.getActive()))
+                .collect(Collectors.toList());
+        counts.put("devices", activeDevices.size());
+
+        // Count active shelves only - use Boolean.TRUE.equals() for null-safe comparison
+        List<StorageShelf> activeShelves = storageLocationService.getAllShelves().stream()
+                .filter(shelf -> Boolean.TRUE.equals(shelf.getActive()))
+                .collect(Collectors.toList());
+        counts.put("shelves", activeShelves.size());
+
+        // Count active racks only - use Boolean.TRUE.equals() for null-safe comparison
+        List<StorageRack> activeRacks = storageLocationService.getAllRacks().stream()
+                .filter(rack -> Boolean.TRUE.equals(rack.getActive()))
+                .collect(Collectors.toList());
+        counts.put("racks", activeRacks.size());
+
+        return counts;
     }
 }
 

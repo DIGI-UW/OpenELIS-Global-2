@@ -26,6 +26,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
+import StorageLocationsMetricCard from "./StorageDashboard/StorageLocationsMetricCard";
 import "./StorageDashboard.css";
 
 const TAB_ROUTES = ["samples", "rooms", "devices", "shelves", "racks"];
@@ -147,6 +148,91 @@ const StorageDashboard = () => {
     };
   }, []);
 
+  // Reload data when filters change (server-side filtering for all tabs)
+  // Note: When searchTerm is present, filters are applied client-side on search results (AND logic)
+  useEffect(() => {
+    const tabName = TAB_ROUTES[selectedTab] || "samples";
+    
+    // Skip filter reload if searchTerm is present (filters applied client-side on search results)
+    // Exception: For samples tab, debounced search effect handles reload
+    if (searchTerm && searchTerm.trim() && tabName === "samples") {
+      // For samples tab with search, debounced search effect will handle reload with filters
+      return;
+    }
+    
+    console.log("Filters changed, reloading data for tab:", tabName, "with filters:", { filterRoom, filterDevice, filterStatus });
+    
+    switch (tabName) {
+      case "samples":
+        loadSamples();
+        break;
+      case "rooms":
+        loadRooms();
+        break;
+      case "devices":
+        loadDevices();
+        break;
+      case "shelves":
+        loadShelves();
+        break;
+      case "racks":
+        loadRacks();
+        break;
+    }
+  }, [filterRoom, filterDevice, filterStatus, selectedTab]);
+
+  // Debounced search for samples tab (300-500ms delay after typing stops) - FR-064a
+  // For other tabs, search triggers immediate reload
+  useEffect(() => {
+    const tabName = TAB_ROUTES[selectedTab] || "samples";
+    
+    // Only apply debouncing for samples tab (FR-064a)
+    if (tabName === "samples") {
+      // Clear existing timeout
+      const timeoutId = setTimeout(() => {
+        // Reload samples when search term changes (after debounce delay)
+        loadSamples();
+      }, 400); // 400ms debounce delay (within 300-500ms range per FR-064a)
+
+      return () => clearTimeout(timeoutId);
+    } else {
+      // For other tabs, search triggers immediate reload
+      if (searchTerm && searchTerm.trim()) {
+        // Search term present - trigger reload
+        switch (tabName) {
+          case "rooms":
+            loadRooms();
+            break;
+          case "devices":
+            loadDevices();
+            break;
+          case "shelves":
+            loadShelves();
+            break;
+          case "racks":
+            loadRacks();
+            break;
+        }
+      } else {
+        // Search cleared - reload without search (use filter endpoint)
+        switch (tabName) {
+          case "rooms":
+            loadRooms();
+            break;
+          case "devices":
+            loadDevices();
+            break;
+          case "shelves":
+            loadShelves();
+            break;
+          case "racks":
+            loadRacks();
+            break;
+        }
+      }
+    }
+  }, [searchTerm, selectedTab]); // Trigger on searchTerm or tab change
+
   // Handle tab change - update URL
   const handleTabChange = (index) => {
     const tabIndex =
@@ -180,57 +266,377 @@ const StorageDashboard = () => {
   };
 
   const loadRooms = () => {
-    getFromOpenElisServer("/rest/storage/rooms", (response) => {
-      if (componentMounted.current && response) {
-        setRooms(response || []);
-        setLoading(false);
+    // Use search endpoint if searchTerm is present, otherwise use filter endpoint
+    if (searchTerm && searchTerm.trim()) {
+      // Call search endpoint (FR-064: Rooms tab - search by name and code)
+      const url = `/rest/storage/rooms/search?q=${encodeURIComponent(searchTerm.trim())}`;
+      getFromOpenElisServer(url, (response) => {
+        if (componentMounted.current && response) {
+          // Apply status filter client-side on search results (AND logic)
+          let filtered = response || [];
+          if (filterStatus && visibleFilters.status) {
+            const activeFilter = filterStatus === "true";
+            filtered = filtered.filter((room) => {
+              const roomActive = room.active === true || room.active === "true";
+              return roomActive === activeFilter;
+            });
+          }
+          setRooms(filtered);
+          setLoading(false);
+        }
+      });
+    } else {
+      // Build query parameters for filtering (FR-065: Rooms tab - filter by status)
+      const params = new URLSearchParams();
+      
+      if (filterStatus && visibleFilters.status) {
+        if (filterStatus === "true") {
+          params.append("status", "active");
+        } else if (filterStatus === "false") {
+          params.append("status", "inactive");
+        }
       }
-    });
+      
+      const queryString = params.toString();
+      const url = `/rest/storage/rooms${queryString ? "?" + queryString : ""}`;
+      
+      getFromOpenElisServer(url, (response) => {
+        if (componentMounted.current && response) {
+          setRooms(response || []);
+          setLoading(false);
+        }
+      });
+    }
   };
 
   const loadDevices = () => {
-    getFromOpenElisServer("/rest/storage/devices", (response) => {
-      if (componentMounted.current && response) {
-        setDevices(response || []);
+    // Use search endpoint if searchTerm is present, otherwise use filter endpoint
+    if (searchTerm && searchTerm.trim()) {
+      // Call search endpoint (FR-064: Devices tab - search by name, code, and type)
+      const url = `/rest/storage/devices/search?q=${encodeURIComponent(searchTerm.trim())}`;
+      getFromOpenElisServer(url, (response) => {
+        if (componentMounted.current && response) {
+          // Apply filters client-side on search results (AND logic)
+          let filtered = response || [];
+          
+          if (filterRoom && visibleFilters.room && rooms && rooms.length > 0) {
+            const selectedRoom = rooms.find((r) => r.id === filterRoom || r.id?.toString() === filterRoom);
+            if (selectedRoom) {
+              filtered = filtered.filter((device) => {
+                const deviceRoomId = device.roomId || device.parentRoomId;
+                return deviceRoomId === selectedRoom.id || deviceRoomId?.toString() === selectedRoom.id?.toString();
+              });
+            }
+          }
+          
+          if (filterStatus && visibleFilters.status) {
+            const activeFilter = filterStatus === "true";
+            filtered = filtered.filter((device) => {
+              const deviceActive = device.active === true || device.active === "true";
+              return deviceActive === activeFilter;
+            });
+          }
+          
+          setDevices(filtered);
+        }
+      });
+    } else {
+      // Build query parameters for filtering (FR-065: Devices tab - filter by type, room, and status)
+      const params = new URLSearchParams();
+      
+      if (filterRoom && visibleFilters.room && rooms && rooms.length > 0) {
+        const selectedRoom = rooms.find((r) => r.id === filterRoom || r.id?.toString() === filterRoom);
+        if (selectedRoom) {
+          params.append("roomId", selectedRoom.id);
+        }
       }
-    });
+      
+      // Note: type filter not implemented in UI yet, backend supports it
+      // When type filter is added, include: params.append("type", filterType);
+      
+      if (filterStatus && visibleFilters.status) {
+        if (filterStatus === "true") {
+          params.append("status", "active");
+        } else if (filterStatus === "false") {
+          params.append("status", "inactive");
+        }
+      }
+      
+      const queryString = params.toString();
+      const url = `/rest/storage/devices${queryString ? "?" + queryString : ""}`;
+      
+      getFromOpenElisServer(url, (response) => {
+        if (componentMounted.current && response) {
+          setDevices(response || []);
+        }
+      });
+    }
   };
 
   const loadShelves = () => {
-    getFromOpenElisServer("/rest/storage/shelves", (response) => {
-      if (componentMounted.current && response) {
-        setShelves(response || []);
+    // Use search endpoint if searchTerm is present, otherwise use filter endpoint
+    if (searchTerm && searchTerm.trim()) {
+      // Call search endpoint (FR-064: Shelves tab - search by label)
+      const url = `/rest/storage/shelves/search?q=${encodeURIComponent(searchTerm.trim())}`;
+      getFromOpenElisServer(url, (response) => {
+        if (componentMounted.current && response) {
+          // Apply filters client-side on search results (AND logic)
+          let filtered = response || [];
+          
+          if (filterDevice && visibleFilters.device && devices && devices.length > 0) {
+            const selectedDevice = devices.find((d) => d.id === filterDevice || d.id?.toString() === filterDevice);
+            if (selectedDevice) {
+              filtered = filtered.filter((shelf) => {
+                const shelfDeviceId = shelf.deviceId || shelf.parentDeviceId;
+                return shelfDeviceId === selectedDevice.id || shelfDeviceId?.toString() === selectedDevice.id?.toString();
+              });
+            }
+          }
+          
+          if (filterRoom && visibleFilters.room && rooms && rooms.length > 0) {
+            const selectedRoom = rooms.find((r) => r.id === filterRoom || r.id?.toString() === filterRoom);
+            if (selectedRoom) {
+              filtered = filtered.filter((shelf) => {
+                const shelfRoomId = shelf.roomId;
+                return shelfRoomId === selectedRoom.id || shelfRoomId?.toString() === selectedRoom.id?.toString();
+              });
+            }
+          }
+          
+          if (filterStatus && visibleFilters.status) {
+            const activeFilter = filterStatus === "true";
+            filtered = filtered.filter((shelf) => {
+              const shelfActive = shelf.active === true || shelf.active === "true";
+              return shelfActive === activeFilter;
+            });
+          }
+          
+          setShelves(filtered);
+        }
+      });
+    } else {
+      // Build query parameters for filtering (FR-065: Shelves tab - filter by device, room, and status)
+      const params = new URLSearchParams();
+      
+      if (filterDevice && visibleFilters.device && devices && devices.length > 0) {
+        const selectedDevice = devices.find((d) => d.id === filterDevice || d.id?.toString() === filterDevice);
+        if (selectedDevice) {
+          params.append("deviceId", selectedDevice.id);
+        }
       }
-    });
+      
+      if (filterRoom && visibleFilters.room && rooms && rooms.length > 0) {
+        const selectedRoom = rooms.find((r) => r.id === filterRoom || r.id?.toString() === filterRoom);
+        if (selectedRoom) {
+          params.append("roomId", selectedRoom.id);
+        }
+      }
+      
+      if (filterStatus && visibleFilters.status) {
+        if (filterStatus === "true") {
+          params.append("status", "active");
+        } else if (filterStatus === "false") {
+          params.append("status", "inactive");
+        }
+      }
+      
+      const queryString = params.toString();
+      const url = `/rest/storage/shelves${queryString ? "?" + queryString : ""}`;
+      
+      getFromOpenElisServer(url, (response) => {
+        if (componentMounted.current && response) {
+          setShelves(response || []);
+        }
+      });
+    }
   };
 
   const loadRacks = () => {
-    getFromOpenElisServer("/rest/storage/racks", (response) => {
-      if (componentMounted.current && response) {
-        setRacks(response || []);
+    // Use search endpoint if searchTerm is present, otherwise use filter endpoint
+    if (searchTerm && searchTerm.trim()) {
+      // Call search endpoint (FR-064: Racks tab - search by label)
+      const url = `/rest/storage/racks/search?q=${encodeURIComponent(searchTerm.trim())}`;
+      getFromOpenElisServer(url, (response) => {
+        if (componentMounted.current && response) {
+          // Apply filters client-side on search results (AND logic)
+          let filtered = response || [];
+          
+          if (filterRoom && visibleFilters.room && rooms && rooms.length > 0) {
+            const selectedRoom = rooms.find((r) => r.id === filterRoom || r.id?.toString() === filterRoom);
+            if (selectedRoom) {
+              filtered = filtered.filter((rack) => {
+                const rackRoomId = rack.roomId;
+                return rackRoomId === selectedRoom.id || rackRoomId?.toString() === selectedRoom.id?.toString();
+              });
+            }
+          }
+          
+          if (filterDevice && visibleFilters.device && devices && devices.length > 0) {
+            const selectedDevice = devices.find((d) => d.id === filterDevice || d.id?.toString() === filterDevice);
+            if (selectedDevice) {
+              filtered = filtered.filter((rack) => {
+                const rackDeviceId = rack.deviceId;
+                return rackDeviceId === selectedDevice.id || rackDeviceId?.toString() === selectedDevice.id?.toString();
+              });
+            }
+          }
+          
+          if (filterStatus && visibleFilters.status) {
+            const activeFilter = filterStatus === "true";
+            filtered = filtered.filter((rack) => {
+              const rackActive = rack.active === true || rack.active === "true";
+              return rackActive === activeFilter;
+            });
+          }
+          
+          setRacks(filtered);
+        }
+      });
+    } else {
+      // Build query parameters for filtering (FR-065: Racks tab - filter by room, shelf, device, and status)
+      const params = new URLSearchParams();
+      
+      // Note: shelf filter not implemented in UI yet, backend supports it
+      // When shelf filter is added, include: params.append("shelfId", filterShelf);
+      
+      if (filterDevice && visibleFilters.device && devices && devices.length > 0) {
+        const selectedDevice = devices.find((d) => d.id === filterDevice || d.id?.toString() === filterDevice);
+        if (selectedDevice) {
+          params.append("deviceId", selectedDevice.id);
+        }
       }
-    });
+      
+      if (filterRoom && visibleFilters.room && rooms && rooms.length > 0) {
+        const selectedRoom = rooms.find((r) => r.id === filterRoom || r.id?.toString() === filterRoom);
+        if (selectedRoom) {
+          params.append("roomId", selectedRoom.id);
+        }
+      }
+      
+      if (filterStatus && visibleFilters.status) {
+        if (filterStatus === "true") {
+          params.append("status", "active");
+        } else if (filterStatus === "false") {
+          params.append("status", "inactive");
+        }
+      }
+      
+      const queryString = params.toString();
+      const url = `/rest/storage/racks${queryString ? "?" + queryString : ""}`;
+      
+      getFromOpenElisServer(url, (response) => {
+        if (componentMounted.current && response) {
+          setRacks(response || []);
+        }
+      });
+    }
   };
 
   const loadSamples = () => {
-    console.log("Loading samples from /rest/storage/samples...");
-    getFromOpenElisServer("/rest/storage/samples", (response) => {
-      if (componentMounted.current) {
-        console.log("Samples API response received:", response, "Type:", typeof response);
-        if (response && Array.isArray(response)) {
-          console.log("Samples loaded:", response.length, response);
-          setSamples(response);
-          if (response.length === 0) {
-            console.warn("Samples API returned empty array - no sample assignments found in database");
+    // Use search endpoint if searchTerm is present, otherwise use filter endpoint
+    if (searchTerm && searchTerm.trim()) {
+      // Call search endpoint (FR-064: Samples tab - search by ID, accession prefix, location path)
+      const url = `/rest/storage/samples/search?q=${encodeURIComponent(searchTerm.trim())}`;
+      getFromOpenElisServer(url, (response) => {
+        if (componentMounted.current) {
+          if (response && Array.isArray(response)) {
+            // Apply filters client-side on search results (AND logic)
+            let filtered = response || [];
+            
+            // Build location filter from room/device selection
+            if (filterRoom && visibleFilters.room && rooms && rooms.length > 0) {
+              const selectedRoom = rooms.find((r) => r.id === filterRoom || r.id?.toString() === filterRoom);
+              if (selectedRoom) {
+                const locationFilter = selectedRoom.name || selectedRoom.code;
+                filtered = filtered.filter((sample) => {
+                  const sampleLocation = sample.location || "";
+                  return sampleLocation.toLowerCase().includes(locationFilter.toLowerCase());
+                });
+              }
+            } else if (filterDevice && visibleFilters.device && devices && devices.length > 0) {
+              const selectedDevice = devices.find((d) => d.id === filterDevice || d.id?.toString() === filterDevice);
+              if (selectedDevice) {
+                const locationFilter = selectedDevice.name || selectedDevice.code;
+                filtered = filtered.filter((sample) => {
+                  const sampleLocation = sample.location || "";
+                  return sampleLocation.toLowerCase().includes(locationFilter.toLowerCase());
+                });
+              }
+            }
+            
+            // Apply status filter
+            if (filterStatus && visibleFilters.status) {
+              const statusFilter = filterStatus === "true" ? "active" : filterStatus === "false" ? "disposed" : null;
+              if (statusFilter) {
+                filtered = filtered.filter((sample) => {
+                  const sampleStatus = sample.status || "active";
+                  return sampleStatus.toLowerCase() === statusFilter.toLowerCase();
+                });
+              }
+            }
+            
+            setSamples(filtered);
+          } else {
+            console.error("Samples search API returned non-array response:", response);
+            setSamples([]);
           }
-        } else {
-          console.error("Samples API returned non-array response:", response);
-          console.error("Expected array but got:", typeof response, response);
-          console.error("Response is:", JSON.stringify(response));
-          setSamples([]);
+        }
+      });
+    } else {
+      // Build query parameters for filtering (FR-065: Samples tab - filter by location and status)
+      const params = new URLSearchParams();
+      
+      // Build location filter from room/device selection
+      // Prefer room if both are selected (room is higher in hierarchy)
+      let locationFilter = null;
+      if (filterRoom && visibleFilters.room && rooms && rooms.length > 0) {
+        const selectedRoom = rooms.find((r) => r.id === filterRoom || r.id?.toString() === filterRoom);
+        if (selectedRoom) {
+          locationFilter = selectedRoom.name || selectedRoom.code;
+        }
+      } else if (filterDevice && visibleFilters.device && devices && devices.length > 0) {
+        const selectedDevice = devices.find((d) => d.id === filterDevice || d.id?.toString() === filterDevice);
+        if (selectedDevice) {
+          locationFilter = selectedDevice.name || selectedDevice.code;
         }
       }
-    });
+      
+      if (locationFilter) {
+        params.append("location", locationFilter);
+      }
+      
+      // Convert status filter: "true" -> "active", "false" -> "disposed", "" -> no filter
+      if (filterStatus && visibleFilters.status) {
+        if (filterStatus === "true") {
+          params.append("status", "active");
+        } else if (filterStatus === "false") {
+          params.append("status", "disposed");
+        }
+        // If filterStatus is empty string, don't add status param (show all)
+      }
+      
+      const queryString = params.toString();
+      const url = `/rest/storage/samples${queryString ? "?" + queryString : ""}`;
+      
+      console.log("Loading samples from", url, "with filters:", { filterRoom, filterDevice, filterStatus, locationFilter });
+      getFromOpenElisServer(url, (response) => {
+        if (componentMounted.current) {
+          console.log("Samples API response received:", response, "Type:", typeof response);
+          if (response && Array.isArray(response)) {
+            console.log("Samples loaded:", response.length, response);
+            setSamples(response);
+            if (response.length === 0) {
+              console.warn("Samples API returned empty array - no sample assignments found matching filters");
+            }
+          } else {
+            console.error("Samples API returned non-array response:", response);
+            console.error("Expected array but got:", typeof response, response);
+            console.error("Response is:", JSON.stringify(response));
+            setSamples([]);
+          }
+        }
+      });
+    }
   };
 
   // Calculate occupancy percentage
@@ -250,13 +656,16 @@ const StorageDashboard = () => {
   const filterData = (data, type) => {
     let filtered = [...data];
 
-    if (searchTerm) {
-      filtered = filtered.filter((item) => {
-        const searchableText = JSON.stringify(item).toLowerCase();
-        return searchableText.includes(searchTerm.toLowerCase());
-      });
+    // Search is now handled by backend search endpoints (FR-064)
+    // No client-side search filtering needed - data is already filtered by backend
+    // This function is kept for legacy compatibility but returns data as-is for tabs with backend search
+
+    // All tabs now use server-side filtering and search, so return data as-is
+    if (type === "samples" || type === "rooms" || type === "devices" || type === "shelves" || type === "racks") {
+      return filtered; // Data already filtered by backend (search + filters)
     }
 
+    // Legacy client-side filtering for other types (if any)
     if (filterRoom && type !== "rooms") {
       // filterRoom can be a string ID or empty string
       const roomFilterValue = typeof filterRoom === "string" ? filterRoom : "";
@@ -301,7 +710,8 @@ const StorageDashboard = () => {
       }
     }
 
-    if (filterStatus) {
+    // Status filtering (client-side for non-samples types)
+    if (filterStatus && type !== "samples") {
       filtered = filtered.filter((item) => {
         const statusValue = typeof filterStatus === "string" ? filterStatus : "";
         if (!statusValue) return true;
@@ -657,10 +1067,7 @@ const StorageDashboard = () => {
         </Column>
         <Column lg={4} md={4} sm={4}>
           <Tile>
-            <h3>
-              <FormattedMessage id="storage.metrics.storage.locations" />
-            </h3>
-            <p className="metric-value">{metrics.storageLocations}</p>
+            <StorageLocationsMetricCard />
           </Tile>
         </Column>
 
@@ -671,16 +1078,16 @@ const StorageDashboard = () => {
               <Tab>
                 <FormattedMessage id="storage.tab.samples" />
               </Tab>
-              <Tab>
+              <Tab className="tab-rooms">
                 <FormattedMessage id="storage.tab.rooms" />
               </Tab>
-              <Tab>
+              <Tab className="tab-devices">
                 <FormattedMessage id="storage.tab.devices" />
               </Tab>
-              <Tab>
+              <Tab className="tab-shelves">
                 <FormattedMessage id="storage.tab.shelves" />
               </Tab>
-              <Tab>
+              <Tab className="tab-racks">
                 <FormattedMessage id="storage.tab.racks" />
               </Tab>
             </TabList>

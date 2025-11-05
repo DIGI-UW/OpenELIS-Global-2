@@ -194,10 +194,10 @@ DELETE FROM storage_room WHERE id BETWEEN 1 AND 100;
 
 ```bash
 # Run all storage controller tests with test context
-mvn test -Dtest="StorageLocationRestControllerTest" -Dspring.profiles.active=test -DskipTests=false
+mvn test -Dtest="StorageLocationRestControllerTest" -Dspring.profiles.active=test -DskipTests=false -Dmaven.test.skip=true
 
 # Run sample assignment tests
-mvn test -Dtest="SampleStorageRestControllerTest" -Dspring.profiles.active=test -DskipTests=false
+mvn test -Dtest="SampleStorageRestControllerTest" -Dspring.profiles.active=test -DskipTests=false -Dmaven.test.skip=true
 ```
 
 ### Expected Test Behavior

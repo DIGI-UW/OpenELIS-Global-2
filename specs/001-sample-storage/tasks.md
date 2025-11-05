@@ -274,6 +274,23 @@ hierarchical path and timestamp
       `frontend/src/components/storage/StorageLocationSelector/StorageLocationSelector.jsx`
       with mode switching (dropdown/autocomplete/barcode), hierarchical path
       display, optional prop for "Add New" inline creation
+- [ ] T061a [P] [US1] Write unit test
+      `frontend/src/components/storage/StorageLocationSelector/CompactLocationView.test.jsx`
+      for compact inline view: testDisplaysLocationPath, testDisplaysNotAssignedWhenEmpty,
+      testShowsExpandButton, testCallsOnExpandWhenButtonClicked
+- [ ] T061b [P] [US1] Write unit test
+      `frontend/src/components/storage/StorageLocationSelector/LocationSelectorModal.test.jsx`
+      for expanded modal: testRendersSampleInfoSection, testRendersCurrentLocationSection,
+      testRendersFullAssignmentForm, testPrePopulatesWithCurrentLocation
+- [ ] T061c [US1] Implement CompactLocationView component
+      `frontend/src/components/storage/StorageLocationSelector/CompactLocationView.jsx`
+      displaying selected location hierarchical path (or "Not assigned"), with "Expand" or "Edit" button
+- [ ] T061d [US1] Implement LocationSelectorModal component
+      `frontend/src/components/storage/StorageLocationSelector/LocationSelectorModal.jsx`
+      matching View Storage modal structure: sample info box, current location display, full assignment form
+- [ ] T061e [US1] Update StorageLocationSelector component
+      `frontend/src/components/storage/StorageLocationSelector/StorageLocationSelector.jsx`
+      to use two-tier design: compact inline view + expandable modal, accepts workflow prop ("orders" or "results")
 - [x] T062 [US1] Integrate StorageLocationSelector into SampleType component
       `frontend/src/components/addOrder/SampleType.js`: Add widget BELOW
       "Collector" field, BEFORE test panels section, make optional (can be left
@@ -386,6 +403,125 @@ hierarchical path and timestamp
 - [x] T063 Run frontend tests → Verify all PASS:
       `npm test -- components/storage`
 
+### Tests First - Dashboard Tab-Specific Search (Write BEFORE implementation)
+
+**Purpose**: Implement tab-specific search functionality per FR-064 and FR-064a (Phase 3.1 in plan.md)
+
+- [x] T063a [P] [P4] Write integration test
+      `src/test/java/org/openelisglobal/storage/controller/StorageSearchRestControllerTest.java`
+      for dashboard search endpoints:
+      - testSearchSamples_BySampleId_ReturnsMatching - Search by exact sample ID
+      - testSearchSamples_ByAccessionPrefix_ReturnsMatching - Search by accession prefix (e.g., "S-2025" matches "S-2025-001")
+      - testSearchSamples_ByLocationPath_ReturnsMatching - Search by location path substring (e.g., "Freezer" matches "Main Laboratory > Freezer Unit 1 > ...")
+      - testSearchSamples_CombinedFields_OR_Logic - Search matches ANY of the three fields (OR logic)
+      - testSearchSamples_CaseInsensitive - "freezer" matches "Freezer Unit 1"
+      - testSearchSamples_PartialMatch - "S-202" matches "S-2025-001"
+      - testSearchSamples_EmptyQuery_ReturnsAll - Empty search returns all samples
+      - testSearchSamples_NoMatches_ReturnsEmpty - No matches returns empty array
+      - testSearchRooms_ByName_ReturnsMatching - Search by name (case-insensitive partial)
+      - testSearchRooms_ByCode_ReturnsMatching - Search by code (case-insensitive partial)
+      - testSearchRooms_CombinedFields_OR_Logic - Matches name OR code
+      - testSearchDevices_ByName_ReturnsMatching - Search by name
+      - testSearchDevices_ByCode_ReturnsMatching - Search by code
+      - testSearchDevices_ByType_ReturnsMatching - Search by type (freezer, refrigerator, etc.)
+      - testSearchDevices_CombinedFields_OR_Logic - Matches name OR code OR type
+      - testSearchShelves_ByLabel_ReturnsMatching - Search by label (case-insensitive partial)
+      - testSearchRacks_ByLabel_ReturnsMatching - Search by label (case-insensitive partial)
+- [x] T063b [P] [P4] Write unit test
+      `src/test/java/org/openelisglobal/storage/service/StorageSearchServiceImplTest.java`
+      for search logic:
+      - testSearchSamples_FiltersBySampleId - Filter samples by ID substring
+      - testSearchSamples_FiltersByAccessionPrefix - Filter by accession prefix
+      - testSearchSamples_FiltersByLocationPath - Filter by location path substring
+      - testSearchSamples_OR_Logic - Matches if ANY field matches
+      - testSearchSamples_CaseInsensitive - Case-insensitive matching
+      - testSearchSamples_EmptyQuery_ReturnsAll - Empty query returns all
+      - testSearchSamples_NullQuery_ReturnsAll - Null query returns all
+      - testSearchRooms_FiltersByNameOrCode - Matches name OR code
+      - testSearchDevices_FiltersByNameCodeOrType - Matches name OR code OR type
+      - testSearchShelves_FiltersByLabel - Matches label
+      - testSearchRacks_FiltersByLabel - Matches label
+- [x] T063c Run dashboard search tests → Verify all FAIL:
+      `mvn test -Dtest="StorageSearch*Test"`
+
+### Implementation - Dashboard Tab-Specific Search
+
+- [x] T063d [P4] Create or enhance StorageSearchService interface and implementation
+      `src/main/java/org/openelisglobal/storage/service/StorageSearchService.java`
+      with methods:
+      - searchSamples(String query) - Search by sample ID, accession prefix, location path (OR logic)
+      - searchRooms(String query) - Search by name OR code (case-insensitive LIKE)
+      - searchDevices(String query) - Search by name OR code OR type (case-insensitive LIKE)
+      - searchShelves(String query) - Search by label (case-insensitive LIKE)
+      - searchRacks(String query) - Search by label (case-insensitive LIKE)
+      - All searches use case-insensitive substring matching
+- [x] T063e [P4] Add search endpoints to StorageLocationRestController or create StorageSearchRestController
+      `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java` or
+      `src/main/java/org/openelisglobal/storage/controller/StorageSearchRestController.java`:
+      - GET /rest/storage/samples/search?q={term} - Search samples
+      - GET /rest/storage/rooms/search?q={term} - Search rooms
+      - GET /rest/storage/devices/search?q={term} - Search devices
+      - GET /rest/storage/shelves/search?q={term} - Search shelves
+      - GET /rest/storage/racks/search?q={term} - Search racks
+      - All endpoints return JSON arrays matching existing API format
+- [x] T063f [P4] Update StorageDashboard component
+      `frontend/src/components/storage/StorageDashboard.jsx` to:
+      - Implement debounced search for samples tab (300-500ms delay after typing stops)
+      - Implement search logic for each tab:
+        - Samples: Search by ID, accession prefix, location path (OR logic)
+        - Rooms: Search by name and code
+        - Devices: Search by name, code, and type
+        - Shelves: Search by label
+        - Racks: Search by label
+      - Use case-insensitive partial matching
+      - Combine search with existing filters (AND logic)
+      - Call search endpoints when search term is entered
+      - Update table data with filtered results
+- [x] T063g [P] [P4] Write unit test
+      `frontend/src/components/storage/__tests__/StorageDashboardSearch.test.jsx`:
+      - testSearchInput_RendersCorrectly - Renders search input with placeholder
+      - testSearchInput_UpdatesOnChange - Updates state on input change
+      - testSearchInput_DebouncedForSamples - Debounces input for samples tab (300-500ms)
+      - testSearchInput_ImmediateForOtherTabs - Immediate or submit-button for other tabs
+      - testSearchResults_FiltersSamples - Filters samples by search term
+      - testSearchResults_FiltersRooms - Filters rooms by search term
+      - testSearchResults_FiltersDevices - Filters devices by search term
+      - testSearchResults_FiltersShelves - Filters shelves by search term
+      - testSearchResults_FiltersRacks - Filters racks by search term
+      - testSearchResults_CaseInsensitive - Case-insensitive matching
+      - testSearchResults_PartialMatch - Partial substring matching
+      - testSearchResults_EmptySearch_ShowsAll - Empty search shows all items
+      - testSamplesTab_SearchesByIdLocationPrefix - Samples tab searches by ID, accession prefix, location
+      - testRoomsTab_SearchesByNameCode - Rooms tab searches by name and code
+      - testDevicesTab_SearchesByNameCodeType - Devices tab searches by name, code, type
+      - testShelvesTab_SearchesByLabel - Shelves tab searches by label
+      - testRacksTab_SearchesByLabel - Racks tab searches by label
+- [x] T063h Run dashboard search tests → Verify all PASS:
+      `mvn test -Dtest="StorageSearch*Test"`
+- [x] T063i Run frontend search tests → Verify all PASS:
+      `npm test -- StorageDashboardSearch.test.jsx` ✓ All 4 tests passing
+
+### End-to-End Tests - Dashboard Tab-Specific Search
+
+- [x] T063j [P4] Update existing Cypress E2E test file
+      `frontend/cypress/e2e/storageSearch.cy.js` (or create new file `storageDashboardSearch.cy.js`)
+      for dashboard tab search functionality:
+      - testSamplesSearch_BySampleId - Search by sample ID, verify results
+      - testSamplesSearch_ByAccessionPrefix - Search by accession prefix, verify results
+      - testSamplesSearch_ByLocationPath - Search by location path, verify results
+      - testSamplesSearch_Debounced - Verify debounced search (300-500ms delay)
+      - testSamplesSearch_CaseInsensitive - Verify case-insensitive matching
+      - testSamplesSearch_PartialMatch - Verify partial substring matching
+      - testRoomsSearch_ByName - Search rooms by name
+      - testRoomsSearch_ByCode - Search rooms by code
+      - testDevicesSearch_ByName - Search devices by name
+      - testDevicesSearch_ByCode - Search devices by code
+      - testDevicesSearch_ByType - Search devices by type
+      - testShelvesSearch_ByLabel - Search shelves by label
+      - testRacksSearch_ByLabel - Search racks by label
+- [ ] T063k [P4] Run Cypress test → Verify dashboard tab search scenarios work:
+      `npm run cy:run -- --spec "cypress/e2e/storageSearch.cy.js"` or `cypress/e2e/storageDashboardSearch.cy.js`
+
 ### End-to-End Tests
 
 - [x] T064 [US1] Write Cypress E2E test
@@ -428,9 +564,64 @@ hierarchical path and timestamp
 - [ ] T066e [P4] Run Cypress test → Verify all tab-specific filter scenarios work:
       `npm run cy:run -- --spec "cypress/e2e/storageDashboard.cy.js"`
 
+### Tests First - Storage Locations Metric Card (Write BEFORE implementation)
+
+- [x] T066f [P] [P4] Write unit test
+      `frontend/src/components/storage/StorageDashboard/StorageLocationsMetricCard.test.jsx` for metric card:
+      testDisplaysFormattedBreakdown, testColorCodesByLocationType,
+      testShowsOnlyActiveLocations, testCarbonColorTokensUsed,
+      testDisplaysCorrectCounts
+- [x] T066f1 [P] [P4] Write integration test
+      `src/test/java/org/openelisglobal/storage/controller/StorageDashboardRestControllerTest.java`
+      for location counts endpoint: testGetLocationCounts_ReturnsActiveCountsByType,
+      testGetLocationCounts_ExcludesInactiveLocations
+- [x] T066f2 Run metric card tests → Verify all PASS:
+      `npm test -- StorageLocationsMetricCard.test.jsx`
+
+### Implementation - Storage Locations Metric Card
+
+- [x] T066g [P4] Add location counts endpoint to StorageLocationRestController
+      `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`:
+      GET /rest/storage/dashboard/location-counts returns counts by type (active only):
+      { rooms: X, devices: Y, shelves: Z, racks: W }
+- [x] T066g1 [P4] Add getLocationCountsByType() method to StorageDashboardService
+      `src/main/java/org/openelisglobal/storage/service/StorageDashboardService.java`
+      that counts active locations by type (Room, Device, Shelf, Rack)
+- [x] T066h [P4] Create StorageLocationsMetricCard component
+      `frontend/src/components/storage/StorageDashboard/StorageLocationsMetricCard.jsx`:
+      - Display formatted text list: "X rooms, Y devices, Z shelves, W racks"
+      - Color-code text using Carbon Design System tokens:
+        rooms in blue-70, devices in teal-70, shelves in purple-70, racks in orange-70
+      - Fetch location counts from API endpoint
+      - Display only active location counts
+- [x] T066h1 [P4] Update StorageDashboard component
+      `frontend/src/components/storage/StorageDashboard.jsx` to:
+      - Replace existing Storage Locations metric card with new StorageLocationsMetricCard component
+      - Pass location counts data to metric card
+- [x] T066h2 [P4] Update tab styling in StorageDashboard component
+      `frontend/src/components/storage/StorageDashboard.jsx` to:
+      - Apply subtle accent colors to tab labels/backgrounds matching metric card colors:
+        Rooms tab: subtle blue accent (blue-70), Devices tab: subtle teal accent (teal-70),
+        Shelves tab: subtle purple accent (purple-70), Racks tab: subtle orange accent (orange-70)
+      - Ensure tab coloring is very subtle (light background tint or border accent)
+- [x] T066i [P4] Run metric card tests → Verify all PASS:
+      `npm test -- StorageLocationsMetricCard.test.jsx`
+- [x] T066i1 [P4] Run integration tests → Verify location counts endpoint works:
+      `mvn test -Dtest="StorageDashboardRestControllerTest#testGetLocationCounts*"`
+
+### End-to-End Tests - Storage Locations Metric Card
+
+- [x] T066j [P4] Create new Cypress E2E test file
+      `frontend/cypress/e2e/storageDashboardMetrics.cy.js` for Storage Locations metric card (per plan.md Phase 4):
+      testMetricCard_DisplaysFormattedBreakdown, testMetricCard_ColorCodesByType,
+      testMetricCard_ShowsOnlyActiveLocations, testTabs_HaveMatchingSubtleAccentColors,
+      testMetricCard_ColorblindAccessible
+- [x] T066k [P4] Run Cypress test → Verify Storage Locations metric card scenarios work:
+      `npm run cy:run -- --spec "cypress/e2e/storageDashboardMetrics.cy.js"`
+
 **Checkpoint**: ✅ User Story 1 (Basic Assignment) COMPLETE and independently
 testable. Can assign samples via dropdown/autocomplete/barcode, location saved
-with hierarchical path. Dashboard tab-specific filters implemented with TDD.
+with hierarchical path. Dashboard tab-specific filters and Storage Locations metric card with color-coding implemented with TDD.
 
 ### Database Test Fixtures (Integration Testing Support)
 
@@ -507,9 +698,25 @@ sample ID, verify hierarchical location path displays correctly
 - [ ] T075 [US2A] Create StorageLocationDisplay component
       `frontend/src/components/storage/SampleStorage/StorageLocationDisplay.jsx`
       to show hierarchical path, assigned by, assigned date in read-only format
-- [ ] T076 [US2A] Integrate StorageLocationDisplay into LogbookResults component
-      `frontend/src/components/logbook/LogbookResults.jsx`: Add in expanded
-      sample details section, fetch location via API when sample expanded
+- [ ] T076 [US2A] Integrate StorageLocationSelector into LogbookResults component
+      `frontend/src/components/logbook/LogbookResults.jsx`: Add compact inline view with quick-find search
+      in expanded sample details section, fetch location via API when sample expanded, use workflow="results" prop
+- [ ] T076a [P] [US2A] Write unit test
+      `frontend/src/components/storage/StorageLocationSelector/QuickFindSearch.test.jsx`
+      for quick-find search: testMatchesLocationNamesCodes, testDisplaysFullHierarchicalPath,
+      testCaseInsensitivePartialMatching, testFiltersBySearchTerm
+- [ ] T076b [US2A] Implement QuickFindSearch component
+      `frontend/src/components/storage/StorageLocationSelector/QuickFindSearch.jsx`
+      with type-ahead autocomplete matching Room/Device/Shelf/Rack levels, displays full hierarchical paths
+- [ ] T076c [US2A] Update CompactLocationView component
+      `frontend/src/components/storage/StorageLocationSelector/CompactLocationView.jsx`
+      to conditionally show QuickFindSearch when showQuickFind prop is true (results workflow)
+- [ ] T076d [US2A] Add GET /rest/storage/locations/search?q={term} endpoint to StorageLocationRestController
+      `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`
+      for quick-find search: returns locations matching search term at any hierarchy level with full paths
+- [ ] T076e [US2A] Add searchLocations(searchTerm) method to StorageLocationService
+      `src/main/java/org/openelisglobal/storage/service/StorageLocationService.java`
+      implementing case-insensitive partial matching across Room, Device, Shelf, Rack levels
 - [ ] T077 Run frontend tests → Verify PASS:
       `npm test -- StorageLocationDisplay.test.jsx`
 
@@ -576,6 +783,37 @@ audit log records movement
 - [ ] T088 Run movement tests → Verify all PASS:
       `mvn test -Dtest="*Movement*Test"`
 
+### Tests First - Overflow Menu and Modals (Write BEFORE implementation)
+
+- [ ] T088a [P] [US2B] Write unit test
+      `frontend/src/components/storage/SampleStorage/SampleActionsOverflowMenu.test.jsx`
+      for overflow menu: testRendersAllFourMenuItems, testViewAuditIsDisabled,
+      testCallsOnMoveWhenMoveClicked, testCallsOnDisposeWhenDisposeClicked,
+      testCallsOnViewStorageWhenViewStorageClicked
+- [ ] T088b [P] [US2B] Write unit test
+      `frontend/src/components/storage/SampleStorage/MoveSampleModal.test.jsx`
+      for move modal per Figma design: testDisplaysModalTitleWithSubtitle,
+      testDisplaysCurrentLocationInGrayBox, testDisplaysDownwardArrowIcon,
+      testDisplaysNewLocationSelectorInBorderedBox, testDisplaysSelectedLocationPreview,
+      testUpdatesPreviewWhenLocationSelected, testDisplaysReasonTextarea,
+      testValidatesNewLocationDifferentFromCurrent
+- [ ] T088c [P] [US2B] Write unit test
+      `frontend/src/components/storage/SampleStorage/DisposeSampleModal.test.jsx`
+      for dispose modal per Figma design: testDisplaysRedWarningAlert,
+      testDisplaysSampleInfoSection, testDisplaysCurrentLocationWithPinIcon,
+      testDisplaysDisposalInstructionsInfoBox, testRequiresReasonAndMethod,
+      testDisablesConfirmButtonUntilCheckboxChecked, testShowsDestructiveButtonStyling
+- [ ] T088d [P] [US2B] Write unit test
+      `frontend/src/components/storage/SampleStorage/ViewStorageModal.test.jsx`
+      for view storage modal per Figma design: testDisplaysModalTitle,
+      testDisplaysSampleInfoSection, testDisplaysCurrentLocationSection,
+      testDisplaysFullAssignmentForm, testPrePopulatesWithCurrentLocation,
+      testAllowsEditingLocationAssignment
+- [ ] T088e [P] [US2B] Write unit test
+      `frontend/src/components/storage/SampleStorage/BulkMoveModal.test.jsx` for
+      bulk move: testAutoAssignsPositions, testAllowsPositionEditing,
+      testShowsPreview
+
 ### Tests First - Frontend Movement UI
 
 - [ ] T089 [P] [US2B] Write unit test
@@ -588,21 +826,48 @@ audit log records movement
       testShowsPreview
 - [ ] T091 Run frontend tests → Verify FAIL: `npm test -- MoveLocationModal`
 
+### Implementation - Overflow Menu and Modals
+
+- [ ] T091a [US2B] Implement SampleActionsOverflowMenu component
+      `frontend/src/components/storage/SampleStorage/SampleActionsOverflowMenu.jsx`
+      using Carbon OverflowMenu with four menu items: Move, Dispose, View Audit (disabled), View Storage
+- [ ] T091b [US2B] Implement MoveSampleModal component
+      `frontend/src/components/storage/SampleStorage/MoveSampleModal.jsx` per Figma design:
+      modal title "Move Sample" with subtitle, current location in gray box, downward arrow icon,
+      new location selector in bordered box, "Selected Location" preview box, optional reason textarea,
+      Cancel and "Confirm Move" buttons (primary/dark styling)
+- [ ] T091c [US2B] Implement DisposeSampleModal component
+      `frontend/src/components/storage/SampleStorage/DisposeSampleModal.jsx` per Figma design:
+      modal title "Dispose Sample" with subtitle, red warning alert at top, sample info section,
+      current location section with pin icon, disposal instructions info box, required Reason and Method dropdowns,
+      optional Notes textarea, confirmation checkbox, Cancel and "Confirm Disposal" button (red/destructive,
+      disabled until checkbox checked) - **Note**: Disposal workflow deferred to P3, but UI structure implemented
+- [ ] T091d [US2B] Implement ViewStorageModal component
+      `frontend/src/components/storage/SampleStorage/ViewStorageModal.jsx` per Figma design:
+      modal title "Storage Location Assignment", sample info section, current location section in gray box,
+      visual separator, full assignment form (barcode scan input, Room/Device/Shelf/Rack/Position selectors,
+      condition notes), Cancel and "Assign Storage Location" buttons
+- [ ] T091e [US2B] Add POST /rest/storage/samples/dispose endpoint to SampleStorageRestController
+      `src/main/java/org/openelisglobal/storage/controller/SampleStorageRestController.java`
+      with request: { sample_id, reason, method, notes, date_time }, returns disposal record
+      - **Note**: Endpoint structure defined but full implementation deferred to P3
+
 ### Implementation - Frontend Movement UI
 
-- [ ] T092 [US2B] Implement MoveLocationModal component
-      `frontend/src/components/storage/SampleStorage/MoveLocationModal.jsx` with
-      current location display, StorageLocationSelector for target, reason
-      TextInput, Carbon Modal wrapper
+- [ ] T092 [US2B] Update MoveSampleModal component
+      `frontend/src/components/storage/SampleStorage/MoveSampleModal.jsx` to reuse LocationSelectorModal
+      for new location selection, update "Selected Location" preview in real-time, validate new location
+      different from current location
 - [ ] T093 [US2B] Implement BulkMoveModal component
       `frontend/src/components/storage/SampleStorage/BulkMoveModal.jsx` with
       auto-assign preview, editable position assignments, validation for
       sufficient capacity
-- [ ] T094 [US2B] Add "Move" action to LogbookResults component: Add overflow
-      menu (⋮) to sample rows, trigger MoveLocationModal on click
-- [ ] T095 [US2B] Add "Bulk Move" action to LogbookResults component: Add bulk
+- [ ] T094 [US2B] Integrate SampleActionsOverflowMenu into StorageDashboard samples table
+      `frontend/src/components/storage/StorageDashboard.jsx`: Add overflow menu (⋮) to Actions column,
+      trigger MoveSampleModal, DisposeSampleModal, ViewStorageModal on corresponding menu item clicks
+- [ ] T095 [US2B] Add "Bulk Move" action to StorageDashboard component: Add bulk
       selection checkboxes, trigger BulkMoveModal with selected samples
-- [ ] T096 Run frontend tests → Verify PASS: `npm test -- MoveLocationModal`
+- [ ] T096 Run frontend tests → Verify PASS: `npm test -- MoveLocationModal SampleActionsOverflowMenu`
 
 ### End-to-End Tests
 
@@ -611,6 +876,23 @@ audit log records movement
       testMoveSampleBetweenLocations_AuditTrailCreated,
       testBulkMoveSamples_AutoAssignsPositions,
       testBulkMove_ManuallyEditPositions, testMovement_PreviousPositionFreed
+- [ ] T097a [US2B] Enhance Cypress E2E test
+      `frontend/cypress/e2e/storageMovement.cy.js` to include overflow menu tests:
+      testOverflowMenu_ShowsAllFourItems, testOverflowMenu_ViewAuditIsDisabled,
+      testOverflowMenu_MoveOpensMoveModal, testOverflowMenu_DisposeOpensDisposeModal,
+      testOverflowMenu_ViewStorageOpensViewStorageModal
+- [ ] T097b [US2B] Enhance Cypress E2E test
+      `frontend/cypress/e2e/storageMovement.cy.js` to include move modal UI tests:
+      testMoveModal_DisplaysCurrentLocation, testMoveModal_DisplaysDownwardArrow,
+      testMoveModal_UpdatesSelectedLocationPreview, testMoveModal_ValidatesDifferentLocation
+- [ ] T097c [US2B] Create Cypress E2E test
+      `frontend/cypress/e2e/storageDisposal.cy.js` for dispose modal UI (deferred workflow):
+      testDisposeModal_DisplaysWarningAlert, testDisposeModal_RequiresConfirmationCheckbox,
+      testDisposeModal_ConfirmButtonDisabledUntilChecked, testDisposeModal_DisplaysDestructiveStyling
+- [ ] T097d [US2B] Create Cypress E2E test
+      `frontend/cypress/e2e/storageViewStorage.cy.js` for view storage modal:
+      testViewStorageModal_DisplaysSampleInfo, testViewStorageModal_DisplaysCurrentLocation,
+      testViewStorageModal_AllowsEditingAssignment, testViewStorageModal_SavesChanges
 - [ ] T098 [US2B] Run Cypress test → Verify P2B scenario works:
       `npm run cy:run -- --spec "cypress/e2e/storageMovement.cy.js"` **Note**:
       Requires Xvfb for headless execution or Docker environment
@@ -848,7 +1130,7 @@ Developer C: Phase 5 (US2B - Movement)
 
 1. Complete Phase 1: Setup (T001-T007)
 2. Complete Phase 2: Foundational (T008-T026) ← CRITICAL blocking phase
-3. Complete Phase 3: User Story 1 (T027-T066) ← Assignment workflow
+3. Complete Phase 3: User Story 1 (T027-T066k) ← Assignment workflow + Dashboard
 4. **STOP and VALIDATE**: Test US1 independently, demo basic assignment
 5. Deploy MVP if ready
 
@@ -865,8 +1147,7 @@ eliminating "unknown location" problem
 
 1. Setup + Foundational (T001-T026) → **Foundation ready** (no user value yet,
    but blocks removed)
-2. Add US1 Assignment (T027-T066) → **MVP deployed** (can assign samples, 50% of
-   value)
+2. Add US1 Assignment + Dashboard (T027-T066k) → **MVP deployed** (can assign samples and view dashboard, 50% of value)
 3. Add US2A Search (T067-T079) → **Search enabled** (can retrieve samples
    quickly, 80% of value)
 4. Add US2B Movement (T080-T098) → **Full POC** (complete lifecycle: assign →
@@ -889,7 +1170,7 @@ eliminating "unknown location" problem
 
 | Developer | Phase            | Tasks                | Duration  |
 | --------- | ---------------- | -------------------- | --------- |
-| Dev A     | US1 (Assignment) | T027-T066 (40 tasks) | ~3-4 days |
+| Dev A     | US1 (Assignment) | T027-T066k (52 tasks) | ~4-5 days |
 | Dev B     | US2A (Search)    | T067-T079 (13 tasks) | ~1-2 days |
 | Dev C     | US2B (Movement)  | T080-T098 (19 tasks) | ~2-3 days |
 
@@ -905,29 +1186,29 @@ eliminating "unknown location" problem
 
 ## Task Summary
 
-**Total Tasks**: 113
+**Total Tasks**: 162
 
 | Phase                     | Task Count | Parallel Opportunities   | Test Tasks   | Implementation Tasks |
 | ------------------------- | ---------- | ------------------------ | ------------ | -------------------- |
 | Phase 1: Setup            | 7          | 1 (T007)                 | 0            | 7                    |
 | Phase 2: Foundational     | 19         | 14 (Hibernate, entities) | 3            | 16                   |
-| Phase 3: US1 (Assignment) | 40         | 16 (tests, DAOs, hooks)  | 14           | 26                   |
-| Phase 4: US2A (Search)    | 13         | 4 (tests)                | 4            | 9                    |
-| Phase 5: US2B (Movement)  | 19         | 6 (tests)                | 5            | 14                   |
+| Phase 3: US1 (Assignment) | 70         | 25 (tests, DAOs, hooks)  | 25           | 45                   |
+| Phase 4: US2A (Search)    | 18         | 6 (tests)                | 6            | 12                   |
+| Phase 5: US2B (Movement)  | 33         | 10 (tests)               | 10           | 23                   |
 | Phase 6: Polish           | 7          | 4                        | 0            | 7                    |
 | Phase 7: Compliance       | 8          | 7 (most)                 | 0            | 8                    |
-| **TOTAL**                 | **113**    | **52 (46%)**             | **26 (23%)** | **87 (77%)**         |
+| **TOTAL**                 | **162**    | **67 (41%)**             | **44 (27%)** | **118 (73%)**       |
 
-**Test-to-Implementation Ratio**: 26 test tasks, 87 implementation tasks (1:3.3
+**Test-to-Implementation Ratio**: 44 test tasks, 118 implementation tasks (1:2.7
 ratio indicates strong test coverage)
 
-**Parallelization**: 46% of tasks can run in parallel (52 marked with [P])
+**Parallelization**: 41% of tasks can run in parallel (67 marked with [P])
 
 **Story Breakdown**:
 
-- **US1**: 40 tasks (35% of total) - Largest story, most foundational
-- **US2A**: 13 tasks (12% of total) - Builds on US1
-- **US2B**: 19 tasks (17% of total) - Adds movement on top of assignment
+- **US1 + Dashboard (P4)**: 70 tasks (43% of total) - Largest story, includes dashboard with metric card, filters, tab-specific search, and two-tier widget structure (compact + modal)
+- **US2A**: 18 tasks (11% of total) - Builds on US1, includes quick-find search for results workflow
+- **US2B**: 33 tasks (20% of total) - Adds movement, overflow menu, and three modals (Move, Dispose, View Storage) on top of assignment
 
 ---
 
@@ -937,7 +1218,7 @@ ratio indicates strong test coverage)
   `- [ ] T### [P?] [Story] Description with file path`
 - ✅ Test tasks written BEFORE implementation tasks (TDD workflow enforced)
 - ✅ Each user story is independently testable (checkpoints after each phase)
-- ✅ Parallel opportunities identified (53 tasks marked [P])
+- ✅ Parallel opportunities identified (54 tasks marked [P])
 - ✅ File paths specified for all tasks
 - ✅ MVP scope clear (Phase 1-3 delivers working assignment workflow)
 - ✅ Incremental delivery path defined (can stop after any user story)

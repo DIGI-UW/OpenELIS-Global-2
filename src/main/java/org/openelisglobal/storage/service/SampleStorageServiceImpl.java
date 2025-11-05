@@ -9,6 +9,8 @@ import org.openelisglobal.sample.dao.SampleDAO;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.valueholder.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class SampleStorageServiceImpl implements SampleStorageService {
+
+    private static final Logger logger = LoggerFactory.getLogger(SampleStorageServiceImpl.class);
 
     @Autowired
     private SampleDAO sampleDAO;
@@ -166,16 +170,19 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         // DAO.getAll() now eagerly fetches entire hierarchy (Sample, Position, Rack, Shelf, Device, Room)
         // All data is loaded within this transaction, so no lazy loading issues
         List<SampleStorageAssignment> assignments = sampleStorageAssignmentDAO.getAll();
+        logger.info("getAllSamplesWithAssignments: Found {} total assignments", assignments.size());
         List<Map<String, Object>> response = new java.util.ArrayList<>();
 
         for (SampleStorageAssignment assignment : assignments) {
             // Skip assignments without samples (data integrity issue)
             if (assignment.getSample() == null) {
+                logger.debug("Skipping assignment {} - null sample", assignment.getId());
                 continue;
             }
 
             // Skip assignments without storage positions (invalid state)
             if (assignment.getStoragePosition() == null) {
+                logger.debug("Skipping assignment {} - null storage position", assignment.getId());
                 continue;
             }
 
@@ -184,6 +191,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             StoragePosition position = assignment.getStoragePosition();
             StorageRack rack = position.getParentRack();
             if (rack == null) {
+                logger.debug("Skipping assignment {} - position {} has null rack", assignment.getId(), position.getId());
                 continue; // Invalid position without rack
             }
             
@@ -191,6 +199,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             StorageShelf shelf = rack.getParentShelf();
             StorageDevice device = shelf != null ? shelf.getParentDevice() : null;
             StorageRoom room = device != null ? device.getParentRoom() : null;
+            
+            // Note: shelf, device, and room can be null - buildPathFromEntities handles this
 
             // Build hierarchical path directly from already-initialized entities
             // This avoids calling buildHierarchicalPath which might trigger lazy loading
@@ -214,6 +224,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             response.add(map);
         }
 
+        logger.info("getAllSamplesWithAssignments: Returning {} samples after processing {} assignments", response.size(), assignments.size());
         return response;
     }
 
