@@ -277,13 +277,13 @@ From repository root:
 
 ```bash
 # Clean build (skip tests for faster iteration)
-mvn clean install -DskipTests
+mvn clean install -DskipTests -Dmaven.test.skip=true
 
 # Build with unit tests
 mvn clean install
 
 # Build only storage module (after initial full build)
-mvn clean install -pl :openelisglobal -am -DskipTests
+mvn clean install -pl :openelisglobal -am -DskipTests -Dmaven.test.skip=true
 ```
 
 **Expected Output**:
@@ -337,7 +337,7 @@ After making Java code changes:
 
 ```bash
 # Rebuild WAR
-mvn clean install -DskipTests
+mvn clean install -DskipTests -Dmaven.test.skip=true
 
 # Recreate backend container only
 docker-compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org

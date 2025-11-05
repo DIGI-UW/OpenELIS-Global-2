@@ -632,4 +632,24 @@ public class StorageLocationRestController extends BaseRestController {
             return ResponseEntity.ok(emptyCounts);
         }
     }
+
+    /**
+     * Search locations across all hierarchy levels (Room, Device, Shelf, Rack)
+     * GET /rest/storage/locations/search?q={term}
+     * Returns locations matching search term with full hierarchical paths
+     * 
+     * @param q Search term (case-insensitive partial match)
+     * @return List of matching locations with hierarchicalPath field
+     */
+    @GetMapping("/locations/search")
+    public ResponseEntity<List<Map<String, Object>>> searchLocations(
+            @RequestParam(required = false) String q) {
+        try {
+            List<Map<String, Object>> results = storageLocationService.searchLocations(q);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            logger.error("Error searching locations", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }

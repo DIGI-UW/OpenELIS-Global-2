@@ -36,7 +36,7 @@ development principles.
 
 ```bash
 # Backend formatting + build
-mvn spotless:apply && mvn clean install -DskipTests
+mvn spotless:apply && mvn clean install -DskipTests -Dmaven.test.skip=true
 
 # Frontend formatting + dev server
 cd frontend && npm run format && npm start

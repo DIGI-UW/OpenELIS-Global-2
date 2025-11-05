@@ -27,6 +27,7 @@ import { useHistory, useLocation } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import StorageLocationsMetricCard from "./StorageDashboard/StorageLocationsMetricCard";
+import SampleActionsContainer from "./SampleStorage/SampleActionsContainer";
 import "./StorageDashboard.css";
 
 const TAB_ROUTES = ["samples", "rooms", "devices", "shelves", "racks"];
@@ -1017,9 +1018,28 @@ const StorageDashboard = () => {
       assignedBy: sample.assignedBy || sample.assignedByUserId || "",
       date: sample.date || sample.assignedDate || "",
       actions: (
-        <Button kind="ghost" size="sm" data-testid="sample-actions-menu">
-          ⋮
-        </Button>
+        <SampleActionsContainer
+          sample={{
+            id: String(sample.sampleId || sample.id || ""),
+            sampleId: String(sample.sampleId || sample.id || ""),
+            type: sample.type || sample.sampleType || "",
+            status: sample.status || "Active",
+            location: sample.location || sample.hierarchicalPath || "",
+          }}
+          onMoveConfirm={(sample, newLocation, reason) => {
+            console.log("Move sample confirmed", { sample, newLocation, reason });
+            // TODO: Implement API call to move sample
+          }}
+          onDisposeConfirm={(sample, reason, method, notes) => {
+            console.log("Dispose sample confirmed", { sample, reason, method, notes });
+            // TODO: Implement API call to dispose sample
+          }}
+          onViewStorageSave={(sample, location) => {
+            console.log("Save storage location", { sample, location });
+            // TODO: Implement API call to save/update location
+          }}
+          onNotification={addNotification}
+        />
       ),
     }));
   };

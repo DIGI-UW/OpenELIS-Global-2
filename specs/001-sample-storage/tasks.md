@@ -274,21 +274,21 @@ hierarchical path and timestamp
       `frontend/src/components/storage/StorageLocationSelector/StorageLocationSelector.jsx`
       with mode switching (dropdown/autocomplete/barcode), hierarchical path
       display, optional prop for "Add New" inline creation
-- [ ] T061a [P] [US1] Write unit test
+- [x] T061a [P] [US1] Write unit test
       `frontend/src/components/storage/StorageLocationSelector/CompactLocationView.test.jsx`
       for compact inline view: testDisplaysLocationPath, testDisplaysNotAssignedWhenEmpty,
       testShowsExpandButton, testCallsOnExpandWhenButtonClicked
-- [ ] T061b [P] [US1] Write unit test
+- [x] T061b [P] [US1] Write unit test
       `frontend/src/components/storage/StorageLocationSelector/LocationSelectorModal.test.jsx`
       for expanded modal: testRendersSampleInfoSection, testRendersCurrentLocationSection,
       testRendersFullAssignmentForm, testPrePopulatesWithCurrentLocation
-- [ ] T061c [US1] Implement CompactLocationView component
+- [x] T061c [US1] Implement CompactLocationView component
       `frontend/src/components/storage/StorageLocationSelector/CompactLocationView.jsx`
       displaying selected location hierarchical path (or "Not assigned"), with "Expand" or "Edit" button
-- [ ] T061d [US1] Implement LocationSelectorModal component
+- [x] T061d [US1] Implement LocationSelectorModal component
       `frontend/src/components/storage/StorageLocationSelector/LocationSelectorModal.jsx`
       matching View Storage modal structure: sample info box, current location display, full assignment form
-- [ ] T061e [US1] Update StorageLocationSelector component
+- [x] T061e [US1] Update StorageLocationSelector component
       `frontend/src/components/storage/StorageLocationSelector/StorageLocationSelector.jsx`
       to use two-tier design: compact inline view + expandable modal, accepts workflow prop ("orders" or "results")
 - [x] T062 [US1] Integrate StorageLocationSelector into SampleType component
@@ -701,20 +701,20 @@ sample ID, verify hierarchical location path displays correctly
 - [ ] T076 [US2A] Integrate StorageLocationSelector into LogbookResults component
       `frontend/src/components/logbook/LogbookResults.jsx`: Add compact inline view with quick-find search
       in expanded sample details section, fetch location via API when sample expanded, use workflow="results" prop
-- [ ] T076a [P] [US2A] Write unit test
+- [x] T076a [P] [US2A] Write unit test
       `frontend/src/components/storage/StorageLocationSelector/QuickFindSearch.test.jsx`
       for quick-find search: testMatchesLocationNamesCodes, testDisplaysFullHierarchicalPath,
       testCaseInsensitivePartialMatching, testFiltersBySearchTerm
-- [ ] T076b [US2A] Implement QuickFindSearch component
+- [x] T076b [US2A] Implement QuickFindSearch component
       `frontend/src/components/storage/StorageLocationSelector/QuickFindSearch.jsx`
       with type-ahead autocomplete matching Room/Device/Shelf/Rack levels, displays full hierarchical paths
-- [ ] T076c [US2A] Update CompactLocationView component
+- [x] T076c [US2A] Update CompactLocationView component
       `frontend/src/components/storage/StorageLocationSelector/CompactLocationView.jsx`
       to conditionally show QuickFindSearch when showQuickFind prop is true (results workflow)
-- [ ] T076d [US2A] Add GET /rest/storage/locations/search?q={term} endpoint to StorageLocationRestController
+- [x] T076d [US2A] Add GET /rest/storage/locations/search?q={term} endpoint to StorageLocationRestController
       `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`
       for quick-find search: returns locations matching search term at any hierarchy level with full paths
-- [ ] T076e [US2A] Add searchLocations(searchTerm) method to StorageLocationService
+- [x] T076e [US2A] Add searchLocations(searchTerm) method to StorageLocationService
       `src/main/java/org/openelisglobal/storage/service/StorageLocationService.java`
       implementing case-insensitive partial matching across Room, Device, Shelf, Rack levels
 - [ ] T077 Run frontend tests → Verify PASS:
@@ -785,25 +785,25 @@ audit log records movement
 
 ### Tests First - Overflow Menu and Modals (Write BEFORE implementation)
 
-- [ ] T088a [P] [US2B] Write unit test
+- [x] T088a [P] [US2B] Write unit test
       `frontend/src/components/storage/SampleStorage/SampleActionsOverflowMenu.test.jsx`
       for overflow menu: testRendersAllFourMenuItems, testViewAuditIsDisabled,
       testCallsOnMoveWhenMoveClicked, testCallsOnDisposeWhenDisposeClicked,
       testCallsOnViewStorageWhenViewStorageClicked
-- [ ] T088b [P] [US2B] Write unit test
+- [x] T088b [P] [US2B] Write unit test
       `frontend/src/components/storage/SampleStorage/MoveSampleModal.test.jsx`
       for move modal per Figma design: testDisplaysModalTitleWithSubtitle,
       testDisplaysCurrentLocationInGrayBox, testDisplaysDownwardArrowIcon,
       testDisplaysNewLocationSelectorInBorderedBox, testDisplaysSelectedLocationPreview,
       testUpdatesPreviewWhenLocationSelected, testDisplaysReasonTextarea,
       testValidatesNewLocationDifferentFromCurrent
-- [ ] T088c [P] [US2B] Write unit test
+- [x] T088c [P] [US2B] Write unit test
       `frontend/src/components/storage/SampleStorage/DisposeSampleModal.test.jsx`
       for dispose modal per Figma design: testDisplaysRedWarningAlert,
       testDisplaysSampleInfoSection, testDisplaysCurrentLocationWithPinIcon,
       testDisplaysDisposalInstructionsInfoBox, testRequiresReasonAndMethod,
       testDisablesConfirmButtonUntilCheckboxChecked, testShowsDestructiveButtonStyling
-- [ ] T088d [P] [US2B] Write unit test
+- [x] T088d [P] [US2B] Write unit test
       `frontend/src/components/storage/SampleStorage/ViewStorageModal.test.jsx`
       for view storage modal per Figma design: testDisplaysModalTitle,
       testDisplaysSampleInfoSection, testDisplaysCurrentLocationSection,
@@ -828,21 +828,21 @@ audit log records movement
 
 ### Implementation - Overflow Menu and Modals
 
-- [ ] T091a [US2B] Implement SampleActionsOverflowMenu component
+- [x] T091a [US2B] Implement SampleActionsOverflowMenu component
       `frontend/src/components/storage/SampleStorage/SampleActionsOverflowMenu.jsx`
       using Carbon OverflowMenu with four menu items: Move, Dispose, View Audit (disabled), View Storage
-- [ ] T091b [US2B] Implement MoveSampleModal component
+- [x] T091b [US2B] Implement MoveSampleModal component
       `frontend/src/components/storage/SampleStorage/MoveSampleModal.jsx` per Figma design:
       modal title "Move Sample" with subtitle, current location in gray box, downward arrow icon,
       new location selector in bordered box, "Selected Location" preview box, optional reason textarea,
       Cancel and "Confirm Move" buttons (primary/dark styling)
-- [ ] T091c [US2B] Implement DisposeSampleModal component
+- [x] T091c [US2B] Implement DisposeSampleModal component
       `frontend/src/components/storage/SampleStorage/DisposeSampleModal.jsx` per Figma design:
       modal title "Dispose Sample" with subtitle, red warning alert at top, sample info section,
       current location section with pin icon, disposal instructions info box, required Reason and Method dropdowns,
       optional Notes textarea, confirmation checkbox, Cancel and "Confirm Disposal" button (red/destructive,
       disabled until checkbox checked) - **Note**: Disposal workflow deferred to P3, but UI structure implemented
-- [ ] T091d [US2B] Implement ViewStorageModal component
+- [x] T091d [US2B] Implement ViewStorageModal component
       `frontend/src/components/storage/SampleStorage/ViewStorageModal.jsx` per Figma design:
       modal title "Storage Location Assignment", sample info section, current location section in gray box,
       visual separator, full assignment form (barcode scan input, Room/Device/Shelf/Rack/Position selectors,

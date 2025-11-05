@@ -30,6 +30,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     @Autowired
     private StoragePositionDAO storagePositionDAO;
 
+    @Autowired
+    private StorageSearchService storageSearchService;
+
     @Override
     public List<StorageRoom> getRooms() {
         return storageRoomDAO.getAll();
@@ -571,5 +574,77 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         }
 
         return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> searchLocations(String searchTerm) {
+        List<Map<String, Object>> results = new ArrayList<>();
+
+        // Search across all hierarchy levels
+        List<Map<String, Object>> rooms = storageSearchService.searchRooms(searchTerm);
+        List<Map<String, Object>> devices = storageSearchService.searchDevices(searchTerm);
+        List<Map<String, Object>> shelves = storageSearchService.searchShelves(searchTerm);
+        List<Map<String, Object>> racks = storageSearchService.searchRacks(searchTerm);
+
+        // Add hierarchical paths and level information
+        for (Map<String, Object> room : rooms) {
+            Map<String, Object> result = new HashMap<>(room);
+            result.put("hierarchicalPath", room.get("name"));
+            result.put("level", "room");
+            results.add(result);
+        }
+
+        for (Map<String, Object> device : devices) {
+            Map<String, Object> result = new HashMap<>(device);
+            String roomName = (String) device.get("roomName");
+            String deviceName = (String) device.get("name");
+            String path = roomName != null ? roomName + " > " + deviceName : deviceName;
+            result.put("hierarchicalPath", path);
+            result.put("level", "device");
+            results.add(result);
+        }
+
+        for (Map<String, Object> shelf : shelves) {
+            Map<String, Object> result = new HashMap<>(shelf);
+            String roomName = (String) shelf.get("roomName");
+            String deviceName = (String) shelf.get("deviceName");
+            String shelfLabel = (String) shelf.get("label");
+            StringBuilder pathBuilder = new StringBuilder();
+            if (roomName != null) {
+                pathBuilder.append(roomName).append(" > ");
+            }
+            if (deviceName != null) {
+                pathBuilder.append(deviceName).append(" > ");
+            }
+            pathBuilder.append(shelfLabel);
+            result.put("hierarchicalPath", pathBuilder.toString());
+            result.put("level", "shelf");
+            results.add(result);
+        }
+
+        for (Map<String, Object> rack : racks) {
+            Map<String, Object> result = new HashMap<>(rack);
+            String roomName = (String) rack.get("roomName");
+            String deviceName = (String) rack.get("deviceName");
+            String shelfLabel = (String) rack.get("shelfLabel");
+            String rackLabel = (String) rack.get("label");
+            StringBuilder pathBuilder = new StringBuilder();
+            if (roomName != null) {
+                pathBuilder.append(roomName).append(" > ");
+            }
+            if (deviceName != null) {
+                pathBuilder.append(deviceName).append(" > ");
+            }
+            if (shelfLabel != null) {
+                pathBuilder.append(shelfLabel).append(" > ");
+            }
+            pathBuilder.append(rackLabel);
+            result.put("hierarchicalPath", pathBuilder.toString());
+            result.put("level", "rack");
+            results.add(result);
+        }
+
+        return results;
     }
 }

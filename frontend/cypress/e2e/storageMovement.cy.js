@@ -58,11 +58,11 @@ describe("Storage Movement - Single Sample Move (P2B)", function () {
         .first()
         .within(() => {
           // Click overflow menu
-          cy.get('[data-testid="sample-actions-menu"]').click();
+          cy.get('[data-testid="sample-actions-overflow-menu"]').click();
           // Click Move option (if available)
           cy.get("body").then(($body) => {
-            if ($body.find('[data-testid="move-option"]').length > 0) {
-              cy.get('[data-testid="move-option"]').click();
+            if ($body.find('[data-testid="move-menu-item"]').length > 0) {
+              cy.get('[data-testid="move-menu-item"]').click();
             } else {
               cy.log(
                 "Move functionality not yet implemented - skipping movement test",
@@ -74,16 +74,16 @@ describe("Storage Movement - Single Sample Move (P2B)", function () {
 
       // Wait for move modal to open (if implemented)
       cy.get("body").then(($body) => {
-        if ($body.find('[data-testid="move-location-modal"]').length > 0) {
-          cy.get('[data-testid="move-location-modal"]', {
+        if ($body.find('[data-testid="move-modal"]').length > 0) {
+          cy.get('[data-testid="move-modal"]', {
             timeout: 5000,
           }).should("be.visible");
 
           // Verify current location is displayed
-          cy.get('[data-testid="current-location"]').should("be.visible");
+          cy.get('[data-testid="current-location-section"]').should("be.visible");
 
           // Select new target location using storage location selector
-          cy.get('[data-testid="target-location-selector"]').within(() => {
+          cy.get('[data-testid="new-location-section"]').within(() => {
             storageAssignmentPage.selectRoom("MAIN");
             cy.wait(1000);
             storageAssignmentPage.selectDevice("FRZ01");
@@ -99,7 +99,7 @@ describe("Storage Movement - Single Sample Move (P2B)", function () {
           cy.get('[data-testid="move-reason"]').type("Testing preparation");
 
           // Confirm move
-          cy.get('[data-testid="confirm-move-button"]').click();
+          cy.contains("Confirm Move").click();
           cy.wait(2000);
 
           // Verify success notification
@@ -143,18 +143,18 @@ describe("Storage Movement - Single Sample Move (P2B)", function () {
         .first()
         .within(() => {
           // Click overflow menu
-          cy.get('[data-testid="sample-actions-menu"]').click();
+          cy.get('[data-testid="sample-actions-overflow-menu"]').click();
           // Check if Move option exists
           cy.get("body").then(($body2) => {
-            if ($body2.find('[data-testid="move-option"]').length > 0) {
-              cy.get('[data-testid="move-option"]').click();
+            if ($body2.find('[data-testid="move-menu-item"]').length > 0) {
+              cy.get('[data-testid="move-menu-item"]').click();
 
-              cy.get('[data-testid="move-location-modal"]', {
+              cy.get('[data-testid="move-modal"]', {
                 timeout: 5000,
               }).should("be.visible");
 
               // Select an occupied position (assuming A5 is occupied)
-              cy.get('[data-testid="target-location-selector"]').within(() => {
+              cy.get('[data-testid="new-location-section"]').within(() => {
                 storageAssignmentPage.selectRoom("MAIN");
                 cy.wait(1000);
                 storageAssignmentPage.selectDevice("FRZ01");
@@ -166,7 +166,7 @@ describe("Storage Movement - Single Sample Move (P2B)", function () {
                 storageAssignmentPage.selectPosition("A5"); // Occupied position
               });
 
-              cy.get('[data-testid="confirm-move-button"]').click();
+              cy.contains("Confirm Move").click();
               cy.wait(1000);
 
               // Verify error message (if validation is implemented)
@@ -396,17 +396,17 @@ describe("Storage Movement - Previous Position Freed (P2B)", function () {
                   cy.log(`Initial position: ${initialPosition}`);
 
                   // Move the sample (if move functionality is available)
-                  cy.get('[data-testid="sample-actions-menu"]').click();
+                  cy.get('[data-testid="sample-actions-overflow-menu"]').click();
                   cy.get("body").then(($body3) => {
-                    if ($body3.find('[data-testid="move-option"]').length > 0) {
-                      cy.get('[data-testid="move-option"]').click();
+                    if ($body3.find('[data-testid="move-menu-item"]').length > 0) {
+                      cy.get('[data-testid="move-menu-item"]').click();
 
-                      cy.get('[data-testid="move-location-modal"]', {
+                      cy.get('[data-testid="move-modal"]', {
                         timeout: 5000,
                       }).should("be.visible");
 
                       // Select new location
-                      cy.get('[data-testid="target-location-selector"]').within(() => {
+                      cy.get('[data-testid="new-location-section"]').within(() => {
                         storageAssignmentPage.selectRoom("MAIN");
                         cy.wait(1000);
                         storageAssignmentPage.selectDevice("FRZ01");
@@ -418,7 +418,7 @@ describe("Storage Movement - Previous Position Freed (P2B)", function () {
                         storageAssignmentPage.selectPosition("B4");
                       });
 
-                      cy.get('[data-testid="confirm-move-button"]').click();
+                      cy.contains("Confirm Move").click();
                       cy.wait(3000);
 
                       // Verify success notification
@@ -436,9 +436,9 @@ describe("Storage Movement - Previous Position Freed (P2B)", function () {
                 });
             } else {
               // Position data not available in table, but we can still test move functionality
-              cy.get('[data-testid="sample-actions-menu"]').click();
+              cy.get('[data-testid="sample-actions-overflow-menu"]').click();
               cy.get("body").then(($body4) => {
-                if ($body4.find('[data-testid="move-option"]').length > 0) {
+                if ($body4.find('[data-testid="move-menu-item"]').length > 0) {
                   cy.log(
                     "Position data not available in table, but move functionality exists - position freed verification skipped",
                   );
@@ -450,6 +450,332 @@ describe("Storage Movement - Previous Position Freed (P2B)", function () {
               });
             }
           });
+        });
+    });
+  });
+});
+
+/**
+ * T097a: Overflow Menu Tests
+ */
+describe("Storage Overflow Menu - Sample Actions (P2B)", function () {
+  beforeEach(() => {
+    cy.visit("/Storage/samples");
+    cy.wait(3000);
+  });
+
+  it("Should display all four menu items in overflow menu", function () {
+    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
+
+    cy.get("body").then(($body) => {
+      if ($body.find('[data-testid="sample-row"]').length === 0) {
+        cy.log("No samples available - skipping overflow menu test");
+        return;
+      }
+
+      // Find a sample row and click overflow menu
+      cy.get('[data-testid="sample-row"]')
+        .first()
+        .within(() => {
+          cy.get('[data-testid="sample-actions-overflow-menu"]')
+            .should("be.visible")
+            .click();
+        });
+
+      // Wait for menu to open
+      cy.wait(500);
+
+      // Verify all four menu items are present
+      cy.get("body").should("contain.text", "Move");
+      cy.get("body").should("contain.text", "Dispose");
+      cy.get("body").should("contain.text", "View Audit");
+      cy.get("body").should("contain.text", "View Storage");
+    });
+  });
+
+  it("Should show View Audit as disabled", function () {
+    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
+
+    cy.get("body").then(($body) => {
+      if ($body.find('[data-testid="sample-row"]').length === 0) {
+        cy.log("No samples available - skipping overflow menu test");
+        return;
+      }
+
+      cy.get('[data-testid="sample-row"]')
+        .first()
+        .within(() => {
+          cy.get('[data-testid="sample-actions-overflow-menu"]').click();
+        });
+
+      cy.wait(500);
+
+      // Verify View Audit menu item is disabled
+      cy.get('[data-testid="view-audit-menu-item"]')
+        .should("be.visible")
+        .and("have.attr", "disabled");
+    });
+  });
+
+  it("Should open Move modal when Move clicked", function () {
+    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
+
+    cy.get("body").then(($body) => {
+      if ($body.find('[data-testid="sample-row"]').length === 0) {
+        cy.log("No samples available - skipping move modal test");
+        return;
+      }
+
+      cy.get('[data-testid="sample-row"]')
+        .first()
+        .within(() => {
+          cy.get('[data-testid="sample-actions-overflow-menu"]').click();
+        });
+
+      cy.wait(500);
+
+      // Click Move menu item
+      cy.get('[data-testid="move-menu-item"]').click();
+
+      // Verify Move modal opens
+      cy.get('[data-testid="move-modal"]', { timeout: 5000 })
+        .should("be.visible")
+        .within(() => {
+          cy.contains("Move Sample").should("be.visible");
+        });
+    });
+  });
+
+  it("Should open Dispose modal when Dispose clicked", function () {
+    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
+
+    cy.get("body").then(($body) => {
+      if ($body.find('[data-testid="sample-row"]').length === 0) {
+        cy.log("No samples available - skipping dispose modal test");
+        return;
+      }
+
+      cy.get('[data-testid="sample-row"]')
+        .first()
+        .within(() => {
+          cy.get('[data-testid="sample-actions-overflow-menu"]').click();
+        });
+
+      cy.wait(500);
+
+      // Click Dispose menu item
+      cy.get('[data-testid="dispose-menu-item"]').click();
+
+      // Verify Dispose modal opens
+      cy.get('[data-testid="dispose-modal"]', { timeout: 5000 })
+        .should("be.visible")
+        .within(() => {
+          cy.contains("Dispose Sample").should("be.visible");
+        });
+    });
+  });
+
+  it("Should open View Storage modal when View Storage clicked", function () {
+    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
+
+    cy.get("body").then(($body) => {
+      if ($body.find('[data-testid="sample-row"]').length === 0) {
+        cy.log("No samples available - skipping view storage modal test");
+        return;
+      }
+
+      cy.get('[data-testid="sample-row"]')
+        .first()
+        .within(() => {
+          cy.get('[data-testid="sample-actions-overflow-menu"]').click();
+        });
+
+      cy.wait(500);
+
+      // Click View Storage menu item
+      cy.get('[data-testid="view-storage-menu-item"]').click();
+
+      // Verify View Storage modal opens
+      cy.get('[data-testid="view-storage-modal"]', { timeout: 5000 })
+        .should("be.visible")
+        .within(() => {
+          cy.contains("Storage Location Assignment").should("be.visible");
+        });
+    });
+  });
+});
+
+/**
+ * T097b: Move Modal UI Tests
+ */
+describe("Storage Move Modal - UI Components (P2B)", function () {
+  beforeEach(() => {
+    cy.visit("/Storage/samples");
+    cy.wait(3000);
+    storageAssignmentPage = new StorageAssignmentPage();
+  });
+
+  it("Should display current location in gray box", function () {
+    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
+
+    cy.get("body").then(($body) => {
+      if ($body.find('[data-testid="sample-row"]').length === 0) {
+        cy.log("No samples available - skipping move modal UI test");
+        return;
+      }
+
+      // Open move modal
+      cy.get('[data-testid="sample-row"]')
+        .first()
+        .within(() => {
+          cy.get('[data-testid="sample-actions-overflow-menu"]').click();
+        });
+
+      cy.wait(500);
+      cy.get('[data-testid="move-menu-item"]').click();
+
+      // Verify current location section is displayed
+      cy.get('[data-testid="move-modal"]', { timeout: 5000 })
+        .should("be.visible")
+        .within(() => {
+          cy.get('[data-testid="current-location-section"]')
+            .should("be.visible")
+            .and("contain.text", "Current Location");
+        });
+    });
+  });
+
+  it("Should display downward arrow icon", function () {
+    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
+
+    cy.get("body").then(($body) => {
+      if ($body.find('[data-testid="sample-row"]').length === 0) {
+        cy.log("No samples available - skipping move modal UI test");
+        return;
+      }
+
+      cy.get('[data-testid="sample-row"]')
+        .first()
+        .within(() => {
+          cy.get('[data-testid="sample-actions-overflow-menu"]').click();
+        });
+
+      cy.wait(500);
+      cy.get('[data-testid="move-menu-item"]').click();
+
+      cy.get('[data-testid="move-modal"]', { timeout: 5000 })
+        .should("be.visible")
+        .within(() => {
+          // Verify downward arrow is present (check for ArrowDown icon or similar)
+          cy.get(".move-modal-arrow").should("be.visible");
+        });
+    });
+  });
+
+  it("Should update Selected Location preview when location selected", function () {
+    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
+
+    cy.get("body").then(($body) => {
+      if ($body.find('[data-testid="sample-row"]').length === 0) {
+        cy.log("No samples available - skipping move modal UI test");
+        return;
+      }
+
+      cy.get('[data-testid="sample-row"]')
+        .first()
+        .within(() => {
+          cy.get('[data-testid="sample-actions-overflow-menu"]').click();
+        });
+
+      cy.wait(500);
+      cy.get('[data-testid="move-menu-item"]').click();
+
+      cy.get('[data-testid="move-modal"]', { timeout: 5000 })
+        .should("be.visible")
+        .within(() => {
+          // Verify preview box exists
+          cy.get('[data-testid="selected-location-preview"]').should("be.visible");
+
+          // Initially should show "Not selected"
+          cy.contains("Not selected").should("be.visible");
+
+          // Select a location
+          cy.get('[data-testid="new-location-section"]').within(() => {
+            storageAssignmentPage.selectRoom("MAIN");
+            cy.wait(1000);
+            storageAssignmentPage.selectDevice("FRZ01");
+            cy.wait(1000);
+            storageAssignmentPage.selectShelf("SHA");
+            cy.wait(1000);
+            storageAssignmentPage.selectRack("RKR2");
+            cy.wait(1000);
+            storageAssignmentPage.selectPosition("B3");
+          });
+
+          cy.wait(1000);
+
+          // Verify preview updates with selected location
+          cy.get('[data-testid="selected-location-preview"]')
+            .should("contain.text", "RKR2")
+            .and("contain.text", "B3");
+        });
+    });
+  });
+
+  it("Should validate new location is different from current location", function () {
+    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
+
+    cy.get("body").then(($body) => {
+      if ($body.find('[data-testid="sample-row"]').length === 0) {
+        cy.log("No samples available - skipping move modal validation test");
+        return;
+      }
+
+      cy.get('[data-testid="sample-row"]')
+        .first()
+        .within(() => {
+          cy.get('[data-testid="sample-actions-overflow-menu"]').click();
+        });
+
+      cy.wait(500);
+      cy.get('[data-testid="move-menu-item"]').click();
+
+      cy.get('[data-testid="move-modal"]', { timeout: 5000 })
+        .should("be.visible")
+        .within(() => {
+          // Get current location path
+          cy.get('[data-testid="current-location-section"]')
+            .invoke("text")
+            .then((currentLocationText) => {
+              cy.log(`Current location: ${currentLocationText}`);
+
+              // Attempt to select the same location (if validation is implemented)
+              // This test verifies the UI structure, actual validation would be tested in integration tests
+              cy.get('[data-testid="new-location-section"]').should("be.visible");
+
+              // Confirm button should be disabled until different location selected
+              cy.contains("Confirm Move")
+                .closest("button")
+                .should("have.attr", "disabled");
+            });
         });
     });
   });

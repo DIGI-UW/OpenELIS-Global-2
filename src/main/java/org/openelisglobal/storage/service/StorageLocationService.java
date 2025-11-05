@@ -67,4 +67,14 @@ public interface StorageLocationService {
     boolean validateLocationActive(StoragePosition position);
 
     String buildHierarchicalPath(StoragePosition position);
+
+    // Search methods
+    /**
+     * Search locations across all hierarchy levels (Room, Device, Shelf, Rack)
+     * Returns locations matching search term with full hierarchical paths
+     * 
+     * @param searchTerm Search term (case-insensitive partial match)
+     * @return List of matching locations as Maps with hierarchicalPath field
+     */
+    List<Map<String, Object>> searchLocations(String searchTerm);
 }

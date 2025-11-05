@@ -3,36 +3,58 @@ import { FormattedMessage, useIntl } from "react-intl";
 import CascadingDropdownMode from "./CascadingDropdownMode";
 import AutocompleteMode from "./AutocompleteMode";
 import BarcodeScanMode from "./BarcodeScanMode";
+import CompactLocationView from "./CompactLocationView";
+import LocationSelectorModal from "./LocationSelectorModal";
 import "./StorageLocationSelector.css";
 
 /**
  * Main Storage Location Selector Widget
- * Supports three input modes: dropdown, autocomplete, barcode
+ * Supports two-tier design: compact inline view + expandable modal
+ * Also supports legacy mode: direct dropdown/autocomplete/barcode selection
  *
  * Props:
- * - mode: 'dropdown' | 'autocomplete' | 'barcode'
+ * - workflow: 'orders' | 'results' - Uses two-tier design when specified
+ * - mode: 'dropdown' | 'autocomplete' | 'barcode' - Legacy mode (used when workflow not specified)
  * - onLocationChange: callback when location selected
  * - enableInlineCreation: boolean to show "Add New" buttons
  * - optional: boolean - can be left blank
+ * - showQuickFind: boolean - Show quick-find search in compact view (results workflow)
+ * - sampleInfo: object - { sampleId, type, status } - For modal display
  */
 const StorageLocationSelector = ({
+  workflow,
   mode = "dropdown",
   onLocationChange,
   enableInlineCreation = false,
   optional = true,
+  showQuickFind = false,
+  sampleInfo = null,
 }) => {
   const intl = useIntl();
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [hierarchicalPath, setHierarchicalPath] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const buildHierarchicalPath = (location) => {
+    if (!location) return "";
+    if (location.position) {
+      return `${location.room?.name} > ${location.device?.name} > ${location.shelf?.label} > ${location.rack?.label} > Position ${location.position.coordinate}`;
+    } else if (location.rack) {
+      return `${location.room?.name} > ${location.device?.name} > ${location.shelf?.label} > ${location.rack?.label}`;
+    } else if (location.shelf) {
+      return `${location.room?.name} > ${location.device?.name} > ${location.shelf?.label}`;
+    } else if (location.device) {
+      return `${location.room?.name} > ${location.device?.name}`;
+    } else if (location.room) {
+      return location.room.name;
+    }
+    return "";
+  };
 
   const handleLocationChange = (location) => {
     setSelectedLocation(location);
-
-    // Build hierarchical path
-    if (location && location.position) {
-      const path = `${location.room?.name} > ${location.device?.name} > ${location.shelf?.label} > ${location.rack?.label} > Position ${location.position.coordinate}`;
-      setHierarchicalPath(path);
-    }
+    const path = buildHierarchicalPath(location);
+    setHierarchicalPath(path);
 
     if (onLocationChange) {
       onLocationChange(location);
@@ -44,6 +66,48 @@ const StorageLocationSelector = ({
     console.log("Barcode scanned:", barcode);
   };
 
+  const handleExpand = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleModalSave = (location) => {
+    handleLocationChange(location);
+    setIsModalOpen(false);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+  };
+
+  // Two-tier design: compact view + modal
+  if (workflow === "orders" || workflow === "results") {
+    const currentLocation = hierarchicalPath
+      ? { path: hierarchicalPath, position: selectedLocation?.position }
+      : null;
+
+    return (
+      <div
+        className="storage-location-selector"
+        data-testid="storage-location-selector"
+      >
+        <CompactLocationView
+          locationPath={hierarchicalPath}
+          onExpand={handleExpand}
+          showQuickFind={showQuickFind && workflow === "results"}
+          onLocationSelect={handleLocationChange}
+        />
+        <LocationSelectorModal
+          open={isModalOpen}
+          sampleInfo={sampleInfo}
+          currentLocation={currentLocation}
+          onClose={handleModalClose}
+          onSave={handleModalSave}
+        />
+      </div>
+    );
+  }
+
+  // Legacy mode: direct selection
   return (
     <div
       className="storage-location-selector"

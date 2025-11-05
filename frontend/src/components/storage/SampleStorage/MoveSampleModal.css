@@ -1,0 +1,80 @@
+.move-modal-current-location {
+  margin-bottom: 1.5rem;
+}
+
+.move-modal-arrow {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0;
+  color: var(--cds-text-secondary);
+}
+
+.move-modal-new-location {
+  margin-bottom: 1.5rem;
+}
+
+.location-selector-box {
+  border: 1px solid var(--cds-border-subtle);
+  border-radius: 4px;
+  padding: 1rem;
+  background-color: var(--cds-layer-01);
+}
+
+.move-modal-selected-preview {
+  margin-bottom: 1.5rem;
+}
+
+.preview-box {
+  border: 1px solid var(--cds-border-subtle);
+  border-radius: 4px;
+  padding: 1rem;
+  background-color: var(--cds-layer-02);
+}
+
+.preview-label {
+  font-weight: 600;
+  color: var(--cds-text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.preview-value {
+  color: var(--cds-text-primary);
+}
+
+.not-selected {
+  color: var(--cds-text-secondary);
+  font-style: italic;
+}
+
+.move-modal-reason {
+  margin-bottom: 1rem;
+}
+
+.required-indicator {
+  color: var(--cds-support-error);
+}
+
+.location-box {
+  background-color: var(--cds-layer-02);
+  border: 1px solid var(--cds-border-subtle);
+  border-radius: 4px;
+  padding: 1rem;
+}
+
+.location-label {
+  font-weight: 600;
+  color: var(--cds-text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.location-path {
+  color: var(--cds-text-primary);
+}
+
+.form-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--cds-text-primary);
+}
+
