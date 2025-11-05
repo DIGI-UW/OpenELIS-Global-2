@@ -41,8 +41,16 @@ const StorageLocationsMetricCard = () => {
           };
           setCounts(newCounts);
           // Debug logging to catch 0 counts issue
-          if (newCounts.rooms === 0 && newCounts.devices === 0 && newCounts.shelves === 0 && newCounts.racks === 0) {
-            console.warn("StorageLocationsMetricCard: All counts are 0. API response:", response);
+          if (
+            newCounts.rooms === 0 &&
+            newCounts.devices === 0 &&
+            newCounts.shelves === 0 &&
+            newCounts.racks === 0
+          ) {
+            console.warn(
+              "StorageLocationsMetricCard: All counts are 0. API response:",
+              response,
+            );
           }
         } else {
           console.error("StorageLocationsMetricCard: No response from API");
@@ -66,42 +74,60 @@ const StorageLocationsMetricCard = () => {
   // Format breakdown text with color-coding and pills
   const formatBreakdown = () => {
     const parts = [];
-    
+
     // Always include all location types, even if count is 0
     parts.push(
       <span key="rooms" className="location-count-pill location-count-rooms">
         <span className="location-count-number">{counts.rooms}</span>
         <span className="location-count-label">
-          <FormattedMessage id="storage.location.type.rooms" defaultMessage="rooms" />
+          <FormattedMessage
+            id="storage.location.type.rooms"
+            defaultMessage="rooms"
+          />
         </span>
-      </span>
+      </span>,
     );
-    
+
     parts.push(
-      <span key="devices" className="location-count-pill location-count-devices">
+      <span
+        key="devices"
+        className="location-count-pill location-count-devices"
+      >
         <span className="location-count-number">{counts.devices}</span>
         <span className="location-count-label">
-          <FormattedMessage id="storage.location.type.devices" defaultMessage="devices" />
+          <FormattedMessage
+            id="storage.location.type.devices"
+            defaultMessage="devices"
+          />
         </span>
-      </span>
+      </span>,
     );
-    
+
     parts.push(
-      <span key="shelves" className="location-count-pill location-count-shelves">
+      <span
+        key="shelves"
+        className="location-count-pill location-count-shelves"
+      >
         <span className="location-count-number">{counts.shelves}</span>
         <span className="location-count-label">
-          <FormattedMessage id="storage.location.type.shelves" defaultMessage="shelves" />
+          <FormattedMessage
+            id="storage.location.type.shelves"
+            defaultMessage="shelves"
+          />
         </span>
-      </span>
+      </span>,
     );
-    
+
     parts.push(
       <span key="racks" className="location-count-pill location-count-racks">
         <span className="location-count-number">{counts.racks}</span>
         <span className="location-count-label">
-          <FormattedMessage id="storage.location.type.racks" defaultMessage="racks" />
+          <FormattedMessage
+            id="storage.location.type.racks"
+            defaultMessage="racks"
+          />
         </span>
-      </span>
+      </span>,
     );
 
     return parts;
@@ -112,12 +138,9 @@ const StorageLocationsMetricCard = () => {
       <h3>
         <FormattedMessage id="storage.metrics.storage.locations" />
       </h3>
-      <div className="location-counts-breakdown">
-        {formatBreakdown()}
-      </div>
+      <div className="location-counts-breakdown">{formatBreakdown()}</div>
     </div>
   );
 };
 
 export default StorageLocationsMetricCard;
-

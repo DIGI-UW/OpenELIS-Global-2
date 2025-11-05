@@ -44,7 +44,7 @@ describe("SampleActionsOverflowMenu", () => {
     // Carbon OverflowMenu renders items in a menu button
     const menuButton = screen.getByRole("button");
     expect(menuButton).toBeTruthy();
-    
+
     // Click to open menu
     fireEvent.click(menuButton);
 
@@ -93,7 +93,7 @@ describe("SampleActionsOverflowMenu", () => {
     // Carbon OverflowMenu renders a button - find it by role
     const menuButton = screen.getByRole("button");
     expect(menuButton).toBeTruthy();
-    
+
     // Click to open the menu
     fireEvent.click(menuButton);
 
@@ -126,7 +126,7 @@ describe("SampleActionsOverflowMenu", () => {
 
     const menuButton = screen.getByRole("button");
     expect(menuButton).toBeTruthy();
-    
+
     fireEvent.click(menuButton);
 
     const disposeItem = screen.getByTestId("dispose-menu-item");
@@ -153,7 +153,7 @@ describe("SampleActionsOverflowMenu", () => {
 
     const menuButton = screen.getByRole("button");
     expect(menuButton).toBeTruthy();
-    
+
     fireEvent.click(menuButton);
 
     const viewStorageItem = screen.getByTestId("view-storage-menu-item");
@@ -182,7 +182,7 @@ describe("SampleActionsOverflowMenu", () => {
 
     const menuButton = screen.getByRole("button");
     expect(menuButton).toBeTruthy();
-    
+
     fireEvent.click(menuButton);
 
     // Menu items should still be visible
@@ -200,8 +200,10 @@ describe("SampleActionsOverflowMenu", () => {
    * This test would fail if Carbon OverflowMenuItem doesn't properly wire up onClick
    */
   test("testVerifiesOnClickHandlersAreAttached", () => {
-    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
-    
+    const consoleSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
     renderWithIntl(
       <SampleActionsOverflowMenu
         sample={mockSample}
@@ -217,10 +219,11 @@ describe("SampleActionsOverflowMenu", () => {
     // If onClick handlers are properly attached, clicking should trigger them
     // This test will help identify if Carbon OverflowMenuItem has issues with onClick
     const moveItem = screen.getByTestId("move-menu-item");
-    
+
     // Try to find the actual clickable element within Carbon's structure
-    const clickableButton = moveItem.closest("button") || moveItem.querySelector("button");
-    
+    const clickableButton =
+      moveItem.closest("button") || moveItem.querySelector("button");
+
     if (clickableButton) {
       fireEvent.click(clickableButton);
     } else {
@@ -230,8 +233,7 @@ describe("SampleActionsOverflowMenu", () => {
 
     // Verify callback was called - if this fails, onClick is not properly wired
     expect(mockOnMove).toHaveBeenCalledTimes(1);
-    
+
     consoleSpy.mockRestore();
   });
 });
-

@@ -23,10 +23,14 @@ describe("CompactLocationView", () => {
    * T061a: Test displays location path when location is selected
    */
   test("testDisplaysLocationPath", () => {
-    const locationPath = "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5";
+    const locationPath =
+      "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5";
 
     renderWithIntl(
-      <CompactLocationView locationPath={locationPath} onExpand={mockOnExpand} />,
+      <CompactLocationView
+        locationPath={locationPath}
+        onExpand={mockOnExpand}
+      />,
     );
 
     expect(screen.getByText(locationPath)).toBeTruthy();
@@ -69,4 +73,3 @@ describe("CompactLocationView", () => {
     expect(mockOnExpand).toHaveBeenCalledTimes(1);
   });
 });
-

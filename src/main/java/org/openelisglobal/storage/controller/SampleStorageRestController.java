@@ -17,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -43,18 +42,16 @@ public class SampleStorageRestController extends BaseRestController {
     private StorageDashboardService storageDashboardService;
 
     /**
-     * Get all samples with storage assignments GET /rest/storage/samples
-     * Supports filtering by location and status (FR-065)
+     * Get all samples with storage assignments GET /rest/storage/samples Supports
+     * filtering by location and status (FR-065)
      * 
      * @param countOnly If "true", returns metrics only
      * @param location  Optional location filter (hierarchical path substring)
      * @param status    Optional status filter (active, disposed, etc.)
      */
     @GetMapping("")
-    public ResponseEntity<List<Map<String, Object>>> getSamples(
-            @RequestParam(required = false) String countOnly,
-            @RequestParam(required = false) String location,
-            @RequestParam(required = false) String status) {
+    public ResponseEntity<List<Map<String, Object>>> getSamples(@RequestParam(required = false) String countOnly,
+            @RequestParam(required = false) String location, @RequestParam(required = false) String status) {
         try {
             if ("true".equals(countOnly)) {
                 // Return count metrics only
@@ -84,7 +81,8 @@ public class SampleStorageRestController extends BaseRestController {
                 response.add(metrics);
                 return ResponseEntity.ok(response);
             } else {
-                // Apply filters if provided (FR-065: Samples tab - filter by location and status)
+                // Apply filters if provided (FR-065: Samples tab - filter by location and
+                // status)
                 List<Map<String, Object>> response;
                 if (location != null || status != null) {
                     response = storageDashboardService.filterSamples(location, status);

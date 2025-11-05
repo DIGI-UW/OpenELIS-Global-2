@@ -128,8 +128,12 @@
 }
 
 /* Remove pseudo-element borders that Carbon might add */
-.storage-dashboard .cds--tabs .cds--tabs__nav-link[aria-selected="true"]::before,
-.storage-dashboard .cds--tabs .cds--tabs__nav-link[aria-selected="true"]::after {
+.storage-dashboard
+  .cds--tabs
+  .cds--tabs__nav-link[aria-selected="true"]::before,
+.storage-dashboard
+  .cds--tabs
+  .cds--tabs__nav-link[aria-selected="true"]::after {
   display: none !important;
   content: none !important;
   border: none !important;
@@ -201,4 +205,3 @@
 .storage-dashboard .cds--table-container {
   margin-top: 0;
 }
-

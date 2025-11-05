@@ -3,11 +3,6 @@ package org.openelisglobal.storage.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-import org.openelisglobal.storage.valueholder.StorageDevice;
-import org.openelisglobal.storage.valueholder.StorageRack;
-import org.openelisglobal.storage.valueholder.StorageRoom;
-import org.openelisglobal.storage.valueholder.StorageShelf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,7 +27,7 @@ public class StorageSearchServiceImpl implements StorageSearchService {
     @Transactional(readOnly = true)
     public List<Map<String, Object>> searchSamples(String query) {
         List<Map<String, Object>> allSamples = sampleStorageService.getAllSamplesWithAssignments();
-        
+
         // Empty or null query returns all samples
         if (query == null || query.trim().isEmpty()) {
             return allSamples;
@@ -71,9 +66,10 @@ public class StorageSearchServiceImpl implements StorageSearchService {
     @Override
     @Transactional(readOnly = true)
     public List<Map<String, Object>> searchRooms(String query) {
-        // Get all rooms as fully populated Maps (with all data resolved within transaction)
+        // Get all rooms as fully populated Maps (with all data resolved within
+        // transaction)
         List<Map<String, Object>> allRooms = storageLocationService.getRoomsForAPI();
-        
+
         // Empty or null query returns all rooms
         if (query == null || query.trim().isEmpty()) {
             return allRooms;
@@ -81,28 +77,29 @@ public class StorageSearchServiceImpl implements StorageSearchService {
 
         String normalizedQuery = query.trim().toLowerCase();
         List<Map<String, Object>> filtered = new ArrayList<>();
-        
+
         for (Map<String, Object> room : allRooms) {
             // Search by name OR code (OR logic)
             String name = (String) room.get("name");
             String code = (String) room.get("code");
             boolean matchesName = name != null && name.toLowerCase().contains(normalizedQuery);
             boolean matchesCode = code != null && code.toLowerCase().contains(normalizedQuery);
-            
+
             if (matchesName || matchesCode) {
                 filtered.add(room);
             }
         }
-        
+
         return filtered;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Map<String, Object>> searchDevices(String query) {
-        // Get all devices as fully populated Maps (with all data resolved within transaction)
+        // Get all devices as fully populated Maps (with all data resolved within
+        // transaction)
         List<Map<String, Object>> allDevices = storageLocationService.getDevicesForAPI(null);
-        
+
         // Empty or null query returns all devices
         if (query == null || query.trim().isEmpty()) {
             return allDevices;
@@ -110,7 +107,7 @@ public class StorageSearchServiceImpl implements StorageSearchService {
 
         String normalizedQuery = query.trim().toLowerCase();
         List<Map<String, Object>> filtered = new ArrayList<>();
-        
+
         for (Map<String, Object> device : allDevices) {
             // Search by name OR code OR type (OR logic)
             String name = (String) device.get("name");
@@ -119,21 +116,22 @@ public class StorageSearchServiceImpl implements StorageSearchService {
             boolean matchesName = name != null && name.toLowerCase().contains(normalizedQuery);
             boolean matchesCode = code != null && code.toLowerCase().contains(normalizedQuery);
             boolean matchesType = type != null && type.toLowerCase().contains(normalizedQuery);
-            
+
             if (matchesName || matchesCode || matchesType) {
                 filtered.add(device);
             }
         }
-        
+
         return filtered;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Map<String, Object>> searchShelves(String query) {
-        // Get all shelves as fully populated Maps (with all data resolved within transaction)
+        // Get all shelves as fully populated Maps (with all data resolved within
+        // transaction)
         List<Map<String, Object>> allShelves = storageLocationService.getShelvesForAPI(null);
-        
+
         // Empty or null query returns all shelves
         if (query == null || query.trim().isEmpty()) {
             return allShelves;
@@ -141,7 +139,7 @@ public class StorageSearchServiceImpl implements StorageSearchService {
 
         String normalizedQuery = query.trim().toLowerCase();
         List<Map<String, Object>> filtered = new ArrayList<>();
-        
+
         for (Map<String, Object> shelf : allShelves) {
             // Search by label (name)
             String label = (String) shelf.get("label");
@@ -149,16 +147,17 @@ public class StorageSearchServiceImpl implements StorageSearchService {
                 filtered.add(shelf);
             }
         }
-        
+
         return filtered;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Map<String, Object>> searchRacks(String query) {
-        // Get all racks as fully populated Maps (with all data resolved within transaction)
+        // Get all racks as fully populated Maps (with all data resolved within
+        // transaction)
         List<Map<String, Object>> allRacks = storageLocationService.getRacksForAPI(null);
-        
+
         // Empty or null query returns all racks
         if (query == null || query.trim().isEmpty()) {
             return allRacks;
@@ -166,7 +165,7 @@ public class StorageSearchServiceImpl implements StorageSearchService {
 
         String normalizedQuery = query.trim().toLowerCase();
         List<Map<String, Object>> filtered = new ArrayList<>();
-        
+
         for (Map<String, Object> rack : allRacks) {
             // Search by label (name)
             String label = (String) rack.get("label");
@@ -174,7 +173,7 @@ public class StorageSearchServiceImpl implements StorageSearchService {
                 filtered.add(rack);
             }
         }
-        
+
         return filtered;
     }
 }

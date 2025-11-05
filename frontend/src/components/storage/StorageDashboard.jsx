@@ -27,6 +27,7 @@ import { useHistory, useLocation } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import StorageLocationsMetricCard from "./StorageDashboard/StorageLocationsMetricCard";
+import LocationFilterDropdown from "./StorageDashboard/LocationFilterDropdown";
 import SampleActionsContainer from "./SampleStorage/SampleActionsContainer";
 import "./StorageDashboard.css";
 
@@ -67,8 +68,9 @@ const StorageDashboard = () => {
 
   // Filter state
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterRoom, setFilterRoom] = useState("");
-  const [filterDevice, setFilterDevice] = useState("");
+  const [locationFilter, setLocationFilter] = useState(null); // { id, type, name } for single location dropdown (Samples tab)
+  const [filterRoom, setFilterRoom] = useState(""); // For other tabs (devices, shelves, racks)
+  const [filterDevice, setFilterDevice] = useState(""); // For other tabs
   const [filterStatus, setFilterStatus] = useState("");
 
   const [loading, setLoading] = useState(true);
@@ -116,6 +118,7 @@ const StorageDashboard = () => {
 
   // Reset filters when tab changes
   useEffect(() => {
+    setLocationFilter(null);
     setFilterRoom("");
     setFilterDevice("");
     setFilterStatus("");
@@ -153,16 +156,21 @@ const StorageDashboard = () => {
   // Note: When searchTerm is present, filters are applied client-side on search results (AND logic)
   useEffect(() => {
     const tabName = TAB_ROUTES[selectedTab] || "samples";
-    
+
     // Skip filter reload if searchTerm is present (filters applied client-side on search results)
     // Exception: For samples tab, debounced search effect handles reload
     if (searchTerm && searchTerm.trim() && tabName === "samples") {
       // For samples tab with search, debounced search effect will handle reload with filters
       return;
     }
-    
-    console.log("Filters changed, reloading data for tab:", tabName, "with filters:", { filterRoom, filterDevice, filterStatus });
-    
+
+    console.log(
+      "Filters changed, reloading data for tab:",
+      tabName,
+      "with filters:",
+      { filterRoom, filterDevice, filterStatus },
+    );
+
     switch (tabName) {
       case "samples":
         loadSamples();
@@ -180,13 +188,13 @@ const StorageDashboard = () => {
         loadRacks();
         break;
     }
-  }, [filterRoom, filterDevice, filterStatus, selectedTab]);
+  }, [locationFilter, filterRoom, filterDevice, filterStatus, selectedTab]);
 
   // Debounced search for samples tab (300-500ms delay after typing stops) - FR-064a
   // For other tabs, search triggers immediate reload
   useEffect(() => {
     const tabName = TAB_ROUTES[selectedTab] || "samples";
-    
+
     // Only apply debouncing for samples tab (FR-064a)
     if (tabName === "samples") {
       // Clear existing timeout
@@ -289,7 +297,7 @@ const StorageDashboard = () => {
     } else {
       // Build query parameters for filtering (FR-065: Rooms tab - filter by status)
       const params = new URLSearchParams();
-      
+
       if (filterStatus && visibleFilters.status) {
         if (filterStatus === "true") {
           params.append("status", "active");
@@ -297,10 +305,10 @@ const StorageDashboard = () => {
           params.append("status", "inactive");
         }
       }
-      
+
       const queryString = params.toString();
       const url = `/rest/storage/rooms${queryString ? "?" + queryString : ""}`;
-      
+
       getFromOpenElisServer(url, (response) => {
         if (componentMounted.current && response) {
           setRooms(response || []);
@@ -319,42 +327,50 @@ const StorageDashboard = () => {
         if (componentMounted.current && response) {
           // Apply filters client-side on search results (AND logic)
           let filtered = response || [];
-          
+
           if (filterRoom && visibleFilters.room && rooms && rooms.length > 0) {
-            const selectedRoom = rooms.find((r) => r.id === filterRoom || r.id?.toString() === filterRoom);
+            const selectedRoom = rooms.find(
+              (r) => r.id === filterRoom || r.id?.toString() === filterRoom,
+            );
             if (selectedRoom) {
               filtered = filtered.filter((device) => {
                 const deviceRoomId = device.roomId || device.parentRoomId;
-                return deviceRoomId === selectedRoom.id || deviceRoomId?.toString() === selectedRoom.id?.toString();
+                return (
+                  deviceRoomId === selectedRoom.id ||
+                  deviceRoomId?.toString() === selectedRoom.id?.toString()
+                );
               });
             }
           }
-          
+
           if (filterStatus && visibleFilters.status) {
             const activeFilter = filterStatus === "true";
             filtered = filtered.filter((device) => {
-              const deviceActive = device.active === true || device.active === "true";
+              const deviceActive =
+                device.active === true || device.active === "true";
               return deviceActive === activeFilter;
             });
           }
-          
+
           setDevices(filtered);
         }
       });
     } else {
       // Build query parameters for filtering (FR-065: Devices tab - filter by type, room, and status)
       const params = new URLSearchParams();
-      
+
       if (filterRoom && visibleFilters.room && rooms && rooms.length > 0) {
-        const selectedRoom = rooms.find((r) => r.id === filterRoom || r.id?.toString() === filterRoom);
+        const selectedRoom = rooms.find(
+          (r) => r.id === filterRoom || r.id?.toString() === filterRoom,
+        );
         if (selectedRoom) {
           params.append("roomId", selectedRoom.id);
         }
       }
-      
+
       // Note: type filter not implemented in UI yet, backend supports it
       // When type filter is added, include: params.append("type", filterType);
-      
+
       if (filterStatus && visibleFilters.status) {
         if (filterStatus === "true") {
           params.append("status", "active");
@@ -362,10 +378,10 @@ const StorageDashboard = () => {
           params.append("status", "inactive");
         }
       }
-      
+
       const queryString = params.toString();
       const url = `/rest/storage/devices${queryString ? "?" + queryString : ""}`;
-      
+
       getFromOpenElisServer(url, (response) => {
         if (componentMounted.current && response) {
           setDevices(response || []);
@@ -383,56 +399,81 @@ const StorageDashboard = () => {
         if (componentMounted.current && response) {
           // Apply filters client-side on search results (AND logic)
           let filtered = response || [];
-          
-          if (filterDevice && visibleFilters.device && devices && devices.length > 0) {
-            const selectedDevice = devices.find((d) => d.id === filterDevice || d.id?.toString() === filterDevice);
+
+          if (
+            filterDevice &&
+            visibleFilters.device &&
+            devices &&
+            devices.length > 0
+          ) {
+            const selectedDevice = devices.find(
+              (d) => d.id === filterDevice || d.id?.toString() === filterDevice,
+            );
             if (selectedDevice) {
               filtered = filtered.filter((shelf) => {
                 const shelfDeviceId = shelf.deviceId || shelf.parentDeviceId;
-                return shelfDeviceId === selectedDevice.id || shelfDeviceId?.toString() === selectedDevice.id?.toString();
+                return (
+                  shelfDeviceId === selectedDevice.id ||
+                  shelfDeviceId?.toString() === selectedDevice.id?.toString()
+                );
               });
             }
           }
-          
+
           if (filterRoom && visibleFilters.room && rooms && rooms.length > 0) {
-            const selectedRoom = rooms.find((r) => r.id === filterRoom || r.id?.toString() === filterRoom);
+            const selectedRoom = rooms.find(
+              (r) => r.id === filterRoom || r.id?.toString() === filterRoom,
+            );
             if (selectedRoom) {
               filtered = filtered.filter((shelf) => {
                 const shelfRoomId = shelf.roomId;
-                return shelfRoomId === selectedRoom.id || shelfRoomId?.toString() === selectedRoom.id?.toString();
+                return (
+                  shelfRoomId === selectedRoom.id ||
+                  shelfRoomId?.toString() === selectedRoom.id?.toString()
+                );
               });
             }
           }
-          
+
           if (filterStatus && visibleFilters.status) {
             const activeFilter = filterStatus === "true";
             filtered = filtered.filter((shelf) => {
-              const shelfActive = shelf.active === true || shelf.active === "true";
+              const shelfActive =
+                shelf.active === true || shelf.active === "true";
               return shelfActive === activeFilter;
             });
           }
-          
+
           setShelves(filtered);
         }
       });
     } else {
       // Build query parameters for filtering (FR-065: Shelves tab - filter by device, room, and status)
       const params = new URLSearchParams();
-      
-      if (filterDevice && visibleFilters.device && devices && devices.length > 0) {
-        const selectedDevice = devices.find((d) => d.id === filterDevice || d.id?.toString() === filterDevice);
+
+      if (
+        filterDevice &&
+        visibleFilters.device &&
+        devices &&
+        devices.length > 0
+      ) {
+        const selectedDevice = devices.find(
+          (d) => d.id === filterDevice || d.id?.toString() === filterDevice,
+        );
         if (selectedDevice) {
           params.append("deviceId", selectedDevice.id);
         }
       }
-      
+
       if (filterRoom && visibleFilters.room && rooms && rooms.length > 0) {
-        const selectedRoom = rooms.find((r) => r.id === filterRoom || r.id?.toString() === filterRoom);
+        const selectedRoom = rooms.find(
+          (r) => r.id === filterRoom || r.id?.toString() === filterRoom,
+        );
         if (selectedRoom) {
           params.append("roomId", selectedRoom.id);
         }
       }
-      
+
       if (filterStatus && visibleFilters.status) {
         if (filterStatus === "true") {
           params.append("status", "active");
@@ -440,10 +481,10 @@ const StorageDashboard = () => {
           params.append("status", "inactive");
         }
       }
-      
+
       const queryString = params.toString();
       const url = `/rest/storage/shelves${queryString ? "?" + queryString : ""}`;
-      
+
       getFromOpenElisServer(url, (response) => {
         if (componentMounted.current && response) {
           setShelves(response || []);
@@ -461,27 +502,42 @@ const StorageDashboard = () => {
         if (componentMounted.current && response) {
           // Apply filters client-side on search results (AND logic)
           let filtered = response || [];
-          
+
           if (filterRoom && visibleFilters.room && rooms && rooms.length > 0) {
-            const selectedRoom = rooms.find((r) => r.id === filterRoom || r.id?.toString() === filterRoom);
+            const selectedRoom = rooms.find(
+              (r) => r.id === filterRoom || r.id?.toString() === filterRoom,
+            );
             if (selectedRoom) {
               filtered = filtered.filter((rack) => {
                 const rackRoomId = rack.roomId;
-                return rackRoomId === selectedRoom.id || rackRoomId?.toString() === selectedRoom.id?.toString();
+                return (
+                  rackRoomId === selectedRoom.id ||
+                  rackRoomId?.toString() === selectedRoom.id?.toString()
+                );
               });
             }
           }
-          
-          if (filterDevice && visibleFilters.device && devices && devices.length > 0) {
-            const selectedDevice = devices.find((d) => d.id === filterDevice || d.id?.toString() === filterDevice);
+
+          if (
+            filterDevice &&
+            visibleFilters.device &&
+            devices &&
+            devices.length > 0
+          ) {
+            const selectedDevice = devices.find(
+              (d) => d.id === filterDevice || d.id?.toString() === filterDevice,
+            );
             if (selectedDevice) {
               filtered = filtered.filter((rack) => {
                 const rackDeviceId = rack.deviceId;
-                return rackDeviceId === selectedDevice.id || rackDeviceId?.toString() === selectedDevice.id?.toString();
+                return (
+                  rackDeviceId === selectedDevice.id ||
+                  rackDeviceId?.toString() === selectedDevice.id?.toString()
+                );
               });
             }
           }
-          
+
           if (filterStatus && visibleFilters.status) {
             const activeFilter = filterStatus === "true";
             filtered = filtered.filter((rack) => {
@@ -489,31 +545,40 @@ const StorageDashboard = () => {
               return rackActive === activeFilter;
             });
           }
-          
+
           setRacks(filtered);
         }
       });
     } else {
       // Build query parameters for filtering (FR-065: Racks tab - filter by room, shelf, device, and status)
       const params = new URLSearchParams();
-      
+
       // Note: shelf filter not implemented in UI yet, backend supports it
       // When shelf filter is added, include: params.append("shelfId", filterShelf);
-      
-      if (filterDevice && visibleFilters.device && devices && devices.length > 0) {
-        const selectedDevice = devices.find((d) => d.id === filterDevice || d.id?.toString() === filterDevice);
+
+      if (
+        filterDevice &&
+        visibleFilters.device &&
+        devices &&
+        devices.length > 0
+      ) {
+        const selectedDevice = devices.find(
+          (d) => d.id === filterDevice || d.id?.toString() === filterDevice,
+        );
         if (selectedDevice) {
           params.append("deviceId", selectedDevice.id);
         }
       }
-      
+
       if (filterRoom && visibleFilters.room && rooms && rooms.length > 0) {
-        const selectedRoom = rooms.find((r) => r.id === filterRoom || r.id?.toString() === filterRoom);
+        const selectedRoom = rooms.find(
+          (r) => r.id === filterRoom || r.id?.toString() === filterRoom,
+        );
         if (selectedRoom) {
           params.append("roomId", selectedRoom.id);
         }
       }
-      
+
       if (filterStatus && visibleFilters.status) {
         if (filterStatus === "true") {
           params.append("status", "active");
@@ -521,10 +586,10 @@ const StorageDashboard = () => {
           params.append("status", "inactive");
         }
       }
-      
+
       const queryString = params.toString();
       const url = `/rest/storage/racks${queryString ? "?" + queryString : ""}`;
-      
+
       getFromOpenElisServer(url, (response) => {
         if (componentMounted.current && response) {
           setRacks(response || []);
@@ -543,69 +608,61 @@ const StorageDashboard = () => {
           if (response && Array.isArray(response)) {
             // Apply filters client-side on search results (AND logic)
             let filtered = response || [];
-            
-            // Build location filter from room/device selection
-            if (filterRoom && visibleFilters.room && rooms && rooms.length > 0) {
-              const selectedRoom = rooms.find((r) => r.id === filterRoom || r.id?.toString() === filterRoom);
-              if (selectedRoom) {
-                const locationFilter = selectedRoom.name || selectedRoom.code;
-                filtered = filtered.filter((sample) => {
-                  const sampleLocation = sample.location || "";
-                  return sampleLocation.toLowerCase().includes(locationFilter.toLowerCase());
-                });
-              }
-            } else if (filterDevice && visibleFilters.device && devices && devices.length > 0) {
-              const selectedDevice = devices.find((d) => d.id === filterDevice || d.id?.toString() === filterDevice);
-              if (selectedDevice) {
-                const locationFilter = selectedDevice.name || selectedDevice.code;
-                filtered = filtered.filter((sample) => {
-                  const sampleLocation = sample.location || "";
-                  return sampleLocation.toLowerCase().includes(locationFilter.toLowerCase());
-                });
-              }
+
+            // Apply location filter from LocationFilterDropdown (Samples tab uses single location filter)
+            if (locationFilter && locationFilter.id) {
+              const locationName =
+                locationFilter.name || locationFilter.label || "";
+              filtered = filtered.filter((sample) => {
+                const sampleLocation = sample.location || "";
+                return sampleLocation
+                  .toLowerCase()
+                  .includes(locationName.toLowerCase());
+              });
             }
-            
+
             // Apply status filter
             if (filterStatus && visibleFilters.status) {
-              const statusFilter = filterStatus === "true" ? "active" : filterStatus === "false" ? "disposed" : null;
+              const statusFilter =
+                filterStatus === "true"
+                  ? "active"
+                  : filterStatus === "false"
+                    ? "disposed"
+                    : null;
               if (statusFilter) {
                 filtered = filtered.filter((sample) => {
                   const sampleStatus = sample.status || "active";
-                  return sampleStatus.toLowerCase() === statusFilter.toLowerCase();
+                  return (
+                    sampleStatus.toLowerCase() === statusFilter.toLowerCase()
+                  );
                 });
               }
             }
-            
+
             setSamples(filtered);
           } else {
-            console.error("Samples search API returned non-array response:", response);
+            console.error(
+              "Samples search API returned non-array response:",
+              response,
+            );
             setSamples([]);
           }
         }
       });
     } else {
       // Build query parameters for filtering (FR-065: Samples tab - filter by location and status)
+      // Backend expects "location" parameter (hierarchical path substring) for downward inclusive filtering
       const params = new URLSearchParams();
-      
-      // Build location filter from room/device selection
-      // Prefer room if both are selected (room is higher in hierarchy)
-      let locationFilter = null;
-      if (filterRoom && visibleFilters.room && rooms && rooms.length > 0) {
-        const selectedRoom = rooms.find((r) => r.id === filterRoom || r.id?.toString() === filterRoom);
-        if (selectedRoom) {
-          locationFilter = selectedRoom.name || selectedRoom.code;
-        }
-      } else if (filterDevice && visibleFilters.device && devices && devices.length > 0) {
-        const selectedDevice = devices.find((d) => d.id === filterDevice || d.id?.toString() === filterDevice);
-        if (selectedDevice) {
-          locationFilter = selectedDevice.name || selectedDevice.code;
+
+      // Use single location filter (from LocationFilterDropdown) if available
+      // Pass location name/path for substring matching (backend does case-insensitive contains)
+      if (locationFilter && locationFilter.id) {
+        const locationName = locationFilter.name || locationFilter.label || "";
+        if (locationName) {
+          params.append("location", locationName);
         }
       }
-      
-      if (locationFilter) {
-        params.append("location", locationFilter);
-      }
-      
+
       // Convert status filter: "true" -> "active", "false" -> "disposed", "" -> no filter
       if (filterStatus && visibleFilters.status) {
         if (filterStatus === "true") {
@@ -615,19 +672,29 @@ const StorageDashboard = () => {
         }
         // If filterStatus is empty string, don't add status param (show all)
       }
-      
+
       const queryString = params.toString();
       const url = `/rest/storage/samples${queryString ? "?" + queryString : ""}`;
-      
-      console.log("Loading samples from", url, "with filters:", { filterRoom, filterDevice, filterStatus, locationFilter });
+
+      console.log("Loading samples from", url, "with filters:", {
+        locationFilter,
+        filterStatus,
+      });
       getFromOpenElisServer(url, (response) => {
         if (componentMounted.current) {
-          console.log("Samples API response received:", response, "Type:", typeof response);
+          console.log(
+            "Samples API response received:",
+            response,
+            "Type:",
+            typeof response,
+          );
           if (response && Array.isArray(response)) {
             console.log("Samples loaded:", response.length, response);
             setSamples(response);
             if (response.length === 0) {
-              console.warn("Samples API returned empty array - no sample assignments found matching filters");
+              console.warn(
+                "Samples API returned empty array - no sample assignments found matching filters",
+              );
             }
           } else {
             console.error("Samples API returned non-array response:", response);
@@ -662,7 +729,13 @@ const StorageDashboard = () => {
     // This function is kept for legacy compatibility but returns data as-is for tabs with backend search
 
     // All tabs now use server-side filtering and search, so return data as-is
-    if (type === "samples" || type === "rooms" || type === "devices" || type === "shelves" || type === "racks") {
+    if (
+      type === "samples" ||
+      type === "rooms" ||
+      type === "devices" ||
+      type === "shelves" ||
+      type === "racks"
+    ) {
       return filtered; // Data already filtered by backend (search + filters)
     }
 
@@ -672,7 +745,10 @@ const StorageDashboard = () => {
       const roomFilterValue = typeof filterRoom === "string" ? filterRoom : "";
       if (roomFilterValue) {
         // Find the room by ID to get its name/code for filtering
-        const selectedRoom = rooms.find((r) => r.id === roomFilterValue || r.id?.toString() === roomFilterValue);
+        const selectedRoom = rooms.find(
+          (r) =>
+            r.id === roomFilterValue || r.id?.toString() === roomFilterValue,
+        );
         if (selectedRoom) {
           filtered = filtered.filter((item) => {
             const roomName = item.roomName || item.room?.name || "";
@@ -681,7 +757,9 @@ const StorageDashboard = () => {
             return (
               roomId === roomFilterValue ||
               roomId?.toString() === roomFilterValue ||
-              roomName.toLowerCase().includes(selectedRoom.name.toLowerCase()) ||
+              roomName
+                .toLowerCase()
+                .includes(selectedRoom.name.toLowerCase()) ||
               roomCode.toLowerCase().includes(selectedRoom.code.toLowerCase())
             );
           });
@@ -691,10 +769,15 @@ const StorageDashboard = () => {
 
     if (filterDevice && type !== "devices" && type !== "rooms") {
       // filterDevice can be a string ID or empty string
-      const deviceFilterValue = typeof filterDevice === "string" ? filterDevice : "";
+      const deviceFilterValue =
+        typeof filterDevice === "string" ? filterDevice : "";
       if (deviceFilterValue) {
         // Find the device by ID to get its name/code for filtering
-        const selectedDevice = devices.find((d) => d.id === deviceFilterValue || d.id?.toString() === deviceFilterValue);
+        const selectedDevice = devices.find(
+          (d) =>
+            d.id === deviceFilterValue ||
+            d.id?.toString() === deviceFilterValue,
+        );
         if (selectedDevice) {
           filtered = filtered.filter((item) => {
             const deviceName = item.deviceName || item.device?.name || "";
@@ -703,8 +786,12 @@ const StorageDashboard = () => {
             return (
               deviceId === deviceFilterValue ||
               deviceId?.toString() === deviceFilterValue ||
-              deviceName.toLowerCase().includes(selectedDevice.name.toLowerCase()) ||
-              deviceCode.toLowerCase().includes(selectedDevice.code.toLowerCase())
+              deviceName
+                .toLowerCase()
+                .includes(selectedDevice.name.toLowerCase()) ||
+              deviceCode
+                .toLowerCase()
+                .includes(selectedDevice.code.toLowerCase())
             );
           });
         }
@@ -714,7 +801,8 @@ const StorageDashboard = () => {
     // Status filtering (client-side for non-samples types)
     if (filterStatus && type !== "samples") {
       filtered = filtered.filter((item) => {
-        const statusValue = typeof filterStatus === "string" ? filterStatus : "";
+        const statusValue =
+          typeof filterStatus === "string" ? filterStatus : "";
         if (!statusValue) return true;
         return (
           item.active?.toString() === statusValue ||
@@ -777,6 +865,7 @@ const StorageDashboard = () => {
   // Racks table headers
   const racksHeaders = [
     { key: "label", header: intl.formatMessage({ id: "storage.rack.label" }) },
+    { key: "room", header: intl.formatMessage({ id: "storage.rack.room" }) }, // Per FR-065a
     { key: "shelf", header: intl.formatMessage({ id: "storage.rack.shelf" }) },
     {
       key: "device",
@@ -877,7 +966,13 @@ const StorageDashboard = () => {
               value={occupancyPct}
               label=""
               size="small"
-              status={occupancyPct >= 90 ? "error" : occupancyPct >= 70 ? "active" : "finished"}
+              status={
+                occupancyPct >= 90
+                  ? "error"
+                  : occupancyPct >= 70
+                    ? "active"
+                    : "finished"
+              }
             />
           </div>
         ),
@@ -924,7 +1019,13 @@ const StorageDashboard = () => {
               value={occupancyPct}
               label=""
               size="small"
-              status={occupancyPct >= 90 ? "error" : occupancyPct >= 70 ? "active" : "finished"}
+              status={
+                occupancyPct >= 90
+                  ? "error"
+                  : occupancyPct >= 70
+                    ? "active"
+                    : "finished"
+              }
             />
           </div>
         ),
@@ -960,6 +1061,7 @@ const StorageDashboard = () => {
       return {
         id: String(rack.id || ""),
         label: rack.label || "",
+        room: rack.roomName || "", // Per FR-065a
         shelf: rack.shelfLabel || rack.parentShelfLabel || "",
         device: rack.deviceName || "",
         dimensions:
@@ -973,7 +1075,13 @@ const StorageDashboard = () => {
               value={occupancyPct}
               label=""
               size="small"
-              status={occupancyPct >= 90 ? "error" : occupancyPct >= 70 ? "active" : "finished"}
+              status={
+                occupancyPct >= 90
+                  ? "error"
+                  : occupancyPct >= 70
+                    ? "active"
+                    : "finished"
+              }
             />
           </div>
         ),
@@ -1027,11 +1135,20 @@ const StorageDashboard = () => {
             location: sample.location || sample.hierarchicalPath || "",
           }}
           onMoveConfirm={(sample, newLocation, reason) => {
-            console.log("Move sample confirmed", { sample, newLocation, reason });
+            console.log("Move sample confirmed", {
+              sample,
+              newLocation,
+              reason,
+            });
             // TODO: Implement API call to move sample
           }}
           onDisposeConfirm={(sample, reason, method, notes) => {
-            console.log("Dispose sample confirmed", { sample, reason, method, notes });
+            console.log("Dispose sample confirmed", {
+              sample,
+              reason,
+              method,
+              notes,
+            });
             // TODO: Implement API call to dispose sample
           }}
           onViewStorageSave={(sample, location) => {
@@ -1056,10 +1173,13 @@ const StorageDashboard = () => {
         {/* Dashboard Title */}
         <Column lg={16} md={8} sm={4}>
           <h1 className="dashboard-title">
-            <FormattedMessage id="storage.dashboard.title" defaultMessage="Storage Management Dashboard" />
+            <FormattedMessage
+              id="storage.dashboard.title"
+              defaultMessage="Storage Management Dashboard"
+            />
           </h1>
         </Column>
-        
+
         {/* Metric Cards */}
         <Column lg={4} md={4} sm={4}>
           <Tile>
@@ -1116,398 +1236,310 @@ const StorageDashboard = () => {
                 <Grid fullWidth>
                   {/* Search - full width */}
                   <Column lg={16} md={8} sm={4} className="search-section">
-                  <Search
-                    data-testid="sample-search-input"
-                    labelText={intl.formatMessage({
-                      id: "storage.search.placeholder",
-                    })}
-                    placeholder={intl.formatMessage({
-                      id: "storage.search.placeholder",
-                    })}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    size="lg"
-                  />
-                </Column>
-
-                {/* Filters - own row */}
-                {(visibleFilters.room ||
-                  visibleFilters.device ||
-                  visibleFilters.status) && (
-                  <Column lg={16} md={8} sm={4}>
-                    <Grid className="filters-row">
-                      {visibleFilters.room && (
-                        <Column lg={4} md={4} sm={4}>
-                          <Dropdown
-                            id="filter-room"
-                            data-testid="room-filter"
-                            label=""
-                            hideLabel
-                            titleText={intl.formatMessage({ id: "storage.filter.room" })}
-                            items={[
-                              { id: "", label: intl.formatMessage({ id: "label.all" }) },
-                              ...rooms.map((r) => ({ id: r.id, label: r.name })),
-                            ]}
-                            selectedItem={
-                              filterRoom
-                                ? {
-                                    id: filterRoom,
-                                    label:
-                                      rooms.find((r) => r.id === filterRoom)?.name ||
-                                      intl.formatMessage({ id: "storage.filter.room" }),
-                                  }
-                                : {
-                                    id: "",
-                                    label: intl.formatMessage({
-                                      id: "storage.filter.room",
-                                    }),
-                                  }
-                            }
-                            onChange={(e) => setFilterRoom(e.selectedItem?.id || "")}
-                          />
-                        </Column>
-                      )}
-                      {visibleFilters.device && (
-                        <Column lg={4} md={4} sm={4}>
-                          <Dropdown
-                            id="filter-device"
-                            data-testid="device-filter"
-                            label=""
-                            hideLabel
-                            titleText={intl.formatMessage({
-                              id: "storage.filter.device",
-                            })}
-                            items={[
-                              { id: "", label: intl.formatMessage({ id: "label.all" }) },
-                              ...devices.map((d) => ({ id: d.id, label: d.name })),
-                            ]}
-                            selectedItem={
-                              filterDevice
-                                ? {
-                                    id: filterDevice,
-                                    label:
-                                      devices.find((d) => d.id === filterDevice)?.name ||
-                                      intl.formatMessage({ id: "storage.filter.device" }),
-                                  }
-                                : {
-                                    id: "",
-                                    label: intl.formatMessage({
-                                      id: "storage.filter.device",
-                                    }),
-                                  }
-                            }
-                            onChange={(e) => setFilterDevice(e.selectedItem?.id || "")}
-                          />
-                        </Column>
-                      )}
-                      {visibleFilters.status && (
-                        <Column lg={4} md={4} sm={4}>
-                          <Dropdown
-                            id="filter-status"
-                            data-testid="status-filter"
-                            label=""
-                            hideLabel
-                            titleText={intl.formatMessage({
-                              id: "storage.filter.status",
-                            })}
-                            items={[
-                              { id: "", label: intl.formatMessage({ id: "label.all" }) },
-                              {
-                                id: "true",
-                                label: intl.formatMessage({ id: "label.active" }),
-                              },
-                              {
-                                id: "false",
-                                label: intl.formatMessage({ id: "label.inactive" }),
-                              },
-                            ]}
-                            selectedItem={
-                              filterStatus
-                                ? {
-                                    id: filterStatus,
-                                    label:
-                                      filterStatus === "true"
-                                        ? intl.formatMessage({ id: "label.active" })
-                                        : intl.formatMessage({ id: "label.inactive" }),
-                                  }
-                                : {
-                                    id: "",
-                                    label: intl.formatMessage({
-                                      id: "storage.filter.status",
-                                    }),
-                                  }
-                            }
-                            onChange={(e) => setFilterStatus(e.selectedItem?.id || "")}
-                          />
-                        </Column>
-                      )}
-                      <Column lg={4} md={4} sm={4}>
-                        <Button
-                          kind="secondary"
-                          data-testid="clear-filters-button"
-                          onClick={() => {
-                            setFilterRoom("");
-                            setFilterDevice("");
-                            setFilterStatus("");
-                            setSearchTerm("");
-                          }}
-                        >
-                          <FormattedMessage id="label.clear" />
-                        </Button>
-                      </Column>
-                    </Grid>
+                    <Search
+                      data-testid="sample-search-input"
+                      labelText={intl.formatMessage({
+                        id: "storage.search.samples.placeholder",
+                        defaultMessage: "Search by sample ID or location...",
+                      })}
+                      placeholder={intl.formatMessage({
+                        id: "storage.search.samples.placeholder",
+                        defaultMessage: "Search by sample ID or location...",
+                      })}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      size="lg"
+                    />
                   </Column>
-                )}
 
-                {/* Table with title */}
-                <Column lg={16} md={8} sm={4} className="table-section">
-                  <h3 className="table-title">
-                    <FormattedMessage id="storage.tab.samples" />
-                  </h3>
-                  <div data-testid="sample-list">
-                    <DataTable
-                    rows={formatSamplesData(filteredSamples)}
-                    headers={samplesHeaders}
-                    isSortable
-                  >
-                    {({
-                      rows,
-                      headers,
-                      getTableProps,
-                      getHeaderProps,
-                      getRowProps,
-                    }) => (
-                      <TableContainer>
-                        <Table {...getTableProps()}>
-                          <TableHead>
-                            <TableRow>
-                              {headers.map((header) => (
-                                <TableHeader
-                                  key={header.key || header.id || header.header}
-                                  {...getHeaderProps({ header })}
-                                >
-                                  {header.header}
-                                </TableHeader>
-                              ))}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {rows.map((row) => (
-                              <TableRow
-                                key={row.id || row.key}
-                                data-testid="sample-row"
-                                {...getRowProps({ row })}
-                              >
-                                {row.cells.map((cell, index) => {
-                                  // Add test IDs to location and position cells
-                                  const testId =
-                                    cell.info.header === "location"
-                                      ? "sample-location"
-                                      : cell.info.header === "sampleId"
-                                        ? "sample-id"
-                                        : null;
-                                  return (
-                                    <TableCell
-                                      key={cell.id}
-                                      data-testid={testId || undefined}
-                                    >
-                                      {cell.value}
-                                    </TableCell>
-                                  );
-                                })}
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    )}
-                  </DataTable>
-                </div>
-                </Column>
-                </Grid>
-              </TabPanel>
-              <TabPanel>
-                <Grid fullWidth>
-                  {/* Search - full width */}
-                  <Column lg={16} md={8} sm={4} className="search-section">
-                  <Search
-                    data-testid="room-search-input"
-                    labelText={intl.formatMessage({
-                      id: "storage.search.placeholder",
-                    })}
-                    placeholder={intl.formatMessage({
-                      id: "storage.search.placeholder",
-                    })}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    size="lg"
-                  />
-                </Column>
-
-                {/* Filters - own row */}
-                {visibleFilters.status && (
-                  <Column lg={16} md={8} sm={4}>
-                    <Grid className="filters-row">
-                      <Column lg={4} md={4} sm={4}>
-                        <Dropdown
-                          id="filter-status"
-                          data-testid="status-filter"
-                          label=""
-                          hideLabel
-                          titleText={intl.formatMessage({
-                            id: "storage.filter.status",
-                          })}
-                          items={[
-                            { id: "", label: intl.formatMessage({ id: "label.all" }) },
-                            {
-                              id: "true",
-                              label: intl.formatMessage({ id: "label.active" }),
-                            },
-                            {
-                              id: "false",
-                              label: intl.formatMessage({ id: "label.inactive" }),
-                            },
-                          ]}
-                          selectedItem={
-                            filterStatus
-                              ? {
-                                  id: filterStatus,
-                                  label:
-                                    filterStatus === "true"
-                                      ? intl.formatMessage({ id: "label.active" })
-                                      : intl.formatMessage({ id: "label.inactive" }),
-                                }
-                              : {
+                  {/* Filters - own row */}
+                  {(visibleFilters.room ||
+                    visibleFilters.device ||
+                    visibleFilters.status) && (
+                    <Column lg={16} md={8} sm={4}>
+                      <Grid className="filters-row">
+                        {/* Samples tab: Single location dropdown (replaces separate room/device dropdowns per FR-065b) */}
+                        {selectedTab === 0 &&
+                          (visibleFilters.room || visibleFilters.device) && (
+                            <Column lg={6} md={6} sm={4}>
+                              <LocationFilterDropdown
+                                onLocationChange={setLocationFilter}
+                                selectedLocation={locationFilter}
+                                allowInactive={true}
+                              />
+                            </Column>
+                          )}
+                        {/* Other tabs: Keep existing room/device filters */}
+                        {selectedTab !== 0 && visibleFilters.room && (
+                          <Column lg={4} md={4} sm={4}>
+                            <Dropdown
+                              id="filter-room"
+                              data-testid="room-filter"
+                              label=""
+                              hideLabel
+                              titleText={intl.formatMessage({
+                                id: "storage.filter.room",
+                              })}
+                              items={[
+                                {
                                   id: "",
                                   label: intl.formatMessage({
-                                    id: "storage.filter.status",
+                                    id: "label.all",
                                   }),
-                                }
-                          }
-                          onChange={(e) => setFilterStatus(e.selectedItem?.id || "")}
-                        />
-                      </Column>
-                      <Column lg={4} md={4} sm={4}>
-                        <Button
-                          kind="secondary"
-                          onClick={() => {
-                            setFilterStatus("");
-                            setSearchTerm("");
-                          }}
-                        >
-                          <FormattedMessage id="label.clear" />
-                        </Button>
-                      </Column>
-                    </Grid>
-                  </Column>
-                )}
-
-                {/* Table with title */}
-                <Column lg={16} md={8} sm={4} className="table-section">
-                  <h3 className="table-title">
-                    <FormattedMessage id="storage.tab.rooms" />
-                  </h3>
-                  <DataTable
-                    rows={formatRoomsData(filteredRooms)}
-                    headers={roomsHeaders}
-                    isSortable
-                  >
-                  {({
-                    rows,
-                    headers,
-                    getTableProps,
-                    getHeaderProps,
-                    getRowProps,
-                  }) => (
-                    <TableContainer>
-                      <Table {...getTableProps()}>
-                        <TableHead>
-                          <TableRow>
-                            {headers.map((header) => (
-                              <TableHeader
-                                key={header.key || header.id || header.header}
-                                {...getHeaderProps({ header })}
-                              >
-                                {header.header}
-                              </TableHeader>
-                            ))}
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {rows.map((row) => (
-                            <TableRow
-                              key={row.id || row.key}
-                              {...getRowProps({ row })}
+                                },
+                                ...rooms.map((r) => ({
+                                  id: r.id,
+                                  label: r.name,
+                                })),
+                              ]}
+                              selectedItem={
+                                filterRoom
+                                  ? {
+                                      id: filterRoom,
+                                      label:
+                                        rooms.find((r) => r.id === filterRoom)
+                                          ?.name ||
+                                        intl.formatMessage({
+                                          id: "storage.filter.room",
+                                        }),
+                                    }
+                                  : {
+                                      id: "",
+                                      label: intl.formatMessage({
+                                        id: "storage.filter.room",
+                                      }),
+                                    }
+                              }
+                              onChange={(e) =>
+                                setFilterRoom(e.selectedItem?.id || "")
+                              }
+                            />
+                          </Column>
+                        )}
+                        {selectedTab !== 0 && visibleFilters.device && (
+                          <Column lg={4} md={4} sm={4}>
+                            <Dropdown
+                              id="filter-device"
+                              data-testid="device-filter"
+                              label=""
+                              hideLabel
+                              titleText={intl.formatMessage({
+                                id: "storage.filter.device",
+                              })}
+                              items={[
+                                {
+                                  id: "",
+                                  label: intl.formatMessage({
+                                    id: "label.all",
+                                  }),
+                                },
+                                ...devices.map((d) => ({
+                                  id: d.id,
+                                  label: d.name,
+                                })),
+                              ]}
+                              selectedItem={
+                                filterDevice
+                                  ? {
+                                      id: filterDevice,
+                                      label:
+                                        devices.find(
+                                          (d) => d.id === filterDevice,
+                                        )?.name ||
+                                        intl.formatMessage({
+                                          id: "storage.filter.device",
+                                        }),
+                                    }
+                                  : {
+                                      id: "",
+                                      label: intl.formatMessage({
+                                        id: "storage.filter.device",
+                                      }),
+                                    }
+                              }
+                              onChange={(e) =>
+                                setFilterDevice(e.selectedItem?.id || "")
+                              }
+                            />
+                          </Column>
+                        )}
+                        {visibleFilters.status && (
+                          <Column lg={4} md={4} sm={4}>
+                            <Dropdown
+                              id="filter-status"
+                              data-testid="status-filter"
+                              label=""
+                              hideLabel
+                              titleText={intl.formatMessage({
+                                id: "storage.filter.status",
+                              })}
+                              items={[
+                                {
+                                  id: "",
+                                  label: intl.formatMessage({
+                                    id: "label.all",
+                                  }),
+                                },
+                                {
+                                  id: "true",
+                                  label: intl.formatMessage({
+                                    id: "label.active",
+                                  }),
+                                },
+                                {
+                                  id: "false",
+                                  label: intl.formatMessage({
+                                    id: "label.inactive",
+                                  }),
+                                },
+                              ]}
+                              selectedItem={
+                                filterStatus
+                                  ? {
+                                      id: filterStatus,
+                                      label:
+                                        filterStatus === "true"
+                                          ? intl.formatMessage({
+                                              id: "label.active",
+                                            })
+                                          : intl.formatMessage({
+                                              id: "label.inactive",
+                                            }),
+                                    }
+                                  : {
+                                      id: "",
+                                      label: intl.formatMessage({
+                                        id: "storage.filter.status",
+                                      }),
+                                    }
+                              }
+                              onChange={(e) =>
+                                setFilterStatus(e.selectedItem?.id || "")
+                              }
+                            />
+                          </Column>
+                        )}
+                        {/* Clear Filters button (per FR-067) */}
+                        {(locationFilter ||
+                          filterRoom ||
+                          filterDevice ||
+                          filterStatus) && (
+                          <Column lg={2} md={2} sm={4}>
+                            <Button
+                              kind="secondary"
+                              size="md"
+                              data-testid="clear-filters-button"
+                              onClick={() => {
+                                setLocationFilter(null);
+                                setFilterRoom("");
+                                setFilterDevice("");
+                                setFilterStatus("");
+                              }}
                             >
-                              {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>
-                                  {cell.value}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                              <FormattedMessage
+                                id="storage.filter.clear"
+                                defaultMessage="Clear Filters"
+                              />
+                            </Button>
+                          </Column>
+                        )}
+                      </Grid>
+                    </Column>
                   )}
-                </DataTable>
-                </Column>
+
+                  {/* Table with title */}
+                  <Column lg={16} md={8} sm={4} className="table-section">
+                    <h3 className="table-title">
+                      <FormattedMessage id="storage.tab.samples" />
+                    </h3>
+                    <div data-testid="sample-list">
+                      <DataTable
+                        rows={formatSamplesData(filteredSamples)}
+                        headers={samplesHeaders}
+                        isSortable
+                      >
+                        {({
+                          rows,
+                          headers,
+                          getTableProps,
+                          getHeaderProps,
+                          getRowProps,
+                        }) => (
+                          <TableContainer>
+                            <Table {...getTableProps()}>
+                              <TableHead>
+                                <TableRow>
+                                  {headers.map((header) => (
+                                    <TableHeader
+                                      key={
+                                        header.key || header.id || header.header
+                                      }
+                                      {...getHeaderProps({ header })}
+                                    >
+                                      {header.header}
+                                    </TableHeader>
+                                  ))}
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {rows.map((row) => (
+                                  <TableRow
+                                    key={row.id || row.key}
+                                    data-testid="sample-row"
+                                    {...getRowProps({ row })}
+                                  >
+                                    {row.cells.map((cell, index) => {
+                                      // Add test IDs to location and position cells
+                                      const testId =
+                                        cell.info.header === "location"
+                                          ? "sample-location"
+                                          : cell.info.header === "sampleId"
+                                            ? "sample-id"
+                                            : null;
+                                      return (
+                                        <TableCell
+                                          key={cell.id}
+                                          data-testid={testId || undefined}
+                                        >
+                                          {cell.value}
+                                        </TableCell>
+                                      );
+                                    })}
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </TableContainer>
+                        )}
+                      </DataTable>
+                    </div>
+                  </Column>
                 </Grid>
               </TabPanel>
               <TabPanel>
                 <Grid fullWidth>
                   {/* Search - full width */}
                   <Column lg={16} md={8} sm={4} className="search-section">
-                  <Search
-                    data-testid="device-search-input"
-                    labelText={intl.formatMessage({
-                      id: "storage.search.placeholder",
-                    })}
-                    placeholder={intl.formatMessage({
-                      id: "storage.search.placeholder",
-                    })}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    size="lg"
-                  />
-                </Column>
+                    <Search
+                      data-testid="room-search-input"
+                      labelText={intl.formatMessage({
+                        id: "storage.search.rooms.placeholder",
+                        defaultMessage: "Search by room name or code...",
+                      })}
+                      placeholder={intl.formatMessage({
+                        id: "storage.search.rooms.placeholder",
+                        defaultMessage: "Search by room name or code...",
+                      })}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      size="lg"
+                    />
+                  </Column>
 
-                {/* Filters - own row */}
-                {(visibleFilters.room || visibleFilters.status) && (
-                  <Column lg={16} md={8} sm={4}>
-                    <Grid className="filters-row">
-                      {visibleFilters.room && (
-                        <Column lg={4} md={4} sm={4}>
-                          <Dropdown
-                            id="filter-room"
-                            data-testid="room-filter"
-                            label=""
-                            hideLabel
-                            titleText={intl.formatMessage({ id: "storage.filter.room" })}
-                            items={[
-                              { id: "", label: intl.formatMessage({ id: "label.all" }) },
-                              ...rooms.map((r) => ({ id: r.id, label: r.name })),
-                            ]}
-                            selectedItem={
-                              filterRoom
-                                ? {
-                                    id: filterRoom,
-                                    label:
-                                      rooms.find((r) => r.id === filterRoom)?.name ||
-                                      intl.formatMessage({ id: "storage.filter.room" }),
-                                  }
-                                : {
-                                    id: "",
-                                    label: intl.formatMessage({
-                                      id: "storage.filter.room",
-                                    }),
-                                  }
-                            }
-                            onChange={(e) => setFilterRoom(e.selectedItem?.id || "")}
-                          />
-                        </Column>
-                      )}
-                      {visibleFilters.status && (
+                  {/* Filters - own row */}
+                  {visibleFilters.status && (
+                    <Column lg={16} md={8} sm={4}>
+                      <Grid className="filters-row">
                         <Column lg={4} md={4} sm={4}>
                           <Dropdown
                             id="filter-status"
@@ -1518,14 +1550,21 @@ const StorageDashboard = () => {
                               id: "storage.filter.status",
                             })}
                             items={[
-                              { id: "", label: intl.formatMessage({ id: "label.all" }) },
+                              {
+                                id: "",
+                                label: intl.formatMessage({ id: "label.all" }),
+                              },
                               {
                                 id: "true",
-                                label: intl.formatMessage({ id: "label.active" }),
+                                label: intl.formatMessage({
+                                  id: "label.active",
+                                }),
                               },
                               {
                                 id: "false",
-                                label: intl.formatMessage({ id: "label.inactive" }),
+                                label: intl.formatMessage({
+                                  id: "label.inactive",
+                                }),
                               },
                             ]}
                             selectedItem={
@@ -1534,8 +1573,12 @@ const StorageDashboard = () => {
                                     id: filterStatus,
                                     label:
                                       filterStatus === "true"
-                                        ? intl.formatMessage({ id: "label.active" })
-                                        : intl.formatMessage({ id: "label.inactive" }),
+                                        ? intl.formatMessage({
+                                            id: "label.active",
+                                          })
+                                        : intl.formatMessage({
+                                            id: "label.inactive",
+                                          }),
                                   }
                                 : {
                                     id: "",
@@ -1544,472 +1587,766 @@ const StorageDashboard = () => {
                                     }),
                                   }
                             }
-                            onChange={(e) => setFilterStatus(e.selectedItem?.id || "")}
+                            onChange={(e) =>
+                              setFilterStatus(e.selectedItem?.id || "")
+                            }
                           />
                         </Column>
-                      )}
-                      <Column lg={4} md={4} sm={4}>
-                        <Button
-                          kind="secondary"
-                          onClick={() => {
-                            setFilterRoom("");
-                            setFilterStatus("");
-                            setSearchTerm("");
-                          }}
-                        >
-                          <FormattedMessage id="label.clear" />
-                        </Button>
-                      </Column>
-                    </Grid>
-                  </Column>
-                )}
-
-                {/* Table with title */}
-                <Column lg={16} md={8} sm={4} className="table-section">
-                  <h3 className="table-title">
-                    <FormattedMessage id="storage.tab.devices" />
-                  </h3>
-                  <DataTable
-                    rows={formatDevicesData(filteredDevices)}
-                    headers={devicesHeaders}
-                    isSortable
-                  >
-                  {({
-                    rows,
-                    headers,
-                    getTableProps,
-                    getHeaderProps,
-                    getRowProps,
-                  }) => (
-                    <TableContainer>
-                      <Table {...getTableProps()}>
-                        <TableHead>
-                          <TableRow>
-                            {headers.map((header) => (
-                              <TableHeader
-                                key={header.key || header.id || header.header}
-                                {...getHeaderProps({ header })}
-                              >
-                                {header.header}
-                              </TableHeader>
-                            ))}
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {rows.map((row) => (
-                            <TableRow
-                              key={row.id || row.key}
-                              {...getRowProps({ row })}
-                            >
-                              {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>
-                                  {cell.value}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                        <Column lg={4} md={4} sm={4}>
+                          <Button
+                            kind="secondary"
+                            onClick={() => {
+                              setFilterStatus("");
+                              setSearchTerm("");
+                            }}
+                          >
+                            <FormattedMessage id="label.clear" />
+                          </Button>
+                        </Column>
+                      </Grid>
+                    </Column>
                   )}
-                </DataTable>
-                </Column>
+
+                  {/* Table with title */}
+                  <Column lg={16} md={8} sm={4} className="table-section">
+                    <h3 className="table-title">
+                      <FormattedMessage id="storage.tab.rooms" />
+                    </h3>
+                    <DataTable
+                      rows={formatRoomsData(filteredRooms)}
+                      headers={roomsHeaders}
+                      isSortable
+                    >
+                      {({
+                        rows,
+                        headers,
+                        getTableProps,
+                        getHeaderProps,
+                        getRowProps,
+                      }) => (
+                        <TableContainer>
+                          <Table {...getTableProps()}>
+                            <TableHead>
+                              <TableRow>
+                                {headers.map((header) => (
+                                  <TableHeader
+                                    key={
+                                      header.key || header.id || header.header
+                                    }
+                                    {...getHeaderProps({ header })}
+                                  >
+                                    {header.header}
+                                  </TableHeader>
+                                ))}
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {rows.map((row) => (
+                                <TableRow
+                                  key={row.id || row.key}
+                                  {...getRowProps({ row })}
+                                >
+                                  {row.cells.map((cell) => (
+                                    <TableCell key={cell.id}>
+                                      {cell.value}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      )}
+                    </DataTable>
+                  </Column>
                 </Grid>
               </TabPanel>
               <TabPanel>
                 <Grid fullWidth>
                   {/* Search - full width */}
                   <Column lg={16} md={8} sm={4} className="search-section">
-                  <Search
-                    data-testid="shelf-search-input"
-                    labelText={intl.formatMessage({
-                      id: "storage.search.placeholder",
-                    })}
-                    placeholder={intl.formatMessage({
-                      id: "storage.search.placeholder",
-                    })}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    size="lg"
-                  />
-                </Column>
-
-                {/* Filters - own row */}
-                {(visibleFilters.room ||
-                  visibleFilters.device ||
-                  visibleFilters.status) && (
-                  <Column lg={16} md={8} sm={4}>
-                    <Grid className="filters-row">
-                      {visibleFilters.room && (
-                        <Column lg={4} md={4} sm={4}>
-                          <Dropdown
-                            id="filter-room"
-                            data-testid="room-filter"
-                            label=""
-                            hideLabel
-                            titleText={intl.formatMessage({ id: "storage.filter.room" })}
-                            items={[
-                              { id: "", label: intl.formatMessage({ id: "label.all" }) },
-                              ...rooms.map((r) => ({ id: r.id, label: r.name })),
-                            ]}
-                            selectedItem={
-                              filterRoom
-                                ? {
-                                    id: filterRoom,
-                                    label:
-                                      rooms.find((r) => r.id === filterRoom)?.name ||
-                                      intl.formatMessage({ id: "storage.filter.room" }),
-                                  }
-                                : {
-                                    id: "",
-                                    label: intl.formatMessage({
-                                      id: "storage.filter.room",
-                                    }),
-                                  }
-                            }
-                            onChange={(e) => setFilterRoom(e.selectedItem?.id || "")}
-                          />
-                        </Column>
-                      )}
-                      {visibleFilters.device && (
-                        <Column lg={4} md={4} sm={4}>
-                          <Dropdown
-                            id="filter-device"
-                            data-testid="device-filter"
-                            label=""
-                            hideLabel
-                            titleText={intl.formatMessage({
-                              id: "storage.filter.device",
-                            })}
-                            items={[
-                              { id: "", label: intl.formatMessage({ id: "label.all" }) },
-                              ...devices.map((d) => ({ id: d.id, label: d.name })),
-                            ]}
-                            selectedItem={
-                              filterDevice
-                                ? {
-                                    id: filterDevice,
-                                    label:
-                                      devices.find((d) => d.id === filterDevice)?.name ||
-                                      intl.formatMessage({ id: "storage.filter.device" }),
-                                  }
-                                : {
-                                    id: "",
-                                    label: intl.formatMessage({
-                                      id: "storage.filter.device",
-                                    }),
-                                  }
-                            }
-                            onChange={(e) => setFilterDevice(e.selectedItem?.id || "")}
-                          />
-                        </Column>
-                      )}
-                      {visibleFilters.status && (
-                        <Column lg={4} md={4} sm={4}>
-                          <Dropdown
-                            id="filter-status"
-                            data-testid="status-filter"
-                            label=""
-                            hideLabel
-                            titleText={intl.formatMessage({
-                              id: "storage.filter.status",
-                            })}
-                            items={[
-                              { id: "", label: intl.formatMessage({ id: "label.all" }) },
-                              {
-                                id: "true",
-                                label: intl.formatMessage({ id: "label.active" }),
-                              },
-                              {
-                                id: "false",
-                                label: intl.formatMessage({ id: "label.inactive" }),
-                              },
-                            ]}
-                            selectedItem={
-                              filterStatus
-                                ? {
-                                    id: filterStatus,
-                                    label:
-                                      filterStatus === "true"
-                                        ? intl.formatMessage({ id: "label.active" })
-                                        : intl.formatMessage({ id: "label.inactive" }),
-                                  }
-                                : {
-                                    id: "",
-                                    label: intl.formatMessage({
-                                      id: "storage.filter.status",
-                                    }),
-                                  }
-                            }
-                            onChange={(e) => setFilterStatus(e.selectedItem?.id || "")}
-                          />
-                        </Column>
-                      )}
-                      <Column lg={4} md={4} sm={4}>
-                        <Button
-                          kind="secondary"
-                          onClick={() => {
-                            setFilterRoom("");
-                            setFilterDevice("");
-                            setFilterStatus("");
-                            setSearchTerm("");
-                          }}
-                        >
-                          <FormattedMessage id="label.clear" />
-                        </Button>
-                      </Column>
-                    </Grid>
+                    <Search
+                      data-testid="device-search-input"
+                      labelText={intl.formatMessage({
+                        id: "storage.search.devices.placeholder",
+                        defaultMessage: "Search by device name or code...",
+                      })}
+                      placeholder={intl.formatMessage({
+                        id: "storage.search.devices.placeholder",
+                        defaultMessage: "Search by device name or code...",
+                      })}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      size="lg"
+                    />
                   </Column>
-                )}
 
-                {/* Table with title */}
-                <Column lg={16} md={8} sm={4} className="table-section">
-                  <h3 className="table-title">
-                    <FormattedMessage id="storage.tab.shelves" />
-                  </h3>
-                  <DataTable
-                    rows={formatShelvesData(filteredShelves)}
-                    headers={shelvesHeaders}
-                    isSortable
-                  >
-                  {({
-                    rows,
-                    headers,
-                    getTableProps,
-                    getHeaderProps,
-                    getRowProps,
-                  }) => (
-                    <TableContainer>
-                      <Table {...getTableProps()}>
-                        <TableHead>
-                          <TableRow>
-                            {headers.map((header) => (
-                              <TableHeader
-                                key={header.key || header.id || header.header}
-                                {...getHeaderProps({ header })}
-                              >
-                                {header.header}
-                              </TableHeader>
-                            ))}
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {rows.map((row) => (
-                            <TableRow
-                              key={row.id || row.key}
-                              {...getRowProps({ row })}
-                            >
-                              {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>
-                                  {cell.value}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                  {/* Filters - own row */}
+                  {(visibleFilters.room || visibleFilters.status) && (
+                    <Column lg={16} md={8} sm={4}>
+                      <Grid className="filters-row">
+                        {visibleFilters.room && (
+                          <Column lg={4} md={4} sm={4}>
+                            <Dropdown
+                              id="filter-room"
+                              data-testid="room-filter"
+                              label=""
+                              hideLabel
+                              titleText={intl.formatMessage({
+                                id: "storage.filter.room",
+                              })}
+                              items={[
+                                {
+                                  id: "",
+                                  label: intl.formatMessage({
+                                    id: "label.all",
+                                  }),
+                                },
+                                ...rooms.map((r) => ({
+                                  id: r.id,
+                                  label: r.name,
+                                })),
+                              ]}
+                              selectedItem={
+                                filterRoom
+                                  ? {
+                                      id: filterRoom,
+                                      label:
+                                        rooms.find((r) => r.id === filterRoom)
+                                          ?.name ||
+                                        intl.formatMessage({
+                                          id: "storage.filter.room",
+                                        }),
+                                    }
+                                  : {
+                                      id: "",
+                                      label: intl.formatMessage({
+                                        id: "storage.filter.room",
+                                      }),
+                                    }
+                              }
+                              onChange={(e) =>
+                                setFilterRoom(e.selectedItem?.id || "")
+                              }
+                            />
+                          </Column>
+                        )}
+                        {visibleFilters.status && (
+                          <Column lg={4} md={4} sm={4}>
+                            <Dropdown
+                              id="filter-status"
+                              data-testid="status-filter"
+                              label=""
+                              hideLabel
+                              titleText={intl.formatMessage({
+                                id: "storage.filter.status",
+                              })}
+                              items={[
+                                {
+                                  id: "",
+                                  label: intl.formatMessage({
+                                    id: "label.all",
+                                  }),
+                                },
+                                {
+                                  id: "true",
+                                  label: intl.formatMessage({
+                                    id: "label.active",
+                                  }),
+                                },
+                                {
+                                  id: "false",
+                                  label: intl.formatMessage({
+                                    id: "label.inactive",
+                                  }),
+                                },
+                              ]}
+                              selectedItem={
+                                filterStatus
+                                  ? {
+                                      id: filterStatus,
+                                      label:
+                                        filterStatus === "true"
+                                          ? intl.formatMessage({
+                                              id: "label.active",
+                                            })
+                                          : intl.formatMessage({
+                                              id: "label.inactive",
+                                            }),
+                                    }
+                                  : {
+                                      id: "",
+                                      label: intl.formatMessage({
+                                        id: "storage.filter.status",
+                                      }),
+                                    }
+                              }
+                              onChange={(e) =>
+                                setFilterStatus(e.selectedItem?.id || "")
+                              }
+                            />
+                          </Column>
+                        )}
+                        <Column lg={4} md={4} sm={4}>
+                          <Button
+                            kind="secondary"
+                            onClick={() => {
+                              setFilterRoom("");
+                              setFilterStatus("");
+                              setSearchTerm("");
+                            }}
+                          >
+                            <FormattedMessage id="label.clear" />
+                          </Button>
+                        </Column>
+                      </Grid>
+                    </Column>
                   )}
-                </DataTable>
-                </Column>
+
+                  {/* Table with title */}
+                  <Column lg={16} md={8} sm={4} className="table-section">
+                    <h3 className="table-title">
+                      <FormattedMessage id="storage.tab.devices" />
+                    </h3>
+                    <DataTable
+                      rows={formatDevicesData(filteredDevices)}
+                      headers={devicesHeaders}
+                      isSortable
+                    >
+                      {({
+                        rows,
+                        headers,
+                        getTableProps,
+                        getHeaderProps,
+                        getRowProps,
+                      }) => (
+                        <TableContainer>
+                          <Table {...getTableProps()}>
+                            <TableHead>
+                              <TableRow>
+                                {headers.map((header) => (
+                                  <TableHeader
+                                    key={
+                                      header.key || header.id || header.header
+                                    }
+                                    {...getHeaderProps({ header })}
+                                  >
+                                    {header.header}
+                                  </TableHeader>
+                                ))}
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {rows.map((row) => (
+                                <TableRow
+                                  key={row.id || row.key}
+                                  {...getRowProps({ row })}
+                                >
+                                  {row.cells.map((cell) => (
+                                    <TableCell key={cell.id}>
+                                      {cell.value}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      )}
+                    </DataTable>
+                  </Column>
                 </Grid>
               </TabPanel>
               <TabPanel>
                 <Grid fullWidth>
                   {/* Search - full width */}
                   <Column lg={16} md={8} sm={4} className="search-section">
-                  <Search
-                    data-testid="rack-search-input"
-                    labelText={intl.formatMessage({
-                      id: "storage.search.placeholder",
-                    })}
-                    placeholder={intl.formatMessage({
-                      id: "storage.search.placeholder",
-                    })}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    size="lg"
-                  />
-                </Column>
-
-                {/* Filters - own row */}
-                {(visibleFilters.room ||
-                  visibleFilters.device ||
-                  visibleFilters.status) && (
-                  <Column lg={16} md={8} sm={4}>
-                    <Grid className="filters-row">
-                      {visibleFilters.room && (
-                        <Column lg={4} md={4} sm={4}>
-                          <Dropdown
-                            id="filter-room"
-                            data-testid="room-filter"
-                            label=""
-                            hideLabel
-                            titleText={intl.formatMessage({ id: "storage.filter.room" })}
-                            items={[
-                              { id: "", label: intl.formatMessage({ id: "label.all" }) },
-                              ...rooms.map((r) => ({ id: r.id, label: r.name })),
-                            ]}
-                            selectedItem={
-                              filterRoom
-                                ? {
-                                    id: filterRoom,
-                                    label:
-                                      rooms.find((r) => r.id === filterRoom)?.name ||
-                                      intl.formatMessage({ id: "storage.filter.room" }),
-                                  }
-                                : {
-                                    id: "",
-                                    label: intl.formatMessage({
-                                      id: "storage.filter.room",
-                                    }),
-                                  }
-                            }
-                            onChange={(e) => setFilterRoom(e.selectedItem?.id || "")}
-                          />
-                        </Column>
-                      )}
-                      {visibleFilters.device && (
-                        <Column lg={4} md={4} sm={4}>
-                          <Dropdown
-                            id="filter-device"
-                            data-testid="device-filter"
-                            label=""
-                            hideLabel
-                            titleText={intl.formatMessage({
-                              id: "storage.filter.device",
-                            })}
-                            items={[
-                              { id: "", label: intl.formatMessage({ id: "label.all" }) },
-                              ...devices.map((d) => ({ id: d.id, label: d.name })),
-                            ]}
-                            selectedItem={
-                              filterDevice
-                                ? {
-                                    id: filterDevice,
-                                    label:
-                                      devices.find((d) => d.id === filterDevice)?.name ||
-                                      intl.formatMessage({ id: "storage.filter.device" }),
-                                  }
-                                : {
-                                    id: "",
-                                    label: intl.formatMessage({
-                                      id: "storage.filter.device",
-                                    }),
-                                  }
-                            }
-                            onChange={(e) => setFilterDevice(e.selectedItem?.id || "")}
-                          />
-                        </Column>
-                      )}
-                      {visibleFilters.status && (
-                        <Column lg={4} md={4} sm={4}>
-                          <Dropdown
-                            id="filter-status"
-                            data-testid="status-filter"
-                            label=""
-                            hideLabel
-                            titleText={intl.formatMessage({
-                              id: "storage.filter.status",
-                            })}
-                            items={[
-                              { id: "", label: intl.formatMessage({ id: "label.all" }) },
-                              {
-                                id: "true",
-                                label: intl.formatMessage({ id: "label.active" }),
-                              },
-                              {
-                                id: "false",
-                                label: intl.formatMessage({ id: "label.inactive" }),
-                              },
-                            ]}
-                            selectedItem={
-                              filterStatus
-                                ? {
-                                    id: filterStatus,
-                                    label:
-                                      filterStatus === "true"
-                                        ? intl.formatMessage({ id: "label.active" })
-                                        : intl.formatMessage({ id: "label.inactive" }),
-                                  }
-                                : {
-                                    id: "",
-                                    label: intl.formatMessage({
-                                      id: "storage.filter.status",
-                                    }),
-                                  }
-                            }
-                            onChange={(e) => setFilterStatus(e.selectedItem?.id || "")}
-                          />
-                        </Column>
-                      )}
-                      <Column lg={4} md={4} sm={4}>
-                        <Button
-                          kind="secondary"
-                          onClick={() => {
-                            setFilterRoom("");
-                            setFilterDevice("");
-                            setFilterStatus("");
-                            setSearchTerm("");
-                          }}
-                        >
-                          <FormattedMessage id="label.clear" />
-                        </Button>
-                      </Column>
-                    </Grid>
+                    <Search
+                      data-testid="shelf-search-input"
+                      labelText={intl.formatMessage({
+                        id: "storage.search.shelves.placeholder",
+                        defaultMessage: "Search by shelf label...",
+                      })}
+                      placeholder={intl.formatMessage({
+                        id: "storage.search.shelves.placeholder",
+                        defaultMessage: "Search by shelf label...",
+                      })}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      size="lg"
+                    />
                   </Column>
-                )}
 
-                {/* Table with title */}
-                <Column lg={16} md={8} sm={4} className="table-section">
-                  <h3 className="table-title">
-                    <FormattedMessage id="storage.tab.racks" />
-                  </h3>
-                  <DataTable
-                    rows={formatRacksData(filteredRacks)}
-                    headers={racksHeaders}
-                    isSortable
-                  >
-                  {({
-                    rows,
-                    headers,
-                    getTableProps,
-                    getHeaderProps,
-                    getRowProps,
-                  }) => (
-                    <TableContainer>
-                      <Table {...getTableProps()}>
-                        <TableHead>
-                          <TableRow>
-                            {headers.map((header) => (
-                              <TableHeader
-                                key={header.key || header.id || header.header}
-                                {...getHeaderProps({ header })}
-                              >
-                                {header.header}
-                              </TableHeader>
-                            ))}
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {rows.map((row) => (
-                            <TableRow
-                              key={row.id || row.key}
-                              {...getRowProps({ row })}
-                            >
-                              {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>
-                                  {cell.value}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                  {/* Filters - own row */}
+                  {(visibleFilters.room ||
+                    visibleFilters.device ||
+                    visibleFilters.status) && (
+                    <Column lg={16} md={8} sm={4}>
+                      <Grid className="filters-row">
+                        {visibleFilters.room && (
+                          <Column lg={4} md={4} sm={4}>
+                            <Dropdown
+                              id="filter-room"
+                              data-testid="room-filter"
+                              label=""
+                              hideLabel
+                              titleText={intl.formatMessage({
+                                id: "storage.filter.room",
+                              })}
+                              items={[
+                                {
+                                  id: "",
+                                  label: intl.formatMessage({
+                                    id: "label.all",
+                                  }),
+                                },
+                                ...rooms.map((r) => ({
+                                  id: r.id,
+                                  label: r.name,
+                                })),
+                              ]}
+                              selectedItem={
+                                filterRoom
+                                  ? {
+                                      id: filterRoom,
+                                      label:
+                                        rooms.find((r) => r.id === filterRoom)
+                                          ?.name ||
+                                        intl.formatMessage({
+                                          id: "storage.filter.room",
+                                        }),
+                                    }
+                                  : {
+                                      id: "",
+                                      label: intl.formatMessage({
+                                        id: "storage.filter.room",
+                                      }),
+                                    }
+                              }
+                              onChange={(e) =>
+                                setFilterRoom(e.selectedItem?.id || "")
+                              }
+                            />
+                          </Column>
+                        )}
+                        {visibleFilters.device && (
+                          <Column lg={4} md={4} sm={4}>
+                            <Dropdown
+                              id="filter-device"
+                              data-testid="device-filter"
+                              label=""
+                              hideLabel
+                              titleText={intl.formatMessage({
+                                id: "storage.filter.device",
+                              })}
+                              items={[
+                                {
+                                  id: "",
+                                  label: intl.formatMessage({
+                                    id: "label.all",
+                                  }),
+                                },
+                                ...devices.map((d) => ({
+                                  id: d.id,
+                                  label: d.name,
+                                })),
+                              ]}
+                              selectedItem={
+                                filterDevice
+                                  ? {
+                                      id: filterDevice,
+                                      label:
+                                        devices.find(
+                                          (d) => d.id === filterDevice,
+                                        )?.name ||
+                                        intl.formatMessage({
+                                          id: "storage.filter.device",
+                                        }),
+                                    }
+                                  : {
+                                      id: "",
+                                      label: intl.formatMessage({
+                                        id: "storage.filter.device",
+                                      }),
+                                    }
+                              }
+                              onChange={(e) =>
+                                setFilterDevice(e.selectedItem?.id || "")
+                              }
+                            />
+                          </Column>
+                        )}
+                        {visibleFilters.status && (
+                          <Column lg={4} md={4} sm={4}>
+                            <Dropdown
+                              id="filter-status"
+                              data-testid="status-filter"
+                              label=""
+                              hideLabel
+                              titleText={intl.formatMessage({
+                                id: "storage.filter.status",
+                              })}
+                              items={[
+                                {
+                                  id: "",
+                                  label: intl.formatMessage({
+                                    id: "label.all",
+                                  }),
+                                },
+                                {
+                                  id: "true",
+                                  label: intl.formatMessage({
+                                    id: "label.active",
+                                  }),
+                                },
+                                {
+                                  id: "false",
+                                  label: intl.formatMessage({
+                                    id: "label.inactive",
+                                  }),
+                                },
+                              ]}
+                              selectedItem={
+                                filterStatus
+                                  ? {
+                                      id: filterStatus,
+                                      label:
+                                        filterStatus === "true"
+                                          ? intl.formatMessage({
+                                              id: "label.active",
+                                            })
+                                          : intl.formatMessage({
+                                              id: "label.inactive",
+                                            }),
+                                    }
+                                  : {
+                                      id: "",
+                                      label: intl.formatMessage({
+                                        id: "storage.filter.status",
+                                      }),
+                                    }
+                              }
+                              onChange={(e) =>
+                                setFilterStatus(e.selectedItem?.id || "")
+                              }
+                            />
+                          </Column>
+                        )}
+                        <Column lg={4} md={4} sm={4}>
+                          <Button
+                            kind="secondary"
+                            onClick={() => {
+                              setFilterRoom("");
+                              setFilterDevice("");
+                              setFilterStatus("");
+                              setSearchTerm("");
+                            }}
+                          >
+                            <FormattedMessage id="label.clear" />
+                          </Button>
+                        </Column>
+                      </Grid>
+                    </Column>
                   )}
-                </DataTable>
-                </Column>
+
+                  {/* Table with title */}
+                  <Column lg={16} md={8} sm={4} className="table-section">
+                    <h3 className="table-title">
+                      <FormattedMessage id="storage.tab.shelves" />
+                    </h3>
+                    <DataTable
+                      rows={formatShelvesData(filteredShelves)}
+                      headers={shelvesHeaders}
+                      isSortable
+                    >
+                      {({
+                        rows,
+                        headers,
+                        getTableProps,
+                        getHeaderProps,
+                        getRowProps,
+                      }) => (
+                        <TableContainer>
+                          <Table {...getTableProps()}>
+                            <TableHead>
+                              <TableRow>
+                                {headers.map((header) => (
+                                  <TableHeader
+                                    key={
+                                      header.key || header.id || header.header
+                                    }
+                                    {...getHeaderProps({ header })}
+                                  >
+                                    {header.header}
+                                  </TableHeader>
+                                ))}
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {rows.map((row) => (
+                                <TableRow
+                                  key={row.id || row.key}
+                                  {...getRowProps({ row })}
+                                >
+                                  {row.cells.map((cell) => (
+                                    <TableCell key={cell.id}>
+                                      {cell.value}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      )}
+                    </DataTable>
+                  </Column>
+                </Grid>
+              </TabPanel>
+              <TabPanel>
+                <Grid fullWidth>
+                  {/* Search - full width */}
+                  <Column lg={16} md={8} sm={4} className="search-section">
+                    <Search
+                      data-testid="rack-search-input"
+                      labelText={intl.formatMessage({
+                        id: "storage.search.racks.placeholder",
+                        defaultMessage: "Search by rack label...",
+                      })}
+                      placeholder={intl.formatMessage({
+                        id: "storage.search.racks.placeholder",
+                        defaultMessage: "Search by rack label...",
+                      })}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      size="lg"
+                    />
+                  </Column>
+
+                  {/* Filters - own row */}
+                  {(visibleFilters.room ||
+                    visibleFilters.device ||
+                    visibleFilters.status) && (
+                    <Column lg={16} md={8} sm={4}>
+                      <Grid className="filters-row">
+                        {visibleFilters.room && (
+                          <Column lg={4} md={4} sm={4}>
+                            <Dropdown
+                              id="filter-room"
+                              data-testid="room-filter"
+                              label=""
+                              hideLabel
+                              titleText={intl.formatMessage({
+                                id: "storage.filter.room",
+                              })}
+                              items={[
+                                {
+                                  id: "",
+                                  label: intl.formatMessage({
+                                    id: "label.all",
+                                  }),
+                                },
+                                ...rooms.map((r) => ({
+                                  id: r.id,
+                                  label: r.name,
+                                })),
+                              ]}
+                              selectedItem={
+                                filterRoom
+                                  ? {
+                                      id: filterRoom,
+                                      label:
+                                        rooms.find((r) => r.id === filterRoom)
+                                          ?.name ||
+                                        intl.formatMessage({
+                                          id: "storage.filter.room",
+                                        }),
+                                    }
+                                  : {
+                                      id: "",
+                                      label: intl.formatMessage({
+                                        id: "storage.filter.room",
+                                      }),
+                                    }
+                              }
+                              onChange={(e) =>
+                                setFilterRoom(e.selectedItem?.id || "")
+                              }
+                            />
+                          </Column>
+                        )}
+                        {visibleFilters.device && (
+                          <Column lg={4} md={4} sm={4}>
+                            <Dropdown
+                              id="filter-device"
+                              data-testid="device-filter"
+                              label=""
+                              hideLabel
+                              titleText={intl.formatMessage({
+                                id: "storage.filter.device",
+                              })}
+                              items={[
+                                {
+                                  id: "",
+                                  label: intl.formatMessage({
+                                    id: "label.all",
+                                  }),
+                                },
+                                ...devices.map((d) => ({
+                                  id: d.id,
+                                  label: d.name,
+                                })),
+                              ]}
+                              selectedItem={
+                                filterDevice
+                                  ? {
+                                      id: filterDevice,
+                                      label:
+                                        devices.find(
+                                          (d) => d.id === filterDevice,
+                                        )?.name ||
+                                        intl.formatMessage({
+                                          id: "storage.filter.device",
+                                        }),
+                                    }
+                                  : {
+                                      id: "",
+                                      label: intl.formatMessage({
+                                        id: "storage.filter.device",
+                                      }),
+                                    }
+                              }
+                              onChange={(e) =>
+                                setFilterDevice(e.selectedItem?.id || "")
+                              }
+                            />
+                          </Column>
+                        )}
+                        {visibleFilters.status && (
+                          <Column lg={4} md={4} sm={4}>
+                            <Dropdown
+                              id="filter-status"
+                              data-testid="status-filter"
+                              label=""
+                              hideLabel
+                              titleText={intl.formatMessage({
+                                id: "storage.filter.status",
+                              })}
+                              items={[
+                                {
+                                  id: "",
+                                  label: intl.formatMessage({
+                                    id: "label.all",
+                                  }),
+                                },
+                                {
+                                  id: "true",
+                                  label: intl.formatMessage({
+                                    id: "label.active",
+                                  }),
+                                },
+                                {
+                                  id: "false",
+                                  label: intl.formatMessage({
+                                    id: "label.inactive",
+                                  }),
+                                },
+                              ]}
+                              selectedItem={
+                                filterStatus
+                                  ? {
+                                      id: filterStatus,
+                                      label:
+                                        filterStatus === "true"
+                                          ? intl.formatMessage({
+                                              id: "label.active",
+                                            })
+                                          : intl.formatMessage({
+                                              id: "label.inactive",
+                                            }),
+                                    }
+                                  : {
+                                      id: "",
+                                      label: intl.formatMessage({
+                                        id: "storage.filter.status",
+                                      }),
+                                    }
+                              }
+                              onChange={(e) =>
+                                setFilterStatus(e.selectedItem?.id || "")
+                              }
+                            />
+                          </Column>
+                        )}
+                        <Column lg={4} md={4} sm={4}>
+                          <Button
+                            kind="secondary"
+                            onClick={() => {
+                              setFilterRoom("");
+                              setFilterDevice("");
+                              setFilterStatus("");
+                              setSearchTerm("");
+                            }}
+                          >
+                            <FormattedMessage id="label.clear" />
+                          </Button>
+                        </Column>
+                      </Grid>
+                    </Column>
+                  )}
+
+                  {/* Table with title */}
+                  <Column lg={16} md={8} sm={4} className="table-section">
+                    <h3 className="table-title">
+                      <FormattedMessage id="storage.tab.racks" />
+                    </h3>
+                    <DataTable
+                      rows={formatRacksData(filteredRacks)}
+                      headers={racksHeaders}
+                      isSortable
+                    >
+                      {({
+                        rows,
+                        headers,
+                        getTableProps,
+                        getHeaderProps,
+                        getRowProps,
+                      }) => (
+                        <TableContainer>
+                          <Table {...getTableProps()}>
+                            <TableHead>
+                              <TableRow>
+                                {headers.map((header) => (
+                                  <TableHeader
+                                    key={
+                                      header.key || header.id || header.header
+                                    }
+                                    {...getHeaderProps({ header })}
+                                  >
+                                    {header.header}
+                                  </TableHeader>
+                                ))}
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {rows.map((row) => (
+                                <TableRow
+                                  key={row.id || row.key}
+                                  {...getRowProps({ row })}
+                                >
+                                  {row.cells.map((cell) => (
+                                    <TableCell key={cell.id}>
+                                      {cell.value}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      )}
+                    </DataTable>
+                  </Column>
                 </Grid>
               </TabPanel>
             </TabPanels>

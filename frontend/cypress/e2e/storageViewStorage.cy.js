@@ -126,7 +126,9 @@ describe("View Storage Modal - UI Components (P2B)", function () {
         .should("be.visible")
         .within(() => {
           // Verify assignment form is visible and editable
-          cy.get('[data-testid="assignment-form-section"]').should("be.visible");
+          cy.get('[data-testid="assignment-form-section"]').should(
+            "be.visible",
+          );
 
           // Verify Room dropdown is editable
           cy.get('[data-testid="room-dropdown"]')
@@ -208,4 +210,3 @@ describe("View Storage Modal - UI Components (P2B)", function () {
     });
   });
 });
-

@@ -8,8 +8,9 @@ import {
   TextArea,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { ArrowDown } from "@carbon/icons-react";
-import CascadingDropdownMode from "../StorageLocationSelector/CascadingDropdownMode";
+import { ArrowDown, Add } from "@carbon/icons-react";
+import LocationFilterDropdown from "../StorageDashboard/LocationFilterDropdown";
+import EnhancedCascadingMode from "../StorageLocationSelector/EnhancedCascadingMode";
 import "./MoveSampleModal.css";
 
 /**
@@ -36,19 +37,33 @@ const MoveSampleModal = ({
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [selectedLocationPath, setSelectedLocationPath] = useState("");
   const [reason, setReason] = useState("");
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const handleLocationChange = (location) => {
     setSelectedLocation(location);
     // Build hierarchical path
     if (location && location.position) {
-      const path = `${location.room?.name} > ${location.device?.name} > ${location.shelf?.label} > ${location.rack?.label} > Position ${location.position.coordinate}`;
+      const path = `${location.room?.name} > ${location.device?.name} > ${location.shelf?.label} > ${location.rack?.label} > Position ${location.position.coordinate || location.position}`;
       setSelectedLocationPath(path);
     } else if (location && location.rack) {
       const path = `${location.room?.name} > ${location.device?.name} > ${location.shelf?.label} > ${location.rack?.label}`;
       setSelectedLocationPath(path);
+    } else if (location && location.hierarchicalPath) {
+      setSelectedLocationPath(location.hierarchicalPath);
+    } else if (location && location.hierarchical_path) {
+      setSelectedLocationPath(location.hierarchical_path);
+    } else if (location && location.name) {
+      // LocationFilterDropdown format - use name or hierarchical path
+      setSelectedLocationPath(location.hierarchical_path || location.name);
     } else {
       setSelectedLocationPath("");
     }
+  };
+
+  const handleLocationFilterSelect = (location) => {
+    handleLocationChange(location);
+    setShowCreateForm(false);
   };
 
   const handleConfirm = () => {
@@ -66,13 +81,27 @@ const MoveSampleModal = ({
     setSelectedLocation(null);
     setSelectedLocationPath("");
     setReason("");
+    setShowCreateForm(false);
+    setSearchTerm("");
     onClose();
   };
 
-  const canConfirm = selectedLocation && selectedLocation.room;
+  const canConfirm =
+    selectedLocation &&
+    (selectedLocation.room || selectedLocation.rack || selectedLocation.id);
+
+  const handleCreateFormLocationChange = (location) => {
+    handleLocationChange(location);
+    setShowCreateForm(false);
+  };
 
   return (
-    <ComposedModal open={open} onClose={handleClose} size="lg" data-testid="move-modal">
+    <ComposedModal
+      open={open}
+      onClose={handleClose}
+      size="lg"
+      data-testid="move-modal"
+    >
       <ModalHeader
         title={intl.formatMessage({
           id: "storage.move.sample",
@@ -89,13 +118,17 @@ const MoveSampleModal = ({
       <ModalBody>
         {/* Current Location Section */}
         {currentLocation && (
-          <div className="move-modal-current-location" data-testid="current-location-section">
+          <div
+            className="move-modal-current-location"
+            data-testid="current-location-section"
+          >
             <div className="location-box">
               <div className="location-label">
                 <FormattedMessage
                   id="storage.current.location"
                   defaultMessage="Current Location"
-                />:
+                />
+                :
               </div>
               <div className="location-path">{currentLocation.path}</div>
             </div>
@@ -110,7 +143,10 @@ const MoveSampleModal = ({
         )}
 
         {/* New Location Selector */}
-        <div className="move-modal-new-location" data-testid="new-location-section">
+        <div
+          className="move-modal-new-location"
+          data-testid="new-location-section"
+        >
           <div className="location-selector-box">
             <label className="form-label">
               <FormattedMessage
@@ -119,32 +155,47 @@ const MoveSampleModal = ({
               />{" "}
               <span className="required-indicator">*</span>
             </label>
-            <CascadingDropdownMode
-              onLocationChange={handleLocationChange}
-              enableInlineCreation={false}
-            />
-          </div>
-        </div>
-
-        {/* Selected Location Preview */}
-        <div className="move-modal-selected-preview" data-testid="selected-location-preview">
-          <div className="preview-box">
-            <div className="preview-label">
-              <FormattedMessage
-                id="storage.selected.location"
-                defaultMessage="Selected Location"
-              />:
-            </div>
-            <div className="preview-value">
-              {selectedLocationPath || (
-                <span className="not-selected">
-                  <FormattedMessage
-                    id="storage.not.selected"
-                    defaultMessage="Not selected"
+            {!showCreateForm ? (
+              <div className="move-modal-search-container">
+                <div className="move-modal-search-wrapper">
+                  <LocationFilterDropdown
+                    onLocationChange={handleLocationFilterSelect}
+                    selectedLocation={selectedLocation}
+                    allowInactive={false}
                   />
-                </span>
-              )}
-            </div>
+                </div>
+                <Button
+                  kind="secondary"
+                  size="md"
+                  renderIcon={Add}
+                  onClick={() => setShowCreateForm(true)}
+                  data-testid="add-location-button"
+                >
+                  <FormattedMessage
+                    id="storage.add.location"
+                    defaultMessage="Location"
+                  />
+                </Button>
+              </div>
+            ) : (
+              <div className="move-modal-create-form">
+                <EnhancedCascadingMode
+                  onLocationChange={handleCreateFormLocationChange}
+                  selectedLocation={selectedLocation}
+                />
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  onClick={() => setShowCreateForm(false)}
+                  className="move-modal-cancel-create"
+                >
+                  <FormattedMessage
+                    id="label.button.cancel"
+                    defaultMessage="Cancel"
+                  />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -158,7 +209,8 @@ const MoveSampleModal = ({
             })}
             placeholder={intl.formatMessage({
               id: "storage.move.reason.placeholder",
-              defaultMessage: "Optional: Enter reason for moving this sample...",
+              defaultMessage:
+                "Optional: Enter reason for moving this sample...",
             })}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -182,4 +234,3 @@ const MoveSampleModal = ({
 };
 
 export default MoveSampleModal;
-

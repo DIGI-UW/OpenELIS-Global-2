@@ -22,7 +22,7 @@ else
         STAGING_FLAG="--staging"
         echo "Using Let's Encrypt staging environment"
     fi
-    
+
     certbot certonly \
         --webroot \
         --webroot-path=/var/www/certbot \
@@ -32,7 +32,7 @@ else
         --non-interactive \
         $STAGING_FLAG \
         -d "$DOMAIN"
-    
+
     if [ $? -eq 0 ]; then
         echo "✓ Certificate successfully generated for ${DOMAIN}"
     else
@@ -40,7 +40,3 @@ else
         exit 1
     fi
 fi
-
-
-
-

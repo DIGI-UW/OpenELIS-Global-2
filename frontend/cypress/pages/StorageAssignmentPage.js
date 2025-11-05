@@ -34,7 +34,10 @@ class StorageAssignmentPage {
     cy.get("body").then(($body) => {
       if ($body.text().includes(roomName)) {
         cy.contains(roomName).click();
-      } else if (roomName === "MAIN" && $body.text().includes("Main Laboratory")) {
+      } else if (
+        roomName === "MAIN" &&
+        $body.text().includes("Main Laboratory")
+      ) {
         cy.contains("Main Laboratory").click();
       } else {
         cy.log(`Room "${roomName}" not found in dropdown`);

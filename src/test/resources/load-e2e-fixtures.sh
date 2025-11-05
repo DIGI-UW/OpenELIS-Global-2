@@ -40,4 +40,3 @@ else
   echo "ERROR: Docker not found. Please install Docker or use psql directly."
   exit 1
 fi
-

@@ -7,12 +7,12 @@ let loginPage = null;
 before("Wait for API, login and load fixtures", () => {
   // Wait for backend API to be available
   cy.waitForBackend();
-  
+
   // Now login
   loginPage = new LoginPage();
   loginPage.visit();
   homePage = loginPage.goToHomePage();
-  
+
   // Load storage test fixtures (needed for dashboard to show samples)
   cy.loadStorageFixtures();
 });
@@ -24,7 +24,9 @@ after("clean up fixtures", () => {
   if (Cypress.env("CLEANUP_FIXTURES")) {
     cy.cleanStorageFixtures();
   } else {
-    cy.log("Skipping fixture cleanup (CYPRESS_CLEANUP_FIXTURES=false) - fixtures preserved for manual testing");
+    cy.log(
+      "Skipping fixture cleanup (CYPRESS_CLEANUP_FIXTURES=false) - fixtures preserved for manual testing",
+    );
   }
 });
 
@@ -202,7 +204,6 @@ describe("Storage Dashboard", function () {
           // Verify table structure still exists
           cy.get(".cds--data-table tbody, table tbody").should("exist");
         } else {
-
           // Verify at least one row has actual content (not just empty cells)
           cy.get(".cds--data-table tbody tr, table tbody tr")
             .first()
@@ -220,9 +221,7 @@ describe("Storage Dashboard", function () {
                 });
             });
 
-          cy.log(
-            `${tabName} tab: Found ${rowCount} rows with data`,
-          );
+          cy.log(`${tabName} tab: Found ${rowCount} rows with data`);
         }
       });
 

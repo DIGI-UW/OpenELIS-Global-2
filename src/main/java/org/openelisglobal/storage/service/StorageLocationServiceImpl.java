@@ -542,7 +542,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                     parentRoom.getName(); // Trigger lazy load
                 }
             }
-            
+
             if (parentShelf != null) {
                 map.put("shelfId", parentShelf.getId());
                 map.put("shelfLabel", parentShelf.getLabel());

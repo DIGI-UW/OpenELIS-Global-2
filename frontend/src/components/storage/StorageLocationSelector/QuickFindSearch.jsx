@@ -19,28 +19,26 @@ const QuickFindSearch = ({ onLocationSelect, debounceMs = 300 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   // Debounced search function
-  const performSearch = useCallback(
-    (term) => {
-      if (!term || term.trim().length < 2) {
-        setSearchResults([]);
-        return;
-      }
+  const performSearch = useCallback((term) => {
+    if (!term || term.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
 
-      setIsLoading(true);
-      getFromOpenElisServer(
-        `/rest/storage/locations/search?q=${encodeURIComponent(term)}`,
-        (results) => {
-          setSearchResults(results || []);
-          setIsLoading(false);
-        },
-        () => {
-          setSearchResults([]);
-          setIsLoading(false);
-        },
-      );
-    },
-    [],
-  );
+    setIsLoading(true);
+    getFromOpenElisServer(
+      `/rest/storage/locations/search?q=${encodeURIComponent(term)}`,
+      (results) => {
+        const filteredResults = results || [];
+        setSearchResults(filteredResults);
+        setIsLoading(false);
+      },
+      () => {
+        setSearchResults([]);
+        setIsLoading(false);
+      },
+    );
+  }, []);
 
   // Debounce effect
   useEffect(() => {
@@ -53,7 +51,10 @@ const QuickFindSearch = ({ onLocationSelect, debounceMs = 300 }) => {
 
   const handleInputChange = (event) => {
     // Carbon ComboBox onInputChange provides { inputValue } object
-    const inputValue = event?.inputValue !== undefined ? event.inputValue : (event?.target?.value || "");
+    const inputValue =
+      event?.inputValue !== undefined
+        ? event.inputValue
+        : event?.target?.value || "";
     setSearchTerm(inputValue);
   };
 
@@ -89,4 +90,3 @@ const QuickFindSearch = ({ onLocationSelect, debounceMs = 300 }) => {
 };
 
 export default QuickFindSearch;
-

@@ -2,10 +2,6 @@ package org.openelisglobal.storage.service;
 
 import java.util.List;
 import java.util.Map;
-import org.openelisglobal.storage.valueholder.StorageDevice;
-import org.openelisglobal.storage.valueholder.StorageRack;
-import org.openelisglobal.storage.valueholder.StorageRoom;
-import org.openelisglobal.storage.valueholder.StorageShelf;
 
 /**
  * Service interface for Storage Search operations. Provides tab-specific search

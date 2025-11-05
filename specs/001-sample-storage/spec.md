@@ -61,41 +61,102 @@ managers
   location management form page accessible via "Add Location" button on Storage
   Dashboard (positioned to right of tabs, next to Export button)
 - Q: What are the filter requirements for each dashboard tab table? → A:
-  Tab-specific filtering requirements: (1) Samples tab - filter by location and by
-  status, (2) Rooms tab - filter by status, (3) Devices tab - filter by type and
-  room and status, (4) Shelves tab - filter by device and room and status, (5)
-  Racks tab - show room column, filter by room, filter by shelf, device, and
+  Tab-specific filtering requirements: (1) Samples tab - filter by location and
+  by status, (2) Rooms tab - filter by status, (3) Devices tab - filter by type
+  and room and status, (4) Shelves tab - filter by device and room and status,
+  (5) Racks tab - show room column, filter by room, filter by shelf, device, and
   status
 
 ### Session 2025-11-20
 
-- Q: When a user selects a location in the single location dropdown (e.g., "Freezer Unit 1"), what should the filter behavior be? → A: Show all samples within that location's hierarchy (downward inclusive) - selecting "Freezer Unit 1" shows all samples in any shelf/rack/position within that freezer
-- Q: What UI pattern should the location dropdown use for hierarchical browsing? → A: Combination: tree view for browsing, flat autocomplete list for search results
-- Q: How should the autocomplete search work in the location dropdown? → A: Search matches location names/codes at any hierarchy level, displays full path (e.g., typing "Freezer" matches "Freezer Unit 1" and shows "Main Laboratory > Freezer Unit 1")
-- Q: Should inactive/decommissioned locations appear in the location dropdown? → A: Show inactive locations but visually distinguish them (grayed out, disabled, or with "Inactive" badge) - users can select to filter samples that were in those locations
-- Q: Should Position-level locations be included in the location dropdown? → A: Exclude Position-level - dropdown only includes Room, Device, Shelf, and Rack levels (users can filter by rack, then manually find position in table)
-- Q: How should the Storage Locations metric card display the breakdown by type? → A: Display as formatted text list with counts (e.g., "12 rooms, 45 devices, 89 shelves, 156 racks")
-- Q: How should the color-coding be applied to the Storage Locations breakdown and tabs? → A: Color-code metric card text AND apply matching subtle accent colors to tab labels/backgrounds (e.g., Rooms tab has blue accent matching "12 rooms" blue)
-- Q: Which color scheme should be used for the location type color-coding? → A: Carbon Design System color tokens (e.g., blue-70 for Rooms, teal-70 for Devices, purple-70 for Shelves, orange-70 for Racks) - colorblind-friendly and accessible
-- Q: Should the Storage Locations breakdown include inactive/decommissioned locations, or only active locations? → A: Only active locations - breakdown shows counts for active rooms/devices/shelves/racks only
+- Q: When a user selects a location in the single location dropdown (e.g.,
+  "Freezer Unit 1"), what should the filter behavior be? → A: Show all samples
+  within that location's hierarchy (downward inclusive) - selecting "Freezer
+  Unit 1" shows all samples in any shelf/rack/position within that freezer
+- Q: What UI pattern should the location dropdown use for hierarchical browsing?
+  → A: Combination: tree view for browsing, flat autocomplete list for search
+  results
+- Q: How should the autocomplete search work in the location dropdown? → A:
+  Search matches location names/codes at any hierarchy level, displays full path
+  (e.g., typing "Freezer" matches "Freezer Unit 1" and shows "Main Laboratory >
+  Freezer Unit 1")
+- Q: Should inactive/decommissioned locations appear in the location dropdown? →
+  A: Show inactive locations but visually distinguish them (grayed out,
+  disabled, or with "Inactive" badge) - users can select to filter samples that
+  were in those locations
+- Q: Should Position-level locations be included in the location dropdown? → A:
+  Exclude Position-level - dropdown only includes Room, Device, Shelf, and Rack
+  levels (users can filter by rack, then manually find position in table)
+- Q: How should the Storage Locations metric card display the breakdown by type?
+  → A: Display as formatted text list with counts (e.g., "12 rooms, 45 devices,
+  89 shelves, 156 racks")
+- Q: How should the color-coding be applied to the Storage Locations breakdown
+  and tabs? → A: Color-code metric card text AND apply matching subtle accent
+  colors to tab labels/backgrounds (e.g., Rooms tab has blue accent matching "12
+  rooms" blue)
+- Q: Which color scheme should be used for the location type color-coding? → A:
+  Carbon Design System color tokens (e.g., blue-70 for Rooms, teal-70 for
+  Devices, purple-70 for Shelves, orange-70 for Racks) - colorblind-friendly and
+  accessible
+- Q: Should the Storage Locations breakdown include inactive/decommissioned
+  locations, or only active locations? → A: Only active locations - breakdown
+  shows counts for active rooms/devices/shelves/racks only
 
 ### Session 2025-11-05
 
-- Q: What behavior should "live-searched" use for samples? → A: Debounced real-time search (300-500ms delay after typing stops) - balances responsiveness with performance and reduces API calls
-- Q: For samples, should the search field match across all three fields simultaneously (sample ID, sample type, assigned location), or should it search each field separately? → A: Combined search - single search field matches any of sample ID, sample type, or location (OR logic)
-- Q: How should the search field match text across all tabs? → A: Case-insensitive partial match (substring) - "freezer" matches "Freezer Unit 1"
-- Q: For samples, what field should "sample type" refer to in the search? → A: Accession number type/prefix (e.g., "S-2025", "TB-001")
-- Q: For samples, when searching "any of the assigned locations," should it match the full hierarchical path string or individual location components? → A: Full hierarchical path string (e.g., "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5")
+- Q: What behavior should "live-searched" use for samples? → A: Debounced
+  real-time search (300-500ms delay after typing stops) - balances
+  responsiveness with performance and reduces API calls
+- Q: For samples, should the search field match across all three fields
+  simultaneously (sample ID, sample type, assigned location), or should it
+  search each field separately? → A: Combined search - single search field
+  matches any of sample ID, sample type, or location (OR logic)
+- Q: How should the search field match text across all tabs? → A:
+  Case-insensitive partial match (substring) - "freezer" matches "Freezer Unit
+  1"
+- Q: For samples, what field should "sample type" refer to in the search? → A:
+  Accession number type/prefix (e.g., "S-2025", "TB-001")
+- Q: For samples, when searching "any of the assigned locations," should it
+  match the full hierarchical path string or individual location components? →
+  A: Full hierarchical path string (e.g., "Main Laboratory > Freezer Unit 1 >
+  Shelf-A > Rack R1 > Position A5")
 
 ### Session 2025-11-21
 
-- Q: Which menu items should appear in the samples table row overflow menu? → A: All four items: Move, Dispose, View Audit (placeholder), View Storage
-- Q: What should the View Storage modal display? → A: Based on Figma design (sample row menu - location modal page): Modal titled "Storage Location Assignment" showing sample information (ID, Type, Status) in highlighted box, current location hierarchical path in highlighted gray box, separator, and full location assignment form (barcode scan, Room/Device/Shelf/Rack/Position selectors, condition notes) - allows viewing current location details and editing assignment
-- Q: Should move and dispose modals be reviewed against Figma designs? → A: Yes - review Figma move and dispose modal pages to capture any missing UI details and ensure alignment
-- Q: What are the exact UI details for the move modal? → A: Based on Figma design (node 1-481): Modal titled "Move Sample" with subtitle, current location in gray box, downward arrow icon, new location selector in bordered box (barcode scan, Room/Device/Shelf/Rack dropdowns), "Selected Location" preview box showing "Not selected" until location chosen, optional reason textarea, Cancel and "Confirm Move" buttons
-- Q: What are the exact UI details for the dispose modal? → A: Based on Figma design (node 1-782): Modal titled "Dispose Sample" with subtitle, red warning alert at top ("This action cannot be undone"), sample info box (ID/Type/Status), current location section with note, disposal instructions info box, separator, required Reason and Method dropdowns, optional Notes textarea, confirmation checkbox ("I confirm..."), Cancel and "Confirm Disposal" button (red/destructive styling, disabled until checkbox checked)
-- Q: How should the location selector widget be structured for orders and results workflows? → A: Both workflows use same widget: compact inline view (shows selected location path or "Not assigned") with "Expand" or "Edit" button that opens full location modal (same structure as View Storage modal with sample info, current location, full assignment form)
-- Q: What should the quick-add inline input do in the results workflow compact view? → A: Simple quick find/search input for any location level that already exists (type-ahead autocomplete matching Room, Device, Shelf, or Rack levels) - barcode workflows are delayed to later stage
+- Q: Which menu items should appear in the samples table row overflow menu? → A:
+  All four items: Move, Dispose, View Audit (placeholder), View Storage
+- Q: What should the View Storage modal display? → A: Based on Figma design
+  (sample row menu - location modal page): Modal titled "Storage Location
+  Assignment" showing sample information (ID, Type, Status) in highlighted box,
+  current location hierarchical path in highlighted gray box, separator, and
+  full location assignment form (barcode scan, Room/Device/Shelf/Rack/Position
+  selectors, condition notes) - allows viewing current location details and
+  editing assignment
+- Q: Should move and dispose modals be reviewed against Figma designs? → A:
+  Yes - review Figma move and dispose modal pages to capture any missing UI
+  details and ensure alignment
+- Q: What are the exact UI details for the move modal? → A: Based on Figma
+  design (node 1-481): Modal titled "Move Sample" with subtitle, current
+  location in gray box, downward arrow icon, new location selector in bordered
+  box (barcode scan, Room/Device/Shelf/Rack dropdowns), "Selected Location"
+  preview box showing "Not selected" until location chosen, optional reason
+  textarea, Cancel and "Confirm Move" buttons
+- Q: What are the exact UI details for the dispose modal? → A: Based on Figma
+  design (node 1-782): Modal titled "Dispose Sample" with subtitle, red warning
+  alert at top ("This action cannot be undone"), sample info box
+  (ID/Type/Status), current location section with note, disposal instructions
+  info box, separator, required Reason and Method dropdowns, optional Notes
+  textarea, confirmation checkbox ("I confirm..."), Cancel and "Confirm
+  Disposal" button (red/destructive styling, disabled until checkbox checked)
+- Q: How should the location selector widget be structured for orders and
+  results workflows? → A: Both workflows use same widget: compact inline view
+  (shows selected location path or "Not assigned") with "Expand" or "Edit"
+  button that opens full location modal (same structure as View Storage modal
+  with sample info, current location, full assignment form)
+- Q: What should the quick-add inline input do in the results workflow compact
+  view? → A: Simple quick find/search input for any location level that already
+  exists (type-ahead autocomplete matching Room, Device, Shelf, or Rack
+  levels) - barcode workflows are delayed to later stage
 
 ## POC Scope
 
@@ -423,7 +484,11 @@ procurement of additional storage equipment.
    - **Total Samples**: 2,847 (count of all samples with assigned locations)
    - **Active**: 2,654 (currently stored and available)
    - **Disposed**: 193 (disposed samples, for record-keeping)
-   - **Storage Locations**: "12 rooms, 45 devices, 89 shelves, 156 racks" (formatted text list showing breakdown by active location types, color-coded: rooms in blue-70, devices in teal-70, shelves in purple-70, racks in orange-70, with matching subtle accent colors on corresponding tabs)
+   - **Storage Locations**: "12 rooms, 45 devices, 89 shelves, 156 racks"
+     (formatted text list showing breakdown by active location types,
+     color-coded: rooms in blue-70, devices in teal-70, shelves in purple-70,
+     racks in orange-70, with matching subtle accent colors on corresponding
+     tabs)
 3. Switches between **5 tabs** to view different hierarchy levels:
 
    **Rooms Tab**:
@@ -652,17 +717,36 @@ samples are assigned/moved/disposed.
 #### Storage Location Selector Widget Structure
 
 - **FR-018a**: Storage Location Selector Widget MUST support two-tier design:
-  - **Compact inline view**: Displays selected location hierarchical path (or "Not assigned" if no location selected) with "Expand" or "Edit" button
-  - **Expanded modal view**: Full location assignment form matching View Storage modal structure (sample info box, current location display, full assignment form with all selectors)
-- **FR-018b**: Compact inline view MUST be used in both SamplePatientEntry (orders workflow) and LogbookResults (results workflow) - same widget component
-- **FR-018c**: Compact inline view MUST display the selected location as hierarchical path text: `Room > Device > Shelf > Rack > Position` (or "Not assigned" if empty)
-- **FR-018d**: Compact inline view MUST include an "Expand" or "Edit" button that opens the full location modal
-- **FR-018e**: Results workflow compact inline view MUST include a quick-find search input field (type-ahead autocomplete) for rapidly finding existing locations
-- **FR-018f**: Quick-find search MUST match location names/codes at any hierarchy level (Room, Device, Shelf, or Rack) using case-insensitive partial/substring matching
-- **FR-018g**: Quick-find search results MUST display as flat list with full hierarchical path (e.g., "Main Laboratory > Freezer Unit 1 > Shelf-A")
-- **FR-018h**: Selecting a location from quick-find results MUST populate the compact view with the selected location path and allow expanding to modal for position selection or notes
-- **FR-018i**: Expanded modal view MUST match View Storage modal structure: sample information section, current location display, visual separator, full assignment form (barcode scan input, Room/Device/Shelf/Rack/Position selectors, condition notes), Cancel and "Assign Storage Location" buttons
-- **FR-018j**: Barcode scanning functionality in expanded modal view is deferred to later stage (not required for initial implementation)
+  - **Compact inline view**: Displays selected location hierarchical path (or
+    "Not assigned" if no location selected) with "Expand" or "Edit" button
+  - **Expanded modal view**: Full location assignment form matching View Storage
+    modal structure (sample info box, current location display, full assignment
+    form with all selectors)
+- **FR-018b**: Compact inline view MUST be used in both SamplePatientEntry
+  (orders workflow) and LogbookResults (results workflow) - same widget
+  component
+- **FR-018c**: Compact inline view MUST display the selected location as
+  hierarchical path text: `Room > Device > Shelf > Rack > Position` (or "Not
+  assigned" if empty)
+- **FR-018d**: Compact inline view MUST include an "Expand" or "Edit" button
+  that opens the full location modal
+- **FR-018e**: Results workflow compact inline view MUST include a quick-find
+  search input field (type-ahead autocomplete) for rapidly finding existing
+  locations
+- **FR-018f**: Quick-find search MUST match location names/codes at any
+  hierarchy level (Room, Device, Shelf, or Rack) using case-insensitive
+  partial/substring matching
+- **FR-018g**: Quick-find search results MUST display as flat list with full
+  hierarchical path (e.g., "Main Laboratory > Freezer Unit 1 > Shelf-A")
+- **FR-018h**: Selecting a location from quick-find results MUST populate the
+  compact view with the selected location path and allow expanding to modal for
+  position selection or notes
+- **FR-018i**: Expanded modal view MUST match View Storage modal structure:
+  sample information section, current location display, visual separator, full
+  assignment form (barcode scan input, Room/Device/Shelf/Rack/Position
+  selectors, condition notes), Cancel and "Assign Storage Location" buttons
+- **FR-018j**: Barcode scanning functionality in expanded modal view is deferred
+  to later stage (not required for initial implementation)
 
 #### Multi-Mode Location Selection
 
@@ -675,7 +759,8 @@ samples are assigned/moved/disposed.
   support keyboard navigation
 - **FR-021**: System MUST provide **barcode scanning** workflow: Scan
   pre-printed barcode label → auto-populate hierarchy fields → focus Position
-  field for manual entry **[Note: Barcode scanning deferred to later stage - not required for initial implementation]**
+  field for manual entry **[Note: Barcode scanning deferred to later stage - not
+  required for initial implementation]**
 - **FR-022**: System MUST display current selection as hierarchical path below
   selector: `Room > Device > Shelf > Rack > Position`
 
@@ -695,9 +780,9 @@ samples are assigned/moved/disposed.
 
 #### Inline Location Creation (Widget-Based)
 
-**Context**: Available within the expanded modal view of the Storage Location Selector widget on Sample
-Patient Entry (orders) and Logbook Results pages to enable quick location
-creation during sample assignment workflow.
+**Context**: Available within the expanded modal view of the Storage Location
+Selector widget on Sample Patient Entry (orders) and Logbook Results pages to
+enable quick location creation during sample assignment workflow.
 
 - **FR-028**: Users MUST be able to create new locations (Room, Device, Shelf,
   Rack) inline from the location selector widget without leaving current
@@ -752,11 +837,16 @@ operations.
 
 #### Sample Row Actions Menu
 
-- **FR-037a**: Samples table rows MUST include an overflow menu button (triple-dot icon, ⋮) in the Actions column
-- **FR-037b**: Overflow menu MUST display four menu items: Move, Dispose, View Audit (placeholder), View Storage
-- **FR-037c**: Overflow menu MUST use Carbon Design System OverflowMenu component
-- **FR-037d**: Menu items MUST be accessible via keyboard navigation and screen readers
-- **FR-037e**: "View Audit" menu item MUST be marked as placeholder (disabled or with visual indicator) until audit functionality is implemented
+- **FR-037a**: Samples table rows MUST include an overflow menu button
+  (triple-dot icon, ⋮) in the Actions column
+- **FR-037b**: Overflow menu MUST display four menu items: Move, Dispose, View
+  Audit (placeholder), View Storage
+- **FR-037c**: Overflow menu MUST use Carbon Design System OverflowMenu
+  component
+- **FR-037d**: Menu items MUST be accessible via keyboard navigation and screen
+  readers
+- **FR-037e**: "View Audit" menu item MUST be marked as placeholder (disabled or
+  with visual indicator) until audit functionality is implemented
 
 #### Sample Movement
 
@@ -766,19 +856,34 @@ operations.
   assignment (dropdown/autocomplete/scan)
 - **FR-040**: Move dialog MUST show current location and target location
   selector
-- **FR-040a**: Move modal MUST be titled "Move Sample" with subtitle "Move sample [Sample ID] to a new storage location"
-- **FR-040b**: Move modal MUST display "Current Location" section showing full hierarchical path in highlighted gray background box (similar to View Storage modal)
-- **FR-040c**: Move modal MUST display a downward-pointing arrow icon between current location and new location sections as visual separator
-- **FR-040d**: Move modal MUST display "New Location" section in a bordered box containing:
-  - Barcode scan input field (Quick Assign) **[Note: Barcode scanning deferred to later stage - input field present but functionality not required for initial implementation]**
+- **FR-040a**: Move modal MUST be titled "Move Sample" with subtitle "Move
+  sample [Sample ID] to a new storage location"
+- **FR-040b**: Move modal MUST display "Current Location" section showing full
+  hierarchical path in highlighted gray background box (similar to View Storage
+  modal)
+- **FR-040c**: Move modal MUST display a downward-pointing arrow icon between
+  current location and new location sections as visual separator
+- **FR-040d**: Move modal MUST display "New Location" section in a bordered box
+  containing:
+  - Barcode scan input field (Quick Assign) **[Note: Barcode scanning deferred
+    to later stage - input field present but functionality not required for
+    initial implementation]**
   - Room dropdown (initially showing "Select room..." placeholder)
-  - Device dropdown (disabled until room selected, showing "Select device..." placeholder)
-  - Shelf dropdown (disabled until device selected, showing "Select shelf..." placeholder)
-  - Rack dropdown (disabled until shelf selected, showing "Select rack..." placeholder)
-- **FR-040e**: Move modal MUST display "Selected Location" preview section showing the selected hierarchical path in gray background box (displays "Not selected" until location is chosen)
-- **FR-040f**: Move modal MUST include optional "Reason for Move" textarea field labeled "Reason for Move (optional)"
-- **FR-040g**: Move modal MUST display Cancel and "Confirm Move" buttons in footer (Confirm Move button uses primary/dark styling)
-- **FR-040h**: Move modal MUST use Carbon Design System Modal component with proper accessibility attributes
+  - Device dropdown (disabled until room selected, showing "Select device..."
+    placeholder)
+  - Shelf dropdown (disabled until device selected, showing "Select shelf..."
+    placeholder)
+  - Rack dropdown (disabled until shelf selected, showing "Select rack..."
+    placeholder)
+- **FR-040e**: Move modal MUST display "Selected Location" preview section
+  showing the selected hierarchical path in gray background box (displays "Not
+  selected" until location is chosen)
+- **FR-040f**: Move modal MUST include optional "Reason for Move" textarea field
+  labeled "Reason for Move (optional)"
+- **FR-040g**: Move modal MUST display Cancel and "Confirm Move" buttons in
+  footer (Confirm Move button uses primary/dark styling)
+- **FR-040h**: Move modal MUST use Carbon Design System Modal component with
+  proper accessibility attributes
 - **FR-041**: Users MUST be able to optionally enter reason for move (free text)
 - **FR-042**: System MUST validate: Target location is active, target position
   is not occupied, target has available capacity
@@ -814,24 +919,39 @@ operations.
   - Notes (optional free text)
   - Attachment (optional: disposal certificate PDF upload)
 
-- **FR-051a**: Disposal modal MUST be titled "Dispose Sample" with subtitle "Permanently dispose of sample [Sample ID]"
-- **FR-051b**: Disposal modal MUST display a red warning alert box at the top stating "This action cannot be undone. The sample will be marked as disposed and removed from storage." (uses warning/error styling with icon)
-- **FR-051c**: Disposal modal MUST display sample information section in gray background box showing: Sample ID, Type, and Status
-- **FR-051d**: Disposal modal MUST display "Current Storage Location" section with location pin icon showing:
+- **FR-051a**: Disposal modal MUST be titled "Dispose Sample" with subtitle
+  "Permanently dispose of sample [Sample ID]"
+- **FR-051b**: Disposal modal MUST display a red warning alert box at the top
+  stating "This action cannot be undone. The sample will be marked as disposed
+  and removed from storage." (uses warning/error styling with icon)
+- **FR-051c**: Disposal modal MUST display sample information section in gray
+  background box showing: Sample ID, Type, and Status
+- **FR-051d**: Disposal modal MUST display "Current Storage Location" section
+  with location pin icon showing:
   - Full hierarchical path in gray background box
   - Helper text below: "Sample will be removed from this location upon disposal"
-- **FR-051e**: Disposal modal MUST display a disposal instructions info box (blue/info styling) showing sample-specific disposal instructions (e.g., "Biohazard waste - autoclave at 121°C for 30 minutes before disposal")
-- **FR-051f**: Disposal modal MUST include a horizontal separator line between location info and disposal form fields
+- **FR-051e**: Disposal modal MUST display a disposal instructions info box
+  (blue/info styling) showing sample-specific disposal instructions (e.g.,
+  "Biohazard waste - autoclave at 121°C for 30 minutes before disposal")
+- **FR-051f**: Disposal modal MUST include a horizontal separator line between
+  location info and disposal form fields
 - **FR-051g**: Disposal modal MUST display required fields:
-  - "Disposal Reason *" dropdown (required, marked with asterisk, initially shows "Select reason..." placeholder)
-  - "Disposal Method *" dropdown (required, marked with asterisk, initially shows "Select method..." placeholder)
-- **FR-051h**: Disposal modal MUST display "Additional Notes (optional)" textarea field
-- **FR-051i**: Disposal modal MUST require a confirmation checkbox with text: "I confirm that I want to permanently dispose of this sample. This action cannot be undone."
-- **FR-051j**: Disposal modal MUST display Cancel and "Confirm Disposal" buttons in footer, with "Confirm Disposal" button:
+  - "Disposal Reason \*" dropdown (required, marked with asterisk, initially
+    shows "Select reason..." placeholder)
+  - "Disposal Method \*" dropdown (required, marked with asterisk, initially
+    shows "Select method..." placeholder)
+- **FR-051h**: Disposal modal MUST display "Additional Notes (optional)"
+  textarea field
+- **FR-051i**: Disposal modal MUST require a confirmation checkbox with text: "I
+  confirm that I want to permanently dispose of this sample. This action cannot
+  be undone."
+- **FR-051j**: Disposal modal MUST display Cancel and "Confirm Disposal" buttons
+  in footer, with "Confirm Disposal" button:
   - Using red/destructive action styling (e.g., rgba(231,0,11,0.6) background)
   - Disabled (opacity 50%) until confirmation checkbox is checked
   - Enabled only when checkbox is checked
-- **FR-051k**: Disposal modal MUST use Carbon Design System Modal component with proper accessibility attributes
+- **FR-051k**: Disposal modal MUST use Carbon Design System Modal component with
+  proper accessibility attributes
 
 - **FR-052**: System MUST set disposed sample status to "Disposed" (irreversible
   state change)
@@ -842,33 +962,50 @@ operations.
 - **FR-055**: System MUST prevent future assignment/movement of disposed samples
 - **FR-056**: Disposed samples MUST remain viewable for audit purposes but
   non-editable
-- **FR-056a**: Disposal workflow MUST be initiated via overflow menu "Dispose" action
+- **FR-056a**: Disposal workflow MUST be initiated via overflow menu "Dispose"
+  action
 
 #### View Storage Location Modal
 
-- **FR-056b**: "View Storage" menu item from overflow menu MUST open a modal dialog titled "Storage Location Assignment"
-- **FR-056c**: View Storage modal MUST display sample information section showing: Sample ID, Type, and Status in a highlighted/background box
-- **FR-056d**: View Storage modal MUST display "Current Location" section showing the full hierarchical path (Room > Device > Shelf > Rack > Position) in a highlighted gray background box
-- **FR-056e**: View Storage modal MUST include a visual separator between current location and assignment form
-- **FR-056f**: View Storage modal MUST display the full location assignment form including:
-  - Barcode scan input field (Quick Assign) **[Note: Barcode scanning deferred to later stage - input field present but functionality not required for initial implementation]**
-  - Room dropdown selector (required, marked with *)
+- **FR-056b**: "View Storage" menu item from overflow menu MUST open a modal
+  dialog titled "Storage Location Assignment"
+- **FR-056c**: View Storage modal MUST display sample information section
+  showing: Sample ID, Type, and Status in a highlighted/background box
+- **FR-056d**: View Storage modal MUST display "Current Location" section
+  showing the full hierarchical path (Room > Device > Shelf > Rack > Position)
+  in a highlighted gray background box
+- **FR-056e**: View Storage modal MUST include a visual separator between
+  current location and assignment form
+- **FR-056f**: View Storage modal MUST display the full location assignment form
+  including:
+  - Barcode scan input field (Quick Assign) **[Note: Barcode scanning deferred
+    to later stage - input field present but functionality not required for
+    initial implementation]**
+  - Room dropdown selector (required, marked with \*)
   - Device dropdown selector
   - Shelf dropdown selector
   - Rack/Box dropdown selector
   - Position text input (optional, with format hint)
   - Condition Notes textarea (optional)
-- **FR-056g**: View Storage modal MUST allow editing/changing the storage location assignment using the same form controls as initial assignment
-- **FR-056h**: View Storage modal MUST display Cancel and "Assign Storage Location" buttons in footer
-- **FR-056i**: View Storage modal MUST use Carbon Design System Modal component with proper accessibility attributes
+- **FR-056g**: View Storage modal MUST allow editing/changing the storage
+  location assignment using the same form controls as initial assignment
+- **FR-056h**: View Storage modal MUST display Cancel and "Assign Storage
+  Location" buttons in footer
+- **FR-056i**: View Storage modal MUST use Carbon Design System Modal component
+  with proper accessibility attributes
 
 #### Dashboard and Reporting
 
 - **FR-057**: Dashboard MUST display 4 metric cards: Total Samples (count of all
   samples with locations), Active (currently stored), Disposed (disposed
-  samples), Storage Locations (formatted text list showing breakdown by type:
-  "X rooms, Y devices, Z shelves, W racks" with counts for each active hierarchy level, color-coded using Carbon Design System tokens: blue-70 for rooms, teal-70 for devices, purple-70 for shelves, orange-70 for racks)
-- **FR-057a**: Storage Locations metric card text MUST be color-coded with matching subtle accent colors applied to corresponding tab labels/backgrounds (Rooms tab has blue accent, Devices tab has teal accent, Shelves tab has purple accent, Racks tab has orange accent) - tab coloring must be very subtle
+  samples), Storage Locations (formatted text list showing breakdown by type: "X
+  rooms, Y devices, Z shelves, W racks" with counts for each active hierarchy
+  level, color-coded using Carbon Design System tokens: blue-70 for rooms,
+  teal-70 for devices, purple-70 for shelves, orange-70 for racks)
+- **FR-057a**: Storage Locations metric card text MUST be color-coded with
+  matching subtle accent colors applied to corresponding tab labels/backgrounds
+  (Rooms tab has blue accent, Devices tab has teal accent, Shelves tab has
+  purple accent, Racks tab has orange accent) - tab coloring must be very subtle
 - **FR-058**: Dashboard MUST provide 5 tabs: Samples | Rooms | Devices | Shelves
   | Racks
 - **FR-059**: Each tab MUST show data table appropriate for that entity level
@@ -877,8 +1014,8 @@ operations.
   highlighted)
 - **FR-060a**: Dashboard MUST provide action buttons positioned to the right of
   the tabs: "Add Location" button (navigates to location management form page)
-  and "Export" button (exports current filtered table data to CSV), both
-  visible on all tabs
+  and "Export" button (exports current filtered table data to CSV), both visible
+  on all tabs
 
 #### Occupancy Display
 
@@ -892,29 +1029,49 @@ operations.
 #### Filters and Search
 
 - **FR-064**: Dashboard MUST provide tab-specific search functionality:
-  - **Samples tab**: Live search (debounced 300-500ms) by sample ID, accession number type/prefix, and assigned location (full hierarchical path string). Search matches any of these fields (OR logic) using case-insensitive partial/substring matching
-  - **Rooms tab**: Search by name and code using case-insensitive partial/substring matching
-  - **Devices tab**: Search by name, code, and type using case-insensitive partial/substring matching
-  - **Shelves tab**: Search by name (label) using case-insensitive partial/substring matching
-  - **Racks tab**: Search by name (label) using case-insensitive partial/substring matching
-- **FR-064a**: Search operations MUST update results in real-time with debounced delay (300-500ms after typing stops) for samples tab, and MAY use debounced or submit-button search for other tabs
+  - **Samples tab**: Live search (debounced 300-500ms) by sample ID, accession
+    number type/prefix, and assigned location (full hierarchical path string).
+    Search matches any of these fields (OR logic) using case-insensitive
+    partial/substring matching
+  - **Rooms tab**: Search by name and code using case-insensitive
+    partial/substring matching
+  - **Devices tab**: Search by name, code, and type using case-insensitive
+    partial/substring matching
+  - **Shelves tab**: Search by name (label) using case-insensitive
+    partial/substring matching
+  - **Racks tab**: Search by name (label) using case-insensitive
+    partial/substring matching
+- **FR-064a**: Search operations MUST update results in real-time with debounced
+  delay (300-500ms after typing stops) for samples tab, and MAY use debounced or
+  submit-button search for other tabs
 - **FR-065**: Dashboard MUST provide tab-specific filters:
-  - **Samples tab**: Filter by location (single smart dropdown with autocomplete and hierarchical browsing) and by status
+  - **Samples tab**: Filter by location (single smart dropdown with autocomplete
+    and hierarchical browsing) and by status
   - **Rooms tab**: Filter by status
   - **Devices tab**: Filter by type and room and status
   - **Shelves tab**: Filter by device and room and status
   - **Racks tab**: Filter by room, filter by shelf, device, and status
-- **FR-065b**: Samples tab location filter MUST be a single dropdown that supports:
-  - Autocomplete search across hierarchy levels Room, Device, Shelf, and Rack (Position-level excluded - users filter by rack then find position in table)
-  - Search matches location names/codes at any included hierarchy level (e.g., typing "Freezer" matches "Freezer Unit 1" regardless of which room it's in)
-  - Search results displayed as flat list with full hierarchical path (e.g., "Main Laboratory > Freezer Unit 1 > Shelf-A")
-  - Hierarchical browsing via tree view with expand/collapse (like file explorer) - users can expand/collapse parent nodes to navigate children (Room → Device → Shelf → Rack)
-  - Combination mode: tree view for browsing, flat autocomplete list for search results
+- **FR-065b**: Samples tab location filter MUST be a single dropdown that
+  supports:
+  - Autocomplete search across hierarchy levels Room, Device, Shelf, and Rack
+    (Position-level excluded - users filter by rack then find position in table)
+  - Search matches location names/codes at any included hierarchy level (e.g.,
+    typing "Freezer" matches "Freezer Unit 1" regardless of which room it's in)
+  - Search results displayed as flat list with full hierarchical path (e.g.,
+    "Main Laboratory > Freezer Unit 1 > Shelf-A")
+  - Hierarchical browsing via tree view with expand/collapse (like file
+    explorer) - users can expand/collapse parent nodes to navigate children
+    (Room → Device → Shelf → Rack)
+  - Combination mode: tree view for browsing, flat autocomplete list for search
+    results
   - Selection of any included hierarchy level (Room, Device, Shelf, or Rack)
-  - When a location is selected, filter shows all samples within that location's hierarchy (downward inclusive, including all positions within selected rack)
-  - Inactive/decommissioned locations MUST appear in dropdown but be visually distinguished (grayed out, disabled, or with "Inactive" badge) to allow filtering of historical samples
-- **FR-065a**: Dashboard MUST display room column in Racks tab table (shows parent
-  room for each rack)
+  - When a location is selected, filter shows all samples within that location's
+    hierarchy (downward inclusive, including all positions within selected rack)
+  - Inactive/decommissioned locations MUST appear in dropdown but be visually
+    distinguished (grayed out, disabled, or with "Inactive" badge) to allow
+    filtering of historical samples
+- **FR-065a**: Dashboard MUST display room column in Racks tab table (shows
+  parent room for each rack)
 - **FR-066**: Multiple filters MUST combine with AND logic (all criteria must
   match)
 - **FR-067**: System MUST provide "Clear Filters" option to reset to show all
@@ -1113,8 +1270,12 @@ functional design:_
 
   - Placement: After sample collection fields, before Save button
   - Behavior: Optional assignment (can assign later if needed)
-  - Widget structure: Compact inline view showing selected location path (or "Not assigned") with "Expand" or "Edit" button that opens full location modal
-  - Modal structure: Same as View Storage modal - shows sample info box, current location display, full assignment form (barcode scan, Room/Device/Shelf/Rack/Position selectors, condition notes)
+  - Widget structure: Compact inline view showing selected location path (or
+    "Not assigned") with "Expand" or "Edit" button that opens full location
+    modal
+  - Modal structure: Same as View Storage modal - shows sample info box, current
+    location display, full assignment form (barcode scan,
+    Room/Device/Shelf/Rack/Position selectors, condition notes)
   - Integration: Reuses existing form validation and save mechanism
 
 - **INT-002**: Add **Storage Location Widget** in existing `LogbookResults`
@@ -1124,22 +1285,34 @@ functional design:_
     details
   - Behavior: Shows current location (read-only or editable based on
     permissions), allows Move action
-  - Widget structure: Same compact inline view as INT-001 with "Expand" or "Edit" button that opens full location modal
-  - Modal structure: Same as View Storage modal - shows sample info box, current location display, full assignment form
-  - Quick-add capability: Compact inline view includes quick-find search input (type-ahead autocomplete) for rapidly finding and selecting existing locations at any hierarchy level (Room, Device, Shelf, or Rack)
+  - Widget structure: Same compact inline view as INT-001 with "Expand" or
+    "Edit" button that opens full location modal
+  - Modal structure: Same as View Storage modal - shows sample info box, current
+    location display, full assignment form
+  - Quick-add capability: Compact inline view includes quick-find search input
+    (type-ahead autocomplete) for rapidly finding and selecting existing
+    locations at any hierarchy level (Room, Device, Shelf, or Rack)
   - Integration: Adapts behavior based on user permissions and context
 
 - **INT-003**: Create **Reusable Storage Location Selector Component**
 
-  - Used in: SamplePatientEntry (orders workflow), LogbookResults (results workflow), Storage Dashboard, Move dialog, View Storage modal
+  - Used in: SamplePatientEntry (orders workflow), LogbookResults (results
+    workflow), Storage Dashboard, Move dialog, View Storage modal
   - Widget structure: Two-tier design:
-    - **Compact inline view**: Displays selected location path (or "Not assigned") with "Expand"/"Edit" button
-    - **Expanded modal view**: Full location assignment form matching View Storage modal structure (sample info, current location, barcode scan, Room/Device/Shelf/Rack/Position selectors, condition notes)
+    - **Compact inline view**: Displays selected location path (or "Not
+      assigned") with "Expand"/"Edit" button
+    - **Expanded modal view**: Full location assignment form matching View
+      Storage modal structure (sample info, current location, barcode scan,
+      Room/Device/Shelf/Rack/Position selectors, condition notes)
   - Modes: Compact inline, Expanded modal
-  - Features: 
+  - Features:
     - Compact view: Quick location path display, expand button
-    - Modal view: Cascading dropdowns, type-ahead autocomplete, barcode scan, inline location creation, condition notes
-  - Results workflow enhancement: Compact view includes quick-find search input (type-ahead autocomplete) for rapidly finding existing locations at any hierarchy level (Room, Device, Shelf, or Rack) - matches location names/codes and displays full hierarchical path
+    - Modal view: Cascading dropdowns, type-ahead autocomplete, barcode scan,
+      inline location creation, condition notes
+  - Results workflow enhancement: Compact view includes quick-find search input
+    (type-ahead autocomplete) for rapidly finding existing locations at any
+    hierarchy level (Room, Device, Shelf, or Rack) - matches location
+    names/codes and displays full hierarchical path
   - Localized: All labels/tooltips use message keys
 
 - **INT-003a**: Create **Location Management Form Page**

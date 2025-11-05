@@ -72,9 +72,7 @@ describe("LocationSelectorModal", () => {
       />,
     );
 
-    expect(
-      screen.getByText(mockCurrentLocation.path),
-    ).toBeTruthy();
+    expect(screen.getByText(mockCurrentLocation.path)).toBeTruthy();
   });
 
   /**
@@ -117,4 +115,3 @@ describe("LocationSelectorModal", () => {
     expect(positionInput.value).toBe("A5");
   });
 });
-

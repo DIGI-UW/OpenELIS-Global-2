@@ -34,7 +34,7 @@ while true; do
         # Capture output to check if renewal occurred
         RENEW_OUTPUT=$(certbot renew --webroot --webroot-path=/var/www/certbot 2>&1)
         RENEW_EXIT=$?
-        
+
         if [ $RENEW_EXIT -eq 0 ]; then
             # Check if certbot actually renewed (it prints specific messages)
             if echo "$RENEW_OUTPUT" | grep -q "Congratulations\|No renewals were attempted"; then
@@ -55,8 +55,7 @@ while true; do
     else
         echo "[$(date)] Certificate not found, waiting for certbot-init..."
     fi
-    
+
     # Sleep for 12 hours before next check
     sleep 43200
 done
-

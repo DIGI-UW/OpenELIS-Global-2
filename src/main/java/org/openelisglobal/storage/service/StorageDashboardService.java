@@ -41,8 +41,8 @@ public interface StorageDashboardService {
     /**
      * Filter devices by type, roomId, and status (AND logic).
      * 
-     * @param deviceType Device type filter (FREEZER, REFRIGERATOR, etc.)
-     * @param roomId     Room ID filter
+     * @param deviceType   Device type filter (FREEZER, REFRIGERATOR, etc.)
+     * @param roomId       Room ID filter
      * @param activeStatus true for active, false for inactive
      * @return Filtered list of devices matching all three criteria
      */
@@ -51,28 +51,30 @@ public interface StorageDashboardService {
     /**
      * Filter devices by type, roomId, and status and return as Maps (API format).
      * 
-     * @param deviceType Device type filter (FREEZER, REFRIGERATOR, etc.)
-     * @param roomId     Room ID filter
+     * @param deviceType   Device type filter (FREEZER, REFRIGERATOR, etc.)
+     * @param roomId       Room ID filter
      * @param activeStatus true for active, false for inactive
      * @return Filtered list of devices as Maps with all data resolved
      */
-    List<Map<String, Object>> filterDevicesForAPI(StorageDevice.DeviceType deviceType, Integer roomId, Boolean activeStatus);
+    List<Map<String, Object>> filterDevicesForAPI(StorageDevice.DeviceType deviceType, Integer roomId,
+            Boolean activeStatus);
 
     /**
      * Filter shelves by deviceId, roomId, and status (AND logic).
      * 
-     * @param deviceId   Device ID filter
-     * @param roomId     Room ID filter
+     * @param deviceId     Device ID filter
+     * @param roomId       Room ID filter
      * @param activeStatus true for active, false for inactive
      * @return Filtered list of shelves matching all three criteria
      */
     List<StorageShelf> filterShelves(Integer deviceId, Integer roomId, Boolean activeStatus);
 
     /**
-     * Filter shelves by deviceId, roomId, and status and return as Maps (API format).
+     * Filter shelves by deviceId, roomId, and status and return as Maps (API
+     * format).
      * 
-     * @param deviceId   Device ID filter
-     * @param roomId     Room ID filter
+     * @param deviceId     Device ID filter
+     * @param roomId       Room ID filter
      * @param activeStatus true for active, false for inactive
      * @return Filtered list of shelves as Maps with all data resolved
      */
@@ -81,9 +83,9 @@ public interface StorageDashboardService {
     /**
      * Filter racks by roomId, shelfId, deviceId, and status (AND logic).
      * 
-     * @param roomId     Room ID filter
-     * @param shelfId    Shelf ID filter
-     * @param deviceId   Device ID filter
+     * @param roomId       Room ID filter
+     * @param shelfId      Shelf ID filter
+     * @param deviceId     Device ID filter
      * @param activeStatus true for active, false for inactive
      * @return Filtered list of racks matching all four criteria
      */
@@ -92,9 +94,9 @@ public interface StorageDashboardService {
     /**
      * Get racks for API with filters and room column included (FR-065a).
      * 
-     * @param roomId     Optional room ID filter
-     * @param shelfId    Optional shelf ID filter
-     * @param deviceId   Optional device ID filter
+     * @param roomId       Optional room ID filter
+     * @param shelfId      Optional shelf ID filter
+     * @param deviceId     Optional device ID filter
      * @param activeStatus Optional active status filter
      * @return List of racks as Maps with roomId column included
      */
@@ -105,8 +107,8 @@ public interface StorageDashboardService {
      * Returns counts for Room, Device, Shelf, and Rack levels (Position excluded).
      * Only counts active (non-decommissioned) locations.
      * 
-     * @return Map with keys: "rooms", "devices", "shelves", "racks" and integer count values
+     * @return Map with keys: "rooms", "devices", "shelves", "racks" and integer
+     *         count values
      */
     Map<String, Integer> getLocationCountsByType();
 }
-

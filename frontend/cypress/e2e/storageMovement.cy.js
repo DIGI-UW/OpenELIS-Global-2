@@ -14,7 +14,7 @@ before("Login and load fixtures", () => {
   loginPage = new LoginPage();
   loginPage.visit();
   homePage = loginPage.goToHomePage();
-  
+
   // Load storage test fixtures (needed for movement tests to have samples to move)
   cy.loadStorageFixtures();
 });
@@ -26,7 +26,9 @@ after("clean up fixtures", () => {
   if (Cypress.env("CLEANUP_FIXTURES")) {
     cy.cleanStorageFixtures();
   } else {
-    cy.log("Skipping fixture cleanup (CYPRESS_CLEANUP_FIXTURES=false) - fixtures preserved for manual testing");
+    cy.log(
+      "Skipping fixture cleanup (CYPRESS_CLEANUP_FIXTURES=false) - fixtures preserved for manual testing",
+    );
   }
 });
 
@@ -80,7 +82,9 @@ describe("Storage Movement - Single Sample Move (P2B)", function () {
           }).should("be.visible");
 
           // Verify current location is displayed
-          cy.get('[data-testid="current-location-section"]').should("be.visible");
+          cy.get('[data-testid="current-location-section"]').should(
+            "be.visible",
+          );
 
           // Select new target location using storage location selector
           cy.get('[data-testid="new-location-section"]').within(() => {
@@ -208,7 +212,8 @@ describe("Storage Movement - Bulk Move (P2B)", function () {
     // Check if bulk move functionality is implemented
     cy.get("body").then(($body) => {
       const hasSamples = $body.find('[data-testid="sample-row"]').length > 0;
-      const hasCheckboxes = $body.find('[data-testid="sample-checkbox"]').length > 0;
+      const hasCheckboxes =
+        $body.find('[data-testid="sample-checkbox"]').length > 0;
 
       if (!hasSamples) {
         cy.log(
@@ -263,8 +268,13 @@ describe("Storage Movement - Bulk Move (P2B)", function () {
           cy.wait(2000); // Wait for auto-assignment
 
           // Verify auto-assigned positions are displayed in preview
-          cy.get('[data-testid="position-assignment-preview"]').should("be.visible");
-          cy.get('[data-testid="position-assignment"]').should("have.length", 3);
+          cy.get('[data-testid="position-assignment-preview"]').should(
+            "be.visible",
+          );
+          cy.get('[data-testid="position-assignment"]').should(
+            "have.length",
+            3,
+          );
 
           // Confirm bulk move
           cy.get('[data-testid="confirm-bulk-move-button"]').click();
@@ -292,7 +302,8 @@ describe("Storage Movement - Bulk Move (P2B)", function () {
     // Check if bulk move functionality is implemented
     cy.get("body").then(($body) => {
       const hasSamples = $body.find('[data-testid="sample-row"]').length > 0;
-      const hasCheckboxes = $body.find('[data-testid="sample-checkbox"]').length > 0;
+      const hasCheckboxes =
+        $body.find('[data-testid="sample-checkbox"]').length > 0;
 
       if (!hasSamples || !hasCheckboxes) {
         cy.log(
@@ -386,8 +397,9 @@ describe("Storage Movement - Previous Position Freed (P2B)", function () {
         .within(() => {
           // Check if position element exists
           cy.get("body").then(($body2) => {
-            const hasPosition = $body2.find('[data-testid="sample-position"]').length > 0;
-            
+            const hasPosition =
+              $body2.find('[data-testid="sample-position"]').length > 0;
+
             if (hasPosition) {
               cy.get('[data-testid="sample-position"]')
                 .invoke("text")
@@ -396,9 +408,13 @@ describe("Storage Movement - Previous Position Freed (P2B)", function () {
                   cy.log(`Initial position: ${initialPosition}`);
 
                   // Move the sample (if move functionality is available)
-                  cy.get('[data-testid="sample-actions-overflow-menu"]').click();
+                  cy.get(
+                    '[data-testid="sample-actions-overflow-menu"]',
+                  ).click();
                   cy.get("body").then(($body3) => {
-                    if ($body3.find('[data-testid="move-menu-item"]').length > 0) {
+                    if (
+                      $body3.find('[data-testid="move-menu-item"]').length > 0
+                    ) {
                       cy.get('[data-testid="move-menu-item"]').click();
 
                       cy.get('[data-testid="move-modal"]', {
@@ -406,24 +422,26 @@ describe("Storage Movement - Previous Position Freed (P2B)", function () {
                       }).should("be.visible");
 
                       // Select new location
-                      cy.get('[data-testid="new-location-section"]').within(() => {
-                        storageAssignmentPage.selectRoom("MAIN");
-                        cy.wait(1000);
-                        storageAssignmentPage.selectDevice("FRZ01");
-                        cy.wait(1000);
-                        storageAssignmentPage.selectShelf("SHA");
-                        cy.wait(1000);
-                        storageAssignmentPage.selectRack("RKR2");
-                        cy.wait(1000);
-                        storageAssignmentPage.selectPosition("B4");
-                      });
+                      cy.get('[data-testid="new-location-section"]').within(
+                        () => {
+                          storageAssignmentPage.selectRoom("MAIN");
+                          cy.wait(1000);
+                          storageAssignmentPage.selectDevice("FRZ01");
+                          cy.wait(1000);
+                          storageAssignmentPage.selectShelf("SHA");
+                          cy.wait(1000);
+                          storageAssignmentPage.selectRack("RKR2");
+                          cy.wait(1000);
+                          storageAssignmentPage.selectPosition("B4");
+                        },
+                      );
 
                       cy.contains("Confirm Move").click();
                       cy.wait(3000);
 
                       // Verify success notification
                       cy.get('div[role="status"]').should("be.visible");
-                      
+
                       cy.log(
                         "Move completed - position freed verification would require checking position availability, which may not be implemented in POC scope",
                       );
@@ -710,7 +728,9 @@ describe("Storage Move Modal - UI Components (P2B)", function () {
         .should("be.visible")
         .within(() => {
           // Verify preview box exists
-          cy.get('[data-testid="selected-location-preview"]').should("be.visible");
+          cy.get('[data-testid="selected-location-preview"]').should(
+            "be.visible",
+          );
 
           // Initially should show "Not selected"
           cy.contains("Not selected").should("be.visible");
@@ -769,7 +789,9 @@ describe("Storage Move Modal - UI Components (P2B)", function () {
 
               // Attempt to select the same location (if validation is implemented)
               // This test verifies the UI structure, actual validation would be tested in integration tests
-              cy.get('[data-testid="new-location-section"]').should("be.visible");
+              cy.get('[data-testid="new-location-section"]').should(
+                "be.visible",
+              );
 
               // Confirm button should be disabled until different location selected
               cy.contains("Confirm Move")

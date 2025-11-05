@@ -55,7 +55,7 @@ Cypress.Commands.add("waitForBackend", (restEndpoint = null) => {
   cy.intercept("/api/OpenELIS-Global/LoginPage").as("backendReady");
   cy.visit("/");
   cy.wait("@backendReady", { timeout: 30000 });
-  
+
   // If a REST endpoint is specified, wait for it too
   if (restEndpoint) {
     cy.intercept("GET", restEndpoint).as("restApiReady");

@@ -40,30 +40,50 @@ INSERT INTO storage_room (id, fhir_uuid, name, code, description, active, sys_us
 (3, gen_random_uuid(), 'Inactive Room', 'INACTIVE', 'Deactivated room for testing inactive validation', false, 1, CURRENT_TIMESTAMP);
 
 -- Insert Test Devices
+-- Each room has unique devices with descriptive names
 INSERT INTO storage_device (id, fhir_uuid, name, code, type, temperature_setting, capacity_limit, active, parent_room_id, sys_user_id, last_updated) VALUES
-(10, gen_random_uuid(), 'Freezer Unit 1', 'FRZ01', 'freezer', -80.0, 500, true, 1, 1, CURRENT_TIMESTAMP),
-(11, gen_random_uuid(), 'Refrigerator Unit 1', 'REF01', 'refrigerator', 4.0, 300, true, 1, 1, CURRENT_TIMESTAMP),
-(12, gen_random_uuid(), 'Cabinet Unit 1', 'CAB01', 'cabinet', NULL, NULL, true, 2, 1, CURRENT_TIMESTAMP),
+-- Main Laboratory devices
+(10, gen_random_uuid(), 'Main Lab Freezer Unit 1', 'MAIN-FRZ01', 'freezer', -80.0, 500, true, 1, 1, CURRENT_TIMESTAMP),
+(11, gen_random_uuid(), 'Main Lab Refrigerator Unit 1', 'MAIN-REF01', 'refrigerator', 4.0, 300, true, 1, 1, CURRENT_TIMESTAMP),
+-- Secondary Laboratory devices
+(12, gen_random_uuid(), 'Secondary Lab Cabinet Unit 1', 'SEC-CAB01', 'cabinet', NULL, NULL, true, 2, 1, CURRENT_TIMESTAMP),
+(14, gen_random_uuid(), 'Secondary Lab Freezer Unit 1', 'SEC-FRZ01', 'freezer', -20.0, 200, true, 2, 1, CURRENT_TIMESTAMP),
+-- Inactive Room device
 (13, gen_random_uuid(), 'Inactive Freezer', 'INACTIVE-FRZ', 'freezer', NULL, NULL, false, 3, 1, CURRENT_TIMESTAMP);
 
 -- Insert Test Shelves
+-- Each device has uniquely named shelves
 INSERT INTO storage_shelf (id, fhir_uuid, label, capacity_limit, active, parent_device_id, sys_user_id, last_updated) VALUES
-(20, gen_random_uuid(), 'Shelf-A', 50, true, 10, 1, CURRENT_TIMESTAMP),
-(21, gen_random_uuid(), 'Shelf-B', 50, true, 10, 1, CURRENT_TIMESTAMP),
-(22, gen_random_uuid(), 'Shelf-1', NULL, true, 11, 1, CURRENT_TIMESTAMP),
-(23, gen_random_uuid(), 'Shelf-1', NULL, true, 12, 1, CURRENT_TIMESTAMP);
+-- Main Lab Freezer Unit 1 shelves
+(20, gen_random_uuid(), 'Main Freezer Shelf-A', 50, true, 10, 1, CURRENT_TIMESTAMP),
+(21, gen_random_uuid(), 'Main Freezer Shelf-B', 50, true, 10, 1, CURRENT_TIMESTAMP),
+-- Main Lab Refrigerator Unit 1 shelves
+(22, gen_random_uuid(), 'Main Refrigerator Shelf-1', 30, true, 11, 1, CURRENT_TIMESTAMP),
+(24, gen_random_uuid(), 'Main Refrigerator Shelf-2', 30, true, 11, 1, CURRENT_TIMESTAMP),
+-- Secondary Lab Cabinet Unit 1 shelves
+(23, gen_random_uuid(), 'Secondary Cabinet Shelf-1', 40, true, 12, 1, CURRENT_TIMESTAMP),
+-- Secondary Lab Freezer Unit 1 shelves
+(25, gen_random_uuid(), 'Secondary Freezer Shelf-A', 25, true, 14, 1, CURRENT_TIMESTAMP);
 
 -- Insert Test Racks
+-- Each shelf has uniquely named racks
 INSERT INTO storage_rack (id, fhir_uuid, label, rows, columns, position_schema_hint, active, parent_shelf_id, sys_user_id, last_updated) VALUES
-(30, gen_random_uuid(), 'Rack R1', 8, 12, 'A1', true, 20, 1, CURRENT_TIMESTAMP),
-(31, gen_random_uuid(), 'Rack R2', 10, 10, '1-1', true, 20, 1, CURRENT_TIMESTAMP),
-(32, gen_random_uuid(), 'Rack R3', 0, 0, NULL, true, 21, 1, CURRENT_TIMESTAMP),
-(33, gen_random_uuid(), 'Rack R1', 8, 12, NULL, true, 22, 1, CURRENT_TIMESTAMP),
-(34, gen_random_uuid(), 'Rack R1', 8, 12, 'A1', true, 23, 1, CURRENT_TIMESTAMP);
+-- Main Freezer Shelf-A racks
+(30, gen_random_uuid(), 'Main Freezer Shelf-A Rack 1', 8, 12, 'A1', true, 20, 1, CURRENT_TIMESTAMP),
+(31, gen_random_uuid(), 'Main Freezer Shelf-A Rack 2', 10, 10, '1-1', true, 20, 1, CURRENT_TIMESTAMP),
+-- Main Freezer Shelf-B racks
+(32, gen_random_uuid(), 'Main Freezer Shelf-B Rack 1', 0, 0, NULL, true, 21, 1, CURRENT_TIMESTAMP),
+-- Main Refrigerator Shelf-1 racks
+(33, gen_random_uuid(), 'Main Refrigerator Shelf-1 Rack 1', 8, 12, NULL, true, 22, 1, CURRENT_TIMESTAMP),
+-- Secondary Cabinet Shelf-1 racks
+(34, gen_random_uuid(), 'Secondary Cabinet Shelf-1 Rack 1', 8, 12, 'A1', true, 23, 1, CURRENT_TIMESTAMP),
+-- Secondary Freezer Shelf-A racks
+(35, gen_random_uuid(), 'Secondary Freezer Shelf-A Rack 1', 6, 8, 'A1', true, 25, 1, CURRENT_TIMESTAMP);
 
 -- Insert Test Positions
+-- Each rack has unique positions
 INSERT INTO storage_position (id, fhir_uuid, coordinate, row_index, column_index, occupied, parent_rack_id, sys_user_id, last_updated) VALUES
--- Rack R1 (8x12 grid) - First row
+-- Main Freezer Shelf-A Rack 1 (rack 30) - 8x12 grid positions
 (100, gen_random_uuid(), 'A1', 1, 1, false, 30, 1, CURRENT_TIMESTAMP),
 (101, gen_random_uuid(), 'A2', 1, 2, false, 30, 1, CURRENT_TIMESTAMP),
 (102, gen_random_uuid(), 'A3', 1, 3, true, 30, 1, CURRENT_TIMESTAMP), -- Occupied for testing
@@ -73,24 +93,24 @@ INSERT INTO storage_position (id, fhir_uuid, coordinate, row_index, column_index
 (106, gen_random_uuid(), 'A7', 1, 7, false, 30, 1, CURRENT_TIMESTAMP),
 (107, gen_random_uuid(), 'A8', 1, 8, false, 30, 1, CURRENT_TIMESTAMP),
 
--- Rack R2 - First position
+-- Main Freezer Shelf-A Rack 2 (rack 31) - 10x10 grid, first position
 (200, gen_random_uuid(), '1-1', 1, 1, false, 31, 1, CURRENT_TIMESTAMP),
 
--- Rack R3 (no grid) - flexible positions
+-- Main Freezer Shelf-B Rack 1 (rack 32) - flexible positions (no grid)
 (110, gen_random_uuid(), 'RED-01', NULL, NULL, false, 32, 1, CURRENT_TIMESTAMP),
 (111, gen_random_uuid(), 'RED-02', NULL, NULL, false, 32, 1, CURRENT_TIMESTAMP),
-(112, gen_random_uuid(), 'RED-01', NULL, NULL, false, 32, 1, CURRENT_TIMESTAMP), -- Duplicate coordinate (allowed)
+(112, gen_random_uuid(), 'RED-03', NULL, NULL, false, 32, 1, CURRENT_TIMESTAMP),
 
--- Position in rack 33 (Refrigerator Unit 1 > Shelf-1 > Rack R1)
+-- Main Refrigerator Shelf-1 Rack 1 (rack 33) - positions
 (120, gen_random_uuid(), 'X1', NULL, NULL, false, 33, 1, CURRENT_TIMESTAMP),
 (121, gen_random_uuid(), 'A1', 1, 1, false, 33, 1, CURRENT_TIMESTAMP),
 
--- Positions in rack 34 (Secondary Lab > Cabinet > Shelf-1 > Rack R1)
+-- Secondary Cabinet Shelf-1 Rack 1 (rack 34) - positions
 (130, gen_random_uuid(), 'A1', 1, 1, false, 34, 1, CURRENT_TIMESTAMP),
 (131, gen_random_uuid(), 'A2', 1, 2, false, 34, 1, CURRENT_TIMESTAMP),
 (132, gen_random_uuid(), 'A3', 1, 3, false, 34, 1, CURRENT_TIMESTAMP);
 
--- Add more positions to Rack R2 for capacity testing (80 occupied out of 100 = 80%)
+-- Add more positions to Main Freezer Shelf-A Rack 2 (rack 31) for capacity testing (80 occupied out of 100 = 80%)
 INSERT INTO storage_position (id, fhir_uuid, coordinate, row_index, column_index, occupied, parent_rack_id, sys_user_id, last_updated)
 SELECT 
     200 + (row_num - 1) * 10 + col_num,
@@ -213,7 +233,7 @@ BEGIN
   END IF;
 
   -- Insert test samples with storage assignments
-  -- Sample 1: Assigned to Main Lab > Freezer > Shelf-A > Rack R1 > A1
+  -- Sample 1: Assigned to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A1
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date, 
                        received_date, lastupdated, is_confirmation)
   VALUES 
@@ -223,7 +243,7 @@ BEGIN
     accession_number = EXCLUDED.accession_number,
     lastupdated = CURRENT_TIMESTAMP;
 
-  -- Sample 2: Assigned to Main Lab > Freezer > Shelf-A > Rack R1 > A2
+  -- Sample 2: Assigned to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A2
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
@@ -233,7 +253,7 @@ BEGIN
     accession_number = EXCLUDED.accession_number,
     lastupdated = CURRENT_TIMESTAMP;
 
-  -- Sample 3: Assigned to Main Lab > Freezer > Shelf-A > Rack R1 > A4
+  -- Sample 3: Assigned to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A4
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
@@ -253,7 +273,7 @@ BEGIN
     accession_number = EXCLUDED.accession_number,
     lastupdated = CURRENT_TIMESTAMP;
 
-  -- Sample 5: Assigned to Main Lab > Freezer > Shelf-A > Rack R1 > A5
+  -- Sample 5: Assigned to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A5
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
@@ -276,7 +296,7 @@ BEGIN
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Create storage assignments
-  -- Assignment 1: Sample E2E-001 to position A1 (position_id = 100)
+  -- Assignment 1: Sample E2E-001 to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A1 (position_id = 100)
   INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date, 
                                          assigned_by_user_id, notes, last_updated)
   VALUES (1000, 1000, 100, CURRENT_TIMESTAMP, 1, 'E2E test assignment', CURRENT_TIMESTAMP)
@@ -285,7 +305,7 @@ BEGIN
     last_updated = CURRENT_TIMESTAMP;
   UPDATE storage_position SET occupied = true WHERE id = 100;
 
-  -- Assignment 2: Sample E2E-002 to position A2 (position_id = 101)
+  -- Assignment 2: Sample E2E-002 to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A2 (position_id = 101)
   INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
   VALUES (1001, 1001, 101, CURRENT_TIMESTAMP, 1, 'E2E test assignment', CURRENT_TIMESTAMP)
@@ -294,7 +314,7 @@ BEGIN
     last_updated = CURRENT_TIMESTAMP;
   UPDATE storage_position SET occupied = true WHERE id = 101;
 
-  -- Assignment 3: Sample E2E-003 to position A4 (position_id = 103)
+  -- Assignment 3: Sample E2E-003 to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A4 (position_id = 103)
   INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
   VALUES (1002, 1002, 103, CURRENT_TIMESTAMP, 1, 'E2E test assignment', CURRENT_TIMESTAMP)
@@ -303,7 +323,7 @@ BEGIN
     last_updated = CURRENT_TIMESTAMP;
   UPDATE storage_position SET occupied = true WHERE id = 103;
 
-  -- Assignment 4: Sample E2E-005 to position A5 (position_id = 104)
+  -- Assignment 4: Sample E2E-005 to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A5 (position_id = 104)
   INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
   VALUES (1003, 1004, 104, CURRENT_TIMESTAMP, 1, 'E2E test assignment', CURRENT_TIMESTAMP)
@@ -395,7 +415,7 @@ BEGIN
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Assignments for new samples:
-  -- Assignment 5: Sample E2E-006 to Secondary Lab > Cabinet > Shelf-1 > Rack R1 (position_id = 130)
+  -- Assignment 5: Sample E2E-006 to Secondary Lab > Secondary Lab Cabinet Unit 1 > Secondary Cabinet Shelf-1 > Secondary Cabinet Shelf-1 Rack 1 (position_id = 130)
   INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
   VALUES (1004, 1005, 130, CURRENT_TIMESTAMP, 1, 'E2E test - Secondary Lab', CURRENT_TIMESTAMP)
@@ -404,7 +424,7 @@ BEGIN
     last_updated = CURRENT_TIMESTAMP;
   UPDATE storage_position SET occupied = true WHERE id = 130;
 
-  -- Assignment 6: Sample E2E-007 to Secondary Lab > Cabinet > Shelf-1 > Rack R1 (position_id = 131)
+  -- Assignment 6: Sample E2E-007 to Secondary Lab > Secondary Lab Cabinet Unit 1 > Secondary Cabinet Shelf-1 > Secondary Cabinet Shelf-1 Rack 1 (position_id = 131)
   INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
   VALUES (1005, 1006, 131, CURRENT_TIMESTAMP, 1, 'E2E test - Secondary Lab', CURRENT_TIMESTAMP)
@@ -413,7 +433,7 @@ BEGIN
     last_updated = CURRENT_TIMESTAMP;
   UPDATE storage_position SET occupied = true WHERE id = 131;
 
-  -- Assignment 7: Sample E2E-008 (disposed) to Main Lab > Freezer > Shelf-A > Rack R1 > A6 (position_id = 105)
+  -- Assignment 7: Sample E2E-008 to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A6 (position_id = 105)
   INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
   VALUES (1006, 1007, 105, CURRENT_TIMESTAMP, 1, 'E2E test - Disposed sample', CURRENT_TIMESTAMP)
@@ -422,7 +442,7 @@ BEGIN
     last_updated = CURRENT_TIMESTAMP;
   UPDATE storage_position SET occupied = true WHERE id = 105;
 
-  -- Assignment 8: Sample E2E-009 (disposed) to Secondary Lab > Cabinet > Shelf-1 > Rack R1 (position_id = 132)
+  -- Assignment 8: Sample E2E-009 to Secondary Lab > Secondary Lab Cabinet Unit 1 > Secondary Cabinet Shelf-1 > Secondary Cabinet Shelf-1 Rack 1 (position_id = 132)
   INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
   VALUES (1007, 1008, 132, CURRENT_TIMESTAMP, 1, 'E2E test - Disposed in Secondary', CURRENT_TIMESTAMP)
@@ -431,7 +451,7 @@ BEGIN
     last_updated = CURRENT_TIMESTAMP;
   UPDATE storage_position SET occupied = true WHERE id = 132;
 
-  -- Assignment 9: Sample E2E-010 to Main Lab > Refrigerator > Shelf-1 > Rack R1 (position_id = 121)
+  -- Assignment 9: Sample E2E-010 to Main Lab > Main Lab Refrigerator Unit 1 > Main Refrigerator Shelf-1 > Main Refrigerator Shelf-1 Rack 1 (position_id = 121)
   INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
   VALUES (1008, 1009, 121, CURRENT_TIMESTAMP, 1, 'E2E test - Refrigerator', CURRENT_TIMESTAMP)
@@ -494,10 +514,10 @@ ORDER BY s.accession_number;
 \echo ''
 \echo '✅ Complete test fixtures loaded successfully!'
 \echo '   Storage Hierarchy:'
-\echo '   - 3 Rooms (Main, Secondary, Inactive)'
-\echo '   - 4 Devices (Freezer, Refrigerator, Cabinet, Inactive Freezer)'
-\echo '   - 4 Shelves'
-\echo '   - 4 Racks'
+\echo '   - 3 Rooms (Main Laboratory, Secondary Laboratory, Inactive Room)'
+\echo '   - 5 Devices (Main Lab Freezer, Main Lab Refrigerator, Secondary Lab Cabinet, Secondary Lab Freezer, Inactive Freezer)'
+\echo '   - 6 Shelves (each uniquely named per device)'
+\echo '   - 6 Racks (each uniquely named per shelf)'
 \echo '   - 100+ Positions (mix of occupied/unoccupied)'
 \echo ''
 \echo '   E2E Test Data:'

@@ -76,7 +76,7 @@ describe("StorageDashboard Search Functionality (FR-064, FR-064a)", () => {
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
     });
-    
+
     // Component should render without errors - API should be called
     expect(getFromOpenElisServer).toHaveBeenCalled();
   });
@@ -145,11 +145,11 @@ describe("StorageDashboard Search Functionality (FR-064, FR-064a)", () => {
     if (searchInput) {
       const inputElement = searchInput.querySelector("input") || searchInput;
       fireEvent.change(inputElement, { target: { value: "test" } });
-      
+
       await act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 100));
       });
-      
+
       expect(inputElement.value).toBe("test");
     }
   });
@@ -157,7 +157,7 @@ describe("StorageDashboard Search Functionality (FR-064, FR-064a)", () => {
   // Test 4: Does search trigger API call after debounce?
   test("testSearch_Debounced", async () => {
     const searchCallback = jest.fn();
-    
+
     getFromOpenElisServer.mockImplementation((url, callback) => {
       if (url.includes("/rest/storage/samples/search")) {
         searchCallback();

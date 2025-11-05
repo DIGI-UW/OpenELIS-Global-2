@@ -33,9 +33,7 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
         List<Map<String, Object>> filtered = new ArrayList<>();
 
         // Normalize location filter (case-insensitive, trim whitespace)
-        String normalizedLocation = (location != null && !location.isEmpty()) 
-                ? location.trim().toLowerCase() 
-                : null;
+        String normalizedLocation = (location != null && !location.isEmpty()) ? location.trim().toLowerCase() : null;
 
         for (Map<String, Object> sample : allSamples) {
             // Location filtering: case-insensitive substring match
@@ -76,8 +74,7 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
         if (activeStatus == null) {
             return allRooms;
         }
-        return allRooms.stream()
-                .filter(room -> room.getActive() != null && room.getActive().equals(activeStatus))
+        return allRooms.stream().filter(room -> room.getActive() != null && room.getActive().equals(activeStatus))
                 .collect(Collectors.toList());
     }
 
@@ -88,12 +85,10 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
         if (activeStatus == null) {
             return allRooms;
         }
-        return allRooms.stream()
-                .filter(room -> {
-                    Boolean active = (Boolean) room.get("active");
-                    return active != null && active.equals(activeStatus);
-                })
-                .collect(Collectors.toList());
+        return allRooms.stream().filter(room -> {
+            Boolean active = (Boolean) room.get("active");
+            return active != null && active.equals(activeStatus);
+        }).collect(Collectors.toList());
     }
 
     @Override
@@ -104,8 +99,8 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
         List<StorageDevice> filtered = new ArrayList<>();
 
         for (StorageDevice device : allDevices) {
-            boolean matchesType = deviceType == null || device.getTypeEnum() != null
-                    && device.getTypeEnum().equals(deviceType);
+            boolean matchesType = deviceType == null
+                    || device.getTypeEnum() != null && device.getTypeEnum().equals(deviceType);
             boolean matchesRoom = roomId == null
                     || (device.getParentRoom() != null && device.getParentRoom().getId().equals(roomId));
             boolean matchesStatus = activeStatus == null || device.getActive().equals(activeStatus);
@@ -133,20 +128,22 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
                     matchesType = false;
                 } else {
                     try {
-                        StorageDevice.DeviceType deviceTypeFromMap = StorageDevice.DeviceType.valueOf(typeStr.toUpperCase());
+                        StorageDevice.DeviceType deviceTypeFromMap = StorageDevice.DeviceType
+                                .valueOf(typeStr.toUpperCase());
                         matchesType = deviceTypeFromMap.equals(deviceType);
                     } catch (IllegalArgumentException e) {
                         matchesType = false;
                     }
                 }
             }
-            
+
             boolean matchesRoom = true;
             if (roomId != null) {
-                Integer deviceRoomId = (Integer) device.get("roomId");
+                // getDevicesForAPI returns maps with "parentRoomId", not "roomId"
+                Integer deviceRoomId = (Integer) device.get("parentRoomId");
                 matchesRoom = deviceRoomId != null && deviceRoomId.equals(roomId);
             }
-            
+
             boolean matchesStatus = true;
             if (activeStatus != null) {
                 Boolean deviceActive = (Boolean) device.get("active");
@@ -195,13 +192,13 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
                 Integer shelfDeviceId = (Integer) shelf.get("deviceId");
                 matchesDevice = shelfDeviceId != null && shelfDeviceId.equals(deviceId);
             }
-            
+
             boolean matchesRoom = true;
             if (roomId != null) {
                 Integer shelfRoomId = (Integer) shelf.get("roomId");
                 matchesRoom = shelfRoomId != null && shelfRoomId.equals(roomId);
             }
-            
+
             boolean matchesStatus = true;
             if (activeStatus != null) {
                 Boolean shelfActive = (Boolean) shelf.get("active");
@@ -306,25 +303,23 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
         List<StorageRoom> activeRooms = filterRooms(true);
         counts.put("rooms", activeRooms.size());
 
-        // Count active devices only - use Boolean.TRUE.equals() for null-safe comparison
+        // Count active devices only - use Boolean.TRUE.equals() for null-safe
+        // comparison
         List<StorageDevice> activeDevices = storageLocationService.getAllDevices().stream()
-                .filter(device -> Boolean.TRUE.equals(device.getActive()))
-                .collect(Collectors.toList());
+                .filter(device -> Boolean.TRUE.equals(device.getActive())).collect(Collectors.toList());
         counts.put("devices", activeDevices.size());
 
-        // Count active shelves only - use Boolean.TRUE.equals() for null-safe comparison
+        // Count active shelves only - use Boolean.TRUE.equals() for null-safe
+        // comparison
         List<StorageShelf> activeShelves = storageLocationService.getAllShelves().stream()
-                .filter(shelf -> Boolean.TRUE.equals(shelf.getActive()))
-                .collect(Collectors.toList());
+                .filter(shelf -> Boolean.TRUE.equals(shelf.getActive())).collect(Collectors.toList());
         counts.put("shelves", activeShelves.size());
 
         // Count active racks only - use Boolean.TRUE.equals() for null-safe comparison
         List<StorageRack> activeRacks = storageLocationService.getAllRacks().stream()
-                .filter(rack -> Boolean.TRUE.equals(rack.getActive()))
-                .collect(Collectors.toList());
+                .filter(rack -> Boolean.TRUE.equals(rack.getActive())).collect(Collectors.toList());
         counts.put("racks", activeRacks.size());
 
         return counts;
     }
 }
-

@@ -79,7 +79,12 @@ const DisposeSampleModal = ({
   const canConfirm = reason && method && confirmed;
 
   return (
-    <ComposedModal open={open} onClose={handleClose} size="lg" data-testid="dispose-modal">
+    <ComposedModal
+      open={open}
+      onClose={handleClose}
+      size="lg"
+      data-testid="dispose-modal"
+    >
       <ModalHeader
         title={intl.formatMessage({
           id: "storage.dispose.sample",
@@ -112,7 +117,10 @@ const DisposeSampleModal = ({
         </div>
 
         {/* Sample Information Section */}
-        <div className="dispose-modal-sample-info" data-testid="sample-info-section">
+        <div
+          className="dispose-modal-sample-info"
+          data-testid="sample-info-section"
+        >
           <div className="info-box">
             <div className="info-row">
               <span className="info-label">
@@ -128,7 +136,8 @@ const DisposeSampleModal = ({
             </div>
             <div className="info-row">
               <span className="info-label">
-                <FormattedMessage id="storage.status" defaultMessage="Status" />:
+                <FormattedMessage id="storage.status" defaultMessage="Status" />
+                :
               </span>
               <span className="info-value">{sample?.status}</span>
             </div>
@@ -137,7 +146,10 @@ const DisposeSampleModal = ({
 
         {/* Current Location Section */}
         {currentLocation && (
-          <div className="dispose-modal-current-location" data-testid="current-location-section">
+          <div
+            className="dispose-modal-current-location"
+            data-testid="current-location-section"
+          >
             <div className="location-header">
               <Location size={16} />
               <span className="location-label">
@@ -160,7 +172,10 @@ const DisposeSampleModal = ({
         )}
 
         {/* Disposal Instructions Info Box */}
-        <div className="dispose-modal-instructions" data-testid="disposal-instructions">
+        <div
+          className="dispose-modal-instructions"
+          data-testid="disposal-instructions"
+        >
           <InlineNotification
             kind="info"
             title={intl.formatMessage({
@@ -197,7 +212,9 @@ const DisposeSampleModal = ({
               onChange={({ selectedItem }) =>
                 setReason(selectedItem ? selectedItem.id : "")
               }
-              selectedItem={disposalReasons.find((r) => r.id === reason) || null}
+              selectedItem={
+                disposalReasons.find((r) => r.id === reason) || null
+              }
               placeholder={intl.formatMessage({
                 id: "storage.disposal.reason.placeholder",
                 defaultMessage: "Select reason...",
@@ -222,7 +239,9 @@ const DisposeSampleModal = ({
               onChange={({ selectedItem }) =>
                 setMethod(selectedItem ? selectedItem.id : "")
               }
-              selectedItem={disposalMethods.find((m) => m.id === method) || null}
+              selectedItem={
+                disposalMethods.find((m) => m.id === method) || null
+              }
               placeholder={intl.formatMessage({
                 id: "storage.disposal.method.placeholder",
                 defaultMessage: "Select method...",
@@ -267,11 +286,7 @@ const DisposeSampleModal = ({
         <Button kind="secondary" onClick={handleClose}>
           <FormattedMessage id="label.button.cancel" defaultMessage="Cancel" />
         </Button>
-        <Button
-          kind="danger"
-          onClick={handleConfirm}
-          disabled={!canConfirm}
-        >
+        <Button kind="danger" onClick={handleConfirm} disabled={!canConfirm}>
           <FormattedMessage
             id="storage.confirm.disposal"
             defaultMessage="Confirm Disposal"
@@ -283,4 +298,3 @@ const DisposeSampleModal = ({
 };
 
 export default DisposeSampleModal;
-

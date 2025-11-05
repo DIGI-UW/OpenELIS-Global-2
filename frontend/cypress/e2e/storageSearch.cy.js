@@ -3,7 +3,7 @@ import LoginPage from "../pages/LoginPage";
 /**
  * E2E Tests for User Story P2A - Sample Search and Retrieval
  * Tests search by sample ID, filter by location, display hierarchical paths
- * 
+ *
  * Also includes Dashboard Tab-Specific Search tests (FR-064, FR-064a):
  * - Samples tab: Search by ID, accession prefix, location path (debounced 300-500ms)
  * - Rooms tab: Search by name and code
@@ -19,7 +19,7 @@ before("Login and load fixtures", () => {
   loginPage = new LoginPage();
   loginPage.visit();
   homePage = loginPage.goToHomePage();
-  
+
   // Load storage test fixtures (needed for search to find samples)
   cy.loadStorageFixtures();
 });
@@ -31,7 +31,9 @@ after("clean up fixtures", () => {
   if (Cypress.env("CLEANUP_FIXTURES")) {
     cy.cleanStorageFixtures();
   } else {
-    cy.log("Skipping fixture cleanup (CYPRESS_CLEANUP_FIXTURES=false) - fixtures preserved for manual testing");
+    cy.log(
+      "Skipping fixture cleanup (CYPRESS_CLEANUP_FIXTURES=false) - fixtures preserved for manual testing",
+    );
   }
 });
 
@@ -68,7 +70,10 @@ describe("Storage Search - Sample ID Search (P2A)", function () {
           .type("101");
         cy.wait(1000);
         // Verify search input accepts input even with no data
-        cy.get('[data-testid="sample-search-input"]').should("have.value", "101");
+        cy.get('[data-testid="sample-search-input"]').should(
+          "have.value",
+          "101",
+        );
         return;
       }
 
@@ -145,7 +150,7 @@ describe("Storage Search - Filter by Room (P2A)", function () {
       .first()
       .click();
     cy.wait(500);
-    
+
     // Check if "Main Laboratory" option exists
     cy.get("body").then(($body) => {
       if ($body.text().includes("Main Laboratory")) {
@@ -154,7 +159,8 @@ describe("Storage Search - Filter by Room (P2A)", function () {
 
         // Verify filtered results show only samples in MAIN room (if any exist)
         cy.get("body").then(($body2) => {
-          const hasSamples = $body2.find('[data-testid="sample-row"]').length > 0;
+          const hasSamples =
+            $body2.find('[data-testid="sample-row"]').length > 0;
           if (hasSamples) {
             cy.get('[data-testid="sample-list"]')
               .should("be.visible")
@@ -223,7 +229,8 @@ describe("Storage Search - Filter by Multiple Criteria (P2A)", function () {
 
             // Verify results match both criteria (if any exist)
             cy.get("body").then(($body3) => {
-              const hasSamples = $body3.find('[data-testid="sample-row"]').length > 0;
+              const hasSamples =
+                $body3.find('[data-testid="sample-row"]').length > 0;
               if (hasSamples) {
                 cy.get('[data-testid="sample-list"]')
                   .should("be.visible")
@@ -331,7 +338,10 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
 
       cy.wait(1000);
 
-      cy.get('[data-testid="sample-search-input"]').should("have.value", "TEST-SAMPLE");
+      cy.get('[data-testid="sample-search-input"]').should(
+        "have.value",
+        "TEST-SAMPLE",
+      );
     });
 
     it("testSamplesSearch_ByLocationPath - Search by location path, verify results", function () {
@@ -342,7 +352,10 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
 
       cy.wait(1000);
 
-      cy.get('[data-testid="sample-search-input"]').should("have.value", "Freezer");
+      cy.get('[data-testid="sample-search-input"]').should(
+        "have.value",
+        "Freezer",
+      );
     });
 
     it("testSamplesSearch_Debounced - Verify debounced search (300-500ms delay)", function () {
@@ -355,7 +368,10 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
       cy.wait(600);
 
       // Verify search was debounced (not immediate)
-      cy.get('[data-testid="sample-search-input"]').should("have.value", "TEST");
+      cy.get('[data-testid="sample-search-input"]').should(
+        "have.value",
+        "TEST",
+      );
     });
 
     it("testSamplesSearch_CaseInsensitive - Verify case-insensitive matching", function () {
@@ -367,7 +383,10 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
       cy.wait(1000);
 
       // Should match "Freezer" in location paths (case-insensitive)
-      cy.get('[data-testid="sample-search-input"]').should("have.value", "freezer");
+      cy.get('[data-testid="sample-search-input"]').should(
+        "have.value",
+        "freezer",
+      );
     });
 
     it("testSamplesSearch_PartialMatch - Verify partial substring matching", function () {
@@ -378,7 +397,10 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
 
       cy.wait(1000);
 
-      cy.get('[data-testid="sample-search-input"]').should("have.value", "TEST-SAMP");
+      cy.get('[data-testid="sample-search-input"]').should(
+        "have.value",
+        "TEST-SAMP",
+      );
     });
   });
 
@@ -408,7 +430,10 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
 
       cy.wait(1000);
 
-      cy.get('[data-testid="room-search-input"]').should("have.value", "MAIN-LAB");
+      cy.get('[data-testid="room-search-input"]').should(
+        "have.value",
+        "MAIN-LAB",
+      );
     });
   });
 
@@ -427,7 +452,10 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
 
       cy.wait(1000);
 
-      cy.get('[data-testid="device-search-input"]').should("have.value", "Freezer");
+      cy.get('[data-testid="device-search-input"]').should(
+        "have.value",
+        "Freezer",
+      );
     });
 
     it("testDevicesSearch_ByCode - Search devices by code", function () {
@@ -438,7 +466,10 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
 
       cy.wait(1000);
 
-      cy.get('[data-testid="device-search-input"]').should("have.value", "FRZ01");
+      cy.get('[data-testid="device-search-input"]').should(
+        "have.value",
+        "FRZ01",
+      );
     });
 
     it("testDevicesSearch_ByType - Search devices by type", function () {
@@ -449,7 +480,10 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
 
       cy.wait(1000);
 
-      cy.get('[data-testid="device-search-input"]').should("have.value", "freezer");
+      cy.get('[data-testid="device-search-input"]').should(
+        "have.value",
+        "freezer",
+      );
     });
   });
 
@@ -468,7 +502,10 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
 
       cy.wait(1000);
 
-      cy.get('[data-testid="shelf-search-input"]').should("have.value", "Shelf-A");
+      cy.get('[data-testid="shelf-search-input"]').should(
+        "have.value",
+        "Shelf-A",
+      );
     });
   });
 
@@ -487,7 +524,10 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
 
       cy.wait(1000);
 
-      cy.get('[data-testid="rack-search-input"]').should("have.value", "Rack R1");
+      cy.get('[data-testid="rack-search-input"]').should(
+        "have.value",
+        "Rack R1",
+      );
     });
   });
 });

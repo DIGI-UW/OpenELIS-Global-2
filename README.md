@@ -81,7 +81,7 @@ speeds up the development process
         cd OpenELIS-Global-2
         git submodule update --init --recursive
         cd dataexport
-        mvn clean install -DskipTests 
+        mvn clean install -DskipTests
 
 1.  Navigate back to the repository directory:
 

@@ -167,7 +167,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     @Override
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getAllSamplesWithAssignments() {
-        // DAO.getAll() now eagerly fetches entire hierarchy (Sample, Position, Rack, Shelf, Device, Room)
+        // DAO.getAll() now eagerly fetches entire hierarchy (Sample, Position, Rack,
+        // Shelf, Device, Room)
         // All data is loaded within this transaction, so no lazy loading issues
         List<SampleStorageAssignment> assignments = sampleStorageAssignmentDAO.getAll();
         logger.info("getAllSamplesWithAssignments: Found {} total assignments", assignments.size());
@@ -191,16 +192,18 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             StoragePosition position = assignment.getStoragePosition();
             StorageRack rack = position.getParentRack();
             if (rack == null) {
-                logger.debug("Skipping assignment {} - position {} has null rack", assignment.getId(), position.getId());
+                logger.debug("Skipping assignment {} - position {} has null rack", assignment.getId(),
+                        position.getId());
                 continue; // Invalid position without rack
             }
-            
+
             // Access properties to force initialization - do this within transaction
             StorageShelf shelf = rack.getParentShelf();
             StorageDevice device = shelf != null ? shelf.getParentDevice() : null;
             StorageRoom room = device != null ? device.getParentRoom() : null;
-            
-            // Note: shelf, device, and room can be null - buildPathFromEntities handles this
+
+            // Note: shelf, device, and room can be null - buildPathFromEntities handles
+            // this
 
             // Build hierarchical path directly from already-initialized entities
             // This avoids calling buildHierarchicalPath which might trigger lazy loading
@@ -210,36 +213,34 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             map.put("id", assignment.getSample().getId());
             map.put("sampleId", assignment.getSample().getId());
             map.put("type",
-                    assignment.getSample().getAccessionNumber() != null
-                            ? assignment.getSample().getAccessionNumber()
+                    assignment.getSample().getAccessionNumber() != null ? assignment.getSample().getAccessionNumber()
                             : "");
             map.put("status",
-                    assignment.getSample().getStatus() != null ? assignment.getSample().getStatus()
-                            : "active");
+                    assignment.getSample().getStatus() != null ? assignment.getSample().getStatus() : "active");
             map.put("location", hierarchicalPath);
             map.put("assignedBy", assignment.getAssignedByUserId());
-            map.put("date",
-                    assignment.getAssignedDate() != null ? assignment.getAssignedDate().toString() : "");
+            map.put("date", assignment.getAssignedDate() != null ? assignment.getAssignedDate().toString() : "");
 
             response.add(map);
         }
 
-        logger.info("getAllSamplesWithAssignments: Returning {} samples after processing {} assignments", response.size(), assignments.size());
+        logger.info("getAllSamplesWithAssignments: Returning {} samples after processing {} assignments",
+                response.size(), assignments.size());
         return response;
     }
 
     /**
-     * Build hierarchical path from already-initialized entities.
-     * This method assumes all entities are already loaded (not proxies).
+     * Build hierarchical path from already-initialized entities. This method
+     * assumes all entities are already loaded (not proxies).
      */
-    private String buildPathFromEntities(StoragePosition position, StorageRack rack, 
-                                         StorageShelf shelf, StorageDevice device, StorageRoom room) {
+    private String buildPathFromEntities(StoragePosition position, StorageRack rack, StorageShelf shelf,
+            StorageDevice device, StorageRoom room) {
         if (room != null && device != null && shelf != null) {
-            return room.getName() + " > " + device.getName() + " > " + shelf.getLabel() + " > " 
-                   + rack.getLabel() + " > Position " + position.getCoordinate();
+            return room.getName() + " > " + device.getName() + " > " + shelf.getLabel() + " > " + rack.getLabel()
+                    + " > Position " + position.getCoordinate();
         } else if (device != null && shelf != null) {
-            return device.getName() + " > " + shelf.getLabel() + " > " + rack.getLabel() 
-                   + " > Position " + position.getCoordinate();
+            return device.getName() + " > " + shelf.getLabel() + " > " + rack.getLabel() + " > Position "
+                    + position.getCoordinate();
         } else if (shelf != null) {
             return shelf.getLabel() + " > " + rack.getLabel() + " > Position " + position.getCoordinate();
         } else {

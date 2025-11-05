@@ -157,4 +157,3 @@ describe("DisposeSampleModal", () => {
     expect(button).toBeTruthy();
   });
 });
-

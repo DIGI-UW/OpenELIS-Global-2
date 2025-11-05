@@ -372,12 +372,21 @@ direct database access from controllers, NO business logic in DAOs.
 3. **Services** (Business Logic): `org.openelisglobal.{module}.service`
 
    - Interface + Implementation (annotate with `@Service` + `@Transactional`)
-   - **Transactions start here (NOT in controllers)** - `@Transactional` annotations MUST be on service methods only, NEVER on controller methods
+   - **Transactions start here (NOT in controllers)** - `@Transactional`
+     annotations MUST be on service methods only, NEVER on controller methods
    - Call DAOs for persistence, FHIR services for sync
    - Validation logic before persistence
    - Logging via `LogEvent.logError()` for errors
-   - **CRITICAL - Data Compilation Rule**: Services MUST eagerly fetch and compile ALL data needed for the response within the service transaction. Controllers MUST NOT traverse entity relationships (e.g., `assignment.getStoragePosition().getParentRack().getParentShelf()`). Services must return complete DTOs/maps with all hierarchical data already resolved. This prevents lazy loading exceptions when transactions close.
-   - **Rationale**: Hibernate lazy loading only works within an active transaction. If controllers access relationships after the service transaction commits, `LazyInitializationException` occurs. Services must use `JOIN FETCH` in HQL queries to eagerly load all required relationships.
+   - **CRITICAL - Data Compilation Rule**: Services MUST eagerly fetch and
+     compile ALL data needed for the response within the service transaction.
+     Controllers MUST NOT traverse entity relationships (e.g.,
+     `assignment.getStoragePosition().getParentRack().getParentShelf()`).
+     Services must return complete DTOs/maps with all hierarchical data already
+     resolved. This prevents lazy loading exceptions when transactions close.
+   - **Rationale**: Hibernate lazy loading only works within an active
+     transaction. If controllers access relationships after the service
+     transaction commits, `LazyInitializationException` occurs. Services must
+     use `JOIN FETCH` in HQL queries to eagerly load all required relationships.
 
 4. **Controllers** (REST Endpoints): `org.openelisglobal.{module}.controller`
 
@@ -387,7 +396,8 @@ direct database access from controllers, NO business logic in DAOs.
    - **Controllers are singletons** - NO class-level variables (thread safety)
    - Responsibilities: Form validation, request/response mapping, service calls
    - NOT for business logic (delegate to services)
-   - **PROHIBITED**: NO `@Transactional` annotations on controller methods - transaction management belongs in service layer only
+   - **PROHIBITED**: NO `@Transactional` annotations on controller methods -
+     transaction management belongs in service layer only
 
 5. **Forms/DTOs**: `org.openelisglobal.{module}.form`
    - Simple beans for client ↔ server communication
@@ -404,8 +414,13 @@ mixes with HTTP handling and business rules.
 - Native SQL in Java code (breaks database portability, bypasses Hibernate
   caching)
 - Class-level variables in controllers (thread safety violations)
-- **Controllers accessing entity relationships** (e.g., `position.getParentRack().getParentShelf()`) - Services must return complete data structures with all relationships resolved within the transaction
-- **@Transactional annotations in controllers** - Transaction management MUST be in service layer only. Controllers delegate to services, which manage transaction boundaries. Example anti-pattern: `@GetMapping("/endpoint") @Transactional(readOnly = true)`
+- **Controllers accessing entity relationships** (e.g.,
+  `position.getParentRack().getParentShelf()`) - Services must return complete
+  data structures with all relationships resolved within the transaction
+- **@Transactional annotations in controllers** - Transaction management MUST be
+  in service layer only. Controllers delegate to services, which manage
+  transaction boundaries. Example anti-pattern:
+  `@GetMapping("/endpoint") @Transactional(readOnly = true)`
 
 ---
 

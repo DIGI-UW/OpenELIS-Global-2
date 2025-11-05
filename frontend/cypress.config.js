@@ -31,7 +31,9 @@ module.exports = defineConfig({
           );
           // Verify file exists
           if (!fs.existsSync(sqlFile)) {
-            throw new Error(`SQL file not found: ${sqlFile} (PROJECT_ROOT: ${PROJECT_ROOT})`);
+            throw new Error(
+              `SQL file not found: ${sqlFile} (PROJECT_ROOT: ${PROJECT_ROOT})`,
+            );
           }
           try {
             execSync(

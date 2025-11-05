@@ -9,7 +9,7 @@ import {
   TextArea,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import CascadingDropdownMode from "./CascadingDropdownMode";
+import LocationFilterDropdown from "../StorageDashboard/LocationFilterDropdown";
 import "./LocationSelectorModal.css";
 
 /**
@@ -43,10 +43,23 @@ const LocationSelectorModal = ({
   }, [currentLocation]);
 
   const handleLocationChange = (location) => {
-    setSelectedLocation(location);
-    // Update position coordinate if position is selected
-    if (location && location.position) {
-      setPositionCoordinate(location.position.coordinate || "");
+    // LocationFilterDropdown returns { id, type, name, ... } format
+    // We need to convert it to the expected format with room/device/shelf/rack/position
+    if (location && location.id) {
+      // If it's a location from the filter dropdown, we need to fetch full hierarchy
+      // For now, store it as-is and let the backend handle the assignment
+      setSelectedLocation({
+        id: location.id,
+        type: location.type,
+        name: location.name || location.label,
+        ...location,
+      });
+    } else {
+      setSelectedLocation(location);
+      // Update position coordinate if position is selected
+      if (location && location.position) {
+        setPositionCoordinate(location.position.coordinate || "");
+      }
     }
   };
 
@@ -56,7 +69,8 @@ const LocationSelectorModal = ({
         ...selectedLocation,
         position: {
           ...selectedLocation.position,
-          coordinate: positionCoordinate || selectedLocation.position?.coordinate,
+          coordinate:
+            positionCoordinate || selectedLocation.position?.coordinate,
         },
         conditionNotes,
       });
@@ -84,11 +98,15 @@ const LocationSelectorModal = ({
       <ModalBody>
         {/* Sample Information Section */}
         {sampleInfo && (
-          <div className="sample-info-section" data-testid="sample-info-section">
+          <div
+            className="sample-info-section"
+            data-testid="sample-info-section"
+          >
             <div className="info-box">
               <div className="info-row">
                 <span className="info-label">
-                  <FormattedMessage id="sample.id" defaultMessage="Sample ID" />:
+                  <FormattedMessage id="sample.id" defaultMessage="Sample ID" />
+                  :
                 </span>
                 <span className="info-value">{sampleInfo.sampleId}</span>
               </div>
@@ -100,7 +118,11 @@ const LocationSelectorModal = ({
               </div>
               <div className="info-row">
                 <span className="info-label">
-                  <FormattedMessage id="storage.status" defaultMessage="Status" />:
+                  <FormattedMessage
+                    id="storage.status"
+                    defaultMessage="Status"
+                  />
+                  :
                 </span>
                 <span className="info-value">{sampleInfo.status}</span>
               </div>
@@ -110,13 +132,17 @@ const LocationSelectorModal = ({
 
         {/* Current Location Section */}
         {currentLocation && (
-          <div className="current-location-section" data-testid="current-location-section">
+          <div
+            className="current-location-section"
+            data-testid="current-location-section"
+          >
             <div className="location-box">
               <div className="location-label">
                 <FormattedMessage
                   id="storage.current.location"
                   defaultMessage="Current Location"
-                />:
+                />
+                :
               </div>
               <div className="location-path">{currentLocation.path}</div>
             </div>
@@ -127,10 +153,16 @@ const LocationSelectorModal = ({
         {(sampleInfo || currentLocation) && <div className="modal-separator" />}
 
         {/* Full Location Assignment Form */}
-        <div className="assignment-form-section" data-testid="assignment-form-section">
+        <div
+          className="assignment-form-section"
+          data-testid="assignment-form-section"
+        >
           <div className="form-group">
             <label className="form-label">
-              <FormattedMessage id="storage.barcode.scan" defaultMessage="Quick Assign (Barcode)" />
+              <FormattedMessage
+                id="storage.barcode.scan"
+                defaultMessage="Quick Assign (Barcode)"
+              />
             </label>
             <TextInput
               id="barcode-scan"
@@ -142,16 +174,34 @@ const LocationSelectorModal = ({
             />
           </div>
 
-          <CascadingDropdownMode
-            onLocationChange={handleLocationChange}
-            enableInlineCreation={false}
-          />
+          <div className="form-group">
+            <label className="form-label">
+              <FormattedMessage
+                id="storage.select.location"
+                defaultMessage="Select Location"
+              />{" "}
+              <span className="required-indicator">*</span>
+            </label>
+            <LocationFilterDropdown
+              onLocationChange={handleLocationChange}
+              selectedLocation={selectedLocation}
+              allowInactive={false}
+            />
+          </div>
 
           <div className="form-group">
             <label className="form-label">
-              <FormattedMessage id="storage.position.label" defaultMessage="Position" />{" "}
+              <FormattedMessage
+                id="storage.position.label"
+                defaultMessage="Position"
+              />{" "}
               <span className="optional-text">
-                (<FormattedMessage id="label.optional" defaultMessage="optional" />)
+                (
+                <FormattedMessage
+                  id="label.optional"
+                  defaultMessage="optional"
+                />
+                )
               </span>
             </label>
             <TextInput
@@ -173,7 +223,12 @@ const LocationSelectorModal = ({
                 defaultMessage="Condition Notes"
               />{" "}
               <span className="optional-text">
-                (<FormattedMessage id="label.optional" defaultMessage="optional" />)
+                (
+                <FormattedMessage
+                  id="label.optional"
+                  defaultMessage="optional"
+                />
+                )
               </span>
             </label>
             <TextArea
@@ -206,4 +261,3 @@ const LocationSelectorModal = ({
 };
 
 export default LocationSelectorModal;
-

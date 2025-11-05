@@ -1,8 +1,8 @@
 package org.openelisglobal.storage.service;
 
-import org.openelisglobal.storage.valueholder.StorageRack;
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.storage.valueholder.StorageRack;
 
 /**
  * Service interface for sample storage assignment and movement operations
@@ -45,10 +45,11 @@ public interface SampleStorageService {
     CapacityWarning calculateCapacity(StorageRack rack);
 
     /**
-     * Get all samples with storage assignments and complete hierarchical paths.
-     * All relationships are eagerly fetched within the service transaction.
+     * Get all samples with storage assignments and complete hierarchical paths. All
+     * relationships are eagerly fetched within the service transaction.
      * 
-     * @return List of maps, each containing: id, sampleId, type, status, location, assignedBy, date
+     * @return List of maps, each containing: id, sampleId, type, status, location,
+     *         assignedBy, date
      */
     List<Map<String, Object>> getAllSamplesWithAssignments();
 }

@@ -17,10 +17,12 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.storage.valueholder.*;
 
 /**
- * Unit tests for StorageDashboardService filter logic. Tests that filter methods
- * correctly combine multiple filter criteria with AND logic (per FR-066).
+ * Unit tests for StorageDashboardService filter logic. Tests that filter
+ * methods correctly combine multiple filter criteria with AND logic (per
+ * FR-066).
  * 
- * TDD: These tests are written BEFORE implementation. They should fail initially.
+ * TDD: These tests are written BEFORE implementation. They should fail
+ * initially.
  */
 @RunWith(MockitoJUnitRunner.class)
 public class StorageDashboardServiceImplTest {
@@ -250,4 +252,3 @@ public class StorageDashboardServiceImplTest {
         }
     }
 }
-

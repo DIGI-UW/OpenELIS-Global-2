@@ -25,10 +25,7 @@ const CompactLocationView = ({
   const displayText = locationPath || "Not assigned";
 
   return (
-    <div
-      className="compact-location-view"
-      data-testid="compact-location-view"
-    >
+    <div className="compact-location-view" data-testid="compact-location-view">
       <div className="location-path-display">
         <span className="path-label">
           <FormattedMessage id="storage.location.label" />:
@@ -38,7 +35,10 @@ const CompactLocationView = ({
         </span>
       </div>
       {showQuickFind && (
-        <div className="quick-find-container" data-testid="quick-find-container">
+        <div
+          className="quick-find-container"
+          data-testid="quick-find-container"
+        >
           <QuickFindSearch onLocationSelect={onLocationSelect} />
         </div>
       )}
@@ -55,4 +55,3 @@ const CompactLocationView = ({
 };
 
 export default CompactLocationView;
-

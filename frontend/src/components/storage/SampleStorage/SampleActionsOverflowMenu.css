@@ -41,34 +41,40 @@ ul.cds--overflow-menu-options[aria-label*="Sample actions"] {
 }
 
 /* Target menu item buttons - remove blue hover/focus */
-ul.cds--overflow-menu-options[aria-label*="Sample actions"] .cds--overflow-menu-options__btn {
+ul.cds--overflow-menu-options[aria-label*="Sample actions"]
+  .cds--overflow-menu-options__btn {
   color: var(--cds-text-primary, #161616) !important;
   background-color: transparent !important;
 }
 
-ul.cds--overflow-menu-options[aria-label*="Sample actions"] .cds--overflow-menu-options__btn:hover {
+ul.cds--overflow-menu-options[aria-label*="Sample actions"]
+  .cds--overflow-menu-options__btn:hover {
   background-color: var(--cds-layer-hover-01, #f4f4f4) !important;
   color: var(--cds-text-primary, #161616) !important;
 }
 
-ul.cds--overflow-menu-options[aria-label*="Sample actions"] .cds--overflow-menu-options__btn:focus {
+ul.cds--overflow-menu-options[aria-label*="Sample actions"]
+  .cds--overflow-menu-options__btn:focus {
   outline: 2px solid var(--cds-focus, #0f62fe) !important;
   outline-offset: -2px !important;
   background-color: var(--cds-layer-hover-01, #f4f4f4) !important;
 }
 
 /* Target disabled menu item */
-ul.cds--overflow-menu-options[aria-label*="Sample actions"] .cds--overflow-menu-options__option--disabled .cds--overflow-menu-options__btn {
+ul.cds--overflow-menu-options[aria-label*="Sample actions"]
+  .cds--overflow-menu-options__option--disabled
+  .cds--overflow-menu-options__btn {
   color: var(--cds-text-disabled, #c6c6c6) !important;
   cursor: not-allowed !important;
 }
 
 /* Remove any blue background from menu items */
-ul.cds--overflow-menu-options[aria-label*="Sample actions"] .cds--overflow-menu-options__option {
+ul.cds--overflow-menu-options[aria-label*="Sample actions"]
+  .cds--overflow-menu-options__option {
   background-color: transparent !important;
 }
 
-ul.cds--overflow-menu-options[aria-label*="Sample actions"] .cds--overflow-menu-options__option:hover {
+ul.cds--overflow-menu-options[aria-label*="Sample actions"]
+  .cds--overflow-menu-options__option:hover {
   background-color: transparent !important;
 }
-

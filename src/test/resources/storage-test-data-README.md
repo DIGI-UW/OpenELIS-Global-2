@@ -215,7 +215,10 @@ With these fixtures loaded:
 
 ## Cypress E2E Test Usage
 
-For Cypress tests (`storageAssignment.cy.js`, `storageDashboard.cy.js`, etc.), test fixtures are automatically loaded via the `before()` hook using `cy.loadStorageFixtures()`. This loads both storage hierarchy and E2E test data (patients, samples, assignments).
+For Cypress tests (`storageAssignment.cy.js`, `storageDashboard.cy.js`, etc.),
+test fixtures are automatically loaded via the `before()` hook using
+`cy.loadStorageFixtures()`. This loads both storage hierarchy and E2E test data
+(patients, samples, assignments).
 
 ### Manual Loading (if needed)
 
@@ -234,18 +237,21 @@ npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"
 ### Test Data Available for E2E Tests
 
 **Test Patients:**
+
 - **John E2E-Smith** (External ID: E2E-PAT-001)
 - **Jane E2E-Jones** (External ID: E2E-PAT-002)
 - **Bob E2E-Williams** (External ID: E2E-PAT-003)
 
 **Test Samples:**
+
 - **E2E-001**: Assigned to MAIN > FRZ01 > Shelf-A > Rack R1 > A1
 - **E2E-002**: Assigned to MAIN > FRZ01 > Shelf-A > Rack R1 > A2
 - **E2E-003**: Assigned to MAIN > FRZ01 > Shelf-A > Rack R1 > A4
 - **E2E-004**: **Unassigned** (for testing assignment workflow)
 - **E2E-005**: Assigned to MAIN > FRZ01 > Shelf-A > Rack R1 > A5
 
-These samples appear in the Storage Dashboard and can be searched/filtered by the tests.
+These samples appear in the Storage Dashboard and can be searched/filtered by
+the tests.
 
 ## Troubleshooting
 

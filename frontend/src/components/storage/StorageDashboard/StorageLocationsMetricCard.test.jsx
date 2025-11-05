@@ -72,17 +72,25 @@ describe("StorageLocationsMetricCard", () => {
 
     // Wait for breakdown container to appear
     await screen.findByText(/rooms/i);
-    
+
     // Find pills by their container and verify they have correct classes
-    const pills = container.querySelectorAll('.location-count-pill');
+    const pills = container.querySelectorAll(".location-count-pill");
     expect(pills.length).toBe(4);
-    
+
     // Verify each pill has the correct color class
-    const roomsPill = Array.from(pills).find(pill => pill.classList.contains('location-count-rooms'));
-    const devicesPill = Array.from(pills).find(pill => pill.classList.contains('location-count-devices'));
-    const shelvesPill = Array.from(pills).find(pill => pill.classList.contains('location-count-shelves'));
-    const racksPill = Array.from(pills).find(pill => pill.classList.contains('location-count-racks'));
-    
+    const roomsPill = Array.from(pills).find((pill) =>
+      pill.classList.contains("location-count-rooms"),
+    );
+    const devicesPill = Array.from(pills).find((pill) =>
+      pill.classList.contains("location-count-devices"),
+    );
+    const shelvesPill = Array.from(pills).find((pill) =>
+      pill.classList.contains("location-count-shelves"),
+    );
+    const racksPill = Array.from(pills).find((pill) =>
+      pill.classList.contains("location-count-racks"),
+    );
+
     expect(roomsPill).toBeTruthy();
     expect(devicesPill).toBeTruthy();
     expect(shelvesPill).toBeTruthy();
@@ -141,13 +149,13 @@ describe("StorageLocationsMetricCard", () => {
 
     // Wait for component to render and verify elements exist
     await screen.findByText(/rooms/i);
-    
+
     // Verify all location types are displayed
     expect(screen.getByText(/rooms/i)).toBeTruthy();
     expect(screen.getByText(/devices/i)).toBeTruthy();
     expect(screen.getByText(/shelves/i)).toBeTruthy();
     expect(screen.getByText(/racks/i)).toBeTruthy();
-    
+
     // Verify numbers are present (use getAllByText since there are multiple "1" values)
     const numbers = screen.getAllByText("1");
     expect(numbers.length).toBeGreaterThanOrEqual(4);
@@ -190,7 +198,10 @@ describe("StorageLocationsMetricCard", () => {
     getFromOpenElisServer.mockImplementation((url, callback) => {
       if (url.includes("/rest/storage/dashboard/location-counts")) {
         // Don't call callback immediately to simulate loading
-        setTimeout(() => callback({ rooms: 0, devices: 0, shelves: 0, racks: 0 }), 100);
+        setTimeout(
+          () => callback({ rooms: 0, devices: 0, shelves: 0, racks: 0 }),
+          100,
+        );
       }
     });
 
@@ -217,15 +228,15 @@ describe("StorageLocationsMetricCard", () => {
     // Wait for breakdown container to appear
     const breakdown = await screen.findByText(/rooms/i);
     expect(breakdown).toBeTruthy();
-    
+
     // Verify all location types are displayed with zero counts
-    const breakdownContainer = breakdown.closest('.location-counts-breakdown');
+    const breakdownContainer = breakdown.closest(".location-counts-breakdown");
     expect(breakdownContainer).toBeTruthy();
-    
+
     // Verify all four pills are present
-    const pills = breakdownContainer.querySelectorAll('.location-count-pill');
+    const pills = breakdownContainer.querySelectorAll(".location-count-pill");
     expect(pills.length).toBe(4);
-    
+
     // Verify all labels are present
     expect(screen.getByText(/rooms/i)).toBeTruthy();
     expect(screen.getByText(/devices/i)).toBeTruthy();
@@ -233,4 +244,3 @@ describe("StorageLocationsMetricCard", () => {
     expect(screen.getByText(/racks/i)).toBeTruthy();
   });
 });
-

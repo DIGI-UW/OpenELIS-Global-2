@@ -6,8 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.List;
-import org.hibernate.LazyInitializationException;
+import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -16,20 +15,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
-import javax.sql.DataSource;
 
 /**
  * Integration test for SampleStorageRestController.getSamples() endpoint.
  * 
  * CRITICAL: This test verifies that the API endpoint returns samples with
- * complete hierarchical paths WITHOUT lazy loading exceptions. This catches
- * the issue where controllers access entity relationships outside transaction
+ * complete hierarchical paths WITHOUT lazy loading exceptions. This catches the
+ * issue where controllers access entity relationships outside transaction
  * boundaries.
  * 
- * This test should FAIL if:
- * 1. Service layer doesn't eagerly fetch all relationships
- * 2. Controller tries to access relationships after transaction closes
- * 3. LazyInitializationException occurs during JSON serialization
+ * This test should FAIL if: 1. Service layer doesn't eagerly fetch all
+ * relationships 2. Controller tries to access relationships after transaction
+ * closes 3. LazyInitializationException occurs during JSON serialization
  * 
  * Following OpenELIS test patterns: extends BaseWebContextSensitiveTest to load
  * full Spring context and hit real database with proper transaction management.
@@ -76,15 +73,15 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
     }
 
     /**
-     * Create a complete storage hierarchy with sample assignments for testing.
-     * This creates: Room -> Device -> Shelf -> Rack -> Position -> Sample Assignment
+     * Create a complete storage hierarchy with sample assignments for testing. This
+     * creates: Room -> Device -> Shelf -> Rack -> Position -> Sample Assignment
      * Uses JDBC directly to avoid REST API validation issues in tests.
      */
     private void createTestStorageHierarchyWithSamples() throws Exception {
         // Use unique IDs based on timestamp to avoid conflicts
         long timestamp = System.currentTimeMillis() % 9000; // Last 4 digits
-        int baseId = 1000 + (int)timestamp;
-        
+        int baseId = 1000 + (int) timestamp;
+
         // Create room directly via JDBC to avoid validation issues
         // Note: Using actual column names from schema (last_updated not lastupdated)
         jdbcTemplate.update(
@@ -117,32 +114,29 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
         Integer positionId = baseId;
 
         // Create sample with unique ID
-        int sampleId = 10000 + (int)timestamp;
+        int sampleId = 10000 + (int) timestamp;
         jdbcTemplate.update(
                 "INSERT INTO sample (id, accession_number, entered_date, received_date, lastupdated) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
                 sampleId, "TEST-SAMPLE-" + timestamp);
 
         // Assign sample to position
         String assignmentResponse = mockMvc
-                .perform(post("/rest/storage/samples/assign")
-                        .contentType(MediaType.APPLICATION_JSON)
+                .perform(post("/rest/storage/samples/assign").contentType(MediaType.APPLICATION_JSON)
                         .content(String.format(
                                 "{\"sampleId\":\"%d\",\"positionId\":\"%d\",\"notes\":\"Integration test assignment\"}",
                                 sampleId, positionId)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 
         assertNotNull("Assignment should succeed", assignmentResponse);
     }
 
     /**
-     * CRITICAL TEST: Verify GET /rest/storage/samples returns samples with
-     * complete hierarchical paths WITHOUT lazy loading exceptions.
+     * CRITICAL TEST: Verify GET /rest/storage/samples returns samples with complete
+     * hierarchical paths WITHOUT lazy loading exceptions.
      * 
-     * This test will FAIL if:
-     * - Service layer doesn't eagerly fetch all relationships
-     * - Controller accesses relationships after transaction closes
-     * - LazyInitializationException occurs during JSON serialization
+     * This test will FAIL if: - Service layer doesn't eagerly fetch all
+     * relationships - Controller accesses relationships after transaction closes -
+     * LazyInitializationException occurs during JSON serialization
      */
     @Test
     public void testGetSamples_ReturnsCompleteData_NoLazyInitializationException() throws Exception {
@@ -150,10 +144,8 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
         cleanStorageTestData();
         createTestStorageHierarchyWithSamples();
         // When: Call GET /rest/storage/samples
-        MvcResult result = mockMvc.perform(get("/rest/storage/samples"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andReturn();
+        MvcResult result = mockMvc.perform(get("/rest/storage/samples")).andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON)).andReturn();
 
         // Then: Response should be valid JSON array
         String responseContent = result.getResponse().getContentAsString();
@@ -179,11 +171,15 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
         assertFalse("Location should not be empty", location.trim().isEmpty());
         assertTrue("Location should contain hierarchical separator '>'", location.contains(">"));
 
-        // Verify location contains all hierarchy levels (Room > Device > Shelf > Rack > Position)
+        // Verify location contains all hierarchy levels (Room > Device > Shelf > Rack >
+        // Position)
         // This ensures the full hierarchy was loaded and path was built correctly
-        assertTrue("Location should contain room name", location.contains("Test Integration Room") || location.contains("Room"));
-        assertTrue("Location should contain device name", location.contains("Test Freezer") || location.contains("Freezer"));
-        assertTrue("Location should contain shelf label", location.contains("Test Shelf") || location.contains("Shelf"));
+        assertTrue("Location should contain room name",
+                location.contains("Test Integration Room") || location.contains("Room"));
+        assertTrue("Location should contain device name",
+                location.contains("Test Freezer") || location.contains("Freezer"));
+        assertTrue("Location should contain shelf label",
+                location.contains("Test Shelf") || location.contains("Shelf"));
         assertTrue("Location should contain rack label", location.contains("Test Rack") || location.contains("Rack"));
         assertTrue("Location should contain position coordinate", location.contains("A1"));
 
@@ -192,7 +188,8 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
     }
 
     /**
-     * Verify GET /rest/storage/samples returns correct data structure for all samples.
+     * Verify GET /rest/storage/samples returns correct data structure for all
+     * samples.
      */
     @Test
     public void testGetSamples_ReturnsCorrectDataStructure() throws Exception {
@@ -200,9 +197,7 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
         cleanStorageTestData();
         createTestStorageHierarchyWithSamples();
         // When: Call GET /rest/storage/samples
-        MvcResult result = mockMvc.perform(get("/rest/storage/samples"))
-                .andExpect(status().isOk())
-                .andReturn();
+        MvcResult result = mockMvc.perform(get("/rest/storage/samples")).andExpect(status().isOk()).andReturn();
 
         // Then: Parse and verify response structure
         String responseContent = result.getResponse().getContentAsString();
@@ -234,10 +229,8 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
         cleanStorageTestData();
         createTestStorageHierarchyWithSamples();
         // When: Call GET /rest/storage/samples?countOnly=true
-        MvcResult result = mockMvc.perform(get("/rest/storage/samples?countOnly=true"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andReturn();
+        MvcResult result = mockMvc.perform(get("/rest/storage/samples?countOnly=true")).andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON)).andReturn();
 
         // Then: Response should contain metrics
         String responseContent = result.getResponse().getContentAsString();
@@ -255,4 +248,3 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
         assertTrue("totalSamples should be >= 0", metrics.get("totalSamples").asInt() >= 0);
     }
 }
-

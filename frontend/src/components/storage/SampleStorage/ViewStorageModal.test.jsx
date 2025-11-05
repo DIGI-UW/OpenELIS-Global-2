@@ -153,4 +153,3 @@ describe("ViewStorageModal", () => {
     expect(positionInput.hasAttribute("disabled")).toBe(false);
   });
 });
-

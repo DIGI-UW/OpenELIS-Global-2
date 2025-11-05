@@ -1,7 +1,6 @@
 package org.openelisglobal.storage.service;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.util.ArrayList;
@@ -14,10 +13,6 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.openelisglobal.storage.valueholder.StorageDevice;
-import org.openelisglobal.storage.valueholder.StorageRack;
-import org.openelisglobal.storage.valueholder.StorageRoom;
-import org.openelisglobal.storage.valueholder.StorageShelf;
 
 /**
  * Unit tests for StorageSearchService - Search logic per FR-064 and FR-064a
@@ -64,7 +59,7 @@ public class StorageSearchServiceImplTest {
     private void setupMockData() {
         // Mock samples with different IDs, accession numbers, and locations
         mockSamples = new ArrayList<>();
-        
+
         Map<String, Object> sample1 = new HashMap<>();
         sample1.put("id", 1001);
         sample1.put("sampleId", 1001);

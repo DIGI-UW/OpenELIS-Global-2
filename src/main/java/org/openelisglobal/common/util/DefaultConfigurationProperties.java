@@ -187,11 +187,12 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
                 } catch (IOException e) {
                     // In test environments, /var/lib may not be writable - skip file creation
                     LogEvent.logDebug(this.getClass().getSimpleName(), "saveFinalConfigFile",
-                            "Cannot create properties directory (likely test environment), skipping file write: " + parentDir);
+                            "Cannot create properties directory (likely test environment), skipping file write: "
+                                    + parentDir);
                     return;
                 }
             }
-            
+
             try (final FileOutputStream outputstream = new FileOutputStream(finalPropertyFile);) {
                 finalProperties.getPropertiesForWriting().store(outputstream, "File Updated");
             }
