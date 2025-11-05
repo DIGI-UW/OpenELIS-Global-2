@@ -27,8 +27,6 @@ import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 import org.openelisglobal.notebook.valueholder.NoteBookFile;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
-import org.openelisglobal.patient.service.PatientService;
-import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.service.SampleService;
@@ -54,9 +52,6 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     private SampleItemService sampleItemService;
 
     @Autowired
-    private PatientService patientService;
-
-    @Autowired
     private TypeOfSampleService typeOfSampleService;
 
     @Autowired
@@ -73,8 +68,6 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
     @Autowired
     private DictionaryService dictionaryService;
-
-    private Patient patient;
 
     public NoteBookServiceImpl() {
         super(NoteBook.class);
@@ -144,15 +137,11 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         Optional<NoteBook> optionalNoteBook = baseObjectDAO.get(noteBookId);
         if (optionalNoteBook.isPresent()) {
             NoteBook noteBook = optionalNoteBook.get();
-            Patient patient = patientService.getData(noteBook.getPatient().getId());
             Hibernate.initialize(noteBook.getTags());
             Hibernate.initialize(noteBook.getEntries());
             displayBean.setId(noteBook.getId());
             displayBean.setTitle(noteBook.getTitle());
             displayBean.setType(Integer.valueOf(noteBook.getType()));
-            displayBean.setLastName(patientService.getLastName(patient));
-            displayBean.setFirstName(patientService.getFirstName(patient));
-            displayBean.setGender(patientService.getGender(patient));
             displayBean.setTags(noteBook.getTags());
             displayBean.setDateCreated(DateUtil.formatDateAsText(noteBook.getDateCreated()));
             displayBean.setStatus(noteBook.getStatus());
@@ -175,16 +164,9 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             Hibernate.initialize(noteBook.getFiles());
             Hibernate.initialize(noteBook.getTags());
             Hibernate.initialize(noteBook.getEntries());
-            patient = patientService.getData(noteBook.getPatient().getId());
             fullDisplayBean.setId(noteBook.getId());
             fullDisplayBean.setTitle(noteBook.getTitle());
             fullDisplayBean.setType((Integer.valueOf(noteBook.getType())));
-            if (patient != null) {
-                fullDisplayBean.setLastName(patientService.getLastName(patient));
-                fullDisplayBean.setFirstName(patientService.getFirstName(patient));
-                fullDisplayBean.setGender(patientService.getGender(patient));
-                fullDisplayBean.setPatientId(Integer.valueOf(patient.getId()));
-            }
             fullDisplayBean.setTags(noteBook.getTags());
             fullDisplayBean.setDateCreated(DateUtil.formatDateAsText(noteBook.getDateCreated()));
             fullDisplayBean.setStatus(noteBook.getStatus());
@@ -220,9 +202,6 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         sampleDisplayBean.setId(Integer.valueOf(sampleItem.getId()));
         sampleDisplayBean
                 .setSampleType(typeOfSampleService.getNameForTypeOfSampleId(sampleItem.getTypeOfSample().getId()));
-        if (patient != null) {
-            sampleDisplayBean.setPatientId(Integer.valueOf(patient.getId()));
-        }
         sampleDisplayBean.setCollectionDate(DateUtil.convertTimestampToStringDate(sampleItem.getLastupdated()));
         sampleDisplayBean.setVoided(sampleItem.isVoided());
         sampleDisplayBean.setVoidReason(sampleItem.getVoidReason());
@@ -276,8 +255,6 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             noteBook.setStatus(form.getStatus());
             noteBook.setTechnician(systemUserService.get(form.getTechnicianId().toString()));
         }
-
-        noteBook.setPatient(patientService.getData(form.getPatientId().toString()));
 
         noteBook.getAnalysers().clear();
         if (form.getAnalyzerIds() != null) {
@@ -334,20 +311,11 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
     @Override
     @Transactional
-    public List<SampleDisplayBean> searchSampleItems(String patientId, String accession) {
+    public List<SampleDisplayBean> searchSampleItems(String accession) {
 
-        if (StringUtils.isNotBlank(patientId)) {
-            patient = patientService.get(patientId);
-        } else if (StringUtils.isNotBlank(accession)) {
-            Sample sample = sampleService.getSampleByAccessionNumber(accession);
-            if (sample != null) {
-                patient = sampleService.getPatient(sample);
-            }
-        }
-        List<Sample> samples = StringUtils.isNotBlank(accession)
-                ? Optional.ofNullable(sampleService.getSampleByAccessionNumber(accession)).map(List::of)
-                        .orElseGet(List::of)
-                : StringUtils.isNotBlank(patientId) ? sampleService.getSamplesForPatient(patientId) : List.of();
+        List<Sample> samples = StringUtils.isNotBlank(accession) ? Optional
+                .ofNullable(sampleService.getSampleByAccessionNumber(accession)).map(List::of).orElseGet(List::of)
+                : new ArrayList<>();
 
         return samples.stream().flatMap(sample -> sampleItemService.getSampleItemsBySampleId(sample.getId()).stream())
                 .map(this::convertSampleToDisplayBean).collect(Collectors.toList());

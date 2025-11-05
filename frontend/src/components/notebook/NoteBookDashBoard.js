@@ -36,6 +36,11 @@ import {
   Tag as TagIcon,
   Add,
   Edit,
+  Checkmark,
+  Edit as EditIcon,
+  InProgress,
+  Locked,
+  Archive,
 } from "@carbon/react/icons";
 import "./NoteBook.css";
 
@@ -82,6 +87,24 @@ function NoteBookDashBoard() {
     LOCKED: "purple",
     ARCHIVED: "gray",
   };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "DRAFT":
+        return <EditIcon size={15} />;
+      case "SUBMITTED":
+        return <InProgress size={15} />;
+      case "FINALIZED":
+        return <Checkmark size={15} />;
+      case "LOCKED":
+        return <Locked size={15} />;
+      case "ARCHIVED":
+        return <Archive size={15} />;
+      default:
+        return <Document size={15} />;
+    }
+  };
+
   const handleDatePickerChangeDate = (datePicker, date) => {
     let obj = null;
     switch (datePicker) {
@@ -220,7 +243,7 @@ function NoteBookDashBoard() {
     {
       title:
         intl.formatMessage({ id: "notebook.label.finalized" }) +
-        "(Week " +
+        " (Week " +
         getPastWeek() +
         " )",
       count: counts.finalized,
@@ -273,7 +296,9 @@ function NoteBookDashBoard() {
               kind="ghost"
               hasIconOnly
               renderIcon={Edit}
-              iconDescription="edit"
+              iconDescription={intl.formatMessage({
+                id: "notebook.icon.edit",
+              })}
               size="sm"
               onClick={() => openNoteBookView(row.id)}
             ></Button>
@@ -289,7 +314,11 @@ function NoteBookDashBoard() {
   return (
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
-      {loading && <Loading description="Loading Dasboard..." />}
+      {loading && (
+        <Loading
+          description={intl.formatMessage({ id: "loading.description" })}
+        />
+      )}
 
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
 
@@ -314,7 +343,7 @@ function NoteBookDashBoard() {
                 }}
               >
                 <Add />
-                <FormattedMessage id="New Lab NoteBook" />
+                <FormattedMessage id="notebook.button.newLabNotebook" />
               </Button>
             </Column>
             <Column lg={16} md={8} sm={4}>
@@ -323,7 +352,9 @@ function NoteBookDashBoard() {
           </Grid>
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
-              <h4>NoteBooks</h4>
+              <h4>
+                <FormattedMessage id="notebook.heading.notebooks" />
+              </h4>
             </Column>
             <Column lg={16} md={8} sm={4}>
               <DataTable
@@ -331,11 +362,13 @@ function NoteBookDashBoard() {
                 headers={[
                   {
                     key: "title",
-                    header: <FormattedMessage id="Title" />,
+                    header: <FormattedMessage id="notebook.label.title" />,
                   },
                   {
                     key: "entriesCount",
-                    header: <FormattedMessage id="Entries" />,
+                    header: (
+                      <FormattedMessage id="notebook.table.header.entries" />
+                    ),
                   },
                 ]}
                 isSortable
@@ -450,7 +483,9 @@ function NoteBookDashBoard() {
                 <Column lg={16} md={8} sm={4}>
                   <>
                     {" "}
-                    <h4>All Entries </h4>
+                    <h4>
+                      <FormattedMessage id="notebook.heading.allEntries" />
+                    </h4>
                   </>
                 </Column>
               )}
@@ -546,80 +581,87 @@ function NoteBookDashBoard() {
                 <div className="notebook-dashboard-container">
                   {noteBookEntries.map((entry, index) => (
                     <Tile key={index} className="notebook-dashboard-tile">
-                      <Grid>
-                        <Column lg={8} md={8} sm={4}>
-                          <h3 className="notebook-tile-title">{entry.title}</h3>
-                        </Column>
-                        <Column lg={8} md={8} sm={4}>
-                          <Tag
-                            style={{
-                              fontWeight: "bold",
-                            }}
-                            type={statusColors[entry.status]}
-                          >
-                            {entry.status}
-                          </Tag>
-                        </Column>
-                        <Column lg={2} md={8} sm={4}>
-                          <UserAvatarFilledAlt size={15} />
-                        </Column>
-                        <Column lg={14} md={8} sm={4}>
-                          <div className="notebook-tile-subtitle">
-                            {entry.firstName} {entry.lastName}
-                          </div>
-                        </Column>
-                        <Column lg={2} md={8} sm={4}>
-                          <Document size={15} />
-                        </Column>
-                        <Column lg={14} md={8} sm={4}>
-                          <div className="notebook-tile-subtitle">
-                            {entry.typeName}
-                          </div>
-                        </Column>
-                        <Column lg={2} md={8} sm={4}>
-                          <Time size={15} />
-                        </Column>
-                        <Column lg={14} md={8} sm={4}>
-                          <div className="notebook-tile-subtitle">
-                            {entry.dateCreated}
-                          </div>
-                        </Column>
-                        <Column lg={2} md={8} sm={4}>
-                          <TagIcon size={15} />
-                        </Column>
-                        <Column lg={14} md={8} sm={4}>
-                          {entry.tags.map((tag) => (
+                      <div className="notebook-tile-content">
+                        <Grid>
+                          <Column lg={16} md={8} sm={4}>
+                            <h3 className="notebook-tile-title">
+                              {entry.title}
+                            </h3>
+                            <hr></hr>
+                          </Column>
+                          <Column lg={2} md={8} sm={4}>
+                            {getStatusIcon(entry.status)}
+                          </Column>
+                          <Column lg={14} md={8} sm={4}>
                             <Tag
-                              key={tag}
                               style={{
-                                fontSize: "0.6rem",
+                                fontWeight: "bold",
                               }}
+                              size="sm"
+                              type={statusColors[entry.status]}
                             >
-                              {tag}
+                              {entry.status}
                             </Tag>
-                          ))}
-                        </Column>
-                        <Column lg={8} md={8} sm={4}>
-                          <Button
-                            kind="secondary"
-                            size="sm"
-                            onClick={() => openNoteBookInstanceView(entry.id)}
-                          >
-                            View
-                          </Button>
-                        </Column>
-                        <Column lg={8} md={8} sm={4}>
-                          {entry.status === "DRAFT" && (
+                          </Column>
+                          <Column lg={2} md={8} sm={4}>
+                            <Document size={15} />
+                          </Column>
+                          <Column lg={14} md={8} sm={4}>
+                            <div className="notebook-tile-subtitle">
+                              {entry.typeName}
+                            </div>
+                          </Column>
+                          <Column lg={2} md={8} sm={4}>
+                            <Time size={15} />
+                          </Column>
+                          <Column lg={14} md={8} sm={4}>
+                            <div className="notebook-tile-subtitle">
+                              {entry.dateCreated}
+                            </div>
+                          </Column>
+                          <Column lg={2} md={8} sm={4}>
+                            <TagIcon size={15} />
+                          </Column>
+                          <Column lg={14} md={8} sm={4}>
+                            {entry.tags.map((tag) => (
+                              <Tag
+                                key={tag}
+                                style={{
+                                  fontSize: "0.6rem",
+                                }}
+                              >
+                                {tag}
+                              </Tag>
+                            ))}
+                          </Column>
+                        </Grid>
+                      </div>
+                      <div className="notebook-tile-buttons">
+                        <Grid>
+                          <Column lg={8} md={8} sm={4}>
                             <Button
-                              kind="primary"
+                              kind="secondary"
                               size="sm"
                               onClick={() => openNoteBookInstanceView(entry.id)}
                             >
-                              Edit
+                              <FormattedMessage id="notebook.button.view" />
                             </Button>
-                          )}
-                        </Column>
-                      </Grid>
+                          </Column>
+                          <Column lg={8} md={8} sm={4}>
+                            {entry.status === "DRAFT" && (
+                              <Button
+                                kind="primary"
+                                size="sm"
+                                onClick={() =>
+                                  openNoteBookInstanceView(entry.id)
+                                }
+                              >
+                                <FormattedMessage id="notebook.button.edit" />
+                              </Button>
+                            )}
+                          </Column>
+                        </Grid>
+                      </div>
                     </Tile>
                   ))}
                 </div>

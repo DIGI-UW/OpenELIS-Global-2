@@ -32,10 +32,6 @@
                 <constraints nullable="true" foreignKeyName="fk_notebook_technician"
                              referencedTableName="system_user" referencedColumnNames="id"/>
             </column>
-            <column name="patient_id" type="NUMERIC(10)">
-                <constraints nullable="true" foreignKeyName="fk_notebook_patient"
-                             referencedTableName="patient" referencedColumnNames="id"/>
-            </column>
             <column name="last_updated" type="datetime" valueComputed="${now}" />
             <column name="date_created" type="datetime" valueComputed="${now}" />
         </createTable>

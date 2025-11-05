@@ -7,9 +7,6 @@ public class NoteBookDisplayBean {
     private Integer id;
     private String title;
     private Integer type;
-    private String lastName;
-    private String firstName;
-    private String gender;
     private String dateCreated;
     private List<String> tags;
     private String typeName;
@@ -31,30 +28,6 @@ public class NoteBookDisplayBean {
 
     public void setType(Integer type) {
         this.type = type;
-    }
-
-    public String getLastName() {
-        return lastName;
-    }
-
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
-    }
-
-    public String getFirstName() {
-        return firstName;
-    }
-
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
-    }
-
-    public String getGender() {
-        return gender;
-    }
-
-    public void setGender(String gender) {
-        this.gender = gender;
     }
 
     public String getDateCreated() {

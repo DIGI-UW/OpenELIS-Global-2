@@ -48,7 +48,7 @@ public class NoteBookPage extends BaseObject<Integer> {
     @JsonIgnore
     private NoteBook notebook;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "notebook_page_tests", joinColumns = @JoinColumn(name = "notebook_page_id"))
     @Column(name = "test")
     private List<Integer> tests;

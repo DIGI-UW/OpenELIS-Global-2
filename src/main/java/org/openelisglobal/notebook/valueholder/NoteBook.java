@@ -23,7 +23,6 @@ import java.util.Date;
 import java.util.List;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
@@ -81,11 +80,6 @@ public class NoteBook extends BaseObject<Integer> {
     @NotNull
     @Column(name = "status")
     private NoteBookStatus status = NoteBookStatus.DRAFT;
-
-    @Valid
-    @OneToOne
-    @JoinColumn(name = "patient_id", referencedColumnName = "id")
-    private Patient patient;
 
     @Valid
     @OneToOne
@@ -223,14 +217,6 @@ public class NoteBook extends BaseObject<Integer> {
 
     public void setTechnician(SystemUser technician) {
         this.technician = technician;
-    }
-
-    public Patient getPatient() {
-        return patient;
-    }
-
-    public void setPatient(Patient patient) {
-        this.patient = patient;
     }
 
     public Date getDateCreated() {

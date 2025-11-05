@@ -151,9 +151,8 @@ public class NoteBookRestController extends BaseRestController {
 
     @GetMapping(value = "/samples", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<List<SampleDisplayBean>> searchSamples(@RequestParam(required = false) String patientId,
-            @RequestParam(required = false) String accession) {
-        List<SampleDisplayBean> results = noteBookService.searchSampleItems(patientId, accession);
+    public ResponseEntity<List<SampleDisplayBean>> searchSamples(@RequestParam(required = false) String accession) {
+        List<SampleDisplayBean> results = noteBookService.searchSampleItems(accession);
         return ResponseEntity.ok(results);
     }
 

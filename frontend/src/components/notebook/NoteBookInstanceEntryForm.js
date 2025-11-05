@@ -84,18 +84,16 @@ const NoteBookInstanceEntryForm = () => {
   const [analyzerList, setAnalyzerList] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [addedSampleIds, setAddedSampleIds] = useState([]);
-  const [activeTab, setActiveTab] = useState(TABS.ACCESSION);
   const [accession, setAccesiion] = useState("");
   const [initialMount, setInitialMount] = useState(false);
+  const [allTests, setAllTests] = useState([]);
 
   const handleSubmit = () => {
     if (isSubmitting) {
       return;
     }
     if (mode === MODES.CREATE) {
-      if (noteBookData.samples.length > 0) {
-        noteBookForm.patientId = noteBookData.samples[0].patientId;
-      } else {
+      if (noteBookData.samples.length == 0) {
         addNotification({
           kind: NotificationKinds.error,
           title: intl.formatMessage({ id: "notification.title" }),
@@ -105,8 +103,6 @@ const NoteBookInstanceEntryForm = () => {
         });
         return;
       }
-    } else {
-      noteBookForm.patientId = noteBookData.patientId;
     }
     setIsSubmitting(true);
     noteBookForm.id = noteBookData.id;
@@ -183,6 +179,7 @@ const NoteBookInstanceEntryForm = () => {
     title: "",
     content: "",
     instructions: "",
+    tests: [],
   });
   const [newTag, setNewTag] = useState("");
   const [pageError, setPageError] = useState("");
@@ -196,7 +193,13 @@ const NoteBookInstanceEntryForm = () => {
         ? Math.max(...noteBookData.pages.map((page) => page.order || 0)) + 1
         : 1;
 
-    setNewPage({ order: nextOrder, title: "", content: "", instructions: "" });
+    setNewPage({
+      order: nextOrder,
+      title: "",
+      content: "",
+      instructions: "",
+      tests: [],
+    });
     setPageError("");
     setShowPageModal(true);
   };
@@ -307,13 +310,6 @@ const NoteBookInstanceEntryForm = () => {
     setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const getSelectedPatient = (patient) => {
-    getFromOpenElisServer(
-      "/rest/notebook/samples?patientId=" + patient.patientPK,
-      setSampleList,
-    );
-  };
-
   const handleAccesionChange = (e) => {
     const { name, value } = e.target;
     setAccesiion(value);
@@ -331,6 +327,7 @@ const NoteBookInstanceEntryForm = () => {
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_STATUS", setStatuses);
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_EXPT_TYPE", setTypes);
     getFromOpenElisServer("/rest/displayList/ANALYZER_LIST", setAnalyzerList);
+    getFromOpenElisServer("/rest/displayList/ALL_TESTS", setAllTests);
     return () => {
       componentMounted.current = false;
     };
@@ -362,15 +359,11 @@ const NoteBookInstanceEntryForm = () => {
   const loadInitialProjectData = (data) => {
     if (componentMounted.current) {
       if (data && data.id) {
-        noteBookData.isTemplate = false;
-        noteBookData.content = data.content;
-        noteBookData.title = data.title;
-        noteBookData.project = data.project;
-        noteBookData.protocol = data.rotocol;
-        noteBookData.dateCreated = null;
-        noteBookData.objective = data.objective;
-        noteBookData.type = data.type;
-        setNoteBookData(noteBookData);
+        data.id = null;
+        data.isTemplate = false;
+        data.dateCreated = null;
+        data.status = "NEW";
+        setNoteBookData(data);
         setLoading(false);
       }
     }
@@ -381,11 +374,6 @@ const NoteBookInstanceEntryForm = () => {
       if (data && data.id) {
         setNoteBookData(data);
         setLoading(false);
-        getFromOpenElisServer(
-          "/rest/notebook/samples?patientId=" + data.patientId,
-          setSampleList,
-        );
-        setAddedSampleIds(data.samples.map((entry) => entry.id));
         setInitialMount(true);
       }
     }
@@ -431,27 +419,6 @@ const NoteBookInstanceEntryForm = () => {
       </Grid>
       {notificationVisible === true ? <AlertDialog /> : ""}
       {loading && <Loading></Loading>}
-      {mode === MODES.EDIT && (
-        <Grid fullWidth={true}>
-          <Column lg={16} md={8} sm={4}>
-            <Section>
-              <Section>
-                <PatientHeader
-                  id={noteBookData.patientId}
-                  lastName={noteBookData.lastName}
-                  firstName={noteBookData.firstName}
-                  gender={noteBookData.gender}
-                  orderDate={noteBookData.dateCreated}
-                  className="patient-header2"
-                  isOrderPage={true}
-                >
-                  {" "}
-                </PatientHeader>
-              </Section>
-            </Section>
-          </Column>
-        </Grid>
-      )}
       <Grid fullWidth={true} className="orderLegendBody">
         <Column lg={16} md={8} sm={4}>
           <Grid fullWidth={true} className="gridBoundary">
@@ -679,7 +646,11 @@ const NoteBookInstanceEntryForm = () => {
                             gap: "0.5rem",
                           }}
                         >
-                          Page {page.order || index + 1}:{" "}
+                          {intl.formatMessage(
+                            { id: "pagination.page" },
+                            { page: page.order || index + 1 },
+                          )}
+                          :{" "}
                           <h5 style={{ margin: 0, display: "inline" }}>
                             {page.title}
                           </h5>
@@ -707,6 +678,31 @@ const NoteBookInstanceEntryForm = () => {
                         <Column lg={14} md={8} sm={4}>
                           {page.content}
                         </Column>
+                        {page.tests && Array.isArray(page.tests) && page.tests.length > 0 && (
+                          <>
+                            <Column lg={2} md={8} sm={4}>
+                              <h6>
+                                {intl.formatMessage({
+                                  id: "barcode.label.info.tests",
+                                })}
+                              </h6>
+                            </Column>
+                            <Column lg={14} md={8} sm={4}>
+                              <div>
+                                {page.tests.map((testId, testIndex) => {
+                                  const test = allTests.find(
+                                    (t) => t.id === testId,
+                                  );
+                                  return test ? (
+                                    <Tag key={testIndex} type="blue" size="sm">
+                                      {test.value}
+                                    </Tag>
+                                  ) : null;
+                                })}
+                              </div>
+                            </Column>
+                          </>
+                        )}
                         <Column lg={16} md={8} sm={4}>
                           <br />
                           <Button
@@ -742,7 +738,7 @@ const NoteBookInstanceEntryForm = () => {
           {pageError && (
             <InlineNotification
               kind="error"
-              title="Error"
+              title={intl.formatMessage({ id: "notification.title" })}
               subtitle={pageError}
             />
           )}
@@ -755,6 +751,23 @@ const NoteBookInstanceEntryForm = () => {
             value={newPage.title}
             onChange={handlePageChange}
             required
+          />
+          <FilterableMultiSelect
+            key={showPageModal ? "open" : "closed"}
+            id="tests"
+            titleText={intl.formatMessage({
+              id: "barcode.label.info.tests",
+            })}
+            items={allTests}
+            itemToString={(item) => (item ? item.value : "")}
+            initialSelectedItems={[]}
+            onChange={(changes) => {
+              setNewPage({
+                ...newPage,
+                tests: changes.selectedItems.map((test) => test.id),
+              });
+            }}
+            selectionFeedback="top-after-reopen"
           />
           <TextArea
             id="instructions"
@@ -790,64 +803,29 @@ const NoteBookInstanceEntryForm = () => {
             </Column>
             {mode === MODES.CREATE && (
               <>
-                <Column lg={16} md={8} sm={4}>
-                  <Tabs>
-                    <TabList
-                      style={{ width: "100%" }}
-                      aria-label="List of tabs"
-                      contained
-                    >
-                      <Tab onClick={() => setActiveTab(TABS.ACCESSION)}>
-                        {intl.formatMessage({
-                          id: "notebook.search.byAccession",
-                        })}
-                      </Tab>
-                      <Tab onClick={() => setActiveTab(TABS.PATIENT)}>
-                        {intl.formatMessage({
-                          id: "notebook.search.byPatient",
-                        })}
-                      </Tab>
-                    </TabList>
-                  </Tabs>
+                <Column lg={8} md={8} sm={4}>
+                  <TextInput
+                    id="aceesion"
+                    name="acession"
+                    value={accession}
+                    placeholder={intl.formatMessage({
+                      id: "notebook.search.byAccession",
+                    })}
+                    onChange={handleAccesionChange}
+                  />
                 </Column>
-                <Column lg={16} md={8} sm={4}>
-                  <br></br>
+                <Column lg={8} md={8} sm={4}>
+                  <Button
+                    size="md"
+                    onClick={handleAccesionSearch}
+                    labelText={intl.formatMessage({
+                      id: "label.button.search",
+                    })}
+                  >
+                    <FormattedMessage id="label.button.search" />
+                  </Button>
                 </Column>
 
-                {activeTab === TABS.PATIENT && (
-                  <Column lg={16} md={8} sm={4}>
-                    <SearchPatientForm
-                      getSelectedPatient={getSelectedPatient}
-                    ></SearchPatientForm>
-                  </Column>
-                )}
-
-                {activeTab === TABS.ACCESSION && (
-                  <>
-                    <Column lg={8} md={8} sm={4}>
-                      <TextInput
-                        id="aceesion"
-                        name="acession"
-                        value={accession}
-                        placeholder={intl.formatMessage({
-                          id: "notebook.search.byAccession",
-                        })}
-                        onChange={handleAccesionChange}
-                      />
-                    </Column>
-                    <Column lg={8} md={8} sm={4}>
-                      <Button
-                        size="md"
-                        onClick={handleAccesionSearch}
-                        labelText={intl.formatMessage({
-                          id: "label.button.search",
-                        })}
-                      >
-                        <FormattedMessage id="label.button.search" />
-                      </Button>
-                    </Column>
-                  </>
-                )}
                 <Column lg={16} md={8} sm={4}>
                   <br></br>
                 </Column>
@@ -888,7 +866,8 @@ const NoteBookInstanceEntryForm = () => {
                         </h6>
                       </Column>
                       <Column lg={14} md={8} sm={4}>
-                        {sample.collectionDate || "N/A"}
+                        {sample.collectionDate ||
+                          intl.formatMessage({ id: "not.available" })}
                       </Column>
 
                       <Column lg={2} md={8} sm={4}>
@@ -1177,7 +1156,7 @@ const NoteBookInstanceEntryForm = () => {
             {tagError && (
               <InlineNotification
                 kind="error"
-                title="Error"
+                title={intl.formatMessage({ id: "notification.title" })}
                 subtitle={tagError}
               />
             )}
