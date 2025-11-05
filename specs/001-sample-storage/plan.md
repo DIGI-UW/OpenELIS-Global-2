@@ -172,6 +172,13 @@ frontend/src/components/storage/
 │   ├── BarcodeScanMode.jsx
 │   ├── StorageLocationSelector.test.jsx
 │   └── index.js
+├── StorageDashboard/
+│   ├── StorageDashboard.jsx - Main dashboard component
+│   ├── LocationFilterDropdown.jsx - Single location dropdown with autocomplete and tree view
+│   ├── LocationTreeView.jsx - Hierarchical tree view component (expand/collapse)
+│   ├── LocationAutocomplete.jsx - Autocomplete search component (flat list with full paths)
+│   ├── LocationFilterDropdown.test.jsx
+│   └── index.js
 ├── SampleStorage/
 │   ├── AssignLocationModal.jsx
 │   ├── MoveLocationModal.jsx
@@ -289,6 +296,14 @@ Phase 3 learnings)
    - Test: `storageAssignment.cy.js` (P1 user story)
    - Test: `storageSearch.cy.js` (P2A user story)
    - Test: `storageMovement.cy.js` (P2B user story)
+   - Test: `storageDashboardFilter.cy.js` (Dashboard Samples tab filtering)
+     - Test single location dropdown with autocomplete search
+     - Test hierarchical browsing (tree view expand/collapse)
+     - Test filtering by Room, Device, Shelf, and Rack levels
+     - Verify downward inclusive filtering (selecting device shows all samples in child shelves/racks/positions)
+     - Test inactive location display (visual distinction)
+     - Test combination of location filter and status filter
+     - Verify Position-level locations excluded from dropdown (only Room/Device/Shelf/Rack)
 
 ### Test-First Principles
 
@@ -553,8 +568,12 @@ serves as the contract for:
 - `GET /rest/storage/samples/search?sample_id={id}` - Search by sample ID
   - Response:
     `{ sample_id, type, status, location: { room, device, shelf, rack, position, hierarchical_path }, assigned_by, assigned_date }`
-- `GET /rest/storage/samples?room={id}&device={id}&status={active}` - Filter
-  samples by location/status
+- `GET /rest/storage/samples?location_id={id}&location_type={room|device|shelf|rack}&status={active}` - Filter
+  samples by location (single location dropdown) and status
+  - `location_id`: ID of selected location (Room, Device, Shelf, or Rack)
+  - `location_type`: Hierarchy level of selected location (determines downward inclusive filtering)
+  - Filter behavior: Returns all samples within selected location's hierarchy (downward inclusive)
+  - Example: `GET /rest/storage/samples?location_id=123&location_type=device&status=active` returns all samples in device 123 and all its child shelves/racks/positions
 
 **Sample Movement**:
 
@@ -788,7 +807,15 @@ implementation code.
 1. Navigate to Logbook Results
 2. Search for sample ID
 3. Verify location displays in expanded view
-4. Test filters: by room, device, status
+4. Navigate to Storage Dashboard, Samples tab
+5. Test single location dropdown filter:
+   - Open location dropdown
+   - Test autocomplete search (type "Freezer" to find devices)
+   - Test hierarchical browsing (expand/collapse tree view)
+   - Select a Room → verify all samples in that room (downward inclusive)
+   - Select a Device → verify all samples in that device and its children
+   - Verify inactive locations are visually distinguished
+   - Test combination: location filter + status filter
 
 ### P2B: Sample Movement
 

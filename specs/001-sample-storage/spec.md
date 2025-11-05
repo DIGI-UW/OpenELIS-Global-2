@@ -67,6 +67,14 @@ managers
   Racks tab - show room column, filter by room, filter by shelf, device, and
   status
 
+### Session 2025-11-20
+
+- Q: When a user selects a location in the single location dropdown (e.g., "Freezer Unit 1"), what should the filter behavior be? → A: Show all samples within that location's hierarchy (downward inclusive) - selecting "Freezer Unit 1" shows all samples in any shelf/rack/position within that freezer
+- Q: What UI pattern should the location dropdown use for hierarchical browsing? → A: Combination: tree view for browsing, flat autocomplete list for search results
+- Q: How should the autocomplete search work in the location dropdown? → A: Search matches location names/codes at any hierarchy level, displays full path (e.g., typing "Freezer" matches "Freezer Unit 1" and shows "Main Laboratory > Freezer Unit 1")
+- Q: Should inactive/decommissioned locations appear in the location dropdown? → A: Show inactive locations but visually distinguish them (grayed out, disabled, or with "Inactive" badge) - users can select to filter samples that were in those locations
+- Q: Should Position-level locations be included in the location dropdown? → A: Exclude Position-level - dropdown only includes Room, Device, Shelf, and Rack levels (users can filter by rack, then manually find position in table)
+
 ## POC Scope
 
 **In Scope for POC**:
@@ -787,11 +795,20 @@ operations.
 
 - **FR-064**: Dashboard MUST provide search by sample ID and location name/code
 - **FR-065**: Dashboard MUST provide tab-specific filters:
-  - **Samples tab**: Filter by location and by status
+  - **Samples tab**: Filter by location (single smart dropdown with autocomplete and hierarchical browsing) and by status
   - **Rooms tab**: Filter by status
   - **Devices tab**: Filter by type and room and status
   - **Shelves tab**: Filter by device and room and status
   - **Racks tab**: Filter by room, filter by shelf, device, and status
+- **FR-065b**: Samples tab location filter MUST be a single dropdown that supports:
+  - Autocomplete search across hierarchy levels Room, Device, Shelf, and Rack (Position-level excluded - users filter by rack then find position in table)
+  - Search matches location names/codes at any included hierarchy level (e.g., typing "Freezer" matches "Freezer Unit 1" regardless of which room it's in)
+  - Search results displayed as flat list with full hierarchical path (e.g., "Main Laboratory > Freezer Unit 1 > Shelf-A")
+  - Hierarchical browsing via tree view with expand/collapse (like file explorer) - users can expand/collapse parent nodes to navigate children (Room → Device → Shelf → Rack)
+  - Combination mode: tree view for browsing, flat autocomplete list for search results
+  - Selection of any included hierarchy level (Room, Device, Shelf, or Rack)
+  - When a location is selected, filter shows all samples within that location's hierarchy (downward inclusive, including all positions within selected rack)
+  - Inactive/decommissioned locations MUST appear in dropdown but be visually distinguished (grayed out, disabled, or with "Inactive" badge) to allow filtering of historical samples
 - **FR-065a**: Dashboard MUST display room column in Racks tab table (shows parent
   room for each rack)
 - **FR-066**: Multiple filters MUST combine with AND logic (all criteria must

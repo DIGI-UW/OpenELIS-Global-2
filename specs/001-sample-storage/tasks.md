@@ -294,8 +294,12 @@ hierarchical path and timestamp
 - [x] T062c [P] [P4] Write integration test
       `src/test/java/org/openelisglobal/storage/controller/StorageDashboardRestControllerTest.java`
       for dashboard filtering endpoints:
-      testGetSamples_FilterByLocation_ReturnsFiltered,
-      testGetSamples_FilterByStatus_ReturnsFiltered,
+      testGetSamples_FilterByLocationIdAndType_ReturnsFilteredDownwardInclusive,
+      testGetSamples_FilterByLocationIdAndTypeAndStatus_CombinesWithAND,
+      testGetSamples_FilterByRoom_ShowsAllSamplesInRoom,
+      testGetSamples_FilterByDevice_ShowsAllSamplesInDeviceAndChildren,
+      testGetSamples_FilterByShelf_ShowsAllSamplesInShelfAndChildren,
+      testGetSamples_FilterByRack_ShowsAllSamplesInRack,
       testGetRooms_FilterByStatus_ReturnsFiltered,
       testGetDevices_FilterByTypeRoomStatus_ReturnsFiltered,
       testGetShelves_FilterByDeviceRoomStatus_ReturnsFiltered,
@@ -304,7 +308,12 @@ hierarchical path and timestamp
 - [x] T062d [P] [P4] Write unit test
       `src/test/java/org/openelisglobal/storage/service/StorageDashboardServiceImplTest.java`
       for filter logic:
-      testFilterSamples_ByLocationAndStatus_CombinesWithAND,
+      testFilterSamples_ByLocationIdAndType_DownwardInclusive,
+      testFilterSamples_ByRoomId_ShowsAllSamplesInRoomAndChildren,
+      testFilterSamples_ByDeviceId_ShowsAllSamplesInDeviceAndChildren,
+      testFilterSamples_ByShelfId_ShowsAllSamplesInShelfAndChildren,
+      testFilterSamples_ByRackId_ShowsAllSamplesInRack,
+      testFilterSamples_ByLocationIdAndStatus_CombinesWithAND,
       testFilterRooms_ByStatus_ReturnsMatching,
       testFilterDevices_ByTypeRoomStatus_CombinesWithAND,
       testFilterShelves_ByDeviceRoomStatus_CombinesWithAND,
@@ -318,32 +327,57 @@ hierarchical path and timestamp
 - [x] T062f [P4] Enhance StorageDashboardRestController
       `src/main/java/org/openelisglobal/storage/controller/StorageDashboardRestController.java`
       to support tab-specific filter parameters:
-      - Samples: `?location={locationId}&status={status}`
+      - Samples: `?location_id={id}&location_type={room|device|shelf|rack}&status={status}` (per updated plan.md API contract)
       - Rooms: `?status={status}`
       - Devices: `?type={deviceType}&roomId={roomId}&status={status}`
       - Shelves: `?deviceId={deviceId}&roomId={roomId}&status={status}`
       - Racks: `?roomId={roomId}&shelfId={shelfId}&deviceId={deviceId}&status={status}`
 - [x] T062g [P4] Enhance StorageDashboardService (or create if not exists)
       `src/main/java/org/openelisglobal/storage/service/StorageDashboardService.java`
-      with filter methods: filterSamples(), filterRooms(), filterDevices(),
+      with filter methods: filterSamples(locationId, locationType, status) implementing downward inclusive filtering (all samples within selected location's hierarchy), filterRooms(), filterDevices(),
       filterShelves(), filterRacks() implementing AND logic per FR-066
-- [ ] T062h [P4] Update StorageDashboard component
+- [ ] T062h [P4] Create LocationFilterDropdown component
+      `frontend/src/components/storage/StorageDashboard/LocationFilterDropdown.jsx` with:
+      - Single location dropdown supporting Room, Device, Shelf, and Rack levels (Position excluded per FR-065b)
+      - Combination mode: tree view for hierarchical browsing (expand/collapse) and flat autocomplete list for search results
+      - Autocomplete search matches location names/codes at any hierarchy level, displays full hierarchical path (e.g., "Main Laboratory > Freezer Unit 1")
+      - Inactive locations visually distinguished (grayed out, disabled, or with "Inactive" badge)
+      - When location selected, filter shows all samples within that location's hierarchy (downward inclusive)
+- [ ] T062h1 [P4] Create LocationTreeView component
+      `frontend/src/components/storage/StorageDashboard/LocationTreeView.jsx` for hierarchical browsing with expand/collapse (like file explorer)
+- [ ] T062h2 [P4] Create LocationAutocomplete component
+      `frontend/src/components/storage/StorageDashboard/LocationAutocomplete.jsx` for flat list search results with full hierarchical paths
+- [ ] T062h3 [P4] Update StorageDashboard component
       `frontend/src/components/storage/StorageDashboard.jsx` to:
-      - Add filter controls for each tab (location dropdown, status dropdown,
-        type dropdown, room dropdown, device dropdown, shelf dropdown as
-        appropriate per FR-065)
+      - Replace multiple location filter dropdowns with single LocationFilterDropdown in Samples tab (per FR-065b)
+      - Add status filter dropdown (combines with location filter using AND logic per FR-066)
       - Add room column to Racks tab table (per FR-065a)
-      - Implement filter state management and API calls with filter parameters
+      - Implement filter state management and API calls with location_id and location_type parameters
       - Display "Clear Filters" button (per FR-067)
 - [ ] T062i [P4] Write unit test
+      `frontend/src/components/storage/StorageDashboard/LocationFilterDropdown.test.jsx` for single location dropdown:
+      testDisplaysTreeViewForBrowsing, testDisplaysAutocompleteForSearch,
+      testSearchMatchesAnyHierarchyLevel, testShowsFullHierarchicalPath,
+      testVisualDistinctionForInactiveLocations, testPositionLevelExcluded,
+      testDownwardInclusiveFiltering
+- [ ] T062i1 [P4] Write unit test
+      `frontend/src/components/storage/StorageDashboard/LocationTreeView.test.jsx` for tree view:
+      testExpandsCollapsesParentNodes, testDisplaysRoomDeviceShelfRackLevels,
+      testExcludesPositionLevel
+- [ ] T062i2 [P4] Write unit test
+      `frontend/src/components/storage/StorageDashboard/LocationAutocomplete.test.jsx` for autocomplete:
+      testSearchMatchesLocationNamesCodes, testDisplaysFullPathInResults,
+      testFiltersBySearchTerm
+- [ ] T062i3 [P4] Write unit test
       `frontend/src/components/storage/StorageDashboard.test.jsx` for filter UI:
-      testSamplesTab_ShowsLocationAndStatusFilters,
+      testSamplesTab_ShowsSingleLocationDropdownAndStatusFilter,
       testRoomsTab_ShowsStatusFilter,
       testDevicesTab_ShowsTypeRoomStatusFilters,
       testShelvesTab_ShowsDeviceRoomStatusFilters,
       testRacksTab_ShowsRoomShelfDeviceStatusFilters,
       testRacksTab_DisplaysRoomColumn,
-      testClearFilters_ResetsAllFilters
+      testClearFilters_ResetsAllFilters,
+      testLocationFilter_DownwardInclusive_ShowsAllSamplesInHierarchy
 - [ ] T062j Run dashboard filter tests → Verify all PASS:
       `mvn test -Dtest="StorageDashboard*Test"`
 - [ ] T062k Run frontend tests → Verify all PASS:
@@ -369,16 +403,29 @@ hierarchical path and timestamp
 - [x] T066a [P4] Create and pass Cypress test for Storage Dashboard:
       `frontend/cypress/e2e/storageDashboard.cy.js` validates dashboard loads,
       metric cards visible, tabs functional, search/filter controls present
-- [ ] T066b [P4] Enhance Cypress E2E test for tab-specific filters:
+- [ ] T066b [P4] Create new Cypress E2E test file
+      `frontend/cypress/e2e/storageDashboardFilter.cy.js` for single location dropdown filtering (per plan.md Phase 4):
+      testSingleLocationDropdown_AutocompleteSearch_MatchesAnyHierarchyLevel,
+      testSingleLocationDropdown_TreeViewBrowsing_ExpandCollapse,
+      testSingleLocationDropdown_FilterByRoom_ShowsAllSamplesInRoom,
+      testSingleLocationDropdown_FilterByDevice_ShowsAllSamplesInDeviceAndChildren,
+      testSingleLocationDropdown_FilterByShelf_ShowsAllSamplesInShelfAndChildren,
+      testSingleLocationDropdown_FilterByRack_ShowsAllSamplesInRack,
+      testSingleLocationDropdown_InactiveLocations_VisuallyDistinguished,
+      testSingleLocationDropdown_CombinedWithStatusFilter_UsesANDLogic,
+      testSingleLocationDropdown_PositionLevel_ExcludedFromDropdown,
+      testSingleLocationDropdown_DownwardInclusive_FilteringVerified
+- [ ] T066c [P4] Enhance existing Cypress E2E test for other tab filters:
       `frontend/cypress/e2e/storageDashboard.cy.js` add test cases:
-      testSamplesTab_FilterByLocationAndStatus_ShowsFilteredResults,
       testRoomsTab_FilterByStatus_ShowsFilteredResults,
       testDevicesTab_FilterByTypeRoomStatus_ShowsFilteredResults,
       testShelvesTab_FilterByDeviceRoomStatus_ShowsFilteredResults,
       testRacksTab_FilterByRoomShelfDeviceStatus_ShowsFilteredResults,
       testRacksTab_DisplaysRoomColumn,
       testClearFilters_ResetsAllFilters
-- [ ] T066c [P4] Run Cypress test → Verify tab-specific filter scenarios work:
+- [ ] T066d [P4] Run Cypress test → Verify single location dropdown filter scenarios work:
+      `npm run cy:run -- --spec "cypress/e2e/storageDashboardFilter.cy.js"`
+- [ ] T066e [P4] Run Cypress test → Verify all tab-specific filter scenarios work:
       `npm run cy:run -- --spec "cypress/e2e/storageDashboard.cy.js"`
 
 **Checkpoint**: ✅ User Story 1 (Basic Assignment) COMPLETE and independently
