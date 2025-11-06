@@ -179,6 +179,17 @@ managers
 
 - Q: What action menu structure should location tabs (Rooms, Devices, Shelves, Racks) have? → A: Full CRUD overflow menu: Edit, Delete, View Details (similar to Samples tab pattern)
 - Q: How should the Edit operation UI work for location entities? → A: Modal dialog with full form (all fields editable in modal, similar to View Storage modal pattern)
+- Q: What validation and confirmation should occur for Delete operations on locations? → A: Validation with confirmation dialog: Check for child locations and active samples, show warning/error if constraints exist, require confirmation dialog before deletion
+- Q: What should the View Details operation display? → A: View Details option should not be included - all important details should be visible in the table columns
+- Q: Which fields should be editable vs read-only in the Edit modal? → A: Code and Parent are read-only (only name/description/attributes editable, prevents structural changes)
+
+### Session 2025-11-22
+
+- Q: How should the Move and View Storage menu items be consolidated? → A: Replace both "Move" and "View Storage" with a single "Manage Location" menu item that opens the consolidated modal
+- Q: What wording should be used for the consolidated modal title and button? → A: Dynamic wording based on location existence: If no location assigned → "Assign Storage Location" (title) / "Assign" (button). If location exists → "Move Sample" (title) / "Confirm Move" (button) - keep movement terminology when location exists
+- Q: When should the "Reason for Move" field appear and be required? → A: Show "Reason for Move" field only when sample has existing location AND user selects a different location. Field is optional (not required)
+- Q: What sample details should be displayed in the consolidated modal? → A: Show Sample ID, Type, Status, plus additional fields like Date Collected, Patient ID, Test Orders (comprehensive details beyond basic ID/Type/Status)
+- Q: What does "dashboard sample table options" refer to that needs clarification? → A: "Options" refers to action menu items (overflow menu) - addressed by consolidating Move/View Storage into single menu item
 
 ## POC Scope
 
@@ -366,20 +377,26 @@ refrigerator for viral load testing preparation.
 
 1. From the Storage Dashboard (Samples tab) or Sample Detail view, David finds
    sample S-2025-001
-2. He clicks the Actions overflow menu (⋮) → selects "Move"
-3. Move dialog opens showing:
+2. He clicks the Actions overflow menu (⋮) → selects "Manage Location"
+3. Location management modal opens (titled "Move Sample" since location exists)
+   showing:
+   - **Sample information**: Sample ID, Type, Status, Date Collected, Patient ID,
+     Test Orders
    - **Current location**:
      `Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5`
-   - **Target location selector**: Same widget as assignment (cascading
-     dropdowns / autocomplete / barcode scan)
+   - **Location selector widget**: Same widget as assignment (cascading dropdowns /
+     autocomplete / barcode scan) with Room, Device, Shelf, Rack, Position fields
+   - **Condition Notes** field (optional)
 4. David selects new location:
    `Main Laboratory > Refrigerator 2 > Shelf-1 > Rack R3 > Position C8`
-5. Optionally enters reason: "Temporary storage for viral load testing"
+5. "Reason for Move" field appears (since location exists and different location
+   selected). David optionally enters reason: "Temporary storage for viral load
+   testing"
 6. System validates:
    - Target position C8 is currently empty (not occupied)
    - Refrigerator 2 is active (not decommissioned)
    - Rack R3 has available capacity
-7. David clicks "Move" → System:
+7. David clicks "Confirm Move" → System:
    - Updates sample's current location to
      `Refrigerator 2 > Shelf-1 > Rack R3 > Position C8`
    - Frees previous position A5 in Rack R1 (now available for other samples)
@@ -884,8 +901,9 @@ operations.
 
 - **FR-037a**: Samples table rows MUST include an overflow menu button
   (triple-dot icon, ⋮) in the Actions column
-- **FR-037b**: Overflow menu MUST display four menu items: Move, Dispose, View
-  Audit (placeholder), View Storage
+- **FR-037b**: Overflow menu MUST display three menu items: Manage Location,
+  Dispose, View Audit (placeholder). "Manage Location" consolidates the
+  previous "Move" and "View Storage" functionality into a single unified modal
 - **FR-037c**: Overflow menu MUST use Carbon Design System OverflowMenu
   component
 - **FR-037d**: Menu items MUST be accessible via keyboard navigation and screen
@@ -897,8 +915,9 @@ operations.
 
 - **FR-037f**: Rooms, Devices, Shelves, and Racks table rows MUST include an
   overflow menu button (triple-dot icon, ⋮) in the Actions column
-- **FR-037g**: Overflow menu MUST display three menu items: Edit, Delete, View
-  Details
+- **FR-037g**: Overflow menu MUST display two menu items: Edit, Delete (all
+  important details are visible in table columns, no separate View Details
+  needed)
 - **FR-037h**: Overflow menu MUST use Carbon Design System OverflowMenu component
 - **FR-037i**: Menu items MUST be accessible via keyboard navigation and screen
   readers
@@ -910,13 +929,19 @@ operations.
 - **FR-037k**: Edit modal MUST use Carbon Design System Modal component with
   proper accessibility attributes
 - **FR-037l**: Edit modal MUST display all editable fields for the location type:
-  - **Room**: Name, Code, Description (optional), Active/Inactive status
-  - **Device**: Name, Code, Type, Temperature setting (optional), Capacity limit
-    (optional), Active/Inactive status, Parent Room (editable)
-  - **Shelf**: Label, Capacity limit (optional), Active/Inactive status, Parent
-    Device (editable)
-  - **Rack**: Label, Dimensions (rows, columns), Position schema hint
-    (optional), Active/Inactive status, Parent Shelf (editable)
+  - **Room**: Name (editable), Code (read-only), Description (optional, editable),
+    Active/Inactive status (editable)
+  - **Device**: Name (editable), Code (read-only), Type (editable), Temperature
+    setting (optional, editable), Capacity limit (optional, editable),
+    Active/Inactive status (editable), Parent Room (read-only)
+  - **Shelf**: Label (editable), Capacity limit (optional, editable),
+    Active/Inactive status (editable), Parent Device (read-only)
+  - **Rack**: Label (editable), Dimensions (rows, columns, editable), Position
+    schema hint (optional, editable), Active/Inactive status (editable), Parent
+    Shelf (read-only)
+- **FR-037l1**: Code and Parent relationship fields MUST be read-only in Edit
+  modal to prevent structural changes that could break references or hierarchy
+  integrity
 - **FR-037m**: Edit modal MUST validate code uniqueness within parent scope and
   parent-child relationships before saving
 - **FR-037n**: Edit modal MUST display Cancel and "Save Changes" buttons in
@@ -924,50 +949,84 @@ operations.
 - **FR-037o**: Edit modal MUST preserve table context (user remains on same tab
   after closing modal)
 
-#### Sample Movement
+#### Location Delete Operation
 
-- **FR-038**: Users MUST be able to initiate sample move from dashboard or
-  sample detail view via overflow menu "Move" action
-- **FR-039**: Move workflow MUST use same location selector widget as initial
-  assignment (dropdown/autocomplete/scan)
-- **FR-040**: Move dialog MUST show current location and target location
-  selector
-- **FR-040a**: Move modal MUST be titled "Move Sample" with subtitle "Move
-  sample [Sample ID] to a new storage location"
-- **FR-040b**: Move modal MUST display "Current Location" section showing full
-  hierarchical path in highlighted gray background box (similar to View Storage
-  modal)
-- **FR-040c**: Move modal MUST display a downward-pointing arrow icon between
-  current location and new location sections as visual separator
-- **FR-040d**: Move modal MUST display "New Location" section in a bordered box
-  containing:
+- **FR-037p**: Selecting "Delete" from overflow menu MUST validate constraints
+  before allowing deletion
+- **FR-037q**: System MUST prevent deletion if location has child locations (e.g.,
+  cannot delete Room with Devices, cannot delete Device with Shelves, cannot
+  delete Shelf with Racks)
+- **FR-037r**: System MUST prevent deletion if location has active samples
+  assigned (samples currently stored at that location or any child location)
+- **FR-037s**: System MUST display error message if deletion is blocked due to
+  constraints, indicating the specific reason (e.g., "Cannot delete Room 'Main
+  Laboratory' because it contains 8 devices" or "Cannot delete Device 'Freezer
+  Unit 1' because 287 active samples are stored there")
+- **FR-037t**: If no constraints exist, system MUST display confirmation dialog
+  before deletion with warning message (e.g., "Are you sure you want to delete
+  [Location Name]? This action cannot be undone.")
+- **FR-037u**: Confirmation dialog MUST use Carbon Design System Modal component
+  with destructive action styling for confirm button
+- **FR-037v**: After successful deletion, system MUST refresh table data and
+  display success notification
+
+#### Consolidated Location Management Modal
+
+- **FR-038**: Users MUST be able to initiate location management from dashboard
+  or sample detail view via overflow menu "Manage Location" action (consolidates
+  previous "Move" and "View Storage" functionality)
+- **FR-039**: Location management modal MUST use same location selector widget as
+  initial assignment (dropdown/autocomplete/scan)
+- **FR-040**: Location management modal MUST show current location (if assigned)
+  and location selector widget for new location selection
+- **FR-040a**: Location management modal title and button wording MUST be
+  dynamic based on whether sample has existing location:
+  - **If no location assigned**: Modal title "Assign Storage Location", button
+    text "Assign"
+  - **If location exists**: Modal title "Move Sample" with subtitle "Move sample
+    [Sample ID] to a new storage location", button text "Confirm Move"
+- **FR-040b**: Location management modal MUST display comprehensive sample
+  information section showing: Sample ID, Type, Status, Date Collected, Patient
+  ID, Test Orders in a highlighted/background box
+- **FR-040c**: Location management modal MUST display "Current Location" section
+  (if location exists) showing full hierarchical path (Room > Device > Shelf >
+  Rack > Position) in a highlighted gray background box. If no location exists,
+  this section MUST NOT be displayed
+- **FR-040d**: Location management modal MUST display a visual separator
+  (downward-pointing arrow icon if location exists, or horizontal line if no
+  location) between current location and location selection form
+- **FR-040e**: Location management modal MUST display location selection form in a
+  bordered box containing:
   - Barcode scan input field (Quick Assign) **[Note: Barcode scanning deferred
     to later stage - input field present but functionality not required for
     initial implementation]**
-  - Room dropdown (initially showing "Select room..." placeholder)
-  - Device dropdown (disabled until room selected, showing "Select device..."
-    placeholder)
-  - Shelf dropdown (disabled until device selected, showing "Select shelf..."
-    placeholder)
-  - Rack dropdown (disabled until shelf selected, showing "Select rack..."
-    placeholder)
-- **FR-040e**: Move modal MUST display "Selected Location" preview section
-  showing the selected hierarchical path in gray background box (displays "Not
-  selected" until location is chosen)
-- **FR-040f**: Move modal MUST include optional "Reason for Move" textarea field
-  labeled "Reason for Move (optional)"
-- **FR-040g**: Move modal MUST display Cancel and "Confirm Move" buttons in
-  footer (Confirm Move button uses primary/dark styling)
-- **FR-040h**: Move modal MUST use Carbon Design System Modal component with
-  proper accessibility attributes
-- **FR-041**: Users MUST be able to optionally enter reason for move (free text)
-- **FR-042**: System MUST validate: Target location is active, target position
+  - Room dropdown selector (required, marked with \*)
+  - Device dropdown selector
+  - Shelf dropdown selector
+  - Rack/Box dropdown selector
+  - Position text input field (optional, with format hint)
+  - Condition Notes textarea (optional)
+- **FR-040f**: Location management modal MUST display "Selected Location" preview
+  section showing the selected hierarchical path in gray background box
+  (displays "Not selected" until location is chosen)
+- **FR-040g**: Location management modal MUST display "Reason for Move" textarea
+  field ONLY when: (1) sample has existing location AND (2) user selects a
+  different location. Field is optional (not required) and labeled "Reason for
+  Move (optional)"
+- **FR-040h**: Location management modal MUST display Cancel and action button
+  in footer with dynamic text based on location existence ("Assign" if no
+  location, "Confirm Move" if location exists). Action button uses primary/dark
+  styling
+- **FR-040i**: Location management modal MUST use Carbon Design System Modal
+  component with proper accessibility attributes
+- **FR-041**: System MUST validate: Target location is active, target position
   is not occupied, target has available capacity
-- **FR-043**: System MUST update sample's current location to new location and
-  free previous position (mark as available)
-- **FR-044**: System MUST record audit trail with: Previous location, New
-  location, User, Timestamp, Reason (if provided)
-- **FR-045**: Dashboard MUST update immediately after move completes
+- **FR-042**: System MUST update sample's current location to new location and
+  free previous position (mark as available) when location is changed
+- **FR-043**: System MUST record audit trail with: Previous location (if
+  existed), New location, User, Timestamp, Reason (if provided when moving)
+- **FR-044**: Dashboard MUST update immediately after location assignment or move
+  completes
 
 #### Bulk Sample Movement
 
@@ -1040,35 +1099,6 @@ operations.
   non-editable
 - **FR-056a**: Disposal workflow MUST be initiated via overflow menu "Dispose"
   action
-
-#### View Storage Location Modal
-
-- **FR-056b**: "View Storage" menu item from overflow menu MUST open a modal
-  dialog titled "Storage Location Assignment"
-- **FR-056c**: View Storage modal MUST display sample information section
-  showing: Sample ID, Type, and Status in a highlighted/background box
-- **FR-056d**: View Storage modal MUST display "Current Location" section
-  showing the full hierarchical path (Room > Device > Shelf > Rack > Position)
-  in a highlighted gray background box
-- **FR-056e**: View Storage modal MUST include a visual separator between
-  current location and assignment form
-- **FR-056f**: View Storage modal MUST display the full location assignment form
-  including:
-  - Barcode scan input field (Quick Assign) **[Note: Barcode scanning deferred
-    to later stage - input field present but functionality not required for
-    initial implementation]**
-  - Room dropdown selector (required, marked with \*)
-  - Device dropdown selector
-  - Shelf dropdown selector
-  - Rack/Box dropdown selector
-  - Position text input (optional, with format hint)
-  - Condition Notes textarea (optional)
-- **FR-056g**: View Storage modal MUST allow editing/changing the storage
-  location assignment using the same form controls as initial assignment
-- **FR-056h**: View Storage modal MUST display Cancel and "Assign Storage
-  Location" buttons in footer
-- **FR-056i**: View Storage modal MUST use Carbon Design System Modal component
-  with proper accessibility attributes
 
 #### Dashboard and Reporting
 
@@ -1351,9 +1381,10 @@ functional design:_
   - Widget structure: Compact inline view showing selected location path (or
     "Not assigned") with "Expand" or "Edit" button that opens full location
     modal
-  - Modal structure: Same as View Storage modal - shows sample info box, current
-    location display, full assignment form (barcode scan,
-    Room/Device/Shelf/Rack/Position selectors, condition notes)
+  - Modal structure: Same as Consolidated Location Management Modal - shows
+    comprehensive sample info box, current location display (if exists), full
+    assignment form (barcode scan, Room/Device/Shelf/Rack/Position selectors,
+    condition notes, reason for move when applicable)
   - Integration: Reuses existing form validation and save mechanism
 
 - **INT-002**: Add **Storage Location Widget** in existing `LogbookResults`
@@ -1362,11 +1393,12 @@ functional design:_
   - Placement: Below existing referral/test result fields in expanded sample
     details
   - Behavior: Shows current location (read-only or editable based on
-    permissions), allows Move action
+    permissions), allows location management action
   - Widget structure: Same compact inline view as INT-001 with "Expand" or
     "Edit" button that opens full location modal
-  - Modal structure: Same as View Storage modal - shows sample info box, current
-    location display, full assignment form
+  - Modal structure: Same as Consolidated Location Management Modal - shows
+    comprehensive sample info box, current location display (if exists), full
+    assignment form
   - Quick-add capability: Compact inline view includes quick-find search input
     (type-ahead autocomplete) for rapidly finding and selecting existing
     locations at any hierarchy level (Room, Device, Shelf, or Rack)
@@ -1375,13 +1407,14 @@ functional design:_
 - **INT-003**: Create **Reusable Storage Location Selector Component**
 
   - Used in: SamplePatientEntry (orders workflow), LogbookResults (results
-    workflow), Storage Dashboard, Move dialog, View Storage modal
+    workflow), Storage Dashboard, Consolidated Location Management Modal
   - Widget structure: Two-tier design:
     - **Compact inline view**: Displays selected location path (or "Not
       assigned") with "Expand"/"Edit" button
-    - **Expanded modal view**: Full location assignment form matching View
-      Storage modal structure (sample info, current location, barcode scan,
-      Room/Device/Shelf/Rack/Position selectors, condition notes)
+    - **Expanded modal view**: Full location assignment form matching Consolidated
+      Location Management Modal structure (comprehensive sample info, current
+      location if exists, barcode scan, Room/Device/Shelf/Rack/Position
+      selectors, condition notes, reason for move when applicable)
   - Modes: Compact inline, Expanded modal
   - Features:
     - Compact view: Quick location path display, expand button

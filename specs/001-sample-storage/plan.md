@@ -21,10 +21,17 @@ storage location tracking. Create reusable Storage Location Selector widget with
 two-tier design (compact inline view + expanded modal) supporting cascading
 dropdowns, type-ahead autocomplete, and quick-find search. Widget used in both
 orders (SamplePatientEntry) and results (LogbookResults) workflows. Implement
-samples table overflow menu with Move, Dispose, View Audit (placeholder), and
-View Storage actions. Create three modals (Move, Dispose, View Storage) matching
-Figma designs with detailed UI specifications. Map storage entities to FHIR
-Location resources for external interoperability.
+samples table overflow menu with Manage Location (consolidates Move and View
+Storage), Dispose, and View Audit (placeholder) actions. Create consolidated
+Location Management Modal that handles both assignment (when no location exists)
+and movement (when location exists) with dynamic wording and conditional fields.
+Create Dispose modal matching Figma design. Implement full CRUD operations for
+location tabs (Rooms, Devices, Shelves, Racks) with overflow menu actions (Edit,
+Delete) - Edit modal allows editing all fields except Code and Parent (read-only),
+Delete validates constraints (child locations, active samples) before deletion.
+Map storage entities to FHIR Location resources for external interoperability.
+**Note**: MoveSampleModal is largely implemented and can be used as a starting
+point for the consolidated Location Management Modal.
 
 ## Technical Context
 
@@ -57,10 +64,10 @@ searches/saves), no optimization required
 **Scale/Scope**:
 
 - 5 storage entity types (Room, Device, Shelf, Rack, Position)
-- 3 REST API endpoint groups (hierarchy CRUD, assignment, movement)
+- 4 REST API endpoint groups (hierarchy CRUD with Edit/Delete, assignment, movement, search)
 - 1 reusable UI widget (Storage Location Selector with two-tier design)
-- 3 modal components (Move, Dispose, View Storage)
-- 1 overflow menu component (samples table row actions)
+- 5 modal components (Consolidated Location Management, Dispose, Edit Location, Delete Location confirmation)
+- 2 overflow menu components (samples table row actions, location table row actions)
 - 2 integration points (SamplePatientEntry, LogbookResults)
 
 **Development Approach**: Test-Driven Development (TDD)
@@ -194,11 +201,15 @@ frontend/src/components/storage/
 │   ├── StorageLocationsMetricCard.test.jsx
 │   └── index.js
 ├── SampleStorage/
-│   ├── MoveSampleModal.jsx - Move sample modal with current/new location selectors
+│   ├── LocationManagementModal.jsx - Consolidated modal for assignment and movement (replaces MoveSampleModal and ViewStorageModal)
 │   ├── DisposeSampleModal.jsx - Dispose sample modal with reason/method/confirmation
-│   ├── ViewStorageModal.jsx - View/edit storage location assignment modal
-│   ├── SampleActionsOverflowMenu.jsx - Overflow menu component for samples table rows
+│   ├── SampleActionsOverflowMenu.jsx - Overflow menu component for samples table rows (Manage Location, Dispose, View Audit)
 │   ├── BulkMoveModal.jsx
+│   └── index.js
+├── LocationManagement/
+│   ├── LocationActionsOverflowMenu.jsx - Overflow menu component for location table rows (Edit, Delete)
+│   ├── EditLocationModal.jsx - Modal for editing location entities (Room/Device/Shelf/Rack)
+│   ├── DeleteLocationModal.jsx - Confirmation modal for deleting locations with constraint validation
 │   └── index.js
 └── hooks/
     ├── useStorageLocations.js - getFromOpenElisServer data fetching
@@ -297,23 +308,24 @@ Phase 3 learnings)
   Shelf/Rack/Position optional
 - Validates: API error handling and user feedback
 - Test: `SampleActionsOverflowMenu.test.jsx`
-- Validates: Menu renders with all four items (Move, Dispose, View Audit
-  placeholder, View Storage)
+- Validates: Menu renders with all three items (Manage Location, Dispose, View
+  Audit placeholder)
 - Validates: "View Audit" is disabled
-- Test: `MoveSampleModal.test.jsx`
-- Validates: Modal renders with current location, new location selector, preview
-  section
+- Test: `LocationManagementModal.test.jsx` (consolidated from MoveSampleModal and
+  ViewStorageModal)
+- Validates: Modal renders with correct title/button based on location existence
+- Validates: Comprehensive sample information section (ID, Type, Status, Date
+  Collected, Patient ID, Test Orders)
+- Validates: Current Location section only appears when location exists
+- Validates: Reason for Move field appears only when moving (location exists AND
+  different location selected)
 - Validates: Location selection updates preview
 - Validates: Validation prevents moving to same location
+- Validates: Condition Notes field always visible
 - Test: `DisposeSampleModal.test.jsx`
 - Validates: Modal renders with warning alert, sample info, disposal form fields
 - Validates: "Confirm Disposal" button disabled until checkbox checked
 - Validates: Validation requires reason and method selection
-- Test: `ViewStorageModal.test.jsx`
-- Validates: Modal renders with sample info, current location, full assignment
-  form
-- Validates: Form pre-populates with current location
-- Validates: Validation requires Room and Device selection (minimum 2 levels)
 
 **Phase 3: Implementation (Make tests pass)**
 
@@ -1353,38 +1365,47 @@ implementation code.
 1. Navigate to Storage Dashboard, Samples tab
 2. Find sample with assigned location
 3. Click overflow menu (⋮) in Actions column
-4. Verify menu shows: Move, Dispose, View Audit (placeholder/disabled), View
-   Storage
-5. Click "Move" from overflow menu
-6. Verify Move modal opens with:
-   - Modal title "Move Sample" with subtitle
+4. Verify menu shows: Manage Location, Dispose, View Audit (placeholder/disabled)
+5. Click "Manage Location" from overflow menu
+6. Verify Location Management modal opens (titled "Move Sample" since location
+   exists) with:
+   - Comprehensive sample information section (Sample ID, Type, Status, Date
+     Collected, Patient ID, Test Orders)
    - Current location displayed in gray box
    - Downward arrow icon separator
-   - New location selector in bordered box (Room/Device/Shelf/Rack dropdowns)
+   - Location selector in bordered box (Room/Device/Shelf/Rack/Position
+     selectors)
+   - Condition Notes textarea
    - "Selected Location" preview box (shows "Not selected" initially)
-   - Optional "Reason for Move" textarea
    - Cancel and "Confirm Move" buttons
 7. Select new location, verify "Selected Location" preview updates
-8. Enter reason (optional)
-9. Click "Confirm Move"
-10. Verify audit trail updated
+8. Verify "Reason for Move" field appears (since location exists and different
+   location selected)
+9. Enter reason (optional)
+10. Click "Confirm Move"
+11. Verify audit trail updated
 
-### P2B Extended: View Storage Modal
+### P2B Extended: Location Management Modal - Assignment Mode
 
 1. Navigate to Storage Dashboard, Samples tab
-2. Find sample with assigned location
+2. Find sample without assigned location
 3. Click overflow menu (⋮) in Actions column
-4. Click "View Storage"
-5. Verify View Storage modal opens with:
-   - Modal title "Storage Location Assignment"
-   - Sample information section (Sample ID, Type, Status) in highlighted box
-   - Current Location section showing full hierarchical path in gray box
-   - Visual separator
-   - Full location assignment form (barcode scan input,
-     Room/Device/Shelf/Rack/Position selectors, condition notes)
-   - Cancel and "Assign Storage Location" buttons
-6. Edit location assignment using form
-7. Verify changes saved
+4. Click "Manage Location"
+5. Verify Location Management modal opens (titled "Assign Storage Location" since
+   no location exists) with:
+   - Comprehensive sample information section (Sample ID, Type, Status, Date
+     Collected, Patient ID, Test Orders)
+   - No Current Location section (location doesn't exist)
+   - Horizontal line separator
+   - Location selector in bordered box (Room/Device/Shelf/Rack/Position
+     selectors)
+   - Condition Notes textarea
+   - "Selected Location" preview box
+   - Cancel and "Assign" buttons
+6. Select location assignment using form
+7. Verify "Reason for Move" field does NOT appear (no existing location)
+8. Click "Assign"
+9. Verify assignment saved
 
 ### P3: Sample Disposal (Deferred to Post-POC)
 
@@ -1488,13 +1509,15 @@ _Re-verify compliance after design artifacts generated:_
 
 ---
 
-## Phase 5: Overflow Menu and Modal Components Implementation
+## Phase 5: Overflow Menu and Consolidated Location Management Modal Implementation
 
 ### Objective
 
-Implement samples table row overflow menu with four actions (Move, Dispose, View
-Audit placeholder, View Storage) and three modal components (Move, Dispose, View
-Storage) matching Figma design specifications.
+Implement samples table row overflow menu with three actions (Manage Location,
+Dispose, View Audit placeholder) and consolidated Location Management Modal that
+handles both assignment and movement workflows. The consolidated modal replaces
+the previous separate Move and View Storage modals. **Note**: MoveSampleModal is
+largely implemented and can be used as a starting point for consolidation.
 
 ### Overflow Menu Component
 
@@ -1503,11 +1526,11 @@ Storage) matching Figma design specifications.
 **Requirements**:
 
 - Uses Carbon Design System `OverflowMenu` component
-- Displays four menu items:
-  1. **Move** - Opens Move modal
+- Displays three menu items:
+  1. **Manage Location** - Opens consolidated Location Management Modal (replaces
+     previous Move and View Storage actions)
   2. **Dispose** - Opens Dispose modal
   3. **View Audit** - Placeholder (disabled or with visual indicator)
-  4. **View Storage** - Opens View Storage modal
 - Accessible via keyboard navigation and screen readers
 - Integrated into samples table Actions column
 
@@ -1517,66 +1540,99 @@ Storage) matching Figma design specifications.
 import { OverflowMenu, OverflowMenuItem } from "@carbon/react";
 
 <OverflowMenu>
-  <OverflowMenuItem itemText="Move" onClick={() => openMoveModal(sample)} />
+  <OverflowMenuItem
+    itemText="Manage Location"
+    onClick={() => openLocationManagementModal(sample)}
+  />
   <OverflowMenuItem
     itemText="Dispose"
     onClick={() => openDisposeModal(sample)}
   />
   <OverflowMenuItem itemText="View Audit" disabled />
-  <OverflowMenuItem
-    itemText="View Storage"
-    onClick={() => openViewStorageModal(sample)}
-  />
 </OverflowMenu>;
 ```
 
 **Testing**:
 
-- Unit test: Menu renders with all four items
+- Unit test: Menu renders with all three items
 - Unit test: "View Audit" is disabled
-- E2E test: Clicking menu items opens corresponding modals
+- E2E test: Clicking "Manage Location" opens consolidated modal
 
-### Move Sample Modal Component
+### Consolidated Location Management Modal Component
 
-**Component**: `MoveSampleModal.jsx`
+**Component**: `LocationManagementModal.jsx` (consolidates previous MoveSampleModal
+and ViewStorageModal)
 
-**Requirements** (per FR-040a through FR-040h):
+**Starting Point**: Use existing `MoveSampleModal.jsx` as foundation and extend it
+to support both assignment and movement workflows.
 
-- Modal title: "Move Sample" with subtitle "Move sample [Sample ID] to a new
-  storage location"
-- **Current Location** section: Full hierarchical path in highlighted gray
-  background box
-- Downward-pointing arrow icon as visual separator
-- **New Location** section in bordered box:
-  - Barcode scan input field (deferred to later stage - field present but not
-    functional)
-  - Room dropdown (required, initially shows "Select room..." placeholder)
-  - Device dropdown (disabled until room selected, shows "Select device..."
-    placeholder)
-  - Shelf dropdown (disabled until device selected, shows "Select shelf..."
-    placeholder)
-  - Rack dropdown (disabled until shelf selected, shows "Select rack..."
-    placeholder)
+**Requirements** (per FR-038 through FR-044, consolidated from previous Move and
+View Storage modals):
+
+- **Dynamic Title and Button Wording**:
+  - If no location assigned: Modal title "Assign Storage Location", button text
+    "Assign"
+  - If location exists: Modal title "Move Sample" with subtitle "Move sample
+    [Sample ID] to a new storage location", button text "Confirm Move"
+- **Comprehensive Sample Information** section: Highlighted/background box showing
+  Sample ID, Type, Status, Date Collected, Patient ID, Test Orders
+- **Current Location** section (conditional - only if location exists): Full
+  hierarchical path (Room > Device > Shelf > Rack > Position) in highlighted gray
+  background box. If no location exists, this section MUST NOT be displayed
+- **Visual Separator**: Downward-pointing arrow icon if location exists, or
+  horizontal line if no location
+- **Location Selection Form** in bordered box:
+  - Barcode scan input field (Quick Assign) - deferred to later stage (field
+    present but not functional)
+  - Room dropdown selector (required, marked with \*)
+  - Device dropdown selector
+  - Shelf dropdown selector
+  - Rack/Box dropdown selector
+  - Position text input field (optional, with format hint)
+  - Condition Notes textarea (optional)
 - **Selected Location** preview section: Gray background box showing selected
   hierarchical path (displays "Not selected" until location chosen)
-- Optional "Reason for Move" textarea field
-- Footer buttons: Cancel and "Confirm Move" (primary/dark styling)
+- **Reason for Move** field (conditional): Textarea field that appears ONLY when:
+  (1) sample has existing location AND (2) user selects a different location.
+  Field is optional (not required) and labeled "Reason for Move (optional)"
+- Footer buttons: Cancel and action button with dynamic text ("Assign" if no
+  location, "Confirm Move" if location exists). Action button uses primary/dark
+  styling
 - Uses Carbon Design System `Modal` component with proper accessibility
   attributes
 
 **Implementation Notes**:
 
-- Reuses `LocationSelectorModal` component for new location selection
+- **Refactor Strategy**: Start with existing `MoveSampleModal.jsx` and extend:
+  1. Add logic to detect if sample has location (determines modal mode)
+  2. Add comprehensive sample details section (Date Collected, Patient ID, Test
+     Orders)
+  3. Make Current Location section conditional (only show if location exists)
+  4. Add Condition Notes field (always visible)
+  5. Make Reason for Move field conditional (only show when moving)
+  6. Update title and button text based on location existence
+  7. Update API call to handle both assignment and movement (use same endpoint
+     with different payloads)
+- Reuses `LocationSelectorModal` component for location selection
 - Updates "Selected Location" preview in real-time as user selects location
-- Validates new location is different from current location
-- Calls `POST /rest/storage/samples/move` endpoint on confirm
+- Validates new location is different from current location (when moving)
+- Calls `POST /rest/storage/samples/assign` for assignment or
+  `POST /rest/storage/samples/move` for movement
+- Handles both initial assignment and location changes in single unified
+  interface
 
 **Testing**:
 
-- Unit test: Modal renders with all required sections
+- Unit test: Modal renders with correct title/button based on location existence
+- Unit test: Sample information section shows comprehensive details
+- Unit test: Current Location section only appears when location exists
+- Unit test: Reason for Move field appears only when moving (location exists AND
+  different location selected)
 - Unit test: Location selection updates preview
 - Unit test: Validation prevents moving to same location
-- E2E test: Complete move workflow with audit trail verification
+- Unit test: Condition Notes field always visible
+- E2E test: Complete assignment workflow (no location → assign)
+- E2E test: Complete movement workflow (location exists → move with reason)
 
 ### Dispose Sample Modal Component
 
@@ -1631,46 +1687,9 @@ import { OverflowMenu, OverflowMenuItem } from "@carbon/react";
 - Unit test: Validation requires reason and method selection
 - E2E test: Complete disposal workflow with audit trail verification
 
-### View Storage Modal Component
-
-**Component**: `ViewStorageModal.jsx`
-
-**Requirements** (per FR-056b through FR-056i):
-
-- Modal title: "Storage Location Assignment"
-- **Sample Information** section: Highlighted/background box showing Sample ID,
-  Type, Status
-- **Current Location** section: Full hierarchical path (Room > Device > Shelf >
-  Rack > Position) in highlighted gray background box
-- Visual separator between current location and assignment form
-- **Full Location Assignment Form**:
-  - Barcode scan input field (Quick Assign) - deferred to later stage (field
-    present but not functional)
-  - Room dropdown selector (required, marked with \*)
-  - Device dropdown selector
-  - Shelf dropdown selector
-  - Rack/Box dropdown selector
-  - Position text input (optional, with format hint)
-  - Condition Notes textarea (optional)
-- Footer buttons: Cancel and "Assign Storage Location"
-- Uses Carbon Design System `Modal` component with proper accessibility
-  attributes
-- Allows editing/changing storage location assignment using same form controls
-  as initial assignment
-
-**Implementation Notes**:
-
-- Reuses `LocationSelectorModal` component for location selection
-- Pre-populates form with current location if sample has assignment
-- Calls `POST /rest/storage/samples/assign` or
-  `PUT /rest/storage/samples/assign` endpoint on confirm
-
-**Testing**:
-
-- Unit test: Modal renders with all required sections
-- Unit test: Form pre-populates with current location
-- Unit test: Validation requires Room and Device selection (minimum 2 levels)
-- E2E test: View and edit storage location assignment
+**Note**: View Storage Modal functionality is now consolidated into Location
+Management Modal. The consolidated modal handles both viewing current location and
+editing/changing assignment in a single unified interface.
 
 ### Storage Location Selector Widget Structure Updates
 
@@ -1711,6 +1730,305 @@ import { OverflowMenu, OverflowMenuItem } from "@carbon/react";
 - Unit test: Quick-find search filters locations correctly
 - Unit test: Modal structure matches View Storage modal
 - E2E test: Complete assignment workflow in both orders and results contexts
+
+## Phase 6: Location CRUD Operations Implementation
+
+### Objective
+
+Implement full CRUD operations for location tabs (Rooms, Devices, Shelves, Racks) with overflow menu actions (Edit, Delete) per FR-037f through FR-037v. Each location entity can be edited via modal dialog and deleted with validation constraints.
+
+### Requirements Summary
+
+- **Overflow Menu**: Each location table row (Rooms, Devices, Shelves, Racks) has overflow menu with Edit and Delete actions
+- **Edit Modal**: Opens modal dialog with full form for editing location fields (Code and Parent fields are read-only)
+- **Delete Operation**: Validates constraints (child locations, active samples) before deletion, shows confirmation dialog
+- **Field Constraints**: Code and Parent relationship fields are read-only to prevent structural changes
+
+### Components to Create
+
+**Frontend Components**:
+
+1. **LocationActionsOverflowMenu.jsx** - Overflow menu component for location table rows
+   - Similar to `SampleActionsOverflowMenu.jsx`
+   - Displays two menu items: Edit, Delete
+   - Uses Carbon Design System `OverflowMenu` component
+
+2. **EditLocationModal.jsx** - Modal for editing location entities
+   - Generic component that adapts to Room/Device/Shelf/Rack entity types
+   - Displays editable fields based on entity type
+   - Code and Parent fields are read-only (disabled)
+   - Validates code uniqueness and parent-child relationships
+   - Uses Carbon Design System `Modal` component
+
+3. **DeleteLocationModal.jsx** - Confirmation modal for deleting locations
+   - Validates constraints before showing confirmation
+   - Displays error message if constraints exist
+   - Shows confirmation dialog with warning if no constraints
+   - Uses Carbon Design System `Modal` component with destructive styling
+
+**Backend Updates**:
+
+1. **Update REST Controllers** - Add/update endpoints for Edit and Delete operations
+   - `PUT /rest/storage/rooms/{id}` - Update room (already exists, may need validation updates)
+   - `DELETE /rest/storage/rooms/{id}` - Delete room with constraint validation
+   - Similar for devices, shelves, racks
+
+2. **Update Service Layer** - Add constraint validation methods
+   - `validateDeleteConstraints(LocationEntity)` - Check for child locations and active samples
+   - `canDeleteLocation(LocationEntity)` - Returns boolean with reason if false
+   - `getDeleteConstraintMessage(LocationEntity)` - Returns user-friendly error message
+
+### Test Specifications
+
+#### Backend Integration Tests
+
+**File**: `src/test/java/org/openelisglobal/storage/controller/StorageLocationRestControllerTest.java`
+
+**New Test Cases**:
+
+1. **Edit Location Tests**:
+   - `testUpdateRoom_UpdatesEditableFields()` - Update room name, description, status
+   - `testUpdateRoom_CodeReadOnly()` - Attempt to update code, verify rejected or ignored
+   - `testUpdateDevice_UpdatesEditableFields()` - Update device name, type, temperature, capacity
+   - `testUpdateDevice_ParentReadOnly()` - Attempt to change parent room, verify rejected
+   - `testUpdateShelf_UpdatesEditableFields()` - Update shelf label, capacity, status
+   - `testUpdateRack_UpdatesEditableFields()` - Update rack label, dimensions, status
+   - `testUpdateLocation_CodeUniquenessValidation()` - Attempt duplicate code, verify error
+   - `testUpdateLocation_InvalidData_Returns400()` - Invalid field values return 400
+
+2. **Delete Location Tests**:
+   - `testDeleteRoom_WithChildDevices_ReturnsError()` - Cannot delete room with devices
+   - `testDeleteRoom_WithActiveSamples_ReturnsError()` - Cannot delete room with active samples
+   - `testDeleteRoom_NoConstraints_DeletesSuccessfully()` - Delete room with no children/samples
+   - `testDeleteDevice_WithChildShelves_ReturnsError()` - Cannot delete device with shelves
+   - `testDeleteDevice_WithActiveSamples_ReturnsError()` - Cannot delete device with active samples
+   - `testDeleteShelf_WithChildRacks_ReturnsError()` - Cannot delete shelf with racks
+   - `testDeleteRack_WithActiveSamples_ReturnsError()` - Cannot delete rack with active samples
+   - `testDeleteLocation_ReturnsConstraintMessage()` - Error message includes specific reason
+   - `testDeleteLocation_ConfirmationRequired()` - Successful deletion requires confirmation (handled in frontend)
+
+**Test Data Setup**:
+- Create test locations with various constraint scenarios
+- Create test samples assigned to locations
+- Verify constraint checking logic
+
+#### Backend Service Unit Tests
+
+**File**: `src/test/java/org/openelisglobal/storage/service/StorageLocationServiceImplTest.java`
+
+**New Test Cases**:
+
+1. **Constraint Validation Tests**:
+   - `testValidateDeleteConstraints_RoomWithDevices_ReturnsFalse()` - Room with devices cannot be deleted
+   - `testValidateDeleteConstraints_RoomWithActiveSamples_ReturnsFalse()` - Room with samples cannot be deleted
+   - `testValidateDeleteConstraints_DeviceWithShelves_ReturnsFalse()` - Device with shelves cannot be deleted
+   - `testValidateDeleteConstraints_LocationNoConstraints_ReturnsTrue()` - Location with no constraints can be deleted
+   - `testGetDeleteConstraintMessage_RoomWithDevices_ReturnsMessage()` - Error message for room with devices
+   - `testGetDeleteConstraintMessage_DeviceWithSamples_ReturnsMessage()` - Error message for device with samples
+
+2. **Update Validation Tests**:
+   - `testUpdateLocation_CodeUniquenessCheck()` - Verify code uniqueness validation
+   - `testUpdateLocation_ReadOnlyFieldsIgnored()` - Code and Parent fields not updated even if provided
+
+#### Frontend Unit Tests
+
+**File**: `frontend/src/components/storage/__tests__/LocationActionsOverflowMenu.test.jsx`
+
+**Test Cases**:
+- `testOverflowMenu_RendersEditAndDelete()` - Menu renders with Edit and Delete items
+- `testOverflowMenu_EditOpensModal()` - Clicking Edit opens EditLocationModal
+- `testOverflowMenu_DeleteOpensModal()` - Clicking Delete opens DeleteLocationModal
+- `testOverflowMenu_KeyboardAccessible()` - Menu accessible via keyboard navigation
+
+**File**: `frontend/src/components/storage/__tests__/EditLocationModal.test.jsx`
+
+**Test Cases**:
+- `testEditModal_RendersForRoom()` - Modal renders with Room fields
+- `testEditModal_RendersForDevice()` - Modal renders with Device fields
+- `testEditModal_CodeFieldReadOnly()` - Code field is disabled/read-only
+- `testEditModal_ParentFieldReadOnly()` - Parent field is disabled/read-only
+- `testEditModal_EditableFieldsEnabled()` - Name, description, status fields are editable
+- `testEditModal_ValidationErrors()` - Displays validation errors for duplicate code
+- `testEditModal_SaveCallsAPI()` - Save button calls PUT endpoint
+- `testEditModal_CancelClosesModal()` - Cancel button closes modal without saving
+
+**File**: `frontend/src/components/storage/__tests__/DeleteLocationModal.test.jsx`
+
+**Test Cases**:
+- `testDeleteModal_WithConstraints_ShowsError()` - Shows error message if constraints exist
+- `testDeleteModal_NoConstraints_ShowsConfirmation()` - Shows confirmation dialog if no constraints
+- `testDeleteModal_ConfirmationRequired()` - Confirm button disabled until user confirms
+- `testDeleteModal_DeleteCallsAPI()` - Delete button calls DELETE endpoint
+- `testDeleteModal_CancelClosesModal()` - Cancel button closes modal without deleting
+
+#### Frontend E2E Tests
+
+**File**: `frontend/cypress/e2e/storageLocationCRUD.cy.js` (new file)
+
+**Test Cases**:
+
+1. **Edit Location E2E**:
+   - `testEditRoom_UpdatesNameAndDescription()` - Edit room name and description
+   - `testEditDevice_UpdatesTypeAndCapacity()` - Edit device type and capacity
+   - `testEditLocation_CodeReadOnly()` - Verify code field cannot be edited
+   - `testEditLocation_ValidationErrors()` - Verify duplicate code validation
+
+2. **Delete Location E2E**:
+   - `testDeleteRoom_WithDevices_ShowsError()` - Attempt to delete room with devices
+   - `testDeleteDevice_WithSamples_ShowsError()` - Attempt to delete device with samples
+   - `testDeleteLocation_NoConstraints_Deletes()` - Delete location with no constraints
+   - `testDeleteLocation_ConfirmationRequired()` - Verify confirmation dialog appears
+
+### API Contract Updates
+
+**Update `/contracts/storage-api.json`**:
+
+Add/update endpoints:
+
+```json
+{
+  "paths": {
+    "/rest/storage/rooms/{id}": {
+      "put": {
+        "summary": "Update room",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "description": "Room name (editable)" },
+                  "code": { "type": "string", "description": "Room code (read-only, ignored if provided)" },
+                  "description": { "type": "string", "description": "Optional description (editable)" },
+                  "active": { "type": "boolean", "description": "Active status (editable)" }
+                },
+                "required": ["name", "active"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Room updated successfully" },
+          "400": { "description": "Validation error (duplicate code, invalid data)" },
+          "404": { "description": "Room not found" }
+        }
+      },
+      "delete": {
+        "summary": "Delete room",
+        "responses": {
+          "200": { "description": "Room deleted successfully" },
+          "409": { 
+            "description": "Cannot delete - constraints exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { "type": "string" },
+                    "message": { "type": "string", "description": "User-friendly constraint message" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Room not found" }
+        }
+      }
+    }
+  }
+}
+```
+
+Similar endpoints for `/rest/storage/devices/{id}`, `/rest/storage/shelves/{id}`, `/rest/storage/racks/{id}`.
+
+### Implementation Tasks
+
+#### Backend Implementation
+
+1. **Update Service Layer** (`StorageLocationServiceImpl.java`):
+   - Add `validateDeleteConstraints(LocationEntity)` method
+   - Add `canDeleteLocation(LocationEntity)` method
+   - Add `getDeleteConstraintMessage(LocationEntity)` method
+   - Update `update()` methods to ignore Code and Parent fields if provided
+
+2. **Update REST Controllers**:
+   - Ensure `PUT` endpoints validate editable fields only
+   - Add `DELETE` endpoints with constraint validation
+   - Return appropriate error messages (409 Conflict for constraints)
+
+3. **Constraint Validation Logic**:
+   ```java
+   public boolean canDeleteRoom(StorageRoom room) {
+       // Check for child devices
+       if (deviceDAO.countByRoomId(room.getId()) > 0) {
+           return false;
+       }
+       // Check for active samples in any child locations
+       if (sampleStorageService.hasActiveSamplesInLocation(room.getId(), "room")) {
+           return false;
+       }
+       return true;
+   }
+   ```
+
+#### Frontend Implementation
+
+1. **Create LocationActionsOverflowMenu Component**:
+   - Similar structure to `SampleActionsOverflowMenu.jsx`
+   - Two menu items: Edit, Delete
+   - Props: `location` (entity object), `onEdit`, `onDelete` callbacks
+
+2. **Create EditLocationModal Component**:
+   - Generic component that adapts to entity type (Room/Device/Shelf/Rack)
+   - Form fields based on entity type
+   - Code and Parent fields disabled/read-only
+   - Validation for code uniqueness
+   - Calls `PUT /rest/storage/{entityType}/{id}` endpoint
+
+3. **Create DeleteLocationModal Component**:
+   - Checks constraints via API call before showing confirmation
+   - Displays error message if constraints exist
+   - Shows confirmation dialog if no constraints
+   - Calls `DELETE /rest/storage/{entityType}/{id}` endpoint
+
+4. **Update StorageDashboard.jsx**:
+   - Replace placeholder action buttons with `LocationActionsOverflowMenu`
+   - Add state management for Edit and Delete modals
+   - Handle modal open/close and API calls
+
+### Testing Checklist
+
+- [ ] All backend integration tests pass
+- [ ] All backend service unit tests pass
+- [ ] All frontend unit tests pass
+- [ ] All E2E tests pass
+- [ ] Edit modal opens with correct fields for each entity type
+- [ ] Code and Parent fields are read-only in Edit modal
+- [ ] Edit saves changes correctly
+- [ ] Delete validates constraints correctly
+- [ ] Delete shows appropriate error messages
+- [ ] Delete confirmation dialog appears when no constraints
+- [ ] Delete successfully removes location when confirmed
+- [ ] Table refreshes after Edit/Delete operations
+
+### Dependencies
+
+- Existing location REST endpoints (GET, POST)
+- Existing location service layer
+- Carbon Design System OverflowMenu and Modal components
+- Existing table rendering in StorageDashboard
+
+### Success Criteria
+
+- All tests pass (integration, unit, E2E)
+- Overflow menu appears on all location table rows
+- Edit modal allows editing all editable fields
+- Code and Parent fields are read-only
+- Delete validates constraints and shows appropriate messages
+- Delete confirmation dialog works correctly
+- Table updates after Edit/Delete operations
+
+---
 
 ## Implementation Enhancements
 

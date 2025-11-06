@@ -1228,14 +1228,18 @@ audit log records movement
 - [x] T091a [US2B] Implement SampleActionsOverflowMenu component
       `frontend/src/components/storage/SampleStorage/SampleActionsOverflowMenu.jsx`
       using Carbon OverflowMenu with four menu items: Move, Dispose, View Audit
-      (disabled), View Storage
+      (disabled), View Storage - **NOTE**: This task needs to be updated in Phase
+      2.5 (T209) to consolidate Move and View Storage into single "Manage Location"
+      menu item
 - [x] T091b [US2B] Implement MoveSampleModal component
       `frontend/src/components/storage/SampleStorage/MoveSampleModal.jsx` per
       Figma design: modal title "Move Sample" with subtitle, current location in
       gray box, downward arrow icon, new location selector in bordered box,
       "Selected Location" preview box, validation requiring Room and Device
       selection (minimum 2 levels per FR-033a), optional reason textarea, Cancel
-      and "Confirm Move" buttons (primary/dark styling)
+      and "Confirm Move" buttons (primary/dark styling) - **NOTE**: This component
+      will be consolidated into LocationManagementModal in Phase 2.5 (T208), can be
+      used as starting point
 - [x] T091c [US2B] Implement DisposeSampleModal component
       `frontend/src/components/storage/SampleStorage/DisposeSampleModal.jsx` per
       Figma design: modal title "Dispose Sample" with subtitle, red warning
@@ -1251,7 +1255,8 @@ audit log records movement
       assignment form (barcode scan input, Room/Device/Shelf/Rack/Position
       selectors, condition notes), validation requiring Room and Device
       selection (minimum 2 levels per FR-033a), Cancel and "Assign Storage
-      Location" buttons
+      Location" buttons - **NOTE**: This component will be consolidated into
+      LocationManagementModal in Phase 2.5 (T208), will be deleted in T214
 - [ ] T091e [US2B] Add POST /rest/storage/samples/dispose endpoint to
       SampleStorageRestController
       `src/main/java/org/openelisglobal/storage/controller/SampleStorageRestController.java`
@@ -1266,7 +1271,9 @@ audit log records movement
       properly handle position selection at different hierarchy levels (2-5
       levels), validate minimum room+device requirement, require position ID
       selection (not just device/rack IDs), update "Selected Location" preview
-      in real-time, validate new location different from current location
+      in real-time, validate new location different from current location -
+      **SUPERSEDED**: This task is replaced by Phase 2.5 consolidation (T208)
+      which creates LocationManagementModal with all required functionality
 - [ ] T093 [US2B] Implement BulkMoveModal component
       `frontend/src/components/storage/SampleStorage/BulkMoveModal.jsx` with
       auto-assign preview, editable position assignments, validation for
@@ -1276,7 +1283,8 @@ audit log records movement
       overflow menu (⋮) to Actions column, trigger MoveSampleModal,
       DisposeSampleModal, ViewStorageModal on corresponding menu item clicks -
       **Note**: Used SampleActionsContainer component to encapsulate menu and
-      modals
+      modals - **NOTE**: This integration needs to be updated in Phase 2.5 (T211)
+      to use LocationManagementModal instead of separate modals
 - [ ] T095 [US2B] Add "Bulk Move" action to StorageDashboard component: Add bulk
       selection checkboxes, trigger BulkMoveModal with selected samples
 - [x] T096 Run frontend tests → Verify PASS:
@@ -1295,7 +1303,9 @@ audit log records movement
       tests: testOverflowMenu_ShowsAllFourItems,
       testOverflowMenu_ViewAuditIsDisabled, testOverflowMenu_MoveOpensMoveModal,
       testOverflowMenu_DisposeOpensDisposeModal,
-      testOverflowMenu_ViewStorageOpensViewStorageModal
+      testOverflowMenu_ViewStorageOpensViewStorageModal - **NOTE**: This test
+      needs to be updated in Phase 2.5 (T204) to reflect consolidated "Manage
+      Location" menu item
 - [x] T097b [US2B] Enhance Cypress E2E test
       `frontend/cypress/e2e/storageMovement.cy.js` to include move modal UI
       tests: testMoveModal_DisplaysCurrentLocation,
@@ -1313,7 +1323,8 @@ audit log records movement
       testViewStorageModal_DisplaysSampleInfo,
       testViewStorageModal_DisplaysCurrentLocation,
       testViewStorageModal_AllowsEditingAssignment,
-      testViewStorageModal_SavesChanges
+      testViewStorageModal_SavesChanges - **NOTE**: This test file will be deleted
+      in Phase 2.5 (T205) as functionality is consolidated into LocationManagementModal
 - [ ] T098 [US2B] Run Cypress test → Verify P2B scenario works:
       `npm run cy:run -- --spec "cypress/e2e/storageMovement.cy.js"` **Note**:
       Requires Xvfb for headless execution or Docker environment
@@ -1323,33 +1334,371 @@ previous positions freed, audit trail tracks all movements.
 
 ---
 
-## Phase 6: Polish & Cross-Cutting Concerns
+## Phase 2.5: Modal Consolidation - Immediate Priority
+
+**Purpose**: Consolidate MoveSampleModal and ViewStorageModal into a single
+LocationManagementModal that handles both assignment and movement workflows. This
+phase ensures thorough consolidation, test updates, and cleanup of artifacts from
+the previous approach.
+
+**Goal**: Single unified modal (LocationManagementModal) replaces separate Move and
+View Storage modals. Overflow menu updated to show "Manage Location" instead of
+separate "Move" and "View Storage" items. All tests updated and passing. No
+artifacts from previous approach remain.
+
+**Independent Test**: Open consolidated modal for sample with location → verify
+"Move Sample" title and "Confirm Move" button. Open consolidated modal for sample
+without location → verify "Assign Storage Location" title and "Assign" button.
+Verify "Reason for Move" field appears only when moving. Verify comprehensive
+sample details displayed. Verify no references to MoveSampleModal or
+ViewStorageModal remain in codebase.
+
+**Dependencies**: Requires Phase 2 (Foundational) completion. Can start
+immediately after foundational entities and services are in place. Does NOT require
+full Phase 5 completion - this consolidation should happen before continuing with
+other user story work.
+
+### Tests First - Update Unit Tests for Consolidated Modal
+
+- [ ] T200 [P] Update unit test
+      `frontend/src/components/storage/SampleStorage/LocationManagementModal.test.jsx`
+      (rename from MoveSampleModal.test.jsx): Update test suite to validate
+      consolidated modal behavior: testDisplaysModalTitle_DynamicBasedOnLocation
+      (shows "Assign Storage Location" if no location, "Move Sample" if location
+      exists), testDisplaysButtonText_DynamicBasedOnLocation (shows "Assign" if no
+      location, "Confirm Move" if location exists), testDisplaysComprehensiveSampleInfo
+      (shows Sample ID, Type, Status, Date Collected, Patient ID, Test Orders),
+      testDisplaysCurrentLocation_OnlyWhenLocationExists (current location section
+      only appears if sample has location), testDisplaysReasonForMove_OnlyWhenMoving
+      (Reason for Move field appears only when location exists AND different location
+      selected), testDisplaysConditionNotes_AlwaysVisible (Condition Notes field
+      always visible), testLocationSelection_UpdatesPreview (selected location
+      preview updates in real-time), testValidation_PreventsMovingToSameLocation
+      (when moving, validates new location different from current)
+
+- [ ] T201 [P] Update unit test
+      `frontend/src/components/storage/SampleStorage/SampleActionsOverflowMenu.test.jsx`:
+      Update test suite to validate consolidated menu: testOverflowMenu_RendersThreeItems
+      (menu renders with Manage Location, Dispose, View Audit), testOverflowMenu_ManageLocationOpensModal
+      (clicking "Manage Location" opens LocationManagementModal),
+      testOverflowMenu_ViewAuditIsDisabled (View Audit is disabled), remove tests
+      for separate Move and View Storage menu items
+
+- [ ] T202 [P] Delete unit test file
+      `frontend/src/components/storage/SampleStorage/ViewStorageModal.test.jsx` (no
+      longer needed - functionality consolidated into LocationManagementModal)
+
+- [ ] T203 Run frontend unit tests → Verify updated tests FAIL (implementation not
+      yet updated): `npm test -- LocationManagementModal SampleActionsOverflowMenu`
+
+### Tests First - Update E2E Tests for Consolidated Modal
+
+- [ ] T204 [P] Update Cypress E2E test
+      `frontend/cypress/e2e/storageMovement.cy.js`: Update test suite to use
+      consolidated modal: testOverflowMenu_ShowsThreeItems (menu shows Manage
+      Location, Dispose, View Audit), testOverflowMenu_ManageLocationOpensModal
+      (clicking Manage Location opens consolidated modal), testLocationManagementModal_AssignmentMode
+      (modal titled "Assign Storage Location" when no location exists, shows
+      "Assign" button), testLocationManagementModal_MovementMode (modal titled "Move
+      Sample" when location exists, shows "Confirm Move" button), testLocationManagementModal_ReasonForMoveConditional
+      (Reason for Move field appears only when moving), remove tests for separate
+      Move and View Storage modals
+
+- [ ] T205 [P] Delete Cypress E2E test file
+      `frontend/cypress/e2e/storageViewStorage.cy.js` (no longer needed -
+      functionality consolidated into LocationManagementModal)
+
+- [ ] T206 [P] Update Cypress E2E test
+      `frontend/cypress/e2e/storageMovement.cy.js`: Add test for comprehensive
+      sample details: testLocationManagementModal_DisplaysComprehensiveSampleInfo
+      (verifies Sample ID, Type, Status, Date Collected, Patient ID, Test Orders
+      displayed)
+
+- [ ] T207 Run Cypress E2E tests → Verify updated tests FAIL (implementation not
+      yet updated): `npm run cy:run -- --spec "cypress/e2e/storageMovement.cy.js"`
+
+### Implementation - Create Consolidated LocationManagementModal
+
+- [ ] T208 [US2B] Create LocationManagementModal component
+      `frontend/src/components/storage/SampleStorage/LocationManagementModal.jsx`:
+      Start with existing MoveSampleModal.jsx as foundation, extend to support both
+      assignment and movement: Add logic to detect if sample has location
+      (determines modal mode), add comprehensive sample details section (Date
+      Collected, Patient ID, Test Orders), make Current Location section conditional
+      (only show if location exists), add Condition Notes field (always visible),
+      make Reason for Move field conditional (only show when location exists AND
+      different location selected), update title and button text based on location
+      existence, update API call to handle both assignment and movement (use
+      appropriate endpoint based on mode)
+
+- [ ] T209 [US2B] Update SampleActionsOverflowMenu component
+      `frontend/src/components/storage/SampleStorage/SampleActionsOverflowMenu.jsx`:
+      Replace "Move" and "View Storage" menu items with single "Manage Location"
+      menu item, update onClick handler to open LocationManagementModal, update
+      internationalization message keys
+
+- [ ] T210 [US2B] Update SampleActionsContainer component
+      `frontend/src/components/storage/SampleStorage/SampleActionsContainer.jsx`:
+      Replace MoveSampleModal and ViewStorageModal imports with LocationManagementModal,
+      update state management to use single modal, update handlers to use
+      consolidated modal, remove separate moveModalOpen and viewStorageModalOpen
+      state variables
+
+- [ ] T211 [US2B] Update StorageDashboard component
+      `frontend/src/components/storage/StorageDashboard.jsx`: Update references from
+      MoveSampleModal/ViewStorageModal to LocationManagementModal, verify
+      SampleActionsContainer integration works correctly
+
+### Implementation - Update API Integration
+
+- [ ] T212 [US2B] Update LocationManagementModal API calls
+      `frontend/src/components/storage/SampleStorage/LocationManagementModal.jsx`:
+      Implement logic to call POST /rest/storage/samples/assign for assignment mode
+      (no existing location), implement logic to call POST /rest/storage/samples/move
+      for movement mode (location exists), handle response and error states
+      appropriately
+
+### Cleanup - Remove Artifacts from Previous Approach
+
+- [ ] T213 Delete MoveSampleModal component file
+      `frontend/src/components/storage/SampleStorage/MoveSampleModal.jsx` (functionality
+      consolidated into LocationManagementModal)
+
+- [ ] T214 Delete ViewStorageModal component file
+      `frontend/src/components/storage/SampleStorage/ViewStorageModal.jsx` (functionality
+      consolidated into LocationManagementModal)
+
+- [ ] T215 Delete MoveSampleModal CSS file
+      `frontend/src/components/storage/SampleStorage/MoveSampleModal.css` (if exists,
+      styles should be moved to LocationManagementModal.css)
+
+- [ ] T216 [P] Search codebase for references to MoveSampleModal: Use grep to find
+      all imports and references to MoveSampleModal, verify all references updated
+      or removed
+
+- [ ] T217 [P] Search codebase for references to ViewStorageModal: Use grep to find
+      all imports and references to ViewStorageModal, verify all references updated
+      or removed
+
+- [ ] T218 [P] Search codebase for "Move" menu item text: Verify no hardcoded "Move"
+      menu item text remains (should be "Manage Location"), check internationalization
+      files
+
+- [ ] T219 [P] Search codebase for "View Storage" menu item text: Verify no
+      hardcoded "View Storage" menu item text remains (should be "Manage Location"),
+      check internationalization files
+
+- [ ] T220 [P] Update internationalization message keys in
+      `frontend/src/languages/en.json`, `fr.json`, `sw.json`: Remove
+      storage.move.sample and storage.view.storage keys if separate, add/update
+      storage.manage.location key, verify all modal-related keys updated
+
+### Validation - Run All Tests and Verify Cleanup
+
+- [ ] T221 Run frontend unit tests → Verify all PASS:
+      `npm test -- LocationManagementModal SampleActionsOverflowMenu`
+
+- [ ] T222 Run Cypress E2E tests → Verify all PASS:
+      `npm run cy:run -- --spec "cypress/e2e/storageMovement.cy.js"`
+
+- [ ] T223 [P] Verify no broken imports: Run `npm run build` or equivalent build
+      command, verify no import errors for MoveSampleModal or ViewStorageModal
+
+- [ ] T224 [P] Verify no console errors: Open application in browser, test
+      LocationManagementModal in both assignment and movement modes, verify no
+      console errors or warnings
+
+- [ ] T225 [P] Code review consolidation: Review LocationManagementModal component,
+      verify all functionality from MoveSampleModal and ViewStorageModal is present,
+      verify no duplicate code, verify proper conditional rendering
+
+- [ ] T226 [P] Verify test coverage: Run test coverage report, verify
+      LocationManagementModal has adequate test coverage (>70% per constitution),
+      verify no uncovered code paths
+
+**Checkpoint**: Modal consolidation complete. LocationManagementModal handles both
+assignment and movement workflows. All tests updated and passing. No artifacts from
+previous approach remain. Overflow menu shows "Manage Location" instead of
+separate "Move" and "View Storage" items.
+
+---
+
+## Phase 6: Location CRUD Operations Implementation
+
+**Purpose**: Implement full CRUD operations for location tabs (Rooms, Devices, Shelves, Racks) with overflow menu actions (Edit, Delete) per FR-037f through FR-037v. Each location entity can be edited via modal dialog and deleted with validation constraints.
+
+**Goal**: Users can edit location fields (except Code and Parent which are read-only) and delete locations with constraint validation (child locations, active samples).
+
+**Independent Test**: Edit a room's name and description, verify changes saved. Attempt to delete a room with child devices, verify error message displayed. Delete a room with no constraints, verify deletion successful.
+
+**Dependencies**: Requires Phase 2 (Foundational) AND Phase 3 early infrastructure (T032-T039: DAOs, StorageLocationService, StorageLocationRestController). Can start as soon as service layer and controller infrastructure exists - does NOT need full Phase 3 completion (sample assignment, frontend widgets, dashboard).
+
+### Tests First - Backend Integration Tests (Write BEFORE implementation)
+
+- [ ] T099 [P] Write integration test
+      `src/test/java/org/openelisglobal/storage/controller/StorageLocationRestControllerTest.java`
+      for Edit Location operations: testUpdateRoom_UpdatesEditableFields (update room name, description, status), testUpdateRoom_CodeReadOnly (attempt to update code, verify rejected or ignored), testUpdateDevice_UpdatesEditableFields (update device name, type, temperature, capacity), testUpdateDevice_ParentReadOnly (attempt to change parent room, verify rejected), testUpdateShelf_UpdatesEditableFields (update shelf label, capacity, status), testUpdateRack_UpdatesEditableFields (update rack label, dimensions, status), testUpdateLocation_CodeUniquenessValidation (attempt duplicate code, verify error), testUpdateLocation_InvalidData_Returns400 (invalid field values return 400)
+
+- [ ] T100 [P] Write integration test
+      `src/test/java/org/openelisglobal/storage/controller/StorageLocationRestControllerTest.java`
+      for Delete Location operations: testDeleteRoom_WithChildDevices_ReturnsError (cannot delete room with devices), testDeleteRoom_WithActiveSamples_ReturnsError (cannot delete room with active samples), testDeleteRoom_NoConstraints_DeletesSuccessfully (delete room with no children/samples), testDeleteDevice_WithChildShelves_ReturnsError (cannot delete device with shelves), testDeleteDevice_WithActiveSamples_ReturnsError (cannot delete device with active samples), testDeleteShelf_WithChildRacks_ReturnsError (cannot delete shelf with racks), testDeleteRack_WithActiveSamples_ReturnsError (cannot delete rack with active samples), testDeleteLocation_ReturnsConstraintMessage (error message includes specific reason), testDeleteLocation_ConfirmationRequired (successful deletion requires confirmation, handled in frontend)
+
+- [ ] T101 Run backend integration tests → Verify all FAIL:
+      `mvn test -Dtest="StorageLocationRestControllerTest"`
+
+### Tests First - Backend Service Unit Tests (Write BEFORE implementation)
+
+- [ ] T102 [P] Write unit test
+      `src/test/java/org/openelisglobal/storage/service/StorageLocationServiceImplTest.java`
+      for constraint validation: testValidateDeleteConstraints_RoomWithDevices_ReturnsFalse (room with devices cannot be deleted), testValidateDeleteConstraints_RoomWithActiveSamples_ReturnsFalse (room with samples cannot be deleted), testValidateDeleteConstraints_DeviceWithShelves_ReturnsFalse (device with shelves cannot be deleted), testValidateDeleteConstraints_LocationNoConstraints_ReturnsTrue (location with no constraints can be deleted), testGetDeleteConstraintMessage_RoomWithDevices_ReturnsMessage (error message for room with devices), testGetDeleteConstraintMessage_DeviceWithSamples_ReturnsMessage (error message for device with samples)
+
+- [ ] T103 [P] Write unit test
+      `src/test/java/org/openelisglobal/storage/service/StorageLocationServiceImplTest.java`
+      for update validation: testUpdateLocation_CodeUniquenessCheck (verify code uniqueness validation), testUpdateLocation_ReadOnlyFieldsIgnored (code and Parent fields not updated even if provided)
+
+- [ ] T104 Run backend service unit tests → Verify all FAIL:
+      `mvn test -Dtest="StorageLocationServiceImplTest"`
+
+### Tests First - Frontend Unit Tests (Write BEFORE implementation)
+
+- [ ] T105 [P] Write unit test
+      `frontend/src/components/storage/__tests__/LocationActionsOverflowMenu.test.jsx`
+      for overflow menu: testOverflowMenu_RendersEditAndDelete (menu renders with Edit and Delete items), testOverflowMenu_EditOpensModal (clicking Edit opens EditLocationModal), testOverflowMenu_DeleteOpensModal (clicking Delete opens DeleteLocationModal), testOverflowMenu_KeyboardAccessible (menu accessible via keyboard navigation)
+
+- [ ] T106 [P] Write unit test
+      `frontend/src/components/storage/__tests__/EditLocationModal.test.jsx`
+      for edit modal: testEditModal_RendersForRoom (modal renders with Room fields), testEditModal_RendersForDevice (modal renders with Device fields), testEditModal_CodeFieldReadOnly (code field is disabled/read-only), testEditModal_ParentFieldReadOnly (parent field is disabled/read-only), testEditModal_EditableFieldsEnabled (name, description, status fields are editable), testEditModal_ValidationErrors (displays validation errors for duplicate code), testEditModal_SaveCallsAPI (save button calls PUT endpoint), testEditModal_CancelClosesModal (cancel button closes modal without saving)
+
+- [ ] T107 [P] Write unit test
+      `frontend/src/components/storage/__tests__/DeleteLocationModal.test.jsx`
+      for delete modal: testDeleteModal_WithConstraints_ShowsError (shows error message if constraints exist), testDeleteModal_NoConstraints_ShowsConfirmation (shows confirmation dialog if no constraints), testDeleteModal_ConfirmationRequired (confirm button disabled until user confirms), testDeleteModal_DeleteCallsAPI (delete button calls DELETE endpoint), testDeleteModal_CancelClosesModal (cancel button closes modal without deleting)
+
+- [ ] T108 Run frontend unit tests → Verify all FAIL:
+      `npm test -- LocationActionsOverflowMenu.test.jsx EditLocationModal.test.jsx DeleteLocationModal.test.jsx`
+
+### Implementation - Backend Service Layer
+
+- [ ] T109 Add validateDeleteConstraints() method to StorageLocationService interface
+      `src/main/java/org/openelisglobal/storage/service/StorageLocationService.java`: Method signature `boolean validateDeleteConstraints(Object locationEntity)` - Check for child locations and active samples
+
+- [ ] T110 Add canDeleteLocation() method to StorageLocationService interface
+      `src/main/java/org/openelisglobal/storage/service/StorageLocationService.java`: Method signature `boolean canDeleteLocation(Object locationEntity)` - Returns boolean with reason if false
+
+- [ ] T111 Add getDeleteConstraintMessage() method to StorageLocationService interface
+      `src/main/java/org/openelisglobal/storage/service/StorageLocationService.java`: Method signature `String getDeleteConstraintMessage(Object locationEntity)` - Returns user-friendly error message
+
+- [ ] T112 Implement validateDeleteConstraints() method in StorageLocationServiceImpl
+      `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`: Check for child locations (room has devices, device has shelves, shelf has racks), check for active samples in location or child locations, return false if constraints exist
+
+- [ ] T113 Implement canDeleteRoom() method in StorageLocationServiceImpl
+      `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`: Check deviceDAO.countByRoomId(room.getId()) > 0, check sampleStorageService.hasActiveSamplesInLocation(room.getId(), "room"), return false if constraints exist
+
+- [ ] T114 Implement canDeleteDevice() method in StorageLocationServiceImpl
+      `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`: Check shelfDAO.countByDeviceId(device.getId()) > 0, check sampleStorageService.hasActiveSamplesInLocation(device.getId(), "device"), return false if constraints exist
+
+- [ ] T115 Implement canDeleteShelf() method in StorageLocationServiceImpl
+      `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`: Check rackDAO.countByShelfId(shelf.getId()) > 0, check sampleStorageService.hasActiveSamplesInLocation(shelf.getId(), "shelf"), return false if constraints exist
+
+- [ ] T116 Implement canDeleteRack() method in StorageLocationServiceImpl
+      `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`: Check sampleStorageService.hasActiveSamplesInLocation(rack.getId(), "rack"), return false if constraints exist
+
+- [ ] T117 Implement getDeleteConstraintMessage() method in StorageLocationServiceImpl
+      `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`: Return user-friendly error message (e.g., "Cannot delete Room 'Main Laboratory' because it contains 8 devices" or "Cannot delete Device 'Freezer Unit 1' because 287 active samples are stored there")
+
+- [ ] T118 Update update() methods in StorageLocationServiceImpl to ignore Code and Parent fields
+      `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`: Update updateRoom(), updateDevice(), updateShelf(), updateRack() methods to ignore code and parent fields if provided in request, only update editable fields (name, description, status, type, temperature, capacity, dimensions)
+
+- [ ] T119 Run backend service unit tests → Verify all PASS:
+      `mvn test -Dtest="StorageLocationServiceImplTest"`
+
+### Implementation - Backend REST Controllers
+
+- [ ] T120 Update PUT /rest/storage/rooms/{id} endpoint in StorageLocationRestController
+      `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`: Ensure endpoint validates editable fields only (name, description, active), ignores code field if provided, returns 400 for validation errors (duplicate code, invalid data), returns 404 if room not found
+
+- [ ] T121 [P] Update PUT /rest/storage/devices/{id} endpoint in StorageLocationRestController
+      `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`: Ensure endpoint validates editable fields only (name, type, temperature, capacity, active), ignores code and parentRoom fields if provided, returns 400 for validation errors, returns 404 if device not found
+
+- [ ] T122 [P] Update PUT /rest/storage/shelves/{id} endpoint in StorageLocationRestController
+      `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`: Ensure endpoint validates editable fields only (label, capacity, active), ignores parentDevice field if provided, returns 400 for validation errors, returns 404 if shelf not found
+
+- [ ] T123 [P] Update PUT /rest/storage/racks/{id} endpoint in StorageLocationRestController
+      `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`: Ensure endpoint validates editable fields only (label, dimensions rows/columns, positionSchemaHint, active), ignores parentShelf field if provided, returns 400 for validation errors, returns 404 if rack not found
+
+- [ ] T124 Add DELETE /rest/storage/rooms/{id} endpoint in StorageLocationRestController
+      `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`: Validate constraints using canDeleteRoom(), return 409 Conflict with constraint message if constraints exist, return 200 if deletion successful, return 404 if room not found
+
+- [ ] T125 [P] Add DELETE /rest/storage/devices/{id} endpoint in StorageLocationRestController
+      `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`: Validate constraints using canDeleteDevice(), return 409 Conflict with constraint message if constraints exist, return 200 if deletion successful, return 404 if device not found
+
+- [ ] T126 [P] Add DELETE /rest/storage/shelves/{id} endpoint in StorageLocationRestController
+      `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`: Validate constraints using canDeleteShelf(), return 409 Conflict with constraint message if constraints exist, return 200 if deletion successful, return 404 if shelf not found
+
+- [ ] T127 [P] Add DELETE /rest/storage/racks/{id} endpoint in StorageLocationRestController
+      `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`: Validate constraints using canDeleteRack(), return 409 Conflict with constraint message if constraints exist, return 200 if deletion successful, return 404 if rack not found
+
+- [ ] T128 Run backend integration tests → Verify all PASS:
+      `mvn test -Dtest="StorageLocationRestControllerTest"`
+
+### Implementation - Frontend Components
+
+- [ ] T129 Create LocationActionsOverflowMenu component
+      `frontend/src/components/storage/LocationManagement/LocationActionsOverflowMenu.jsx`: Similar structure to SampleActionsOverflowMenu.jsx, uses Carbon Design System OverflowMenu component, displays two menu items (Edit, Delete), props: location (entity object), onEdit, onDelete callbacks, accessible via keyboard navigation and screen readers
+
+- [ ] T130 Create EditLocationModal component
+      `frontend/src/components/storage/LocationManagement/EditLocationModal.jsx`: Generic component that adapts to entity type (Room/Device/Shelf/Rack), displays editable fields based on entity type (Room: name, description, status; Device: name, type, temperature, capacity, status; Shelf: label, capacity, status; Rack: label, dimensions, status), code and Parent fields disabled/read-only, validates code uniqueness, uses Carbon Design System Modal component, calls PUT /rest/storage/{entityType}/{id} endpoint on save, displays Cancel and "Save Changes" buttons in footer
+
+- [ ] T131 Create DeleteLocationModal component
+      `frontend/src/components/storage/LocationManagement/DeleteLocationModal.jsx`: Checks constraints via API call before showing confirmation, displays error message if constraints exist (409 Conflict response), shows confirmation dialog with warning if no constraints (e.g., "Are you sure you want to delete [Location Name]? This action cannot be undone."), uses Carbon Design System Modal component with destructive action styling for confirm button, calls DELETE /rest/storage/{entityType}/{id} endpoint on confirm, displays Cancel and "Confirm Delete" buttons in footer
+
+- [ ] T132 Update StorageDashboard component to integrate LocationActionsOverflowMenu
+      `frontend/src/components/storage/StorageDashboard.jsx`: Replace placeholder action buttons (⋮) in Rooms, Devices, Shelves, Racks table rows with LocationActionsOverflowMenu component, add state management for Edit and Delete modals (editModalOpen, deleteModalOpen, selectedLocation, selectedLocationType), handle modal open/close callbacks (onEdit, onDelete), handle API calls for PUT and DELETE operations, refresh table data after Edit/Delete operations, display success/error notifications
+
+- [ ] T133 Run frontend unit tests → Verify all PASS:
+      `npm test -- LocationActionsOverflowMenu.test.jsx EditLocationModal.test.jsx DeleteLocationModal.test.jsx`
+
+### Tests First - Frontend E2E Tests (Write BEFORE final verification)
+
+- [ ] T134 [P] Write Cypress E2E test
+      `frontend/cypress/e2e/storageLocationCRUD.cy.js` for Edit Location operations: testEditRoom_UpdatesNameAndDescription (edit room name and description), testEditDevice_UpdatesTypeAndCapacity (edit device type and capacity), testEditLocation_CodeReadOnly (verify code field cannot be edited), testEditLocation_ValidationErrors (verify duplicate code validation)
+
+- [ ] T135 [P] Write Cypress E2E test
+      `frontend/cypress/e2e/storageLocationCRUD.cy.js` for Delete Location operations: testDeleteRoom_WithDevices_ShowsError (attempt to delete room with devices), testDeleteDevice_WithSamples_ShowsError (attempt to delete device with samples), testDeleteLocation_NoConstraints_Deletes (delete location with no constraints), testDeleteLocation_ConfirmationRequired (verify confirmation dialog appears)
+
+- [ ] T136 Run Cypress E2E tests → Verify Location CRUD scenarios work:
+      `npm run cy:run -- --spec "cypress/e2e/storageLocationCRUD.cy.js"`
+
+**Checkpoint**: Location CRUD Operations complete. Users can edit location fields (except Code and Parent which are read-only) via modal dialog, delete locations with constraint validation (child locations, active samples), overflow menu appears on all location table rows, table refreshes after Edit/Delete operations.
+
+---
+
+## Phase 7: Polish & Cross-Cutting Concerns
 
 **Purpose**: Final integration, optimization, and validation across all user
 stories
 
-- [ ] T099 [P] Add database indexes verification: Run EXPLAIN ANALYZE on common
+- [ ] T137 [P] Add database indexes verification: Run EXPLAIN ANALYZE on common
       queries (sample search by location, hierarchical path lookups), verify
       indexes used
-- [ ] T100 [P] Verify internationalization completeness: Audit all UI
+- [ ] T138 [P] Verify internationalization completeness: Audit all UI
       components, confirm NO hardcoded English strings, all use React Intl
       message keys
-- [ ] T101 [P] Code formatting: Backend `mvn spotless:apply`, Frontend
+- [ ] T139 [P] Code formatting: Backend `mvn spotless:apply`, Frontend
       `npm run format`
-- [ ] T102 Test coverage report: Run `mvn verify` for JaCoCo coverage,
+- [ ] T140 Test coverage report: Run `mvn verify` for JaCoCo coverage,
       verify >70% for new storage code, run `npm test -- --coverage` for Jest
       coverage
-- [ ] T103 FHIR validation end-to-end: Query FHIR server for all Location
+- [ ] T141 FHIR validation end-to-end: Query FHIR server for all Location
       resources, verify hierarchy complete, verify immediate FHIR sync working
       for all entities, verify Specimen.container links correct
-- [ ] T104 Run full test suite: `mvn clean install` (all backend tests) and
+- [ ] T142 Run full test suite: `mvn clean install` (all backend tests) and
       `npm run cy:run` (all E2E tests), verify all pass
-- [ ] T105 Update documentation: Add any missing details to quickstart.md based
+- [ ] T143 Update documentation: Add any missing details to quickstart.md based
       on implementation learnings
 
 ---
 
-## Phase 7: Constitution Compliance Verification (OpenELIS Global 3.0)
+## Phase 8: Constitution Compliance Verification (OpenELIS Global 3.0)
 
 **Purpose**: Verify feature adheres to all applicable constitution principles
 
@@ -1357,27 +1706,27 @@ stories
 
 **Note**: Permission enforcement testing deferred to post-POC
 
-- [ ] T106 **Configuration-Driven**: Verify no country-specific code branches
+- [ ] T144 **Configuration-Driven**: Verify no country-specific code branches
       introduced, confirm position coordinates remain free-text (no validation)
-- [ ] T107 **Carbon Design System**: Audit all UI components, confirm
+- [ ] T145 **Carbon Design System**: Audit all UI components, confirm
       @carbon/react used exclusively (NO Bootstrap/Tailwind/custom CSS)
-- [ ] T108 **FHIR/IHE Compliance**: Validate FHIR Location resources against R4
+- [ ] T146 **FHIR/IHE Compliance**: Validate FHIR Location resources against R4
       profiles using
       `curl -X POST https://fhir.openelis.org:8443/fhir/Location/$validate`,
       verify IHE mCSD hierarchical queries work, verify immediate sync pattern
       working for all entities
-- [ ] T109 **Layered Architecture**: Code review storage module, verify 5-layer
+- [ ] T147 **Layered Architecture**: Code review storage module, verify 5-layer
       pattern followed (NO DAO calls from controllers, NO business logic in
       DAOs, NO class-level variables in controllers)
-- [ ] T110 **Test Coverage**: Run coverage reports - confirm >70% for new
+- [ ] T148 **Test Coverage**: Run coverage reports - confirm >70% for new
       storage code: `mvn jacoco:report` (check target/site/jacoco/index.html),
       `npm test -- --coverage`
-- [ ] T111 **Schema Management**: Verify ALL database changes used Liquibase
+- [ ] T149 **Schema Management**: Verify ALL database changes used Liquibase
       changesets (NO direct SQL in code), verify rollback scripts present
-- [ ] T112 **Internationalization**: Grep for hardcoded strings:
+- [ ] T150 **Internationalization**: Grep for hardcoded strings:
       `grep -r '"[A-Z]' frontend/src/components/storage/` should return NO
       results (all strings via React Intl)
-- [ ] T113 **Security & Compliance**: Verify audit trail (all entities have
+- [ ] T151 **Security & Compliance**: Verify audit trail (all entities have
       sys_user_id + lastupdated), verify input validation (Hibernate Validator
       annotations present). **Permission enforcement testing deferred to
       post-POC**
@@ -1415,10 +1764,15 @@ Phase 2 (Foundational) ← BLOCKS all user stories
     │    └──> Phase 2.6 (Flexible Assignment Architecture) ← BLOCKS Phase 3 (US1) and Phase 5 (US2B)
     │         ↓
     │         ├──> Phase 3 (US1 - Assignment) ← Can run in parallel ──┐
-    │         └──> Phase 5 (US2B - Movement)  ← Can run in parallel ──┼─> Phase 6 (Polish)
-    │
+    │         │    ├──> Early Infrastructure (T032-T039: DAOs, Service, Controller) ──┐
+    │         │    └──> Rest of Phase 3 (Sample Assignment, Frontend Widgets)          │
+    │         │                                                                        │
+    │         └──> Phase 5 (US2B - Movement)  ← Can run in parallel ──┼─> Phase 6 (Location CRUD)
+    │                                                                  │    (needs only T032-T039)
     ├──> Phase 4 (US2A - Search)    ← Can run in parallel ───────────┘         ↓
-                                                                      Phase 7 (Compliance)
+                                                                      Phase 7 (Polish)
+                                                                         ↓
+                                                                      Phase 8 (Compliance)
 ```
 
 ### User Story Dependencies
@@ -1431,6 +1785,11 @@ Phase 2 (Foundational) ← BLOCKS all user stories
   Hierarchy Update), AND Phase 2.6 (Flexible Assignment Architecture) - Requires
   position hierarchy structure with 2-5 level support and flexible assignment
   architecture. Requires US1 for initial assignment, but can mock for testing
+- **Location CRUD (Phase 6)**: Depends on Phase 2 (Foundational) AND Phase 3
+  early infrastructure (T032-T039: DAOs, StorageLocationService,
+  StorageLocationRestController) - Can start as soon as service layer and
+  controller infrastructure exists, does NOT need full Phase 3 completion (sample
+  assignment, frontend widgets, dashboard)
 
 ### Task Dependencies Within Phases
 
@@ -1483,13 +1842,22 @@ Phase 2 (Foundational) ← BLOCKS all user stories
 - T082-T083 (Tests) can run in parallel
 - T091-T092 (Frontend tests) can run in parallel
 
-**Phase 6 (Polish)**:
+**Phase 6 (Location CRUD)**:
 
-- T101-T104 can run in parallel
+- T099-T100 (Backend integration tests) can run in parallel
+- T102-T103 (Backend service unit tests) can run in parallel
+- T105-T107 (Frontend unit tests) can run in parallel
+- T121-T123 (PUT endpoints for devices/shelves/racks) can run in parallel
+- T125-T127 (DELETE endpoints for devices/shelves/racks) can run in parallel
+- T134-T135 (E2E tests) can run in parallel
 
-**Phase 7 (Compliance)**:
+**Phase 7 (Polish)**:
 
-- T108-T115 can run in parallel (different verification aspects)
+- T137-T139 can run in parallel
+
+**Phase 8 (Compliance)**:
+
+- T144-T150 can run in parallel (different verification aspects)
 
 ---
 
@@ -1561,6 +1929,42 @@ Task T059: "Implement useSampleStorage hook"
 # Different files, no dependencies
 ```
 
+### Phase 6 - Parallel Location CRUD Tests
+
+```bash
+# All backend integration tests can be written simultaneously:
+Task T099: "Write Edit Location integration tests"
+Task T100: "Write Delete Location integration tests"
+# Both test different operations, no conflicts
+
+# All backend service unit tests can be written simultaneously:
+Task T102: "Write constraint validation unit tests"
+Task T103: "Write update validation unit tests"
+# Both test different aspects, no conflicts
+
+# All frontend unit tests can be written simultaneously:
+Task T105: "Write LocationActionsOverflowMenu test"
+Task T106: "Write EditLocationModal test"
+Task T107: "Write DeleteLocationModal test"
+# All different components, can be done by different developers
+```
+
+### Phase 6 - Parallel Endpoint Updates
+
+```bash
+# PUT endpoints for devices/shelves/racks can be updated simultaneously:
+Task T121: "Update PUT /rest/storage/devices/{id}"
+Task T122: "Update PUT /rest/storage/shelves/{id}"
+Task T123: "Update PUT /rest/storage/racks/{id}"
+# All different endpoints, no conflicts
+
+# DELETE endpoints for devices/shelves/racks can be added simultaneously:
+Task T125: "Add DELETE /rest/storage/devices/{id}"
+Task T126: "Add DELETE /rest/storage/shelves/{id}"
+Task T127: "Add DELETE /rest/storage/racks/{id}"
+# All different endpoints, no conflicts
+```
+
 ### Cross-Story Parallelization
 
 ```bash
@@ -1569,8 +1973,18 @@ Developer A: Phase 3 (US1 - Assignment) ← Can start after Phase 2
 Developer B: Phase 4 (US2A - Search) ← Can start after Phase 2
 Developer C: Phase 2.5 (Position Hierarchy Update) ← Must complete before Phase 5
 Developer D: Phase 5 (US2B - Movement) ← Requires Phase 2.5
+
+# Phase 6 can start as soon as Phase 3 early infrastructure (T032-T039) completes:
+Developer A (continuing): Phase 3 early infrastructure (T032-T039: DAOs, Service, Controller)
+Developer E: Phase 6 (Location CRUD) ← Can start IMMEDIATELY after T032-T039 complete
+# Phase 6 does NOT need to wait for:
+#   - Sample assignment logic (T042-T050)
+#   - Frontend widgets (T051-T063)
+#   - Dashboard components (T062b-T066k)
+
 # US1 and US2A are independent, can be worked simultaneously
 # US2B requires Phase 2.5 position hierarchy structure update
+# Phase 6 can be worked in parallel with rest of Phase 3, Phase 4, and Phase 5
 ```
 
 ---
@@ -1640,7 +2054,7 @@ eliminating "unknown location" problem
 
 ## Task Summary
 
-**Total Tasks**: 204
+**Total Tasks**: 251
 
 | Phase                          | Task Count | Parallel Opportunities        | Test Tasks   | Implementation Tasks |
 | ------------------------------ | ---------- | ----------------------------- | ------------ | -------------------- |
@@ -1651,24 +2065,27 @@ eliminating "unknown location" problem
 | Phase 3: US1 (Assignment)      | 70         | 25 (tests, DAOs, hooks)       | 25           | 45                   |
 | Phase 4: US2A (Search)         | 18         | 6 (tests)                     | 6            | 12                   |
 | Phase 5: US2B (Movement)       | 33         | 10 (tests)                    | 10           | 23                   |
-| Phase 6: Polish                | 7          | 4                             | 0            | 7                    |
-| Phase 7: Compliance            | 8          | 7 (most)                      | 0            | 8                    |
-| **TOTAL**                      | **204**    | **87 (43%)**                  | **50 (25%)** | **154 (75%)**        |
+| Phase 6: Location CRUD        | 38         | 15 (tests, parallel endpoints)| 15           | 23                   |
+| Phase 7: Polish                | 7          | 4                             | 0            | 7                    |
+| Phase 8: Compliance            | 8          | 7 (most)                      | 0            | 8                    |
+| **TOTAL**                      | **251**    | **113 (45%)**                 | **65 (26%)** | **186 (74%)**        |
 
-**Test-to-Implementation Ratio**: 50 test tasks, 154 implementation tasks (1:3.1
+**Test-to-Implementation Ratio**: 65 test tasks, 186 implementation tasks (1:2.9
 ratio indicates strong test coverage)
 
-**Parallelization**: 42% of tasks can run in parallel (87 marked with [P])
+**Parallelization**: 45% of tasks can run in parallel (113 marked with [P])
 
 **Story Breakdown**:
 
-- **US1 + Dashboard (P4)**: 70 tasks (43% of total) - Largest story, includes
+- **US1 + Dashboard (P4)**: 70 tasks (28% of total) - Largest story, includes
   dashboard with metric card, filters, tab-specific search, and two-tier widget
   structure (compact + modal)
-- **US2A**: 18 tasks (11% of total) - Builds on US1, includes quick-find search
+- **US2A**: 18 tasks (7% of total) - Builds on US1, includes quick-find search
   for results workflow
-- **US2B**: 33 tasks (20% of total) - Adds movement, overflow menu, and three
+- **US2B**: 33 tasks (13% of total) - Adds movement, overflow menu, and three
   modals (Move, Dispose, View Storage) on top of assignment
+- **Location CRUD**: 38 tasks (15% of total) - Adds Edit and Delete operations
+  for location tabs (Rooms, Devices, Shelves, Racks) with constraint validation
 
 ---
 

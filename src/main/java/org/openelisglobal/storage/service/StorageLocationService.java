@@ -79,4 +79,30 @@ public interface StorageLocationService {
      * @return List of matching locations as Maps with hierarchicalPath field
      */
     List<Map<String, Object>> searchLocations(String searchTerm);
+
+    // Phase 6: Location CRUD Operations - Constraint Validation Methods
+
+    /**
+     * Validate if a location entity can be deleted (no child locations, no active samples)
+     * 
+     * @param locationEntity Location entity to validate (Room, Device, Shelf, or Rack)
+     * @return true if location can be deleted, false if constraints exist
+     */
+    boolean validateDeleteConstraints(Object locationEntity);
+
+    /**
+     * Check if a location can be deleted
+     * 
+     * @param locationEntity Location entity to check
+     * @return true if location can be deleted, false if constraints exist
+     */
+    boolean canDeleteLocation(Object locationEntity);
+
+    /**
+     * Get user-friendly error message explaining why a location cannot be deleted
+     * 
+     * @param locationEntity Location entity that cannot be deleted
+     * @return Error message explaining the constraint (e.g., "Cannot delete Room 'Main Laboratory' because it contains 8 devices")
+     */
+    String getDeleteConstraintMessage(Object locationEntity);
 }
