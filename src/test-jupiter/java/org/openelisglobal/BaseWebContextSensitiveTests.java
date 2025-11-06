@@ -40,7 +40,7 @@ import java.sql.Statement;
 @TestPropertySource("classpath:common.properties")
 @ActiveProfiles("test")
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-public abstract class BaseWebContextSensitiveJupiterTests {
+public abstract class BaseWebContextSensitiveTests {
 
     @Autowired
     protected WebApplicationContext webApplicationContext;
