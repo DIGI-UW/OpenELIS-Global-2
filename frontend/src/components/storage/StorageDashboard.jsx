@@ -29,6 +29,7 @@ import { NotificationContext } from "../layout/Layout";
 import StorageLocationsMetricCard from "./StorageDashboard/StorageLocationsMetricCard";
 import LocationFilterDropdown from "./StorageDashboard/LocationFilterDropdown";
 import SampleActionsContainer from "./SampleStorage/SampleActionsContainer";
+import { useSampleStorage } from "./hooks/useSampleStorage";
 import "./StorageDashboard.css";
 
 const TAB_ROUTES = ["samples", "rooms", "devices", "shelves", "racks"];
@@ -40,6 +41,7 @@ const StorageDashboard = () => {
   const componentMounted = useRef(true);
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+  const { moveSample, isSubmitting: isMovingSample } = useSampleStorage();
 
   // Metric cards state
   const [metrics, setMetrics] = useState({
@@ -947,14 +949,14 @@ const StorageDashboard = () => {
         type: (
           <Tag
             type={
-              device.type === "freezer"
+              device.deviceType === "freezer"
                 ? "blue"
-                : device.type === "refrigerator"
+                : device.deviceType === "refrigerator"
                   ? "cyan"
                   : "gray"
             }
           >
-            {device.type || ""}
+            {device.deviceType || ""}
           </Tag>
         ),
         occupancy: (
@@ -1134,13 +1136,192 @@ const StorageDashboard = () => {
             status: sample.status || "Active",
             location: sample.location || sample.hierarchicalPath || "",
           }}
-          onMoveConfirm={(sample, newLocation, reason) => {
-            console.log("Move sample confirmed", {
-              sample,
-              newLocation,
-              reason,
-            });
-            // TODO: Implement API call to move sample
+          onMoveConfirm={async (moveData) => {
+            // moveData format: { sample: { id, sampleId, type, status }, newLocation: {...}, reason: "..." }
+            const { sample, newLocation, reason } = moveData;
+            
+            try {
+              // Build movement data from newLocation
+              // newLocation can be in EnhancedCascadingMode format: { room, device, shelf, rack, position }
+              // or LocationFilterDropdown format: { id, type, name, hierarchical_path }
+              let targetPositionId = null;
+              
+              // Validate minimum 2 levels (room + device) per FR-033a
+              const hasRoom = newLocation.room && (newLocation.room.id || newLocation.room.name);
+              const hasDevice = newLocation.device && (newLocation.device.id || newLocation.device.name);
+              
+              if (!hasRoom || !hasDevice) {
+                throw new Error("Room and Device are required (minimum 2 levels)");
+              }
+              
+              if (newLocation.id && newLocation.type) {
+                // LocationFilterDropdown format - handle different types
+                if (newLocation.type === "position") {
+                  targetPositionId = newLocation.id;
+                } else if (newLocation.type === "rack") {
+                  // For rack, find unoccupied position in that rack
+                  await new Promise((resolve, reject) => {
+                    getFromOpenElisServer('/rest/storage/positions', (allPositions) => {
+                      try {
+                        if (!allPositions || !Array.isArray(allPositions)) {
+                          reject(new Error("Failed to fetch positions"));
+                          return;
+                        }
+                        const rackPosition = allPositions.find(p => 
+                          p.parentRackId === newLocation.id && 
+                          !p.occupied
+                        );
+                        if (rackPosition) {
+                          targetPositionId = rackPosition.id;
+                          resolve();
+                        } else {
+                          reject(new Error("No available position in selected rack. Please select a specific position."));
+                        }
+                      } catch (error) {
+                        reject(new Error("Could not find a position in the selected rack."));
+                      }
+                    });
+                  });
+                } else if (newLocation.type === "shelf") {
+                  // For shelf, find unoccupied position at shelf level (no rack)
+                  await new Promise((resolve, reject) => {
+                    getFromOpenElisServer('/rest/storage/positions', (allPositions) => {
+                      try {
+                        if (!allPositions || !Array.isArray(allPositions)) {
+                          reject(new Error("Failed to fetch positions"));
+                          return;
+                        }
+                        const shelfPosition = allPositions.find(p => 
+                          p.parentShelfId === newLocation.id && 
+                          !p.parentRackId &&
+                          !p.occupied
+                        );
+                        if (shelfPosition) {
+                          targetPositionId = shelfPosition.id;
+                          resolve();
+                        } else {
+                          reject(new Error("No available position at shelf level. Please select a rack or specific position."));
+                        }
+                      } catch (error) {
+                        reject(new Error("Could not find a position at the shelf level."));
+                      }
+                    });
+                  });
+                } else if (newLocation.type === "device") {
+                  // For device, find unoccupied position at device level (no shelf/rack)
+                  await new Promise((resolve, reject) => {
+                    getFromOpenElisServer('/rest/storage/positions', (allPositions) => {
+                      try {
+                        if (!allPositions || !Array.isArray(allPositions)) {
+                          reject(new Error("Failed to fetch positions"));
+                          return;
+                        }
+                        const devicePosition = allPositions.find(p => 
+                          p.parentDeviceId === newLocation.id && 
+                          !p.parentShelfId &&
+                          !p.parentRackId &&
+                          !p.occupied
+                        );
+                        if (devicePosition) {
+                          targetPositionId = devicePosition.id;
+                          resolve();
+                        } else {
+                          reject(new Error("No available position at device level. Please select a shelf, rack, or specific position."));
+                        }
+                      } catch (error) {
+                        reject(new Error("Could not find a position at the device level."));
+                      }
+                    });
+                  });
+                } else if (newLocation.type === "room") {
+                  // Room alone is not sufficient - need at least device
+                  throw new Error("Please select at least a device (minimum 2 levels: room + device).");
+                }
+              } else if (newLocation.position && newLocation.position.id) {
+                // EnhancedCascadingMode format with position ID
+                targetPositionId = newLocation.position.id;
+              } else if (newLocation.rack && newLocation.rack.id && newLocation.position && newLocation.position.coordinate) {
+                // EnhancedCascadingMode format with rack + position coordinate
+                // Need to find position by rack and coordinate
+                // For now, throw error - user must select a position from the dropdown
+                throw new Error("Please select a position from the dropdown. Position coordinate alone is not sufficient.");
+              } else if (newLocation.rack && newLocation.rack.id) {
+                // Only rack selected - need position
+                throw new Error("Please select a position. Rack selection alone is not sufficient.");
+              } else if (hasRoom && hasDevice) {
+                // Only room+device selected - find or create position at device level (2-level minimum per spec)
+                // Find existing unoccupied position at device level
+                const deviceId = newLocation.device.id;
+                
+                // Use Promise to handle async getFromOpenElisServer call
+                await new Promise((resolve, reject) => {
+                  getFromOpenElisServer('/rest/storage/positions', (allPositions) => {
+                    try {
+                      if (!allPositions || !Array.isArray(allPositions)) {
+                        reject(new Error("Failed to fetch positions"));
+                        return;
+                      }
+                      
+                      // Find unoccupied position at device level (has parentDevice matching deviceId, no shelf/rack)
+                      const deviceLevelPosition = allPositions.find(p => 
+                        p.parentDeviceId === deviceId && 
+                        !p.parentShelfId && 
+                        !p.parentRackId && 
+                        !p.occupied
+                      );
+                      
+                      if (deviceLevelPosition) {
+                        targetPositionId = deviceLevelPosition.id;
+                        resolve();
+                      } else {
+                        // No unoccupied device-level position found - user must select more specific location
+                        reject(new Error("No available position at device level. Please select a shelf, rack, or specific position."));
+                      }
+                    } catch (error) {
+                      console.error("Error finding device-level position:", error);
+                      reject(new Error("Could not find a position at device level. Please select a more specific location (shelf, rack, or position)."));
+                    }
+                  });
+                });
+              } else {
+                // Invalid selection
+                throw new Error("Please select at least room and device (minimum 2 levels).");
+              }
+              
+              if (!targetPositionId) {
+                throw new Error("Could not determine target position ID. Please ensure a complete location hierarchy is selected.");
+              }
+              
+              const movementData = {
+                sampleId: sample.sampleId || sample.id,
+                targetPositionId: targetPositionId,
+                reason: reason || null,
+              };
+              
+              await moveSample(movementData);
+              
+              // Refresh samples table and metrics after successful move
+              loadSamples();
+              loadMetrics();
+              
+              addNotification({
+                kind: "success",
+                title: intl.formatMessage({
+                  id: "storage.move.success",
+                  defaultMessage: "Sample moved successfully",
+                }),
+              });
+            } catch (error) {
+              console.error("Failed to move sample:", error);
+              addNotification({
+                kind: "error",
+                title: intl.formatMessage({
+                  id: "storage.move.error",
+                  defaultMessage: "Failed to move sample",
+                }),
+                subtitle: error.message || "",
+              });
+            }
           }}
           onDisposeConfirm={(sample, reason, method, notes) => {
             console.log("Dispose sample confirmed", {

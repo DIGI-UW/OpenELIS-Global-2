@@ -1,4 +1,3 @@
-import LoginPage from "../pages/LoginPage";
 import StorageAssignmentPage from "../pages/StorageAssignmentPage";
 
 /**
@@ -6,25 +5,17 @@ import StorageAssignmentPage from "../pages/StorageAssignmentPage";
  * Tests view storage modal UI components and editing functionality
  */
 
-let loginPage = null;
 let homePage = null;
 let storageAssignmentPage = null;
 
-before("Login and load fixtures", () => {
-  loginPage = new LoginPage();
-  loginPage.visit();
-  homePage = loginPage.goToHomePage();
-
-  // Load storage test fixtures
-  cy.loadStorageFixtures();
+before("Setup storage tests", () => {
+  cy.setupStorageTests().then((page) => {
+    homePage = page;
+  });
 });
 
-after("Clean up fixtures", () => {
-  if (Cypress.env("CLEANUP_FIXTURES")) {
-    cy.cleanStorageFixtures();
-  } else {
-    cy.log("Skipping fixture cleanup (CYPRESS_CLEANUP_FIXTURES=false)");
-  }
+after("Cleanup storage tests", () => {
+  cy.cleanupStorageTests();
 });
 
 describe("View Storage Modal - UI Components (P2B)", function () {

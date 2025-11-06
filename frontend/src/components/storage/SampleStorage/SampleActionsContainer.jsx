@@ -40,19 +40,19 @@ const SampleActionsContainer = ({
     setViewStorageModalOpen(true);
   };
 
-  const handleMoveConfirm = (sample, newLocation, reason) => {
+  const handleMoveConfirm = async (moveData) => {
+    // moveData format: { sample, newLocation, reason }
     if (onMoveConfirm) {
-      onMoveConfirm(sample, newLocation, reason);
-    }
-    setMoveModalOpen(false);
-    if (onNotification) {
-      onNotification({
-        kind: "success",
-        title: intl.formatMessage({
-          id: "storage.move.success",
-          defaultMessage: "Sample moved successfully",
-        }),
-      });
+      try {
+        await onMoveConfirm(moveData);
+        // Only close modal if move succeeds (no error thrown)
+        setMoveModalOpen(false);
+        // Note: Success notification is handled by parent component after API call succeeds
+      } catch (error) {
+        // Error notification is handled by parent component
+        // Don't close modal on error so user can retry
+        console.error("Move confirmation failed:", error);
+      }
     }
   };
 

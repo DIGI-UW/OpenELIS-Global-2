@@ -270,30 +270,51 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public boolean validateLocationActive(StoragePosition position) {
-        if (position == null || position.getParentRack() == null) {
+        if (position == null) {
             return false;
         }
 
-        StorageRack rack = position.getParentRack();
-        if (rack.getParentShelf() == null) {
+        // Validate parent_device_id exists (minimum 2 levels requirement)
+        if (position.getParentDevice() == null) {
             return false;
         }
 
-        StorageShelf shelf = rack.getParentShelf();
-        if (shelf.getParentDevice() == null) {
-            return false;
-        }
-
-        StorageDevice device = shelf.getParentDevice();
+        StorageDevice device = position.getParentDevice();
         if (device.getParentRoom() == null) {
             return false;
         }
 
         StorageRoom room = device.getParentRoom();
 
-        // Check entire hierarchy is active
-        return room.getActive() != null && room.getActive() && device.getActive() != null && device.getActive()
-                && shelf.getActive() != null && shelf.getActive() && rack.getActive() != null && rack.getActive();
+        // Validate hierarchy integrity: if rack exists, shelf must exist; if coordinate exists, rack must exist
+        if (!position.validateHierarchyIntegrity()) {
+            return false;
+        }
+
+        // Check room and device are active (minimum 2 levels)
+        if (room.getActive() == null || !room.getActive()) {
+            return false;
+        }
+        if (device.getActive() == null || !device.getActive()) {
+            return false;
+        }
+
+        // Check optional parents are active if they exist
+        if (position.getParentShelf() != null) {
+            StorageShelf shelf = position.getParentShelf();
+            if (shelf.getActive() == null || !shelf.getActive()) {
+                return false;
+            }
+        }
+
+        if (position.getParentRack() != null) {
+            StorageRack rack = position.getParentRack();
+            if (rack.getActive() == null || !rack.getActive()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     @Override
@@ -303,30 +324,38 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return "Unknown Location";
         }
 
-        if (position.getParentRack() == null) {
+        // Position always has parent_device (required), which has parent_room
+        if (position.getParentDevice() == null) {
             return "Unknown";
         }
 
-        StorageRack rack = position.getParentRack();
-        if (rack.getParentShelf() == null) {
-            return rack.getLabel() + " > Position " + position.getCoordinate();
-        }
-
-        StorageShelf shelf = rack.getParentShelf();
-        if (shelf.getParentDevice() == null) {
-            return shelf.getLabel() + " > " + rack.getLabel() + " > Position " + position.getCoordinate();
-        }
-
-        StorageDevice device = shelf.getParentDevice();
-        if (device.getParentRoom() == null) {
-            return device.getName() + " > " + shelf.getLabel() + " > " + rack.getLabel() + " > Position "
-                    + position.getCoordinate();
-        }
-
+        StorageDevice device = position.getParentDevice();
         StorageRoom room = device.getParentRoom();
+        if (room == null) {
+            return device.getName();
+        }
 
-        return room.getName() + " > " + device.getName() + " > " + shelf.getLabel() + " > " + rack.getLabel()
-                + " > Position " + position.getCoordinate();
+        StringBuilder path = new StringBuilder();
+        path.append(room.getName()).append(" > ").append(device.getName());
+
+        // Add shelf if present (3+ level position)
+        if (position.getParentShelf() != null) {
+            StorageShelf shelf = position.getParentShelf();
+            path.append(" > ").append(shelf.getLabel());
+
+            // Add rack if present (4+ level position)
+            if (position.getParentRack() != null) {
+                StorageRack rack = position.getParentRack();
+                path.append(" > ").append(rack.getLabel());
+
+                // Add coordinate if present (5-level position)
+                if (position.getCoordinate() != null && !position.getCoordinate().isEmpty()) {
+                    path.append(" > Position ").append(position.getCoordinate());
+                }
+            }
+        }
+
+        return path.toString();
     }
 
     // ========== REST API methods - prepare all data within transaction ==========
@@ -408,7 +437,8 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             map.put("id", device.getId());
             map.put("name", device.getName());
             map.put("code", device.getCode());
-            map.put("type", device.getTypeAsString());
+            map.put("type", "device"); // Hierarchy level: device is a location level
+            map.put("deviceType", device.getTypeAsString()); // Physical type: freezer, refrigerator, cabinet, etc.
             map.put("temperatureSetting", device.getTemperatureSetting());
             map.put("capacityLimit", device.getCapacityLimit());
             map.put("active", device.getActive());
@@ -468,14 +498,18 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
             // Add relationship data - all accessed within transaction
             if (parentDevice != null) {
-                map.put("deviceId", parentDevice.getId());
+                map.put("parentDeviceId", parentDevice.getId());
                 map.put("deviceName", parentDevice.getName());
                 map.put("parentDeviceName", parentDevice.getName());
             }
             if (parentRoom != null) {
-                map.put("roomId", parentRoom.getId());
+                map.put("parentRoomId", parentRoom.getId());
                 map.put("roomName", parentRoom.getName());
+                map.put("parentRoomName", parentRoom.getName());
             }
+
+            // Set type for consistency with searchLocations
+            map.put("type", "shelf");
 
             // Count occupied positions
             try {
@@ -544,19 +578,51 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             }
 
             if (parentShelf != null) {
-                map.put("shelfId", parentShelf.getId());
+                map.put("parentShelfId", parentShelf.getId());
                 map.put("shelfLabel", parentShelf.getLabel());
                 map.put("parentShelfLabel", parentShelf.getLabel());
             }
             if (parentDevice != null) {
-                map.put("deviceId", parentDevice.getId());
+                map.put("parentDeviceId", parentDevice.getId());
                 map.put("deviceName", parentDevice.getName());
+                map.put("parentDeviceName", parentDevice.getName());
             }
-            // FR-065a: Include roomId column and room name
+            // FR-065a: Include parentRoomId and room name
             if (parentRoom != null) {
-                map.put("roomId", parentRoom.getId());
+                map.put("parentRoomId", parentRoom.getId());
                 map.put("roomName", parentRoom.getName());
+                map.put("parentRoomName", parentRoom.getName());
             }
+
+            // Build hierarchicalPath: Room > Device > Shelf > Rack
+            StringBuilder pathBuilder = new StringBuilder();
+            if (parentRoom != null && parentRoom.getName() != null) {
+                pathBuilder.append(parentRoom.getName());
+            }
+            if (parentDevice != null && parentDevice.getName() != null) {
+                if (pathBuilder.length() > 0) {
+                    pathBuilder.append(" > ");
+                }
+                pathBuilder.append(parentDevice.getName());
+            }
+            if (parentShelf != null && parentShelf.getLabel() != null) {
+                if (pathBuilder.length() > 0) {
+                    pathBuilder.append(" > ");
+                }
+                pathBuilder.append(parentShelf.getLabel());
+            }
+            if (rack.getLabel() != null) {
+                if (pathBuilder.length() > 0) {
+                    pathBuilder.append(" > ");
+                }
+                pathBuilder.append(rack.getLabel());
+            }
+            if (pathBuilder.length() > 0) {
+                map.put("hierarchicalPath", pathBuilder.toString());
+            }
+            
+            // Set type for consistency with searchLocations
+            map.put("type", "rack");
 
             // Add occupied count
             try {
@@ -587,11 +653,12 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         List<Map<String, Object>> shelves = storageSearchService.searchShelves(searchTerm);
         List<Map<String, Object>> racks = storageSearchService.searchRacks(searchTerm);
 
-        // Add hierarchical paths and level information
+        // Add hierarchical paths and type information
         for (Map<String, Object> room : rooms) {
             Map<String, Object> result = new HashMap<>(room);
             result.put("hierarchicalPath", room.get("name"));
-            result.put("level", "room");
+            result.put("type", "room");
+            // Rooms have no parents
             results.add(result);
         }
 
@@ -601,7 +668,20 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             String deviceName = (String) device.get("name");
             String path = roomName != null ? roomName + " > " + deviceName : deviceName;
             result.put("hierarchicalPath", path);
-            result.put("level", "device");
+            // Ensure type is set to hierarchy level (device is already set by getDevicesForAPI)
+            result.put("type", "device");
+            // Preserve deviceType from getDevicesForAPI (physical type: freezer, refrigerator, etc.)
+            // deviceType is already in the map from getDevicesForAPI, no need to override
+            
+            // Ensure parentRoomId and parentRoomName are explicitly set
+            Object parentRoomId = device.get("parentRoomId");
+            if (parentRoomId != null) {
+                result.put("parentRoomId", parentRoomId);
+            }
+            if (roomName != null) {
+                result.put("parentRoomName", roomName);
+            }
+            
             results.add(result);
         }
 
@@ -619,7 +699,25 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             }
             pathBuilder.append(shelfLabel);
             result.put("hierarchicalPath", pathBuilder.toString());
-            result.put("level", "shelf");
+            result.put("type", "shelf");
+            
+            // Ensure parent IDs and names are explicitly set (they should already be in the map from getShelvesForAPI)
+            Object parentDeviceId = shelf.get("parentDeviceId");
+            Object parentRoomId = shelf.get("parentRoomId");
+            if (parentDeviceId != null) {
+                result.put("parentDeviceId", parentDeviceId);
+            }
+            if (parentRoomId != null) {
+                result.put("parentRoomId", parentRoomId);
+            }
+            // Parent names should already be in the map, but ensure they're explicitly set
+            if (deviceName != null) {
+                result.put("parentDeviceName", deviceName);
+            }
+            if (roomName != null) {
+                result.put("parentRoomName", roomName);
+            }
+            
             results.add(result);
         }
 
@@ -641,7 +739,32 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             }
             pathBuilder.append(rackLabel);
             result.put("hierarchicalPath", pathBuilder.toString());
-            result.put("level", "rack");
+            result.put("type", "rack");
+            
+            // Ensure parent IDs and names are explicitly set (they should already be in the map from getRacksForAPI)
+            Object parentShelfId = rack.get("parentShelfId");
+            Object parentDeviceId = rack.get("parentDeviceId");
+            Object parentRoomId = rack.get("parentRoomId");
+            if (parentShelfId != null) {
+                result.put("parentShelfId", parentShelfId);
+            }
+            if (parentDeviceId != null) {
+                result.put("parentDeviceId", parentDeviceId);
+            }
+            if (parentRoomId != null) {
+                result.put("parentRoomId", parentRoomId);
+            }
+            // Parent names should already be in the map, but ensure they're explicitly set
+            if (shelfLabel != null) {
+                result.put("parentShelfLabel", shelfLabel);
+            }
+            if (deviceName != null) {
+                result.put("parentDeviceName", deviceName);
+            }
+            if (roomName != null) {
+                result.put("parentRoomName", roomName);
+            }
+            
             results.add(result);
         }
 

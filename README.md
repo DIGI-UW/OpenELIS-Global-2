@@ -93,7 +93,7 @@ speeds up the development process
 
 1.  Start the containers to mount the locally compiled artifacts
 
-        docker-compose -f dev.docker-compose.yml up -d
+        docker compose -f dev.docker-compose.yml up -d
 
     Note : For Reflecting Local changes in the Running Containers ;
 

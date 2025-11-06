@@ -82,36 +82,48 @@ INSERT INTO storage_rack (id, fhir_uuid, label, rows, columns, position_schema_h
 
 -- Insert Test Positions
 -- Each rack has unique positions
-INSERT INTO storage_position (id, fhir_uuid, coordinate, row_index, column_index, occupied, parent_rack_id, sys_user_id, last_updated) VALUES
+-- Note: After migration, positions require parent_device_id (required) and optionally parent_shelf_id and parent_rack_id
+-- Rack 30: Main Freezer Shelf-A Rack 1 -> Shelf 20 -> Device 10
+-- Rack 31: Main Freezer Shelf-A Rack 2 -> Shelf 20 -> Device 10
+-- Rack 32: Main Freezer Shelf-B Rack 1 -> Shelf 21 -> Device 10
+-- Rack 33: Main Refrigerator Shelf-1 Rack 1 -> Shelf 22 -> Device 11
+-- Rack 34: Secondary Cabinet Shelf-1 Rack 1 -> Shelf 23 -> Device 12
+INSERT INTO storage_position (id, fhir_uuid, coordinate, row_index, column_index, occupied, parent_device_id, parent_shelf_id, parent_rack_id, sys_user_id, last_updated) VALUES
 -- Main Freezer Shelf-A Rack 1 (rack 30) - 8x12 grid positions
-(100, gen_random_uuid(), 'A1', 1, 1, false, 30, 1, CURRENT_TIMESTAMP),
-(101, gen_random_uuid(), 'A2', 1, 2, false, 30, 1, CURRENT_TIMESTAMP),
-(102, gen_random_uuid(), 'A3', 1, 3, true, 30, 1, CURRENT_TIMESTAMP), -- Occupied for testing
-(103, gen_random_uuid(), 'A4', 1, 4, false, 30, 1, CURRENT_TIMESTAMP),
-(104, gen_random_uuid(), 'A5', 1, 5, false, 30, 1, CURRENT_TIMESTAMP),
-(105, gen_random_uuid(), 'A6', 1, 6, false, 30, 1, CURRENT_TIMESTAMP),
-(106, gen_random_uuid(), 'A7', 1, 7, false, 30, 1, CURRENT_TIMESTAMP),
-(107, gen_random_uuid(), 'A8', 1, 8, false, 30, 1, CURRENT_TIMESTAMP),
+-- Shelf 20, Device 10
+(100, gen_random_uuid(), 'A1', 1, 1, false, 10, 20, 30, 1, CURRENT_TIMESTAMP),
+(101, gen_random_uuid(), 'A2', 1, 2, false, 10, 20, 30, 1, CURRENT_TIMESTAMP),
+(102, gen_random_uuid(), 'A3', 1, 3, true, 10, 20, 30, 1, CURRENT_TIMESTAMP), -- Occupied for testing
+(103, gen_random_uuid(), 'A4', 1, 4, false, 10, 20, 30, 1, CURRENT_TIMESTAMP),
+(104, gen_random_uuid(), 'A5', 1, 5, false, 10, 20, 30, 1, CURRENT_TIMESTAMP),
+(105, gen_random_uuid(), 'A6', 1, 6, false, 10, 20, 30, 1, CURRENT_TIMESTAMP),
+(106, gen_random_uuid(), 'A7', 1, 7, false, 10, 20, 30, 1, CURRENT_TIMESTAMP),
+(107, gen_random_uuid(), 'A8', 1, 8, false, 10, 20, 30, 1, CURRENT_TIMESTAMP),
 
 -- Main Freezer Shelf-A Rack 2 (rack 31) - 10x10 grid, first position
-(200, gen_random_uuid(), '1-1', 1, 1, false, 31, 1, CURRENT_TIMESTAMP),
+-- Shelf 20, Device 10
+(200, gen_random_uuid(), '1-1', 1, 1, false, 10, 20, 31, 1, CURRENT_TIMESTAMP),
 
 -- Main Freezer Shelf-B Rack 1 (rack 32) - flexible positions (no grid)
-(110, gen_random_uuid(), 'RED-01', NULL, NULL, false, 32, 1, CURRENT_TIMESTAMP),
-(111, gen_random_uuid(), 'RED-02', NULL, NULL, false, 32, 1, CURRENT_TIMESTAMP),
-(112, gen_random_uuid(), 'RED-03', NULL, NULL, false, 32, 1, CURRENT_TIMESTAMP),
+-- Shelf 21, Device 10
+(110, gen_random_uuid(), 'RED-01', NULL, NULL, false, 10, 21, 32, 1, CURRENT_TIMESTAMP),
+(111, gen_random_uuid(), 'RED-02', NULL, NULL, false, 10, 21, 32, 1, CURRENT_TIMESTAMP),
+(112, gen_random_uuid(), 'RED-03', NULL, NULL, false, 10, 21, 32, 1, CURRENT_TIMESTAMP),
 
 -- Main Refrigerator Shelf-1 Rack 1 (rack 33) - positions
-(120, gen_random_uuid(), 'X1', NULL, NULL, false, 33, 1, CURRENT_TIMESTAMP),
-(121, gen_random_uuid(), 'A1', 1, 1, false, 33, 1, CURRENT_TIMESTAMP),
+-- Shelf 22, Device 11
+(120, gen_random_uuid(), 'X1', NULL, NULL, false, 11, 22, 33, 1, CURRENT_TIMESTAMP),
+(121, gen_random_uuid(), 'A1', 1, 1, false, 11, 22, 33, 1, CURRENT_TIMESTAMP),
 
 -- Secondary Cabinet Shelf-1 Rack 1 (rack 34) - positions
-(130, gen_random_uuid(), 'A1', 1, 1, false, 34, 1, CURRENT_TIMESTAMP),
-(131, gen_random_uuid(), 'A2', 1, 2, false, 34, 1, CURRENT_TIMESTAMP),
-(132, gen_random_uuid(), 'A3', 1, 3, false, 34, 1, CURRENT_TIMESTAMP);
+-- Shelf 23, Device 12
+(130, gen_random_uuid(), 'A1', 1, 1, false, 12, 23, 34, 1, CURRENT_TIMESTAMP),
+(131, gen_random_uuid(), 'A2', 1, 2, false, 12, 23, 34, 1, CURRENT_TIMESTAMP),
+(132, gen_random_uuid(), 'A3', 1, 3, false, 12, 23, 34, 1, CURRENT_TIMESTAMP);
 
 -- Add more positions to Main Freezer Shelf-A Rack 2 (rack 31) for capacity testing (80 occupied out of 100 = 80%)
-INSERT INTO storage_position (id, fhir_uuid, coordinate, row_index, column_index, occupied, parent_rack_id, sys_user_id, last_updated)
+-- Shelf 20, Device 10
+INSERT INTO storage_position (id, fhir_uuid, coordinate, row_index, column_index, occupied, parent_device_id, parent_shelf_id, parent_rack_id, sys_user_id, last_updated)
 SELECT 
     200 + (row_num - 1) * 10 + col_num,
     gen_random_uuid(),
@@ -119,7 +131,9 @@ SELECT
     row_num,
     col_num,
     CASE WHEN ((row_num - 1) * 10 + col_num) <= 80 THEN true ELSE false END,
-    31,
+    10,  -- parent_device_id
+    20,  -- parent_shelf_id
+    31,  -- parent_rack_id
     1,
     CURRENT_TIMESTAMP
 FROM generate_series(1, 10) AS row_num
@@ -504,10 +518,10 @@ JOIN patient pt ON sh_link.patient_id = pt.id
 JOIN person p ON pt.person_id = p.id
 LEFT JOIN sample_storage_assignment ssa ON s.id = ssa.sample_id
 LEFT JOIN storage_position pos ON ssa.storage_position_id = pos.id
-LEFT JOIN storage_rack k ON pos.parent_rack_id = k.id
-LEFT JOIN storage_shelf sh ON k.parent_shelf_id = sh.id
-LEFT JOIN storage_device d ON sh.parent_device_id = d.id
+LEFT JOIN storage_device d ON pos.parent_device_id = d.id
 LEFT JOIN storage_room r ON d.parent_room_id = r.id
+LEFT JOIN storage_shelf sh ON pos.parent_shelf_id = sh.id
+LEFT JOIN storage_rack k ON pos.parent_rack_id = k.id
 WHERE s.accession_number LIKE 'E2E-%'
 ORDER BY s.accession_number;
 

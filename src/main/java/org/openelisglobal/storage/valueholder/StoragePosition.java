@@ -19,8 +19,14 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.storage.fhir.StorageLocationFhirTransform;
 
 /**
- * StoragePosition entity - Specific location within a rack Maps to FHIR
- * Location resource with occupancy extension
+ * StoragePosition entity - Storage location representing the lowest level in the hierarchy
+ * for a sample assignment. A position can have at most 5 levels (Room → Device → Shelf →
+ * Rack → Position) but at least 2 levels (Room → Device). The position represents where
+ * in the hierarchy the sample is assigned. Minimum requirement is device level (room + device);
+ * cannot be just a room. Position can be at: device level (2 levels), shelf level (3 levels),
+ * rack level (4 levels), or position level (5 levels).
+ * 
+ * Maps to FHIR Location resource with occupancy extension.
  */
 @Entity
 @Table(name = "STORAGE_POSITION")
@@ -37,7 +43,7 @@ public class StoragePosition extends BaseObject<Integer> {
     @Column(name = "FHIR_UUID", nullable = false, unique = true)
     private UUID fhirUuid;
 
-    @Column(name = "COORDINATE", length = 50, nullable = false)
+    @Column(name = "COORDINATE", length = 50, nullable = true)
     private String coordinate;
 
     @Column(name = "ROW_INDEX")
@@ -50,7 +56,15 @@ public class StoragePosition extends BaseObject<Integer> {
     private Boolean occupied;
 
     @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
-    @JoinColumn(name = "PARENT_RACK_ID", nullable = false)
+    @JoinColumn(name = "PARENT_DEVICE_ID", nullable = false)
+    private StorageDevice parentDevice;
+
+    @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
+    @JoinColumn(name = "PARENT_SHELF_ID", nullable = true)
+    private StorageShelf parentShelf;
+
+    @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
+    @JoinColumn(name = "PARENT_RACK_ID", nullable = true)
     private StorageRack parentRack;
 
     @Column(name = "SYS_USER_ID", nullable = false)
@@ -106,12 +120,47 @@ public class StoragePosition extends BaseObject<Integer> {
         this.occupied = occupied;
     }
 
+    public StorageDevice getParentDevice() {
+        return parentDevice;
+    }
+
+    public void setParentDevice(StorageDevice parentDevice) {
+        this.parentDevice = parentDevice;
+    }
+
+    public StorageShelf getParentShelf() {
+        return parentShelf;
+    }
+
+    public void setParentShelf(StorageShelf parentShelf) {
+        this.parentShelf = parentShelf;
+    }
+
     public StorageRack getParentRack() {
         return parentRack;
     }
 
     public void setParentRack(StorageRack parentRack) {
         this.parentRack = parentRack;
+    }
+
+    /**
+     * Validate hierarchy integrity constraints.
+     * - If parent_rack_id is NOT NULL, then parent_shelf_id must also be NOT NULL
+     * - If coordinate is NOT NULL, then parent_rack_id must also be NOT NULL
+     * 
+     * @return true if hierarchy integrity is valid, false otherwise
+     */
+    public boolean validateHierarchyIntegrity() {
+        // Constraint 1: If rack exists, shelf must exist
+        if (parentRack != null && parentShelf == null) {
+            return false;
+        }
+        // Constraint 2: If coordinate exists, rack must exist
+        if (coordinate != null && !coordinate.isEmpty() && parentRack == null) {
+            return false;
+        }
+        return true;
     }
 
     public Integer getSysUserIdValue() {

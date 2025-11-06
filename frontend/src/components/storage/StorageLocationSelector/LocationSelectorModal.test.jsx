@@ -89,8 +89,8 @@ describe("LocationSelectorModal", () => {
       />,
     );
 
-    // Check for Room dropdown (required, marked with *)
-    expect(screen.getByTestId("room-dropdown")).toBeTruthy();
+    // Check for LocationSearchAndCreate component (replaces room dropdown)
+    expect(screen.getByTestId("location-search-and-create")).toBeTruthy();
     // Check for Position input
     const positionInput = screen.getByPlaceholderText(/a5|1-1|red-12/i);
     expect(positionInput).toBeTruthy();

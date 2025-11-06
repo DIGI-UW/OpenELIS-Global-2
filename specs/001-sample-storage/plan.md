@@ -7,11 +7,13 @@
 ## Summary
 
 Implement POC for Sample Storage Management to track physical location of
-biological samples through a 5-level hierarchy (Room → Device → Shelf → Rack →
-Position). POC scope includes core tracking workflows: assignment (P1),
-search/retrieval (P2A), movement (P2B), and basic Storage Dashboard (P4 -
-metrics cards, tabs, data tables). Defers disposal workflow (P3) and advanced
-dashboard features (drill-down navigation, CSV export) to post-POC iterations.
+biological samples through a flexible storage hierarchy (Room → Device → Shelf →
+Rack → Position). Positions can have 2-5 levels (minimum: room+device, maximum:
+room+device+shelf+rack+position). POC scope includes core tracking workflows:
+assignment (P1), search/retrieval (P2A), movement (P2B), and basic Storage
+Dashboard (P4 - metrics cards, tabs, data tables). Defers disposal workflow
+(P3) and advanced dashboard features (drill-down navigation, CSV export) to
+post-POC iterations.
 
 **Technical Approach**: Leverage existing OpenELIS infrastructure (5-layer
 backend architecture, HAPI FHIR R4 server, Carbon Design System UI) to add
@@ -80,9 +82,10 @@ Verify compliance with
       capacity thresholds configurable
 - [x] **Carbon Design System**: UI uses @carbon/react exclusively (Tabs,
       DataTable, Modal, TextInput, Dropdown, OverflowMenu)
-- [x] **FHIR/IHE Compliance**: All 5 hierarchy levels (Room, Device, Shelf,
-      Rack, Position) map to FHIR Location resources, sample links via
-      Specimen.container
+- [x] **FHIR/IHE Compliance**: All hierarchy levels (Room, Device, Shelf, Rack,
+      Position) map to FHIR Location resources, sample links via
+      Specimen.container. Positions can have 2-5 levels (minimum: room+device,
+      maximum: room+device+shelf+rack+position).
 - [x] **Layered Architecture**: Backend follows 5-layer pattern (StorageRoom
       valueholder → DAO → Service → Controller → Form)
 - [x] **Test Coverage**: Unit + integration + Cypress E2E tests planned (>70%
@@ -251,8 +254,8 @@ written BEFORE implementation code.
 2. **Backend Unit Tests** - Write tests for service layer business logic
    - Test: `StorageLocationServiceImplTest.java`,
      `SampleStorageServiceImplTest.java`, `StorageSearchServiceImplTest.java`
-   - Validates: Assignment validation logic (prevent inactive location,
-     double-occupancy)
+   - Validates: Assignment validation logic (require Room and Device minimum 2
+     levels, prevent inactive location, double-occupancy)
    - Validates: Capacity calculation and warning thresholds (80/90/100%)
    - Validates: Hierarchical path construction
    - Validates: Bulk move auto-assignment logic
@@ -286,10 +289,11 @@ Phase 3 learnings)
    - Validates: Compact inline view displays location path correctly
    - Validates: Expand button opens modal
    - Validates: Quick-find search filters locations correctly
-   - Validates: Cascading dropdown state management
-   - Validates: Barcode input parsing (deferred functionality)
-   - Validates: Hierarchical path display
-   - Validates: API error handling and user feedback
+  - Validates: Cascading dropdown state management
+  - Validates: Barcode input parsing (deferred functionality)
+  - Validates: Hierarchical path display
+  - Validates: Validation requires Room and Device selection (minimum 2 levels), Shelf/Rack/Position optional
+  - Validates: API error handling and user feedback
    - Test: `SampleActionsOverflowMenu.test.jsx`
    - Validates: Menu renders with all four items (Move, Dispose, View Audit
      placeholder, View Storage)
@@ -304,11 +308,11 @@ Phase 3 learnings)
      fields
    - Validates: "Confirm Disposal" button disabled until checkbox checked
    - Validates: Validation requires reason and method selection
-   - Test: `ViewStorageModal.test.jsx`
-   - Validates: Modal renders with sample info, current location, full
-     assignment form
-   - Validates: Form pre-populates with current location
-   - Validates: Validation requires room selection
+  - Test: `ViewStorageModal.test.jsx`
+  - Validates: Modal renders with sample info, current location, full
+    assignment form
+  - Validates: Form pre-populates with current location
+  - Validates: Validation requires Room and Device selection (minimum 2 levels)
 
 **Phase 3: Implementation (Make tests pass)**
 
@@ -903,15 +907,23 @@ rules. This document serves as the specification for:
 
 5. **StoragePosition**
 
-   - Fields: id, fhir_uuid (UUID), coordinate (VARCHAR(50)), row_index (INT),
-     column_index (INT), occupied (BOOLEAN DEFAULT false), parent_rack_id (FK),
-     sys_user_id, lastupdated
-   - Constraints: NOT NULL (parent_rack_id), UNIQUE (fhir_uuid), coordinate
-     allows duplicates within same rack (flexible storage)
-   - Relationships: Many-to-One with StorageRack, One-to-One with
-     SampleStorageAssignment (current)
-   - Note: Maps to FHIR Location resource (child of Rack Location) with
-     occupancy extension
+   - Fields: id, fhir_uuid (UUID), coordinate (VARCHAR(50), optional), row_index
+     (INT, optional), column_index (INT, optional), occupied (BOOLEAN DEFAULT
+     false), parent_device_id (FK, required), parent_shelf_id (FK, optional),
+     parent_rack_id (FK, optional), sys_user_id, lastupdated
+   - Constraints: NOT NULL (parent_device_id), UNIQUE (fhir_uuid), coordinate
+     optional (only for 5-level positions), CHECK (if parent_rack_id NOT NULL
+     then parent_shelf_id NOT NULL), CHECK (if coordinate NOT NULL then
+     parent_rack_id NOT NULL), coordinate allows duplicates within same rack
+     (flexible storage)
+   - Relationships: Many-to-One with StorageDevice (required), Many-to-One with
+     StorageShelf (optional), Many-to-One with StorageRack (optional),
+     One-to-One with SampleStorageAssignment (current)
+   - Note: Position represents the lowest level in hierarchy for a sample
+     assignment. Can be at device level (2 levels), shelf level (3 levels), rack
+     level (4 levels), or position level (5 levels). Minimum requirement is
+     device level (room + device); cannot be just a room. Maps to FHIR Location
+     resource with occupancy extension.
 
 6. **SampleStorageAssignment**
 
@@ -938,6 +950,7 @@ rules. This document serves as the specification for:
 
 **Validation Rules** (from spec.md Functional Requirements):
 
+- Require minimum 2 levels for valid location: Room and Device MUST be selected (FR-033a). Shelf, Rack, and Position are optional. Position can be at device level (2 levels), shelf level (3 levels), rack level (4 levels), or position level (5 levels). Minimum requirement is device level (room + device); cannot be just a room.
 - Prevent assignment to inactive location (FR-035)
 - Prevent double-occupancy unless rack allows duplicates (FR-034)
 - Capacity warnings at 80%, 90%, 100% (FR-036) - no hard block
@@ -981,7 +994,7 @@ serves as the contract for:
 - `POST /rest/storage/samples/assign` - Assign sample to position
   - Request: `{ sample_id, position_id, notes }`
   - Response: `{ assignment_id, hierarchical_path, assigned_date }`
-  - Validation: Position not occupied, location active
+  - Validation: Position must have minimum 2 levels (room + device via parent_device_id), position not occupied, location active. Position can be at device level (2 levels), shelf level (3 levels), rack level (4 levels), or position level (5 levels).
 
 **Sample Search**:
 
@@ -1004,7 +1017,7 @@ serves as the contract for:
 - `POST /rest/storage/samples/move` - Move sample to new position
   - Request: `{ sample_id, target_position_id, reason }`
   - Response: `{ movement_id, previous_location, new_location, moved_date }`
-  - Validation: Target position not occupied, location active
+  - Validation: Target position must have minimum 2 levels (room + device via parent_device_id), target position not occupied, location active. Position can be at device level (2 levels), shelf level (3 levels), rack level (4 levels), or position level (5 levels).
 - `POST /rest/storage/samples/bulk-move` - Bulk move samples
   - Request:
     `{ sample_ids: [], target_rack_id, position_assignments: [{sample_id, position_coordinate}] }`
@@ -1087,12 +1100,15 @@ document serves as the specification for:
 
 ## Position → FHIR Location (with Extensions)
 
-- Maps to FHIR R4 `Location` resource (child of Rack Location)
+- Maps to FHIR R4 `Location` resource (child of parent location)
 - `Location.id` = StoragePosition.fhir_uuid
-- `Location.name` = position coordinate
-- `Location.identifier.value` = full hierarchical code (e.g.,
-  "MAIN-FRZ01-SHA-RKR1-A5")
-- `Location.partOf.reference` = "Location/{parent_rack_fhir_uuid}"
+- `Location.identifier.value` = hierarchical code based on position level:
+  - Device level: "{room_code}-{device_code}"
+  - Shelf level: "{room_code}-{device_code}-{shelf_label}"
+  - Rack level: "{room_code}-{device_code}-{shelf_label}-{rack_label}"
+  - Position level: "{room_code}-{device_code}-{shelf_label}-{rack_label}-{coordinate}"
+- `Location.name` = coordinate (if position level) or device/shelf/rack label (if lower level)
+- `Location.partOf.reference` = "Location/{parent_fhir_uuid}" (parent device, shelf, or rack depending on position level)
 - `Location.extension[position-occupancy].valueBoolean` = occupied status
 - `Location.extension[position-grid-row].valueInteger` = row index (optional)
 - `Location.extension[position-grid-column].valueInteger` = column index
@@ -1378,7 +1394,7 @@ This script will:
 - Detect Cursor AI agent context file
 - Add new technology references from this plan:
   - Storage module package structure
-  - FHIR Location resource mapping (all 5 hierarchy levels including positions)
+  - FHIR Location resource mapping (flexible hierarchy: positions can have 2-5 levels)
   - Carbon Design System Storage Location Selector widget
   - Cypress E2E testing patterns (existing OpenELIS framework)
 - Preserve existing OpenELIS patterns and manual additions
@@ -1411,9 +1427,10 @@ _Re-verify compliance after design artifacts generated:_
       hardcoded validation
 - [x] **Carbon Design System**: Storage Location Selector uses @carbon/react
       Dropdown, TextInput, Button components
-- [x] **FHIR/IHE Compliance**: All 5 hierarchy levels (Room, Device, Shelf,
-      Rack, Position) map to FHIR Location resources, IHE mCSD hierarchy
-      supported
+- [x] **FHIR/IHE Compliance**: All hierarchy levels (Room, Device, Shelf, Rack,
+      Position) map to FHIR Location resources, IHE mCSD hierarchy supported.
+      Positions can have 2-5 levels (minimum: room+device, maximum:
+      room+device+shelf+rack+position).
 - [x] **Layered Architecture**: All 5 layers present (Valueholder → DAO →
       Service → Controller → Form)
 - [x] **Test Coverage**: Unit/integration/Cypress E2E test structure defined in
@@ -1612,7 +1629,7 @@ import { OverflowMenu, OverflowMenuItem } from "@carbon/react";
 
 - Unit test: Modal renders with all required sections
 - Unit test: Form pre-populates with current location
-- Unit test: Validation requires room selection
+- Unit test: Validation requires Room and Device selection (minimum 2 levels)
 - E2E test: View and edit storage location assignment
 
 ### Storage Location Selector Widget Structure Updates
@@ -1666,20 +1683,28 @@ import { OverflowMenu, OverflowMenuItem } from "@carbon/react";
 public String buildHierarchicalPath(StoragePosition position) {
     StringBuilder path = new StringBuilder();
 
-    StorageRack rack = position.getParentRack();
-    StorageShelf shelf = rack.getParentShelf();
-    StorageDevice device = shelf.getParentDevice();
+    // Position always has parent_device (required), which has parent_room
+    StorageDevice device = position.getParentDevice();
     StorageRoom room = device.getParentRoom();
 
-    path.append(room.getName())
-        .append(" > ")
-        .append(device.getName())
-        .append(" > ")
-        .append(shelf.getLabel())
-        .append(" > ")
-        .append(rack.getLabel())
-        .append(" > Position ")
-        .append(position.getCoordinate());
+    path.append(room.getName()).append(" > ").append(device.getName());
+
+    // Add shelf if present (3+ level position)
+    if (position.getParentShelf() != null) {
+        StorageShelf shelf = position.getParentShelf();
+        path.append(" > ").append(shelf.getLabel());
+
+        // Add rack if present (4+ level position)
+        if (position.getParentRack() != null) {
+            StorageRack rack = position.getParentRack();
+            path.append(" > ").append(rack.getLabel());
+
+            // Add coordinate if present (5-level position)
+            if (position.getCoordinate() != null && !position.getCoordinate().isEmpty()) {
+                path.append(" > Position ").append(position.getCoordinate());
+            }
+        }
+    }
 
     return path.toString();
 }
@@ -1722,10 +1747,18 @@ public SampleStorageAssignment assignSample(String sampleId, String positionId, 
     try {
         StoragePosition position = positionDAO.get(positionId);
 
+        // Validate position has minimum 2 levels (room + device)
+        if (position.getParentDevice() == null) {
+            throw new ValidationException("Position must have a parent device (minimum 2 levels: room + device)");
+        }
+
         // Optimistic locking check via Hibernate version field (lastupdated)
         if (position.isOccupied()) {
-            throw new ValidationException("Position " + position.getCoordinate() +
-                " is already occupied");
+            String positionLabel = position.getCoordinate() != null ? position.getCoordinate() : 
+                (position.getParentRack() != null ? position.getParentRack().getLabel() :
+                (position.getParentShelf() != null ? position.getParentShelf().getLabel() :
+                position.getParentDevice().getName()));
+            throw new ValidationException("Position " + positionLabel + " is already occupied");
         }
 
         position.setOccupied(true);

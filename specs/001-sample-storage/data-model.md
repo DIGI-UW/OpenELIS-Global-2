@@ -10,14 +10,22 @@
 StorageRoom (1) ──┬──> (N) StorageDevice
                   │
 StorageDevice (1) ─┼──> (N) StorageShelf
+                  │      └──> (N) StoragePosition (via parent_device_id)
                   │
 StorageShelf (1) ──┼──> (N) StorageRack
+                  │      └──> (N) StoragePosition (via parent_shelf_id, optional)
                   │
-StorageRack (1) ───┼──> (N) StoragePosition
+StorageRack (1) ───┼──> (N) StoragePosition (via parent_rack_id, optional)
                   │
 StoragePosition (1) ─┴──> (0..1) SampleStorageAssignment ──> (1) Sample
 
 SampleStorageAssignment ──> (N) SampleStorageMovement (audit log)
+
+Note: StoragePosition can have:
+- parent_device_id (required, minimum 2 levels: room + device)
+- parent_shelf_id (optional, for 3+ level positions)
+- parent_rack_id (optional, for 4+ level positions)
+- coordinate (optional, only for 5-level positions)
 ```
 
 ---
@@ -245,60 +253,77 @@ room.
 
 ## 5. StoragePosition
 
-**Purpose**: Specific storage location within a rack. Flexible free-text
-coordinate system.
+**Purpose**: Storage location representing the lowest level in the hierarchy for
+a sample assignment. A position can have at most 5 levels (Room → Device →
+Shelf → Rack → Position) but at least 2 levels (Room → Device). The position
+represents where in the hierarchy the sample is assigned. Minimum requirement is
+device level (room + device); cannot be just a room. Position can be at: device
+level (2 levels), shelf level (3 levels), rack level (4 levels), or position
+level (5 levels). When assigning a sample, we select the lowest position in the
+hierarchy, which provides all necessary location information.
 
 **Table**: `STORAGE_POSITION`
 
 **Fields**:
 
-| Field            | Type        | Constraints             | Description                                          |
-| ---------------- | ----------- | ----------------------- | ---------------------------------------------------- |
-| `id`             | VARCHAR(36) | PK, AUTO                | Primary key                                          |
-| `coordinate`     | VARCHAR(50) | NOT NULL                | Free-text position coordinate (e.g., "A1", "RED-01") |
-| `row_index`      | INT         | NULL                    | Optional row number for grid visualization           |
-| `column_index`   | INT         | NULL                    | Optional column number for grid visualization        |
-| `occupied`       | BOOLEAN     | NOT NULL, DEFAULT false | Occupancy status                                     |
-| `parent_rack_id` | VARCHAR(36) | NOT NULL, FK            | Parent rack reference                                |
-| `fhir_uuid`      | UUID        | NOT NULL, UNIQUE        | FHIR Location resource identifier                    |
-| `sys_user_id`    | INT         | NOT NULL                | User who created/modified                            |
-| `lastupdated`    | TIMESTAMP   | NOT NULL, DEFAULT NOW() | Last modification timestamp                          |
+| Field             | Type        | Constraints             | Description                                          |
+| ----------------- | ----------- | ----------------------- | ---------------------------------------------------- |
+| `id`              | VARCHAR(36) | PK, AUTO                | Primary key                                          |
+| `coordinate`      | VARCHAR(50) | NULL                    | Free-text position coordinate (optional, only for 5-level positions) |
+| `row_index`       | INT         | NULL                    | Optional row number for grid visualization           |
+| `column_index`    | INT         | NULL                    | Optional column number for grid visualization        |
+| `occupied`        | BOOLEAN     | NOT NULL, DEFAULT false | Occupancy status                                     |
+| `parent_device_id`| VARCHAR(36) | NOT NULL, FK            | Parent device reference (required - minimum 2 levels) |
+| `parent_shelf_id`  | VARCHAR(36) | NULL, FK                | Parent shelf reference (optional - for 3+ level positions) |
+| `parent_rack_id`  | VARCHAR(36) | NULL, FK                | Parent rack reference (optional - for 4+ level positions) |
+| `fhir_uuid`       | UUID        | NOT NULL, UNIQUE        | FHIR Location resource identifier                    |
+| `sys_user_id`     | INT         | NOT NULL                | User who created/modified                            |
+| `lastupdated`     | TIMESTAMP   | NOT NULL, DEFAULT NOW() | Last modification timestamp                          |
 
 **Constraints**:
 
 - PRIMARY KEY (`id`)
 - UNIQUE (`fhir_uuid`)
-- FOREIGN KEY (`parent_rack_id`) REFERENCES `storage_rack(id)` ON DELETE CASCADE
+- FOREIGN KEY (`parent_device_id`) REFERENCES `storage_device(id)` ON DELETE CASCADE
+- FOREIGN KEY (`parent_shelf_id`) REFERENCES `storage_shelf(id)` ON DELETE CASCADE (if not NULL)
+- FOREIGN KEY (`parent_rack_id`) REFERENCES `storage_rack(id)` ON DELETE CASCADE (if not NULL)
 - FOREIGN KEY (`sys_user_id`) REFERENCES `system_user(id)`
-- NOTE: Duplicate coordinates within same rack allowed (flexible storage, per
-  FR-014)
+- CHECK: If `parent_rack_id` is NOT NULL, then `parent_shelf_id` must also be NOT NULL
+- CHECK: If `coordinate` is NOT NULL, then `parent_rack_id` must also be NOT NULL
+- NOTE: Duplicate coordinates within same rack allowed (flexible storage, per FR-014)
 
 **Relationships**:
 
-- Many-to-One with `StorageRack` (parent)
+- Many-to-One with `StorageDevice` (parent, required - minimum 2 levels)
+- Many-to-One with `StorageShelf` (parent, optional - for 3+ level positions)
+- Many-to-One with `StorageRack` (parent, optional - for 4+ level positions)
 - One-to-One with `SampleStorageAssignment` (current assignment, if occupied)
 
 **FHIR Mapping**:
 
-- Maps to FHIR R4 `Location` resource (child of Rack Location)
+- Maps to FHIR R4 `Location` resource (child of parent location)
 - `Location.id` = `fhir_uuid`
-- `Location.identifier.value` =
-  "{room_code}-{device_code}-{shelf_label}-{rack_label}-{coordinate}"
-- `Location.name` = `coordinate`
+- `Location.identifier.value` = hierarchical code based on position level:
+  - Device level: "{room_code}-{device_code}"
+  - Shelf level: "{room_code}-{device_code}-{shelf_label}"
+  - Rack level: "{room_code}-{device_code}-{shelf_label}-{rack_label}"
+  - Position level: "{room_code}-{device_code}-{shelf_label}-{rack_label}-{coordinate}"
+- `Location.name` = coordinate (if position level) or device/shelf/rack label (if lower level)
 - `Location.physicalType.code` = "co" (container)
-- `Location.partOf.reference` = "Location/{parent_rack_fhir_uuid}"
+- `Location.partOf.reference` = "Location/{parent_fhir_uuid}" (parent device, shelf, or rack depending on level)
 - `Location.extension[position-occupancy].valueBoolean` = `occupied`
-- `Location.extension[position-grid-row].valueInteger` = `row_index` (if
-  provided)
-- `Location.extension[position-grid-column].valueInteger` = `column_index` (if
-  provided)
+- `Location.extension[position-grid-row].valueInteger` = `row_index` (if provided)
+- `Location.extension[position-grid-column].valueInteger` = `column_index` (if provided)
 
 **Validation Rules**:
 
+- Parent device is required (minimum 2 levels: room + device)
+- If parent shelf is provided, parent device must exist
+- If parent rack is provided, parent shelf must exist
+- Coordinate is optional, only required for 5-level positions (when parent_rack_id is provided)
 - Coordinate is free text, max 50 characters (per FR-010)
 - Disallow control characters (tabs, newlines) in coordinate
-- Duplicate coordinates within same rack allowed (per FR-014 - flexible storage
-  scenarios)
+- Duplicate coordinates within same rack allowed (per FR-014 - flexible storage scenarios)
 - Row_index and column_index are optional, used only for grid visualization
 - Cannot delete position if occupied (occupied=true)
 

@@ -45,7 +45,7 @@ cd frontend && npm run format && npm start
 cd frontend && npm run cy:run
 
 # Hot reload backend (rebuild + restart container)
-mvn clean install -DskipTests && docker-compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+mvn clean install -DskipTests && docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
 ```
 
 ## Code Style

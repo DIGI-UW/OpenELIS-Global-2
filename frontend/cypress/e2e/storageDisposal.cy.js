@@ -1,29 +1,19 @@
-import LoginPage from "../pages/LoginPage";
-
 /**
  * T097c: E2E Tests for Dispose Sample Modal UI
  * Tests dispose modal UI components per Figma design
  * Note: Disposal workflow backend deferred to P3, but UI structure is tested
  */
 
-let loginPage = null;
 let homePage = null;
 
-before("Login and load fixtures", () => {
-  loginPage = new LoginPage();
-  loginPage.visit();
-  homePage = loginPage.goToHomePage();
-
-  // Load storage test fixtures
-  cy.loadStorageFixtures();
+before("Setup storage tests", () => {
+  cy.setupStorageTests().then((page) => {
+    homePage = page;
+  });
 });
 
-after("Clean up fixtures", () => {
-  if (Cypress.env("CLEANUP_FIXTURES")) {
-    cy.cleanStorageFixtures();
-  } else {
-    cy.log("Skipping fixture cleanup (CYPRESS_CLEANUP_FIXTURES=false)");
-  }
+after("Cleanup storage tests", () => {
+  cy.cleanupStorageTests();
 });
 
 describe("Dispose Sample Modal - UI Components (P2B)", function () {

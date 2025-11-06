@@ -74,7 +74,7 @@ environment:
 
 ```bash
 export LETSENCRYPT_EMAIL="your-email@example.com"
-export LETSENCRYPT_STAGING="true"
+export LETSENCRYPT_STAGING="false"
 docker compose -f dev.docker-compose.yml -f docker-compose.letsencrypt.yml up -d
 ```
 

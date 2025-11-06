@@ -1604,6 +1604,8 @@
   "storage.assigned.date": "Assigned Date",
   "storage.current.location": "Current Location",
   "storage.target.location": "Target Location",
+  "storage.confirm.add.device": "Do you want to create a new device '{name}'?",
+  "storage.add.new.device": "Add new device",
   "storage.metrics.total.samples": "Total Samples",
   "storage.metrics.active": "Active",
   "storage.metrics.disposed": "Disposed",

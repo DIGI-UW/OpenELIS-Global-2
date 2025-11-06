@@ -1,5 +1,3 @@
-import LoginPage from "../pages/LoginPage";
-
 /**
  * E2E Tests for User Story P2A - Sample Search and Retrieval
  * Tests search by sample ID, filter by location, display hierarchical paths
@@ -12,29 +10,16 @@ import LoginPage from "../pages/LoginPage";
  * - Racks tab: Search by label
  */
 
-let loginPage = null;
 let homePage = null;
 
-before("Login and load fixtures", () => {
-  loginPage = new LoginPage();
-  loginPage.visit();
-  homePage = loginPage.goToHomePage();
-
-  // Load storage test fixtures (needed for search to find samples)
-  cy.loadStorageFixtures();
+before("Setup storage tests", () => {
+  cy.setupStorageTests().then((page) => {
+    homePage = page;
+  });
 });
 
-after("clean up fixtures", () => {
-  // Clean up test fixtures after all tests complete (optional, controlled by CYPRESS_CLEANUP_FIXTURES env var)
-  // Set CYPRESS_CLEANUP_FIXTURES=false to keep fixtures for manual testing
-  // Default: true (cleanup enabled)
-  if (Cypress.env("CLEANUP_FIXTURES")) {
-    cy.cleanStorageFixtures();
-  } else {
-    cy.log(
-      "Skipping fixture cleanup (CYPRESS_CLEANUP_FIXTURES=false) - fixtures preserved for manual testing",
-    );
-  }
+after("Cleanup storage tests", () => {
+  cy.cleanupStorageTests();
 });
 
 describe("Storage Search - Sample ID Search (P2A)", function () {

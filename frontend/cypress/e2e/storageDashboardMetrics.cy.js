@@ -1,33 +1,15 @@
-import LoginPage from "../pages/LoginPage";
 import HomePage from "../pages/HomePage";
 
 let homePage = null;
-let loginPage = null;
 
-before("Wait for API, login and load fixtures", () => {
-  // Wait for backend API to be available
-  cy.waitForBackend();
-
-  // Now login
-  loginPage = new LoginPage();
-  loginPage.visit();
-  homePage = loginPage.goToHomePage();
-
-  // Load storage test fixtures (needed for dashboard to show locations)
-  cy.loadStorageFixtures();
+before("Setup storage tests", () => {
+  cy.setupStorageTests().then((page) => {
+    homePage = page;
+  });
 });
 
-after("clean up fixtures", () => {
-  // Clean up test fixtures after all tests complete (optional, controlled by CYPRESS_CLEANUP_FIXTURES env var)
-  // Set CYPRESS_CLEANUP_FIXTURES=false to keep fixtures for manual testing
-  // Default: true (cleanup enabled)
-  if (Cypress.env("CLEANUP_FIXTURES")) {
-    cy.cleanStorageFixtures();
-  } else {
-    cy.log(
-      "Skipping fixture cleanup (CYPRESS_CLEANUP_FIXTURES=false) - fixtures preserved for manual testing",
-    );
-  }
+after("Cleanup storage tests", () => {
+  cy.cleanupStorageTests();
 });
 
 describe("Storage Locations Metric Card", function () {

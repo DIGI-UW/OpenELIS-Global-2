@@ -7,7 +7,15 @@ import org.openelisglobal.storage.valueholder.StoragePosition;
 public interface StoragePositionDAO extends BaseDAO<StoragePosition, Integer> {
     List<StoragePosition> findByParentRackId(Integer rackId);
 
+    List<StoragePosition> findByParentDeviceId(Integer deviceId);
+
+    List<StoragePosition> findByParentShelfId(Integer shelfId);
+
+    List<StoragePosition> findPositionsByHierarchyLevel(int level);
+
     int countOccupied(Integer rackId);
 
     int countOccupiedInDevice(Integer deviceId);
+
+    boolean validateHierarchyIntegrity(Integer positionId);
 }

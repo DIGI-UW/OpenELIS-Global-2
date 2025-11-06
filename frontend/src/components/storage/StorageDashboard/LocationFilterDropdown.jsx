@@ -16,11 +16,14 @@ import "./LocationFilterDropdown.css";
  * - onLocationChange: function - Callback when location is selected, receives { id, type, name, ... }
  * - selectedLocation: object - Currently selected location (optional)
  * - allowInactive: boolean - Allow selection of inactive locations (default: false, true for filter dropdown)
+ * - placeholder: string - Custom placeholder text (default: "Filter by locations...")
  */
 const LocationFilterDropdown = ({
   onLocationChange,
   selectedLocation,
   allowInactive = false,
+  placeholder,
+  showSelectedDisplay = true, // Show "Selected:" text by default, can be hidden
 }) => {
   const intl = useIntl();
   const [searchTerm, setSearchTerm] = useState("");
@@ -47,6 +50,11 @@ const LocationFilterDropdown = ({
   }, [isOpen]);
 
   const handleLocationSelect = (location) => {
+    // DEBUG: Log what's being passed to parent - log the FULL object
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[LocationFilterDropdown] handleLocationSelect called with:', location);
+    }
+    
     if (onLocationChange) {
       onLocationChange(location);
     }
@@ -89,10 +97,13 @@ const LocationFilterDropdown = ({
         id="location-filter-search"
         labelText=""
         hideLabel
-        placeholder={intl.formatMessage({
-          id: "storage.filter.by.locations.placeholder",
-          defaultMessage: "Filter by locations...",
-        })}
+        placeholder={
+          placeholder ||
+          intl.formatMessage({
+            id: "storage.filter.by.locations.placeholder",
+            defaultMessage: "Filter by locations...",
+          })
+        }
         value={searchTerm}
         onChange={handleSearchTermChange}
         onFocus={() => setIsOpen(true)}
@@ -129,8 +140,8 @@ const LocationFilterDropdown = ({
         </div>
       )}
 
-      {/* Show selected location display when not open */}
-      {selectedLocation && !isOpen && (
+      {/* Show selected location display when not open - only if showSelectedDisplay prop is true */}
+      {selectedLocation && !isOpen && showSelectedDisplay !== false && (
         <div className="selected-location-display">
           <FormattedMessage
             id="storage.filter.selected"

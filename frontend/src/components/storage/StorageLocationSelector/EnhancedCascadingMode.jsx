@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { ComboBox, TextInput } from "@carbon/react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { ComboBox, TextInput, Button, ComposedModal, ModalHeader, ModalBody, ModalFooter } from "@carbon/react";
+import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import "./EnhancedCascadingMode.css";
@@ -38,6 +39,20 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
   const [isCreatingShelf, setIsCreatingShelf] = useState(false);
   const [isCreatingRack, setIsCreatingRack] = useState(false);
 
+  // Track pending room creation (must be declared before useEffect that uses it)
+  const [pendingRoomCreation, setPendingRoomCreation] = useState(null);
+  const roomCreationTimeoutRef = useRef(null);
+  const [showAddRoomLink, setShowAddRoomLink] = useState(false);
+  const [showAddDeviceLink, setShowAddDeviceLink] = useState(false);
+  const [showAddShelfLink, setShowAddShelfLink] = useState(false);
+  const [showAddRackLink, setShowAddRackLink] = useState(false);
+  
+  // Confirmation dialogs for Enter key
+  const [showConfirmRoom, setShowConfirmRoom] = useState(false);
+  const [showConfirmDevice, setShowConfirmDevice] = useState(false);
+  const [showConfirmShelf, setShowConfirmShelf] = useState(false);
+  const [showConfirmRack, setShowConfirmRack] = useState(false);
+
   // Load rooms on mount
   useEffect(() => {
     getFromOpenElisServer(
@@ -75,25 +90,52 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
   // 1. EnhancedCascadingMode format: { room: {...}, device: {...}, ... }
   // 2. LocationFilterDropdown format: { id, type: 'room', name: '...', ... }
   useEffect(() => {
+    if (!selectedLocation) {
+      // Reset all selections when location is cleared
+      setSelectedRoom(null);
+      setSelectedDevice(null);
+      setSelectedShelf(null);
+      setSelectedRack(null);
+      setRoomInput("");
+      setDeviceInput("");
+      setShelfInput("");
+      setRackInput("");
+      setPositionInput("");
+      return;
+    }
+    
     if (selectedLocation) {
       // Format 1: EnhancedCascadingMode format (has room/device/shelf/rack properties)
-      if (selectedLocation.room) {
-        setSelectedRoom(selectedLocation.room);
-        setRoomInput(selectedLocation.room.name || "");
+      if (selectedLocation.room && typeof selectedLocation.room === 'object') {
+        // If room only has id, try to find full room object in rooms list
+        if (selectedLocation.room.id && !selectedLocation.room.name && rooms.length > 0) {
+          const fullRoom = rooms.find((r) => r.id === selectedLocation.room.id);
+          if (fullRoom) {
+            setSelectedRoom(fullRoom);
+            setRoomInput(fullRoom.name || "");
+          } else {
+            // Room not loaded yet, set what we have (will be updated when rooms load)
+            setSelectedRoom(selectedLocation.room);
+            setRoomInput(selectedLocation.room.name || "");
+          }
+        } else {
+          setSelectedRoom(selectedLocation.room);
+          setRoomInput(selectedLocation.room.name || "");
+        }
       }
-      if (selectedLocation.device) {
+      if (selectedLocation.device && typeof selectedLocation.device === 'object') {
         setSelectedDevice(selectedLocation.device);
         setDeviceInput(selectedLocation.device.name || "");
       }
-      if (selectedLocation.shelf) {
+      if (selectedLocation.shelf && typeof selectedLocation.shelf === 'object') {
         setSelectedShelf(selectedLocation.shelf);
-        setShelfInput(selectedLocation.shelf.label || "");
+        setShelfInput(selectedLocation.shelf.label || selectedLocation.shelf.name || "");
       }
-      if (selectedLocation.rack) {
+      if (selectedLocation.rack && typeof selectedLocation.rack === 'object') {
         setSelectedRack(selectedLocation.rack);
-        setRackInput(selectedLocation.rack.label || "");
+        setRackInput(selectedLocation.rack.label || selectedLocation.rack.name || "");
       }
-      if (selectedLocation.position) {
+      if (selectedLocation.position && typeof selectedLocation.position === 'object') {
         setPositionInput(selectedLocation.position.coordinate || "");
       }
 
@@ -172,9 +214,45 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
     }
   }, [selectedLocation, rooms, devices]);
 
+  // Load full room data if room only has id (from LocationSearchAndCreate conversion)
+  useEffect(() => {
+    if (
+      selectedRoom &&
+      selectedRoom.id &&
+      !selectedRoom.name &&
+      rooms.length > 0
+    ) {
+      const fullRoom = rooms.find((r) => r.id === selectedRoom.id);
+      if (fullRoom) {
+        setSelectedRoom(fullRoom);
+        setRoomInput(fullRoom.name || "");
+      } else {
+        // Room not in list yet, fetch it directly
+        getFromOpenElisServer(
+          `/rest/storage/rooms/${selectedRoom.id}`,
+          (room) => {
+            if (room) {
+              setSelectedRoom(room);
+              setRoomInput(room.name || "");
+              setRooms((prev) => {
+                // Add to rooms list if not already there
+                if (!prev.find((r) => r.id === room.id)) {
+                  return [...prev, room];
+                }
+                return prev;
+              });
+            }
+          },
+          () => {},
+        );
+      }
+    }
+  }, [selectedRoom, rooms]);
+
   // Load devices when room is selected or created
   useEffect(() => {
     if (selectedRoom && selectedRoom.id) {
+      // Room has id - load devices for this room
       getFromOpenElisServer(
         `/rest/storage/devices?roomId=${selectedRoom.id}`,
         (response) => {
@@ -188,21 +266,33 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
           setDevices([]);
         },
       );
-      // Reset child selections
+      // Reset child selections only if this is a new room selection (not restoring from selectedLocation)
+      if (!selectedLocation?.device && !selectedLocation?.shelf && !selectedLocation?.rack) {
+        setSelectedDevice(null);
+        setSelectedShelf(null);
+        setSelectedRack(null);
+        setDeviceInput("");
+        setShelfInput("");
+        setRackInput("");
+        setShelves([]);
+        setRacks([]);
+      }
+    } else if (selectedRoom && !selectedRoom.id && (isCreatingRoom || pendingRoomCreation)) {
+      // Room is being created (typed but not yet saved) - keep devices empty but enable device field
+      // Device field will be enabled because of the disabled prop logic
+      setDevices([]);
+    } else if (!selectedRoom) {
+      // No room selected - clear devices and disable device field
+      setDevices([]);
       setSelectedDevice(null);
-      setSelectedShelf(null);
-      setSelectedRack(null);
       setDeviceInput("");
-      setShelfInput("");
-      setRackInput("");
-      setShelves([]);
-      setRacks([]);
     }
-  }, [selectedRoom]);
+  }, [selectedRoom, isCreatingRoom, pendingRoomCreation, selectedLocation]);
 
   // Load shelves when device is selected or created
   useEffect(() => {
     if (selectedDevice && selectedDevice.id) {
+      // Device has id - load shelves for this device
       getFromOpenElisServer(
         `/rest/storage/shelves?deviceId=${selectedDevice.id}`,
         (response) => {
@@ -221,8 +311,17 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
       setShelfInput("");
       setRackInput("");
       setRacks([]);
+    } else if (selectedDevice && !selectedDevice.id && isCreatingDevice) {
+      // Device is being created (typed but not yet saved) - keep shelves empty but enable shelf field
+      // Shelf field will be enabled because of the disabled prop logic
+      setShelves([]);
+    } else if (!selectedDevice) {
+      // No device selected - clear shelves and disable shelf field
+      setShelves([]);
+      setSelectedShelf(null);
+      setShelfInput("");
     }
-  }, [selectedDevice]);
+  }, [selectedDevice, isCreatingDevice]);
 
   // Load racks when shelf is selected or created
   useEffect(() => {
@@ -251,53 +350,176 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
       const trimmedValue = inputValue?.trim() || "";
       setRoomInput(inputValue || "");
 
+      // Clear any pending room creation
+      if (roomCreationTimeoutRef.current) {
+        clearTimeout(roomCreationTimeoutRef.current);
+        roomCreationTimeoutRef.current = null;
+      }
+
       if (selectedItem) {
-        // User selected from dropdown
+        // User selected from dropdown - room object has id
         setSelectedRoom(selectedItem);
         setIsCreatingRoom(false);
+        setPendingRoomCreation(null);
+        setShowAddRoomLink(false);
+        // Clear room input to show selected item name
+        setRoomInput(selectedItem.name || "");
+        
+        // Update parent's internal state (LocationSearchAndCreate) so it can track current selection
+        if (onLocationChange) {
+          const currentLocation = {
+            room: selectedItem,
+            device: selectedDevice || null,
+            shelf: selectedShelf || null,
+            rack: selectedRack || null,
+            position: positionInput ? { coordinate: positionInput } : null,
+          };
+          onLocationChange(currentLocation);
+        }
       } else if (trimmedValue) {
         // User is typing - check if room exists
         const existing = rooms.find(
           (r) => r.name?.toLowerCase() === trimmedValue.toLowerCase(),
         );
         if (existing) {
+          // Found existing room - set it with id
           setSelectedRoom(existing);
           setIsCreatingRoom(false);
+          setPendingRoomCreation(null);
+          setShowAddRoomLink(false);
+          
+          // Update parent's internal state (LocationSearchAndCreate)
+          if (onLocationChange) {
+            const currentLocation = {
+              room: existing,
+              device: selectedDevice || null,
+              shelf: selectedShelf || null,
+              rack: selectedRack || null,
+              position: positionInput ? { coordinate: positionInput } : null,
+            };
+            onLocationChange(currentLocation);
+          }
         } else {
-          // New room - create immediately
+          // New room - show "add new" link
           setIsCreatingRoom(true);
           const newRoom = {
             name: trimmedValue,
             code: trimmedValue.substring(0, 50).toUpperCase(),
           };
           setSelectedRoom(newRoom);
+          setPendingRoomCreation(newRoom);
+          setShowAddRoomLink(true);
+          
+          // Clear any existing timeout
+          if (roomCreationTimeoutRef.current) {
+            clearTimeout(roomCreationTimeoutRef.current);
+            roomCreationTimeoutRef.current = null;
+          }
         }
       } else {
-        // Empty input
+        // Empty input - clear selection
         setSelectedRoom(null);
         setIsCreatingRoom(false);
+        setPendingRoomCreation(null);
+        setShowAddRoomLink(false);
+        // Also clear child selections
+        setSelectedDevice(null);
+        setSelectedShelf(null);
+        setSelectedRack(null);
+        setDeviceInput("");
+        setShelfInput("");
+        setRackInput("");
       }
     },
     [rooms],
   );
 
+
+  // Ref to track latest selected device (for onInputChange timing)
+  const selectedDeviceRef = useRef(selectedDevice);
+  useEffect(() => {
+    selectedDeviceRef.current = selectedDevice;
+  }, [selectedDevice]);
+
+  // Helper: Check if Add button should be enabled for room
+  const canAddRoom = useCallback(() => {
+    const trimmed = roomInput.trim();
+    if (!trimmed) return false;
+    const matches = rooms.find((r) => r.name?.toLowerCase() === trimmed.toLowerCase());
+    return !matches && trimmed.length > 0;
+  }, [roomInput, rooms]);
+
+  // Helper: Check if Add button should be enabled for device
+  const canAddDevice = useCallback(() => {
+    const trimmed = deviceInput.trim();
+    if (!trimmed || !selectedRoom || (!selectedRoom.id && !isCreatingRoom && !pendingRoomCreation)) {
+      return false;
+    }
+    const matches = devices.find((d) => d.name?.toLowerCase() === trimmed.toLowerCase());
+    return !matches && trimmed.length > 0;
+  }, [deviceInput, devices, selectedRoom, isCreatingRoom, pendingRoomCreation]);
+
+  // Helper: Check if Add button should be enabled for shelf
+  const canAddShelf = useCallback(() => {
+    const trimmed = shelfInput.trim();
+    if (!trimmed || !selectedDevice || (!selectedDevice.id && !isCreatingDevice)) {
+      return false;
+    }
+    const matches = shelves.find((s) => (s.label || s.name)?.toLowerCase() === trimmed.toLowerCase());
+    return !matches && trimmed.length > 0;
+  }, [shelfInput, shelves, selectedDevice, isCreatingDevice]);
+
+  // Helper: Check if Add button should be enabled for rack
+  const canAddRack = useCallback(() => {
+    const trimmed = rackInput.trim();
+    if (!trimmed || !selectedShelf || (!selectedShelf.id && !isCreatingShelf)) {
+      return false;
+    }
+    const matches = racks.find((r) => (r.label || r.name)?.toLowerCase() === trimmed.toLowerCase());
+    return !matches && trimmed.length > 0;
+  }, [rackInput, racks, selectedShelf, isCreatingShelf]);
+
   // Create device if input doesn't match existing
   const handleDeviceChange = useCallback(
     async (inputValue, selectedItem) => {
       const trimmedValue = inputValue?.trim() || "";
-      setDeviceInput(inputValue || "");
 
       if (selectedItem) {
+        // User selected an item from dropdown - set it directly
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[EnhancedCascadingMode] handleDeviceChange: selectedItem', JSON.stringify({
+            id: selectedItem.id,
+            name: selectedItem.name,
+            code: selectedItem.code,
+          }, null, 2));
+        }
         setSelectedDevice(selectedItem);
+        setDeviceInput(selectedItem.name || "");
         setIsCreatingDevice(false);
-      } else if (trimmedValue && selectedRoom && selectedRoom.id) {
-        // Only allow if room is selected and has id (created)
+        setShowAddDeviceLink(false);
+        
+        // Update parent's internal state (LocationSearchAndCreate) so it can track current selection
+        // This does NOT notify the grandparent (MoveSampleModal) - that only happens when "Add" is clicked
+        if (onLocationChange) {
+          const currentLocation = {
+            room: selectedRoom || null,
+            device: selectedItem,
+            shelf: selectedShelf || null,
+            rack: selectedRack || null,
+            position: positionInput ? { coordinate: positionInput } : null,
+          };
+          onLocationChange(currentLocation);
+        }
+      } else if (trimmedValue && selectedRoom && (selectedRoom.id || isCreatingRoom || pendingRoomCreation)) {
+        // User is typing - check if it matches existing or needs creation
+        setDeviceInput(trimmedValue);
         const existing = devices.find(
           (d) => d.name?.toLowerCase() === trimmedValue.toLowerCase(),
         );
         if (existing) {
           setSelectedDevice(existing);
           setIsCreatingDevice(false);
+          setShowAddDeviceLink(false);
         } else {
           setIsCreatingDevice(true);
           setSelectedDevice({
@@ -305,14 +527,26 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
             code: trimmedValue.substring(0, 50).toUpperCase(),
             type: "other",
           });
+          setShowAddDeviceLink(true);
         }
       } else {
+        // No input and no selected item - clear selection
         setSelectedDevice(null);
+        setDeviceInput("");
         setIsCreatingDevice(false);
+        setShowAddDeviceLink(false);
       }
     },
-    [devices, selectedRoom],
+    [devices, selectedRoom, isCreatingRoom, pendingRoomCreation, onLocationChange, selectedShelf, selectedRack, positionInput],
   );
+
+  // Handle Enter key for device - show confirmation
+  const handleDeviceKeyDown = useCallback((e) => {
+    if (e.key === 'Enter' && canAddDevice()) {
+      e.preventDefault();
+      setShowConfirmDevice(true);
+    }
+  }, [canAddDevice]);
 
   // Create shelf if input doesn't match existing
   const handleShelfChange = useCallback(
@@ -323,6 +557,19 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
       if (selectedItem) {
         setSelectedShelf(selectedItem);
         setIsCreatingShelf(false);
+        setShowAddShelfLink(false);
+        
+        // Update parent's internal state (LocationSearchAndCreate) so it can track current selection
+        if (onLocationChange) {
+          const currentLocation = {
+            room: selectedRoom || null,
+            device: selectedDevice || null,
+            shelf: selectedItem,
+            rack: selectedRack || null,
+            position: positionInput ? { coordinate: positionInput } : null,
+          };
+          onLocationChange(currentLocation);
+        }
       } else if (trimmedValue && selectedDevice && selectedDevice.id) {
         const existing = shelves.find(
           (s) => s.label?.toLowerCase() === trimmedValue.toLowerCase(),
@@ -330,16 +577,21 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
         if (existing) {
           setSelectedShelf(existing);
           setIsCreatingShelf(false);
+          setShowAddShelfLink(false);
+          
+          // Don't call onLocationChange here - only when "Add" is clicked
         } else {
           setIsCreatingShelf(true);
           setSelectedShelf({ label: trimmedValue });
+          setShowAddShelfLink(true);
         }
       } else {
         setSelectedShelf(null);
         setIsCreatingShelf(false);
+        setShowAddShelfLink(false);
       }
     },
-    [shelves, selectedDevice],
+    [shelves, selectedDevice, onLocationChange, selectedRoom, selectedRack, positionInput],
   );
 
   // Create rack if input doesn't match existing
@@ -351,6 +603,19 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
       if (selectedItem) {
         setSelectedRack(selectedItem);
         setIsCreatingRack(false);
+        setShowAddRackLink(false);
+        
+        // Update parent's internal state (LocationSearchAndCreate) so it can track current selection
+        if (onLocationChange) {
+          const currentLocation = {
+            room: selectedRoom || null,
+            device: selectedDevice || null,
+            shelf: selectedShelf || null,
+            rack: selectedItem,
+            position: positionInput ? { coordinate: positionInput } : null,
+          };
+          onLocationChange(currentLocation);
+        }
       } else if (trimmedValue && selectedShelf && selectedShelf.id) {
         const existing = racks.find(
           (r) => r.label?.toLowerCase() === trimmedValue.toLowerCase(),
@@ -358,16 +623,31 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
         if (existing) {
           setSelectedRack(existing);
           setIsCreatingRack(false);
+          setShowAddRackLink(false);
+          
+          // Update parent's internal state (LocationSearchAndCreate)
+          if (onLocationChange) {
+            const currentLocation = {
+              room: selectedRoom || null,
+              device: selectedDevice || null,
+              shelf: selectedShelf || null,
+              rack: existing,
+              position: positionInput ? { coordinate: positionInput } : null,
+            };
+            onLocationChange(currentLocation);
+          }
         } else {
           setIsCreatingRack(true);
           setSelectedRack({ label: trimmedValue, rows: 0, columns: 0 });
+          setShowAddRackLink(true);
         }
       } else {
         setSelectedRack(null);
         setIsCreatingRack(false);
+        setShowAddRackLink(false);
       }
     },
-    [racks, selectedShelf],
+    [racks, selectedShelf, onLocationChange, selectedRoom, selectedDevice, positionInput],
   );
 
   // Create room via API
@@ -416,18 +696,30 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
       parentRoomId: String(selectedRoom.id),
     };
 
-    postToOpenElisServer(
-      "/rest/storage/devices",
-      formData,
-      (created) => {
-        setSelectedDevice(created);
-        setDevices((prev) => [...prev, created]);
-        setIsCreatingDevice(false);
-      },
-      (error) => {
-        console.error("Failed to create device:", error);
-      },
-    );
+      postToOpenElisServer(
+        "/rest/storage/devices",
+        formData,
+        (created) => {
+          setSelectedDevice(created);
+          setDevices((prev) => [...prev, created]);
+          setIsCreatingDevice(false);
+          
+          // CRITICAL FIX: Immediately notify parent when device is created
+          if (onLocationChange) {
+            const currentLocation = {
+              room: selectedRoom || null,
+              device: created,
+              shelf: selectedShelf || null,
+              rack: selectedRack || null,
+              position: positionInput ? { coordinate: positionInput } : null,
+            };
+            onLocationChange(currentLocation);
+          }
+        },
+        (error) => {
+          console.error("Failed to create device:", error);
+        },
+      );
   }, [selectedDevice, selectedRoom]);
 
   // Create shelf via API
@@ -453,12 +745,14 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
         setSelectedShelf(created);
         setShelves((prev) => [...prev, created]);
         setIsCreatingShelf(false);
+        
+        // Don't call onLocationChange here - only when "Add" is clicked
       },
       (error) => {
         console.error("Failed to create shelf:", error);
       },
     );
-  }, [selectedShelf, selectedDevice]);
+  }, [selectedShelf, selectedDevice, onLocationChange, selectedRoom, selectedRack, positionInput]);
 
   // Create rack via API
   const createRack = useCallback(async () => {
@@ -485,241 +779,349 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
         setSelectedRack(created);
         setRacks((prev) => [...prev, created]);
         setIsCreatingRack(false);
+        
+        // Update parent's internal state (LocationSearchAndCreate)
+        if (onLocationChange) {
+          const currentLocation = {
+            room: selectedRoom || null,
+            device: selectedDevice || null,
+            shelf: selectedShelf || null,
+            rack: created,
+            position: positionInput ? { coordinate: positionInput } : null,
+          };
+          onLocationChange(currentLocation);
+        }
       },
       (error) => {
         console.error("Failed to create rack:", error);
       },
     );
-  }, [selectedRack, selectedShelf]);
+  }, [selectedRack, selectedShelf, onLocationChange, selectedRoom, selectedDevice, positionInput]);
 
-  // Auto-create items immediately when they're typed (not selected from dropdown)
-  useEffect(() => {
-    // Create room immediately when typed (not selected)
-    if (isCreatingRoom && selectedRoom && !selectedRoom.id) {
-      createRoom();
-    }
-  }, [isCreatingRoom, selectedRoom, createRoom]);
+  // Note: Items are now created manually via "add new" links, not automatically
 
-  useEffect(() => {
-    // Create device when typed and room exists
-    if (
-      isCreatingDevice &&
-      selectedDevice &&
-      !selectedDevice.id &&
-      selectedRoom?.id
-    ) {
-      createDevice();
-    }
-  }, [isCreatingDevice, selectedDevice, selectedRoom, createDevice]);
-
-  useEffect(() => {
-    // Create shelf when typed and device exists
-    if (
-      isCreatingShelf &&
-      selectedShelf &&
-      !selectedShelf.id &&
-      selectedDevice?.id
-    ) {
-      createShelf();
-    }
-  }, [isCreatingShelf, selectedShelf, selectedDevice, createShelf]);
-
-  useEffect(() => {
-    // Create rack when typed and shelf exists
-    if (
-      isCreatingRack &&
-      selectedRack &&
-      !selectedRack.id &&
-      selectedShelf?.id
-    ) {
-      createRack();
-    }
-  }, [isCreatingRack, selectedRack, selectedShelf, createRack]);
-
-  // Notify parent when location is complete
-  // Only notify when we have at least a rack (or shelf if no rack selected)
-  useEffect(() => {
-    if (selectedRack && selectedRack.id && onLocationChange) {
-      // Full hierarchy with rack
-      onLocationChange({
-        room: selectedRoom,
-        device: selectedDevice,
-        shelf: selectedShelf,
-        rack: selectedRack,
-        position: positionInput ? { coordinate: positionInput } : null,
-      });
-    } else if (
-      selectedShelf &&
-      selectedShelf.id &&
-      (!selectedRack || !selectedRack.id) &&
-      onLocationChange
-    ) {
-      // Allow selection at shelf level (no rack yet)
-      onLocationChange({
-        room: selectedRoom,
-        device: selectedDevice,
-        shelf: selectedShelf,
-        rack: null,
-        position: null,
-      });
-    } else if (
-      selectedRoom &&
-      selectedRoom.id &&
-      !selectedShelf &&
-      onLocationChange
-    ) {
-      // Allow selection at room level (minimal)
-      onLocationChange({
-        room: selectedRoom,
-        device: null,
-        shelf: null,
-        rack: null,
-        position: null,
-      });
-    }
-  }, [
-    selectedRoom,
-    selectedDevice,
-    selectedShelf,
-    selectedRack,
-    positionInput,
-    onLocationChange,
-  ]);
+  // SIMPLIFIED WORKFLOW: Don't notify parent on every change - only when "Add" is clicked
+  // This prevents state conflicts and race conditions
+  // The parent component (LocationSearchAndCreate) will handle calling onLocationChange
+  // when the user clicks "Add" button, after validating at least 2 levels are selected
 
   return (
     <div className="enhanced-cascading-container">
+      {/* Confirmation dialogs */}
+      {showConfirmDevice && selectedDevice && (
+        <ComposedModal open={showConfirmDevice} onClose={() => setShowConfirmDevice(false)}>
+          <ModalHeader
+            title={intl.formatMessage({
+              id: "label.button.confirmTitle",
+              defaultMessage: "Confirm",
+            })}
+          />
+          <ModalBody>
+            <FormattedMessage
+              id="storage.confirm.add.device"
+              defaultMessage="Do you want to create a new device '{name}'?"
+              values={{ name: selectedDevice.name || deviceInput }}
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button kind="secondary" onClick={() => setShowConfirmDevice(false)}>
+              <FormattedMessage id="label.button.cancel" />
+            </Button>
+            <Button
+              kind="primary"
+              onClick={() => {
+                if (selectedDevice && !selectedDevice.id && selectedRoom && selectedRoom.id) {
+                  createDevice();
+                }
+                setShowConfirmDevice(false);
+              }}
+            >
+              <FormattedMessage id="label.button.confirm" />
+            </Button>
+          </ModalFooter>
+        </ComposedModal>
+      )}
       {/* Room - ComboBox with autocomplete */}
-      <ComboBox
-        id="room-combobox"
-        data-testid="room-combobox"
-        titleText={intl.formatMessage({
-          id: "storage.room.label",
-          defaultMessage: "Room",
-        })}
-        label={intl.formatMessage({
-          id: "storage.room.label",
-          defaultMessage: "Room",
-        })}
-        items={rooms || []}
-        itemToString={(item) => (item ? item.name : "")}
-        onInputChange={({ inputValue }) => handleRoomChange(inputValue, null)}
-        onChange={({ selectedItem }) =>
-          handleRoomChange(selectedItem?.name || "", selectedItem)
-        }
-        selectedItem={selectedRoom}
-        inputValue={roomInput}
-        placeholder={intl.formatMessage({
-          id: "storage.room.placeholder",
-          defaultMessage: "Select or type to create room...",
-        })}
-      />
+      <div className="enhanced-cascading-row">
+        <div className="enhanced-cascading-column enhanced-cascading-column-input">
+          <ComboBox
+            id="room-combobox"
+            data-testid="room-combobox"
+            titleText={intl.formatMessage({
+              id: "storage.room.label",
+              defaultMessage: "Room",
+            })}
+            label={intl.formatMessage({
+              id: "storage.room.label",
+              defaultMessage: "Room",
+            })}
+            items={rooms || []}
+            itemToString={(item) => (item ? item.name : "")}
+            onInputChange={({ inputValue }) => {
+              setRoomInput(inputValue || "");
+              if (inputValue !== selectedRoom?.name) {
+                handleRoomChange(inputValue, null);
+              }
+            }}
+            onChange={({ selectedItem }) => {
+              if (selectedItem) {
+                handleRoomChange(selectedItem.name || "", selectedItem);
+                setRoomInput(selectedItem.name || "");
+              } else {
+                handleRoomChange("", null);
+                setRoomInput("");
+              }
+            }}
+            selectedItem={selectedRoom}
+            placeholder={intl.formatMessage({
+              id: "storage.room.placeholder",
+              defaultMessage: "Select or create room...",
+            })}
+          />
+        </div>
+        <div className="enhanced-cascading-column enhanced-cascading-column-button">
+          <div className="inline-add-button-wrapper">
+            <Button
+              kind="ghost"
+              size="md"
+              onClick={() => {
+                if (canAddRoom() && selectedRoom && !selectedRoom.id) {
+                  createRoom();
+                }
+              }}
+              data-testid="add-new-room-button"
+              disabled={!canAddRoom()}
+            >
+              <Add size={16} />
+              <FormattedMessage
+                id="storage.add.new"
+                defaultMessage="Add new"
+              />
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* Device - ComboBox with autocomplete */}
-      <ComboBox
-        id="device-combobox"
-        data-testid="device-combobox"
-        titleText={intl.formatMessage({
-          id: "storage.device.label",
-          defaultMessage: "Device",
-        })}
-        label={intl.formatMessage({
-          id: "storage.device.label",
-          defaultMessage: "Device",
-        })}
-        items={devices || []}
-        itemToString={(item) => (item ? item.name : "")}
-        onInputChange={({ inputValue }) => handleDeviceChange(inputValue, null)}
-        onChange={({ selectedItem }) =>
-          handleDeviceChange(selectedItem?.name || "", selectedItem)
-        }
-        selectedItem={selectedDevice}
-        inputValue={deviceInput}
-        disabled={!selectedRoom || !selectedRoom.id}
-        placeholder={intl.formatMessage({
-          id: "storage.device.placeholder",
-          defaultMessage: "Select or type to create device...",
-        })}
-      />
+      <div className="enhanced-cascading-row">
+        <div className="enhanced-cascading-column enhanced-cascading-column-input">
+          <ComboBox
+            id="device-combobox"
+            data-testid="device-combobox"
+            titleText={intl.formatMessage({
+              id: "storage.device.label",
+              defaultMessage: "Device",
+            })}
+            label={intl.formatMessage({
+              id: "storage.device.label",
+              defaultMessage: "Device",
+            })}
+            items={devices || []}
+            itemToString={(item) => (item ? item.name : "")}
+            onChange={({ selectedItem }) => {
+              if (process.env.NODE_ENV === 'development') {
+                console.log('[EnhancedCascadingMode] Device ComboBox onChange:', selectedItem ? JSON.stringify({
+                  id: selectedItem.id,
+                  name: selectedItem.name,
+                }, null, 2) : 'null');
+              }
+              if (selectedItem) {
+                selectedDeviceRef.current = selectedItem;
+                handleDeviceChange(selectedItem.name || "", selectedItem);
+                setDeviceInput(selectedItem.name || "");
+              } else {
+                selectedDeviceRef.current = null;
+                handleDeviceChange("", null);
+                setDeviceInput("");
+              }
+            }}
+            onInputChange={({ inputValue }) => {
+              const currentSelected = selectedDeviceRef.current;
+              if (!currentSelected || currentSelected.name?.toLowerCase() !== inputValue?.trim()?.toLowerCase()) {
+                handleDeviceChange(inputValue, null);
+              }
+            }}
+            onKeyDown={handleDeviceKeyDown}
+            selectedItem={selectedDevice}
+            disabled={
+              !selectedRoom ||
+              (!selectedRoom.id && !isCreatingRoom && !pendingRoomCreation)
+            }
+            placeholder={intl.formatMessage({
+              id: "storage.device.placeholder",
+              defaultMessage: "Select or create device...",
+            })}
+          />
+        </div>
+        <div className="enhanced-cascading-column enhanced-cascading-column-button">
+          <div className="inline-add-button-wrapper">
+            <Button
+              kind="ghost"
+              size="md"
+              onClick={() => {
+                if (canAddDevice() && selectedDevice && !selectedDevice.id && selectedRoom && selectedRoom.id) {
+                  createDevice();
+                }
+              }}
+              data-testid="add-new-device-button"
+              disabled={!canAddDevice()}
+            >
+              <Add size={16} />
+              <FormattedMessage
+                id="storage.add.new"
+                defaultMessage="Add new"
+              />
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* Shelf - ComboBox with autocomplete */}
-      <ComboBox
-        id="shelf-combobox"
-        data-testid="shelf-combobox"
-        titleText={intl.formatMessage({
-          id: "storage.shelf.label",
-          defaultMessage: "Shelf",
-        })}
-        label={intl.formatMessage({
-          id: "storage.shelf.label",
-          defaultMessage: "Shelf",
-        })}
-        items={shelves || []}
-        itemToString={(item) => (item ? item.label : "")}
-        onInputChange={({ inputValue }) => handleShelfChange(inputValue, null)}
-        onChange={({ selectedItem }) =>
-          handleShelfChange(selectedItem?.label || "", selectedItem)
-        }
-        selectedItem={selectedShelf}
-        inputValue={shelfInput}
-        disabled={!selectedDevice || !selectedDevice.id}
-        placeholder={intl.formatMessage({
-          id: "storage.shelf.placeholder",
-          defaultMessage: "Select or type to create shelf...",
-        })}
-      />
+      <div className="enhanced-cascading-row">
+        <div className="enhanced-cascading-column enhanced-cascading-column-input">
+          <ComboBox
+            id="shelf-combobox"
+            data-testid="shelf-combobox"
+            titleText={intl.formatMessage({
+              id: "storage.shelf.label",
+              defaultMessage: "Shelf",
+            })}
+            label={intl.formatMessage({
+              id: "storage.shelf.label",
+              defaultMessage: "Shelf",
+            })}
+            items={shelves || []}
+            itemToString={(item) => (item ? item.label : "")}
+            onInputChange={({ inputValue }) => handleShelfChange(inputValue, null)}
+            onChange={({ selectedItem }) => {
+              if (selectedItem) {
+                handleShelfChange(selectedItem.label || selectedItem.name || "", selectedItem);
+                setShelfInput(selectedItem.label || selectedItem.name || "");
+              } else {
+                handleShelfChange("", null);
+                setShelfInput("");
+              }
+            }}
+            selectedItem={selectedShelf}
+            disabled={(() => {
+              const isDisabled = !selectedDevice || (!selectedDevice.id && !isCreatingDevice);
+              return isDisabled;
+            })()}
+            placeholder={intl.formatMessage({
+              id: "storage.shelf.placeholder",
+              defaultMessage: "Select or create shelf...",
+            })}
+          />
+        </div>
+        <div className="enhanced-cascading-column enhanced-cascading-column-button">
+          <div className="inline-add-button-wrapper">
+            <Button
+              kind="ghost"
+              size="md"
+              onClick={() => {
+                if (canAddShelf() && selectedShelf && !selectedShelf.id && selectedDevice && selectedDevice.id) {
+                  createShelf();
+                }
+              }}
+              data-testid="add-new-shelf-button"
+              disabled={!canAddShelf()}
+            >
+              <Add size={16} />
+              <FormattedMessage
+                id="storage.add.new"
+                defaultMessage="Add new"
+              />
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* Rack - ComboBox with autocomplete */}
-      <ComboBox
-        id="rack-combobox"
-        data-testid="rack-combobox"
-        titleText={intl.formatMessage({
-          id: "storage.rack.label",
-          defaultMessage: "Rack",
-        })}
-        label={intl.formatMessage({
-          id: "storage.rack.label",
-          defaultMessage: "Rack",
-        })}
-        items={racks || []}
-        itemToString={(item) => (item ? item.label : "")}
-        onInputChange={({ inputValue }) => handleRackChange(inputValue, null)}
-        onChange={({ selectedItem }) =>
-          handleRackChange(selectedItem?.label || "", selectedItem)
-        }
-        selectedItem={selectedRack}
-        inputValue={rackInput}
-        disabled={!selectedShelf || !selectedShelf.id}
-        placeholder={intl.formatMessage({
-          id: "storage.rack.placeholder",
-          defaultMessage: "Select or type to create rack...",
-        })}
-      />
+      <div className="enhanced-cascading-row">
+        <div className="enhanced-cascading-column enhanced-cascading-column-input">
+          <ComboBox
+            id="rack-combobox"
+            data-testid="rack-combobox"
+            titleText={intl.formatMessage({
+              id: "storage.rack.label",
+              defaultMessage: "Rack",
+            })}
+            label={intl.formatMessage({
+              id: "storage.rack.label",
+              defaultMessage: "Rack",
+            })}
+            items={racks || []}
+            itemToString={(item) => (item ? item.label : "")}
+            onInputChange={({ inputValue }) => handleRackChange(inputValue, null)}
+            onChange={({ selectedItem }) => {
+              if (selectedItem) {
+                handleRackChange(selectedItem.label || selectedItem.name || "", selectedItem);
+                setRackInput(selectedItem.label || selectedItem.name || "");
+              } else {
+                handleRackChange("", null);
+                setRackInput("");
+              }
+            }}
+            selectedItem={selectedRack}
+            disabled={!selectedShelf || (!selectedShelf.id && !isCreatingShelf)}
+            placeholder={intl.formatMessage({
+              id: "storage.rack.placeholder",
+              defaultMessage: "Select or create rack...",
+            })}
+          />
+        </div>
+        <div className="enhanced-cascading-column enhanced-cascading-column-button">
+          <div className="inline-add-button-wrapper">
+            <Button
+              kind="ghost"
+              size="md"
+              onClick={() => {
+                if (canAddRack() && selectedRack && !selectedRack.id && selectedShelf && selectedShelf.id) {
+                  createRack();
+                }
+              }}
+              data-testid="add-new-rack-button"
+              disabled={!canAddRack()}
+            >
+              <Add size={16} />
+              <FormattedMessage
+                id="storage.add.new"
+                defaultMessage="Add new"
+              />
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* Position - Simple text input (optional) */}
-      <TextInput
-        id="position-input"
-        data-testid="position-input"
-        labelText={
-          <>
-            <FormattedMessage
-              id="storage.position.label"
-              defaultMessage="Position"
-            />{" "}
-            <span className="optional-text">
-              (
-              <FormattedMessage id="label.optional" defaultMessage="optional" />
-              )
-            </span>
-          </>
-        }
-        value={positionInput}
-        onChange={(e) => setPositionInput(e.target.value)}
-        disabled={!selectedRack || !selectedRack.id}
-        placeholder={intl.formatMessage({
-          id: "storage.position.placeholder",
-          defaultMessage: "e.g., A5, 1-1, RED-12",
-        })}
-      />
+      <div className="enhanced-cascading-row">
+        <div className="enhanced-cascading-column enhanced-cascading-column-full">
+          <TextInput
+            id="position-input"
+            data-testid="position-input"
+            labelText={
+              <>
+                <FormattedMessage
+                  id="storage.position.label"
+                  defaultMessage="Position"
+                />{" "}
+                <span className="optional-text">
+                  (
+                  <FormattedMessage id="label.optional" defaultMessage="optional" />
+                  )
+                </span>
+              </>
+            }
+            value={positionInput}
+            onChange={(e) => setPositionInput(e.target.value)}
+            disabled={!selectedRack || !selectedRack.id}
+            placeholder={intl.formatMessage({
+              id: "storage.position.placeholder",
+              defaultMessage: "e.g., A5, 1-1, RED-12",
+            })}
+          />
+        </div>
+      </div>
     </div>
   );
 };

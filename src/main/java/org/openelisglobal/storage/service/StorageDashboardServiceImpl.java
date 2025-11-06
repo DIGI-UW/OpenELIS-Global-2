@@ -189,13 +189,15 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
         for (Map<String, Object> shelf : allShelves) {
             boolean matchesDevice = true;
             if (deviceId != null) {
-                Integer shelfDeviceId = (Integer) shelf.get("deviceId");
+                // Use parentDeviceId (set by getShelvesForAPI) instead of deviceId
+                Integer shelfDeviceId = (Integer) shelf.get("parentDeviceId");
                 matchesDevice = shelfDeviceId != null && shelfDeviceId.equals(deviceId);
             }
 
             boolean matchesRoom = true;
             if (roomId != null) {
-                Integer shelfRoomId = (Integer) shelf.get("roomId");
+                // Use parentRoomId (set by getShelvesForAPI) instead of roomId
+                Integer shelfRoomId = (Integer) shelf.get("parentRoomId");
                 matchesRoom = shelfRoomId != null && shelfRoomId.equals(roomId);
             }
 
@@ -271,21 +273,53 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
             rackMap.put("active", rack.getActive());
             rackMap.put("fhirUuid", rack.getFhirUuidAsString());
 
-            // Add relationship data with IDs and names for filtering and display
+            // Add relationship data with IDs and names for filtering and display - use parent-prefixed names for consistency
             if (parentShelf != null) {
-                rackMap.put("shelfId", parentShelf.getId());
+                rackMap.put("parentShelfId", parentShelf.getId());
                 rackMap.put("shelfLabel", parentShelf.getLabel());
                 rackMap.put("parentShelfLabel", parentShelf.getLabel());
             }
             if (parentDevice != null) {
-                rackMap.put("deviceId", parentDevice.getId());
+                rackMap.put("parentDeviceId", parentDevice.getId());
                 rackMap.put("deviceName", parentDevice.getName());
+                rackMap.put("parentDeviceName", parentDevice.getName());
             }
-            // FR-065a: Include roomId column and room name
+            // FR-065a: Include parentRoomId and room name
             if (parentRoom != null) {
-                rackMap.put("roomId", parentRoom.getId());
+                rackMap.put("parentRoomId", parentRoom.getId());
                 rackMap.put("roomName", parentRoom.getName());
+                rackMap.put("parentRoomName", parentRoom.getName());
             }
+
+            // Build hierarchicalPath: Room > Device > Shelf > Rack
+            StringBuilder pathBuilder = new StringBuilder();
+            if (parentRoom != null && parentRoom.getName() != null) {
+                pathBuilder.append(parentRoom.getName());
+            }
+            if (parentDevice != null && parentDevice.getName() != null) {
+                if (pathBuilder.length() > 0) {
+                    pathBuilder.append(" > ");
+                }
+                pathBuilder.append(parentDevice.getName());
+            }
+            if (parentShelf != null && parentShelf.getLabel() != null) {
+                if (pathBuilder.length() > 0) {
+                    pathBuilder.append(" > ");
+                }
+                pathBuilder.append(parentShelf.getLabel());
+            }
+            if (rack.getLabel() != null) {
+                if (pathBuilder.length() > 0) {
+                    pathBuilder.append(" > ");
+                }
+                pathBuilder.append(rack.getLabel());
+            }
+            if (pathBuilder.length() > 0) {
+                rackMap.put("hierarchicalPath", pathBuilder.toString());
+            }
+            
+            // Set type for consistency
+            rackMap.put("type", "rack");
 
             result.add(rackMap);
         }

@@ -18,6 +18,13 @@
   border-radius: 4px;
   padding: 1rem;
   background-color: var(--cds-layer-01);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.move-modal-new-location-selector {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .move-modal-selected-preview {
@@ -69,6 +76,7 @@
 
 .location-path {
   color: var(--cds-text-primary);
+  font-weight: 600;
 }
 
 .form-label {

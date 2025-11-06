@@ -1,5 +1,3 @@
-import LoginPage from "../pages/LoginPage";
-
 /**
  * E2E Test: Samples Table Should Display Samples with Storage Assignments
  *
@@ -10,29 +8,16 @@ import LoginPage from "../pages/LoginPage";
  * That's the expected behavior - we need to fix why samples aren't showing up.
  */
 
-let loginPage = null;
 let homePage = null;
 
-before("Wait for API, login and load fixtures", () => {
-  // Wait for backend API and storage endpoint to be available
-  cy.waitForBackend("/rest/storage/samples");
-
-  // Now login
-  loginPage = new LoginPage();
-  loginPage.visit();
-  homePage = loginPage.goToHomePage();
-
-  // Load storage test fixtures (includes storage hierarchy AND sample assignments)
-  cy.loadStorageFixtures();
+before("Setup storage tests", () => {
+  cy.setupStorageTests().then((page) => {
+    homePage = page;
+  });
 });
 
-after("clean up fixtures", () => {
-  // Keep fixtures for debugging - set CLEANUP_FIXTURES=false
-  if (Cypress.env("CLEANUP_FIXTURES")) {
-    cy.cleanStorageFixtures();
-  } else {
-    cy.log("Skipping fixture cleanup - fixtures preserved for manual testing");
-  }
+after("Cleanup storage tests", () => {
+  cy.cleanupStorageTests();
 });
 
 describe("Samples Table - Must Display Assigned Samples", function () {

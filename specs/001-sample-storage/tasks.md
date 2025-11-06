@@ -134,6 +134,153 @@ service working and validated
 
 ---
 
+## Phase 2.5: Position Hierarchy Structure Update (2-5 Level Support)
+
+**Purpose**: Update StoragePosition entity structure to support flexible hierarchy
+(2-5 levels) per updated specification. Positions can have parent_device_id
+(required), parent_shelf_id (optional), parent_rack_id (optional), coordinate
+(optional). Minimum requirement is device level (room + device); cannot be just a
+room.
+
+**⚠️ CRITICAL**: This phase must complete before Phase 5 (US2B - Movement) as
+movement logic requires position hierarchy validation.
+
+### Tests First (Write BEFORE implementation)
+
+- [x] T026a [P] Write unit test
+      `src/test/java/org/openelisglobal/storage/valueholder/StoragePositionTest.java`
+      for position hierarchy validation: testPositionWithDeviceOnly_Valid,
+      testPositionWithDeviceAndShelf_Valid, testPositionWithDeviceShelfRack_Valid,
+      testPositionWithFullHierarchy_Valid, testPositionWithoutDevice_Invalid,
+      testPositionWithRackButNoShelf_Invalid, testPositionWithCoordinateButNoRack_Invalid
+
+- [x] T026b [P] Write integration test
+      `src/test/java/org/openelisglobal/storage/service/StorageLocationServiceHierarchyTest.java`
+      for buildHierarchicalPath with optional parents:
+      testBuildPath_DeviceLevel_ReturnsRoomAndDevice,
+      testBuildPath_ShelfLevel_ReturnsRoomDeviceShelf,
+      testBuildPath_RackLevel_ReturnsRoomDeviceShelfRack,
+      testBuildPath_PositionLevel_ReturnsFullHierarchy
+
+- [x] T026c [P] Write database migration test
+      `src/test/java/org/openelisglobal/storage/liquibase/PositionHierarchyMigrationTest.java`
+      to verify schema changes: testParentDeviceIdNotNull, testParentShelfIdNullable,
+      testParentRackIdNullable, testCoordinateNullable, testCheckConstraints
+
+### Implementation - Database Schema Migration
+
+- [x] T026d Create Liquibase changeset
+      `src/main/resources/liquibase/3.3.x.x/004-update-position-hierarchy-structure.xml`
+      to update STORAGE_POSITION table:
+      - Add parent_device_id column (VARCHAR(36), NOT NULL, FK to storage_device)
+      - Add parent_shelf_id column (VARCHAR(36), NULL, FK to storage_shelf)
+      - Change parent_rack_id from NOT NULL to NULL (optional)
+      - Make coordinate column NULL (optional, only for 5-level positions)
+      - Add CHECK constraint: If parent_rack_id is NOT NULL, then parent_shelf_id
+        must also be NOT NULL
+      - Add CHECK constraint: If coordinate is NOT NULL, then parent_rack_id must
+        also be NOT NULL
+      - Add index on parent_device_id for performance
+      - Migrate existing data: Set parent_device_id from existing parent_rack →
+        parent_shelf → parent_device chain
+
+- [ ] T026e Verify database migration: Run application, check
+      `databasechangelog` table contains changeset 004, verify STORAGE_POSITION
+      table structure with `\d storage_position`, verify CHECK constraints exist
+
+### Implementation - Entity Model Update
+
+- [x] T026f Update StoragePosition entity
+      `src/main/java/org/openelisglobal/storage/valueholder/StoragePosition.java`:
+      - Add parentDevice field (StorageDevice, required) with getter/setter
+      - Add parentShelf field (StorageShelf, optional) with getter/setter
+      - Change parentRack field from required to optional (nullable)
+      - Make coordinate field optional (nullable)
+      - Update relationships: Many-to-One with StorageDevice (required),
+        Many-to-One with StorageShelf (optional), Many-to-One with StorageRack
+        (optional)
+      - Add validation method: validateHierarchyIntegrity() to check constraint
+        compliance
+
+- [x] T026g Update Hibernate mapping
+      `src/main/resources/hibernate/hbm/StoragePosition.hbm.xml`:
+      - **N/A**: Codebase uses JPA annotations directly (@ManyToOne, @JoinColumn),
+        not .hbm.xml files. Entity updated with JPA annotations in T026f.
+
+- [x] T026h Update StoragePositionDAO interface and implementation:
+      - Add query method: findByParentDeviceId(deviceId)
+      - Add query method: findByParentShelfId(shelfId)
+      - Update existing findByParentRackId() to handle nullable rack
+      - Add query method: findPositionsByHierarchyLevel(level) where level is 2-5
+      - Add validation query: validateHierarchyIntegrity(positionId)
+
+### Implementation - Service Layer Update
+
+- [x] T026i Update buildHierarchicalPath() method in
+      `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`:
+      - Handle optional parents (shelf, rack) when building path
+      - Handle optional coordinate (only for 5-level positions)
+      - Build path based on actual position level (2-5 levels):
+        - Device level: "Room > Device"
+        - Shelf level: "Room > Device > Shelf"
+        - Rack level: "Room > Device > Shelf > Rack"
+        - Position level: "Room > Device > Shelf > Rack > Position {coordinate}"
+      - Return path string with appropriate separators
+
+- [x] T026j Update validateLocationActive() method in
+      `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`:
+      - Validate parent_device_id exists (minimum 2 levels requirement)
+      - Validate hierarchy integrity: if rack exists, shelf must exist; if
+        coordinate exists, rack must exist
+      - Traverse up the hierarchy (device → room) to ensure all levels are active
+      - Handle optional parents gracefully
+
+- [x] T026k Update assignSample() method in
+      `src/main/java/org/openelisglobal/storage/service/SampleStorageServiceImpl.java`:
+      - Add validation: Check that position has parent_device_id (minimum 2 levels)
+      - Update error messages to reflect flexible hierarchy levels
+      - Handle position label generation for different hierarchy levels (device,
+        shelf, rack, or coordinate)
+
+- [x] T026l Update moveSample() method in
+      `src/main/java/org/openelisglobal/storage/service/SampleStorageServiceImpl.java`:
+      - Add validation: Check that target position has parent_device_id (minimum 2
+        levels)
+      - Validate hierarchy integrity of target position
+      - Update error messages to reflect flexible hierarchy levels
+
+### Implementation - FHIR Transform Update
+
+- [x] T026m Update StorageLocationFhirTransform.transformToFhirLocation() for
+      Position in `src/main/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransform.java`:
+      - Update Location.identifier.value based on position level:
+        - Device level: "{room_code}-{device_code}"
+        - Shelf level: "{room_code}-{device_code}-{shelf_label}"
+        - Rack level: "{room_code}-{device_code}-{shelf_label}-{rack_label}"
+        - Position level: "{room_code}-{device_code}-{shelf_label}-{rack_label}-{coordinate}"
+      - Update Location.partOf.reference to parent device, shelf, or rack
+        depending on position level
+      - Update Location.name to coordinate (if position level) or device/shelf/rack
+        label (if lower level)
+
+### Verification
+
+- [ ] T026n Run all hierarchy tests → Verify all PASS:
+      `mvn test -Dtest="*Position*Test,*Hierarchy*Test,*Migration*Test"`
+
+- [ ] T026o Verify ORM validation test still passes:
+      `mvn test -Dtest="HibernateMappingValidationTest"`
+
+- [ ] T026p Run FHIR transform tests → Verify position mapping works for all
+      hierarchy levels:
+      `mvn test -Dtest="StorageLocationFhirTransformTest"`
+
+**Checkpoint**: Position hierarchy structure updated to support 2-5 levels,
+database migration complete, entity model updated, service methods handle optional
+parents, FHIR transform supports flexible hierarchy levels.
+
+---
+
 ## Phase 3: User Story 1 - Basic Storage Assignment (Priority: P1) 🎯 MVP
 
 **Goal**: Reception clerks can assign samples to storage locations during sample
@@ -201,14 +348,21 @@ hierarchical path and timestamp
       `src/test/java/org/openelisglobal/storage/controller/SampleStorageRestControllerTest.java`
       for assignment: testAssignSample_ValidInput_Returns201,
       testAssignSample_OccupiedPosition_Returns400,
-      testAssignSample_InactiveLocation_Returns400
+      testAssignSample_InactiveLocation_Returns400,
+      testAssignSample_MissingRoom_Returns400,
+      testAssignSample_MissingDevice_Returns400,
+      testAssignSample_OnlyRoomSelected_Returns400
 - [x] T043 [P] [US1] Write unit test
       `src/test/java/org/openelisglobal/storage/service/SampleStorageServiceImplTest.java`
       for business logic: testAssignSample_ValidPosition_SetsOccupied,
       testAssignSample_CreatesAuditLog,
       testAssignSample_CalculatesCapacityWarnings,
       testAssignSample_ConcurrentAccess_ThrowsException,
-      testAssignSample_TriggersPositionFhirSync (verify @PostUpdate hook fires)
+      testAssignSample_TriggersPositionFhirSync (verify @PostUpdate hook fires),
+      testAssignSample_RequiresRoomAndDevice_MissingRoom_ThrowsException,
+      testAssignSample_RequiresRoomAndDevice_MissingDevice_ThrowsException,
+      testAssignSample_RequiresRoomAndDevice_OnlyRoomSelected_ThrowsException,
+      testAssignSample_RequiresRoomAndDevice_ValidWithShelfRackPositionOptional
 - [x] T044 Run assignment tests → Verify all FAIL:
       `mvn test -Dtest="SampleStorage*Test"`
 
@@ -221,8 +375,9 @@ hierarchical path and timestamp
 - [x] T047 [US1] Implement SampleStorageService interface and implementation
       `src/main/java/org/openelisglobal/storage/service/SampleStorageService.java`
       with methods: assignSample(), calculateCapacity() (with 80/90/100%
-      warnings), validateLocationActive(), handleOptimisticLocking() per plan.md
-      enhancements
+      warnings), validateLocationActive(), validateMinimumLevels() (requires Room
+      and Device, minimum 2 levels per FR-033a), handleOptimisticLocking() per
+      plan.md enhancements
 - [x] T048 [US1] Create SampleAssignmentForm
       `src/main/java/org/openelisglobal/storage/form/SampleAssignmentForm.java`
       with fields: sampleId, positionId, notes
@@ -283,7 +438,11 @@ hierarchical path and timestamp
       `frontend/src/components/storage/StorageLocationSelector/LocationSelectorModal.test.jsx`
       for expanded modal: testRendersSampleInfoSection,
       testRendersCurrentLocationSection, testRendersFullAssignmentForm,
-      testPrePopulatesWithCurrentLocation
+      testPrePopulatesWithCurrentLocation,
+      testValidation_RequiresRoomAndDevice_MissingRoom_ShowsError,
+      testValidation_RequiresRoomAndDevice_MissingDevice_ShowsError,
+      testValidation_RequiresRoomAndDevice_OnlyRoomSelected_ShowsError,
+      testValidation_RequiresRoomAndDevice_ValidWithShelfRackPositionOptional
 - [x] T061c [US1] Implement CompactLocationView component
       `frontend/src/components/storage/StorageLocationSelector/CompactLocationView.jsx`
       displaying selected location hierarchical path (or "Not assigned"), with
@@ -291,7 +450,8 @@ hierarchical path and timestamp
 - [x] T061d [US1] Implement LocationSelectorModal component
       `frontend/src/components/storage/StorageLocationSelector/LocationSelectorModal.jsx`
       matching View Storage modal structure: sample info box, current location
-      display, full assignment form
+      display, full assignment form, validation logic requiring Room and Device
+      selection (minimum 2 levels per FR-033a), Shelf/Rack/Position optional
 - [x] T061e [US1] Update StorageLocationSelector component
       `frontend/src/components/storage/StorageLocationSelector/StorageLocationSelector.jsx`
       to use two-tier design: compact inline view + expandable modal, accepts
@@ -546,7 +706,10 @@ hierarchical path and timestamp
       `frontend/cypress/e2e/storageAssignment.cy.js` for P1 user story:
       testAssignSampleViaCascadingDropdowns, testAssignSampleViaTypeAhead,
       testAssignSampleViaBarcodeScan, testInlineLocationCreation,
-      testCapacityWarningDisplayed per research.md Cypress patterns
+      testCapacityWarningDisplayed, testValidation_RequiresRoomAndDevice_MissingRoom_ShowsError,
+      testValidation_RequiresRoomAndDevice_MissingDevice_ShowsError,
+      testValidation_RequiresRoomAndDevice_ValidWithShelfRackPositionOptional per
+      research.md Cypress patterns
 - [x] T065 [US1] Create Cypress page object
       `frontend/cypress/pages/StorageAssignmentPage.js` with methods:
       selectRoom(), selectDevice(), enterPosition(), clickSave() per research.md
@@ -799,7 +962,8 @@ audit log records movement
 ### Implementation - Sample Movement Backend
 
 - [ ] T083 [US2B] Add moveSample() method to SampleStorageService: Validate
-      target location, free previous position (set occupied=false), occupy new
+      target position has parent_device_id (minimum 2 levels per FR-033a), validate
+      hierarchy integrity, free previous position (set occupied=false), occupy new
       position (set occupied=true), update SampleStorageAssignment, create
       SampleStorageMovement audit record, update Specimen FHIR resource
 - [ ] T084 [US2B] Add bulkMoveSamples() method to SampleStorageService:
@@ -831,7 +995,10 @@ audit log records movement
       testDisplaysNewLocationSelectorInBorderedBox,
       testDisplaysSelectedLocationPreview,
       testUpdatesPreviewWhenLocationSelected, testDisplaysReasonTextarea,
-      testValidatesNewLocationDifferentFromCurrent
+      testValidatesNewLocationDifferentFromCurrent,
+      testValidation_RequiresRoomAndDevice_MissingRoom_ShowsError,
+      testValidation_RequiresRoomAndDevice_MissingDevice_ShowsError,
+      testValidation_RequiresRoomAndDevice_ValidWithShelfRackPositionOptional
 - [x] T088c [P] [US2B] Write unit test
       `frontend/src/components/storage/SampleStorage/DisposeSampleModal.test.jsx`
       for dispose modal per Figma design: testDisplaysRedWarningAlert,
@@ -844,7 +1011,10 @@ audit log records movement
       for view storage modal per Figma design: testDisplaysModalTitle,
       testDisplaysSampleInfoSection, testDisplaysCurrentLocationSection,
       testDisplaysFullAssignmentForm, testPrePopulatesWithCurrentLocation,
-      testAllowsEditingLocationAssignment
+      testAllowsEditingLocationAssignment,
+      testValidation_RequiresRoomAndDevice_MissingRoom_ShowsError,
+      testValidation_RequiresRoomAndDevice_MissingDevice_ShowsError,
+      testValidation_RequiresRoomAndDevice_ValidWithShelfRackPositionOptional
 - [ ] T088e [P] [US2B] Write unit test
       `frontend/src/components/storage/SampleStorage/BulkMoveModal.test.jsx` for
       bulk move: testAutoAssignsPositions, testAllowsPositionEditing,
@@ -872,8 +1042,9 @@ audit log records movement
       `frontend/src/components/storage/SampleStorage/MoveSampleModal.jsx` per
       Figma design: modal title "Move Sample" with subtitle, current location in
       gray box, downward arrow icon, new location selector in bordered box,
-      "Selected Location" preview box, optional reason textarea, Cancel and
-      "Confirm Move" buttons (primary/dark styling)
+      "Selected Location" preview box, validation requiring Room and Device
+      selection (minimum 2 levels per FR-033a), optional reason textarea, Cancel
+      and "Confirm Move" buttons (primary/dark styling)
 - [x] T091c [US2B] Implement DisposeSampleModal component
       `frontend/src/components/storage/SampleStorage/DisposeSampleModal.jsx` per
       Figma design: modal title "Dispose Sample" with subtitle, red warning
@@ -887,7 +1058,8 @@ audit log records movement
       Figma design: modal title "Storage Location Assignment", sample info
       section, current location section in gray box, visual separator, full
       assignment form (barcode scan input, Room/Device/Shelf/Rack/Position
-      selectors, condition notes), Cancel and "Assign Storage Location" buttons
+      selectors, condition notes), validation requiring Room and Device selection
+      (minimum 2 levels per FR-033a), Cancel and "Assign Storage Location" buttons
 - [ ] T091e [US2B] Add POST /rest/storage/samples/dispose endpoint to
       SampleStorageRestController
       `src/main/java/org/openelisglobal/storage/controller/SampleStorageRestController.java`
@@ -899,9 +1071,10 @@ audit log records movement
 
 - [ ] T092 [US2B] Update MoveSampleModal component
       `frontend/src/components/storage/SampleStorage/MoveSampleModal.jsx` to
-      reuse LocationSelectorModal for new location selection, update "Selected
-      Location" preview in real-time, validate new location different from
-      current location
+      properly handle position selection at different hierarchy levels (2-5 levels),
+      validate minimum room+device requirement, require position ID selection (not
+      just device/rack IDs), update "Selected Location" preview in real-time,
+      validate new location different from current location
 - [ ] T093 [US2B] Implement BulkMoveModal component
       `frontend/src/components/storage/SampleStorage/BulkMoveModal.jsx` with
       auto-assign preview, editable position assignments, validation for
@@ -1045,9 +1218,13 @@ Phase 1 (Setup)
     ↓
 Phase 2 (Foundational) ← BLOCKS all user stories
     ↓
+    ├──> Phase 2.5 (Position Hierarchy Update) ← BLOCKS Phase 5 (US2B)
+    │    ↓
+    │    └──> Phase 5 (US2B - Movement)
+    │
     ├──> Phase 3 (US1 - Assignment) ← Can run in parallel ──┐
     ├──> Phase 4 (US2A - Search)    ← Can run in parallel ──┼─> Phase 6 (Polish)
-    └──> Phase 5 (US2B - Movement)  ← Can run in parallel ──┘         ↓
+    └──> Phase 5 (US2B - Movement)  ← Requires Phase 2.5 ──┘         ↓
                                                                  Phase 7 (Compliance)
 ```
 
@@ -1057,8 +1234,9 @@ Phase 2 (Foundational) ← BLOCKS all user stories
   other stories
 - **US2A (Search)**: Depends on Phase 2 (Foundational) - Integrates with US1 but
   independently testable
-- **US2B (Movement)**: Depends on Phase 2 (Foundational) - Requires US1 for
-  initial assignment, but can mock for testing
+- **US2B (Movement)**: Depends on Phase 2 (Foundational) AND Phase 2.5 (Position
+  Hierarchy Update) - Requires position hierarchy structure with 2-5 level support.
+  Requires US1 for initial assignment, but can mock for testing
 
 ### Task Dependencies Within Phases
 
@@ -1082,6 +1260,15 @@ Phase 2 (Foundational) ← BLOCKS all user stories
 
 - T069-T070 (Tests) can run in parallel
 - T075-T076 (Frontend tests) can run in parallel
+
+**Phase 2.5 (Position Hierarchy Update)**:
+
+- T026a-T026c (Tests) can run in parallel
+- T026d-T026e (Database migration) must complete before T026f-T026h (Entity updates)
+- T026f-T026h (Entity updates) can run in parallel
+- T026i-T026l (Service updates) can run in parallel after entity updates
+- T026m (FHIR transform) can run in parallel with service updates
+- T026n-T026p (Verification) must run after all implementation
 
 **Phase 5 (US2B)**:
 
@@ -1169,11 +1356,13 @@ Task T059: "Implement useSampleStorage hook"
 ### Cross-Story Parallelization
 
 ```bash
-# After Phase 2 completes, all user stories can proceed in parallel:
-Developer A: Phase 3 (US1 - Assignment)
-Developer B: Phase 4 (US2A - Search)
-Developer C: Phase 5 (US2B - Movement)
-# Stories are independent, can be worked simultaneously
+# After Phase 2 completes, Phase 2.5 must complete before Phase 5 (US2B):
+Developer A: Phase 3 (US1 - Assignment) ← Can start after Phase 2
+Developer B: Phase 4 (US2A - Search) ← Can start after Phase 2
+Developer C: Phase 2.5 (Position Hierarchy Update) ← Must complete before Phase 5
+Developer D: Phase 5 (US2B - Movement) ← Requires Phase 2.5
+# US1 and US2A are independent, can be worked simultaneously
+# US2B requires Phase 2.5 position hierarchy structure update
 ```
 
 ---
@@ -1243,23 +1432,24 @@ eliminating "unknown location" problem
 
 ## Task Summary
 
-**Total Tasks**: 162
+**Total Tasks**: 179
 
-| Phase                     | Task Count | Parallel Opportunities   | Test Tasks   | Implementation Tasks |
-| ------------------------- | ---------- | ------------------------ | ------------ | -------------------- |
-| Phase 1: Setup            | 7          | 1 (T007)                 | 0            | 7                    |
-| Phase 2: Foundational     | 19         | 14 (Hibernate, entities) | 3            | 16                   |
-| Phase 3: US1 (Assignment) | 70         | 25 (tests, DAOs, hooks)  | 25           | 45                   |
-| Phase 4: US2A (Search)    | 18         | 6 (tests)                | 6            | 12                   |
-| Phase 5: US2B (Movement)  | 33         | 10 (tests)               | 10           | 23                   |
-| Phase 6: Polish           | 7          | 4                        | 0            | 7                    |
-| Phase 7: Compliance       | 8          | 7 (most)                 | 0            | 8                    |
-| **TOTAL**                 | **162**    | **67 (41%)**             | **44 (27%)** | **118 (73%)**        |
+| Phase                             | Task Count | Parallel Opportunities        | Test Tasks   | Implementation Tasks |
+| --------------------------------- | ---------- | ---------------------------- | ------------ | -------------------- |
+| Phase 1: Setup                    | 7          | 1 (T007)                     | 0            | 7                    |
+| Phase 2: Foundational             | 19         | 14 (Hibernate, entities)     | 3            | 16                   |
+| Phase 2.5: Position Hierarchy     | 17         | 8 (tests, entity updates)    | 3            | 14                   |
+| Phase 3: US1 (Assignment)        | 70         | 25 (tests, DAOs, hooks)      | 25           | 45                   |
+| Phase 4: US2A (Search)           | 18         | 6 (tests)                    | 6            | 12                   |
+| Phase 5: US2B (Movement)          | 33         | 10 (tests)                   | 10           | 23                   |
+| Phase 6: Polish                   | 7          | 4                            | 0            | 7                    |
+| Phase 7: Compliance               | 8          | 7 (most)                     | 0            | 8                    |
+| **TOTAL**                         | **179**    | **75 (42%)**                 | **47 (26%)** | **132 (74%)**        |
 
-**Test-to-Implementation Ratio**: 44 test tasks, 118 implementation tasks (1:2.7
+**Test-to-Implementation Ratio**: 47 test tasks, 132 implementation tasks (1:2.8
 ratio indicates strong test coverage)
 
-**Parallelization**: 41% of tasks can run in parallel (67 marked with [P])
+**Parallelization**: 42% of tasks can run in parallel (75 marked with [P])
 
 **Story Breakdown**:
 
@@ -1279,7 +1469,7 @@ ratio indicates strong test coverage)
   `- [ ] T### [P?] [Story] Description with file path`
 - ✅ Test tasks written BEFORE implementation tasks (TDD workflow enforced)
 - ✅ Each user story is independently testable (checkpoints after each phase)
-- ✅ Parallel opportunities identified (54 tasks marked [P])
+- ✅ Parallel opportunities identified (75 tasks marked [P])
 - ✅ File paths specified for all tasks
 - ✅ MVP scope clear (Phase 1-3 delivers working assignment workflow)
 - ✅ Incremental delivery path defined (can stop after any user story)

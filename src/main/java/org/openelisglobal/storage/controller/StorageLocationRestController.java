@@ -477,14 +477,14 @@ public class StorageLocationRestController extends BaseRestController {
             map.put("fhirUuid", rack.getFhirUuidAsString());
 
             // Add parent relationships for filtering (FR-065: filter by room, shelf,
-            // device) and display
+            // device) and display - use parent-prefixed names for consistency
             StorageShelf parentShelf = rack.getParentShelf();
             StorageDevice parentDevice = null;
             StorageRoom parentRoom = null;
             if (parentShelf != null) {
                 // Trigger lazy load within transaction
                 parentShelf.getLabel();
-                map.put("shelfId", parentShelf.getId());
+                map.put("parentShelfId", parentShelf.getId());
                 map.put("shelfLabel", parentShelf.getLabel());
                 map.put("parentShelfLabel", parentShelf.getLabel());
 
@@ -492,18 +492,50 @@ public class StorageLocationRestController extends BaseRestController {
                 if (parentDevice != null) {
                     // Trigger lazy load within transaction
                     parentDevice.getName();
-                    map.put("deviceId", parentDevice.getId());
+                    map.put("parentDeviceId", parentDevice.getId());
                     map.put("deviceName", parentDevice.getName());
+                    map.put("parentDeviceName", parentDevice.getName());
 
                     parentRoom = parentDevice.getParentRoom();
                     if (parentRoom != null) {
                         // Trigger lazy load within transaction
                         parentRoom.getName();
-                        map.put("roomId", parentRoom.getId());
+                        map.put("parentRoomId", parentRoom.getId());
                         map.put("roomName", parentRoom.getName());
+                        map.put("parentRoomName", parentRoom.getName());
                     }
                 }
             }
+
+            // Build hierarchicalPath: Room > Device > Shelf > Rack
+            StringBuilder pathBuilder = new StringBuilder();
+            if (parentRoom != null && parentRoom.getName() != null) {
+                pathBuilder.append(parentRoom.getName());
+            }
+            if (parentDevice != null && parentDevice.getName() != null) {
+                if (pathBuilder.length() > 0) {
+                    pathBuilder.append(" > ");
+                }
+                pathBuilder.append(parentDevice.getName());
+            }
+            if (parentShelf != null && parentShelf.getLabel() != null) {
+                if (pathBuilder.length() > 0) {
+                    pathBuilder.append(" > ");
+                }
+                pathBuilder.append(parentShelf.getLabel());
+            }
+            if (rack.getLabel() != null) {
+                if (pathBuilder.length() > 0) {
+                    pathBuilder.append(" > ");
+                }
+                pathBuilder.append(rack.getLabel());
+            }
+            if (pathBuilder.length() > 0) {
+                map.put("hierarchicalPath", pathBuilder.toString());
+            }
+            
+            // Set type for consistency
+            map.put("type", "rack");
         } else if (entity instanceof StoragePosition) {
             StoragePosition position = (StoragePosition) entity;
             map.put("id", position.getId());
@@ -512,6 +544,77 @@ public class StorageLocationRestController extends BaseRestController {
             map.put("columnIndex", position.getColumnIndex());
             map.put("occupied", position.getOccupied());
             map.put("fhirUuid", position.getFhirUuidAsString());
+
+            // Add parent relationships for hierarchy display
+            StorageRack parentRack = position.getParentRack();
+            StorageShelf parentShelf = position.getParentShelf();
+            StorageDevice parentDevice = position.getParentDevice();
+            StorageRoom parentRoom = null;
+            
+            if (parentDevice != null) {
+                parentDevice.getName(); // Trigger lazy load
+                map.put("parentDeviceId", parentDevice.getId());
+                map.put("deviceName", parentDevice.getName());
+                map.put("parentDeviceName", parentDevice.getName());
+                
+                parentRoom = parentDevice.getParentRoom();
+                if (parentRoom != null) {
+                    parentRoom.getName(); // Trigger lazy load
+                    map.put("parentRoomId", parentRoom.getId());
+                    map.put("roomName", parentRoom.getName());
+                    map.put("parentRoomName", parentRoom.getName());
+                }
+            }
+            
+            if (parentShelf != null) {
+                parentShelf.getLabel(); // Trigger lazy load
+                map.put("parentShelfId", parentShelf.getId());
+                map.put("shelfLabel", parentShelf.getLabel());
+                map.put("parentShelfLabel", parentShelf.getLabel());
+            }
+            
+            if (parentRack != null) {
+                parentRack.getLabel(); // Trigger lazy load
+                map.put("parentRackId", parentRack.getId());
+                map.put("rackLabel", parentRack.getLabel());
+                map.put("parentRackLabel", parentRack.getLabel());
+            }
+
+            // Build hierarchicalPath: Room > Device > Shelf > Rack > Position
+            StringBuilder pathBuilder = new StringBuilder();
+            if (parentRoom != null && parentRoom.getName() != null) {
+                pathBuilder.append(parentRoom.getName());
+            }
+            if (parentDevice != null && parentDevice.getName() != null) {
+                if (pathBuilder.length() > 0) {
+                    pathBuilder.append(" > ");
+                }
+                pathBuilder.append(parentDevice.getName());
+            }
+            if (parentShelf != null && parentShelf.getLabel() != null) {
+                if (pathBuilder.length() > 0) {
+                    pathBuilder.append(" > ");
+                }
+                pathBuilder.append(parentShelf.getLabel());
+            }
+            if (parentRack != null && parentRack.getLabel() != null) {
+                if (pathBuilder.length() > 0) {
+                    pathBuilder.append(" > ");
+                }
+                pathBuilder.append(parentRack.getLabel());
+            }
+            if (position.getCoordinate() != null) {
+                if (pathBuilder.length() > 0) {
+                    pathBuilder.append(" > ");
+                }
+                pathBuilder.append("Position ").append(position.getCoordinate());
+            }
+            if (pathBuilder.length() > 0) {
+                map.put("hierarchicalPath", pathBuilder.toString());
+            }
+            
+            // Set type for consistency
+            map.put("type", "position");
         }
 
         return map;

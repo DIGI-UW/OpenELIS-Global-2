@@ -20,6 +20,18 @@ module.exports = defineConfig({
   },
   e2e: {
     setupNodeEvents(on, config) {
+      // Task to log messages to terminal (for console.log capture)
+      on("task", {
+        log(message) {
+          console.log(message);
+          return null;
+        },
+        logObject(obj) {
+          console.log(JSON.stringify(obj, null, 2));
+          return null;
+        },
+      });
+
       // Task to load storage test fixtures
       on("task", {
         loadStorageTestData() {

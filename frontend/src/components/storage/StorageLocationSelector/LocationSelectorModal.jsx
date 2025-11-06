@@ -9,7 +9,7 @@ import {
   TextArea,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import LocationFilterDropdown from "../StorageDashboard/LocationFilterDropdown";
+import LocationSearchAndCreate from "./LocationSearchAndCreate";
 import "./LocationSelectorModal.css";
 
 /**
@@ -43,23 +43,13 @@ const LocationSelectorModal = ({
   }, [currentLocation]);
 
   const handleLocationChange = (location) => {
-    // LocationFilterDropdown returns { id, type, name, ... } format
-    // We need to convert it to the expected format with room/device/shelf/rack/position
-    if (location && location.id) {
-      // If it's a location from the filter dropdown, we need to fetch full hierarchy
-      // For now, store it as-is and let the backend handle the assignment
-      setSelectedLocation({
-        id: location.id,
-        type: location.type,
-        name: location.name || location.label,
-        ...location,
-      });
-    } else {
-      setSelectedLocation(location);
-      // Update position coordinate if position is selected
-      if (location && location.position) {
-        setPositionCoordinate(location.position.coordinate || "");
-      }
+    // LocationSearchAndCreate handles format conversion internally
+    // Both search and create modes return consistent format
+    setSelectedLocation(location);
+
+    // Update position coordinate if position is selected
+    if (location && location.position) {
+      setPositionCoordinate(location.position.coordinate || "");
     }
   };
 
@@ -85,7 +75,9 @@ const LocationSelectorModal = ({
     onClose();
   };
 
-  const canSave = selectedLocation && selectedLocation.room;
+  const canSave =
+    selectedLocation &&
+    (selectedLocation.room || selectedLocation.rack || selectedLocation.id);
 
   return (
     <ComposedModal open={open} onClose={handleCancel} size="lg">
@@ -182,10 +174,11 @@ const LocationSelectorModal = ({
               />{" "}
               <span className="required-indicator">*</span>
             </label>
-            <LocationFilterDropdown
+            <LocationSearchAndCreate
               onLocationChange={handleLocationChange}
               selectedLocation={selectedLocation}
               allowInactive={false}
+              showCreateButton={true}
             />
           </div>
 

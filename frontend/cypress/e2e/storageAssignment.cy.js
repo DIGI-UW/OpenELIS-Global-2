@@ -1,4 +1,3 @@
-import LoginPage from "../pages/LoginPage";
 import StorageAssignmentPage from "../pages/StorageAssignmentPage";
 import OrderEntityPage from "../pages/OrderEntityPage";
 import PatientEntryPage from "../pages/PatientEntryPage";
@@ -9,31 +8,18 @@ import PatientEntryPage from "../pages/PatientEntryPage";
  */
 
 let homePage = null;
-let loginPage = null;
 let storageAssignmentPage = null;
 let orderEntityPage = null;
 let patientEntryPage = null;
 
-before("Login and Load Test Fixtures", () => {
-  loginPage = new LoginPage();
-  loginPage.visit();
-  homePage = loginPage.goToHomePage();
-
-  // Load storage test fixtures (includes patients, samples, and storage hierarchy)
-  cy.loadStorageFixtures();
+before("Setup storage tests", () => {
+  cy.setupStorageTests().then((page) => {
+    homePage = page;
+  });
 });
 
-after("Clean up test fixtures", () => {
-  // Clean up test fixtures after all tests complete (optional, controlled by CYPRESS_CLEANUP_FIXTURES env var)
-  // Set CYPRESS_CLEANUP_FIXTURES=false to keep fixtures for manual testing
-  // Default: true (cleanup enabled)
-  if (Cypress.env("CLEANUP_FIXTURES")) {
-    cy.cleanStorageFixtures();
-  } else {
-    cy.log(
-      "Skipping fixture cleanup (CYPRESS_CLEANUP_FIXTURES=false) - fixtures preserved for manual testing",
-    );
-  }
+after("Cleanup storage tests", () => {
+  cy.cleanupStorageTests();
 });
 
 describe("Storage Assignment - Cascading Dropdowns (P1)", function () {

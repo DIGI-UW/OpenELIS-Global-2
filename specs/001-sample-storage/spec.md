@@ -120,11 +120,18 @@ managers
   match the full hierarchical path string or individual location components? →
   A: Full hierarchical path string (e.g., "Main Laboratory > Freezer Unit 1 >
   Shelf-A > Rack R1 > Position A5")
+- Q: What are the minimum required levels for a valid sample location? → A: A
+  valid location for a sample must have at least 2 levels set: Room and Device
+  MUST be selected. Shelf, Rack, and Position levels are optional
 
 ### Session 2025-11-21
 
 - Q: Which menu items should appear in the samples table row overflow menu? → A:
   All four items: Move, Dispose, View Audit (placeholder), View Storage
+- Q: How should position hierarchy work - can positions have varying hierarchy depths? → A:
+  Positions can have only room+device, or room+device+shelf+rack, etc. There's no auto-resolve needed - just require that at least two levels (room + device) are part of a position. The position entity itself maintains the full hierarchy path, but the minimum requirement for assignment is room+device.
+- Q: What is the exact structure of position hierarchy levels? → A:
+  A position can have at most room>device>shelf>rack>position (5 levels), but at least room and device (2 levels minimum). A sample can be associated with a position that represents the lowest level in the hierarchy for that assignment. The position can be at: device level (2 levels: room+device), shelf level (3 levels: room+device+shelf), rack level (4 levels: room+device+shelf+rack), or position level (5 levels: room+device+shelf+rack+position). The requirement is that it must be at least at the device level (cannot be just a room).
 - Q: What should the View Storage modal display? → A: Based on Figma design
   (sample row menu - location modal page): Modal titled "Storage Location
   Assignment" showing sample information (ID, Type, Status) in highlighted box,
@@ -255,13 +262,18 @@ search/retrieval features exist.
    attempts to assign a sample to any location within it, **Then** system
    displays error "Cannot assign to inactive location" and suggests active
    alternatives
-4. **Given** Maria scans a rack barcode "MAIN-FRZ01-SHA-RKR1", **When** barcode
+4. **Given** Maria attempts to assign a sample without selecting Room or Device,
+   **When** she clicks Save with only Room selected (missing Device) or with
+   neither Room nor Device selected, **Then** system displays validation error
+   "A valid location requires at least Room and Device to be selected" and
+   prevents assignment
+5. **Given** Maria scans a rack barcode "MAIN-FRZ01-SHA-RKR1", **When** barcode
    scan completes, **Then** system auto-populates Room="Main Laboratory",
    Device="Freezer Unit 1", Shelf="Shelf-A", Rack="Rack R1" and focuses the
    Position field
-5. **Given** Maria has selected a location, **When** she leaves the Position
-   field blank, **Then** system allows rack-level assignment (position optional
-   for shelf/rack-level storage)
+6. **Given** Maria has selected Room and Device (and optionally Shelf/Rack), **When**
+   she leaves the Position field blank, **Then** system allows rack-level
+   assignment (position optional for shelf/rack-level storage)
 
 ---
 
@@ -674,9 +686,15 @@ samples are assigned/moved/disposed.
 - **FR-008**: **Rack** entity MUST include: Label/ID, dimensions (rows and
   columns as positive integers), optional position schema hint, active/inactive
   status, parent shelf reference
-- **FR-009**: **Position** entity MUST include: Free-text coordinate (NO
-  enforced format/validation), optional row/column integers for grid
-  visualization, occupancy state (empty/occupied), parent rack reference
+- **FR-009**: **Position** entity MUST include: Free-text coordinate (optional,
+  only required for 5-level positions), optional row/column integers for grid
+  visualization, occupancy state (empty/occupied), parent device reference
+  (required), optional parent shelf reference, optional parent rack reference. A
+  position can have at most 5 levels (Room → Device → Shelf → Rack → Position) but
+  at least 2 levels (Room → Device). The position represents the lowest level in
+  the hierarchy for a sample assignment. Minimum requirement is device level (room
+  + device); cannot be just a room. Position can be at: device level (2 levels),
+  shelf level (3 levels), rack level (4 levels), or position level (5 levels).
 
 #### Navigation and Access
 
@@ -825,6 +843,17 @@ operations.
 - **FR-033**: System MUST record sample assignment with: Sample ID, Location
   (room/device/shelf/rack/position), Assigned By (user ID), Timestamp, Optional
   notes
+- **FR-033a**: System MUST require that a valid location for a sample has at
+  least 2 levels set: Room and Device MUST be selected. Shelf, Rack, and Position
+  levels are optional (shelf/rack/position may be left blank). A position can have
+  at most 5 levels (Room → Device → Shelf → Rack → Position) but at least 2 levels
+  (Room → Device). A sample is associated with a position that represents the
+  lowest level in the hierarchy for that assignment. The position can be at device
+  level (2 levels), shelf level (3 levels), rack level (4 levels), or position
+  level (5 levels). The requirement is that it must be at least at the device level
+  (cannot be just a room). When assigning, we select the lowest position in the
+  hierarchy for the given sample, which provides all necessary location
+  information.
 - **FR-034**: System MUST prevent assignment to already-occupied position
   (unless rack allows duplicates - see FR-014)
 - **FR-035**: System MUST prevent assignment to inactive/decommissioned location
@@ -1114,6 +1143,8 @@ operations.
 
 #### Validation and Safety
 
+- **FR-080a**: System MUST validate that Room and Device are selected before
+  allowing sample assignment (minimum 2 levels required for valid location)
 - **FR-081**: System MUST prevent assignment to inactive location with clear
   error message
 - **FR-082**: System MUST prevent double-occupancy unless rack allows duplicates

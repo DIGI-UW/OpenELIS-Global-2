@@ -53,13 +53,38 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
             // Validate position not occupied
             if (position.getOccupied() != null && position.getOccupied()) {
-                throw new LIMSRuntimeException("Position " + position.getCoordinate() + " is already occupied");
+                // Generate position label for different hierarchy levels
+                String positionLabel;
+                if (position.getCoordinate() != null && !position.getCoordinate().isEmpty()) {
+                    positionLabel = position.getCoordinate();
+                } else if (position.getParentRack() != null) {
+                    positionLabel = position.getParentRack().getLabel();
+                } else if (position.getParentShelf() != null) {
+                    positionLabel = position.getParentShelf().getLabel();
+                } else {
+                    positionLabel = position.getParentDevice().getName();
+                }
+                throw new LIMSRuntimeException("Position " + positionLabel + " is already occupied");
             }
 
             // Validate location is active
             if (!storageLocationService.validateLocationActive(position)) {
                 throw new LIMSRuntimeException("Cannot assign to inactive location");
             }
+
+            // Validate 2-level minimum rule (FR-033a): Position must have parent_device_id (minimum 2 levels: room + device)
+            if (position.getParentDevice() == null) {
+                throw new LIMSRuntimeException("Position must have a parent device (minimum 2 levels: room + device)");
+            }
+            StorageDevice device = position.getParentDevice();
+            if (device.getParentRoom() == null) {
+                throw new LIMSRuntimeException("Device must have a parent room");
+            }
+            // Validate hierarchy integrity: if rack exists, shelf must exist; if coordinate exists, rack must exist
+            if (!position.validateHierarchyIntegrity()) {
+                throw new LIMSRuntimeException("Position hierarchy integrity constraint violated");
+            }
+            // Validation passed: Position has Room and Device (minimum 2 levels)
 
             // Mark position as occupied
             position.setOccupied(true);
@@ -135,8 +160,107 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
     @Override
     public String moveSample(String sampleId, String targetPositionId, String reason) {
-        // TODO: Implement in T083-T088 (Phase 5 - US2B)
-        throw new UnsupportedOperationException("Move sample not implemented yet - deferred to Phase 5");
+        try {
+            // Validate inputs
+            Sample sample = sampleDAO.get(sampleId)
+                    .orElseThrow(() -> new LIMSRuntimeException("Sample not found: " + sampleId));
+
+            Integer targetPositionIdInt = Integer.parseInt(targetPositionId);
+            StoragePosition targetPosition = (StoragePosition) storageLocationService.get(targetPositionIdInt,
+                    StoragePosition.class);
+            if (targetPosition == null) {
+                throw new LIMSRuntimeException("Target position not found: " + targetPositionId);
+            }
+
+            // Validate target position not occupied
+            if (targetPosition.getOccupied() != null && targetPosition.getOccupied()) {
+                // Generate position label for different hierarchy levels
+                String positionLabel;
+                if (targetPosition.getCoordinate() != null && !targetPosition.getCoordinate().isEmpty()) {
+                    positionLabel = targetPosition.getCoordinate();
+                } else if (targetPosition.getParentRack() != null) {
+                    positionLabel = targetPosition.getParentRack().getLabel();
+                } else if (targetPosition.getParentShelf() != null) {
+                    positionLabel = targetPosition.getParentShelf().getLabel();
+                } else {
+                    positionLabel = targetPosition.getParentDevice().getName();
+                }
+                throw new LIMSRuntimeException("Target position " + positionLabel + " is already occupied");
+            }
+
+            // Validate target location is active
+            if (!storageLocationService.validateLocationActive(targetPosition)) {
+                throw new LIMSRuntimeException("Cannot move to inactive location");
+            }
+
+            // Validate 2-level minimum rule (FR-033a): Position must have parent_device_id (minimum 2 levels: room + device)
+            if (targetPosition.getParentDevice() == null) {
+                throw new LIMSRuntimeException("Target position must have a parent device (minimum 2 levels: room + device)");
+            }
+            StorageDevice device = targetPosition.getParentDevice();
+            if (device.getParentRoom() == null) {
+                throw new LIMSRuntimeException("Device must have a parent room");
+            }
+            // Validate hierarchy integrity of target position
+            if (!targetPosition.validateHierarchyIntegrity()) {
+                throw new LIMSRuntimeException("Target position hierarchy integrity constraint violated");
+            }
+            // Validation passed: Position has Room and Device (minimum 2 levels)
+
+            // Find existing assignment
+            SampleStorageAssignment existingAssignment = sampleStorageAssignmentDAO.findBySampleId(sampleId);
+            StoragePosition previousPosition = null;
+
+            if (existingAssignment != null) {
+                previousPosition = existingAssignment.getStoragePosition();
+                
+                // Free the previous position
+                if (previousPosition != null) {
+                    previousPosition.setOccupied(false);
+                    storageLocationService.update(previousPosition);
+                }
+            }
+
+            // Mark target position as occupied
+            targetPosition.setOccupied(true);
+            storageLocationService.update(targetPosition);
+
+            // Update or create assignment record
+            if (existingAssignment != null) {
+                // Update existing assignment
+                existingAssignment.setStoragePosition(targetPosition);
+                existingAssignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
+                existingAssignment.setNotes(reason);
+                sampleStorageAssignmentDAO.update(existingAssignment);
+            } else {
+                // Create new assignment (sample was not previously assigned)
+                SampleStorageAssignment assignment = new SampleStorageAssignment();
+                assignment.setSample(sample);
+                assignment.setStoragePosition(targetPosition);
+                assignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
+                assignment.setNotes(reason);
+                assignment.setAssignedByUserId(1); // Default to system user for tests
+                sampleStorageAssignmentDAO.insert(assignment);
+            }
+
+            // Create audit log entry
+            SampleStorageMovement movement = new SampleStorageMovement();
+            movement.setSample(sample);
+            movement.setPreviousPosition(previousPosition);
+            movement.setNewPosition(targetPosition);
+            movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
+            movement.setReason(reason);
+            movement.setMovedByUserId(1); // Default to system user for tests
+
+            Integer movementIdInt = sampleStorageMovementDAO.insert(movement);
+            String movementId = movementIdInt != null ? movementIdInt.toString() : null;
+
+            return movementId;
+
+        } catch (StaleObjectStateException e) {
+            throw new LIMSRuntimeException("Position was just modified by another user. Please refresh and try again.",
+                    e);
+        }
     }
 
     @Override
