@@ -826,6 +826,7 @@
   "notebook.button.view": "View",
   "notebook.button.edit": "Edit",
   "notebook.icon.edit": "Edit",
+  "notebook.tag.placeholder": "Enter Tags",
   "notification.invalid.confirm.password": "Your entered password is not same as above password.",
   "notification.invalid.loginName": "Please enter AlphaNumeric values without spaces only.",
   "notification.invalid.name": "Please enter Alphanumeric values only.",

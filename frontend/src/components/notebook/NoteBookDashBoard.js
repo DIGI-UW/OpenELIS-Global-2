@@ -522,8 +522,8 @@ function NoteBookDashBoard() {
             </Grid>
 
             <Grid fullWidth={true} className="gridBoundary">
-              <Column lg={1} md={4} sm={2}>
-                <FormattedMessage id="filters.label" />
+              <Column lg={16} md={4} sm={2}>
+                <FormattedMessage id="filters.label" /> :
               </Column>
               <Column lg={2} md={4} sm={2}>
                 <FilterableMultiSelect
@@ -538,7 +538,7 @@ function NoteBookDashBoard() {
                   selectionFeedback="top-after-reopen"
                 />
               </Column>
-              <Column lg={2} md={4} sm={2}>
+              <Column lg={3} md={4} sm={2}>
                 <FilterableMultiSelect
                   id="types"
                   titleText={intl.formatMessage({
@@ -559,6 +559,9 @@ function NoteBookDashBoard() {
                   name="title"
                   labelText={intl.formatMessage({
                     id: "notebook.tags.modal.add.label",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.tag.placeholder",
                   })}
                   value={filters.tags}
                   onChange={(e) => {
