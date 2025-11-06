@@ -41,6 +41,8 @@ import {
   InProgress,
   Locked,
   Archive,
+  View,
+  List,
 } from "@carbon/react/icons";
 import "./NoteBook.css";
 
@@ -366,6 +368,7 @@ function NoteBookDashBoard() {
                   setSelectedNoteBook(null);
                 }}
               >
+                <List />
                 <FormattedMessage id="notebook.heading.allEntries" />
               </Button>
             </Column>
@@ -667,6 +670,7 @@ function NoteBookDashBoard() {
                               size="sm"
                               onClick={() => openNoteBookInstanceView(entry.id)}
                             >
+                              <View size={13} />
                               <FormattedMessage id="notebook.button.view" />
                             </Button>
                           </Column>
@@ -679,6 +683,7 @@ function NoteBookDashBoard() {
                                   openNoteBookInstanceView(entry.id)
                                 }
                               >
+                                <Edit size={13} />
                                 <FormattedMessage id="notebook.button.edit" />
                               </Button>
                             )}
