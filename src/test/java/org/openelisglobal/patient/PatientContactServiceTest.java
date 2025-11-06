@@ -1,21 +1,24 @@
 package org.openelisglobal.patient;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.junit.Before;
-import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.openelisglobal.BaseWebContextSensitiveTests;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.patient.service.PatientContactService;
 import org.openelisglobal.patient.valueholder.PatientContact;
 import org.springframework.beans.factory.annotation.Autowired;
 
-public class PatientContactServiceTest extends BaseWebContextSensitiveTest {
+public class PatientContactServiceTest extends BaseWebContextSensitiveTests {
 
     @Autowired
     private PatientContactService patientContactService;
@@ -25,7 +28,7 @@ public class PatientContactServiceTest extends BaseWebContextSensitiveTest {
     private List<String> orderProperties;
     private static int PAGE_SIZE = 0;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/patient_contact.xml");
 
