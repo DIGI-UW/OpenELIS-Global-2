@@ -19,11 +19,12 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.storage.fhir.StorageLocationFhirTransform;
 
 /**
- * StoragePosition entity - Storage location representing the lowest level in the hierarchy
- * for a sample assignment. A position can have at most 5 levels (Room → Device → Shelf →
- * Rack → Position) but at least 2 levels (Room → Device). The position represents where
- * in the hierarchy the sample is assigned. Minimum requirement is device level (room + device);
- * cannot be just a room. Position can be at: device level (2 levels), shelf level (3 levels),
+ * StoragePosition entity - Storage location representing the lowest level in
+ * the hierarchy for a sample assignment. A position can have at most 5 levels
+ * (Room → Device → Shelf → Rack → Position) but at least 2 levels (Room →
+ * Device). The position represents where in the hierarchy the sample is
+ * assigned. Minimum requirement is device level (room + device); cannot be just
+ * a room. Position can be at: device level (2 levels), shelf level (3 levels),
  * rack level (4 levels), or position level (5 levels).
  * 
  * Maps to FHIR Location resource with occupancy extension.
@@ -145,9 +146,9 @@ public class StoragePosition extends BaseObject<Integer> {
     }
 
     /**
-     * Validate hierarchy integrity constraints.
-     * - If parent_rack_id is NOT NULL, then parent_shelf_id must also be NOT NULL
-     * - If coordinate is NOT NULL, then parent_rack_id must also be NOT NULL
+     * Validate hierarchy integrity constraints. - If parent_rack_id is NOT NULL,
+     * then parent_shelf_id must also be NOT NULL - If coordinate is NOT NULL, then
+     * parent_rack_id must also be NOT NULL
      * 
      * @return true if hierarchy integrity is valid, false otherwise
      */

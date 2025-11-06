@@ -165,6 +165,11 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     }
 
     @Override
+    public int countOccupiedInShelf(Integer shelfId) {
+        return storagePositionDAO.countOccupiedInShelf(shelfId);
+    }
+
+    @Override
     public Integer insert(Object entity) {
         if (entity instanceof StorageRoom) {
             StorageRoom room = (StorageRoom) entity;
@@ -286,7 +291,8 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
         StorageRoom room = device.getParentRoom();
 
-        // Validate hierarchy integrity: if rack exists, shelf must exist; if coordinate exists, rack must exist
+        // Validate hierarchy integrity: if rack exists, shelf must exist; if coordinate
+        // exists, rack must exist
         if (!position.validateHierarchyIntegrity()) {
             return false;
         }
@@ -620,7 +626,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (pathBuilder.length() > 0) {
                 map.put("hierarchicalPath", pathBuilder.toString());
             }
-            
+
             // Set type for consistency with searchLocations
             map.put("type", "rack");
 
@@ -668,11 +674,13 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             String deviceName = (String) device.get("name");
             String path = roomName != null ? roomName + " > " + deviceName : deviceName;
             result.put("hierarchicalPath", path);
-            // Ensure type is set to hierarchy level (device is already set by getDevicesForAPI)
+            // Ensure type is set to hierarchy level (device is already set by
+            // getDevicesForAPI)
             result.put("type", "device");
-            // Preserve deviceType from getDevicesForAPI (physical type: freezer, refrigerator, etc.)
+            // Preserve deviceType from getDevicesForAPI (physical type: freezer,
+            // refrigerator, etc.)
             // deviceType is already in the map from getDevicesForAPI, no need to override
-            
+
             // Ensure parentRoomId and parentRoomName are explicitly set
             Object parentRoomId = device.get("parentRoomId");
             if (parentRoomId != null) {
@@ -681,7 +689,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (roomName != null) {
                 result.put("parentRoomName", roomName);
             }
-            
+
             results.add(result);
         }
 
@@ -700,8 +708,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             pathBuilder.append(shelfLabel);
             result.put("hierarchicalPath", pathBuilder.toString());
             result.put("type", "shelf");
-            
-            // Ensure parent IDs and names are explicitly set (they should already be in the map from getShelvesForAPI)
+
+            // Ensure parent IDs and names are explicitly set (they should already be in the
+            // map from getShelvesForAPI)
             Object parentDeviceId = shelf.get("parentDeviceId");
             Object parentRoomId = shelf.get("parentRoomId");
             if (parentDeviceId != null) {
@@ -717,7 +726,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (roomName != null) {
                 result.put("parentRoomName", roomName);
             }
-            
+
             results.add(result);
         }
 
@@ -740,8 +749,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             pathBuilder.append(rackLabel);
             result.put("hierarchicalPath", pathBuilder.toString());
             result.put("type", "rack");
-            
-            // Ensure parent IDs and names are explicitly set (they should already be in the map from getRacksForAPI)
+
+            // Ensure parent IDs and names are explicitly set (they should already be in the
+            // map from getRacksForAPI)
             Object parentShelfId = rack.get("parentShelfId");
             Object parentDeviceId = rack.get("parentDeviceId");
             Object parentRoomId = rack.get("parentRoomId");
@@ -764,7 +774,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (roomName != null) {
                 result.put("parentRoomName", roomName);
             }
-            
+
             results.add(result);
         }
 

@@ -273,7 +273,8 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
             rackMap.put("active", rack.getActive());
             rackMap.put("fhirUuid", rack.getFhirUuidAsString());
 
-            // Add relationship data with IDs and names for filtering and display - use parent-prefixed names for consistency
+            // Add relationship data with IDs and names for filtering and display - use
+            // parent-prefixed names for consistency
             if (parentShelf != null) {
                 rackMap.put("parentShelfId", parentShelf.getId());
                 rackMap.put("shelfLabel", parentShelf.getLabel());
@@ -317,7 +318,7 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
             if (pathBuilder.length() > 0) {
                 rackMap.put("hierarchicalPath", pathBuilder.toString());
             }
-            
+
             // Set type for consistency
             rackMap.put("type", "rack");
 

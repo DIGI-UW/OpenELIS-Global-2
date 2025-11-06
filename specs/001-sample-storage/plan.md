@@ -11,9 +11,9 @@ biological samples through a flexible storage hierarchy (Room → Device → She
 Rack → Position). Positions can have 2-5 levels (minimum: room+device, maximum:
 room+device+shelf+rack+position). POC scope includes core tracking workflows:
 assignment (P1), search/retrieval (P2A), movement (P2B), and basic Storage
-Dashboard (P4 - metrics cards, tabs, data tables). Defers disposal workflow
-(P3) and advanced dashboard features (drill-down navigation, CSV export) to
-post-POC iterations.
+Dashboard (P4 - metrics cards, tabs, data tables). Defers disposal workflow (P3)
+and advanced dashboard features (drill-down navigation, CSV export) to post-POC
+iterations.
 
 **Technical Approach**: Leverage existing OpenELIS infrastructure (5-layer
 backend architecture, HAPI FHIR R4 server, Carbon Design System UI) to add
@@ -289,30 +289,31 @@ Phase 3 learnings)
    - Validates: Compact inline view displays location path correctly
    - Validates: Expand button opens modal
    - Validates: Quick-find search filters locations correctly
-  - Validates: Cascading dropdown state management
-  - Validates: Barcode input parsing (deferred functionality)
-  - Validates: Hierarchical path display
-  - Validates: Validation requires Room and Device selection (minimum 2 levels), Shelf/Rack/Position optional
-  - Validates: API error handling and user feedback
-   - Test: `SampleActionsOverflowMenu.test.jsx`
-   - Validates: Menu renders with all four items (Move, Dispose, View Audit
-     placeholder, View Storage)
-   - Validates: "View Audit" is disabled
-   - Test: `MoveSampleModal.test.jsx`
-   - Validates: Modal renders with current location, new location selector,
-     preview section
-   - Validates: Location selection updates preview
-   - Validates: Validation prevents moving to same location
-   - Test: `DisposeSampleModal.test.jsx`
-   - Validates: Modal renders with warning alert, sample info, disposal form
-     fields
-   - Validates: "Confirm Disposal" button disabled until checkbox checked
-   - Validates: Validation requires reason and method selection
-  - Test: `ViewStorageModal.test.jsx`
-  - Validates: Modal renders with sample info, current location, full
-    assignment form
-  - Validates: Form pre-populates with current location
-  - Validates: Validation requires Room and Device selection (minimum 2 levels)
+
+- Validates: Cascading dropdown state management
+- Validates: Barcode input parsing (deferred functionality)
+- Validates: Hierarchical path display
+- Validates: Validation requires Room and Device selection (minimum 2 levels),
+  Shelf/Rack/Position optional
+- Validates: API error handling and user feedback
+- Test: `SampleActionsOverflowMenu.test.jsx`
+- Validates: Menu renders with all four items (Move, Dispose, View Audit
+  placeholder, View Storage)
+- Validates: "View Audit" is disabled
+- Test: `MoveSampleModal.test.jsx`
+- Validates: Modal renders with current location, new location selector, preview
+  section
+- Validates: Location selection updates preview
+- Validates: Validation prevents moving to same location
+- Test: `DisposeSampleModal.test.jsx`
+- Validates: Modal renders with warning alert, sample info, disposal form fields
+- Validates: "Confirm Disposal" button disabled until checkbox checked
+- Validates: Validation requires reason and method selection
+- Test: `ViewStorageModal.test.jsx`
+- Validates: Modal renders with sample info, current location, full assignment
+  form
+- Validates: Form pre-populates with current location
+- Validates: Validation requires Room and Device selection (minimum 2 levels)
 
 **Phase 3: Implementation (Make tests pass)**
 
@@ -927,15 +928,22 @@ rules. This document serves as the specification for:
 
 6. **SampleStorageAssignment**
 
-   - Fields: id, sample_id (FK to Sample), storage_position_id (FK),
-     assigned_by_user_id (FK to SystemUser), assigned_date (TIMESTAMP), notes
-     (TEXT)
-   - Constraints: NOT NULL (sample_id, storage_position_id,
+   - Fields: id, sample_id (FK to Sample), location_id (numeric, NOT NULL),
+     location_type (VARCHAR(20), NOT NULL), position_coordinate (VARCHAR(50),
+     nullable), assigned_by_user_id (FK to SystemUser), assigned_date
+     (TIMESTAMP), notes (TEXT)
+   - Constraints: NOT NULL (sample_id, location_id, location_type,
      assigned_by_user_id), Unique (sample_id) - one current location per sample
-   - Relationships: Many-to-One with Sample, Many-to-One with StoragePosition,
+   - CHECK constraint: `location_type` must be one of: 'device', 'shelf', 'rack'
+     (position is just text coordinate, not entity)
+   - Relationships: Many-to-One with Sample, Polymorphic relationship to
+     StorageDevice/StorageShelf/StorageRack via location_id + location_type,
      Many-to-One with SystemUser
-   - Note: Represents CURRENT location. Historical moves tracked in
-     SampleStorageMovement.
+   - Note: Represents CURRENT location. Supports flexible assignment to any
+     hierarchy level (device/shelf/rack) via simplified polymorphic
+     relationship. Position is represented as optional text field
+     (`position_coordinate`), not a separate entity reference. Historical moves
+     tracked in SampleStorageMovement.
 
 7. **SampleStorageMovement**
    - Fields: id, sample_id (FK), previous_position_id (FK), new_position_id
@@ -950,7 +958,11 @@ rules. This document serves as the specification for:
 
 **Validation Rules** (from spec.md Functional Requirements):
 
-- Require minimum 2 levels for valid location: Room and Device MUST be selected (FR-033a). Shelf, Rack, and Position are optional. Position can be at device level (2 levels), shelf level (3 levels), rack level (4 levels), or position level (5 levels). Minimum requirement is device level (room + device); cannot be just a room.
+- Require minimum 2 levels for valid location: Room and Device MUST be selected
+  (FR-033a). Shelf, Rack, and Position are optional. Position can be at device
+  level (2 levels), shelf level (3 levels), rack level (4 levels), or position
+  level (5 levels). Minimum requirement is device level (room + device); cannot
+  be just a room.
 - Prevent assignment to inactive location (FR-035)
 - Prevent double-occupancy unless rack allows duplicates (FR-034)
 - Capacity warnings at 80%, 90%, 100% (FR-036) - no hard block
@@ -991,10 +1003,22 @@ serves as the contract for:
 
 **Sample Storage Assignment**:
 
-- `POST /rest/storage/samples/assign` - Assign sample to position
-  - Request: `{ sample_id, position_id, notes }`
+- `POST /rest/storage/samples/assign` - Assign sample to location
+  - Request:
+    `{ sample_id, location_id, location_type, position_coordinate?, notes }`
   - Response: `{ assignment_id, hierarchical_path, assigned_date }`
-  - Validation: Position must have minimum 2 levels (room + device via parent_device_id), position not occupied, location active. Position can be at device level (2 levels), shelf level (3 levels), rack level (4 levels), or position level (5 levels).
+  - Validation:
+    - `location_id` and `location_type` are required (NOT NULL)
+    - `location_type` must be one of: 'device', 'shelf', 'rack' (position is
+      just text coordinate, not entity)
+    - If `location_type = 'device'`: Minimum 2 levels (room + device per
+      FR-033a)
+    - If `location_type = 'shelf'`: 3 levels (room + device + shelf)
+    - If `location_type = 'rack'`: 4 levels (room + device + shelf + rack)
+    - Location must be active (check entire hierarchy: room, device, shelf,
+      rack)
+    - `position_coordinate` is optional text (max 50 chars) for any
+      location_type to provide specific position information
 
 **Sample Search**:
 
@@ -1014,10 +1038,22 @@ serves as the contract for:
 
 **Sample Movement**:
 
-- `POST /rest/storage/samples/move` - Move sample to new position
-  - Request: `{ sample_id, target_position_id, reason }`
+- `POST /rest/storage/samples/move` - Move sample to new location
+  - Request:
+    `{ sample_id, location_id, location_type, position_coordinate?, reason }`
   - Response: `{ movement_id, previous_location, new_location, moved_date }`
-  - Validation: Target position must have minimum 2 levels (room + device via parent_device_id), target position not occupied, location active. Position can be at device level (2 levels), shelf level (3 levels), rack level (4 levels), or position level (5 levels).
+  - Validation:
+    - `location_id` and `location_type` are required (NOT NULL)
+    - `location_type` must be one of: 'device', 'shelf', 'rack' (position is
+      just text coordinate, not entity)
+    - If `location_type = 'device'`: Minimum 2 levels (room + device per
+      FR-033a)
+    - If `location_type = 'shelf'`: 3 levels (room + device + shelf)
+    - If `location_type = 'rack'`: 4 levels (room + device + shelf + rack)
+    - Location must be active (check entire hierarchy: room, device, shelf,
+      rack)
+    - `position_coordinate` is optional text (max 50 chars) for any
+      location_type to provide specific position information
 - `POST /rest/storage/samples/bulk-move` - Bulk move samples
   - Request:
     `{ sample_ids: [], target_rack_id, position_assignments: [{sample_id, position_coordinate}] }`
@@ -1106,9 +1142,12 @@ document serves as the specification for:
   - Device level: "{room_code}-{device_code}"
   - Shelf level: "{room_code}-{device_code}-{shelf_label}"
   - Rack level: "{room_code}-{device_code}-{shelf_label}-{rack_label}"
-  - Position level: "{room_code}-{device_code}-{shelf_label}-{rack_label}-{coordinate}"
-- `Location.name` = coordinate (if position level) or device/shelf/rack label (if lower level)
-- `Location.partOf.reference` = "Location/{parent_fhir_uuid}" (parent device, shelf, or rack depending on position level)
+  - Position level:
+    "{room_code}-{device_code}-{shelf_label}-{rack_label}-{coordinate}"
+- `Location.name` = coordinate (if position level) or device/shelf/rack label
+  (if lower level)
+- `Location.partOf.reference` = "Location/{parent_fhir_uuid}" (parent device,
+  shelf, or rack depending on position level)
 - `Location.extension[position-occupancy].valueBoolean` = occupied status
 - `Location.extension[position-grid-row].valueInteger` = row index (optional)
 - `Location.extension[position-grid-column].valueInteger` = column index
@@ -1394,7 +1433,8 @@ This script will:
 - Detect Cursor AI agent context file
 - Add new technology references from this plan:
   - Storage module package structure
-  - FHIR Location resource mapping (flexible hierarchy: positions can have 2-5 levels)
+  - FHIR Location resource mapping (flexible hierarchy: positions can have 2-5
+    levels)
   - Carbon Design System Storage Location Selector widget
   - Cypress E2E testing patterns (existing OpenELIS framework)
 - Preserve existing OpenELIS patterns and manual additions
@@ -1742,46 +1782,58 @@ public CapacityWarning calculateCapacity(StorageRack rack) {
 ```java
 // In SampleStorageService
 @Transactional
-public SampleStorageAssignment assignSample(String sampleId, String positionId, String notes)
-        throws ConcurrentModificationException {
-    try {
-        StoragePosition position = positionDAO.get(positionId);
-
-        // Validate position has minimum 2 levels (room + device)
-        if (position.getParentDevice() == null) {
-            throw new ValidationException("Position must have a parent device (minimum 2 levels: room + device)");
-        }
-
-        // Optimistic locking check via Hibernate version field (lastupdated)
-        if (position.isOccupied()) {
-            String positionLabel = position.getCoordinate() != null ? position.getCoordinate() : 
-                (position.getParentRack() != null ? position.getParentRack().getLabel() :
-                (position.getParentShelf() != null ? position.getParentShelf().getLabel() :
-                position.getParentDevice().getName()));
-            throw new ValidationException("Position " + positionLabel + " is already occupied");
-        }
-
-        position.setOccupied(true);
-        positionDAO.update(position); // Will throw StaleObjectStateException if concurrent update
-
-        // Create assignment
-        SampleStorageAssignment assignment = new SampleStorageAssignment();
-        assignment.setSampleId(sampleId);
-        assignment.setStoragePositionId(positionId);
-        assignment.setAssignedByUserId(getCurrentUserId());
-        assignment.setNotes(notes);
-
-        assignmentDAO.insert(assignment);
-
-        // FHIR sync happens automatically via @PostPersist hook on Position entity
-        // (Position.occupied changed triggers FHIR Location update)
-
-        return assignment;
-
-    } catch (StaleObjectStateException e) {
-        throw new ConcurrentModificationException(
-            "Position was just modified by another user. Please refresh and try again.");
+public Map<String, Object> assignSampleWithLocation(String sampleId, String locationId,
+        String locationType, String positionCoordinate, String notes) {
+    // Validate location_id and location_type are provided
+    if (locationId == null || locationType == null) {
+        throw new ValidationException("location_id and location_type are required");
     }
+
+    // Validate location_type is one of: 'device', 'shelf', 'rack'
+    if (!Arrays.asList("device", "shelf", "rack").contains(locationType)) {
+        throw new ValidationException("location_type must be one of: 'device', 'shelf', 'rack'");
+    }
+
+    // Load location entity based on locationType
+    Object locationEntity = switch (locationType) {
+        case "device" -> storageLocationService.get(Integer.parseInt(locationId), StorageDevice.class);
+        case "shelf" -> storageLocationService.get(Integer.parseInt(locationId), StorageShelf.class);
+        case "rack" -> storageLocationService.get(Integer.parseInt(locationId), StorageRack.class);
+        default -> throw new ValidationException("Invalid location_type: " + locationType);
+    };
+
+    // Validate location has minimum 2 levels (room + device per FR-033a)
+    validateLocationActiveForEntity(locationEntity, locationType);
+
+    // Create assignment with location_id + location_type
+    SampleStorageAssignment assignment = new SampleStorageAssignment();
+    assignment.setSample(sampleDAO.get(sampleId).orElseThrow());
+    assignment.setLocationId(Integer.parseInt(locationId));
+    assignment.setLocationType(locationType);
+    assignment.setPositionCoordinate(positionCoordinate);
+    assignment.setAssignedByUserId(getCurrentUserId());
+    assignment.setNotes(notes);
+
+    assignmentDAO.insert(assignment);
+
+    // Build hierarchical path
+    String hierarchicalPath = buildHierarchicalPathForEntity(locationEntity, locationType, positionCoordinate);
+
+    // Create audit log entry
+    SampleStorageMovement movement = new SampleStorageMovement();
+    movement.setSample(assignment.getSample());
+    movement.setNewLocationId(Integer.parseInt(locationId));
+    movement.setNewLocationType(locationType);
+    movement.setMovedByUserId(getCurrentUserId());
+    movement.setReason("Initial assignment");
+    movementDAO.insert(movement);
+
+    Map<String, Object> result = new HashMap<>();
+    result.put("assignmentId", assignment.getId().toString());
+    result.put("hierarchicalPath", hierarchicalPath);
+    result.put("assignedDate", assignment.getAssignedDate());
+
+    return result;
 }
 ```
 
@@ -1817,18 +1869,20 @@ User (Browser)
     ├──────────> SamplePatientEntry.jsx
     │                 │
     │                 │ 9. POST /rest/storage/samples/assign
-    │                 │    { sampleId, positionId, notes }
+    │                 │    { sampleId, locationId, locationType, positionCoordinate?, notes }
     │                 ├──────────> SampleStorageRestController
     │                 │                 │
-    │                 │                 │ 10. assignSample()
+    │                 │                 │ 10. assignSampleWithLocation()
     │                 │                 ├──────────> SampleStorageService
     │                 │                 │                 │
-    │                 │                 │                 │ 11. Validate location active
-    │                 │                 │                 │ 12. Check position not occupied
-    │                 │                 │                 │ 13. Calculate capacity warning
+    │                 │                 │                 │ 11. Validate location_id and location_type provided
+    │                 │                 │                 │ 12. Validate location_type is 'device', 'shelf', or 'rack'
+    │                 │                 │                 │ 13. Load location entity based on location_type
+    │                 │                 │                 │ 14. Validate location active (check entire hierarchy)
+    │                 │                 │                 │ 15. Calculate capacity warning (if applicable)
     │                 │                 │                 │
-    │                 │                 │                 │ 14. Set position.occupied = true
-    │                 │                 │                 ├──────────> StoragePositionDAO
+    │                 │                 │                 │ 16. Create assignment with location_id + location_type
+    │                 │                 │                 ├──────────> SampleStorageAssignmentDAO
     │                 │                 │                 │                 │
     │                 │                 │                 │                 │ 15. UPDATE storage_position
     │                 │                 │                 │                 │    (optimistic lock check)

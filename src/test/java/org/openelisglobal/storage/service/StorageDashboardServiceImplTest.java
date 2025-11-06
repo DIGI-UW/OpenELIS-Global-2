@@ -253,28 +253,29 @@ public class StorageDashboardServiceImplTest {
     }
 
     /**
-     * Test: filterShelvesForAPI should filter by parentDeviceId (not deviceId)
-     * This test verifies the fix for the bug where filterShelvesForAPI was looking 
-     * for "deviceId" instead of "parentDeviceId" in the Map objects.
+     * Test: filterShelvesForAPI should filter by parentDeviceId (not deviceId) This
+     * test verifies the fix for the bug where filterShelvesForAPI was looking for
+     * "deviceId" instead of "parentDeviceId" in the Map objects.
      */
     @Test
     public void testFilterShelvesForAPI_ByDeviceId_ReturnsMatchingShelves() {
-        // Given: Mock shelves from getShelvesForAPI (which returns Maps with parentDeviceId)
+        // Given: Mock shelves from getShelvesForAPI (which returns Maps with
+        // parentDeviceId)
         List<Map<String, Object>> mockShelvesForAPI = new ArrayList<>();
         Map<String, Object> shelf1 = new HashMap<>();
         shelf1.put("id", 1);
-        shelf1.put("parentDeviceId", 1);  // CRITICAL: Uses parentDeviceId, not deviceId
+        shelf1.put("parentDeviceId", 1); // CRITICAL: Uses parentDeviceId, not deviceId
         shelf1.put("parentRoomId", 1);
         shelf1.put("active", true);
         mockShelvesForAPI.add(shelf1);
-        
+
         Map<String, Object> shelf2 = new HashMap<>();
         shelf2.put("id", 2);
-        shelf2.put("parentDeviceId", 2);  // Different device
+        shelf2.put("parentDeviceId", 2); // Different device
         shelf2.put("parentRoomId", 1);
         shelf2.put("active", true);
         mockShelvesForAPI.add(shelf2);
-        
+
         when(storageLocationService.getShelvesForAPI(null)).thenReturn(mockShelvesForAPI);
 
         // When: Filter by deviceId 1
@@ -292,22 +293,23 @@ public class StorageDashboardServiceImplTest {
      */
     @Test
     public void testFilterShelvesForAPI_ByRoomId_ReturnsMatchingShelves() {
-        // Given: Mock shelves from getShelvesForAPI (which returns Maps with parentRoomId)
+        // Given: Mock shelves from getShelvesForAPI (which returns Maps with
+        // parentRoomId)
         List<Map<String, Object>> mockShelvesForAPI = new ArrayList<>();
         Map<String, Object> shelf1 = new HashMap<>();
         shelf1.put("id", 1);
         shelf1.put("parentDeviceId", 1);
-        shelf1.put("parentRoomId", 1);  // CRITICAL: Uses parentRoomId, not roomId
+        shelf1.put("parentRoomId", 1); // CRITICAL: Uses parentRoomId, not roomId
         shelf1.put("active", true);
         mockShelvesForAPI.add(shelf1);
-        
+
         Map<String, Object> shelf2 = new HashMap<>();
         shelf2.put("id", 2);
         shelf2.put("parentDeviceId", 2);
-        shelf2.put("parentRoomId", 2);  // Different room
+        shelf2.put("parentRoomId", 2); // Different room
         shelf2.put("active", true);
         mockShelvesForAPI.add(shelf2);
-        
+
         when(storageLocationService.getShelvesForAPI(null)).thenReturn(mockShelvesForAPI);
 
         // When: Filter by roomId 1

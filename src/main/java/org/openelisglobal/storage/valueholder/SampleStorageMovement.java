@@ -17,7 +17,8 @@ import org.openelisglobal.sample.valueholder.Sample;
 
 /**
  * SampleStorageMovement entity - Immutable audit log of sample movements
- * Insert-only, no updates/deletes allowed
+ * Insert-only, no updates/deletes allowed Uses flexible assignment model:
+ * locationId + locationType (no StoragePosition references)
  */
 @Entity
 @Table(name = "SAMPLE_STORAGE_MOVEMENT")
@@ -34,13 +35,25 @@ public class SampleStorageMovement extends BaseObject<Integer> {
     @JoinColumn(name = "SAMPLE_ID", nullable = false)
     private Sample sample;
 
-    @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
-    @JoinColumn(name = "PREVIOUS_POSITION_ID")
-    private StoragePosition previousPosition;
+    // Previous location (flexible assignment model)
+    @Column(name = "PREVIOUS_LOCATION_ID")
+    private Integer previousLocationId;
 
-    @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
-    @JoinColumn(name = "NEW_POSITION_ID")
-    private StoragePosition newPosition;
+    @Column(name = "PREVIOUS_LOCATION_TYPE", length = 20)
+    private String previousLocationType;
+
+    @Column(name = "PREVIOUS_POSITION_COORDINATE", length = 50)
+    private String previousPositionCoordinate;
+
+    // New location (flexible assignment model)
+    @Column(name = "NEW_LOCATION_ID")
+    private Integer newLocationId;
+
+    @Column(name = "NEW_LOCATION_TYPE", length = 20)
+    private String newLocationType;
+
+    @Column(name = "NEW_POSITION_COORDINATE", length = 50)
+    private String newPositionCoordinate;
 
     @Column(name = "MOVED_BY_USER_ID", nullable = false)
     private Integer movedByUserId;
@@ -69,20 +82,52 @@ public class SampleStorageMovement extends BaseObject<Integer> {
         this.sample = sample;
     }
 
-    public StoragePosition getPreviousPosition() {
-        return previousPosition;
+    public Integer getPreviousLocationId() {
+        return previousLocationId;
     }
 
-    public void setPreviousPosition(StoragePosition previousPosition) {
-        this.previousPosition = previousPosition;
+    public void setPreviousLocationId(Integer previousLocationId) {
+        this.previousLocationId = previousLocationId;
     }
 
-    public StoragePosition getNewPosition() {
-        return newPosition;
+    public String getPreviousLocationType() {
+        return previousLocationType;
     }
 
-    public void setNewPosition(StoragePosition newPosition) {
-        this.newPosition = newPosition;
+    public void setPreviousLocationType(String previousLocationType) {
+        this.previousLocationType = previousLocationType;
+    }
+
+    public String getPreviousPositionCoordinate() {
+        return previousPositionCoordinate;
+    }
+
+    public void setPreviousPositionCoordinate(String previousPositionCoordinate) {
+        this.previousPositionCoordinate = previousPositionCoordinate;
+    }
+
+    public Integer getNewLocationId() {
+        return newLocationId;
+    }
+
+    public void setNewLocationId(Integer newLocationId) {
+        this.newLocationId = newLocationId;
+    }
+
+    public String getNewLocationType() {
+        return newLocationType;
+    }
+
+    public void setNewLocationType(String newLocationType) {
+        this.newLocationType = newLocationType;
+    }
+
+    public String getNewPositionCoordinate() {
+        return newPositionCoordinate;
+    }
+
+    public void setNewPositionCoordinate(String newPositionCoordinate) {
+        this.newPositionCoordinate = newPositionCoordinate;
     }
 
     public Integer getMovedByUserId() {

@@ -4,15 +4,23 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * Form object for sample storage assignment
+ * Form object for sample storage assignment Supports flexible hierarchy: assign
+ * to device/shelf/rack level with optional position coordinate
  */
 public class SampleAssignmentForm {
 
     @NotBlank(message = "Sample ID is required")
     private String sampleId;
 
-    @NotBlank(message = "Position ID is required")
-    private String positionId;
+    // Simplified polymorphic location
+    @NotBlank(message = "Location ID is required")
+    private String locationId; // Can be device/shelf/rack ID
+
+    @NotBlank(message = "Location type is required")
+    private String locationType; // Enum: 'device', 'shelf', 'rack'
+
+    @Size(max = 50, message = "Position coordinate must not exceed 50 characters")
+    private String positionCoordinate; // Optional text-based coordinate (position is just text, not an entity)
 
     @Size(max = 1000, message = "Notes must not exceed 1000 characters")
     private String notes;
@@ -27,12 +35,28 @@ public class SampleAssignmentForm {
         this.sampleId = sampleId;
     }
 
-    public String getPositionId() {
-        return positionId;
+    public String getLocationId() {
+        return locationId;
     }
 
-    public void setPositionId(String positionId) {
-        this.positionId = positionId;
+    public void setLocationId(String locationId) {
+        this.locationId = locationId;
+    }
+
+    public String getLocationType() {
+        return locationType;
+    }
+
+    public void setLocationType(String locationType) {
+        this.locationType = locationType;
+    }
+
+    public String getPositionCoordinate() {
+        return positionCoordinate;
+    }
+
+    public void setPositionCoordinate(String positionCoordinate) {
+        this.positionCoordinate = positionCoordinate;
     }
 
     public String getNotes() {

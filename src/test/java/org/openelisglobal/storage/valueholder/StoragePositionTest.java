@@ -6,8 +6,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * Unit tests for StoragePosition entity hierarchy validation.
- * Tests position structure with flexible hierarchy (2-5 levels).
+ * Unit tests for StoragePosition entity hierarchy validation. Tests position
+ * structure with flexible hierarchy (2-5 levels).
  * 
  * T026a: Position hierarchy validation tests
  */
@@ -51,8 +51,8 @@ public class StoragePositionTest {
     }
 
     /**
-     * Test position with device only (2-level position) - should be valid
-     * Minimum requirement: room + device
+     * Test position with device only (2-level position) - should be valid Minimum
+     * requirement: room + device
      */
     @Test
     public void testPositionWithDeviceOnly_Valid() {
@@ -91,7 +91,8 @@ public class StoragePositionTest {
     }
 
     /**
-     * Test position with device, shelf, and rack (4-level position) - should be valid
+     * Test position with device, shelf, and rack (4-level position) - should be
+     * valid
      */
     @Test
     public void testPositionWithDeviceShelfRack_Valid() {
@@ -135,8 +136,8 @@ public class StoragePositionTest {
     }
 
     /**
-     * Test position without device - should be invalid
-     * Minimum requirement: device must exist (room + device)
+     * Test position without device - should be invalid Minimum requirement: device
+     * must exist (room + device)
      */
     @Test
     public void testPositionWithoutDevice_Invalid() {
@@ -153,8 +154,8 @@ public class StoragePositionTest {
     }
 
     /**
-     * Test position with rack but no shelf - should be invalid
-     * Constraint: If parent_rack_id is NOT NULL, then parent_shelf_id must also be NOT NULL
+     * Test position with rack but no shelf - should be invalid Constraint: If
+     * parent_rack_id is NOT NULL, then parent_shelf_id must also be NOT NULL
      */
     @Test
     public void testPositionWithRackButNoShelf_Invalid() {
@@ -175,8 +176,8 @@ public class StoragePositionTest {
     }
 
     /**
-     * Test position with coordinate but no rack - should be invalid
-     * Constraint: If coordinate is NOT NULL, then parent_rack_id must also be NOT NULL
+     * Test position with coordinate but no rack - should be invalid Constraint: If
+     * coordinate is NOT NULL, then parent_rack_id must also be NOT NULL
      */
     @Test
     public void testPositionWithCoordinateButNoRack_Invalid() {
@@ -198,4 +199,3 @@ public class StoragePositionTest {
         // This violates constraint: if coordinate exists, rack must exist
     }
 }
-

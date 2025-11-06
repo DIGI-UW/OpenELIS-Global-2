@@ -22,11 +22,17 @@ public class SampleStorageMovementDAOImpl extends BaseDAOImpl<SampleStorageMovem
     @Transactional(readOnly = true)
     public List<SampleStorageMovement> findBySampleId(String sampleId) {
         try {
+            // Note: Sample.id is String in entity but stored as numeric in database
+            // Pattern used throughout codebase: parse String sampleId to Integer for
+            // database queries
             String hql = "FROM SampleStorageMovement WHERE sample.id = :sampleId ORDER BY movementDate DESC";
             Query<SampleStorageMovement> query = entityManager.unwrap(Session.class).createQuery(hql,
                     SampleStorageMovement.class);
-            query.setParameter("sampleId", sampleId);
+            // Parse String to Integer to match database column type (numeric)
+            query.setParameter("sampleId", Integer.parseInt(sampleId));
             return query.list();
+        } catch (NumberFormatException e) {
+            throw new LIMSRuntimeException("Invalid sample ID format (not numeric): " + sampleId, e);
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error finding SampleStorageMovements by sample ID", e);
         }

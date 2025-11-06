@@ -13,7 +13,9 @@ import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.service.StorageDashboardService;
 import org.openelisglobal.storage.service.StorageLocationService;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
-import org.openelisglobal.storage.valueholder.StoragePosition;
+import org.openelisglobal.storage.valueholder.StorageDevice;
+import org.openelisglobal.storage.valueholder.StorageRack;
+import org.openelisglobal.storage.valueholder.StorageShelf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -115,16 +117,19 @@ public class SampleStorageRestController extends BaseRestController {
                 error.put("message", "Sample ID is required");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
-            if (form.getPositionId() == null || form.getPositionId().trim().isEmpty()) {
+
+            // Validate: must have locationId + locationType
+            if (form.getLocationId() == null || form.getLocationId().trim().isEmpty() || form.getLocationType() == null
+                    || form.getLocationType().trim().isEmpty()) {
                 Map<String, Object> error = new HashMap<>();
-                error.put("message", "Position ID is required");
+                error.put("message", "Location ID and location type are required (minimum 2 levels: room + device)");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
 
             // Service layer prepares all data including hierarchical path within
             // transaction
-            Map<String, Object> response = sampleStorageService.assignSampleWithDetails(form.getSampleId(),
-                    form.getPositionId(), form.getNotes());
+            Map<String, Object> response = sampleStorageService.assignSampleWithLocation(form.getSampleId(),
+                    form.getLocationId(), form.getLocationType(), form.getPositionCoordinate(), form.getNotes());
 
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
@@ -154,29 +159,103 @@ public class SampleStorageRestController extends BaseRestController {
                 error.put("message", "Sample ID is required");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
-            if (form.getTargetPositionId() == null || form.getTargetPositionId().trim().isEmpty()) {
+
+            // Validate: must have locationId + locationType
+            if (form.getLocationId() == null || form.getLocationId().trim().isEmpty() || form.getLocationType() == null
+                    || form.getLocationType().trim().isEmpty()) {
                 Map<String, Object> error = new HashMap<>();
-                error.put("message", "Target position ID is required");
+                error.put("message", "Location ID and location type are required (minimum 2 levels: room + device)");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
 
-            // Service layer handles all business logic including freeing old position
-            String movementId = sampleStorageService.moveSample(form.getSampleId(), form.getTargetPositionId(),
-                    form.getReason());
+            // Service layer handles all business logic
+            String movementId = sampleStorageService.moveSampleWithLocation(form.getSampleId(), form.getLocationId(),
+                    form.getLocationType(), form.getPositionCoordinate(), form.getReason());
 
-            // Build hierarchical paths within same transaction
-            Integer targetPositionIdInt = Integer.parseInt(form.getTargetPositionId());
-            StoragePosition targetPosition = (StoragePosition) storageLocationService.get(targetPositionIdInt,
-                    StoragePosition.class);
-            String newHierarchicalPath = storageLocationService.buildHierarchicalPath(targetPosition);
+            // Build hierarchical path for new location
+            Integer locationIdInt = Integer.parseInt(form.getLocationId());
+            String newHierarchicalPath = null;
+            if ("device".equals(form.getLocationType())) {
+                StorageDevice device = (StorageDevice) storageLocationService.get(locationIdInt, StorageDevice.class);
+                if (device != null && device.getParentRoom() != null) {
+                    newHierarchicalPath = device.getParentRoom().getName() + " > " + device.getName();
+                    if (form.getPositionCoordinate() != null && !form.getPositionCoordinate().trim().isEmpty()) {
+                        newHierarchicalPath += " > " + form.getPositionCoordinate();
+                    }
+                }
+            } else if ("shelf".equals(form.getLocationType())) {
+                StorageShelf shelf = (StorageShelf) storageLocationService.get(locationIdInt, StorageShelf.class);
+                if (shelf != null && shelf.getParentDevice() != null
+                        && shelf.getParentDevice().getParentRoom() != null) {
+                    newHierarchicalPath = shelf.getParentDevice().getParentRoom().getName() + " > "
+                            + shelf.getParentDevice().getName() + " > " + shelf.getLabel();
+                    if (form.getPositionCoordinate() != null && !form.getPositionCoordinate().trim().isEmpty()) {
+                        newHierarchicalPath += " > " + form.getPositionCoordinate();
+                    }
+                }
+            } else if ("rack".equals(form.getLocationType())) {
+                StorageRack rack = (StorageRack) storageLocationService.get(locationIdInt, StorageRack.class);
+                if (rack != null && rack.getParentShelf() != null && rack.getParentShelf().getParentDevice() != null
+                        && rack.getParentShelf().getParentDevice().getParentRoom() != null) {
+                    newHierarchicalPath = rack.getParentShelf().getParentDevice().getParentRoom().getName() + " > "
+                            + rack.getParentShelf().getParentDevice().getName() + " > "
+                            + rack.getParentShelf().getLabel() + " > " + rack.getLabel();
+                    if (form.getPositionCoordinate() != null && !form.getPositionCoordinate().trim().isEmpty()) {
+                        newHierarchicalPath += " > " + form.getPositionCoordinate();
+                    }
+                }
+            }
 
-            // Get previous position path from the movement record (already created by service)
-            // Note: The service already updated the assignment, so we need to get it from the movement
-            // For now, we'll build it from the assignment if it exists, or use a generic message
+            // Get previous position path from the movement record (already created by
+            // service)
+            // Note: The service already updated the assignment, so we need to get it from
+            // the movement
+            // For now, we'll build it from the assignment if it exists, or use a generic
+            // message
             String previousHierarchicalPath = null;
-            // The service method returns the movementId, but we need the previous position path
+            // The service method returns the movementId, but we need the previous position
+            // path
             // This is a limitation - we could enhance the service to return both paths
             // For now, we'll leave it as null and let the frontend handle it
+
+            // Check shelf capacity (informational only - not blocking)
+            String shelfCapacityWarning = null;
+            if ("shelf".equals(form.getLocationType())) {
+                StorageShelf shelf = (StorageShelf) storageLocationService.get(locationIdInt, StorageShelf.class);
+                if (shelf != null && shelf.getCapacityLimit() != null && shelf.getCapacityLimit() > 0) {
+                    int occupied = storageLocationService.countOccupiedInShelf(shelf.getId());
+                    int capacityLimit = shelf.getCapacityLimit();
+                    int percentage = (occupied * 100) / capacityLimit;
+
+                    if (percentage >= 100) {
+                        shelfCapacityWarning = String.format(
+                                "Shelf %s is at or over capacity (%d/%d positions, %d%%). Assignment allowed but shelf is over-occupied.",
+                                shelf.getLabel(), occupied, capacityLimit, percentage);
+                    } else if (percentage >= 90) {
+                        shelfCapacityWarning = String.format("Shelf %s is near capacity (%d/%d positions, %d%%).",
+                                shelf.getLabel(), occupied, capacityLimit, percentage);
+                    }
+                }
+            } else if ("rack".equals(form.getLocationType())) {
+                StorageRack rack = (StorageRack) storageLocationService.get(locationIdInt, StorageRack.class);
+                if (rack != null && rack.getParentShelf() != null) {
+                    StorageShelf shelf = rack.getParentShelf();
+                    if (shelf.getCapacityLimit() != null && shelf.getCapacityLimit() > 0) {
+                        int occupied = storageLocationService.countOccupiedInShelf(shelf.getId());
+                        int capacityLimit = shelf.getCapacityLimit();
+                        int percentage = (occupied * 100) / capacityLimit;
+
+                        if (percentage >= 100) {
+                            shelfCapacityWarning = String.format(
+                                    "Shelf %s is at or over capacity (%d/%d positions, %d%%). Assignment allowed but shelf is over-occupied.",
+                                    shelf.getLabel(), occupied, capacityLimit, percentage);
+                        } else if (percentage >= 90) {
+                            shelfCapacityWarning = String.format("Shelf %s is near capacity (%d/%d positions, %d%%).",
+                                    shelf.getLabel(), occupied, capacityLimit, percentage);
+                        }
+                    }
+                }
+            }
 
             // Prepare response data
             Map<String, Object> response = new HashMap<>();
@@ -184,6 +263,9 @@ public class SampleStorageRestController extends BaseRestController {
             response.put("previousLocation", previousHierarchicalPath);
             response.put("newLocation", newHierarchicalPath != null ? newHierarchicalPath : "Unknown");
             response.put("movedDate", new java.sql.Timestamp(System.currentTimeMillis()).toString());
+            if (shelfCapacityWarning != null) {
+                response.put("shelfCapacityWarning", shelfCapacityWarning);
+            }
 
             return ResponseEntity.status(HttpStatus.OK).body(response);
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {

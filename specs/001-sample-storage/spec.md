@@ -128,10 +128,20 @@ managers
 
 - Q: Which menu items should appear in the samples table row overflow menu? → A:
   All four items: Move, Dispose, View Audit (placeholder), View Storage
-- Q: How should position hierarchy work - can positions have varying hierarchy depths? → A:
-  Positions can have only room+device, or room+device+shelf+rack, etc. There's no auto-resolve needed - just require that at least two levels (room + device) are part of a position. The position entity itself maintains the full hierarchy path, but the minimum requirement for assignment is room+device.
-- Q: What is the exact structure of position hierarchy levels? → A:
-  A position can have at most room>device>shelf>rack>position (5 levels), but at least room and device (2 levels minimum). A sample can be associated with a position that represents the lowest level in the hierarchy for that assignment. The position can be at: device level (2 levels: room+device), shelf level (3 levels: room+device+shelf), rack level (4 levels: room+device+shelf+rack), or position level (5 levels: room+device+shelf+rack+position). The requirement is that it must be at least at the device level (cannot be just a room).
+- Q: How should position hierarchy work - can positions have varying hierarchy
+  depths? → A: Positions can have only room+device, or room+device+shelf+rack,
+  etc. There's no auto-resolve needed - just require that at least two levels
+  (room + device) are part of a position. The position entity itself maintains
+  the full hierarchy path, but the minimum requirement for assignment is
+  room+device.
+- Q: What is the exact structure of position hierarchy levels? → A: A position
+  can have at most room>device>shelf>rack>position (5 levels), but at least room
+  and device (2 levels minimum). A sample can be associated with a position that
+  represents the lowest level in the hierarchy for that assignment. The position
+  can be at: device level (2 levels: room+device), shelf level (3 levels:
+  room+device+shelf), rack level (4 levels: room+device+shelf+rack), or position
+  level (5 levels: room+device+shelf+rack+position). The requirement is that it
+  must be at least at the device level (cannot be just a room).
 - Q: What should the View Storage modal display? → A: Based on Figma design
   (sample row menu - location modal page): Modal titled "Storage Location
   Assignment" showing sample information (ID, Type, Status) in highlighted box,
@@ -164,6 +174,11 @@ managers
   view? → A: Simple quick find/search input for any location level that already
   exists (type-ahead autocomplete matching Room, Device, Shelf, or Rack
   levels) - barcode workflows are delayed to later stage
+
+### Session 2025-11-06
+
+- Q: What action menu structure should location tabs (Rooms, Devices, Shelves, Racks) have? → A: Full CRUD overflow menu: Edit, Delete, View Details (similar to Samples tab pattern)
+- Q: How should the Edit operation UI work for location entities? → A: Modal dialog with full form (all fields editable in modal, similar to View Storage modal pattern)
 
 ## POC Scope
 
@@ -271,9 +286,9 @@ search/retrieval features exist.
    scan completes, **Then** system auto-populates Room="Main Laboratory",
    Device="Freezer Unit 1", Shelf="Shelf-A", Rack="Rack R1" and focuses the
    Position field
-6. **Given** Maria has selected Room and Device (and optionally Shelf/Rack), **When**
-   she leaves the Position field blank, **Then** system allows rack-level
-   assignment (position optional for shelf/rack-level storage)
+6. **Given** Maria has selected Room and Device (and optionally Shelf/Rack),
+   **When** she leaves the Position field blank, **Then** system allows
+   rack-level assignment (position optional for shelf/rack-level storage)
 
 ---
 
@@ -690,11 +705,12 @@ samples are assigned/moved/disposed.
   only required for 5-level positions), optional row/column integers for grid
   visualization, occupancy state (empty/occupied), parent device reference
   (required), optional parent shelf reference, optional parent rack reference. A
-  position can have at most 5 levels (Room → Device → Shelf → Rack → Position) but
-  at least 2 levels (Room → Device). The position represents the lowest level in
-  the hierarchy for a sample assignment. Minimum requirement is device level (room
-  + device); cannot be just a room. Position can be at: device level (2 levels),
-  shelf level (3 levels), rack level (4 levels), or position level (5 levels).
+  position can have at most 5 levels (Room → Device → Shelf → Rack → Position)
+  but at least 2 levels (Room → Device). The position represents the lowest
+  level in the hierarchy for a sample assignment. Minimum requirement is device
+  level (room
+  - device); cannot be just a room. Position can be at: device level (2 levels),
+    shelf level (3 levels), rack level (4 levels), or position level (5 levels).
 
 #### Navigation and Access
 
@@ -844,16 +860,16 @@ operations.
   (room/device/shelf/rack/position), Assigned By (user ID), Timestamp, Optional
   notes
 - **FR-033a**: System MUST require that a valid location for a sample has at
-  least 2 levels set: Room and Device MUST be selected. Shelf, Rack, and Position
-  levels are optional (shelf/rack/position may be left blank). A position can have
-  at most 5 levels (Room → Device → Shelf → Rack → Position) but at least 2 levels
-  (Room → Device). A sample is associated with a position that represents the
-  lowest level in the hierarchy for that assignment. The position can be at device
-  level (2 levels), shelf level (3 levels), rack level (4 levels), or position
-  level (5 levels). The requirement is that it must be at least at the device level
-  (cannot be just a room). When assigning, we select the lowest position in the
-  hierarchy for the given sample, which provides all necessary location
-  information.
+  least 2 levels set: Room and Device MUST be selected. Shelf, Rack, and
+  Position levels are optional (shelf/rack/position may be left blank). A
+  position can have at most 5 levels (Room → Device → Shelf → Rack → Position)
+  but at least 2 levels (Room → Device). A sample is associated with a position
+  that represents the lowest level in the hierarchy for that assignment. The
+  position can be at device level (2 levels), shelf level (3 levels), rack level
+  (4 levels), or position level (5 levels). The requirement is that it must be
+  at least at the device level (cannot be just a room). When assigning, we
+  select the lowest position in the hierarchy for the given sample, which
+  provides all necessary location information.
 - **FR-034**: System MUST prevent assignment to already-occupied position
   (unless rack allows duplicates - see FR-014)
 - **FR-035**: System MUST prevent assignment to inactive/decommissioned location
@@ -876,6 +892,37 @@ operations.
   readers
 - **FR-037e**: "View Audit" menu item MUST be marked as placeholder (disabled or
   with visual indicator) until audit functionality is implemented
+
+#### Location Row Actions Menu (Rooms, Devices, Shelves, Racks)
+
+- **FR-037f**: Rooms, Devices, Shelves, and Racks table rows MUST include an
+  overflow menu button (triple-dot icon, ⋮) in the Actions column
+- **FR-037g**: Overflow menu MUST display three menu items: Edit, Delete, View
+  Details
+- **FR-037h**: Overflow menu MUST use Carbon Design System OverflowMenu component
+- **FR-037i**: Menu items MUST be accessible via keyboard navigation and screen
+  readers
+
+#### Location Edit Modal
+
+- **FR-037j**: Selecting "Edit" from overflow menu MUST open a modal dialog with
+  full form for editing all location entity fields
+- **FR-037k**: Edit modal MUST use Carbon Design System Modal component with
+  proper accessibility attributes
+- **FR-037l**: Edit modal MUST display all editable fields for the location type:
+  - **Room**: Name, Code, Description (optional), Active/Inactive status
+  - **Device**: Name, Code, Type, Temperature setting (optional), Capacity limit
+    (optional), Active/Inactive status, Parent Room (editable)
+  - **Shelf**: Label, Capacity limit (optional), Active/Inactive status, Parent
+    Device (editable)
+  - **Rack**: Label, Dimensions (rows, columns), Position schema hint
+    (optional), Active/Inactive status, Parent Shelf (editable)
+- **FR-037m**: Edit modal MUST validate code uniqueness within parent scope and
+  parent-child relationships before saving
+- **FR-037n**: Edit modal MUST display Cancel and "Save Changes" buttons in
+  footer
+- **FR-037o**: Edit modal MUST preserve table context (user remains on same tab
+  after closing modal)
 
 #### Sample Movement
 

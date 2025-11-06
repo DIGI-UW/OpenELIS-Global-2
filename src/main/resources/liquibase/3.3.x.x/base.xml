@@ -5,10 +5,10 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
   <!-- Sample Storage Management POC (001-sample-storage) -->
+  <!-- Clean consolidated migrations - assumes no storage management data exists -->
   <include relativeToChangelogFile="true" file="001-create-storage-hierarchy-tables.xml"/>
   <include relativeToChangelogFile="true" file="002-create-assignment-tables.xml"/>
   <include relativeToChangelogFile="true" file="003-create-indexes.xml"/>
-  <include relativeToChangelogFile="true" file="004-update-position-hierarchy-structure.xml"/>
   <include relativeToChangelogFile="true" file="004-insert-test-storage-data.xml" context="test"/>
   <include relativeToChangelogFile="true" file="005-add-storage-menu-item.xml"/>
   <include relativeToChangelogFile="true" file="006-add-storage-menu-localization.xml"/>

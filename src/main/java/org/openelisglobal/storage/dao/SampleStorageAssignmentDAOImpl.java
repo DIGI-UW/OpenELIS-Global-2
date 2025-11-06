@@ -6,6 +6,8 @@ import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAssignment, Integer>
         implements SampleStorageAssignmentDAO {
+
+    private static final Logger logger = LoggerFactory.getLogger(SampleStorageAssignmentDAOImpl.class);
 
     public SampleStorageAssignmentDAOImpl() {
         super(SampleStorageAssignment.class);
@@ -22,14 +26,24 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
     @Transactional(readOnly = true)
     public SampleStorageAssignment findBySampleId(String sampleId) {
         try {
-            String hql = "FROM SampleStorageAssignment WHERE sample.id = :sampleId";
+            // Note: Sample.id is String in entity but stored as numeric in database
+            // Pattern used throughout codebase: parse String sampleId to Integer for
+            // database queries
+            // This matches the approach in SampleItemDAOImpl, SampleAdditionalFieldDAOImpl,
+            // etc.
+            String hql = "SELECT ssa FROM SampleStorageAssignment ssa JOIN ssa.sample s WHERE s.id = :sampleId";
             Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
                     SampleStorageAssignment.class);
-            query.setParameter("sampleId", sampleId);
+            // Parse String to Integer to match database column type (numeric)
+            query.setParameter("sampleId", Integer.parseInt(sampleId));
             List<SampleStorageAssignment> results = query.list();
             return results.isEmpty() ? null : results.get(0);
+        } catch (NumberFormatException e) {
+            logger.error("Invalid sample ID format (not numeric): " + sampleId, e);
+            throw new LIMSRuntimeException("Invalid sample ID format: " + sampleId, e);
         } catch (Exception e) {
-            throw new LIMSRuntimeException("Error finding SampleStorageAssignment by sample ID", e);
+            logger.error("Error finding SampleStorageAssignment by sample ID: " + sampleId, e);
+            throw new LIMSRuntimeException("Error finding SampleStorageAssignment by sample ID: " + sampleId, e);
         }
     }
 

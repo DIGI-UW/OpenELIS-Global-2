@@ -202,14 +202,15 @@ ON CONFLICT (id) DO UPDATE SET
   lastupdated = CURRENT_TIMESTAMP;
 
 -- Insert test patients
+-- Note: entered_birth_date must be in MM/DD/YYYY format for OpenELIS
 INSERT INTO patient (id, person_id, race, gender, birth_date, birth_time, national_id, 
                      ethnicity, external_id, entered_birth_date, lastupdated) VALUES
-(1000, 1000, 'black', 'M', '1990-01-15', '1990-01-15 10:00:00', 'E2E-PAT-001', 
- 'U', 'E2E-PAT-001', '1990-01-15', CURRENT_TIMESTAMP),
-(1001, 1001, 'white', 'F', '1985-05-20', '1985-05-20 14:30:00', 'E2E-PAT-002',
- 'U', 'E2E-PAT-002', '1985-05-20', CURRENT_TIMESTAMP),
-(1002, 1002, 'asian', 'M', '1992-11-10', '1992-11-10 09:15:00', 'E2E-PAT-003',
- 'U', 'E2E-PAT-003', '1992-11-10', CURRENT_TIMESTAMP)
+(1000, 1000, 'black', 'M', '1990-01-15'::timestamp, '1990-01-15 10:00:00'::timestamp, 'E2E-PAT-001', 
+ 'U', 'E2E-PAT-001', '01/15/1990', CURRENT_TIMESTAMP),
+(1001, 1001, 'white', 'F', '1985-05-20'::timestamp, '1985-05-20 14:30:00'::timestamp, 'E2E-PAT-002',
+ 'U', 'E2E-PAT-002', '05/20/1985', CURRENT_TIMESTAMP),
+(1002, 1002, 'asian', 'M', '1992-11-10'::timestamp, '1992-11-10 09:15:00'::timestamp, 'E2E-PAT-003',
+ 'U', 'E2E-PAT-003', '11/10/1992', CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO UPDATE SET
   person_id = EXCLUDED.person_id,
   external_id = EXCLUDED.external_id,
@@ -309,53 +310,66 @@ BEGIN
     patient_id = EXCLUDED.patient_id,
     lastupdated = CURRENT_TIMESTAMP;
 
-  -- Create storage assignments
-  -- Assignment 1: Sample E2E-001 to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A1 (position_id = 100)
-  INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date, 
+  -- Create storage assignments (using new location_id + location_type model)
+  -- Assignment 1: Sample E2E-001 to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A1
+  -- Rack 30 (location_id = 30, location_type = 'rack', position_coordinate = 'A1')
+  INSERT INTO sample_storage_assignment (id, sample_id, location_id, location_type, position_coordinate, assigned_date, 
                                          assigned_by_user_id, notes, last_updated)
-  VALUES (1000, 1000, 100, CURRENT_TIMESTAMP, 1, 'E2E test assignment', CURRENT_TIMESTAMP)
+  VALUES (1000, 1000, 30, 'rack', 'A1', CURRENT_TIMESTAMP, 1, 'E2E test assignment', CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
-    storage_position_id = EXCLUDED.storage_position_id,
+    location_id = EXCLUDED.location_id,
+    location_type = EXCLUDED.location_type,
+    position_coordinate = EXCLUDED.position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
-  UPDATE storage_position SET occupied = true WHERE id = 100;
 
-  -- Assignment 2: Sample E2E-002 to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A2 (position_id = 101)
-  INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
+  -- Assignment 2: Sample E2E-002 to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A2
+  -- Rack 30 (location_id = 30, location_type = 'rack', position_coordinate = 'A2')
+  INSERT INTO sample_storage_assignment (id, sample_id, location_id, location_type, position_coordinate, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
-  VALUES (1001, 1001, 101, CURRENT_TIMESTAMP, 1, 'E2E test assignment', CURRENT_TIMESTAMP)
+  VALUES (1001, 1001, 30, 'rack', 'A2', CURRENT_TIMESTAMP, 1, 'E2E test assignment', CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
-    storage_position_id = EXCLUDED.storage_position_id,
+    location_id = EXCLUDED.location_id,
+    location_type = EXCLUDED.location_type,
+    position_coordinate = EXCLUDED.position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
-  UPDATE storage_position SET occupied = true WHERE id = 101;
 
-  -- Assignment 3: Sample E2E-003 to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A4 (position_id = 103)
-  INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
+  -- Assignment 3: Sample E2E-003 to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A4
+  -- Rack 30 (location_id = 30, location_type = 'rack', position_coordinate = 'A4')
+  INSERT INTO sample_storage_assignment (id, sample_id, location_id, location_type, position_coordinate, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
-  VALUES (1002, 1002, 103, CURRENT_TIMESTAMP, 1, 'E2E test assignment', CURRENT_TIMESTAMP)
+  VALUES (1002, 1002, 30, 'rack', 'A4', CURRENT_TIMESTAMP, 1, 'E2E test assignment', CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
-    storage_position_id = EXCLUDED.storage_position_id,
+    location_id = EXCLUDED.location_id,
+    location_type = EXCLUDED.location_type,
+    position_coordinate = EXCLUDED.position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
-  UPDATE storage_position SET occupied = true WHERE id = 103;
 
-  -- Assignment 4: Sample E2E-005 to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A5 (position_id = 104)
-  INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
+  -- Assignment 4: Sample E2E-005 to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A5
+  -- Rack 30 (location_id = 30, location_type = 'rack', position_coordinate = 'A5')
+  INSERT INTO sample_storage_assignment (id, sample_id, location_id, location_type, position_coordinate, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
-  VALUES (1003, 1004, 104, CURRENT_TIMESTAMP, 1, 'E2E test assignment', CURRENT_TIMESTAMP)
+  VALUES (1003, 1004, 30, 'rack', 'A5', CURRENT_TIMESTAMP, 1, 'E2E test assignment', CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
-    storage_position_id = EXCLUDED.storage_position_id,
+    location_id = EXCLUDED.location_id,
+    location_type = EXCLUDED.location_type,
+    position_coordinate = EXCLUDED.position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
-  UPDATE storage_position SET occupied = true WHERE id = 104;
 
-  -- Create storage movement audit logs
-  INSERT INTO sample_storage_movement (id, sample_id, previous_position_id, new_position_id,
+  -- Create storage movement audit logs (using new flexible assignment model)
+  -- These movements reference the rack locations where samples were assigned
+  -- Position 100, 101, 103, 104 are all in Rack 30 (location_id = 30, location_type = 'rack')
+  INSERT INTO sample_storage_movement (id, sample_id, previous_location_id, previous_location_type, previous_position_coordinate,
+                                       new_location_id, new_location_type, new_position_coordinate,
                                        movement_date, moved_by_user_id, reason, last_updated)
   VALUES
-  (1000, 1000, NULL, 100, CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
-  (1001, 1001, NULL, 101, CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
-  (1002, 1002, NULL, 103, CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
-  (1003, 1004, NULL, 104, CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP)
+  (1000, 1000, NULL, NULL, NULL, 30, 'rack', 'A1', CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
+  (1001, 1001, NULL, NULL, NULL, 30, 'rack', 'A2', CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
+  (1002, 1002, NULL, NULL, NULL, 30, 'rack', 'A4', CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
+  (1003, 1004, NULL, NULL, NULL, 30, 'rack', 'A5', CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
-    new_position_id = EXCLUDED.new_position_id,
+    new_location_id = EXCLUDED.new_location_id,
+    new_location_type = EXCLUDED.new_location_type,
+    new_position_coordinate = EXCLUDED.new_position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
 
   -- ============================================================================
@@ -428,63 +442,79 @@ BEGIN
     patient_id = EXCLUDED.patient_id,
     lastupdated = CURRENT_TIMESTAMP;
 
-  -- Assignments for new samples:
-  -- Assignment 5: Sample E2E-006 to Secondary Lab > Secondary Lab Cabinet Unit 1 > Secondary Cabinet Shelf-1 > Secondary Cabinet Shelf-1 Rack 1 (position_id = 130)
-  INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
+  -- Assignments for new samples (using new location_id + location_type model):
+  -- Assignment 5: Sample E2E-006 to Secondary Lab > Secondary Lab Cabinet Unit 1 > Secondary Cabinet Shelf-1 > Secondary Cabinet Shelf-1 Rack 1
+  -- Rack 34 (location_id = 34, location_type = 'rack', position_coordinate = 'A1')
+  INSERT INTO sample_storage_assignment (id, sample_id, location_id, location_type, position_coordinate, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
-  VALUES (1004, 1005, 130, CURRENT_TIMESTAMP, 1, 'E2E test - Secondary Lab', CURRENT_TIMESTAMP)
+  VALUES (1004, 1005, 34, 'rack', 'A1', CURRENT_TIMESTAMP, 1, 'E2E test - Secondary Lab', CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
-    storage_position_id = EXCLUDED.storage_position_id,
+    location_id = EXCLUDED.location_id,
+    location_type = EXCLUDED.location_type,
+    position_coordinate = EXCLUDED.position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
-  UPDATE storage_position SET occupied = true WHERE id = 130;
 
-  -- Assignment 6: Sample E2E-007 to Secondary Lab > Secondary Lab Cabinet Unit 1 > Secondary Cabinet Shelf-1 > Secondary Cabinet Shelf-1 Rack 1 (position_id = 131)
-  INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
+  -- Assignment 6: Sample E2E-007 to Secondary Lab > Secondary Lab Cabinet Unit 1 > Secondary Cabinet Shelf-1 > Secondary Cabinet Shelf-1 Rack 1
+  -- Rack 34 (location_id = 34, location_type = 'rack', position_coordinate = 'A2')
+  INSERT INTO sample_storage_assignment (id, sample_id, location_id, location_type, position_coordinate, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
-  VALUES (1005, 1006, 131, CURRENT_TIMESTAMP, 1, 'E2E test - Secondary Lab', CURRENT_TIMESTAMP)
+  VALUES (1005, 1006, 34, 'rack', 'A2', CURRENT_TIMESTAMP, 1, 'E2E test - Secondary Lab', CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
-    storage_position_id = EXCLUDED.storage_position_id,
+    location_id = EXCLUDED.location_id,
+    location_type = EXCLUDED.location_type,
+    position_coordinate = EXCLUDED.position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
-  UPDATE storage_position SET occupied = true WHERE id = 131;
 
-  -- Assignment 7: Sample E2E-008 to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A6 (position_id = 105)
-  INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
+  -- Assignment 7: Sample E2E-008 to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A6
+  -- Rack 30 (location_id = 30, location_type = 'rack', position_coordinate = 'A6')
+  INSERT INTO sample_storage_assignment (id, sample_id, location_id, location_type, position_coordinate, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
-  VALUES (1006, 1007, 105, CURRENT_TIMESTAMP, 1, 'E2E test - Disposed sample', CURRENT_TIMESTAMP)
+  VALUES (1006, 1007, 30, 'rack', 'A6', CURRENT_TIMESTAMP, 1, 'E2E test - Disposed sample', CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
-    storage_position_id = EXCLUDED.storage_position_id,
+    location_id = EXCLUDED.location_id,
+    location_type = EXCLUDED.location_type,
+    position_coordinate = EXCLUDED.position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
-  UPDATE storage_position SET occupied = true WHERE id = 105;
 
-  -- Assignment 8: Sample E2E-009 to Secondary Lab > Secondary Lab Cabinet Unit 1 > Secondary Cabinet Shelf-1 > Secondary Cabinet Shelf-1 Rack 1 (position_id = 132)
-  INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
+  -- Assignment 8: Sample E2E-009 to Secondary Lab > Secondary Lab Cabinet Unit 1 > Secondary Cabinet Shelf-1 > Secondary Cabinet Shelf-1 Rack 1
+  -- Rack 34 (location_id = 34, location_type = 'rack', position_coordinate = 'A3')
+  INSERT INTO sample_storage_assignment (id, sample_id, location_id, location_type, position_coordinate, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
-  VALUES (1007, 1008, 132, CURRENT_TIMESTAMP, 1, 'E2E test - Disposed in Secondary', CURRENT_TIMESTAMP)
+  VALUES (1007, 1008, 34, 'rack', 'A3', CURRENT_TIMESTAMP, 1, 'E2E test - Disposed in Secondary', CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
-    storage_position_id = EXCLUDED.storage_position_id,
+    location_id = EXCLUDED.location_id,
+    location_type = EXCLUDED.location_type,
+    position_coordinate = EXCLUDED.position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
-  UPDATE storage_position SET occupied = true WHERE id = 132;
 
-  -- Assignment 9: Sample E2E-010 to Main Lab > Main Lab Refrigerator Unit 1 > Main Refrigerator Shelf-1 > Main Refrigerator Shelf-1 Rack 1 (position_id = 121)
-  INSERT INTO sample_storage_assignment (id, sample_id, storage_position_id, assigned_date,
+  -- Assignment 9: Sample E2E-010 to Main Lab > Main Lab Refrigerator Unit 1 > Main Refrigerator Shelf-1 > Main Refrigerator Shelf-1 Rack 1
+  -- Rack 33 (location_id = 33, location_type = 'rack', position_coordinate = 'A1')
+  INSERT INTO sample_storage_assignment (id, sample_id, location_id, location_type, position_coordinate, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
-  VALUES (1008, 1009, 121, CURRENT_TIMESTAMP, 1, 'E2E test - Refrigerator', CURRENT_TIMESTAMP)
+  VALUES (1008, 1009, 33, 'rack', 'A1', CURRENT_TIMESTAMP, 1, 'E2E test - Refrigerator', CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
-    storage_position_id = EXCLUDED.storage_position_id,
+    location_id = EXCLUDED.location_id,
+    location_type = EXCLUDED.location_type,
+    position_coordinate = EXCLUDED.position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
-  UPDATE storage_position SET occupied = true WHERE id = 121;
 
-  -- Create storage movement audit logs for new samples
-  INSERT INTO sample_storage_movement (id, sample_id, previous_position_id, new_position_id,
+  -- Create storage movement audit logs for new samples (using flexible assignment model)
+  -- Position 130, 131, 132 are in Rack 34 (location_id = 34, location_type = 'rack')
+  -- Position 105 is in Rack 31 (location_id = 31, location_type = 'rack')
+  -- Position 121 is in Rack 33 (location_id = 33, location_type = 'rack')
+  INSERT INTO sample_storage_movement (id, sample_id, previous_location_id, previous_location_type, previous_position_coordinate,
+                                       new_location_id, new_location_type, new_position_coordinate,
                                        movement_date, moved_by_user_id, reason, last_updated)
   VALUES
-  (1004, 1005, NULL, 130, CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
-  (1005, 1006, NULL, 131, CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
-  (1006, 1007, NULL, 105, CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
-  (1007, 1008, NULL, 132, CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
-  (1008, 1009, NULL, 121, CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP)
+  (1004, 1005, NULL, NULL, NULL, 34, 'rack', 'A1', CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
+  (1005, 1006, NULL, NULL, NULL, 34, 'rack', 'A2', CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
+  (1006, 1007, NULL, NULL, NULL, 31, 'rack', '1-1', CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
+  (1007, 1008, NULL, NULL, NULL, 34, 'rack', 'A3', CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
+  (1008, 1009, NULL, NULL, NULL, 33, 'rack', 'A1', CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
-    new_position_id = EXCLUDED.new_position_id,
+    new_location_id = EXCLUDED.new_location_id,
+    new_location_type = EXCLUDED.new_location_type,
+    new_position_coordinate = EXCLUDED.new_position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
 
 END $$;
@@ -511,17 +541,35 @@ SELECT
     s.accession_number,
     to_char(s.entered_date, 'YYYY-MM-DD') AS entered_date,
     p.last_name || ', ' || p.first_name AS patient_name,
-    r.code || ' > ' || d.code || ' > ' || sh.label || ' > ' || k.label || ' > ' || pos.coordinate AS location_path
+    CASE 
+      WHEN ssa.location_type = 'rack' THEN
+        r.code || ' > ' || d.code || ' > ' || sh.label || ' > ' || k.label || 
+        COALESCE(' > ' || ssa.position_coordinate, '')
+      WHEN ssa.location_type = 'shelf' THEN
+        r.code || ' > ' || d.code || ' > ' || sh.label ||
+        COALESCE(' > ' || ssa.position_coordinate, '')
+      WHEN ssa.location_type = 'device' THEN
+        r.code || ' > ' || d.code ||
+        COALESCE(' > ' || ssa.position_coordinate, '')
+      ELSE 'Unassigned'
+    END AS location_path
 FROM sample s
 JOIN sample_human sh_link ON s.id = sh_link.samp_id
 JOIN patient pt ON sh_link.patient_id = pt.id
 JOIN person p ON pt.person_id = p.id
 LEFT JOIN sample_storage_assignment ssa ON s.id = ssa.sample_id
-LEFT JOIN storage_position pos ON ssa.storage_position_id = pos.id
-LEFT JOIN storage_device d ON pos.parent_device_id = d.id
-LEFT JOIN storage_room r ON d.parent_room_id = r.id
-LEFT JOIN storage_shelf sh ON pos.parent_shelf_id = sh.id
-LEFT JOIN storage_rack k ON pos.parent_rack_id = k.id
+LEFT JOIN storage_room r ON 
+  (ssa.location_type = 'device' AND EXISTS (SELECT 1 FROM storage_device WHERE id = ssa.location_id AND parent_room_id = r.id))
+  OR (ssa.location_type = 'shelf' AND EXISTS (SELECT 1 FROM storage_shelf WHERE id = ssa.location_id AND parent_device_id IN (SELECT id FROM storage_device WHERE parent_room_id = r.id)))
+  OR (ssa.location_type = 'rack' AND EXISTS (SELECT 1 FROM storage_rack WHERE id = ssa.location_id AND parent_shelf_id IN (SELECT id FROM storage_shelf WHERE parent_device_id IN (SELECT id FROM storage_device WHERE parent_room_id = r.id))))
+LEFT JOIN storage_device d ON 
+  (ssa.location_type = 'device' AND d.id = ssa.location_id)
+  OR (ssa.location_type = 'shelf' AND d.id IN (SELECT parent_device_id FROM storage_shelf WHERE id = ssa.location_id))
+  OR (ssa.location_type = 'rack' AND d.id IN (SELECT parent_device_id FROM storage_shelf WHERE id IN (SELECT parent_shelf_id FROM storage_rack WHERE id = ssa.location_id)))
+LEFT JOIN storage_shelf sh ON 
+  (ssa.location_type = 'shelf' AND sh.id = ssa.location_id)
+  OR (ssa.location_type = 'rack' AND sh.id IN (SELECT parent_shelf_id FROM storage_rack WHERE id = ssa.location_id))
+LEFT JOIN storage_rack k ON ssa.location_type = 'rack' AND k.id = ssa.location_id
 WHERE s.accession_number LIKE 'E2E-%'
 ORDER BY s.accession_number;
 

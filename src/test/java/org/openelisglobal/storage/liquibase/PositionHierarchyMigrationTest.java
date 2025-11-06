@@ -5,24 +5,24 @@ import static org.junit.Assert.*;
 import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
+import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.openelisglobal.BaseWebContextSensitiveTest;
 
 /**
- * Database migration test for Position Hierarchy Structure Update (2-5 Level Support).
+ * Database migration test for Position Hierarchy Structure Update (2-5 Level
+ * Support).
  * 
- * T026c: Verifies schema changes from changeset 004-update-position-hierarchy-structure.xml
+ * T026c: Verifies schema changes from changeset
+ * 004-update-position-hierarchy-structure.xml
  * 
- * Tests:
- * - parent_device_id column exists and is NOT NULL
- * - parent_shelf_id column exists and is NULL (nullable)
- * - parent_rack_id column is changed to NULL (nullable)
- * - coordinate column is changed to NULL (nullable)
- * - CHECK constraints are created
+ * Tests: - parent_device_id column exists and is NOT NULL - parent_shelf_id
+ * column exists and is NULL (nullable) - parent_rack_id column is changed to
+ * NULL (nullable) - coordinate column is changed to NULL (nullable) - CHECK
+ * constraints are created
  * 
- * Note: This test requires the database migration to have run. It will be run after
- * the application starts and migrations are applied.
+ * Note: This test requires the database migration to have run. It will be run
+ * after the application starts and migrations are applied.
  */
 public class PositionHierarchyMigrationTest extends BaseWebContextSensitiveTest {
 
@@ -44,13 +44,9 @@ public class PositionHierarchyMigrationTest extends BaseWebContextSensitiveTest 
     public void testParentDeviceIdNotNull() {
         // Given: STORAGE_POSITION table exists
         // When: Querying column information
-        String sql = "SELECT " +
-                "    column_name, " +
-                "    data_type, " +
-                "    is_nullable " +
-                "FROM information_schema.columns " +
-                "WHERE table_name = 'storage_position' " +
-                "    AND column_name = 'parent_device_id'";
+        String sql = "SELECT " + "    column_name, " + "    data_type, " + "    is_nullable "
+                + "FROM information_schema.columns " + "WHERE table_name = 'storage_position' "
+                + "    AND column_name = 'parent_device_id'";
 
         var result = jdbcTemplate.queryForMap(sql);
 
@@ -67,13 +63,9 @@ public class PositionHierarchyMigrationTest extends BaseWebContextSensitiveTest 
     public void testParentShelfIdNullable() {
         // Given: STORAGE_POSITION table exists
         // When: Querying column information
-        String sql = "SELECT " +
-                "    column_name, " +
-                "    data_type, " +
-                "    is_nullable " +
-                "FROM information_schema.columns " +
-                "WHERE table_name = 'storage_position' " +
-                "    AND column_name = 'parent_shelf_id'";
+        String sql = "SELECT " + "    column_name, " + "    data_type, " + "    is_nullable "
+                + "FROM information_schema.columns " + "WHERE table_name = 'storage_position' "
+                + "    AND column_name = 'parent_shelf_id'";
 
         var result = jdbcTemplate.queryForMap(sql);
 
@@ -90,13 +82,9 @@ public class PositionHierarchyMigrationTest extends BaseWebContextSensitiveTest 
     public void testParentRackIdNullable() {
         // Given: STORAGE_POSITION table exists
         // When: Querying column information
-        String sql = "SELECT " +
-                "    column_name, " +
-                "    data_type, " +
-                "    is_nullable " +
-                "FROM information_schema.columns " +
-                "WHERE table_name = 'storage_position' " +
-                "    AND column_name = 'parent_rack_id'";
+        String sql = "SELECT " + "    column_name, " + "    data_type, " + "    is_nullable "
+                + "FROM information_schema.columns " + "WHERE table_name = 'storage_position' "
+                + "    AND column_name = 'parent_rack_id'";
 
         var result = jdbcTemplate.queryForMap(sql);
 
@@ -113,13 +101,9 @@ public class PositionHierarchyMigrationTest extends BaseWebContextSensitiveTest 
     public void testCoordinateNullable() {
         // Given: STORAGE_POSITION table exists
         // When: Querying column information
-        String sql = "SELECT " +
-                "    column_name, " +
-                "    data_type, " +
-                "    is_nullable " +
-                "FROM information_schema.columns " +
-                "WHERE table_name = 'storage_position' " +
-                "    AND column_name = 'coordinate'";
+        String sql = "SELECT " + "    column_name, " + "    data_type, " + "    is_nullable "
+                + "FROM information_schema.columns " + "WHERE table_name = 'storage_position' "
+                + "    AND column_name = 'coordinate'";
 
         var result = jdbcTemplate.queryForMap(sql);
 
@@ -136,12 +120,10 @@ public class PositionHierarchyMigrationTest extends BaseWebContextSensitiveTest 
     public void testCheckConstraints() {
         // Given: STORAGE_POSITION table exists
         // When: Querying constraint information
-        String sql = "SELECT " +
-                "    conname as constraint_name, " +
-                "    pg_get_constraintdef(oid) as constraint_definition " +
-                "FROM pg_constraint " +
-                "WHERE conrelid = 'storage_position'::regclass " +
-                "    AND contype = 'c' " + // 'c' for CHECK constraint
+        String sql = "SELECT " + "    conname as constraint_name, "
+                + "    pg_get_constraintdef(oid) as constraint_definition " + "FROM pg_constraint "
+                + "WHERE conrelid = 'storage_position'::regclass " + "    AND contype = 'c' " + // 'c' for CHECK
+                                                                                                // constraint
                 "ORDER BY conname";
 
         var constraints = jdbcTemplate.queryForList(sql);
@@ -149,17 +131,17 @@ public class PositionHierarchyMigrationTest extends BaseWebContextSensitiveTest 
         // Then: Should have CHECK constraints
         assertTrue("Should have at least one CHECK constraint", constraints.size() > 0);
 
-        // Verify constraint: If parent_rack_id is NOT NULL, then parent_shelf_id must also be NOT NULL
+        // Verify constraint: If parent_rack_id is NOT NULL, then parent_shelf_id must
+        // also be NOT NULL
         boolean foundRackShelfConstraint = constraints.stream()
-                .anyMatch(constraint -> constraint.get("constraint_definition").toString()
-                        .contains("parent_rack_id") && constraint.get("constraint_definition").toString()
-                                .contains("parent_shelf_id"));
+                .anyMatch(constraint -> constraint.get("constraint_definition").toString().contains("parent_rack_id")
+                        && constraint.get("constraint_definition").toString().contains("parent_shelf_id"));
 
-        // Verify constraint: If coordinate is NOT NULL, then parent_rack_id must also be NOT NULL
+        // Verify constraint: If coordinate is NOT NULL, then parent_rack_id must also
+        // be NOT NULL
         boolean foundCoordinateRackConstraint = constraints.stream()
-                .anyMatch(constraint -> constraint.get("constraint_definition").toString()
-                        .contains("coordinate") && constraint.get("constraint_definition").toString()
-                                .contains("parent_rack_id"));
+                .anyMatch(constraint -> constraint.get("constraint_definition").toString().contains("coordinate")
+                        && constraint.get("constraint_definition").toString().contains("parent_rack_id"));
 
         assertTrue("Should have constraint: if parent_rack_id NOT NULL then parent_shelf_id NOT NULL",
                 foundRackShelfConstraint);
@@ -174,12 +156,11 @@ public class PositionHierarchyMigrationTest extends BaseWebContextSensitiveTest 
     public void testParentDeviceIdForeignKey() {
         // Given: STORAGE_POSITION table exists
         // When: Querying foreign key constraints
-        String sql = "SELECT " +
-                "    conname as constraint_name, " +
-                "    confrelid::regclass as referenced_table " +
-                "FROM pg_constraint " +
-                "WHERE conrelid = 'storage_position'::regclass " +
-                "    AND contype = 'f' " + // 'f' for FOREIGN KEY
+        String sql = "SELECT " + "    conname as constraint_name, " + "    confrelid::regclass as referenced_table "
+                + "FROM pg_constraint " + "WHERE conrelid = 'storage_position'::regclass " + "    AND contype = 'f' " + // 'f'
+                                                                                                                        // for
+                                                                                                                        // FOREIGN
+                                                                                                                        // KEY
                 "    AND conkey::text LIKE '%parent_device_id%'";
 
         var result = jdbcTemplate.queryForMap(sql);
@@ -189,4 +170,3 @@ public class PositionHierarchyMigrationTest extends BaseWebContextSensitiveTest 
         assertEquals("storage_device", result.get("referenced_table").toString());
     }
 }
-

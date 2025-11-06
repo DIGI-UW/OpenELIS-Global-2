@@ -933,12 +933,23 @@ LEFT JOIN storage_rack k ON k.parent_shelf_id = s.id
 LEFT JOIN storage_position p ON p.parent_rack_id = k.id
 ORDER BY r.name, d.name, s.label, k.label, p.coordinate;
 
--- View sample assignments
-SELECT sa.id, s.accession_number, p.coordinate, k.label, sh.label, d.name, r.name, sa.assigned_date
+-- View sample assignments (using new polymorphic location model)
+-- Note: SampleStorageAssignment uses location_id + location_type (polymorphic reference to device/shelf/rack)
+-- Position is represented as optional text field (position_coordinate), not a separate entity
+
+-- Example: Find all samples assigned to a specific device
+SELECT sa.id, s.accession_number, sa.position_coordinate, d.name AS device_name, r.name AS room_name, sa.assigned_date
 FROM sample_storage_assignment sa
 JOIN sample s ON s.id = sa.sample_id
-JOIN storage_position p ON p.id = sa.storage_position_id
-JOIN storage_rack k ON k.id = p.parent_rack_id
+JOIN storage_device d ON d.id = sa.location_id AND sa.location_type = 'device'
+JOIN storage_room r ON r.id = d.parent_room_id
+ORDER BY sa.assigned_date DESC;
+
+-- Example: Find all samples assigned to a specific rack
+SELECT sa.id, s.accession_number, sa.position_coordinate, k.label AS rack_label, sh.label AS shelf_label, d.name AS device_name, r.name AS room_name, sa.assigned_date
+FROM sample_storage_assignment sa
+JOIN sample s ON s.id = sa.sample_id
+JOIN storage_rack k ON k.id = sa.location_id AND sa.location_type = 'rack'
 JOIN storage_shelf sh ON sh.id = k.parent_shelf_id
 JOIN storage_device d ON d.id = sh.parent_device_id
 JOIN storage_room r ON r.id = d.parent_room_id

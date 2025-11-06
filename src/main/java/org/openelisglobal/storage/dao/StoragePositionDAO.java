@@ -17,5 +17,7 @@ public interface StoragePositionDAO extends BaseDAO<StoragePosition, Integer> {
 
     int countOccupiedInDevice(Integer deviceId);
 
+    int countOccupiedInShelf(Integer shelfId);
+
     boolean validateHierarchyIntegrity(Integer positionId);
 }

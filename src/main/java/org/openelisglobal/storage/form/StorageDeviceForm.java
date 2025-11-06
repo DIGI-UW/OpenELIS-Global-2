@@ -17,9 +17,8 @@ public class StorageDeviceForm {
     @Size(max = 255, message = "Device name must not exceed 255 characters")
     private String name;
 
-    @NotBlank(message = "Device code is required")
     @Size(max = 50, message = "Device code must not exceed 50 characters")
-    private String code;
+    private String code; // Optional - will be auto-generated if not provided
 
     @NotBlank(message = "Device type is required")
     @Pattern(regexp = "freezer|refrigerator|cabinet|other", message = "Device type must be one of: freezer, refrigerator, cabinet, other")

@@ -125,7 +125,8 @@ public class StorageLocationServiceHierarchyTest {
     }
 
     /**
-     * Test building path for rack-level position (4 levels: Room > Device > Shelf > Rack)
+     * Test building path for rack-level position (4 levels: Room > Device > Shelf >
+     * Rack)
      */
     @Test
     public void testBuildPath_RackLevel_ReturnsRoomDeviceShelfRack() {
@@ -148,7 +149,8 @@ public class StorageLocationServiceHierarchyTest {
     }
 
     /**
-     * Test building path for position-level position (5 levels: Room > Device > Shelf > Rack > Position)
+     * Test building path for position-level position (5 levels: Room > Device >
+     * Shelf > Rack > Position)
      */
     @Test
     public void testBuildPath_PositionLevel_ReturnsFullHierarchy() {
@@ -184,4 +186,3 @@ public class StorageLocationServiceHierarchyTest {
         assertEquals("Unknown Location", path);
     }
 }
-

@@ -5,8 +5,8 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- Hierarchy Traversal Indexes (Parent Lookups) -->
-    <changeSet id="storage-015-create-hierarchy-indexes" author="sample-storage-feature">
+    <!-- Hierarchy Traversal Indexes -->
+    <changeSet id="storage-008-create-hierarchy-indexes" author="sample-storage-feature">
         <preConditions onFail="MARK_RAN">
             <not>
                 <indexExists indexName="idx_device_parent_room" tableName="storage_device"/>
@@ -21,6 +21,12 @@
         <createIndex indexName="idx_rack_parent_shelf" tableName="storage_rack">
             <column name="parent_shelf_id"/>
         </createIndex>
+        <createIndex indexName="idx_position_parent_device" tableName="storage_position">
+            <column name="parent_device_id"/>
+        </createIndex>
+        <createIndex indexName="idx_position_parent_shelf" tableName="storage_position">
+            <column name="parent_shelf_id"/>
+        </createIndex>
         <createIndex indexName="idx_position_parent_rack" tableName="storage_position">
             <column name="parent_rack_id"/>
         </createIndex>
@@ -28,12 +34,14 @@
             <dropIndex indexName="idx_device_parent_room" tableName="storage_device"/>
             <dropIndex indexName="idx_shelf_parent_device" tableName="storage_shelf"/>
             <dropIndex indexName="idx_rack_parent_shelf" tableName="storage_rack"/>
+            <dropIndex indexName="idx_position_parent_device" tableName="storage_position"/>
+            <dropIndex indexName="idx_position_parent_shelf" tableName="storage_position"/>
             <dropIndex indexName="idx_position_parent_rack" tableName="storage_position"/>
         </rollback>
     </changeSet>
 
     <!-- FHIR UUID Lookup Indexes -->
-    <changeSet id="storage-016-create-fhir-uuid-indexes" author="sample-storage-feature">
+    <changeSet id="storage-009-create-fhir-uuid-indexes" author="sample-storage-feature">
         <preConditions onFail="MARK_RAN">
             <not>
                 <indexExists indexName="idx_room_fhir_uuid" tableName="storage_room"/>
@@ -63,46 +71,8 @@
         </rollback>
     </changeSet>
 
-    <!-- Sample Assignment Lookup Indexes -->
-    <changeSet id="storage-017-create-assignment-indexes" author="sample-storage-feature">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <indexExists indexName="idx_assignment_sample" tableName="sample_storage_assignment"/>
-            </not>
-        </preConditions>
-        <createIndex indexName="idx_assignment_sample" tableName="sample_storage_assignment">
-            <column name="sample_id"/>
-        </createIndex>
-        <createIndex indexName="idx_assignment_position" tableName="sample_storage_assignment">
-            <column name="storage_position_id"/>
-        </createIndex>
-        <rollback>
-            <dropIndex indexName="idx_assignment_sample" tableName="sample_storage_assignment"/>
-            <dropIndex indexName="idx_assignment_position" tableName="sample_storage_assignment"/>
-        </rollback>
-    </changeSet>
-
-    <!-- Movement Audit Query Indexes -->
-    <changeSet id="storage-018-create-movement-indexes" author="sample-storage-feature">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <indexExists indexName="idx_movement_sample" tableName="sample_storage_movement"/>
-            </not>
-        </preConditions>
-        <createIndex indexName="idx_movement_sample" tableName="sample_storage_movement">
-            <column name="sample_id"/>
-        </createIndex>
-        <createIndex indexName="idx_movement_date" tableName="sample_storage_movement">
-            <column name="movement_date" descending="true"/>
-        </createIndex>
-        <rollback>
-            <dropIndex indexName="idx_movement_sample" tableName="sample_storage_movement"/>
-            <dropIndex indexName="idx_movement_date" tableName="sample_storage_movement"/>
-        </rollback>
-    </changeSet>
-
     <!-- Active Status Filter Indexes -->
-    <changeSet id="storage-019-create-active-status-indexes" author="sample-storage-feature">
+    <changeSet id="storage-010-create-active-status-indexes" author="sample-storage-feature">
         <preConditions onFail="MARK_RAN">
             <not>
                 <indexExists indexName="idx_room_active" tableName="storage_room"/>
@@ -128,8 +98,47 @@
         </rollback>
     </changeSet>
 
+    <!-- Sample Assignment Lookup Indexes -->
+    <changeSet id="storage-011-create-assignment-indexes" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_assignment_sample" tableName="sample_storage_assignment"/>
+            </not>
+        </preConditions>
+        <createIndex indexName="idx_assignment_sample" tableName="sample_storage_assignment">
+            <column name="sample_id"/>
+        </createIndex>
+        <createIndex indexName="idx_assignment_location" tableName="sample_storage_assignment">
+            <column name="location_id"/>
+            <column name="location_type"/>
+        </createIndex>
+        <rollback>
+            <dropIndex indexName="idx_assignment_sample" tableName="sample_storage_assignment"/>
+            <dropIndex indexName="idx_assignment_location" tableName="sample_storage_assignment"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Movement Audit Query Indexes -->
+    <changeSet id="storage-012-create-movement-indexes" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_movement_sample" tableName="sample_storage_movement"/>
+            </not>
+        </preConditions>
+        <createIndex indexName="idx_movement_sample" tableName="sample_storage_movement">
+            <column name="sample_id"/>
+        </createIndex>
+        <createIndex indexName="idx_movement_date" tableName="sample_storage_movement">
+            <column name="movement_date" descending="true"/>
+        </createIndex>
+        <rollback>
+            <dropIndex indexName="idx_movement_sample" tableName="sample_storage_movement"/>
+            <dropIndex indexName="idx_movement_date" tableName="sample_storage_movement"/>
+        </rollback>
+    </changeSet>
+
     <!-- Position Occupancy Query Index -->
-    <changeSet id="storage-020-create-position-occupancy-index" author="sample-storage-feature">
+    <changeSet id="storage-013-create-position-occupancy-index" author="sample-storage-feature">
         <preConditions onFail="MARK_RAN">
             <not>
                 <indexExists indexName="idx_position_occupied" tableName="storage_position"/>

@@ -16,9 +16,8 @@ public class StorageRoomForm {
     @Size(max = 255, message = "Room name must not exceed 255 characters")
     private String name;
 
-    @NotBlank(message = "Room code is required")
     @Size(max = 50, message = "Room code must not exceed 50 characters")
-    private String code;
+    private String code; // Optional - will be auto-generated if not provided
 
     @Size(max = 1000, message = "Description must not exceed 1000 characters")
     private String description;

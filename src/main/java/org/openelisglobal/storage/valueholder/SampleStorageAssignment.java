@@ -34,9 +34,15 @@ public class SampleStorageAssignment extends BaseObject<Integer> {
     @JoinColumn(name = "SAMPLE_ID", nullable = false, unique = true)
     private Sample sample;
 
-    @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
-    @JoinColumn(name = "STORAGE_POSITION_ID", nullable = false)
-    private StoragePosition storagePosition;
+    // Simplified polymorphic location relationship
+    @Column(name = "LOCATION_ID", nullable = false)
+    private Integer locationId; // Can reference device, shelf, or rack ID
+
+    @Column(name = "LOCATION_TYPE", length = 20, nullable = false)
+    private String locationType; // Enum: 'device', 'shelf', 'rack'
+
+    @Column(name = "POSITION_COORDINATE", length = 50)
+    private String positionCoordinate; // Optional text-based coordinate (position is just text, not an entity)
 
     @Column(name = "ASSIGNED_BY_USER_ID", nullable = false)
     private Integer assignedByUserId;
@@ -65,12 +71,28 @@ public class SampleStorageAssignment extends BaseObject<Integer> {
         this.sample = sample;
     }
 
-    public StoragePosition getStoragePosition() {
-        return storagePosition;
+    public Integer getLocationId() {
+        return locationId;
     }
 
-    public void setStoragePosition(StoragePosition storagePosition) {
-        this.storagePosition = storagePosition;
+    public void setLocationId(Integer locationId) {
+        this.locationId = locationId;
+    }
+
+    public String getLocationType() {
+        return locationType;
+    }
+
+    public void setLocationType(String locationType) {
+        this.locationType = locationType;
+    }
+
+    public String getPositionCoordinate() {
+        return positionCoordinate;
+    }
+
+    public void setPositionCoordinate(String positionCoordinate) {
+        this.positionCoordinate = positionCoordinate;
     }
 
     public Integer getAssignedByUserId() {

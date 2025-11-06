@@ -15,7 +15,8 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
 /**
- * Test for StorageLocationService.searchLocations to verify parent IDs and names are included
+ * Test for StorageLocationService.searchLocations to verify parent IDs and
+ * names are included
  */
 @RunWith(MockitoJUnitRunner.class)
 public class StorageLocationServiceSearchTest {
@@ -70,9 +71,7 @@ public class StorageLocationServiceSearchTest {
         assertNotNull("Results should not be null", results);
         assertTrue("Should return at least one device", results.size() >= 1);
 
-        Map<String, Object> deviceResult = results.stream()
-                .filter(r -> "device".equals(r.get("type")))
-                .findFirst()
+        Map<String, Object> deviceResult = results.stream().filter(r -> "device".equals(r.get("type"))).findFirst()
                 .orElse(null);
 
         assertNotNull("Device result should exist", deviceResult);
@@ -82,13 +81,14 @@ public class StorageLocationServiceSearchTest {
         assertEquals("Should have parentRoomId", 1, deviceResult.get("parentRoomId"));
         assertEquals("Should have parentRoomName", "Main Laboratory", deviceResult.get("parentRoomName"));
         assertNotNull("Should have hierarchicalPath", deviceResult.get("hierarchicalPath"));
-        assertTrue("Hierarchical path should contain room name", 
+        assertTrue("Hierarchical path should contain room name",
                 ((String) deviceResult.get("hierarchicalPath")).contains("Main Laboratory"));
     }
 
     @Test
     public void testSearchLocations_Shelf_IncludesParentDeviceAndRoomIdsAndNames() {
-        // Given: Shelf with parent device and room (only parent-prefixed fields from getShelvesForAPI)
+        // Given: Shelf with parent device and room (only parent-prefixed fields from
+        // getShelvesForAPI)
         List<Map<String, Object>> shelves = new ArrayList<>();
         Map<String, Object> shelf = new HashMap<>();
         shelf.put("id", 20);
@@ -113,13 +113,12 @@ public class StorageLocationServiceSearchTest {
         // When: Search for locations
         List<Map<String, Object>> results = storageLocationService.searchLocations("Shelf");
 
-        // Then: Result should include parentDeviceId, parentDeviceName, parentRoomId, parentRoomName
+        // Then: Result should include parentDeviceId, parentDeviceName, parentRoomId,
+        // parentRoomName
         assertNotNull("Results should not be null", results);
         assertTrue("Should return at least one shelf", results.size() >= 1);
 
-        Map<String, Object> shelfResult = results.stream()
-                .filter(r -> "shelf".equals(r.get("type")))
-                .findFirst()
+        Map<String, Object> shelfResult = results.stream().filter(r -> "shelf".equals(r.get("type"))).findFirst()
                 .orElse(null);
 
         assertNotNull("Shelf result should exist", shelfResult);
@@ -136,7 +135,8 @@ public class StorageLocationServiceSearchTest {
 
     @Test
     public void testSearchLocations_Rack_IncludesAllParentIdsAndNames() {
-        // Given: Rack with parent shelf, device, and room (only parent-prefixed fields from getRacksForAPI)
+        // Given: Rack with parent shelf, device, and room (only parent-prefixed fields
+        // from getRacksForAPI)
         List<Map<String, Object>> racks = new ArrayList<>();
         Map<String, Object> rack = new HashMap<>();
         rack.put("id", 30);
@@ -168,9 +168,7 @@ public class StorageLocationServiceSearchTest {
         assertNotNull("Results should not be null", results);
         assertTrue("Should return at least one rack", results.size() >= 1);
 
-        Map<String, Object> rackResult = results.stream()
-                .filter(r -> "rack".equals(r.get("type")))
-                .findFirst()
+        Map<String, Object> rackResult = results.stream().filter(r -> "rack".equals(r.get("type"))).findFirst()
                 .orElse(null);
 
         assertNotNull("Rack result should exist", rackResult);
@@ -188,4 +186,3 @@ public class StorageLocationServiceSearchTest {
         assertTrue("Hierarchical path should contain shelf label", hierarchicalPath.contains("Shelf-A"));
     }
 }
-

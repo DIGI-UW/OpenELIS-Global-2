@@ -54,6 +54,8 @@ public interface StorageLocationService {
 
     int countOccupied(Integer rackId);
 
+    int countOccupiedInShelf(Integer shelfId);
+
     // Generic CRUD methods
     Integer insert(Object entity);
 

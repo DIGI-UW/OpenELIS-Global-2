@@ -38,232 +38,6 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     private StorageLocationService storageLocationService;
 
     @Override
-    public String assignSample(String sampleId, String positionId, String notes) {
-        try {
-            // Validate inputs
-            Sample sample = sampleDAO.get(sampleId)
-                    .orElseThrow(() -> new LIMSRuntimeException("Sample not found: " + sampleId));
-
-            Integer positionIdInt = Integer.parseInt(positionId);
-            StoragePosition position = (StoragePosition) storageLocationService.get(positionIdInt,
-                    StoragePosition.class);
-            if (position == null) {
-                throw new LIMSRuntimeException("Position not found: " + positionId);
-            }
-
-            // Validate position not occupied
-            if (position.getOccupied() != null && position.getOccupied()) {
-                // Generate position label for different hierarchy levels
-                String positionLabel;
-                if (position.getCoordinate() != null && !position.getCoordinate().isEmpty()) {
-                    positionLabel = position.getCoordinate();
-                } else if (position.getParentRack() != null) {
-                    positionLabel = position.getParentRack().getLabel();
-                } else if (position.getParentShelf() != null) {
-                    positionLabel = position.getParentShelf().getLabel();
-                } else {
-                    positionLabel = position.getParentDevice().getName();
-                }
-                throw new LIMSRuntimeException("Position " + positionLabel + " is already occupied");
-            }
-
-            // Validate location is active
-            if (!storageLocationService.validateLocationActive(position)) {
-                throw new LIMSRuntimeException("Cannot assign to inactive location");
-            }
-
-            // Validate 2-level minimum rule (FR-033a): Position must have parent_device_id (minimum 2 levels: room + device)
-            if (position.getParentDevice() == null) {
-                throw new LIMSRuntimeException("Position must have a parent device (minimum 2 levels: room + device)");
-            }
-            StorageDevice device = position.getParentDevice();
-            if (device.getParentRoom() == null) {
-                throw new LIMSRuntimeException("Device must have a parent room");
-            }
-            // Validate hierarchy integrity: if rack exists, shelf must exist; if coordinate exists, rack must exist
-            if (!position.validateHierarchyIntegrity()) {
-                throw new LIMSRuntimeException("Position hierarchy integrity constraint violated");
-            }
-            // Validation passed: Position has Room and Device (minimum 2 levels)
-
-            // Mark position as occupied
-            position.setOccupied(true);
-            storageLocationService.update(position);
-
-            // Create assignment record
-            SampleStorageAssignment assignment = new SampleStorageAssignment();
-            assignment.setSample(sample);
-            assignment.setStoragePosition(position);
-            assignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
-            assignment.setNotes(notes);
-            assignment.setAssignedByUserId(1); // Default to system user for tests
-
-            Integer assignmentIdInt = sampleStorageAssignmentDAO.insert(assignment);
-            String assignmentId = assignmentIdInt != null ? assignmentIdInt.toString() : null;
-
-            // Create audit log entry
-            SampleStorageMovement movement = new SampleStorageMovement();
-            movement.setSample(sample);
-            movement.setPreviousPosition(null); // Initial assignment
-            movement.setNewPosition(position);
-            movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
-            movement.setReason(notes);
-            movement.setMovedByUserId(1); // Default to system user for tests
-
-            sampleStorageMovementDAO.insert(movement);
-
-            return assignmentId;
-
-        } catch (StaleObjectStateException e) {
-            throw new LIMSRuntimeException("Position was just modified by another user. Please refresh and try again.",
-                    e);
-        }
-    }
-
-    @Override
-    @Transactional
-    public java.util.Map<String, Object> assignSampleWithDetails(String sampleId, String positionId, String notes) {
-        // Assign the sample (this handles all the business logic)
-        String assignmentId = assignSample(sampleId, positionId, notes);
-
-        // Build hierarchical path within same transaction
-        Integer positionIdInt = Integer.parseInt(positionId);
-        StoragePosition position = (StoragePosition) storageLocationService.get(positionIdInt, StoragePosition.class);
-        String hierarchicalPath = storageLocationService.buildHierarchicalPath(position);
-
-        // Prepare response data
-        java.util.Map<String, Object> response = new java.util.HashMap<>();
-        response.put("assignmentId", assignmentId);
-        response.put("hierarchicalPath", hierarchicalPath != null ? hierarchicalPath : "Unknown");
-        response.put("assignedDate", new java.sql.Timestamp(System.currentTimeMillis()).toString());
-
-        return response;
-    }
-
-    @Override
-    public String assignSampleWithCapacityCheck(String sampleId, String positionId, String notes) {
-        // First do the assignment
-        String assignmentId = assignSample(sampleId, positionId, notes);
-
-        // Then check capacity and return warning if needed
-        Integer positionIdInt = Integer.parseInt(positionId);
-        StoragePosition position = (StoragePosition) storageLocationService.get(positionIdInt, StoragePosition.class);
-        if (position != null && position.getParentRack() != null) {
-            CapacityWarning warning = calculateCapacity(position.getParentRack());
-            if (warning != null && warning.hasWarning()) {
-                return warning.getWarningMessage();
-            }
-        }
-
-        return null; // No warning
-    }
-
-    @Override
-    public String moveSample(String sampleId, String targetPositionId, String reason) {
-        try {
-            // Validate inputs
-            Sample sample = sampleDAO.get(sampleId)
-                    .orElseThrow(() -> new LIMSRuntimeException("Sample not found: " + sampleId));
-
-            Integer targetPositionIdInt = Integer.parseInt(targetPositionId);
-            StoragePosition targetPosition = (StoragePosition) storageLocationService.get(targetPositionIdInt,
-                    StoragePosition.class);
-            if (targetPosition == null) {
-                throw new LIMSRuntimeException("Target position not found: " + targetPositionId);
-            }
-
-            // Validate target position not occupied
-            if (targetPosition.getOccupied() != null && targetPosition.getOccupied()) {
-                // Generate position label for different hierarchy levels
-                String positionLabel;
-                if (targetPosition.getCoordinate() != null && !targetPosition.getCoordinate().isEmpty()) {
-                    positionLabel = targetPosition.getCoordinate();
-                } else if (targetPosition.getParentRack() != null) {
-                    positionLabel = targetPosition.getParentRack().getLabel();
-                } else if (targetPosition.getParentShelf() != null) {
-                    positionLabel = targetPosition.getParentShelf().getLabel();
-                } else {
-                    positionLabel = targetPosition.getParentDevice().getName();
-                }
-                throw new LIMSRuntimeException("Target position " + positionLabel + " is already occupied");
-            }
-
-            // Validate target location is active
-            if (!storageLocationService.validateLocationActive(targetPosition)) {
-                throw new LIMSRuntimeException("Cannot move to inactive location");
-            }
-
-            // Validate 2-level minimum rule (FR-033a): Position must have parent_device_id (minimum 2 levels: room + device)
-            if (targetPosition.getParentDevice() == null) {
-                throw new LIMSRuntimeException("Target position must have a parent device (minimum 2 levels: room + device)");
-            }
-            StorageDevice device = targetPosition.getParentDevice();
-            if (device.getParentRoom() == null) {
-                throw new LIMSRuntimeException("Device must have a parent room");
-            }
-            // Validate hierarchy integrity of target position
-            if (!targetPosition.validateHierarchyIntegrity()) {
-                throw new LIMSRuntimeException("Target position hierarchy integrity constraint violated");
-            }
-            // Validation passed: Position has Room and Device (minimum 2 levels)
-
-            // Find existing assignment
-            SampleStorageAssignment existingAssignment = sampleStorageAssignmentDAO.findBySampleId(sampleId);
-            StoragePosition previousPosition = null;
-
-            if (existingAssignment != null) {
-                previousPosition = existingAssignment.getStoragePosition();
-                
-                // Free the previous position
-                if (previousPosition != null) {
-                    previousPosition.setOccupied(false);
-                    storageLocationService.update(previousPosition);
-                }
-            }
-
-            // Mark target position as occupied
-            targetPosition.setOccupied(true);
-            storageLocationService.update(targetPosition);
-
-            // Update or create assignment record
-            if (existingAssignment != null) {
-                // Update existing assignment
-                existingAssignment.setStoragePosition(targetPosition);
-                existingAssignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
-                existingAssignment.setNotes(reason);
-                sampleStorageAssignmentDAO.update(existingAssignment);
-            } else {
-                // Create new assignment (sample was not previously assigned)
-                SampleStorageAssignment assignment = new SampleStorageAssignment();
-                assignment.setSample(sample);
-                assignment.setStoragePosition(targetPosition);
-                assignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
-                assignment.setNotes(reason);
-                assignment.setAssignedByUserId(1); // Default to system user for tests
-                sampleStorageAssignmentDAO.insert(assignment);
-            }
-
-            // Create audit log entry
-            SampleStorageMovement movement = new SampleStorageMovement();
-            movement.setSample(sample);
-            movement.setPreviousPosition(previousPosition);
-            movement.setNewPosition(targetPosition);
-            movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
-            movement.setReason(reason);
-            movement.setMovedByUserId(1); // Default to system user for tests
-
-            Integer movementIdInt = sampleStorageMovementDAO.insert(movement);
-            String movementId = movementIdInt != null ? movementIdInt.toString() : null;
-
-            return movementId;
-
-        } catch (StaleObjectStateException e) {
-            throw new LIMSRuntimeException("Position was just modified by another user. Please refresh and try again.",
-                    e);
-        }
-    }
-
-    @Override
     public CapacityWarning calculateCapacity(StorageRack rack) {
         int totalCapacity = rack.getCapacity();
         if (totalCapacity == 0) {
@@ -305,33 +79,75 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 continue;
             }
 
-            // Skip assignments without storage positions (invalid state)
-            if (assignment.getStoragePosition() == null) {
-                logger.debug("Skipping assignment {} - null storage position", assignment.getId());
+            // Skip assignments without location (invalid state)
+            if (assignment.getLocationId() == null || assignment.getLocationType() == null) {
+                logger.debug("Skipping assignment {} - null location", assignment.getId());
                 continue;
             }
 
-            // CRITICAL: Force initialization of all relationships by accessing them
-            // within the transaction. This ensures proxies are fully loaded.
-            StoragePosition position = assignment.getStoragePosition();
-            StorageRack rack = position.getParentRack();
-            if (rack == null) {
-                logger.debug("Skipping assignment {} - position {} has null rack", assignment.getId(),
-                        position.getId());
-                continue; // Invalid position without rack
+            // Build hierarchical path based on locationType
+            String hierarchicalPath = null;
+            StorageRoom room = null;
+            StorageDevice device = null;
+            StorageShelf shelf = null;
+            StorageRack rack = null;
+
+            switch (assignment.getLocationType()) {
+            case "device":
+                device = (StorageDevice) storageLocationService.get(assignment.getLocationId(), StorageDevice.class);
+                if (device != null) {
+                    room = device.getParentRoom();
+                    if (room != null && device != null) {
+                        hierarchicalPath = room.getName() + " > " + device.getName();
+                        if (assignment.getPositionCoordinate() != null
+                                && !assignment.getPositionCoordinate().trim().isEmpty()) {
+                            hierarchicalPath += " > " + assignment.getPositionCoordinate();
+                        }
+                    }
+                }
+                break;
+            case "shelf":
+                shelf = (StorageShelf) storageLocationService.get(assignment.getLocationId(), StorageShelf.class);
+                if (shelf != null) {
+                    device = shelf.getParentDevice();
+                    if (device != null) {
+                        room = device.getParentRoom();
+                    }
+                    if (room != null && device != null && shelf != null) {
+                        hierarchicalPath = room.getName() + " > " + device.getName() + " > " + shelf.getLabel();
+                        if (assignment.getPositionCoordinate() != null
+                                && !assignment.getPositionCoordinate().trim().isEmpty()) {
+                            hierarchicalPath += " > " + assignment.getPositionCoordinate();
+                        }
+                    }
+                }
+                break;
+            case "rack":
+                rack = (StorageRack) storageLocationService.get(assignment.getLocationId(), StorageRack.class);
+                if (rack != null) {
+                    shelf = rack.getParentShelf();
+                    if (shelf != null) {
+                        device = shelf.getParentDevice();
+                        if (device != null) {
+                            room = device.getParentRoom();
+                        }
+                    }
+                    if (room != null && device != null && shelf != null && rack != null) {
+                        hierarchicalPath = room.getName() + " > " + device.getName() + " > " + shelf.getLabel() + " > "
+                                + rack.getLabel();
+                        if (assignment.getPositionCoordinate() != null
+                                && !assignment.getPositionCoordinate().trim().isEmpty()) {
+                            hierarchicalPath += " > " + assignment.getPositionCoordinate();
+                        }
+                    }
+                }
+                break;
             }
 
-            // Access properties to force initialization - do this within transaction
-            StorageShelf shelf = rack.getParentShelf();
-            StorageDevice device = shelf != null ? shelf.getParentDevice() : null;
-            StorageRoom room = device != null ? device.getParentRoom() : null;
-
-            // Note: shelf, device, and room can be null - buildPathFromEntities handles
-            // this
-
-            // Build hierarchical path directly from already-initialized entities
-            // This avoids calling buildHierarchicalPath which might trigger lazy loading
-            String hierarchicalPath = buildPathFromEntities(position, rack, shelf, device, room);
+            if (hierarchicalPath == null) {
+                logger.debug("Skipping assignment {} - could not build hierarchical path", assignment.getId());
+                continue;
+            }
 
             Map<String, Object> map = new java.util.HashMap<>();
             map.put("id", assignment.getSample().getId());
@@ -370,5 +186,479 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         } else {
             return rack.getLabel() + " > Position " + position.getCoordinate();
         }
+    }
+
+    @Override
+    @Transactional
+    public java.util.Map<String, Object> assignSampleWithLocation(String sampleId, String locationId,
+            String locationType, String positionCoordinate, String notes) {
+        try {
+            // Validate inputs
+            if (locationId == null || locationId.trim().isEmpty()) {
+                throw new LIMSRuntimeException("Location ID is required");
+            }
+            if (locationType == null || locationType.trim().isEmpty()) {
+                throw new LIMSRuntimeException("Location type is required");
+            }
+
+            // Validate locationType is valid enum
+            if (!locationType.equals("device") && !locationType.equals("shelf") && !locationType.equals("rack")) {
+                throw new LIMSRuntimeException(
+                        "Invalid location type: " + locationType + ". Must be one of: 'device', 'shelf', 'rack'");
+            }
+
+            // Validate sample exists
+            Sample sample = sampleDAO.get(sampleId)
+                    .orElseThrow(() -> new LIMSRuntimeException("Sample not found: " + sampleId));
+
+            // Load location entity based on locationType
+            Integer locationIdInt = Integer.parseInt(locationId);
+            Object locationEntity = null;
+            StorageDevice device = null;
+            StorageShelf shelf = null;
+            StorageRack rack = null;
+
+            switch (locationType) {
+            case "device":
+                device = (StorageDevice) storageLocationService.get(locationIdInt, StorageDevice.class);
+                if (device == null) {
+                    throw new LIMSRuntimeException("Device not found: " + locationId);
+                }
+                locationEntity = device;
+                break;
+            case "shelf":
+                shelf = (StorageShelf) storageLocationService.get(locationIdInt, StorageShelf.class);
+                if (shelf == null) {
+                    throw new LIMSRuntimeException("Shelf not found: " + locationId);
+                }
+                locationEntity = shelf;
+                break;
+            case "rack":
+                rack = (StorageRack) storageLocationService.get(locationIdInt, StorageRack.class);
+                if (rack == null) {
+                    throw new LIMSRuntimeException("Rack not found: " + locationId);
+                }
+                locationEntity = rack;
+                break;
+            }
+
+            // Validate location has minimum 2 levels (room + device per FR-033a)
+            if (device != null) {
+                if (device.getParentRoom() == null) {
+                    throw new LIMSRuntimeException("Device must have a parent room (minimum 2 levels: room + device)");
+                }
+            } else if (shelf != null) {
+                device = shelf.getParentDevice();
+                if (device == null || device.getParentRoom() == null) {
+                    throw new LIMSRuntimeException(
+                            "Shelf must have a parent device with a parent room (minimum 2 levels: room + device)");
+                }
+            } else if (rack != null) {
+                shelf = rack.getParentShelf();
+                if (shelf == null) {
+                    throw new LIMSRuntimeException("Rack must have a parent shelf");
+                }
+                device = shelf.getParentDevice();
+                if (device == null || device.getParentRoom() == null) {
+                    throw new LIMSRuntimeException(
+                            "Rack must have a parent shelf with a parent device and room (minimum 2 levels: room + device)");
+                }
+            }
+
+            // Validate location is active (check entire hierarchy)
+            if (!validateLocationActiveForEntity(locationEntity, locationType)) {
+                throw new LIMSRuntimeException("Cannot assign to inactive location");
+            }
+            // No occupancy tracking - position is just a text field
+
+            // Create SampleStorageAssignment - always use locationId + locationType
+            SampleStorageAssignment assignment = new SampleStorageAssignment();
+            assignment.setSample(sample);
+            assignment.setLocationId(locationIdInt);
+            assignment.setLocationType(locationType);
+            if (positionCoordinate != null && !positionCoordinate.trim().isEmpty()) {
+                assignment.setPositionCoordinate(positionCoordinate.trim());
+            }
+            assignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
+            assignment.setNotes(notes);
+            assignment.setAssignedByUserId(1); // Default to system user for tests
+
+            Integer assignmentIdInt = sampleStorageAssignmentDAO.insert(assignment);
+            String assignmentId = assignmentIdInt != null ? assignmentIdInt.toString() : null;
+
+            // Build hierarchical path
+            String hierarchicalPath = buildHierarchicalPathForEntity(locationEntity, locationType, positionCoordinate);
+
+            // Check shelf capacity if applicable (informational warning only)
+            String shelfCapacityWarning = null;
+            if (locationType.equals("shelf") && shelf != null) {
+                shelfCapacityWarning = checkShelfCapacity(shelf);
+            } else if (locationType.equals("rack") && rack != null && rack.getParentShelf() != null) {
+                shelfCapacityWarning = checkShelfCapacity(rack.getParentShelf());
+            }
+
+            // Create audit log entry with flexible assignment model
+            SampleStorageMovement movement = new SampleStorageMovement();
+            movement.setSample(sample);
+
+            // Initial assignment - no previous location
+            movement.setPreviousLocationId(null);
+            movement.setPreviousLocationType(null);
+            movement.setPreviousPositionCoordinate(null);
+
+            // Set new location (target location)
+            movement.setNewLocationId(locationIdInt);
+            movement.setNewLocationType(locationType);
+            if (positionCoordinate != null && !positionCoordinate.trim().isEmpty()) {
+                movement.setNewPositionCoordinate(positionCoordinate.trim());
+            } else {
+                movement.setNewPositionCoordinate(null);
+            }
+
+            movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
+            movement.setReason(notes);
+            movement.setMovedByUserId(1); // Default to system user for tests
+
+            sampleStorageMovementDAO.insert(movement);
+
+            // Prepare response data
+            java.util.Map<String, Object> response = new java.util.HashMap<>();
+            response.put("assignmentId", assignmentId);
+            response.put("hierarchicalPath", hierarchicalPath != null ? hierarchicalPath : "Unknown");
+            response.put("assignedDate", new Timestamp(System.currentTimeMillis()).toString());
+            if (shelfCapacityWarning != null) {
+                response.put("shelfCapacityWarning", shelfCapacityWarning);
+            }
+
+            return response;
+
+        } catch (StaleObjectStateException e) {
+            throw new LIMSRuntimeException("Location was just modified by another user. Please refresh and try again.",
+                    e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public String moveSampleWithLocation(String sampleId, String locationId, String locationType,
+            String positionCoordinate, String reason) {
+        try {
+            // Validate inputs
+            if (locationId == null || locationId.trim().isEmpty()) {
+                throw new LIMSRuntimeException("Location ID is required");
+            }
+            if (locationType == null || locationType.trim().isEmpty()) {
+                throw new LIMSRuntimeException("Location type is required");
+            }
+
+            // Validate locationType is valid enum
+            if (!locationType.equals("device") && !locationType.equals("shelf") && !locationType.equals("rack")) {
+                throw new LIMSRuntimeException(
+                        "Invalid location type: " + locationType + ". Must be one of: 'device', 'shelf', 'rack'");
+            }
+
+            // Validate sample exists
+            Sample sample = sampleDAO.get(sampleId)
+                    .orElseThrow(() -> new LIMSRuntimeException("Sample not found: " + sampleId));
+
+            // Load target location entity based on locationType
+            Integer locationIdInt = Integer.parseInt(locationId);
+            Object targetLocationEntity = null;
+            StorageDevice targetDevice = null;
+            StorageShelf targetShelf = null;
+            StorageRack targetRack = null;
+
+            switch (locationType) {
+            case "device":
+                targetDevice = (StorageDevice) storageLocationService.get(locationIdInt, StorageDevice.class);
+                if (targetDevice == null) {
+                    throw new LIMSRuntimeException("Target device not found: " + locationId);
+                }
+                targetLocationEntity = targetDevice;
+                break;
+            case "shelf":
+                targetShelf = (StorageShelf) storageLocationService.get(locationIdInt, StorageShelf.class);
+                if (targetShelf == null) {
+                    throw new LIMSRuntimeException("Target shelf not found: " + locationId);
+                }
+                targetLocationEntity = targetShelf;
+                break;
+            case "rack":
+                targetRack = (StorageRack) storageLocationService.get(locationIdInt, StorageRack.class);
+                if (targetRack == null) {
+                    throw new LIMSRuntimeException("Target rack not found: " + locationId);
+                }
+                targetLocationEntity = targetRack;
+                break;
+            }
+
+            // Validate target location has minimum 2 levels (room + device per FR-033a)
+            if (targetDevice != null) {
+                if (targetDevice.getParentRoom() == null) {
+                    throw new LIMSRuntimeException(
+                            "Target device must have a parent room (minimum 2 levels: room + device)");
+                }
+            } else if (targetShelf != null) {
+                targetDevice = targetShelf.getParentDevice();
+                if (targetDevice == null || targetDevice.getParentRoom() == null) {
+                    throw new LIMSRuntimeException(
+                            "Target shelf must have a parent device with a parent room (minimum 2 levels: room + device)");
+                }
+            } else if (targetRack != null) {
+                targetShelf = targetRack.getParentShelf();
+                if (targetShelf == null) {
+                    throw new LIMSRuntimeException("Target rack must have a parent shelf");
+                }
+                targetDevice = targetShelf.getParentDevice();
+                if (targetDevice == null || targetDevice.getParentRoom() == null) {
+                    throw new LIMSRuntimeException(
+                            "Target rack must have a parent shelf with a parent device and room (minimum 2 levels: room + device)");
+                }
+            }
+
+            // Validate target location is active
+            if (!validateLocationActiveForEntity(targetLocationEntity, locationType)) {
+                throw new LIMSRuntimeException("Cannot move to inactive location");
+            }
+            // No occupancy tracking - position is just a text field
+
+            // Find existing assignment for sample
+            SampleStorageAssignment existingAssignment = sampleStorageAssignmentDAO.findBySampleId(sampleId);
+
+            if (existingAssignment != null) {
+                // Update existing assignment - always use locationId + locationType
+                existingAssignment.setLocationId(locationIdInt);
+                existingAssignment.setLocationType(locationType);
+                if (positionCoordinate != null && !positionCoordinate.trim().isEmpty()) {
+                    existingAssignment.setPositionCoordinate(positionCoordinate.trim());
+                } else {
+                    existingAssignment.setPositionCoordinate(null);
+                }
+                existingAssignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
+                existingAssignment.setNotes(reason);
+                sampleStorageAssignmentDAO.update(existingAssignment);
+            } else {
+                // Create new assignment (sample was not previously assigned) - always use
+                // locationId + locationType
+                SampleStorageAssignment assignment = new SampleStorageAssignment();
+                assignment.setSample(sample);
+                assignment.setLocationId(locationIdInt);
+                assignment.setLocationType(locationType);
+                if (positionCoordinate != null && !positionCoordinate.trim().isEmpty()) {
+                    assignment.setPositionCoordinate(positionCoordinate.trim());
+                }
+                assignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
+                assignment.setNotes(reason);
+                assignment.setAssignedByUserId(1); // Default to system user for tests
+                sampleStorageAssignmentDAO.insert(assignment);
+            }
+
+            // Create audit log entry with flexible assignment model
+            SampleStorageMovement movement = new SampleStorageMovement();
+            movement.setSample(sample);
+
+            // Set previous location (from existing assignment if exists)
+            if (existingAssignment != null) {
+                movement.setPreviousLocationId(existingAssignment.getLocationId());
+                movement.setPreviousLocationType(existingAssignment.getLocationType());
+                movement.setPreviousPositionCoordinate(existingAssignment.getPositionCoordinate());
+            } else {
+                // Initial assignment - no previous location
+                movement.setPreviousLocationId(null);
+                movement.setPreviousLocationType(null);
+                movement.setPreviousPositionCoordinate(null);
+            }
+
+            // Set new location (target location)
+            movement.setNewLocationId(locationIdInt);
+            movement.setNewLocationType(locationType);
+            if (positionCoordinate != null && !positionCoordinate.trim().isEmpty()) {
+                movement.setNewPositionCoordinate(positionCoordinate.trim());
+            } else {
+                movement.setNewPositionCoordinate(null);
+            }
+
+            movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
+            movement.setReason(reason);
+            movement.setMovedByUserId(1); // Default to system user for tests
+
+            Integer movementIdInt = sampleStorageMovementDAO.insert(movement);
+            String movementId = movementIdInt != null ? movementIdInt.toString() : null;
+
+            return movementId;
+
+        } catch (StaleObjectStateException e) {
+            throw new LIMSRuntimeException("Location was just modified by another user. Please refresh and try again.",
+                    e);
+        }
+    }
+
+    /**
+     * Validate that a location entity is active (check entire hierarchy)
+     */
+    private boolean validateLocationActiveForEntity(Object locationEntity, String locationType) {
+        if (locationEntity == null) {
+            return false;
+        }
+
+        StorageRoom room = null;
+        StorageDevice device = null;
+        StorageShelf shelf = null;
+        StorageRack rack = null;
+
+        switch (locationType) {
+        case "device":
+            device = (StorageDevice) locationEntity;
+            room = device.getParentRoom();
+            break;
+        case "shelf":
+            shelf = (StorageShelf) locationEntity;
+            device = shelf.getParentDevice();
+            if (device != null) {
+                room = device.getParentRoom();
+            }
+            break;
+        case "rack":
+            rack = (StorageRack) locationEntity;
+            shelf = rack.getParentShelf();
+            if (shelf != null) {
+                device = shelf.getParentDevice();
+                if (device != null) {
+                    room = device.getParentRoom();
+                }
+            }
+            break;
+        case "position":
+            StoragePosition position = (StoragePosition) locationEntity;
+            device = position.getParentDevice();
+            if (device != null) {
+                room = device.getParentRoom();
+            }
+            shelf = position.getParentShelf();
+            rack = position.getParentRack();
+            break;
+        }
+
+        // Validate minimum 2 levels (room + device)
+        if (room == null || device == null) {
+            return false;
+        }
+
+        // Check room and device are active
+        if (room.getActive() == null || !room.getActive()) {
+            return false;
+        }
+        if (device.getActive() == null || !device.getActive()) {
+            return false;
+        }
+
+        // Check optional parents are active if they exist
+        if (shelf != null && (shelf.getActive() == null || !shelf.getActive())) {
+            return false;
+        }
+        if (rack != null && (rack.getActive() == null || !rack.getActive())) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Build hierarchical path for a location entity (device, shelf, rack, or
+     * position)
+     */
+    private String buildHierarchicalPathForEntity(Object locationEntity, String locationType,
+            String positionCoordinate) {
+        if (locationEntity == null) {
+            return "Unknown Location";
+        }
+
+        StorageRoom room = null;
+        StorageDevice device = null;
+        StorageShelf shelf = null;
+        StorageRack rack = null;
+
+        switch (locationType) {
+        case "device":
+            device = (StorageDevice) locationEntity;
+            room = device.getParentRoom();
+            if (room != null && device != null) {
+                return room.getName() + " > " + device.getName()
+                        + (positionCoordinate != null && !positionCoordinate.trim().isEmpty()
+                                ? " > " + positionCoordinate
+                                : "");
+            } else if (device != null) {
+                return device.getName() + (positionCoordinate != null && !positionCoordinate.trim().isEmpty()
+                        ? " > " + positionCoordinate
+                        : "");
+            }
+            break;
+        case "shelf":
+            shelf = (StorageShelf) locationEntity;
+            device = shelf.getParentDevice();
+            if (device != null) {
+                room = device.getParentRoom();
+            }
+            if (room != null && device != null && shelf != null) {
+                return room.getName() + " > " + device.getName() + " > " + shelf.getLabel()
+                        + (positionCoordinate != null && !positionCoordinate.trim().isEmpty()
+                                ? " > " + positionCoordinate
+                                : "");
+            } else if (device != null && shelf != null) {
+                return device.getName() + " > " + shelf.getLabel()
+                        + (positionCoordinate != null && !positionCoordinate.trim().isEmpty()
+                                ? " > " + positionCoordinate
+                                : "");
+            }
+            break;
+        case "rack":
+            rack = (StorageRack) locationEntity;
+            shelf = rack.getParentShelf();
+            if (shelf != null) {
+                device = shelf.getParentDevice();
+                if (device != null) {
+                    room = device.getParentRoom();
+                }
+            }
+            if (room != null && device != null && shelf != null && rack != null) {
+                return room.getName() + " > " + device.getName() + " > " + shelf.getLabel() + " > " + rack.getLabel()
+                        + (positionCoordinate != null && !positionCoordinate.trim().isEmpty()
+                                ? " > " + positionCoordinate
+                                : "");
+            } else if (device != null && shelf != null && rack != null) {
+                return device.getName() + " > " + shelf.getLabel() + " > " + rack.getLabel()
+                        + (positionCoordinate != null && !positionCoordinate.trim().isEmpty()
+                                ? " > " + positionCoordinate
+                                : "");
+            }
+            break;
+        }
+
+        return "Unknown Location";
+    }
+
+    /**
+     * Check shelf capacity and return warning message if applicable (informational
+     * only)
+     */
+    private String checkShelfCapacity(StorageShelf shelf) {
+        if (shelf == null || shelf.getCapacityLimit() == null || shelf.getCapacityLimit() <= 0) {
+            return null;
+        }
+
+        int occupied = storageLocationService.countOccupiedInShelf(shelf.getId());
+        int capacityLimit = shelf.getCapacityLimit();
+        int percentage = (occupied * 100) / capacityLimit;
+
+        if (percentage >= 100) {
+            return String.format(
+                    "Shelf %s is at or over capacity (%d/%d positions, %d%%). Assignment allowed but shelf is over-occupied.",
+                    shelf.getLabel(), occupied, capacityLimit, percentage);
+        } else if (percentage >= 90) {
+            return String.format("Shelf %s is near capacity (%d/%d positions, %d%%).", shelf.getLabel(), occupied,
+                    capacityLimit, percentage);
+        }
+
+        return null;
     }
 }

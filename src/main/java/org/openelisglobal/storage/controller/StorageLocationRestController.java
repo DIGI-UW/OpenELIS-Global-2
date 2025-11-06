@@ -40,6 +40,12 @@ public class StorageLocationRestController extends BaseRestController {
     @Autowired
     private StorageSearchService storageSearchService;
 
+    @Autowired
+    private StorageRoomDAO storageRoomDAO;
+
+    @Autowired
+    private StorageDeviceDAO storageDeviceDAO;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // ========== Room Endpoints ==========
@@ -49,7 +55,12 @@ public class StorageLocationRestController extends BaseRestController {
         try {
             StorageRoom room = new StorageRoom();
             room.setName(form.getName());
-            room.setCode(form.getCode());
+            // Generate code if not provided
+            if (form.getCode() == null || form.getCode().trim().isEmpty()) {
+                room.setCode(generateUniqueRoomCode(form.getName()));
+            } else {
+                room.setCode(form.getCode());
+            }
             room.setDescription(form.getDescription());
             room.setActive(form.getActive() != null ? form.getActive() : true);
             room.setFhirUuid(UUID.randomUUID());
@@ -157,9 +168,21 @@ public class StorageLocationRestController extends BaseRestController {
     @PostMapping("/devices")
     public ResponseEntity<Map<String, Object>> createDevice(@Valid @RequestBody StorageDeviceForm form) {
         try {
+            // Set parent room first (needed for code generation)
+            Integer parentRoomId = form.getParentRoomId() != null ? Integer.parseInt(form.getParentRoomId()) : null;
+            StorageRoom parentRoom = storageLocationService.getRoom(parentRoomId);
+            if (parentRoom == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent room not found"));
+            }
+
             StorageDevice device = new StorageDevice();
             device.setName(form.getName());
-            device.setCode(form.getCode());
+            // Generate code if not provided
+            if (form.getCode() == null || form.getCode().trim().isEmpty()) {
+                device.setCode(generateUniqueDeviceCode(form.getName(), parentRoomId));
+            } else {
+                device.setCode(form.getCode());
+            }
             device.setType(form.getType()); // Store as String to match database constraint
             device.setTemperatureSetting(
                     form.getTemperatureSetting() != null ? java.math.BigDecimal.valueOf(form.getTemperatureSetting())
@@ -168,13 +191,6 @@ public class StorageLocationRestController extends BaseRestController {
             device.setActive(form.getActive() != null ? form.getActive() : true);
             device.setFhirUuid(UUID.randomUUID());
             device.setSysUserId("1"); // Default system user for REST API
-
-            // Set parent room
-            Integer parentRoomId = form.getParentRoomId() != null ? Integer.parseInt(form.getParentRoomId()) : null;
-            StorageRoom parentRoom = storageLocationService.getRoom(parentRoomId);
-            if (parentRoom == null) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent room not found"));
-            }
             device.setParentRoom(parentRoom);
 
             Integer id = storageLocationService.insert(device);
@@ -410,6 +426,87 @@ public class StorageLocationRestController extends BaseRestController {
 
     // ========== Helper Methods ==========
 
+    /**
+     * Generate a unique room code from the room name. If the base code already
+     * exists, appends a numeric suffix.
+     * 
+     * @param name Room name
+     * @return Unique code (max 50 characters)
+     */
+    private String generateUniqueRoomCode(String name) {
+        // Generate base code from name: uppercase, alphanumeric only, max 45 chars
+        String baseCode = name.substring(0, Math.min(45, name.length())).toUpperCase().replaceAll("[^A-Z0-9]", "");
+
+        // If base code is empty (name had no alphanumeric chars), use default
+        if (baseCode.isEmpty()) {
+            baseCode = "ROOM";
+        }
+
+        String code = baseCode;
+        int suffix = 1;
+
+        // Check for uniqueness and append suffix if needed
+        while (storageRoomDAO.findByCode(code) != null) {
+            String suffixStr = String.valueOf(suffix);
+            int maxBaseLength = 50 - suffixStr.length() - 1; // -1 for hyphen
+            if (maxBaseLength < 1) {
+                maxBaseLength = 1;
+            }
+            code = baseCode.substring(0, Math.min(maxBaseLength, baseCode.length())) + "-" + suffixStr;
+            suffix++;
+
+            // Safety check to prevent infinite loop
+            if (suffix > 9999) {
+                // Fallback to timestamp-based code
+                code = baseCode.substring(0, Math.min(30, baseCode.length())) + "-" + System.currentTimeMillis();
+                break;
+            }
+        }
+
+        return code;
+    }
+
+    /**
+     * Generate a unique device code from the device name within a room. If the base
+     * code already exists in the room, appends a numeric suffix.
+     * 
+     * @param name   Device name
+     * @param roomId Parent room ID
+     * @return Unique code (max 50 characters)
+     */
+    private String generateUniqueDeviceCode(String name, Integer roomId) {
+        // Generate base code from name: uppercase, alphanumeric only, max 45 chars
+        String baseCode = name.substring(0, Math.min(45, name.length())).toUpperCase().replaceAll("[^A-Z0-9]", "");
+
+        // If base code is empty (name had no alphanumeric chars), use default
+        if (baseCode.isEmpty()) {
+            baseCode = "DEVICE";
+        }
+
+        String code = baseCode;
+        int suffix = 1;
+
+        // Check for uniqueness within the room and append suffix if needed
+        while (storageDeviceDAO.findByParentRoomIdAndCode(roomId, code) != null) {
+            String suffixStr = String.valueOf(suffix);
+            int maxBaseLength = 50 - suffixStr.length() - 1; // -1 for hyphen
+            if (maxBaseLength < 1) {
+                maxBaseLength = 1;
+            }
+            code = baseCode.substring(0, Math.min(maxBaseLength, baseCode.length())) + "-" + suffixStr;
+            suffix++;
+
+            // Safety check to prevent infinite loop
+            if (suffix > 9999) {
+                // Fallback to timestamp-based code
+                code = baseCode.substring(0, Math.min(30, baseCode.length())) + "-" + System.currentTimeMillis();
+                break;
+            }
+        }
+
+        return code;
+    }
+
     private Map<String, Object> entityToMap(Object entity) {
         Map<String, Object> map = new HashMap<>();
 
@@ -533,7 +630,7 @@ public class StorageLocationRestController extends BaseRestController {
             if (pathBuilder.length() > 0) {
                 map.put("hierarchicalPath", pathBuilder.toString());
             }
-            
+
             // Set type for consistency
             map.put("type", "rack");
         } else if (entity instanceof StoragePosition) {
@@ -550,13 +647,13 @@ public class StorageLocationRestController extends BaseRestController {
             StorageShelf parentShelf = position.getParentShelf();
             StorageDevice parentDevice = position.getParentDevice();
             StorageRoom parentRoom = null;
-            
+
             if (parentDevice != null) {
                 parentDevice.getName(); // Trigger lazy load
                 map.put("parentDeviceId", parentDevice.getId());
                 map.put("deviceName", parentDevice.getName());
                 map.put("parentDeviceName", parentDevice.getName());
-                
+
                 parentRoom = parentDevice.getParentRoom();
                 if (parentRoom != null) {
                     parentRoom.getName(); // Trigger lazy load
@@ -565,14 +662,14 @@ public class StorageLocationRestController extends BaseRestController {
                     map.put("parentRoomName", parentRoom.getName());
                 }
             }
-            
+
             if (parentShelf != null) {
                 parentShelf.getLabel(); // Trigger lazy load
                 map.put("parentShelfId", parentShelf.getId());
                 map.put("shelfLabel", parentShelf.getLabel());
                 map.put("parentShelfLabel", parentShelf.getLabel());
             }
-            
+
             if (parentRack != null) {
                 parentRack.getLabel(); // Trigger lazy load
                 map.put("parentRackId", parentRack.getId());
@@ -612,7 +709,7 @@ public class StorageLocationRestController extends BaseRestController {
             if (pathBuilder.length() > 0) {
                 map.put("hierarchicalPath", pathBuilder.toString());
             }
-            
+
             // Set type for consistency
             map.put("type", "position");
         }

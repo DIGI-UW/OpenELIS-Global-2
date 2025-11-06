@@ -250,12 +250,13 @@ public class StorageLocationFhirTransform {
         Reference partOf = new Reference();
         String locationName;
 
-        if (position.getCoordinate() != null && !position.getCoordinate().isEmpty() && position.getParentRack() != null) {
+        if (position.getCoordinate() != null && !position.getCoordinate().isEmpty()
+                && position.getParentRack() != null) {
             // Position level (5 levels): ROOM-DEVICE-SHELF-RACK-POSITION
             StorageRack rack = position.getParentRack();
             StorageShelf shelf = position.getParentShelf();
-            hierarchicalCode = room.getCode() + "-" + device.getCode() + "-" + shelf.getLabel() + "-"
-                    + rack.getLabel() + "-" + position.getCoordinate();
+            hierarchicalCode = room.getCode() + "-" + device.getCode() + "-" + shelf.getLabel() + "-" + rack.getLabel()
+                    + "-" + position.getCoordinate();
             partOf.setReference("Location/" + rack.getFhirUuidAsString());
             partOf.setDisplay(rack.getLabel());
             locationName = position.getCoordinate();
@@ -263,8 +264,7 @@ public class StorageLocationFhirTransform {
             // Rack level (4 levels): ROOM-DEVICE-SHELF-RACK
             StorageRack rack = position.getParentRack();
             StorageShelf shelf = position.getParentShelf();
-            hierarchicalCode = room.getCode() + "-" + device.getCode() + "-" + shelf.getLabel() + "-"
-                    + rack.getLabel();
+            hierarchicalCode = room.getCode() + "-" + device.getCode() + "-" + shelf.getLabel() + "-" + rack.getLabel();
             partOf.setReference("Location/" + rack.getFhirUuidAsString());
             partOf.setDisplay(rack.getLabel());
             locationName = rack.getLabel();

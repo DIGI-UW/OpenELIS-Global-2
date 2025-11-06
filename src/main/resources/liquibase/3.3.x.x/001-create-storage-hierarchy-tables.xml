@@ -36,26 +36,15 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
+        <createSequence sequenceName="storage_room_seq" startValue="1" incrementBy="1"/>
         <rollback>
+            <dropSequence sequenceName="storage_room_seq"/>
             <dropTable tableName="storage_room"/>
         </rollback>
     </changeSet>
 
-    <!-- Storage Room Sequence -->
-    <changeSet id="storage-002-create-storage-room-sequence" author="sample-storage-feature">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <sequenceExists sequenceName="storage_room_seq"/>
-            </not>
-        </preConditions>
-        <createSequence sequenceName="storage_room_seq" startValue="1" incrementBy="1"/>
-        <rollback>
-            <dropSequence sequenceName="storage_room_seq"/>
-        </rollback>
-    </changeSet>
-
     <!-- Storage Device Table -->
-    <changeSet id="storage-003-create-storage-device-table" author="sample-storage-feature">
+    <changeSet id="storage-002-create-storage-device-table" author="sample-storage-feature">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="storage_device"/>
@@ -95,18 +84,6 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <rollback>
-            <dropTable tableName="storage_device"/>
-        </rollback>
-    </changeSet>
-
-    <!-- Storage Device Constraints -->
-    <changeSet id="storage-003a-add-device-constraints" author="sample-storage-feature">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <sqlCheck expectedResult="1">SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_name = 'uk_device_code_in_room' AND table_name = 'storage_device'</sqlCheck>
-            </not>
-        </preConditions>
         <addUniqueConstraint tableName="storage_device"
             columnNames="parent_room_id, code"
             constraintName="uk_device_code_in_room"/>
@@ -115,23 +92,15 @@
             ADD CONSTRAINT chk_device_type
             CHECK (type IN ('freezer', 'refrigerator', 'cabinet', 'other'));
         </sql>
-    </changeSet>
-
-    <!-- Storage Device Sequence -->
-    <changeSet id="storage-004-create-storage-device-sequence" author="sample-storage-feature">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <sequenceExists sequenceName="storage_device_seq"/>
-            </not>
-        </preConditions>
         <createSequence sequenceName="storage_device_seq" startValue="1" incrementBy="1"/>
         <rollback>
             <dropSequence sequenceName="storage_device_seq"/>
+            <dropTable tableName="storage_device"/>
         </rollback>
     </changeSet>
 
     <!-- Storage Shelf Table -->
-    <changeSet id="storage-005-create-storage-shelf-table" author="sample-storage-feature">
+    <changeSet id="storage-003-create-storage-shelf-table" author="sample-storage-feature">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="storage_shelf"/>
@@ -164,38 +133,18 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
+        <addUniqueConstraint tableName="storage_shelf"
+            columnNames="parent_device_id, label"
+            constraintName="uk_shelf_label_in_device"/>
+        <createSequence sequenceName="storage_shelf_seq" startValue="1" incrementBy="1"/>
         <rollback>
+            <dropSequence sequenceName="storage_shelf_seq"/>
             <dropTable tableName="storage_shelf"/>
         </rollback>
     </changeSet>
 
-    <!-- Storage Shelf Constraints -->
-    <changeSet id="storage-005a-add-shelf-constraints" author="sample-storage-feature">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <sqlCheck expectedResult="1">SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_name = 'uk_shelf_label_in_device' AND table_name = 'storage_shelf'</sqlCheck>
-            </not>
-        </preConditions>
-        <addUniqueConstraint tableName="storage_shelf"
-            columnNames="parent_device_id, label"
-            constraintName="uk_shelf_label_in_device"/>
-    </changeSet>
-
-    <!-- Storage Shelf Sequence -->
-    <changeSet id="storage-006-create-storage-shelf-sequence" author="sample-storage-feature">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <sequenceExists sequenceName="storage_shelf_seq"/>
-            </not>
-        </preConditions>
-        <createSequence sequenceName="storage_shelf_seq" startValue="1" incrementBy="1"/>
-        <rollback>
-            <dropSequence sequenceName="storage_shelf_seq"/>
-        </rollback>
-    </changeSet>
-
     <!-- Storage Rack Table -->
-    <changeSet id="storage-007-create-storage-rack-table" author="sample-storage-feature">
+    <changeSet id="storage-004-create-storage-rack-table" author="sample-storage-feature">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="storage_rack"/>
@@ -234,18 +183,6 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <rollback>
-            <dropTable tableName="storage_rack"/>
-        </rollback>
-    </changeSet>
-
-    <!-- Storage Rack Constraints -->
-    <changeSet id="storage-007a-add-rack-constraints" author="sample-storage-feature">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <sqlCheck expectedResult="1">SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_name = 'uk_rack_label_in_shelf' AND table_name = 'storage_rack'</sqlCheck>
-            </not>
-        </preConditions>
         <addUniqueConstraint tableName="storage_rack"
             columnNames="parent_shelf_id, label"
             constraintName="uk_rack_label_in_shelf"/>
@@ -254,23 +191,15 @@
             ADD CONSTRAINT chk_rack_dimensions
             CHECK (rows >= 0 AND columns >= 0);
         </sql>
-    </changeSet>
-
-    <!-- Storage Rack Sequence -->
-    <changeSet id="storage-008-create-storage-rack-sequence" author="sample-storage-feature">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <sequenceExists sequenceName="storage_rack_seq"/>
-            </not>
-        </preConditions>
         <createSequence sequenceName="storage_rack_seq" startValue="1" incrementBy="1"/>
         <rollback>
             <dropSequence sequenceName="storage_rack_seq"/>
+            <dropTable tableName="storage_rack"/>
         </rollback>
     </changeSet>
 
-    <!-- Storage Position Table -->
-    <changeSet id="storage-009-create-storage-position-table" author="sample-storage-feature">
+    <!-- Storage Position Table (with flexible hierarchy support) -->
+    <changeSet id="storage-005-create-storage-position-table" author="sample-storage-feature">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="storage_position"/>
@@ -283,16 +212,26 @@
             <column name="fhir_uuid" type="UUID">
                 <constraints nullable="false" unique="true"/>
             </column>
-            <column name="coordinate" type="VARCHAR(50)">
-                <constraints nullable="false"/>
-            </column>
+            <column name="coordinate" type="VARCHAR(50)"/>
             <column name="row_index" type="INT"/>
             <column name="column_index" type="INT"/>
             <column name="occupied" type="BOOLEAN" defaultValueBoolean="false">
                 <constraints nullable="false"/>
             </column>
-            <column name="parent_rack_id" type="numeric(10,0)">
+            <column name="parent_device_id" type="numeric(10,0)">
                 <constraints nullable="false"
+                    foreignKeyName="fk_position_device"
+                    references="storage_device(id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="parent_shelf_id" type="numeric(10,0)">
+                <constraints nullable="true"
+                    foreignKeyName="fk_position_shelf"
+                    references="storage_shelf(id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="parent_rack_id" type="numeric(10,0)">
+                <constraints nullable="true"
                     foreignKeyName="fk_position_rack"
                     references="storage_rack(id)"
                     deleteCascade="true"/>
@@ -304,21 +243,20 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <rollback>
-            <dropTable tableName="storage_position"/>
-        </rollback>
-    </changeSet>
-
-    <!-- Storage Position Sequence -->
-    <changeSet id="storage-010-create-storage-position-sequence" author="sample-storage-feature">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <sequenceExists sequenceName="storage_position_seq"/>
-            </not>
-        </preConditions>
+        <sql>
+            ALTER TABLE storage_position
+            ADD CONSTRAINT chk_position_rack_requires_shelf
+            CHECK ((parent_rack_id IS NULL) OR (parent_shelf_id IS NOT NULL));
+        </sql>
+        <sql>
+            ALTER TABLE storage_position
+            ADD CONSTRAINT chk_position_coordinate_requires_rack
+            CHECK ((coordinate IS NULL) OR (parent_rack_id IS NOT NULL));
+        </sql>
         <createSequence sequenceName="storage_position_seq" startValue="1" incrementBy="1"/>
         <rollback>
             <dropSequence sequenceName="storage_position_seq"/>
+            <dropTable tableName="storage_position"/>
         </rollback>
     </changeSet>
 

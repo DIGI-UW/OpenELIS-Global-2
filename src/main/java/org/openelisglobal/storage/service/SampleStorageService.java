@@ -10,36 +10,6 @@ import org.openelisglobal.storage.valueholder.StorageRack;
 public interface SampleStorageService {
 
     /**
-     * Assign a sample to a storage position
-     * 
-     * @return assignment ID
-     */
-    String assignSample(String sampleId, String positionId, String notes);
-
-    /**
-     * Assign a sample to a storage position and return complete assignment data
-     * including hierarchical path. All relationships are resolved within service
-     * transaction.
-     * 
-     * @return Map containing assignmentId, hierarchicalPath, and assignedDate
-     */
-    java.util.Map<String, Object> assignSampleWithDetails(String sampleId, String positionId, String notes);
-
-    /**
-     * Assign sample with capacity check
-     * 
-     * @return warning message if capacity threshold exceeded, null otherwise
-     */
-    String assignSampleWithCapacityCheck(String sampleId, String positionId, String notes);
-
-    /**
-     * Move sample to new position
-     * 
-     * @return movement ID
-     */
-    String moveSample(String sampleId, String targetPositionId, String reason);
-
-    /**
      * Calculate rack capacity and return warning if threshold exceeded
      */
     CapacityWarning calculateCapacity(StorageRack rack);
@@ -52,4 +22,37 @@ public interface SampleStorageService {
      *         assignedBy, date
      */
     List<Map<String, Object>> getAllSamplesWithAssignments();
+
+    /**
+     * Assign a sample to a location using simplified polymorphic relationship
+     * (locationId + locationType). Supports assignment to device, shelf, or rack
+     * level with optional text-based position coordinate.
+     * 
+     * @param sampleId           Sample ID
+     * @param locationId         Location ID (device, shelf, or rack ID)
+     * @param locationType       Location type: 'device', 'shelf', or 'rack'
+     * @param positionCoordinate Optional text-based coordinate (max 50 chars) - can
+     *                           be set for any location_type
+     * @param notes              Optional assignment notes
+     * @return Map containing assignmentId, hierarchicalPath, assignedDate, and
+     *         shelfCapacityWarning if applicable
+     */
+    java.util.Map<String, Object> assignSampleWithLocation(String sampleId, String locationId, String locationType,
+            String positionCoordinate, String notes);
+
+    /**
+     * Move a sample to a new location using simplified polymorphic relationship
+     * (locationId + locationType). Supports movement to device, shelf, or rack
+     * level with optional text-based position coordinate.
+     * 
+     * @param sampleId           Sample ID
+     * @param locationId         Target location ID (device, shelf, or rack ID)
+     * @param locationType       Target location type: 'device', 'shelf', or 'rack'
+     * @param positionCoordinate Optional text-based coordinate (max 50 chars) - can
+     *                           be set for any location_type
+     * @param reason             Optional reason for movement
+     * @return Movement ID
+     */
+    String moveSampleWithLocation(String sampleId, String locationId, String locationType, String positionCoordinate,
+            String reason);
 }

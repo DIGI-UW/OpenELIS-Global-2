@@ -582,18 +582,20 @@ principles to ensure fast execution, clear debugging, and accurate user story
 coverage without becoming slow or cumbersome.
 
 **Purpose**: E2E tests validate complete user workflows end-to-end, but they
-must remain fast, debuggable, and focused on user stories/use cases rather
-than implementation details.
+must remain fast, debuggable, and focused on user stories/use cases rather than
+implementation details.
 
 **Configuration Requirements**:
 
 - **Video Recording**: MUST be disabled by default (`video: false` in
   `cypress.config.js`)
   - Video recording slows test execution significantly and consumes disk space
-  - Enable only for debugging specific failures: `cypress run --config video=true`
+  - Enable only for debugging specific failures:
+    `cypress run --config video=true`
   - Or per-test: `cypress.config.js` environment variable override
 - **Screenshots**: MUST be enabled for failures (`screenshotOnRunFailure: true`)
-  - Screenshots provide visual debugging information without performance overhead
+  - Screenshots provide visual debugging information without performance
+    overhead
   - Review screenshots in `cypress/screenshots/` after test failures
   - Manual screenshots during test: `cy.screenshot('checkpoint-name')` for key
     workflow steps
@@ -623,16 +625,18 @@ than implementation details.
 - **Avoid Test Bloat**: MUST prevent tests from becoming slow/cumbersome
   - Maximum 20-30 test cases per feature (if more, split into multiple files)
   - Focus on critical paths, not edge cases (edge cases belong in unit tests)
-  - Avoid redundant tests (if assignment works via dropdown, don't need
-    separate tests for every dropdown interaction)
-  - Use parameterized tests for similar scenarios (e.g., `[freezer, refrigerator].forEach(...)`)
+  - Avoid redundant tests (if assignment works via dropdown, don't need separate
+    tests for every dropdown interaction)
+  - Use parameterized tests for similar scenarios (e.g.,
+    `[freezer, refrigerator].forEach(...)`)
 
 **Debugging and Maintenance**:
 
 - **Screenshot Review**: After test failures, review screenshots to understand
   UI state at failure point
 - **Console Logging**: Use `cy.log()` strategically to document test flow
-  - Example: `cy.log('Selecting storage location: Main Laboratory > Freezer Unit 1')`
+  - Example:
+    `cy.log('Selecting storage location: Main Laboratory > Freezer Unit 1')`
 - **Test Isolation**: Use `testIsolation: false` only when necessary (shared
   state across tests)
   - Prefer isolated tests that can run independently
@@ -651,7 +655,7 @@ module.exports = defineConfig({
   e2e: {
     setupNodeEvents(on, config) {
       // Console logging for configuration debugging
-      console.log('Cypress configuration loaded');
+      console.log("Cypress configuration loaded");
       return config;
     },
     baseUrl: "https://localhost",
@@ -663,30 +667,30 @@ module.exports = defineConfig({
 **Example Test Structure**:
 
 ```javascript
-describe('User Story P1: Basic Storage Assignment', () => {
+describe("User Story P1: Basic Storage Assignment", () => {
   before(() => {
     // Shared setup - runs once for all tests
-    cy.task('loadStorageTestData');
+    cy.task("loadStorageTestData");
   });
 
-  it('should assign sample to location via cascading dropdowns', () => {
-    cy.log('Starting assignment workflow');
-    cy.visit('/sample-entry');
-    
+  it("should assign sample to location via cascading dropdowns", () => {
+    cy.log("Starting assignment workflow");
+    cy.visit("/sample-entry");
+
     // Use cy.intercept() instead of cy.wait()
-    cy.intercept('GET', '/rest/storage/rooms').as('getRooms');
+    cy.intercept("GET", "/rest/storage/rooms").as("getRooms");
     cy.get('[data-testid="storage-location-selector"]').click();
-    cy.wait('@getRooms');
-    
+    cy.wait("@getRooms");
+
     // Select location
-    cy.get('[data-testid="room-dropdown"]').select('Main Laboratory');
-    cy.get('[data-testid="device-dropdown"]').select('Freezer Unit 1');
-    
+    cy.get('[data-testid="room-dropdown"]').select("Main Laboratory");
+    cy.get('[data-testid="device-dropdown"]').select("Freezer Unit 1");
+
     // Screenshot for key workflow step
-    cy.screenshot('location-selected');
-    
+    cy.screenshot("location-selected");
+
     cy.get('[data-testid="save-assignment"]').click();
-    cy.contains('Location assigned successfully').should('be.visible');
+    cy.contains("Location assigned successfully").should("be.visible");
   });
 });
 ```
@@ -706,8 +710,8 @@ debugging information without performance overhead.
   `cy.wait('@alias')` instead
 - ❌ **Testing implementation details** - E2E tests should validate user
   workflows, not internal component logic
-- ❌ **Redundant test cases** - Don't test the same workflow multiple times
-  with minor variations
+- ❌ **Redundant test cases** - Don't test the same workflow multiple times with
+  minor variations
 - ❌ **Per-test setup/teardown** - Use `before()` hooks for shared setup
 - ❌ **No logging** - Use `cy.log()` to document test flow for debugging
 
