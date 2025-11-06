@@ -4,12 +4,15 @@ import "./index.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 import * as ServiceWorker from "./serviceWorkerRegistration";
+import { ThemeProvider } from "./ThemeContext";
 
 ServiceWorker.registerServiceWorker();
 
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
   </React.StrictMode>,
   document.getElementById("root"),
 );

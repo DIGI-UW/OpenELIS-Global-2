@@ -8,6 +8,8 @@ import {
   Search,
   UserAvatarFilledAlt,
   LocationFilled,
+  Asleep,
+  Light,
 } from "@carbon/icons-react";
 import { Select, SelectItem } from "@carbon/react";
 import HelpMenu from "./HelpMenu";
@@ -26,6 +28,7 @@ import "../Style.css";
 import { ConfigurationContext } from "../layout/Layout";
 import SlideOver from "../notifications/SlideOver";
 import { languages } from "../../languages";
+import { useTheme } from "../../ThemeContext";
 
 import {
   Header,
@@ -47,6 +50,7 @@ import SearchBar from "./search/searchBar";
 function OEHeader(props) {
   const { configurationProperties } = useContext(ConfigurationContext);
   const { userSessionDetails, logout } = useContext(UserSessionDetailsContext);
+  const { theme, toggleTheme } = useTheme();
 
   const userSwitchRef = createRef();
   const headerPanelRef = createRef();
@@ -424,7 +428,7 @@ function OEHeader(props) {
   return (
     <>
       <div className="container">
-        <Theme>
+        <Theme theme={theme}>
           <div
             style={{
               display: "flex",
@@ -520,6 +524,22 @@ function OEHeader(props) {
                         </HeaderGlobalAction>
                       </>
                     )}
+                    <HeaderGlobalAction
+                      id="theme-toggle"
+                      aria-label={
+                        theme === "white"
+                          ? "Switch to dark mode"
+                          : "Switch to light mode"
+                      }
+                      tooltipAlignment="end"
+                      onClick={toggleTheme}
+                    >
+                      {theme === "white" ? (
+                        <Asleep size={20} />
+                      ) : (
+                        <Light size={20} />
+                      )}
+                    </HeaderGlobalAction>
                     <HeaderGlobalAction
                       id="user-Icon"
                       aria-label={panelSwitchLabel()}

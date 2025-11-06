@@ -1,24 +1,67 @@
 @use "@carbon/react/scss/themes";
-@use "@carbon/react/scss/theme" with (
-  $fallback: themes.$g100,
-  $theme: (
-    background: #295785,
-    text-primary: #ffffff,
-    text-secondary: #ffffff,
-    icon-primary: #ffffff,
-    icon-secondary: #ffffff,
-    background-hover: #072655,
-    layer-01: #295785,
-    layer-hover-01: #072655,
-  )
-);
-
 @use "@carbon/react";
+
+// Custom header styling for light theme
+[data-carbon-theme="white"] {
+  .mainHeader {
+    background: #295785;
+
+    .cds--header__name,
+    .cds--header__menu-button,
+    .cds--header__action {
+      color: #ffffff;
+
+      svg {
+        fill: #ffffff;
+      }
+    }
+
+    .cds--header__action:hover {
+      background-color: #072655;
+    }
+  }
+}
+
+// Custom header styling for dark theme
+[data-carbon-theme="g100"] {
+  .mainHeader {
+    background: #295785; // Keep the blue header in dark mode
+
+    .cds--header__name,
+    .cds--header__menu-button,
+    .cds--header__action {
+      color: #ffffff;
+
+      svg {
+        fill: #ffffff;
+      }
+    }
+
+    .cds--header__action:hover {
+      background-color: #072655;
+    }
+  }
+
+  .cds--content {
+    background-color: var(--cds-layer-01, #262626);
+  }
+
+  .cds--side-nav {
+    background-color: #262626;
+  }
+
+  // Login page dark mode styling
+  .loginPageContent,
+  .changePasswordPage {
+    background: #161616;
+    color: #f4f4f4;
+  }
+}
 
 .cds--content {
   margin-top: 3rem;
   padding: 0;
-  background-color: #f5f6f8;
+  background-color: var(--cds-layer-01, #f4f4f4);
 }
 
 .loginPageContent,
