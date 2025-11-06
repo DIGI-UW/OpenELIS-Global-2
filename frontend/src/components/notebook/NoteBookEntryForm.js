@@ -40,7 +40,6 @@ import {
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
-  postToOpenElisServerForPDF,
   postToOpenElisServer,
   hasRole,
   toBase64,
@@ -85,6 +84,7 @@ const NoteBookEntryForm = () => {
   const [allTests, setAllTests] = useState([]);
   const [samples, setSamples] = useState([sampleObject]);
   const [orderFormValues, setOrderFormValues] = useState(ModifyOrderFormValues);
+  const [errors, setErrors] = useState([]);
 
   const isFormValid = () => {
     return (

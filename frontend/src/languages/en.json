@@ -819,7 +819,7 @@
   "notebook.validation.objective.required": "Objective is required.",
   "notebook.validation.protocol.required": "Protocol ID is required.",
   "notebook.validation.content.required": "Main Content is required.",
-  "notebook.button.newLabNotebook": "New Lab NoteBook",
+  "notebook.button.newLabNotebook": "NoteBook",
   "notebook.heading.notebooks": "NoteBooks",
   "notebook.heading.allEntries": "All Entries",
   "notebook.table.header.entries": "Entries",

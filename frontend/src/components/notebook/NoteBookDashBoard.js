@@ -337,13 +337,40 @@ function NoteBookDashBoard() {
         <Column lg={3} md={8} sm={4}>
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
+              <br />
+            </Column>
+            <Column lg={16} md={8} sm={4}>
               <Button
+                style={{ width: "70%" }}
+                size="sm"
                 onClick={() => {
                   openNoteBookEntryForm();
                 }}
               >
                 <Add />
                 <FormattedMessage id="notebook.button.newLabNotebook" />
+              </Button>
+            </Column>
+            <Column lg={16} md={8} sm={4}>
+              <br />
+            </Column>
+            <Column lg={16} md={8} sm={4}>
+              <Button
+                style={{ width: "70%" }}
+                size="sm"
+                onClick={() => {
+                  setFilters({
+                    statuses: [],
+                    types: [],
+                    tags: "",
+                    fromdate: "",
+                    todate: "",
+                    notebookid: null,
+                  });
+                  setSelectedNoteBook(null);
+                }}
+              >
+                <FormattedMessage id="notebook.heading.allEntries" />
               </Button>
             </Column>
             <Column lg={16} md={8} sm={4}>
