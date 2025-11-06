@@ -40,15 +40,10 @@ import {
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
-  postToOpenElisServerForPDF,
-  postToOpenElisServer,
   hasRole,
   toBase64,
 } from "../utils/Utils";
-import SearchPatientForm from "../patient/SearchPatientForm";
-import { fil } from "date-fns/locale";
 import { Add } from "@carbon/icons-react";
-import PatientHeader from "../common/PatientHeader";
 
 const NoteBookInstanceEntryForm = () => {
   let breadcrumbs = [
@@ -88,21 +83,12 @@ const NoteBookInstanceEntryForm = () => {
   const [initialMount, setInitialMount] = useState(false);
   const [allTests, setAllTests] = useState([]);
 
-  const handleSubmit = () => {
+  const handleSubmit = (status) => {
     if (isSubmitting) {
       return;
     }
     if (mode === MODES.CREATE) {
-      if (noteBookData.samples.length == 0) {
-        addNotification({
-          kind: NotificationKinds.error,
-          title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage({
-            id: "notebook.samples.none.title.selected",
-          }),
-        });
-        return;
-      }
+      noteBookData.status = status ? status : noteBookData.status;
     }
     setIsSubmitting(true);
     noteBookForm.id = noteBookData.id;
@@ -130,10 +116,17 @@ const NoteBookInstanceEntryForm = () => {
       mode === MODES.EDIT
         ? "/rest/notebook/update/" + notebookentryid
         : "/rest/notebook/create";
-    postToOpenElisServer(url, JSON.stringify(noteBookForm), handleSubmited);
+    postToOpenElisServerFullResponse(
+      url,
+      JSON.stringify(noteBookForm),
+      handleSubmited,
+    );
   };
 
-  const handleSubmited = (status) => {
+  const handleSubmited = async (response) => {
+    var body = await response.json();
+    console.log(body);
+    var status = response.status;
     setIsSubmitting(false);
     setNotificationVisible(true);
     if (status == "200") {
@@ -149,7 +142,7 @@ const NoteBookInstanceEntryForm = () => {
         message: intl.formatMessage({ id: "error.save.msg" }),
       });
     }
-    window.location.reload();
+    window.location.href = "/NoteBookInstanceEditForm/" + body.id;
   };
 
   // Add sample to noteBookData.samples
@@ -434,6 +427,7 @@ const NoteBookInstanceEntryForm = () => {
             <Column lg={16} md={8} sm={4}>
               <TextInput
                 id="entryTitle"
+                readOnly
                 labelText={
                   <>
                     {intl.formatMessage({
@@ -476,10 +470,14 @@ const NoteBookInstanceEntryForm = () => {
                   });
                 }}
               >
-                <SelectItem />
                 {types.map((type, index) => {
                   return (
-                    <SelectItem key={index} text={type.value} value={type.id} />
+                    <SelectItem
+                      disabled={true}
+                      key={index}
+                      text={type.value}
+                      value={type.id}
+                    />
                   );
                 })}
               </Select>
@@ -487,6 +485,7 @@ const NoteBookInstanceEntryForm = () => {
             <Column lg={8} md={4} sm={4}>
               <TextInput
                 id="entryProject"
+                readOnly
                 labelText={
                   <>
                     {intl.formatMessage({
@@ -511,6 +510,7 @@ const NoteBookInstanceEntryForm = () => {
             <Column lg={16} md={8} sm={4}>
               <TextArea
                 id="objective"
+                readOnly
                 labelText={
                   <>
                     {intl.formatMessage({
@@ -538,6 +538,7 @@ const NoteBookInstanceEntryForm = () => {
             <Column lg={16} md={8} sm={4}>
               <TextInput
                 id="protocol"
+                readOnly
                 labelText={
                   <>
                     {intl.formatMessage({
@@ -574,6 +575,7 @@ const NoteBookInstanceEntryForm = () => {
             <Column lg={16} md={8} sm={4}>
               <TextArea
                 id="content"
+                readOnly
                 labelText={
                   <>
                     {intl.formatMessage({
@@ -809,36 +811,34 @@ const NoteBookInstanceEntryForm = () => {
             <Column lg={16} md={8} sm={4}>
               <br></br>
             </Column>
-            {mode === MODES.CREATE && (
-              <>
-                <Column lg={8} md={8} sm={4}>
-                  <TextInput
-                    id="aceesion"
-                    name="acession"
-                    value={accession}
-                    placeholder={intl.formatMessage({
-                      id: "notebook.search.byAccession",
-                    })}
-                    onChange={handleAccesionChange}
-                  />
-                </Column>
-                <Column lg={8} md={8} sm={4}>
-                  <Button
-                    size="md"
-                    onClick={handleAccesionSearch}
-                    labelText={intl.formatMessage({
-                      id: "label.button.search",
-                    })}
-                  >
-                    <FormattedMessage id="label.button.search" />
-                  </Button>
-                </Column>
 
-                <Column lg={16} md={8} sm={4}>
-                  <br></br>
-                </Column>
-              </>
-            )}
+            <Column lg={8} md={8} sm={4}>
+              <TextInput
+                id="aceesion"
+                name="acession"
+                value={accession}
+                placeholder={intl.formatMessage({
+                  id: "notebook.search.byAccession",
+                })}
+                onChange={handleAccesionChange}
+              />
+            </Column>
+            <Column lg={8} md={8} sm={4}>
+              <Button
+                size="md"
+                onClick={handleAccesionSearch}
+                labelText={intl.formatMessage({
+                  id: "label.button.search",
+                })}
+              >
+                <FormattedMessage id="label.button.search" />
+              </Button>
+            </Column>
+
+            <Column lg={16} md={8} sm={4}>
+              <br></br>
+            </Column>
+
             <Column lg={16} md={8} sm={4}>
               <h5>
                 {intl.formatMessage({ id: "notebook.samples.available" })}
@@ -1182,19 +1182,29 @@ const NoteBookInstanceEntryForm = () => {
         </Column>
         <Column lg={16} md={8} sm={4}>
           <Grid fullWidth={true} className="gridBoundary">
-            <Button
-              kind="danger--tertiary"
-              disabled={
-                isSubmitting ||
-                noteBookData.status === "ARCHIVED" ||
-                noteBookData?.samples?.length === 0
-              }
-              onClick={() => handleSubmit()}
-            >
-              {intl.formatMessage({
-                id: `notebook.status.${getNextStatus(noteBookData.status).id.toLowerCase()}`,
-              })}
-            </Button>
+            <Column lg={8} md={8} sm={4}>
+              <Button
+                kind="danger--tertiary"
+                disabled={isSubmitting || noteBookData.status === "ARCHIVED"}
+                onClick={() => handleSubmit()}
+              >
+                {intl.formatMessage({
+                  id: `notebook.status.${getNextStatus(noteBookData.status).id.toLowerCase()}`,
+                })}
+              </Button>
+            </Column>
+            {noteBookData.status == "NEW" && (
+              <Column lg={8} md={8} sm={4}>
+                <Button
+                  kind="danger--tertiary"
+                  onClick={() => handleSubmit("DRAFT")}
+                >
+                  {intl.formatMessage({
+                    id: `notebook.status.${getNextStatus("DRAFT").id.toLowerCase()}`,
+                  })}
+                </Button>
+              </Column>
+            )}
           </Grid>
         </Column>
       </Grid>

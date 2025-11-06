@@ -106,7 +106,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
     @Override
     @Transactional
-    public void createWithFormValues(NoteBookForm form) {
+    public NoteBook createWithFormValues(NoteBookForm form) {
         NoteBook noteBook = new NoteBook();
         noteBook = createNoteBookFromForm(noteBook, form);
         noteBook = save(noteBook);
@@ -117,6 +117,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 update(templateNoteBook);
             }
         }
+
+        return noteBook;
     }
 
     @Override
@@ -246,13 +248,14 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             noteBook.setProject(form.getProject());
         }
         noteBook.setIsTemplate(form.getIsTemplate());
+        if (form.getStatus() != null) {
+            noteBook.setStatus(form.getStatus());
+        }
         if (noteBook.getId() == null) {
             noteBook.setDateCreated(new Date());
-            noteBook.setStatus(NoteBookStatus.DRAFT);
             noteBook.setTechnician(systemUserService.get(form.getSystemUserId().toString()));
         } else {
             noteBook.setDateCreated(noteBook.getDateCreated());
-            noteBook.setStatus(form.getStatus());
             noteBook.setTechnician(systemUserService.get(form.getTechnicianId().toString()));
         }
 

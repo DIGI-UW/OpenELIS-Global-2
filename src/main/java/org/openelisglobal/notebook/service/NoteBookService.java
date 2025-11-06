@@ -22,7 +22,7 @@ public interface NoteBookService extends BaseObjectService<NoteBook, Integer> {
 
     void updateWithStatus(Integer noteBookId, NoteBookStatus status);
 
-    void createWithFormValues(NoteBookForm form);
+    NoteBook createWithFormValues(NoteBookForm form);
 
     void updateWithFormValues(Integer noteBookId, NoteBookForm form);
 

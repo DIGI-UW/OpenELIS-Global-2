@@ -9,6 +9,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -21,6 +22,7 @@ import org.openelisglobal.notebook.bean.NoteBookFullDisplayBean;
 import org.openelisglobal.notebook.bean.SampleDisplayBean;
 import org.openelisglobal.notebook.form.NoteBookForm;
 import org.openelisglobal.notebook.service.NoteBookService;
+import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -125,12 +127,12 @@ public class NoteBookRestController extends BaseRestController {
 
     @PostMapping(value = "/update/{noteBookId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<NoteBookForm> updateNoteBookEntry(@PathVariable("noteBookId") Integer noteBookId,
+    public ResponseEntity<Map<String, Integer>> updateNoteBookEntry(@PathVariable("noteBookId") Integer noteBookId,
             @RequestBody NoteBookForm form, HttpServletRequest request) {
         form.setSystemUserId(Integer.valueOf(this.getSysUserId(request)));
         noteBookService.updateWithFormValues(noteBookId, form);
 
-        return ResponseEntity.ok(form);
+        return ResponseEntity.ok(Map.of("id", noteBookId));
     }
 
     @PostMapping(value = "/updatestatus/{noteBookId}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -142,11 +144,11 @@ public class NoteBookRestController extends BaseRestController {
 
     @PostMapping(value = "/create", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<NoteBookForm> createNoteBookEntry(@RequestBody NoteBookForm form,
+    public ResponseEntity<Map<String, Integer>> createNoteBookEntry(@RequestBody NoteBookForm form,
             HttpServletRequest request) {
         form.setSystemUserId(Integer.valueOf(this.getSysUserId(request)));
-        noteBookService.createWithFormValues(form);
-        return ResponseEntity.ok(form);
+        NoteBook noteBook = noteBookService.createWithFormValues(form);
+        return ResponseEntity.ok(Map.of("id", noteBook.getId()));
     }
 
     @GetMapping(value = "/samples", produces = MediaType.APPLICATION_JSON_VALUE)

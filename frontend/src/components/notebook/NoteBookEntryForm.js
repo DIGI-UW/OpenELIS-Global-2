@@ -45,10 +45,10 @@ import {
   hasRole,
   toBase64,
 } from "../utils/Utils";
-import SearchPatientForm from "../patient/SearchPatientForm";
-import { fil } from "date-fns/locale";
 import { Add } from "@carbon/icons-react";
-import PatientHeader from "../common/PatientHeader";
+import AddSample from "../addOrder/AddSample";
+import { sampleObject } from "../addOrder/Index";
+import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 
 const NoteBookEntryForm = () => {
   let breadcrumbs = [
@@ -72,6 +72,7 @@ const NoteBookEntryForm = () => {
   const [statuses, setStatuses] = useState([]);
   const [types, setTypes] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittingSample, setIsSubmittingSample] = useState(false);
   const [loading, setLoading] = useState(false);
   const [noteBookData, setNoteBookData] = useState(NoteBookInitialData);
   const [noteBookForm, setNoteBookForm] = useState(NoteBookFormValues);
@@ -82,22 +83,68 @@ const NoteBookEntryForm = () => {
   const [accession, setAccesiion] = useState("");
   const [initialMount, setInitialMount] = useState(false);
   const [allTests, setAllTests] = useState([]);
+  const [samples, setSamples] = useState([sampleObject]);
+  const [orderFormValues, setOrderFormValues] = useState(ModifyOrderFormValues);
 
-  const handleSubmit = () => {
+  const isFormValid = () => {
+    return (
+      noteBookData.title?.trim() !== "" &&
+      noteBookData.type !== null &&
+      noteBookData.type !== "" &&
+      noteBookData.project?.trim() !== "" &&
+      noteBookData.objective?.trim() !== ""
+    );
+  };
+
+  const handleSubmit = (status) => {
     if (isSubmitting) {
       return;
     }
     if (mode === MODES.CREATE) {
-      if (noteBookData.samples.length == 0) {
+      if (!noteBookData.title || noteBookData.title.trim() === "") {
         addNotification({
           kind: NotificationKinds.error,
           title: intl.formatMessage({ id: "notification.title" }),
           message: intl.formatMessage({
-            id: "notebook.samples.none.title.selected",
+            id: "notebook.validation.title.required",
           }),
         });
         return;
       }
+
+      if (!noteBookData.type) {
+        addNotification({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({
+            id: "notebook.validation.type.required",
+          }),
+        });
+        return;
+      }
+
+      if (!noteBookData.project || noteBookData.project.trim() === "") {
+        addNotification({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({
+            id: "notebook.validation.project.required",
+          }),
+        });
+        return;
+      }
+
+      if (!noteBookData.objective || noteBookData.objective.trim() === "") {
+        addNotification({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({
+            id: "notebook.validation.objective.required",
+          }),
+        });
+        return;
+      }
+      noteBookData.status = status ? status : noteBookData.status;
     }
     setIsSubmitting(true);
     noteBookForm.id = noteBookData.id;
@@ -124,10 +171,17 @@ const NoteBookEntryForm = () => {
       mode === MODES.EDIT
         ? "/rest/notebook/update/" + notebookid
         : "/rest/notebook/create";
-    postToOpenElisServer(url, JSON.stringify(noteBookForm), handleSubmited);
+    postToOpenElisServerFullResponse(
+      url,
+      JSON.stringify(noteBookForm),
+      handleSubmited,
+    );
   };
 
-  const handleSubmited = (status) => {
+  const handleSubmited = async (response) => {
+    var body = await response.json();
+    console.log(body);
+    var status = response.status;
     setIsSubmitting(false);
     setNotificationVisible(true);
     if (status == "200") {
@@ -143,7 +197,7 @@ const NoteBookEntryForm = () => {
         message: intl.formatMessage({ id: "error.save.msg" }),
       });
     }
-    window.location.reload();
+    window.location.href = "/NoteBookEntryForm/" + body.id;
   };
 
   // Add sample to noteBookData.samples
@@ -164,6 +218,115 @@ const NoteBookEntryForm = () => {
       samples: prev.samples.filter((s) => s.id !== sampleId),
     }));
     setAddedSampleIds((prev) => prev.filter((id) => id !== sampleId));
+  };
+
+  const handleSubmitOrderForm = (e) => {
+    e.preventDefault();
+    if (isSubmittingSample) {
+      return;
+    }
+    setIsSubmittingSample(true);
+    orderFormValues.sampleXML = getSamplesXmlValues();
+    orderFormValues.sampleOrderItems.modified = true;
+    //remove display Lists rom the form
+    orderFormValues.sampleOrderItems.priorityList = [];
+    orderFormValues.sampleOrderItems.programList = [];
+    orderFormValues.sampleOrderItems.referringSiteList = [];
+    orderFormValues.initialSampleConditionList = [];
+    orderFormValues.testSectionList = [];
+    orderFormValues.sampleOrderItems.providersList = [];
+    orderFormValues.sampleOrderItems.paymentOptions = [];
+    orderFormValues.sampleOrderItems.testLocationCodeList = [];
+    console.log(JSON.stringify(orderFormValues));
+    postToOpenElisServer(
+      "/rest/SampleEdit",
+      JSON.stringify(orderFormValues),
+      handlePost,
+    );
+  };
+
+  const handlePost = (status) => {
+    setIsSubmitting(false);
+    if (status === 200) {
+      showAlertMessage(
+        <FormattedMessage id="save.order.success.msg" />,
+        NotificationKinds.success,
+      );
+      setSamples([sampleObject]);
+      getFromOpenElisServer(
+        "/rest/notebook/samples?accession=" + accession,
+        setSampleList,
+      );
+    } else {
+      showAlertMessage(
+        <FormattedMessage id="server.error.msg" />,
+        NotificationKinds.error,
+      );
+    }
+  };
+  const showAlertMessage = (msg, kind) => {
+    setNotificationVisible(true);
+    addNotification({
+      kind: kind,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: msg,
+    });
+  };
+
+  const getSamplesXmlValues = () => {
+    let sampleXmlString = "";
+    let referralItems = [];
+    if (samples.length > 0) {
+      if (samples[0].tests.length > 0) {
+        sampleXmlString = '<?xml version="1.0" encoding="utf-8"?>';
+        sampleXmlString += "<samples>";
+        let tests = null;
+        samples.map((sampleItem) => {
+          if (sampleItem.tests.length > 0) {
+            tests = Object.keys(sampleItem.tests)
+              .map(function (i) {
+                return sampleItem.tests[i].id;
+              })
+              .join(",");
+            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds=''/>`;
+          }
+          if (sampleItem.referralItems.length > 0) {
+            const referredInstitutes = Object.keys(sampleItem.referralItems)
+              .map(function (i) {
+                return sampleItem.referralItems[i].institute;
+              })
+              .join(",");
+
+            const sentDates = Object.keys(sampleItem.referralItems)
+              .map(function (i) {
+                return sampleItem.referralItems[i].sentDate;
+              })
+              .join(",");
+
+            const referralReasonIds = Object.keys(sampleItem.referralItems)
+              .map(function (i) {
+                return sampleItem.referralItems[i].reasonForReferral;
+              })
+              .join(",");
+
+            const referrers = Object.keys(sampleItem.referralItems)
+              .map(function (i) {
+                return sampleItem.referralItems[i].referrer;
+              })
+              .join(",");
+            referralItems.push({
+              referrer: referrers,
+              referredInstituteId: referredInstitutes,
+              referredTestId: tests,
+              referredSendDate: sentDates,
+              referralReasonId: referralReasonIds,
+            });
+          }
+        });
+        sampleXmlString += "</samples>";
+      }
+    }
+    return sampleXmlString;
   };
 
   const [showPageModal, setShowPageModal] = useState(false);
@@ -309,11 +472,44 @@ const NoteBookEntryForm = () => {
     setAccesiion(value);
   };
 
+  const elementError = (path) => {
+    if (errors?.errors?.length > 0) {
+      let error = errors.inner?.find((e) => e.path === path);
+      if (error) {
+        return error.message;
+      } else {
+        return null;
+      }
+    }
+  };
+
   const handleAccesionSearch = () => {
     getFromOpenElisServer(
       "/rest/notebook/samples?accession=" + accession,
       setSampleList,
     );
+
+    getFromOpenElisServer(
+      "/rest/SampleEdit?accessionNumber=" + accession,
+      loadOrderValues,
+    );
+  };
+
+  const loadOrderValues = (data) => {
+    if (componentMounted.current) {
+      data.sampleOrderItems.referringSiteName = "";
+      setOrderFormValues(data);
+    }
+  };
+
+  const loadInitialData = (data) => {
+    if (componentMounted.current) {
+      if (data && data.id) {
+        setNoteBookData(data);
+        setLoading(false);
+        setInitialMount(true);
+      }
+    }
   };
 
   useEffect(() => {
@@ -339,16 +535,6 @@ const NoteBookEntryForm = () => {
       );
     }
   }, [notebookid]);
-
-  const loadInitialData = (data) => {
-    if (componentMounted.current) {
-      if (data && data.id) {
-        setNoteBookData(data);
-        setLoading(false);
-        setInitialMount(true);
-      }
-    }
-  };
 
   const statusMap = [
     { id: "DRAFT", value: "Save Draft" },
@@ -780,36 +966,67 @@ const NoteBookEntryForm = () => {
             <Column lg={16} md={8} sm={4}>
               <br></br>
             </Column>
-            {mode === MODES.CREATE && (
-              <>
-                <Column lg={8} md={8} sm={4}>
-                  <TextInput
-                    id="aceesion"
-                    name="acession"
-                    value={accession}
-                    placeholder={intl.formatMessage({
-                      id: "notebook.search.byAccession",
-                    })}
-                    onChange={handleAccesionChange}
-                  />
-                </Column>
-                <Column lg={8} md={8} sm={4}>
-                  <Button
-                    size="md"
-                    onClick={handleAccesionSearch}
-                    labelText={intl.formatMessage({
-                      id: "label.button.search",
-                    })}
-                  >
-                    <FormattedMessage id="label.button.search" />
-                  </Button>
-                </Column>
 
-                <Column lg={16} md={8} sm={4}>
-                  <br></br>
-                </Column>
-              </>
-            )}
+            <Column lg={8} md={8} sm={4}>
+              <TextInput
+                id="aceesion"
+                name="acession"
+                value={accession}
+                placeholder={intl.formatMessage({
+                  id: "notebook.search.byAccession",
+                })}
+                onChange={handleAccesionChange}
+              />
+            </Column>
+            <Column lg={8} md={8} sm={4}>
+              <Button
+                size="md"
+                onClick={handleAccesionSearch}
+                labelText={intl.formatMessage({
+                  id: "label.button.search",
+                })}
+              >
+                <FormattedMessage id="label.button.search" />
+              </Button>
+            </Column>
+
+            <Column lg={16} md={8} sm={4}>
+              <br></br>
+            </Column>
+            <Column lg={16} md={8} sm={4}>
+              {orderFormValues?.sampleOrderItems.labNo === accession &&
+                accession != "" && (
+                  <Accordion>
+                    <AccordionItem title="Add Sample">
+                      <Grid className="gridBoundary">
+                        <Column lg={16} md={8} sm={4}>
+                          <AddSample
+                            error={elementError}
+                            setSamples={setSamples}
+                            samples={samples}
+                          />
+                        </Column>
+                        <Column lg={16} md={8} sm={4}>
+                          <Button
+                            data-cy="submit-order"
+                            kind="primary"
+                            className="forwardButton"
+                            onClick={handleSubmitOrderForm}
+                            disabled={isSubmittingSample}
+                          >
+                            <FormattedMessage id="label.button.submit" />
+                          </Button>
+                        </Column>
+                      </Grid>
+                    </AccordionItem>
+                  </Accordion>
+                )}
+            </Column>
+
+            <Column lg={16} md={8} sm={4}>
+              <br></br>
+            </Column>
+
             <Column lg={16} md={8} sm={4}>
               <h5>
                 {intl.formatMessage({ id: "notebook.samples.available" })}
@@ -1153,19 +1370,34 @@ const NoteBookEntryForm = () => {
         </Column>
         <Column lg={16} md={8} sm={4}>
           <Grid fullWidth={true} className="gridBoundary">
-            <Button
-              kind="danger--tertiary"
-              disabled={
-                isSubmitting ||
-                noteBookData.status === "ARCHIVED" ||
-                noteBookData?.samples?.length === 0
-              }
-              onClick={() => handleSubmit()}
-            >
-              {intl.formatMessage({
-                id: `notebook.status.${getNextStatus(noteBookData.status).id.toLowerCase()}`,
-              })}
-            </Button>
+            <Column lg={8} md={8} sm={4}>
+              <Button
+                kind="danger--tertiary"
+                disabled={
+                  isSubmitting ||
+                  noteBookData.status === "ARCHIVED" ||
+                  (mode === MODES.CREATE && !isFormValid())
+                }
+                onClick={() => handleSubmit()}
+              >
+                {intl.formatMessage({
+                  id: `notebook.status.${getNextStatus(noteBookData.status).id.toLowerCase()}`,
+                })}
+              </Button>
+            </Column>
+            {noteBookData.status == "NEW" && (
+              <Column lg={8} md={8} sm={4}>
+                <Button
+                  kind="danger--tertiary"
+                  disabled={mode === MODES.CREATE && !isFormValid()}
+                  onClick={() => handleSubmit("DRAFT")}
+                >
+                  {intl.formatMessage({
+                    id: `notebook.status.${getNextStatus("DRAFT").id.toLowerCase()}`,
+                  })}
+                </Button>
+              </Column>
+            )}
           </Grid>
         </Column>
       </Grid>
