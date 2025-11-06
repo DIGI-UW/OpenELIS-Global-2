@@ -533,3 +533,60 @@ button {
     width: 14rem;
   }
 }
+
+/* styling for footer */
+.quick-footer {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background: #ffffff;
+  border-top: 1px solid white;
+  display: flex;
+  justify-content: space-around;
+  padding: 4px 0;
+  z-index: 20;
+}
+
+.footer-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 12px;
+  color: #6b6b6b;
+  cursor: pointer;
+  transition:
+    color 0.25s ease,
+    transform 0.2s ease;
+}
+
+.footer-btn svg {
+  font-size: 18px;
+  margin-bottom: 2px;
+  transition:
+    color 0.25s ease,
+    transform 0.2s ease;
+}
+.main-footer {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ✅ Hover Style */
+.footer-btn:hover {
+  color: #072655;
+}
+
+.footer-btn:hover svg {
+  color: #072655;
+  transform: scale(1.15);
+}
+
+.footer-btn.active {
+  color: #072655;
+  font-weight: 600;
+}
+
+.footer-btn.active svg {
+  color: #072655;
+  transform: scale(1.2);
+}
