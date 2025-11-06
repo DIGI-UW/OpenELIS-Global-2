@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="pmanko" id="storage-menu-localization-1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE id IN (
+                    SELECT id FROM clinlims.localization WHERE description = 'banner.menu.storage'
+                )
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds localization entries for Storage menu item</comment>
+        <sql>
+            INSERT INTO clinlims.localization (id, description, english, french, lastupdated)
+            VALUES
+            (nextval('localization_seq'), 'banner.menu.storage', 'Storage', 'Stockage', CURRENT_TIMESTAMP),
+            (nextval('localization_seq'), 'banner.menu.storage.tooltip', 'Manage sample storage locations', 'Gérer les emplacements de stockage des échantillons', CURRENT_TIMESTAMP);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

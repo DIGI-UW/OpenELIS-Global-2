@@ -15,3 +15,9 @@
 
 // Import commands.js using ES2015 syntax:
 import "./commands";
+
+// Import storage fixtures loader
+import "./load-storage-fixtures";
+
+// Import storage setup helpers
+import "./storage-setup";

@@ -1,0 +1,89 @@
+.dispose-modal-alert {
+  margin-bottom: 1.5rem;
+}
+
+.dispose-modal-sample-info {
+  margin-bottom: 1.5rem;
+}
+
+.info-box {
+  background-color: var(--cds-layer-01);
+  border: 1px solid var(--cds-border-subtle);
+  border-radius: 4px;
+  padding: 1rem;
+}
+
+.info-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.info-row:last-child {
+  margin-bottom: 0;
+}
+
+.info-label {
+  font-weight: 600;
+  color: var(--cds-text-secondary);
+}
+
+.info-value {
+  color: var(--cds-text-primary);
+}
+
+.dispose-modal-current-location {
+  margin-bottom: 1.5rem;
+}
+
+.location-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.location-label {
+  font-weight: 600;
+  color: var(--cds-text-secondary);
+}
+
+.location-box {
+  background-color: var(--cds-layer-02);
+  border: 1px solid var(--cds-border-subtle);
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.location-path {
+  color: var(--cds-text-primary);
+}
+
+.location-note {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary);
+  font-style: italic;
+}
+
+.dispose-modal-instructions {
+  margin-bottom: 1.5rem;
+}
+
+.dispose-modal-separator {
+  height: 1px;
+  background-color: var(--cds-border-subtle);
+  margin: 1.5rem 0;
+}
+
+.dispose-modal-fields {
+  margin-top: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}

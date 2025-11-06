@@ -23,6 +23,7 @@ import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvide
 import CustomTextInput from "../common/CustomTextInput";
 import OrderReferralRequest from "../addOrder/OrderReferralRequest";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import StorageLocationSelector from "../storage/StorageLocationSelector";
 
 const SampleType = (props) => {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -111,6 +112,14 @@ const SampleType = (props) => {
     setSampleXml({
       ...sampleXml,
       collector: value,
+    });
+  }
+
+  function handleStorageLocationChange(location, sampleIndex) {
+    setSampleXml({
+      ...sampleXml,
+      storageLocation: location,
+      storagePositionId: location?.position?.id || null,
     });
   }
 
@@ -570,6 +579,17 @@ const SampleType = (props) => {
             value={sampleXml.collector}
             labelText={intl.formatMessage({ id: "collector.label" })}
             className="inputText"
+          />
+        </div>
+        {/* Storage Location Selector - T062: Integration point */}
+        <div className="inlineDiv">
+          <StorageLocationSelector
+            mode="dropdown"
+            optional={true}
+            enableInlineCreation={true}
+            onLocationChange={(location) =>
+              handleStorageLocationChange(location, index)
+            }
           />
         </div>
         <div className="testPanels">

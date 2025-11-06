@@ -58,6 +58,15 @@
     "format": "prettier ./ --write",
     "check-format": "prettier ./ --check"
   },
+  "jest": {
+    "transformIgnorePatterns": [
+      "node_modules/(?!lodash-es)"
+    ],
+    "moduleNameMapper": {
+      "\\.(css|less|scss|sass)$": "<rootDir>/src/__mocks__/styleMock.js",
+      "^react-confirm-alert/src/react-confirm-alert\\.css$": "<rootDir>/src/__mocks__/styleMock.js"
+    }
+  },
   "eslintConfig": {
     "extends": [
       "react-app",
@@ -80,6 +89,7 @@
     "**/@types/react": "16.14.5"
   },
   "devDependencies": {
+    "@testing-library/react-hooks": "^8.0.1",
     "cypress": "^12.17.3",
     "cypress-xpath": "^2.0.1",
     "eslint": "^8.48.0",

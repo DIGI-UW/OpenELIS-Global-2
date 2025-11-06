@@ -57,11 +57,11 @@ see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
 
 #### Running OpenELIS Global2 using docker compose With published docker images on dockerhub
 
-    docker-compose up -d
+    docker compose up -d
 
 #### Running OpenELIS Global2 using docker compose with docker images built directly from the source code
 
-    docker-compose -f build.docker-compose.yml up -d --build
+    docker compose -f build.docker-compose.yml up -d --build
 
 #### Running OpenELIS Global2 with docker compose For Development
 
@@ -89,11 +89,11 @@ speeds up the development process
 
 1.  Build the War file
 
-          mvn clean install -DskipTests
+          mvn clean install -DskipTests -Dmaven.test.skip=true
 
 1.  Start the containers to mount the locally compiled artifacts
 
-        docker-compose -f dev.docker-compose.yml up -d
+        docker compose -f dev.docker-compose.yml up -d
 
     Note : For Reflecting Local changes in the Running Containers ;
 
@@ -103,11 +103,11 @@ speeds up the development process
 
   - Run the maven build again to re-build the War file
 
-         mvn clean install -DskipTests
+         mvn clean install -DskipTests -Dmaven.test.skip=true
 
   - Recreate the Openelis webapp container
 
-        docker-compose -f dev.docker-compose.yml up -d  --no-deps --force-recreate oe.openelis.org
+        docker compose -f dev.docker-compose.yml up -d  --no-deps --force-recreate oe.openelis.org
 
 #### The Instances can be accessed at
 

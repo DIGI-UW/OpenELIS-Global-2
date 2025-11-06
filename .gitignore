@@ -19,6 +19,13 @@ liqubase.properties
 # Maven Files #
 *target/
 
+# Node / Frontend artifacts
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 #Developer specific docker-compose
 /docker-compose.yml
 dev/
@@ -30,10 +37,12 @@ src/main/resources/adminPassword.txt
 /.apt_generated/
 */plugins/*.jar
 Patient/*
-volume/database/data/*
+volume/database/data
+volume/letsencrypt/
 tools/Liquibase-Outdated
 volume/tomcat/*
 volume/database/data*/*
 volume/logs/*
 volume/ocl/*
 volume/odoo/*
+.cursor/
