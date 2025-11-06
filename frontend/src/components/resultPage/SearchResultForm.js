@@ -1290,7 +1290,7 @@ export function SearchResults(props) {
           />
 
           {data.resultFile && data.resultFile.fileName && (
-            <div style={{ marginTop: "8px" }}>
+            <div style={{ marginTop: "3px" }}>
               <Link
                 onClick={() =>
                   downloadFile(
