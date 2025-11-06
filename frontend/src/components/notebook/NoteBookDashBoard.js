@@ -241,11 +241,7 @@ function NoteBookDashBoard() {
       count: counts.pending,
     },
     {
-      title:
-        intl.formatMessage({ id: "notebook.label.finalized" }) +
-        " (Week " +
-        getPastWeek() +
-        " )",
+      title: intl.formatMessage({ id: "notebook.label.finalized" }),
       count: counts.finalized,
     },
   ];
