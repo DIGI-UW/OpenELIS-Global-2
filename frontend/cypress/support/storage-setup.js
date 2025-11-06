@@ -45,11 +45,12 @@ Cypress.Commands.add("setupStorageIntercepts", () => {
   cy.intercept("GET", "**/rest/storage/devices**").as("getDevices");
   cy.intercept("GET", "**/rest/storage/shelves**").as("getShelves");
   cy.intercept("GET", "**/rest/storage/racks**").as("getRacks");
-  cy.intercept("GET", "**/rest/storage/locations/search**").as("searchLocations");
+  cy.intercept("GET", "**/rest/storage/locations/search**").as(
+    "searchLocations",
+  );
   cy.intercept("POST", "**/rest/storage/rooms**").as("createRoom");
   cy.intercept("POST", "**/rest/storage/devices**").as("createDevice");
   cy.intercept("POST", "**/rest/storage/shelves**").as("createShelf");
   cy.intercept("POST", "**/rest/storage/racks**").as("createRack");
   cy.intercept("POST", "**/rest/storage/samples/move**").as("moveSample");
 });
-

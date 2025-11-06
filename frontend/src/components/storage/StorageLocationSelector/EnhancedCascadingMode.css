@@ -24,7 +24,7 @@
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .enhanced-cascading-column-button {
     align-self: flex-start;
   }
@@ -109,7 +109,8 @@
   gap: 0.5rem !important;
 }
 
-.enhanced-cascading-column-button .cds--btn.cds--btn--ghost:hover:not(:disabled) {
+.enhanced-cascading-column-button
+  .cds--btn.cds--btn--ghost:hover:not(:disabled) {
   background-color: var(--cds-layer-hover) !important;
   border-color: var(--cds-border-strong) !important;
   color: var(--cds-icon-primary) !important;
@@ -131,7 +132,9 @@
 }
 
 /* Ensure icon is visible in disabled state */
-.enhanced-cascading-column-button .cds--btn.cds--btn--ghost.cds--btn--disabled svg,
+.enhanced-cascading-column-button
+  .cds--btn.cds--btn--ghost.cds--btn--disabled
+  svg,
 .enhanced-cascading-column-button .cds--btn.cds--btn--ghost[disabled] svg {
   fill: var(--cds-icon-disabled) !important;
   opacity: 1 !important;

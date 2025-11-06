@@ -51,7 +51,9 @@ describe("Storage Movement - Single Sample Move (P2B)", function () {
       });
 
     // Wait for move modal to open
-    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should("be.visible");
+    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+      "be.visible",
+    );
 
     // Verify current location is displayed
     cy.get('[data-testid="current-location-section"]').should("be.visible");
@@ -108,7 +110,9 @@ describe("Storage Movement - Single Sample Move (P2B)", function () {
           .click();
       });
 
-    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should("be.visible");
+    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+      "be.visible",
+    );
 
     // Select an occupied position (assuming A5 is occupied)
     cy.get('[data-testid="new-location-section"]').within(() => {
@@ -780,7 +784,9 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
       cy.wait(500);
       cy.get('[data-testid="move-menu-item"]').click();
 
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should("be.visible");
+      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+        "be.visible",
+      );
 
       // Verify "Add Location" button is visible
       cy.get('[data-testid="add-location-button"]')
@@ -791,12 +797,14 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
       cy.get('[data-testid="add-location-button"]').click();
 
       // Verify create form is shown (location-create-container should be visible)
-      cy.get('[data-testid="location-create-container"]', { timeout: 2000 })
-        .should("be.visible");
+      cy.get('[data-testid="location-create-container"]', {
+        timeout: 2000,
+      }).should("be.visible");
 
       // Verify EnhancedCascadingMode components are visible
-      cy.get('[data-testid="room-combobox"]', { timeout: 2000 })
-        .should("be.visible");
+      cy.get('[data-testid="room-combobox"]', { timeout: 2000 }).should(
+        "be.visible",
+      );
     });
   });
 
@@ -821,14 +829,17 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
       cy.wait(500);
       cy.get('[data-testid="move-menu-item"]').click();
 
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should("be.visible");
+      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+        "be.visible",
+      );
 
       // Click "Add Location" button
       cy.get('[data-testid="add-location-button"]').click();
 
       // Wait for create form to appear
-      cy.get('[data-testid="location-create-container"]', { timeout: 2000 })
-        .should("be.visible");
+      cy.get('[data-testid="location-create-container"]', {
+        timeout: 2000,
+      }).should("be.visible");
 
       // Type in room combobox (should allow typing new room name)
       cy.get('[data-testid="room-combobox"]')
@@ -837,8 +848,10 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
         .type("New Test Room");
 
       // Verify input value is set (typing works)
-      cy.get('[data-testid="room-combobox"]')
-        .should("have.value", "New Test Room");
+      cy.get('[data-testid="room-combobox"]').should(
+        "have.value",
+        "New Test Room",
+      );
 
       // Type in device combobox (should be enabled after room is selected/typed)
       cy.get('[data-testid="device-combobox"]')
@@ -846,8 +859,10 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
         .type("New Test Freezer");
 
       // Verify device input value is set
-      cy.get('[data-testid="device-combobox"]')
-        .should("have.value", "New Test Freezer");
+      cy.get('[data-testid="device-combobox"]').should(
+        "have.value",
+        "New Test Freezer",
+      );
     });
   });
 
@@ -872,14 +887,17 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
       cy.wait(500);
       cy.get('[data-testid="move-menu-item"]').click();
 
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should("be.visible");
+      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+        "be.visible",
+      );
 
       // Click "Add Location" button
       cy.get('[data-testid="add-location-button"]').click();
 
       // Wait for create form
-      cy.get('[data-testid="location-create-container"]', { timeout: 2000 })
-        .should("be.visible");
+      cy.get('[data-testid="location-create-container"]', {
+        timeout: 2000,
+      }).should("be.visible");
 
       // Initially, device dropdown should be disabled (no room selected)
       cy.get('[data-testid="device-combobox"]')
@@ -895,28 +913,32 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
       // CRITICAL BUG FIX: Device dropdown should be enabled after room selection
       // Wait for rooms to load if needed
       cy.wait("@getRooms").then(() => {
-        cy.get('[data-testid="device-combobox"]')
-          .should("not.be.disabled", "Device dropdown should be enabled after room selection");
+        cy.get('[data-testid="device-combobox"]').should(
+          "not.be.disabled",
+          "Device dropdown should be enabled after room selection",
+        );
       });
 
       // Select or type a device
-      cy.get('[data-testid="device-combobox"]')
-        .type("Freezer 01");
+      cy.get('[data-testid="device-combobox"]').type("Freezer 01");
 
       cy.wait("@getDevices").then(() => {
         // Shelf dropdown should be enabled after device selection
-        cy.get('[data-testid="shelf-combobox"]')
-          .should("not.be.disabled", "Shelf dropdown should be enabled after device selection");
+        cy.get('[data-testid="shelf-combobox"]').should(
+          "not.be.disabled",
+          "Shelf dropdown should be enabled after device selection",
+        );
       });
 
       // Select or type a shelf
-      cy.get('[data-testid="shelf-combobox"]')
-        .type("Shelf-A");
+      cy.get('[data-testid="shelf-combobox"]').type("Shelf-A");
 
       cy.wait("@getShelves").then(() => {
         // Rack dropdown should be enabled after shelf selection
-        cy.get('[data-testid="rack-combobox"]')
-          .should("not.be.disabled", "Rack dropdown should be enabled after shelf selection");
+        cy.get('[data-testid="rack-combobox"]').should(
+          "not.be.disabled",
+          "Rack dropdown should be enabled after shelf selection",
+        );
       });
 
       // Position input should always be enabled (optional field)
@@ -947,13 +969,16 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
       cy.wait(500);
       cy.get('[data-testid="move-menu-item"]').click();
 
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should("be.visible");
+      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+        "be.visible",
+      );
 
       // Click "Add Location" button
       cy.get('[data-testid="add-location-button"]').click();
 
-      cy.get('[data-testid="location-create-container"]', { timeout: 2000 })
-        .should("be.visible");
+      cy.get('[data-testid="location-create-container"]', {
+        timeout: 2000,
+      }).should("be.visible");
 
       // Complete location creation
       cy.get('[data-testid="room-combobox"]').type("Main Laboratory");
@@ -1000,11 +1025,12 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
       cy.wait(500);
       cy.get('[data-testid="move-menu-item"]').click();
 
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should("be.visible");
+      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+        "be.visible",
+      );
 
       // Verify LocationFilterDropdown is visible (search mode)
-      cy.get('[data-testid="location-filter-dropdown"]')
-        .should("be.visible");
+      cy.get('[data-testid="location-filter-dropdown"]').should("be.visible");
 
       // Type in search input to trigger autocomplete
       // Note: searchLocations intercept is already set up in beforeEach
@@ -1015,8 +1041,9 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
       cy.wait("@searchLocations");
 
       // Verify search results appear (autocomplete should show results)
-      cy.get('[data-testid="location-autocomplete-container"]')
-        .should("be.visible");
+      cy.get('[data-testid="location-autocomplete-container"]').should(
+        "be.visible",
+      );
 
       // Select a location from autocomplete results
       cy.get('[data-testid="location-autocomplete-results"]')
@@ -1057,14 +1084,17 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
       cy.wait(500);
       cy.get('[data-testid="move-menu-item"]').click();
 
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should("be.visible");
+      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+        "be.visible",
+      );
 
       // Click "Add Location" button to show create form
       cy.get('[data-testid="add-location-button"]').click();
 
       // Wait for create form
-      cy.get('[data-testid="location-create-container"]', { timeout: 2000 })
-        .should("be.visible");
+      cy.get('[data-testid="location-create-container"]', {
+        timeout: 2000,
+      }).should("be.visible");
 
       // Type a new room name that doesn't exist
       cy.get('[data-testid="room-combobox"]')
@@ -1086,13 +1116,11 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
       // Wait for room creation API call
       cy.wait("@createRoom").then(() => {
         // Verify device input is now enabled (room was created)
-        cy.get('[data-testid="device-combobox"]')
-          .should("not.be.disabled");
+        cy.get('[data-testid="device-combobox"]').should("not.be.disabled");
       });
 
       // Type a new device name
-      cy.get('[data-testid="device-combobox"]')
-        .type("New Test Device E2E");
+      cy.get('[data-testid="device-combobox"]').type("New Test Device E2E");
 
       // Wait for device link to appear (may need debounce)
       cy.wait(500);
@@ -1108,8 +1136,7 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
       // Wait for device creation
       cy.wait("@createDevice").then(() => {
         // Verify shelf is now enabled
-        cy.get('[data-testid="shelf-combobox"]')
-          .should("not.be.disabled");
+        cy.get('[data-testid="shelf-combobox"]').should("not.be.disabled");
       });
     });
   });
@@ -1135,14 +1162,17 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
       cy.wait(500);
       cy.get('[data-testid="move-menu-item"]').click();
 
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should("be.visible");
+      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+        "be.visible",
+      );
 
       // Click "Add Location" button
       cy.get('[data-testid="add-location-button"]').click();
 
       // Wait for create form
-      cy.get('[data-testid="location-create-container"]', { timeout: 2000 })
-        .should("be.visible");
+      cy.get('[data-testid="location-create-container"]', {
+        timeout: 2000,
+      }).should("be.visible");
 
       // Type an existing room name (should match existing room)
       cy.get('[data-testid="room-combobox"]')
@@ -1153,12 +1183,10 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
       cy.wait("@getRooms");
 
       // Verify "(add new room)" link does NOT appear for existing room
-      cy.get('[data-testid="add-new-room-link"]')
-        .should("not.exist");
+      cy.get('[data-testid="add-new-room-link"]').should("not.exist");
 
       // Verify device input is enabled (room was matched/selected)
-      cy.get('[data-testid="device-combobox"]')
-        .should("not.be.disabled");
+      cy.get('[data-testid="device-combobox"]').should("not.be.disabled");
     });
   });
 });

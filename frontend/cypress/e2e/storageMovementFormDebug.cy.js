@@ -20,7 +20,7 @@ after("Cleanup storage tests", () => {
 describe("Move Modal Form Behavior", function () {
   beforeEach(() => {
     cy.setupStorageIntercepts();
-    
+
     // Console logs will appear in Electron console with ELECTRON_ENABLE_LOGGING=1
     // No need to override - they'll show up automatically in the terminal
     cy.visit("/Storage/samples");
@@ -31,14 +31,16 @@ describe("Move Modal Form Behavior", function () {
     // Console logs are already captured via onBeforeLoad in beforeEach
 
     // Turn off uncaught exception handling to see real errors
-    Cypress.on('uncaught:exception', (err, runnable) => {
+    Cypress.on("uncaught:exception", (err, runnable) => {
       cy.log("UNCAUGHT EXCEPTION:", err.message);
       cy.log("Stack:", err.stack);
       return false;
     });
 
     // Verify we're on the samples tab
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
 
     // Get first sample and open move modal
     cy.get('[data-testid="sample-list"]')
@@ -53,14 +55,16 @@ describe("Move Modal Form Behavior", function () {
 
     // Wait for menu to appear (outside of within block)
     cy.wait(500);
-    
+
     // Click Move menu item (outside of within block since menu is portaled)
     cy.get('[data-testid="move-menu-item"]', { timeout: 3000 })
       .should("be.visible")
       .click();
 
     // Wait for move modal to open
-    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should("be.visible");
+    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+      "be.visible",
+    );
 
     // Step 1: Click "Add Location" button (scoped to modal)
     cy.get('[data-testid="move-modal"]')
@@ -70,8 +74,9 @@ describe("Move Modal Form Behavior", function () {
       .click();
 
     // Step 2: Verify create form appears
-    cy.get('[data-testid="location-create-container"]', { timeout: 3000 })
-      .should("be.visible");
+    cy.get('[data-testid="location-create-container"]', {
+      timeout: 3000,
+    }).should("be.visible");
     cy.get('[data-testid="room-combobox"]').should("be.visible");
 
     // Step 3: Select an existing room from dropdown
@@ -84,8 +89,9 @@ describe("Move Modal Form Behavior", function () {
     cy.wait("@getDevices");
 
     // Step 4: Verify device input is enabled after room selection
-    cy.get('[data-testid="device-combobox"]', { timeout: 2000 })
-      .should("not.be.disabled");
+    cy.get('[data-testid="device-combobox"]', { timeout: 2000 }).should(
+      "not.be.disabled",
+    );
 
     // Step 5: Verify form is still visible (didn't close automatically)
     cy.get('[data-testid="location-create-container"]').should("be.visible");
@@ -106,28 +112,29 @@ describe("Move Modal Form Behavior", function () {
 
     // Debug: Check what location state we have by examining the DOM
     cy.get('[data-testid="add-location-create-button"]').then(($btn) => {
-      cy.log("Add button disabled state:", $btn.prop('disabled'));
-      cy.log("Add button classes:", $btn.attr('class'));
-      cy.log("Add button aria-disabled:", $btn.attr('aria-disabled'));
+      cy.log("Add button disabled state:", $btn.prop("disabled"));
+      cy.log("Add button classes:", $btn.attr("class"));
+      cy.log("Add button aria-disabled:", $btn.attr("aria-disabled"));
     });
 
     // Debug: Check the actual React component state by examining inputs
     cy.get('[data-testid="room-combobox"]').then(($room) => {
       cy.log("Room combobox value:", $room.val());
-      cy.log("Room combobox disabled:", $room.prop('disabled'));
+      cy.log("Room combobox disabled:", $room.prop("disabled"));
     });
-    
+
     cy.get('[data-testid="device-combobox"]').then(($device) => {
       cy.log("Device combobox value:", $device.val());
-      cy.log("Device combobox disabled:", $device.prop('disabled'));
+      cy.log("Device combobox disabled:", $device.prop("disabled"));
     });
 
     // Wait a bit for any pending console logs
     cy.wait(500);
 
     // Step 8: Verify "Add" button is now enabled (room + device selected)
-    cy.get('[data-testid="add-location-create-button"]', { timeout: 2000 })
-      .should("not.be.disabled");
+    cy.get('[data-testid="add-location-create-button"]', {
+      timeout: 2000,
+    }).should("not.be.disabled");
 
     // Step 9: Cancel the form (without clicking Add)
     cy.get('[data-testid="location-create-container"]')
@@ -148,8 +155,9 @@ describe("Move Modal Form Behavior", function () {
       .find('[data-testid="add-location-button"]')
       .first()
       .click();
-    cy.get('[data-testid="location-create-container"]', { timeout: 2000 })
-      .should("be.visible");
+    cy.get('[data-testid="location-create-container"]', {
+      timeout: 2000,
+    }).should("be.visible");
 
     // Step 12: Test selecting an existing room from dropdown
     cy.get('[data-testid="room-combobox"]').click();
@@ -163,8 +171,9 @@ describe("Move Modal Form Behavior", function () {
     cy.get('[data-testid="location-create-container"]').should("be.visible");
 
     // Step 14: Verify device input is enabled after selecting existing room
-    cy.get('[data-testid="device-combobox"]', { timeout: 2000 })
-      .should("not.be.disabled");
+    cy.get('[data-testid="device-combobox"]', { timeout: 2000 }).should(
+      "not.be.disabled",
+    );
 
     // Step 15: Select an existing device
     cy.wait("@getDevices");
@@ -176,8 +185,9 @@ describe("Move Modal Form Behavior", function () {
     cy.wait(1000);
 
     // Step 16: Verify "Add" button is now enabled (room + device selected)
-    cy.get('[data-testid="add-location-create-button"]')
-      .should("not.be.disabled");
+    cy.get('[data-testid="add-location-create-button"]').should(
+      "not.be.disabled",
+    );
 
     // Step 17: Click "Add" button to complete the location selection
     cy.get('[data-testid="add-location-create-button"]').click();
@@ -194,13 +204,14 @@ describe("Move Modal Form Behavior", function () {
       .should("be.visible");
 
     // Step 19: Verify selected location preview appears and shows the selected location path
-    cy.get('[data-testid="selected-location-section"]', { timeout: 2000 })
-      .should("be.visible");
+    cy.get('[data-testid="selected-location-section"]', {
+      timeout: 2000,
+    }).should("be.visible");
     cy.get('[data-testid="selected-location-section"]')
-      .find('.location-label')
+      .find(".location-label")
       .should("contain.text", "Selected Location");
     cy.get('[data-testid="selected-location-section"]')
-      .find('.location-path')
+      .find(".location-path")
       .should("be.visible")
       .should("not.be.empty")
       .should("contain", "Main Laboratory"); // Should contain the room name
@@ -214,10 +225,9 @@ describe("Move Modal Form Behavior", function () {
         // Additional verification that button is actually enabled
         cy.wrap($btn).should("not.have.attr", "disabled");
       });
-    
+
     // Step 20a: Click "Confirm Move" button to complete the move
-    cy.get('[data-testid="confirm-move-button"]')
-      .click();
+    cy.get('[data-testid="confirm-move-button"]').click();
 
     // Step 21: Wait for move API call to complete
     cy.wait("@moveSample", { timeout: 5000 });
@@ -246,7 +256,7 @@ describe("Move Modal Form Behavior", function () {
 
     // Turn off uncaught exception handling to capture crash errors
     const errors = [];
-    Cypress.on('uncaught:exception', (err, runnable) => {
+    Cypress.on("uncaught:exception", (err, runnable) => {
       errors.push(err.message);
       cy.log("UNCAUGHT EXCEPTION:", err.message);
       cy.log("Stack:", err.stack);
@@ -254,7 +264,9 @@ describe("Move Modal Form Behavior", function () {
     });
 
     // Verify we're on the samples tab
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
 
     // Get first sample and open move modal
     cy.get('[data-testid="sample-list"]')
@@ -273,7 +285,9 @@ describe("Move Modal Form Behavior", function () {
       .click();
 
     // Wait for move modal to open
-    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should("be.visible");
+    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+      "be.visible",
+    );
 
     // Click "Add Location" button
     cy.get('[data-testid="move-modal"]')
@@ -283,8 +297,9 @@ describe("Move Modal Form Behavior", function () {
       .click();
 
     // Verify create form appears
-    cy.get('[data-testid="location-create-container"]', { timeout: 3000 })
-      .should("be.visible");
+    cy.get('[data-testid="location-create-container"]', {
+      timeout: 3000,
+    }).should("be.visible");
 
     // Select a room
     cy.get('[data-testid="room-combobox"]').click();
@@ -296,8 +311,9 @@ describe("Move Modal Form Behavior", function () {
 
     // Verify device input is enabled
     cy.wait("@getDevices");
-    cy.get('[data-testid="device-combobox"]', { timeout: 2000 })
-      .should("not.be.disabled");
+    cy.get('[data-testid="device-combobox"]', { timeout: 2000 }).should(
+      "not.be.disabled",
+    );
 
     // Select a device
     cy.get('[data-testid="device-combobox"]').click();
@@ -308,8 +324,9 @@ describe("Move Modal Form Behavior", function () {
     cy.wait(2000); // Wait for device selection and shelf loading
 
     // CRITICAL: Verify form doesn't crash and shelf input becomes enabled
-    cy.get('[data-testid="location-create-container"]', { timeout: 3000 })
-      .should("be.visible");
+    cy.get('[data-testid="location-create-container"]', {
+      timeout: 3000,
+    }).should("be.visible");
 
     // Check for any errors
     cy.window().then(() => {
@@ -322,8 +339,8 @@ describe("Move Modal Form Behavior", function () {
 
     // Debug: Check shelf combobox state
     cy.get('[data-testid="shelf-combobox"]').then(($shelf) => {
-      cy.log("Shelf disabled state:", $shelf.prop('disabled'));
-      cy.log("Shelf classes:", $shelf.attr('class'));
+      cy.log("Shelf disabled state:", $shelf.prop("disabled"));
+      cy.log("Shelf classes:", $shelf.attr("class"));
     });
 
     // Verify shelf input is enabled after device selection
@@ -335,8 +352,9 @@ describe("Move Modal Form Behavior", function () {
     cy.get('[data-testid="location-create-container"]').should("be.visible");
 
     // Verify "Add" button is enabled (room + device selected)
-    cy.get('[data-testid="add-location-create-button"]')
-      .should("not.be.disabled");
+    cy.get('[data-testid="add-location-create-button"]').should(
+      "not.be.disabled",
+    );
 
     // Click "Add" button to complete the location selection
     cy.get('[data-testid="add-location-create-button"]').click();
@@ -347,13 +365,14 @@ describe("Move Modal Form Behavior", function () {
       .should("not.exist");
 
     // Verify selected location preview appears and shows the selected location path
-    cy.get('[data-testid="selected-location-section"]', { timeout: 2000 })
-      .should("be.visible");
+    cy.get('[data-testid="selected-location-section"]', {
+      timeout: 2000,
+    }).should("be.visible");
     cy.get('[data-testid="selected-location-section"]')
-      .find('.location-label')
+      .find(".location-label")
       .should("contain.text", "Selected Location");
     cy.get('[data-testid="selected-location-section"]')
-      .find('.location-path')
+      .find(".location-path")
       .should("be.visible")
       .should("not.be.empty");
 
@@ -392,9 +411,11 @@ describe("Move Modal Form Behavior", function () {
   it("Should show hierarchical path when selecting from dropdown (not Location + form)", function () {
     // This test covers the bug where selecting from dropdown doesn't show full hierarchical path
     // It verifies that hierarchical_path from search results is displayed correctly
-    
+
     // Verify we're on the samples tab
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
 
     // Get first sample and open move modal
     cy.get('[data-testid="sample-list"]')
@@ -413,12 +434,15 @@ describe("Move Modal Form Behavior", function () {
       .click();
 
     // Wait for move modal to open
-    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should("be.visible");
+    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+      "be.visible",
+    );
 
     // Step 1: Select a location from the dropdown (LocationFilterDropdown)
     // This is the hierarchical click-based selection path
-    cy.get('[data-testid="location-search-and-create"]', { timeout: 2000 })
-      .should("be.visible");
+    cy.get('[data-testid="location-search-and-create"]', {
+      timeout: 2000,
+    }).should("be.visible");
 
     // Find the LocationFilterDropdown input/search field
     // The dropdown should be visible and allow searching
@@ -432,37 +456,41 @@ describe("Move Modal Form Behavior", function () {
 
     // Wait for dropdown options to appear and select a position-level location
     // This should have a full hierarchical_path
-    cy.get('[role="listbox"]', { timeout: 3000 })
-      .should("be.visible");
+    cy.get('[role="listbox"]', { timeout: 3000 }).should("be.visible");
 
     // Select first position option (should have full hierarchical path)
-    cy.get('[role="option"]')
-      .first()
-      .click({ force: true });
+    cy.get('[role="option"]').first().click({ force: true });
 
     cy.wait(1000);
 
     // Step 2: Verify selected location preview appears with full hierarchical path
-    cy.get('[data-testid="selected-location-section"]', { timeout: 2000 })
-      .should("be.visible");
+    cy.get('[data-testid="selected-location-section"]', {
+      timeout: 2000,
+    }).should("be.visible");
 
     // Verify it shows the full hierarchical path (not just room name)
     cy.get('[data-testid="selected-location-section"]')
-      .find('.location-path')
+      .find(".location-path")
       .should("be.visible")
       .should("not.be.empty")
       .then(($path) => {
         const pathText = $path.text();
         cy.log("Selected location path:", pathText);
-        
+
         // Verify it contains hierarchical separator (>)
         // This indicates it's showing the full path, not just a single level
         expect(pathText).to.include(">");
-        
+
         // Verify it's not just showing a single word (like just "Main Laboratory")
         // It should show at least "Room > Device" format
-        const parts = pathText.split(">").map(p => p.trim()).filter(Boolean);
-        expect(parts.length).to.be.at.least(2, "Path should contain at least 2 levels");
+        const parts = pathText
+          .split(">")
+          .map((p) => p.trim())
+          .filter(Boolean);
+        expect(parts.length).to.be.at.least(
+          2,
+          "Path should contain at least 2 levels",
+        );
       });
 
     // Step 3: Verify Confirm Move button is enabled
@@ -471,8 +499,7 @@ describe("Move Modal Form Behavior", function () {
       .should("not.be.disabled");
 
     // Step 4: Click Confirm Move and verify it persists
-    cy.get('[data-testid="confirm-move-button"]')
-      .click();
+    cy.get('[data-testid="confirm-move-button"]').click();
 
     // Step 5: Wait for move API call to complete
     cy.wait("@moveSample", { timeout: 5000 });
@@ -499,12 +526,15 @@ describe("Move Modal Form Behavior", function () {
       .then(($location) => {
         const locationText = $location.text();
         cy.log("Sample location after move:", locationText);
-        
+
         // Verify it shows a hierarchical path (not just empty or old location)
         expect(locationText).to.not.be.empty;
         // Should contain the separator if it's a full path
         if (locationText.includes(">")) {
-          const parts = locationText.split(">").map(p => p.trim()).filter(Boolean);
+          const parts = locationText
+            .split(">")
+            .map((p) => p.trim())
+            .filter(Boolean);
           expect(parts.length).to.be.at.least(2);
         }
       });
@@ -513,9 +543,11 @@ describe("Move Modal Form Behavior", function () {
   it("Should persist move when clicking Confirm Move button", function () {
     // This test explicitly verifies that the move operation persists correctly
     // It covers the bug where clicking Confirm Move doesn't actually persist the location
-    
+
     // Verify we're on the samples tab
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
 
     // Get first sample and capture its initial location
     let initialLocation = "";
@@ -548,7 +580,9 @@ describe("Move Modal Form Behavior", function () {
       .click();
 
     // Wait for move modal to open
-    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should("be.visible");
+    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+      "be.visible",
+    );
 
     // Select a location using the Location + form
     cy.get('[data-testid="move-modal"]')
@@ -557,8 +591,9 @@ describe("Move Modal Form Behavior", function () {
       .should("be.visible")
       .click();
 
-    cy.get('[data-testid="location-create-container"]', { timeout: 3000 })
-      .should("be.visible");
+    cy.get('[data-testid="location-create-container"]', {
+      timeout: 3000,
+    }).should("be.visible");
 
     // Select room
     cy.get('[data-testid="room-combobox"]').click();
@@ -583,8 +618,9 @@ describe("Move Modal Form Behavior", function () {
     cy.wait(500);
 
     // Verify selected location preview appears
-    cy.get('[data-testid="selected-location-section"]', { timeout: 2000 })
-      .should("be.visible");
+    cy.get('[data-testid="selected-location-section"]', {
+      timeout: 2000,
+    }).should("be.visible");
 
     // Click Confirm Move
     cy.get('[data-testid="confirm-move-button"]', { timeout: 5000 })
@@ -595,8 +631,8 @@ describe("Move Modal Form Behavior", function () {
     // CRITICAL: Verify the move API call is actually made
     cy.wait("@moveSample", { timeout: 5000 }).then((interception) => {
       // Verify the request body contains the correct data
-      expect(interception.request.body).to.have.property('sampleId');
-      expect(interception.request.body).to.have.property('targetPositionId');
+      expect(interception.request.body).to.have.property("sampleId");
+      expect(interception.request.body).to.have.property("targetPositionId");
       cy.log("Move API call made with:", interception.request.body);
     });
 
@@ -620,15 +656,17 @@ describe("Move Modal Form Behavior", function () {
       .then(($newLocation) => {
         const newLocationText = $newLocation.text().trim();
         cy.log("New location after move:", newLocationText);
-        
+
         // Verify location changed (not the same as initial)
         // Note: If initial was empty, new should not be empty
         if (initialLocation) {
-          expect(newLocationText).to.not.equal(initialLocation, "Location should have changed");
+          expect(newLocationText).to.not.equal(
+            initialLocation,
+            "Location should have changed",
+          );
         } else {
           expect(newLocationText).to.not.be.empty("Location should be set");
         }
       });
   });
 });
-

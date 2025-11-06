@@ -345,10 +345,10 @@ This checklist provides a standardized manual testing procedure for the Storage 
 
 ## Test Results Summary
 
-**Date**: ******\_\_\_******
-**Tester**: ******\_\_\_******
-**Environment**: ******\_\_\_******
-**Browser**: ******\_\_\_******
+**Date**: **\*\***\_\_\_**\*\***
+**Tester**: **\*\***\_\_\_**\*\***
+**Environment**: **\*\***\_\_\_**\*\***
+**Browser**: **\*\***\_\_\_**\*\***
 
 **Overall Status**: ☐ PASS ☐ FAIL ☐ PARTIAL
 

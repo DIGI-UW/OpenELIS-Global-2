@@ -51,10 +51,13 @@ const LocationFilterDropdown = ({
 
   const handleLocationSelect = (location) => {
     // DEBUG: Log what's being passed to parent - log the FULL object
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[LocationFilterDropdown] handleLocationSelect called with:', location);
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        "[LocationFilterDropdown] handleLocationSelect called with:",
+        location,
+      );
     }
-    
+
     if (onLocationChange) {
       onLocationChange(location);
     }

@@ -1,8 +1,27 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { ComboBox, TextInput, Button, ComposedModal, ModalHeader, ModalBody, ModalFooter } from "@carbon/react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useContext,
+} from "react";
+import {
+  ComboBox,
+  TextInput,
+  Button,
+  ComposedModal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../../utils/Utils";
+import { NotificationContext } from "../../layout/Layout";
+import { NotificationKinds } from "../../common/CustomNotification";
 import "./EnhancedCascadingMode.css";
 
 /**
@@ -17,6 +36,8 @@ import "./EnhancedCascadingMode.css";
  */
 const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
   const intl = useIntl();
+  const { addNotification, setNotificationVisible } =
+    useContext(NotificationContext);
 
   const [rooms, setRooms] = useState([]);
   const [devices, setDevices] = useState([]);
@@ -28,6 +49,12 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
   const [shelfInput, setShelfInput] = useState("");
   const [rackInput, setRackInput] = useState("");
   const [positionInput, setPositionInput] = useState("");
+
+  // Refs to track current input values synchronously (for button validation)
+  const roomInputRef = useRef("");
+  const deviceInputRef = useRef("");
+  const shelfInputRef = useRef("");
+  const rackInputRef = useRef("");
 
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [selectedDevice, setSelectedDevice] = useState(null);
@@ -46,12 +73,41 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
   const [showAddDeviceLink, setShowAddDeviceLink] = useState(false);
   const [showAddShelfLink, setShowAddShelfLink] = useState(false);
   const [showAddRackLink, setShowAddRackLink] = useState(false);
-  
+
   // Confirmation dialogs for Enter key
   const [showConfirmRoom, setShowConfirmRoom] = useState(false);
   const [showConfirmDevice, setShowConfirmDevice] = useState(false);
   const [showConfirmShelf, setShowConfirmShelf] = useState(false);
   const [showConfirmRack, setShowConfirmRack] = useState(false);
+
+  /**
+   * Helper function to build location object with locationId, locationType, and positionCoordinate
+   * for the new flexible assignment architecture
+   * Priority: rack > shelf > device (lowest selected level wins)
+   */
+  const buildLocationWithFlexibleFields = useCallback((location) => {
+    if (!location) return null;
+
+    const result = { ...location };
+
+    // Extract locationId and locationType based on lowest selected hierarchy level
+    if (location.rack && location.rack.id) {
+      result.locationId = location.rack.id;
+      result.locationType = "rack";
+    } else if (location.shelf && location.shelf.id) {
+      result.locationId = location.shelf.id;
+      result.locationType = "shelf";
+    } else if (location.device && location.device.id) {
+      result.locationId = location.device.id;
+      result.locationType = "device";
+    }
+
+    // Extract positionCoordinate from position object or direct field
+    result.positionCoordinate =
+      location.position?.coordinate || location.positionCoordinate || null;
+
+    return result;
+  }, []);
 
   // Load rooms on mount
   useEffect(() => {
@@ -103,12 +159,16 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
       setPositionInput("");
       return;
     }
-    
+
     if (selectedLocation) {
       // Format 1: EnhancedCascadingMode format (has room/device/shelf/rack properties)
-      if (selectedLocation.room && typeof selectedLocation.room === 'object') {
+      if (selectedLocation.room && typeof selectedLocation.room === "object") {
         // If room only has id, try to find full room object in rooms list
-        if (selectedLocation.room.id && !selectedLocation.room.name && rooms.length > 0) {
+        if (
+          selectedLocation.room.id &&
+          !selectedLocation.room.name &&
+          rooms.length > 0
+        ) {
           const fullRoom = rooms.find((r) => r.id === selectedLocation.room.id);
           if (fullRoom) {
             setSelectedRoom(fullRoom);
@@ -123,19 +183,32 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
           setRoomInput(selectedLocation.room.name || "");
         }
       }
-      if (selectedLocation.device && typeof selectedLocation.device === 'object') {
+      if (
+        selectedLocation.device &&
+        typeof selectedLocation.device === "object"
+      ) {
         setSelectedDevice(selectedLocation.device);
         setDeviceInput(selectedLocation.device.name || "");
       }
-      if (selectedLocation.shelf && typeof selectedLocation.shelf === 'object') {
+      if (
+        selectedLocation.shelf &&
+        typeof selectedLocation.shelf === "object"
+      ) {
         setSelectedShelf(selectedLocation.shelf);
-        setShelfInput(selectedLocation.shelf.label || selectedLocation.shelf.name || "");
+        setShelfInput(
+          selectedLocation.shelf.label || selectedLocation.shelf.name || "",
+        );
       }
-      if (selectedLocation.rack && typeof selectedLocation.rack === 'object') {
+      if (selectedLocation.rack && typeof selectedLocation.rack === "object") {
         setSelectedRack(selectedLocation.rack);
-        setRackInput(selectedLocation.rack.label || selectedLocation.rack.name || "");
+        setRackInput(
+          selectedLocation.rack.label || selectedLocation.rack.name || "",
+        );
       }
-      if (selectedLocation.position && typeof selectedLocation.position === 'object') {
+      if (
+        selectedLocation.position &&
+        typeof selectedLocation.position === "object"
+      ) {
         setPositionInput(selectedLocation.position.coordinate || "");
       }
 
@@ -156,7 +229,7 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
             // Room not in list yet (might still be loading), use the selectedLocation data directly
             // This will work because the room data from LocationFilterDropdown has all needed fields
             // The room will be properly set once rooms load, but this allows the device field to be enabled
-            setSelectedRoom({
+            const roomObj = {
               id: selectedLocation.id,
               name: selectedLocation.name,
               code:
@@ -164,7 +237,17 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
                 selectedLocation.name.substring(0, 50).toUpperCase(),
               active: selectedLocation.active !== false,
               ...selectedLocation,
-            });
+            };
+            setSelectedRoom(roomObj);
+
+            const locationObj = {
+              room: roomObj,
+              device: null,
+              shelf: null,
+              rack: null,
+              position: null,
+            };
+            onLocationChange(buildLocationWithFlexibleFields(locationObj));
             setRoomInput(selectedLocation.name || "");
           }
         } else if (selectedLocation.type === "device") {
@@ -241,6 +324,22 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
                 }
                 return prev;
               });
+
+              // Update parent with location
+              const currentDevice = selectedDeviceRef.current || selectedDevice;
+              const currentShelf = selectedShelfRef.current || selectedShelf;
+              const currentRack = selectedRackRef.current || selectedRack;
+              const currentPosition = positionInput;
+              const locationObj = {
+                room: room,
+                device: currentDevice || null,
+                shelf: currentShelf || null,
+                rack: currentRack || null,
+                position: currentPosition
+                  ? { coordinate: currentPosition }
+                  : null,
+              };
+              onLocationChange(buildLocationWithFlexibleFields(locationObj));
             }
           },
           () => {},
@@ -267,7 +366,11 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
         },
       );
       // Reset child selections only if this is a new room selection (not restoring from selectedLocation)
-      if (!selectedLocation?.device && !selectedLocation?.shelf && !selectedLocation?.rack) {
+      if (
+        !selectedLocation?.device &&
+        !selectedLocation?.shelf &&
+        !selectedLocation?.rack
+      ) {
         setSelectedDevice(null);
         setSelectedShelf(null);
         setSelectedRack(null);
@@ -277,7 +380,11 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
         setShelves([]);
         setRacks([]);
       }
-    } else if (selectedRoom && !selectedRoom.id && (isCreatingRoom || pendingRoomCreation)) {
+    } else if (
+      selectedRoom &&
+      !selectedRoom.id &&
+      (isCreatingRoom || pendingRoomCreation)
+    ) {
       // Room is being created (typed but not yet saved) - keep devices empty but enable device field
       // Device field will be enabled because of the disabled prop logic
       setDevices([]);
@@ -344,11 +451,10 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
     }
   }, [selectedShelf]);
 
-  // Create room if input doesn't match existing
+  // Create room if input doesn't match existing - FULLY SYNCHRONOUS
   const handleRoomChange = useCallback(
-    async (inputValue, selectedItem) => {
+    (inputValue, selectedItem) => {
       const trimmedValue = inputValue?.trim() || "";
-      setRoomInput(inputValue || "");
 
       // Clear any pending room creation
       if (roomCreationTimeoutRef.current) {
@@ -356,25 +462,33 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
         roomCreationTimeoutRef.current = null;
       }
 
+      // Get current values from refs for synchronous access
+      const currentRoom = selectedRoomRef.current || selectedRoom;
+      const currentDevice = selectedDeviceRef.current || selectedDevice;
+      const currentShelf = selectedShelfRef.current || selectedShelf;
+      const currentRack = selectedRackRef.current || selectedRack;
+      const currentPosition = positionInput;
+
       if (selectedItem) {
         // User selected from dropdown - room object has id
+        selectedRoomRef.current = selectedItem;
         setSelectedRoom(selectedItem);
         setIsCreatingRoom(false);
         setPendingRoomCreation(null);
         setShowAddRoomLink(false);
-        // Clear room input to show selected item name
+        roomInputRef.current = selectedItem.name || "";
         setRoomInput(selectedItem.name || "");
-        
-        // Update parent's internal state (LocationSearchAndCreate) so it can track current selection
+
+        // Update parent immediately with current ref values
         if (onLocationChange) {
-          const currentLocation = {
+          const locationObj = {
             room: selectedItem,
-            device: selectedDevice || null,
-            shelf: selectedShelf || null,
-            rack: selectedRack || null,
-            position: positionInput ? { coordinate: positionInput } : null,
+            device: currentDevice || null,
+            shelf: currentShelf || null,
+            rack: currentRack || null,
+            position: currentPosition ? { coordinate: currentPosition } : null,
           };
-          onLocationChange(currentLocation);
+          onLocationChange(buildLocationWithFlexibleFields(locationObj));
         }
       } else if (trimmedValue) {
         // User is typing - check if room exists
@@ -383,298 +497,711 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
         );
         if (existing) {
           // Found existing room - set it with id
+          selectedRoomRef.current = existing;
           setSelectedRoom(existing);
           setIsCreatingRoom(false);
           setPendingRoomCreation(null);
           setShowAddRoomLink(false);
-          
-          // Update parent's internal state (LocationSearchAndCreate)
+          roomInputRef.current = existing.name || "";
+          setRoomInput(existing.name || "");
+
+          // Update parent immediately
           if (onLocationChange) {
-            const currentLocation = {
+            const locationObj = {
               room: existing,
-              device: selectedDevice || null,
-              shelf: selectedShelf || null,
-              rack: selectedRack || null,
-              position: positionInput ? { coordinate: positionInput } : null,
+              device: currentDevice || null,
+              shelf: currentShelf || null,
+              rack: currentRack || null,
+              position: currentPosition
+                ? { coordinate: currentPosition }
+                : null,
             };
-            onLocationChange(currentLocation);
+            onLocationChange(buildLocationWithFlexibleFields(locationObj));
           }
         } else {
           // New room - show "add new" link
+          if (process.env.NODE_ENV === "development") {
+            console.log(
+              "[EnhancedCascadingMode] handleRoomChange: Setting new room creation mode",
+              {
+                trimmedValue,
+                existingRooms: rooms.map((r) => r.name),
+              },
+            );
+          }
           setIsCreatingRoom(true);
           const newRoom = {
             name: trimmedValue,
             code: trimmedValue.substring(0, 50).toUpperCase(),
           };
+          selectedRoomRef.current = newRoom;
           setSelectedRoom(newRoom);
           setPendingRoomCreation(newRoom);
           setShowAddRoomLink(true);
-          
-          // Clear any existing timeout
-          if (roomCreationTimeoutRef.current) {
-            clearTimeout(roomCreationTimeoutRef.current);
-            roomCreationTimeoutRef.current = null;
+          // Keep input value - don't clear it
+
+          // Update parent immediately with new room (no id yet)
+          if (onLocationChange) {
+            const locationObj = {
+              room: newRoom,
+              device: currentDevice || null,
+              shelf: currentShelf || null,
+              rack: currentRack || null,
+              position: currentPosition
+                ? { coordinate: currentPosition }
+                : null,
+            };
+            onLocationChange(buildLocationWithFlexibleFields(locationObj));
           }
         }
       } else {
-        // Empty input - clear selection
+        // Empty input - clear selection (user explicitly cleared)
+        selectedRoomRef.current = null;
         setSelectedRoom(null);
         setIsCreatingRoom(false);
         setPendingRoomCreation(null);
         setShowAddRoomLink(false);
+        roomInputRef.current = "";
+        setRoomInput("");
         // Also clear child selections
+        selectedDeviceRef.current = null;
+        selectedShelfRef.current = null;
+        selectedRackRef.current = null;
         setSelectedDevice(null);
         setSelectedShelf(null);
         setSelectedRack(null);
+        deviceInputRef.current = "";
+        shelfInputRef.current = "";
+        rackInputRef.current = "";
         setDeviceInput("");
         setShelfInput("");
         setRackInput("");
+
+        // Update parent immediately
+        if (onLocationChange) {
+          onLocationChange(
+            buildLocationWithFlexibleFields({
+              room: null,
+              device: null,
+              shelf: null,
+              rack: null,
+              position: null,
+            }),
+          );
+        }
       }
     },
-    [rooms],
+    [
+      rooms,
+      onLocationChange,
+      selectedDevice,
+      selectedShelf,
+      selectedRack,
+      positionInput,
+      buildLocationWithFlexibleFields,
+    ],
   );
 
-
-  // Ref to track latest selected device (for onInputChange timing)
+  // Refs to track latest selected items synchronously
+  const selectedRoomRef = useRef(selectedRoom);
   const selectedDeviceRef = useRef(selectedDevice);
+  const selectedShelfRef = useRef(selectedShelf);
+  const selectedRackRef = useRef(selectedRack);
+
+  useEffect(() => {
+    selectedRoomRef.current = selectedRoom;
+  }, [selectedRoom]);
+
   useEffect(() => {
     selectedDeviceRef.current = selectedDevice;
   }, [selectedDevice]);
 
+  useEffect(() => {
+    selectedShelfRef.current = selectedShelf;
+  }, [selectedShelf]);
+
+  useEffect(() => {
+    selectedRackRef.current = selectedRack;
+  }, [selectedRack]);
+
   // Helper: Check if Add button should be enabled for room
   const canAddRoom = useCallback(() => {
-    const trimmed = roomInput.trim();
-    if (!trimmed) return false;
-    const matches = rooms.find((r) => r.name?.toLowerCase() === trimmed.toLowerCase());
-    return !matches && trimmed.length > 0;
-  }, [roomInput, rooms]);
+    // Use ref for synchronous access to current input value
+    const currentInput = roomInputRef.current || roomInput;
+    const trimmed = currentInput.trim();
+    const result = (() => {
+      if (!trimmed) return false;
+      // Must be in creation mode (isCreatingRoom flag is true)
+      if (!isCreatingRoom && !pendingRoomCreation) return false;
+      const matches = rooms.find(
+        (r) => r.name?.toLowerCase() === trimmed.toLowerCase(),
+      );
+      return !matches && trimmed.length > 0;
+    })();
+    if (process.env.NODE_ENV === "development") {
+      console.log("[EnhancedCascadingMode] canAddRoom:", {
+        currentInput,
+        trimmed,
+        isCreatingRoom,
+        pendingRoomCreation: !!pendingRoomCreation,
+        matchesExisting: !!rooms.find(
+          (r) => r.name?.toLowerCase() === trimmed.toLowerCase(),
+        ),
+        result,
+      });
+    }
+    return result;
+  }, [roomInput, rooms, isCreatingRoom, pendingRoomCreation]);
 
   // Helper: Check if Add button should be enabled for device
   const canAddDevice = useCallback(() => {
-    const trimmed = deviceInput.trim();
-    if (!trimmed || !selectedRoom || (!selectedRoom.id && !isCreatingRoom && !pendingRoomCreation)) {
-      return false;
+    // Use ref for synchronous access to current input value
+    const currentInput = deviceInputRef.current || deviceInput;
+    const trimmed = currentInput.trim();
+    const result = (() => {
+      if (!trimmed) return false;
+      // Must have a valid room (with id or being created)
+      if (
+        !selectedRoom ||
+        (!selectedRoom.id && !isCreatingRoom && !pendingRoomCreation)
+      ) {
+        return false;
+      }
+      // Must be in creation mode (isCreatingDevice flag is true)
+      if (!isCreatingDevice) return false;
+      const matches = devices.find(
+        (d) => d.name?.toLowerCase() === trimmed.toLowerCase(),
+      );
+      return !matches && trimmed.length > 0;
+    })();
+    if (process.env.NODE_ENV === "development") {
+      console.log("[EnhancedCascadingMode] canAddDevice:", {
+        currentInput,
+        trimmed,
+        selectedRoom: selectedRoom
+          ? { id: selectedRoom.id, name: selectedRoom.name }
+          : null,
+        isCreatingRoom,
+        pendingRoomCreation: !!pendingRoomCreation,
+        isCreatingDevice,
+        matchesExisting: !!devices.find(
+          (d) => d.name?.toLowerCase() === trimmed.toLowerCase(),
+        ),
+        result,
+      });
     }
-    const matches = devices.find((d) => d.name?.toLowerCase() === trimmed.toLowerCase());
-    return !matches && trimmed.length > 0;
-  }, [deviceInput, devices, selectedRoom, isCreatingRoom, pendingRoomCreation]);
+    return result;
+  }, [
+    deviceInput,
+    devices,
+    selectedRoom,
+    isCreatingRoom,
+    pendingRoomCreation,
+    isCreatingDevice,
+  ]);
 
   // Helper: Check if Add button should be enabled for shelf
   const canAddShelf = useCallback(() => {
-    const trimmed = shelfInput.trim();
-    if (!trimmed || !selectedDevice || (!selectedDevice.id && !isCreatingDevice)) {
-      return false;
+    // Use ref for synchronous access to current input value
+    const currentInput = shelfInputRef.current || shelfInput;
+    const trimmed = currentInput.trim();
+    const result = (() => {
+      if (!trimmed) return false;
+      // Must have a valid device (with id or being created)
+      if (!selectedDevice || (!selectedDevice.id && !isCreatingDevice)) {
+        return false;
+      }
+      // Must be in creation mode (isCreatingShelf flag is true)
+      if (!isCreatingShelf) return false;
+      const matches = shelves.find(
+        (s) => (s.label || s.name)?.toLowerCase() === trimmed.toLowerCase(),
+      );
+      return !matches && trimmed.length > 0;
+    })();
+    if (process.env.NODE_ENV === "development") {
+      console.log("[EnhancedCascadingMode] canAddShelf:", {
+        currentInput,
+        trimmed,
+        selectedDevice: selectedDevice
+          ? { id: selectedDevice.id, name: selectedDevice.name }
+          : null,
+        isCreatingDevice,
+        isCreatingShelf,
+        matchesExisting: !!shelves.find(
+          (s) => (s.label || s.name)?.toLowerCase() === trimmed.toLowerCase(),
+        ),
+        result,
+      });
     }
-    const matches = shelves.find((s) => (s.label || s.name)?.toLowerCase() === trimmed.toLowerCase());
-    return !matches && trimmed.length > 0;
-  }, [shelfInput, shelves, selectedDevice, isCreatingDevice]);
+    return result;
+  }, [shelfInput, shelves, selectedDevice, isCreatingDevice, isCreatingShelf]);
 
   // Helper: Check if Add button should be enabled for rack
   const canAddRack = useCallback(() => {
-    const trimmed = rackInput.trim();
-    if (!trimmed || !selectedShelf || (!selectedShelf.id && !isCreatingShelf)) {
-      return false;
+    // Use ref for synchronous access to current input value
+    const currentInput = rackInputRef.current || rackInput;
+    const trimmed = currentInput.trim();
+    const result = (() => {
+      if (!trimmed) return false;
+      // Must have a valid shelf (with id or being created)
+      if (!selectedShelf || (!selectedShelf.id && !isCreatingShelf)) {
+        return false;
+      }
+      // Must be in creation mode (isCreatingRack flag is true)
+      if (!isCreatingRack) return false;
+      const matches = racks.find(
+        (r) => (r.label || r.name)?.toLowerCase() === trimmed.toLowerCase(),
+      );
+      return !matches && trimmed.length > 0;
+    })();
+    if (process.env.NODE_ENV === "development") {
+      console.log("[EnhancedCascadingMode] canAddRack:", {
+        currentInput,
+        trimmed,
+        selectedShelf: selectedShelf
+          ? { id: selectedShelf.id, label: selectedShelf.label }
+          : null,
+        isCreatingShelf,
+        isCreatingRack,
+        matchesExisting: !!racks.find(
+          (r) => (r.label || r.name)?.toLowerCase() === trimmed.toLowerCase(),
+        ),
+        result,
+      });
     }
-    const matches = racks.find((r) => (r.label || r.name)?.toLowerCase() === trimmed.toLowerCase());
-    return !matches && trimmed.length > 0;
-  }, [rackInput, racks, selectedShelf, isCreatingShelf]);
+    return result;
+  }, [rackInput, racks, selectedShelf, isCreatingShelf, isCreatingRack]);
 
-  // Create device if input doesn't match existing
+  // Create device if input doesn't match existing - FULLY SYNCHRONOUS
   const handleDeviceChange = useCallback(
-    async (inputValue, selectedItem) => {
+    (inputValue, selectedItem) => {
       const trimmedValue = inputValue?.trim() || "";
 
+      // Get current values from refs for synchronous access
+      const currentRoom = selectedRoomRef.current || selectedRoom;
+      const currentShelf = selectedShelfRef.current || selectedShelf;
+      const currentRack = selectedRackRef.current || selectedRack;
+      const currentPosition = positionInput;
+
       if (selectedItem) {
-        // User selected an item from dropdown - set it directly
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[EnhancedCascadingMode] handleDeviceChange: selectedItem', JSON.stringify({
-            id: selectedItem.id,
-            name: selectedItem.name,
-            code: selectedItem.code,
-          }, null, 2));
-        }
+        // User selected from dropdown
+        selectedDeviceRef.current = selectedItem;
         setSelectedDevice(selectedItem);
-        setDeviceInput(selectedItem.name || "");
         setIsCreatingDevice(false);
         setShowAddDeviceLink(false);
-        
-        // Update parent's internal state (LocationSearchAndCreate) so it can track current selection
-        // This does NOT notify the grandparent (MoveSampleModal) - that only happens when "Add" is clicked
+        deviceInputRef.current = selectedItem.name || "";
+        setDeviceInput(selectedItem.name || "");
+
+        // Update parent immediately
         if (onLocationChange) {
-          const currentLocation = {
-            room: selectedRoom || null,
+          const locationObj = {
+            room: currentRoom || null,
             device: selectedItem,
-            shelf: selectedShelf || null,
-            rack: selectedRack || null,
-            position: positionInput ? { coordinate: positionInput } : null,
+            shelf: currentShelf || null,
+            rack: currentRack || null,
+            position: currentPosition ? { coordinate: currentPosition } : null,
           };
-          onLocationChange(currentLocation);
+          onLocationChange(buildLocationWithFlexibleFields(locationObj));
         }
-      } else if (trimmedValue && selectedRoom && (selectedRoom.id || isCreatingRoom || pendingRoomCreation)) {
+      } else if (
+        trimmedValue &&
+        currentRoom &&
+        (currentRoom.id || isCreatingRoom || pendingRoomCreation)
+      ) {
         // User is typing - check if it matches existing or needs creation
-        setDeviceInput(trimmedValue);
         const existing = devices.find(
           (d) => d.name?.toLowerCase() === trimmedValue.toLowerCase(),
         );
         if (existing) {
+          selectedDeviceRef.current = existing;
           setSelectedDevice(existing);
           setIsCreatingDevice(false);
           setShowAddDeviceLink(false);
+          deviceInputRef.current = existing.name || "";
+          setDeviceInput(existing.name || "");
+
+          // Update parent immediately
+          if (onLocationChange) {
+            const locationObj = {
+              room: currentRoom || null,
+              device: existing,
+              shelf: currentShelf || null,
+              rack: currentRack || null,
+              position: currentPosition
+                ? { coordinate: currentPosition }
+                : null,
+            };
+            onLocationChange(buildLocationWithFlexibleFields(locationObj));
+          }
         } else {
           setIsCreatingDevice(true);
-          setSelectedDevice({
+          const newDevice = {
             name: trimmedValue,
             code: trimmedValue.substring(0, 50).toUpperCase(),
             type: "other",
-          });
+          };
+          selectedDeviceRef.current = newDevice;
+          setSelectedDevice(newDevice);
           setShowAddDeviceLink(true);
+
+          // Update parent immediately with new device (no id yet)
+          if (onLocationChange) {
+            const locationObj = {
+              room: currentRoom || null,
+              device: newDevice,
+              shelf: currentShelf || null,
+              rack: currentRack || null,
+              position: currentPosition
+                ? { coordinate: currentPosition }
+                : null,
+            };
+            onLocationChange(buildLocationWithFlexibleFields(locationObj));
+          }
         }
       } else {
-        // No input and no selected item - clear selection
+        // Empty input - clear selection
+        selectedDeviceRef.current = null;
         setSelectedDevice(null);
-        setDeviceInput("");
         setIsCreatingDevice(false);
         setShowAddDeviceLink(false);
+        deviceInputRef.current = "";
+        setDeviceInput("");
+
+        // Update parent immediately
+        if (onLocationChange) {
+          const locationObj = {
+            room: currentRoom || null,
+            device: null,
+            shelf: currentShelf || null,
+            rack: currentRack || null,
+            position: currentPosition ? { coordinate: currentPosition } : null,
+          };
+          onLocationChange(buildLocationWithFlexibleFields(locationObj));
+        }
       }
     },
-    [devices, selectedRoom, isCreatingRoom, pendingRoomCreation, onLocationChange, selectedShelf, selectedRack, positionInput],
+    [
+      devices,
+      selectedRoom,
+      isCreatingRoom,
+      pendingRoomCreation,
+      onLocationChange,
+      selectedShelf,
+      selectedRack,
+      positionInput,
+      buildLocationWithFlexibleFields,
+    ],
   );
 
   // Handle Enter key for device - show confirmation
-  const handleDeviceKeyDown = useCallback((e) => {
-    if (e.key === 'Enter' && canAddDevice()) {
-      e.preventDefault();
-      setShowConfirmDevice(true);
-    }
-  }, [canAddDevice]);
+  const handleDeviceKeyDown = useCallback(
+    (e) => {
+      if (e.key === "Enter" && canAddDevice()) {
+        e.preventDefault();
+        setShowConfirmDevice(true);
+      }
+    },
+    [canAddDevice],
+  );
 
-  // Create shelf if input doesn't match existing
+  // Create shelf if input doesn't match existing - FULLY SYNCHRONOUS
   const handleShelfChange = useCallback(
-    async (inputValue, selectedItem) => {
+    (inputValue, selectedItem) => {
       const trimmedValue = inputValue?.trim() || "";
-      setShelfInput(inputValue || "");
+
+      // Get current values from refs for synchronous access
+      const currentRoom = selectedRoomRef.current || selectedRoom;
+      const currentDevice = selectedDeviceRef.current || selectedDevice;
+      const currentRack = selectedRackRef.current || selectedRack;
+      const currentPosition = positionInput;
 
       if (selectedItem) {
+        selectedShelfRef.current = selectedItem;
         setSelectedShelf(selectedItem);
         setIsCreatingShelf(false);
         setShowAddShelfLink(false);
-        
-        // Update parent's internal state (LocationSearchAndCreate) so it can track current selection
+        shelfInputRef.current = selectedItem.label || selectedItem.name || "";
+        setShelfInput(selectedItem.label || selectedItem.name || "");
+
+        // Update parent immediately
         if (onLocationChange) {
-          const currentLocation = {
-            room: selectedRoom || null,
-            device: selectedDevice || null,
+          const locationObj = {
+            room: currentRoom || null,
+            device: currentDevice || null,
             shelf: selectedItem,
-            rack: selectedRack || null,
-            position: positionInput ? { coordinate: positionInput } : null,
+            rack: currentRack || null,
+            position: currentPosition ? { coordinate: currentPosition } : null,
           };
-          onLocationChange(currentLocation);
+          onLocationChange(buildLocationWithFlexibleFields(locationObj));
         }
-      } else if (trimmedValue && selectedDevice && selectedDevice.id) {
+      } else if (trimmedValue && currentDevice && currentDevice.id) {
         const existing = shelves.find(
           (s) => s.label?.toLowerCase() === trimmedValue.toLowerCase(),
         );
         if (existing) {
+          selectedShelfRef.current = existing;
           setSelectedShelf(existing);
           setIsCreatingShelf(false);
           setShowAddShelfLink(false);
-          
-          // Don't call onLocationChange here - only when "Add" is clicked
+          shelfInputRef.current = existing.label || "";
+          setShelfInput(existing.label || "");
+
+          // Update parent immediately
+          if (onLocationChange) {
+            const locationObj = {
+              room: currentRoom || null,
+              device: currentDevice || null,
+              shelf: existing,
+              rack: currentRack || null,
+              position: currentPosition
+                ? { coordinate: currentPosition }
+                : null,
+            };
+            onLocationChange(buildLocationWithFlexibleFields(locationObj));
+          }
         } else {
           setIsCreatingShelf(true);
-          setSelectedShelf({ label: trimmedValue });
+          const newShelf = { label: trimmedValue };
+          selectedShelfRef.current = newShelf;
+          setSelectedShelf(newShelf);
           setShowAddShelfLink(true);
+
+          // Update parent immediately with new shelf (no id yet)
+          if (onLocationChange) {
+            const locationObj = {
+              room: currentRoom || null,
+              device: currentDevice || null,
+              shelf: newShelf,
+              rack: currentRack || null,
+              position: currentPosition
+                ? { coordinate: currentPosition }
+                : null,
+            };
+            onLocationChange(buildLocationWithFlexibleFields(locationObj));
+          }
         }
       } else {
+        selectedShelfRef.current = null;
         setSelectedShelf(null);
         setIsCreatingShelf(false);
         setShowAddShelfLink(false);
+        shelfInputRef.current = "";
+        setShelfInput("");
+
+        // Update parent immediately
+        if (onLocationChange) {
+          const locationObj = {
+            room: currentRoom || null,
+            device: currentDevice || null,
+            shelf: null,
+            rack: currentRack || null,
+            position: currentPosition ? { coordinate: currentPosition } : null,
+          };
+          onLocationChange(buildLocationWithFlexibleFields(locationObj));
+        }
       }
     },
-    [shelves, selectedDevice, onLocationChange, selectedRoom, selectedRack, positionInput],
+    [
+      shelves,
+      selectedDevice,
+      onLocationChange,
+      selectedRoom,
+      selectedRack,
+      positionInput,
+      buildLocationWithFlexibleFields,
+    ],
   );
 
-  // Create rack if input doesn't match existing
+  // Create rack if input doesn't match existing - FULLY SYNCHRONOUS
   const handleRackChange = useCallback(
-    async (inputValue, selectedItem) => {
+    (inputValue, selectedItem) => {
       const trimmedValue = inputValue?.trim() || "";
-      setRackInput(inputValue || "");
+
+      // Get current values from refs for synchronous access
+      const currentRoom = selectedRoomRef.current || selectedRoom;
+      const currentDevice = selectedDeviceRef.current || selectedDevice;
+      const currentShelf = selectedShelfRef.current || selectedShelf;
+      const currentPosition = positionInput;
 
       if (selectedItem) {
+        selectedRackRef.current = selectedItem;
         setSelectedRack(selectedItem);
         setIsCreatingRack(false);
         setShowAddRackLink(false);
-        
-        // Update parent's internal state (LocationSearchAndCreate) so it can track current selection
+        rackInputRef.current = selectedItem.label || selectedItem.name || "";
+        setRackInput(selectedItem.label || selectedItem.name || "");
+
+        // Update parent immediately
         if (onLocationChange) {
-          const currentLocation = {
-            room: selectedRoom || null,
-            device: selectedDevice || null,
-            shelf: selectedShelf || null,
+          const locationObj = {
+            room: currentRoom || null,
+            device: currentDevice || null,
+            shelf: currentShelf || null,
             rack: selectedItem,
-            position: positionInput ? { coordinate: positionInput } : null,
+            position: currentPosition ? { coordinate: currentPosition } : null,
           };
-          onLocationChange(currentLocation);
+          onLocationChange(buildLocationWithFlexibleFields(locationObj));
         }
-      } else if (trimmedValue && selectedShelf && selectedShelf.id) {
+      } else if (trimmedValue && currentShelf && currentShelf.id) {
         const existing = racks.find(
           (r) => r.label?.toLowerCase() === trimmedValue.toLowerCase(),
         );
         if (existing) {
+          selectedRackRef.current = existing;
           setSelectedRack(existing);
           setIsCreatingRack(false);
           setShowAddRackLink(false);
-          
-          // Update parent's internal state (LocationSearchAndCreate)
+          rackInputRef.current = existing.label || "";
+          setRackInput(existing.label || "");
+
+          // Update parent immediately
           if (onLocationChange) {
-            const currentLocation = {
-              room: selectedRoom || null,
-              device: selectedDevice || null,
-              shelf: selectedShelf || null,
+            const locationObj = {
+              room: currentRoom || null,
+              device: currentDevice || null,
+              shelf: currentShelf || null,
               rack: existing,
-              position: positionInput ? { coordinate: positionInput } : null,
+              position: currentPosition
+                ? { coordinate: currentPosition }
+                : null,
             };
-            onLocationChange(currentLocation);
+            onLocationChange(buildLocationWithFlexibleFields(locationObj));
           }
         } else {
           setIsCreatingRack(true);
-          setSelectedRack({ label: trimmedValue, rows: 0, columns: 0 });
+          const newRack = { label: trimmedValue, rows: 0, columns: 0 };
+          selectedRackRef.current = newRack;
+          setSelectedRack(newRack);
           setShowAddRackLink(true);
+
+          // Update parent immediately with new rack (no id yet)
+          if (onLocationChange) {
+            const locationObj = {
+              room: currentRoom || null,
+              device: currentDevice || null,
+              shelf: currentShelf || null,
+              rack: newRack,
+              position: currentPosition
+                ? { coordinate: currentPosition }
+                : null,
+            };
+            onLocationChange(buildLocationWithFlexibleFields(locationObj));
+          }
         }
       } else {
+        selectedRackRef.current = null;
         setSelectedRack(null);
         setIsCreatingRack(false);
         setShowAddRackLink(false);
+        rackInputRef.current = "";
+        setRackInput("");
+
+        // Update parent immediately
+        if (onLocationChange) {
+          const locationObj = {
+            room: currentRoom || null,
+            device: currentDevice || null,
+            shelf: currentShelf || null,
+            rack: null,
+            position: currentPosition ? { coordinate: currentPosition } : null,
+          };
+          onLocationChange(buildLocationWithFlexibleFields(locationObj));
+        }
       }
     },
-    [racks, selectedShelf, onLocationChange, selectedRoom, selectedDevice, positionInput],
+    [
+      racks,
+      selectedShelf,
+      onLocationChange,
+      selectedRoom,
+      selectedDevice,
+      positionInput,
+      buildLocationWithFlexibleFields,
+    ],
   );
 
   // Create room via API
   const createRoom = useCallback(async () => {
     if (!selectedRoom || !selectedRoom.name || selectedRoom.id) return;
 
+    // Code is optional - backend will auto-generate if not provided
     const formData = {
       name: selectedRoom.name,
-      code:
-        selectedRoom.code || selectedRoom.name.substring(0, 50).toUpperCase(),
+      // code: optional - backend generates unique code automatically
       description: "",
       active: true,
     };
 
-    postToOpenElisServer(
+    postToOpenElisServerJsonResponse(
       "/rest/storage/rooms",
-      formData,
-      (created) => {
-        setSelectedRoom(created);
-        setRooms((prev) => [...prev, created]);
+      JSON.stringify(formData),
+      (response) => {
+        // Check if response has error property (400 response)
+        if (response.error) {
+          console.error("Failed to create room:", response.error);
+          // Show error notification
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title" }),
+            message:
+              intl.formatMessage(
+                { id: "storage.create.room.error" },
+                { error: response.error },
+              ) || `Failed to create room: ${response.error}`,
+            kind: NotificationKinds.error,
+          });
+          setNotificationVisible(true);
+          // Don't clear state - keep user's input so they can fix it
+          // Keep isCreatingRoom true so "Add new" button stays enabled
+          return;
+        }
+        // Success - response is the created room object
+        selectedRoomRef.current = response;
+        setSelectedRoom(response);
+        roomInputRef.current = response.name || "";
+        setRoomInput(response.name || "");
+        setRooms((prev) => [...prev, response]);
         setIsCreatingRoom(false);
-      },
-      (error) => {
-        console.error("Failed to create room:", error);
+        setPendingRoomCreation(null);
+        setShowAddRoomLink(false);
+
+        // Show success notification
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message:
+            intl.formatMessage(
+              { id: "storage.create.room.success" },
+              { name: response.name },
+            ) || `Room "${response.name}" created successfully`,
+          kind: NotificationKinds.success,
+        });
+        setNotificationVisible(true);
+
+        // Update parent immediately with created room
+        const currentDevice = selectedDeviceRef.current || selectedDevice;
+        const currentShelf = selectedShelfRef.current || selectedShelf;
+        const currentRack = selectedRackRef.current || selectedRack;
+        const currentPosition = positionInput;
+        const locationObj = {
+          room: response,
+          device: currentDevice || null,
+          shelf: currentShelf || null,
+          rack: currentRack || null,
+          position: currentPosition ? { coordinate: currentPosition } : null,
+        };
+        onLocationChange(buildLocationWithFlexibleFields(locationObj));
       },
     );
-  }, [selectedRoom]);
+  }, [
+    selectedRoom,
+    onLocationChange,
+    selectedDevice,
+    selectedShelf,
+    selectedRack,
+    positionInput,
+    addNotification,
+    setNotificationVisible,
+    intl,
+  ]);
 
   // Create device via API
   const createDevice = useCallback(async () => {
@@ -686,41 +1213,78 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
     )
       return;
 
+    // Code is optional - backend will auto-generate if not provided
     const formData = {
       name: selectedDevice.name,
-      code:
-        selectedDevice.code ||
-        selectedDevice.name.substring(0, 50).toUpperCase(),
+      // code: optional - backend generates unique code automatically
       type: selectedDevice.type || "other",
       active: true,
       parentRoomId: String(selectedRoom.id),
     };
 
-      postToOpenElisServer(
-        "/rest/storage/devices",
-        formData,
-        (created) => {
-          setSelectedDevice(created);
-          setDevices((prev) => [...prev, created]);
-          setIsCreatingDevice(false);
-          
-          // CRITICAL FIX: Immediately notify parent when device is created
-          if (onLocationChange) {
-            const currentLocation = {
-              room: selectedRoom || null,
-              device: created,
-              shelf: selectedShelf || null,
-              rack: selectedRack || null,
-              position: positionInput ? { coordinate: positionInput } : null,
-            };
-            onLocationChange(currentLocation);
-          }
-        },
-        (error) => {
-          console.error("Failed to create device:", error);
-        },
-      );
-  }, [selectedDevice, selectedRoom]);
+    postToOpenElisServerJsonResponse(
+      "/rest/storage/devices",
+      JSON.stringify(formData),
+      (response) => {
+        if (response.error) {
+          console.error("Failed to create device:", response.error);
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title" }),
+            message:
+              intl.formatMessage(
+                { id: "storage.create.device.error" },
+                { error: response.error },
+              ) || `Failed to create device: ${response.error}`,
+            kind: NotificationKinds.error,
+          });
+          setNotificationVisible(true);
+          return;
+        }
+        selectedDeviceRef.current = response;
+        setSelectedDevice(response);
+        deviceInputRef.current = response.name || "";
+        setDeviceInput(response.name || "");
+        setDevices((prev) => [...prev, response]);
+        setIsCreatingDevice(false);
+        setShowAddDeviceLink(false);
+
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message:
+            intl.formatMessage(
+              { id: "storage.create.device.success" },
+              { name: response.name },
+            ) || `Device "${response.name}" created successfully`,
+          kind: NotificationKinds.success,
+        });
+        setNotificationVisible(true);
+
+        // Update parent immediately
+        const currentRoom = selectedRoomRef.current || selectedRoom;
+        const currentShelf = selectedShelfRef.current || selectedShelf;
+        const currentRack = selectedRackRef.current || selectedRack;
+        const currentPosition = positionInput;
+        const locationObj = {
+          room: currentRoom || null,
+          device: response,
+          shelf: currentShelf || null,
+          rack: currentRack || null,
+          position: currentPosition ? { coordinate: currentPosition } : null,
+        };
+        onLocationChange(buildLocationWithFlexibleFields(locationObj));
+      },
+    );
+  }, [
+    selectedDevice,
+    selectedRoom,
+    onLocationChange,
+    selectedShelf,
+    selectedRack,
+    positionInput,
+    addNotification,
+    setNotificationVisible,
+    intl,
+  ]);
 
   // Create shelf via API
   const createShelf = useCallback(async () => {
@@ -738,21 +1302,69 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
       parentDeviceId: String(selectedDevice.id),
     };
 
-    postToOpenElisServer(
+    postToOpenElisServerJsonResponse(
       "/rest/storage/shelves",
-      formData,
-      (created) => {
-        setSelectedShelf(created);
-        setShelves((prev) => [...prev, created]);
+      JSON.stringify(formData),
+      (response) => {
+        if (response.error) {
+          console.error("Failed to create shelf:", response.error);
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title" }),
+            message:
+              intl.formatMessage(
+                { id: "storage.create.shelf.error" },
+                { error: response.error },
+              ) || `Failed to create shelf: ${response.error}`,
+            kind: NotificationKinds.error,
+          });
+          setNotificationVisible(true);
+          return;
+        }
+        selectedShelfRef.current = response;
+        setSelectedShelf(response);
+        shelfInputRef.current = response.label || "";
+        setShelfInput(response.label || "");
+        setShelves((prev) => [...prev, response]);
         setIsCreatingShelf(false);
-        
-        // Don't call onLocationChange here - only when "Add" is clicked
-      },
-      (error) => {
-        console.error("Failed to create shelf:", error);
+        setShowAddShelfLink(false);
+
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message:
+            intl.formatMessage(
+              { id: "storage.create.shelf.success" },
+              { label: response.label },
+            ) || `Shelf "${response.label}" created successfully`,
+          kind: NotificationKinds.success,
+        });
+        setNotificationVisible(true);
+
+        // Update parent immediately
+        const currentRoom = selectedRoomRef.current || selectedRoom;
+        const currentDevice = selectedDeviceRef.current || selectedDevice;
+        const currentRack = selectedRackRef.current || selectedRack;
+        const currentPosition = positionInput;
+        const locationObj = {
+          room: currentRoom || null,
+          device: currentDevice || null,
+          shelf: response,
+          rack: currentRack || null,
+          position: currentPosition ? { coordinate: currentPosition } : null,
+        };
+        onLocationChange(buildLocationWithFlexibleFields(locationObj));
       },
     );
-  }, [selectedShelf, selectedDevice, onLocationChange, selectedRoom, selectedRack, positionInput]);
+  }, [
+    selectedShelf,
+    selectedDevice,
+    onLocationChange,
+    selectedRoom,
+    selectedRack,
+    positionInput,
+    addNotification,
+    setNotificationVisible,
+    intl,
+  ]);
 
   // Create rack via API
   const createRack = useCallback(async () => {
@@ -772,31 +1384,69 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
       parentShelfId: String(selectedShelf.id),
     };
 
-    postToOpenElisServer(
+    postToOpenElisServerJsonResponse(
       "/rest/storage/racks",
-      formData,
-      (created) => {
-        setSelectedRack(created);
-        setRacks((prev) => [...prev, created]);
-        setIsCreatingRack(false);
-        
-        // Update parent's internal state (LocationSearchAndCreate)
-        if (onLocationChange) {
-          const currentLocation = {
-            room: selectedRoom || null,
-            device: selectedDevice || null,
-            shelf: selectedShelf || null,
-            rack: created,
-            position: positionInput ? { coordinate: positionInput } : null,
-          };
-          onLocationChange(currentLocation);
+      JSON.stringify(formData),
+      (response) => {
+        if (response.error) {
+          console.error("Failed to create rack:", response.error);
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title" }),
+            message:
+              intl.formatMessage(
+                { id: "storage.create.rack.error" },
+                { error: response.error },
+              ) || `Failed to create rack: ${response.error}`,
+            kind: NotificationKinds.error,
+          });
+          setNotificationVisible(true);
+          return;
         }
-      },
-      (error) => {
-        console.error("Failed to create rack:", error);
+        selectedRackRef.current = response;
+        setSelectedRack(response);
+        rackInputRef.current = response.label || "";
+        setRackInput(response.label || "");
+        setRacks((prev) => [...prev, response]);
+        setIsCreatingRack(false);
+        setShowAddRackLink(false);
+
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message:
+            intl.formatMessage(
+              { id: "storage.create.rack.success" },
+              { label: response.label },
+            ) || `Rack "${response.label}" created successfully`,
+          kind: NotificationKinds.success,
+        });
+        setNotificationVisible(true);
+
+        // Update parent immediately
+        const currentRoom = selectedRoomRef.current || selectedRoom;
+        const currentDevice = selectedDeviceRef.current || selectedDevice;
+        const currentShelf = selectedShelfRef.current || selectedShelf;
+        const currentPosition = positionInput;
+        const locationObj = {
+          room: currentRoom || null,
+          device: currentDevice || null,
+          shelf: currentShelf || null,
+          rack: response,
+          position: currentPosition ? { coordinate: currentPosition } : null,
+        };
+        onLocationChange(buildLocationWithFlexibleFields(locationObj));
       },
     );
-  }, [selectedRack, selectedShelf, onLocationChange, selectedRoom, selectedDevice, positionInput]);
+  }, [
+    selectedRack,
+    selectedShelf,
+    onLocationChange,
+    selectedRoom,
+    selectedDevice,
+    positionInput,
+    addNotification,
+    setNotificationVisible,
+    intl,
+  ]);
 
   // Note: Items are now created manually via "add new" links, not automatically
 
@@ -809,7 +1459,10 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
     <div className="enhanced-cascading-container">
       {/* Confirmation dialogs */}
       {showConfirmDevice && selectedDevice && (
-        <ComposedModal open={showConfirmDevice} onClose={() => setShowConfirmDevice(false)}>
+        <ComposedModal
+          open={showConfirmDevice}
+          onClose={() => setShowConfirmDevice(false)}
+        >
           <ModalHeader
             title={intl.formatMessage({
               id: "label.button.confirmTitle",
@@ -824,13 +1477,21 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
             />
           </ModalBody>
           <ModalFooter>
-            <Button kind="secondary" onClick={() => setShowConfirmDevice(false)}>
+            <Button
+              kind="secondary"
+              onClick={() => setShowConfirmDevice(false)}
+            >
               <FormattedMessage id="label.button.cancel" />
             </Button>
             <Button
               kind="primary"
               onClick={() => {
-                if (selectedDevice && !selectedDevice.id && selectedRoom && selectedRoom.id) {
+                if (
+                  selectedDevice &&
+                  !selectedDevice.id &&
+                  selectedRoom &&
+                  selectedRoom.id
+                ) {
                   createDevice();
                 }
                 setShowConfirmDevice(false);
@@ -856,23 +1517,58 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
               defaultMessage: "Room",
             })}
             items={rooms || []}
-            itemToString={(item) => (item ? item.name : "")}
-            onInputChange={({ inputValue }) => {
-              setRoomInput(inputValue || "");
-              if (inputValue !== selectedRoom?.name) {
-                handleRoomChange(inputValue, null);
-              }
+            itemToString={(item) => {
+              if (!item) return "";
+              return item.name || "";
+            }}
+            selectedItem={selectedRoom || null}
+            downshiftProps={{
+              inputValue: roomInputRef.current || roomInput || "",
+              onStateChange: (changes, downshiftState) => {
+                // Prevent inputValue from being reset when selectedItem is null (during creation)
+                if (
+                  changes.inputValue !== undefined &&
+                  changes.inputValue === "" &&
+                  (isCreatingRoom || pendingRoomCreation) &&
+                  roomInputRef.current &&
+                  roomInputRef.current.trim()
+                ) {
+                  // Force the input value to stay as our ref value
+                  return { ...changes, inputValue: roomInputRef.current };
+                }
+              },
+            }}
+            onInputChange={(event) => {
+              // ComboBox onInputChange can pass string directly or { inputValue } object
+              const inputValue =
+                typeof event === "string"
+                  ? event
+                  : event?.inputValue !== undefined
+                    ? event.inputValue
+                    : event?.target?.value || "";
+              const newInput = inputValue || "";
+
+              // Update ref and state synchronously
+              roomInputRef.current = newInput;
+              setRoomInput(newInput);
+
+              // Handle change immediately with new value
+              handleRoomChange(newInput, null);
             }}
             onChange={({ selectedItem }) => {
               if (selectedItem) {
-                handleRoomChange(selectedItem.name || "", selectedItem);
+                // User selected from dropdown - update immediately
+                roomInputRef.current = selectedItem.name || "";
                 setRoomInput(selectedItem.name || "");
+                handleRoomChange(selectedItem.name || "", selectedItem);
               } else {
-                handleRoomChange("", null);
-                setRoomInput("");
+                // User cleared selection - allow it, but keep input value if it exists
+                // Only clear if input is actually empty
+                if (!roomInputRef.current || !roomInputRef.current.trim()) {
+                  handleRoomChange("", null);
+                }
               }
             }}
-            selectedItem={selectedRoom}
             placeholder={intl.formatMessage({
               id: "storage.room.placeholder",
               defaultMessage: "Select or create room...",
@@ -885,7 +1581,7 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
               kind="ghost"
               size="md"
               onClick={() => {
-                if (canAddRoom() && selectedRoom && !selectedRoom.id) {
+                if (canAddRoom() && (isCreatingRoom || pendingRoomCreation)) {
                   createRoom();
                 }
               }}
@@ -893,10 +1589,7 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
               disabled={!canAddRoom()}
             >
               <Add size={16} />
-              <FormattedMessage
-                id="storage.add.new"
-                defaultMessage="Add new"
-              />
+              <FormattedMessage id="storage.add.new" defaultMessage="Add new" />
             </Button>
           </div>
         </div>
@@ -917,32 +1610,41 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
               defaultMessage: "Device",
             })}
             items={devices || []}
-            itemToString={(item) => (item ? item.name : "")}
+            itemToString={(item) => {
+              if (!item) return "";
+              return item.name || "";
+            }}
+            selectedItem={selectedDevice || null}
+            downshiftProps={{
+              inputValue: deviceInputRef.current || deviceInput || "",
+            }}
             onChange={({ selectedItem }) => {
-              if (process.env.NODE_ENV === 'development') {
-                console.log('[EnhancedCascadingMode] Device ComboBox onChange:', selectedItem ? JSON.stringify({
-                  id: selectedItem.id,
-                  name: selectedItem.name,
-                }, null, 2) : 'null');
-              }
               if (selectedItem) {
                 selectedDeviceRef.current = selectedItem;
-                handleDeviceChange(selectedItem.name || "", selectedItem);
+                deviceInputRef.current = selectedItem.name || "";
                 setDeviceInput(selectedItem.name || "");
+                handleDeviceChange(selectedItem.name || "", selectedItem);
               } else {
-                selectedDeviceRef.current = null;
-                handleDeviceChange("", null);
-                setDeviceInput("");
+                // User cleared - only clear if input is actually empty
+                if (!deviceInputRef.current || !deviceInputRef.current.trim()) {
+                  selectedDeviceRef.current = null;
+                  handleDeviceChange("", null);
+                }
               }
             }}
-            onInputChange={({ inputValue }) => {
-              const currentSelected = selectedDeviceRef.current;
-              if (!currentSelected || currentSelected.name?.toLowerCase() !== inputValue?.trim()?.toLowerCase()) {
-                handleDeviceChange(inputValue, null);
-              }
+            onInputChange={(event) => {
+              const inputValue =
+                typeof event === "string"
+                  ? event
+                  : event?.inputValue !== undefined
+                    ? event.inputValue
+                    : event?.target?.value || "";
+              const newInput = inputValue || "";
+              deviceInputRef.current = newInput;
+              setDeviceInput(newInput);
+              handleDeviceChange(newInput, null);
             }}
             onKeyDown={handleDeviceKeyDown}
-            selectedItem={selectedDevice}
             disabled={
               !selectedRoom ||
               (!selectedRoom.id && !isCreatingRoom && !pendingRoomCreation)
@@ -959,7 +1661,12 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
               kind="ghost"
               size="md"
               onClick={() => {
-                if (canAddDevice() && selectedDevice && !selectedDevice.id && selectedRoom && selectedRoom.id) {
+                if (
+                  canAddDevice() &&
+                  isCreatingDevice &&
+                  selectedRoom &&
+                  selectedRoom.id
+                ) {
                   createDevice();
                 }
               }}
@@ -967,10 +1674,7 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
               disabled={!canAddDevice()}
             >
               <Add size={16} />
-              <FormattedMessage
-                id="storage.add.new"
-                defaultMessage="Add new"
-              />
+              <FormattedMessage id="storage.add.new" defaultMessage="Add new" />
             </Button>
           </div>
         </div>
@@ -991,20 +1695,47 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
               defaultMessage: "Shelf",
             })}
             items={shelves || []}
-            itemToString={(item) => (item ? item.label : "")}
-            onInputChange={({ inputValue }) => handleShelfChange(inputValue, null)}
+            itemToString={(item) => {
+              if (!item) return "";
+              // Handle both existing items (with id) and new items being created (without id)
+              return item.label || item.name || "";
+            }}
+            selectedItem={selectedShelf || null}
+            downshiftProps={{
+              inputValue: shelfInputRef.current || shelfInput || "",
+            }}
+            onInputChange={(event) => {
+              const inputValue =
+                typeof event === "string"
+                  ? event
+                  : event?.inputValue !== undefined
+                    ? event.inputValue
+                    : event?.target?.value || "";
+              const newInput = inputValue || "";
+              shelfInputRef.current = newInput;
+              setShelfInput(newInput);
+              handleShelfChange(newInput, null);
+            }}
             onChange={({ selectedItem }) => {
               if (selectedItem) {
-                handleShelfChange(selectedItem.label || selectedItem.name || "", selectedItem);
+                selectedShelfRef.current = selectedItem;
+                shelfInputRef.current =
+                  selectedItem.label || selectedItem.name || "";
                 setShelfInput(selectedItem.label || selectedItem.name || "");
+                handleShelfChange(
+                  selectedItem.label || selectedItem.name || "",
+                  selectedItem,
+                );
               } else {
-                handleShelfChange("", null);
-                setShelfInput("");
+                if (!shelfInputRef.current || !shelfInputRef.current.trim()) {
+                  selectedShelfRef.current = null;
+                  handleShelfChange("", null);
+                }
               }
             }}
-            selectedItem={selectedShelf}
             disabled={(() => {
-              const isDisabled = !selectedDevice || (!selectedDevice.id && !isCreatingDevice);
+              const isDisabled =
+                !selectedDevice || (!selectedDevice.id && !isCreatingDevice);
               return isDisabled;
             })()}
             placeholder={intl.formatMessage({
@@ -1019,7 +1750,12 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
               kind="ghost"
               size="md"
               onClick={() => {
-                if (canAddShelf() && selectedShelf && !selectedShelf.id && selectedDevice && selectedDevice.id) {
+                if (
+                  canAddShelf() &&
+                  isCreatingShelf &&
+                  selectedDevice &&
+                  selectedDevice.id
+                ) {
                   createShelf();
                 }
               }}
@@ -1027,10 +1763,7 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
               disabled={!canAddShelf()}
             >
               <Add size={16} />
-              <FormattedMessage
-                id="storage.add.new"
-                defaultMessage="Add new"
-              />
+              <FormattedMessage id="storage.add.new" defaultMessage="Add new" />
             </Button>
           </div>
         </div>
@@ -1051,18 +1784,44 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
               defaultMessage: "Rack",
             })}
             items={racks || []}
-            itemToString={(item) => (item ? item.label : "")}
-            onInputChange={({ inputValue }) => handleRackChange(inputValue, null)}
+            itemToString={(item) => {
+              if (!item) return "";
+              // Handle both existing items (with id) and new items being created (without id)
+              return item.label || item.name || "";
+            }}
+            selectedItem={selectedRack || null}
+            downshiftProps={{
+              inputValue: rackInputRef.current || rackInput || "",
+            }}
+            onInputChange={(event) => {
+              const inputValue =
+                typeof event === "string"
+                  ? event
+                  : event?.inputValue !== undefined
+                    ? event.inputValue
+                    : event?.target?.value || "";
+              const newInput = inputValue || "";
+              rackInputRef.current = newInput;
+              setRackInput(newInput);
+              handleRackChange(newInput, null);
+            }}
             onChange={({ selectedItem }) => {
               if (selectedItem) {
-                handleRackChange(selectedItem.label || selectedItem.name || "", selectedItem);
+                selectedRackRef.current = selectedItem;
+                rackInputRef.current =
+                  selectedItem.label || selectedItem.name || "";
                 setRackInput(selectedItem.label || selectedItem.name || "");
+                handleRackChange(
+                  selectedItem.label || selectedItem.name || "",
+                  selectedItem,
+                );
               } else {
-                handleRackChange("", null);
-                setRackInput("");
+                if (!rackInputRef.current || !rackInputRef.current.trim()) {
+                  selectedRackRef.current = null;
+                  handleRackChange("", null);
+                }
               }
             }}
-            selectedItem={selectedRack}
             disabled={!selectedShelf || (!selectedShelf.id && !isCreatingShelf)}
             placeholder={intl.formatMessage({
               id: "storage.rack.placeholder",
@@ -1076,7 +1835,12 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
               kind="ghost"
               size="md"
               onClick={() => {
-                if (canAddRack() && selectedRack && !selectedRack.id && selectedShelf && selectedShelf.id) {
+                if (
+                  canAddRack() &&
+                  isCreatingRack &&
+                  selectedShelf &&
+                  selectedShelf.id
+                ) {
                   createRack();
                 }
               }}
@@ -1084,10 +1848,7 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
               disabled={!canAddRack()}
             >
               <Add size={16} />
-              <FormattedMessage
-                id="storage.add.new"
-                defaultMessage="Add new"
-              />
+              <FormattedMessage id="storage.add.new" defaultMessage="Add new" />
             </Button>
           </div>
         </div>
@@ -1107,7 +1868,10 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
                 />{" "}
                 <span className="optional-text">
                   (
-                  <FormattedMessage id="label.optional" defaultMessage="optional" />
+                  <FormattedMessage
+                    id="label.optional"
+                    defaultMessage="optional"
+                  />
                   )
                 </span>
               </>

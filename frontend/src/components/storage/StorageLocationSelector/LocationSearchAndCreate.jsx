@@ -27,13 +27,14 @@ const LocationSearchAndCreate = ({
 }) => {
   const intl = useIntl();
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [internalSelectedLocation, setInternalSelectedLocation] = useState(null);
+  const [internalSelectedLocation, setInternalSelectedLocation] =
+    useState(null);
 
   // SIMPLIFIED: Only sync with external prop when NOT in create form
   // When in create form, internal state is independent until "Add" is clicked
   // CRITICAL: Don't sync when form just closed - parent might not have updated yet
   const justClosedFormRef = useRef(false);
-  
+
   useEffect(() => {
     // CRITICAL: When form closes, we need to preserve the location that was just selected
     // If we just closed the form, don't sync - the parent will update selectedLocation
@@ -44,7 +45,7 @@ const LocationSearchAndCreate = ({
       // This prevents the location from being lost during the async state update
       return;
     }
-    
+
     // Only sync when we're in search mode (not create form) and parent has a location
     // This allows parent to control the selected location when searching
     // CRITICAL: Don't overwrite internalSelectedLocation if it's valid and parent is null
@@ -53,7 +54,11 @@ const LocationSearchAndCreate = ({
       if (selectedLocation) {
         // Parent has location - sync it
         setInternalSelectedLocation(selectedLocation);
-      } else if (internalSelectedLocation && internalSelectedLocation.room && internalSelectedLocation.device) {
+      } else if (
+        internalSelectedLocation &&
+        internalSelectedLocation.room &&
+        internalSelectedLocation.device
+      ) {
         // Parent doesn't have location yet (async update), but we have valid internal state
         // Keep it until parent updates - don't reset to null
         // This is the critical fix - preserve state during async updates
@@ -66,7 +71,7 @@ const LocationSearchAndCreate = ({
    * Convert LocationFilterDropdown format to EnhancedCascadingMode format
    * LocationFilterDropdown format: { id, type, name, hierarchicalPath, parentRoomId, parentRoomName, ... }
    * EnhancedCascadingMode format: { room, device, shelf, rack, position, hierarchical_path }
-   * 
+   *
    * API now ALWAYS provides parent IDs and names, so no fallback parsing needed.
    */
   const convertSearchToCascadingFormat = useCallback((searchLocation) => {
@@ -76,9 +81,10 @@ const LocationSearchAndCreate = ({
 
     // API returns hierarchicalPath (camelCase), preserve it and also set hierarchical_path (snake_case) for consistency
     // CRITICAL: Extract hierarchicalPath BEFORE spread to ensure it's preserved
-    const hierarchicalPath = searchLocation.hierarchical_path || searchLocation.hierarchicalPath;
+    const hierarchicalPath =
+      searchLocation.hierarchical_path || searchLocation.hierarchicalPath;
     const converted = {
-      ...searchLocation,  // Spread all other properties first
+      ...searchLocation, // Spread all other properties first
       id: searchLocation.id,
       type: searchLocation.type,
       // Override with explicit hierarchical_path/hierarchicalPath to ensure they're set (spread might have them, but be explicit)
@@ -91,7 +97,9 @@ const LocationSearchAndCreate = ({
       converted.room = {
         id: searchLocation.id,
         name: searchLocation.name,
-        code: searchLocation.code || searchLocation.name?.substring(0, 50).toUpperCase(),
+        code:
+          searchLocation.code ||
+          searchLocation.name?.substring(0, 50).toUpperCase(),
         active: searchLocation.active !== false,
       };
     }
@@ -103,7 +111,7 @@ const LocationSearchAndCreate = ({
         name: searchLocation.name,
         code: searchLocation.code,
       };
-      
+
       if (searchLocation.parentRoomId) {
         converted.room = {
           id: searchLocation.parentRoomId,
@@ -118,21 +126,21 @@ const LocationSearchAndCreate = ({
         id: searchLocation.id,
         label: searchLocation.label,
       };
-      
+
       if (searchLocation.parentDeviceId) {
         converted.device = {
           id: searchLocation.parentDeviceId,
           name: searchLocation.parentDeviceName,
         };
       }
-      
+
       if (searchLocation.parentRoomId) {
         converted.room = {
           id: searchLocation.parentRoomId,
           name: searchLocation.parentRoomName,
         };
       }
-      
+
       // CRITICAL: Ensure hierarchicalPath is preserved for shelves (API provides full path)
       // Re-assert after setting room/device/shelf to ensure it's not lost
       if (hierarchicalPath) {
@@ -147,28 +155,28 @@ const LocationSearchAndCreate = ({
         id: searchLocation.id,
         label: searchLocation.label,
       };
-      
+
       if (searchLocation.parentShelfId) {
         converted.shelf = {
           id: searchLocation.parentShelfId,
           label: searchLocation.parentShelfLabel,
         };
       }
-      
+
       if (searchLocation.parentDeviceId) {
         converted.device = {
           id: searchLocation.parentDeviceId,
           name: searchLocation.parentDeviceName,
         };
       }
-      
+
       if (searchLocation.parentRoomId) {
         converted.room = {
           id: searchLocation.parentRoomId,
           name: searchLocation.parentRoomName,
         };
       }
-      
+
       // CRITICAL: Ensure hierarchicalPath is preserved for racks (API provides full path)
       // Re-assert after setting room/device/shelf/rack to ensure it's not lost
       if (hierarchicalPath) {
@@ -183,35 +191,35 @@ const LocationSearchAndCreate = ({
         id: searchLocation.id,
         coordinate: searchLocation.coordinate,
       };
-      
+
       if (searchLocation.parentRackId) {
         converted.rack = {
           id: searchLocation.parentRackId,
           label: searchLocation.parentRackLabel,
         };
       }
-      
+
       if (searchLocation.parentShelfId) {
         converted.shelf = {
           id: searchLocation.parentShelfId,
           label: searchLocation.parentShelfLabel,
         };
       }
-      
+
       if (searchLocation.parentDeviceId) {
         converted.device = {
           id: searchLocation.parentDeviceId,
           name: searchLocation.parentDeviceName,
         };
       }
-      
+
       if (searchLocation.parentRoomId) {
         converted.room = {
           id: searchLocation.parentRoomId,
           name: searchLocation.parentRoomName,
         };
       }
-      
+
       // CRITICAL: Ensure hierarchicalPath is preserved for positions (API provides full path)
       // Re-assert after setting all parent components to ensure it's not lost
       if (hierarchicalPath) {
@@ -226,56 +234,140 @@ const LocationSearchAndCreate = ({
   const handleSearchSelect = (location) => {
     // LocationFilterDropdown format: { id, type, name, hierarchical_path, ... }
     // DEBUG: Log EXACTLY what we receive from parent
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[LocationSearchAndCreate] handleSearchSelect RECEIVED:', JSON.stringify(location, null, 2));
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        "[LocationSearchAndCreate] handleSearchSelect RECEIVED:",
+        JSON.stringify(location, null, 2),
+      );
     }
-    
+
     // Convert to EnhancedCascadingMode format for proper initialization
     const convertedLocation = convertSearchToCascadingFormat(location);
-    
+
     // Debug logging
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[LocationSearchAndCreate] handleSearchSelect called:', JSON.stringify({
-        originalLocation: location ? { 
-          id: location.id, 
-          type: location.type, 
-          deviceType: location.deviceType,
-          name: location.name,
-          hierarchicalPath: location.hierarchicalPath,  // API format (camelCase)
-          hierarchical_path: location.hierarchical_path,  // Alternative format (snake_case)
-          parentRoomId: location.parentRoomId,  // CRITICAL: Parent IDs from API
-          parentDeviceId: location.parentDeviceId,
-          parentShelfId: location.parentShelfId,
-        } : null,
-        convertedLocation: convertedLocation ? {
-          hierarchicalPath: convertedLocation.hierarchicalPath,  // Preserved from API
-          hierarchical_path: convertedLocation.hierarchical_path,  // Normalized
-          room: convertedLocation.room ? { id: convertedLocation.room.id, name: convertedLocation.room.name } : null,
-          device: convertedLocation.device ? { id: convertedLocation.device.id, name: convertedLocation.device.name } : null,
-          shelf: convertedLocation.shelf ? { id: convertedLocation.shelf.id, label: convertedLocation.shelf.label } : null,
-          rack: convertedLocation.rack ? { id: convertedLocation.rack.id, label: convertedLocation.rack.label } : null,
-          type: convertedLocation.type,
-        } : null,
-      }, null, 2));
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        "[LocationSearchAndCreate] handleSearchSelect called:",
+        JSON.stringify(
+          {
+            originalLocation: location
+              ? {
+                  id: location.id,
+                  type: location.type,
+                  deviceType: location.deviceType,
+                  name: location.name,
+                  hierarchicalPath: location.hierarchicalPath, // API format (camelCase)
+                  hierarchical_path: location.hierarchical_path, // Alternative format (snake_case)
+                  parentRoomId: location.parentRoomId, // CRITICAL: Parent IDs from API
+                  parentDeviceId: location.parentDeviceId,
+                  parentShelfId: location.parentShelfId,
+                }
+              : null,
+            convertedLocation: convertedLocation
+              ? {
+                  hierarchicalPath: convertedLocation.hierarchicalPath, // Preserved from API
+                  hierarchical_path: convertedLocation.hierarchical_path, // Normalized
+                  room: convertedLocation.room
+                    ? {
+                        id: convertedLocation.room.id,
+                        name: convertedLocation.room.name,
+                      }
+                    : null,
+                  device: convertedLocation.device
+                    ? {
+                        id: convertedLocation.device.id,
+                        name: convertedLocation.device.name,
+                      }
+                    : null,
+                  shelf: convertedLocation.shelf
+                    ? {
+                        id: convertedLocation.shelf.id,
+                        label: convertedLocation.shelf.label,
+                      }
+                    : null,
+                  rack: convertedLocation.rack
+                    ? {
+                        id: convertedLocation.rack.id,
+                        label: convertedLocation.rack.label,
+                      }
+                    : null,
+                  type: convertedLocation.type,
+                }
+              : null,
+          },
+          null,
+          2,
+        ),
+      );
     }
-    
+
     setInternalSelectedLocation(convertedLocation);
 
     // CRITICAL: Call onLocationChange to notify parent (MoveSampleModal)
     // This ensures the Selected Location preview appears and Confirm button is enabled
+    // Add locationId, locationType, and positionCoordinate for flexible assignment architecture
     if (onLocationChange) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[LocationSearchAndCreate] Calling onLocationChange with:', JSON.stringify({
-          hasHierarchicalPath: !!(convertedLocation?.hierarchicalPath || convertedLocation?.hierarchical_path),
-          hierarchicalPath: convertedLocation?.hierarchicalPath,
-          hierarchical_path: convertedLocation?.hierarchical_path,
-          type: convertedLocation?.type,
-          hasRoom: !!convertedLocation?.room,
-          hasDevice: !!convertedLocation?.device,
-          hasShelf: !!convertedLocation?.shelf,
-        }, null, 2));
+      // Extract locationId and locationType from converted location
+      let locationId = null;
+      let locationType = null;
+
+      if (convertedLocation?.rack?.id) {
+        locationId = convertedLocation.rack.id;
+        locationType = "rack";
+      } else if (convertedLocation?.shelf?.id) {
+        locationId = convertedLocation.shelf.id;
+        locationType = "shelf";
+      } else if (convertedLocation?.device?.id) {
+        locationId = convertedLocation.device.id;
+        locationType = "device";
+      } else if (convertedLocation?.id && convertedLocation?.type) {
+        // Direct format from search - type is already the hierarchy level
+        if (
+          convertedLocation.type === "rack" ||
+          convertedLocation.type === "shelf" ||
+          convertedLocation.type === "device"
+        ) {
+          locationId = convertedLocation.id;
+          locationType = convertedLocation.type;
+        }
       }
-      onLocationChange(convertedLocation);
+
+      const locationWithFlexibleFields = {
+        ...convertedLocation,
+        locationId: locationId,
+        locationType: locationType,
+        positionCoordinate:
+          convertedLocation?.position?.coordinate ||
+          convertedLocation?.positionCoordinate ||
+          null,
+      };
+
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          "[LocationSearchAndCreate] Calling onLocationChange with:",
+          JSON.stringify(
+            {
+              hasHierarchicalPath: !!(
+                locationWithFlexibleFields?.hierarchicalPath ||
+                locationWithFlexibleFields?.hierarchical_path
+              ),
+              hierarchicalPath: locationWithFlexibleFields?.hierarchicalPath,
+              hierarchical_path: locationWithFlexibleFields?.hierarchical_path,
+              type: locationWithFlexibleFields?.type,
+              locationId: locationWithFlexibleFields?.locationId,
+              locationType: locationWithFlexibleFields?.locationType,
+              positionCoordinate:
+                locationWithFlexibleFields?.positionCoordinate,
+              hasRoom: !!locationWithFlexibleFields?.room,
+              hasDevice: !!locationWithFlexibleFields?.device,
+              hasShelf: !!locationWithFlexibleFields?.shelf,
+            },
+            null,
+            2,
+          ),
+        );
+      }
+      onLocationChange(locationWithFlexibleFields);
     }
     setShowCreateForm(false);
   };
@@ -283,7 +375,7 @@ const LocationSearchAndCreate = ({
   const handleCreateSelect = (location) => {
     // EnhancedCascadingMode format: { room, device, shelf, rack, position }
     // This is called by EnhancedCascadingMode when user clicks through hierarchy
-    
+
     // If location is null/undefined, don't update (avoid clearing parent state)
     if (!location) {
       return;
@@ -291,13 +383,33 @@ const LocationSearchAndCreate = ({
 
     // Update internal state immediately - this triggers button validation
     setInternalSelectedLocation(location);
-    
-    // CRITICAL: Build location object with type and hierarchical_path for parent (MoveSampleModal)
+
+    // CRITICAL: Build location object with type, hierarchical_path, locationId, locationType, and positionCoordinate
+    // for parent (MoveSampleModal) - flexible assignment architecture
     // This ensures parent gets notified immediately and can display full path and enable button
+    let locationId = null;
+    let locationType = null;
+
+    // Extract locationId and locationType based on lowest selected hierarchy level
+    if (location.rack && location.rack.id) {
+      locationId = location.rack.id;
+      locationType = "rack";
+    } else if (location.shelf && location.shelf.id) {
+      locationId = location.shelf.id;
+      locationType = "shelf";
+    } else if (location.device && location.device.id) {
+      locationId = location.device.id;
+      locationType = "device";
+    }
+
     const locationToPass = {
       ...location,
+      locationId: locationId,
+      locationType: locationType,
+      positionCoordinate:
+        location.position?.coordinate || location.positionCoordinate || null,
     };
-    
+
     // Determine type based on highest level selected
     if (location.position?.id || location.position?.coordinate) {
       locationToPass.type = "position";
@@ -317,7 +429,7 @@ const LocationSearchAndCreate = ({
       locationToPass.type = "room";
       locationToPass.id = location.room.id;
     }
-    
+
     // Build hierarchical_path from components if not already present
     if (!locationToPass.hierarchical_path && !locationToPass.hierarchicalPath) {
       const pathParts = [];
@@ -326,19 +438,19 @@ const LocationSearchAndCreate = ({
       const shelfLabel = location.shelf?.label || location.shelf?.name || "";
       const rackLabel = location.rack?.label || location.rack?.name || "";
       const positionCoord = location.position?.coordinate || "";
-      
+
       if (roomName) pathParts.push(roomName);
       if (deviceName) pathParts.push(deviceName);
       if (shelfLabel) pathParts.push(shelfLabel);
       if (rackLabel) pathParts.push(rackLabel);
       if (positionCoord) pathParts.push(`Position ${positionCoord}`);
-      
+
       if (pathParts.length > 0) {
         locationToPass.hierarchical_path = pathParts.join(" > ");
         locationToPass.hierarchicalPath = pathParts.join(" > ");
       }
     }
-    
+
     // CRITICAL: Notify parent immediately so it can display path and enable button
     if (onLocationChange) {
       onLocationChange(locationToPass);
@@ -347,38 +459,94 @@ const LocationSearchAndCreate = ({
 
   // Debug: Track internalSelectedLocation changes
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[LocationSearchAndCreate] internalSelectedLocation changed:', JSON.stringify({
-        room: internalSelectedLocation?.room ? { id: internalSelectedLocation.room.id, name: internalSelectedLocation.room.name } : null,
-        device: internalSelectedLocation?.device ? { id: internalSelectedLocation.device.id, name: internalSelectedLocation.device.name } : null,
-        shelf: internalSelectedLocation?.shelf ? { id: internalSelectedLocation.shelf.id, label: internalSelectedLocation.shelf.label } : null,
-        rack: internalSelectedLocation?.rack ? { id: internalSelectedLocation.rack.id, label: internalSelectedLocation.rack.label } : null,
-      }, null, 2));
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        "[LocationSearchAndCreate] internalSelectedLocation changed:",
+        JSON.stringify(
+          {
+            room: internalSelectedLocation?.room
+              ? {
+                  id: internalSelectedLocation.room.id,
+                  name: internalSelectedLocation.room.name,
+                }
+              : null,
+            device: internalSelectedLocation?.device
+              ? {
+                  id: internalSelectedLocation.device.id,
+                  name: internalSelectedLocation.device.name,
+                }
+              : null,
+            shelf: internalSelectedLocation?.shelf
+              ? {
+                  id: internalSelectedLocation.shelf.id,
+                  label: internalSelectedLocation.shelf.label,
+                }
+              : null,
+            rack: internalSelectedLocation?.rack
+              ? {
+                  id: internalSelectedLocation.rack.id,
+                  label: internalSelectedLocation.rack.label,
+                }
+              : null,
+          },
+          null,
+          2,
+        ),
+      );
     }
   }, [internalSelectedLocation]);
 
   const handleAddLocation = () => {
     // Validate that we have at least 2 levels selected
-    const roomSelected = internalSelectedLocation?.room?.id || internalSelectedLocation?.room;
-    const deviceSelected = internalSelectedLocation?.device?.id || internalSelectedLocation?.device;
-    const shelfSelected = internalSelectedLocation?.shelf?.id || internalSelectedLocation?.shelf;
-    const rackSelected = internalSelectedLocation?.rack?.id || internalSelectedLocation?.rack;
+    const roomSelected =
+      internalSelectedLocation?.room?.id || internalSelectedLocation?.room;
+    const deviceSelected =
+      internalSelectedLocation?.device?.id || internalSelectedLocation?.device;
+    const shelfSelected =
+      internalSelectedLocation?.shelf?.id || internalSelectedLocation?.shelf;
+    const rackSelected =
+      internalSelectedLocation?.rack?.id || internalSelectedLocation?.rack;
 
-    const selectedCount = [roomSelected, deviceSelected, shelfSelected, rackSelected].filter(Boolean).length;
+    const selectedCount = [
+      roomSelected,
+      deviceSelected,
+      shelfSelected,
+      rackSelected,
+    ].filter(Boolean).length;
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[LocationSearchAndCreate] handleAddLocation validation:', {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[LocationSearchAndCreate] handleAddLocation validation:", {
         roomSelected,
         deviceSelected,
         shelfSelected,
         rackSelected,
         selectedCount,
         internalSelectedLocation: {
-          room: internalSelectedLocation?.room ? { id: internalSelectedLocation.room.id, name: internalSelectedLocation.room.name } : null,
-          device: internalSelectedLocation?.device ? { id: internalSelectedLocation.device.id, name: internalSelectedLocation.device.name } : null,
-          shelf: internalSelectedLocation?.shelf ? { id: internalSelectedLocation.shelf.id, label: internalSelectedLocation.shelf.label } : null,
-          rack: internalSelectedLocation?.rack ? { id: internalSelectedLocation.rack.id, label: internalSelectedLocation.rack.label } : null,
-        }
+          room: internalSelectedLocation?.room
+            ? {
+                id: internalSelectedLocation.room.id,
+                name: internalSelectedLocation.room.name,
+              }
+            : null,
+          device: internalSelectedLocation?.device
+            ? {
+                id: internalSelectedLocation.device.id,
+                name: internalSelectedLocation.device.name,
+              }
+            : null,
+          shelf: internalSelectedLocation?.shelf
+            ? {
+                id: internalSelectedLocation.shelf.id,
+                label: internalSelectedLocation.shelf.label,
+              }
+            : null,
+          rack: internalSelectedLocation?.rack
+            ? {
+                id: internalSelectedLocation.rack.id,
+                label: internalSelectedLocation.rack.label,
+              }
+            : null,
+        },
       });
     }
 
@@ -389,46 +557,65 @@ const LocationSearchAndCreate = ({
       const locationToPass = {
         ...internalSelectedLocation,
       };
-      
+
       // Build hierarchical_path from components if not already present
-      if (!locationToPass.hierarchical_path && !locationToPass.hierarchicalPath) {
+      if (
+        !locationToPass.hierarchical_path &&
+        !locationToPass.hierarchicalPath
+      ) {
         const pathParts = [];
         const roomName = locationToPass.room?.name || "";
         const deviceName = locationToPass.device?.name || "";
-        const shelfLabel = locationToPass.shelf?.label || locationToPass.shelf?.name || "";
-        const rackLabel = locationToPass.rack?.label || locationToPass.rack?.name || "";
+        const shelfLabel =
+          locationToPass.shelf?.label || locationToPass.shelf?.name || "";
+        const rackLabel =
+          locationToPass.rack?.label || locationToPass.rack?.name || "";
         const positionCoord = locationToPass.position?.coordinate || "";
-        
+
         if (roomName) pathParts.push(roomName);
         if (deviceName) pathParts.push(deviceName);
         if (shelfLabel) pathParts.push(shelfLabel);
         if (rackLabel) pathParts.push(rackLabel);
         if (positionCoord) pathParts.push(`Position ${positionCoord}`);
-        
+
         if (pathParts.length > 0) {
           locationToPass.hierarchical_path = pathParts.join(" > ");
           locationToPass.hierarchicalPath = pathParts.join(" > "); // Also set camelCase for consistency
         }
       }
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[LocationSearchAndCreate] handleAddLocation calling onLocationChange with:', JSON.stringify({
-          room: locationToPass.room ? { id: locationToPass.room.id, name: locationToPass.room.name } : null,
-          device: locationToPass.device ? { id: locationToPass.device.id, name: locationToPass.device.name } : null,
-          hierarchical_path: locationToPass.hierarchical_path,
-          selectedCount,
-        }, null, 2));
+
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          "[LocationSearchAndCreate] handleAddLocation calling onLocationChange with:",
+          JSON.stringify(
+            {
+              room: locationToPass.room
+                ? { id: locationToPass.room.id, name: locationToPass.room.name }
+                : null,
+              device: locationToPass.device
+                ? {
+                    id: locationToPass.device.id,
+                    name: locationToPass.device.name,
+                  }
+                : null,
+              hierarchical_path: locationToPass.hierarchical_path,
+              selectedCount,
+            },
+            null,
+            2,
+          ),
+        );
       }
-      
+
       // CRITICAL: Call onLocationChange FIRST (synchronously) - this updates parent's ref immediately
       // Then close form synchronously (like handleSearchSelect does)
       if (onLocationChange) {
         onLocationChange(locationToPass);
       }
-      
+
       // Close form immediately and synchronously (same as handleSearchSelect)
       setShowCreateForm(false);
-      
+
       // Keep internalSelectedLocation - it will sync with parent's selectedLocation via useEffect
     }
     // If not valid, don't close (user can continue building location)
@@ -436,30 +623,75 @@ const LocationSearchAndCreate = ({
 
   // Check if location is valid (at least 2 levels with actual IDs or objects)
   // A level is considered selected if it has an id OR if it's a newly created object (has name/label)
-  const hasRoom = !!(internalSelectedLocation?.room && (internalSelectedLocation.room.id || internalSelectedLocation.room.name));
-  const hasDevice = !!(internalSelectedLocation?.device && (internalSelectedLocation.device.id || internalSelectedLocation.device.name));
-  const hasShelf = !!(internalSelectedLocation?.shelf && (internalSelectedLocation.shelf.id || internalSelectedLocation.shelf.label || internalSelectedLocation.shelf.name));
-  const hasRack = !!(internalSelectedLocation?.rack && (internalSelectedLocation.rack.id || internalSelectedLocation.rack.label || internalSelectedLocation.rack.name));
-  
-  const selectedCount = [hasRoom, hasDevice, hasShelf, hasRack].filter(Boolean).length;
+  const hasRoom = !!(
+    internalSelectedLocation?.room &&
+    (internalSelectedLocation.room.id || internalSelectedLocation.room.name)
+  );
+  const hasDevice = !!(
+    internalSelectedLocation?.device &&
+    (internalSelectedLocation.device.id || internalSelectedLocation.device.name)
+  );
+  const hasShelf = !!(
+    internalSelectedLocation?.shelf &&
+    (internalSelectedLocation.shelf.id ||
+      internalSelectedLocation.shelf.label ||
+      internalSelectedLocation.shelf.name)
+  );
+  const hasRack = !!(
+    internalSelectedLocation?.rack &&
+    (internalSelectedLocation.rack.id ||
+      internalSelectedLocation.rack.label ||
+      internalSelectedLocation.rack.name)
+  );
+
+  const selectedCount = [hasRoom, hasDevice, hasShelf, hasRack].filter(
+    Boolean,
+  ).length;
   const canAddLocation = selectedCount >= 2;
-  
+
   // Debug logging
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[LocationSearchAndCreate] Validation:', JSON.stringify({
-      internalSelectedLocation: {
-        room: internalSelectedLocation?.room ? { id: internalSelectedLocation.room.id, name: internalSelectedLocation.room.name } : null,
-        device: internalSelectedLocation?.device ? { id: internalSelectedLocation.device.id, name: internalSelectedLocation.device.name } : null,
-        shelf: internalSelectedLocation?.shelf ? { id: internalSelectedLocation.shelf.id, label: internalSelectedLocation.shelf.label } : null,
-        rack: internalSelectedLocation?.rack ? { id: internalSelectedLocation.rack.id, label: internalSelectedLocation.rack.label } : null,
-      },
-      hasRoom,
-      hasDevice,
-      hasShelf,
-      hasRack,
-      selectedCount,
-      canAddLocation,
-    }, null, 2));
+  if (process.env.NODE_ENV === "development") {
+    console.log(
+      "[LocationSearchAndCreate] Validation:",
+      JSON.stringify(
+        {
+          internalSelectedLocation: {
+            room: internalSelectedLocation?.room
+              ? {
+                  id: internalSelectedLocation.room.id,
+                  name: internalSelectedLocation.room.name,
+                }
+              : null,
+            device: internalSelectedLocation?.device
+              ? {
+                  id: internalSelectedLocation.device.id,
+                  name: internalSelectedLocation.device.name,
+                }
+              : null,
+            shelf: internalSelectedLocation?.shelf
+              ? {
+                  id: internalSelectedLocation.shelf.id,
+                  label: internalSelectedLocation.shelf.label,
+                }
+              : null,
+            rack: internalSelectedLocation?.rack
+              ? {
+                  id: internalSelectedLocation.rack.id,
+                  label: internalSelectedLocation.rack.label,
+                }
+              : null,
+          },
+          hasRoom,
+          hasDevice,
+          hasShelf,
+          hasRack,
+          selectedCount,
+          canAddLocation,
+        },
+        null,
+        2,
+      ),
+    );
   }
 
   return (
@@ -500,7 +732,10 @@ const LocationSearchAndCreate = ({
           )}
         </div>
       ) : (
-        <div className="location-create-container" data-testid="location-create-container">
+        <div
+          className="location-create-container"
+          data-testid="location-create-container"
+        >
           <EnhancedCascadingMode
             onLocationChange={handleCreateSelect}
             selectedLocation={internalSelectedLocation || null}
@@ -524,8 +759,8 @@ const LocationSearchAndCreate = ({
               kind="primary"
               size="sm"
               onClick={() => {
-                if (process.env.NODE_ENV === 'development') {
-                  console.log('[LocationSearchAndCreate] Add button clicked');
+                if (process.env.NODE_ENV === "development") {
+                  console.log("[LocationSearchAndCreate] Add button clicked");
                 }
                 handleAddLocation();
               }}
@@ -546,4 +781,3 @@ const LocationSearchAndCreate = ({
 };
 
 export default LocationSearchAndCreate;
-

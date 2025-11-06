@@ -1,27 +1,38 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import EnhancedCascadingMode from "./EnhancedCascadingMode";
+import { NotificationContext } from "../../layout/Layout";
 import messages from "../../../languages/en.json";
 
 // Mock the API utilities
 const mockGetFromOpenElisServer = jest.fn();
-const mockPostToOpenElisServer = jest.fn();
+const mockPostToOpenElisServerJsonResponse = jest.fn();
 
 jest.mock("../../utils/Utils", () => ({
   getFromOpenElisServer: (url, callback, errorCallback) => {
     mockGetFromOpenElisServer(url, callback, errorCallback);
   },
-  postToOpenElisServer: (url, data, callback, errorCallback) => {
-    mockPostToOpenElisServer(url, data, callback, errorCallback);
+  postToOpenElisServerJsonResponse: (url, data, callback, errorCallback) => {
+    mockPostToOpenElisServerJsonResponse(url, data, callback, errorCallback);
   },
 }));
+
+const mockNotificationContext = {
+  notificationVisible: false,
+  setNotificationVisible: jest.fn(),
+  addNotification: jest.fn(),
+  notifications: [],
+  removeNotification: jest.fn(),
+};
 
 const renderWithIntl = (component) => {
   return render(
     <IntlProvider locale="en" messages={messages}>
-      {component}
+      <NotificationContext.Provider value={mockNotificationContext}>
+        {component}
+      </NotificationContext.Provider>
     </IntlProvider>,
   );
 };
@@ -54,9 +65,15 @@ describe("EnhancedCascadingMode", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/rest/storage/rooms") && !url.includes("/rest/storage/rooms/")) {
+      if (
+        url.includes("/rest/storage/rooms") &&
+        !url.includes("/rest/storage/rooms/")
+      ) {
         callback(mockRooms);
-      } else if (url.includes("/rest/storage/devices") && url.includes("roomId=1")) {
+      } else if (
+        url.includes("/rest/storage/devices") &&
+        url.includes("roomId=1")
+      ) {
         callback(mockDevices);
       } else {
         callback([]);
@@ -106,7 +123,7 @@ describe("EnhancedCascadingMode", () => {
       active: true,
     };
 
-    mockPostToOpenElisServer.mockImplementation(
+    mockPostToOpenElisServerJsonResponse.mockImplementation(
       (url, data, callback) => {
         if (url.includes("/rest/storage/rooms")) {
           callback(createdRoom);
@@ -141,14 +158,9 @@ describe("EnhancedCascadingMode", () => {
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     // Verify room creation API was called
-    expect(mockPostToOpenElisServer).toHaveBeenCalledWith(
+    expect(mockPostToOpenElisServerJsonResponse).toHaveBeenCalledWith(
       "/rest/storage/rooms",
-      expect.objectContaining({
-        name: "New Test Room",
-        code: "NEW TEST ROOM",
-        active: true,
-      }),
-      expect.any(Function),
+      expect.stringContaining("New Test Room"),
       expect.any(Function),
     );
 
@@ -201,7 +213,7 @@ describe("EnhancedCascadingMode", () => {
       active: true,
     };
 
-    mockPostToOpenElisServer.mockImplementation(
+    mockPostToOpenElisServerJsonResponse.mockImplementation(
       (url, data, callback) => {
         if (url.includes("/rest/storage/rooms")) {
           callback(createdRoom);
@@ -234,7 +246,7 @@ describe("EnhancedCascadingMode", () => {
 
     // Wait for room to be created
     await new Promise((resolve) => setTimeout(resolve, 200));
-    expect(mockPostToOpenElisServer).toHaveBeenCalled();
+    expect(mockPostToOpenElisServerJsonResponse).toHaveBeenCalled();
 
     // Device should now be enabled
     await new Promise((resolve) => setTimeout(resolve, 200));
@@ -326,18 +338,23 @@ describe("EnhancedCascadingMode", () => {
       active: true,
     };
 
-    mockPostToOpenElisServer.mockImplementation((url, data, callback) => {
-      if (url.includes("/rest/storage/rooms")) {
-        callback(createdRoom);
-      } else if (url.includes("/rest/storage/devices")) {
-        callback(createdDevice);
-      } else if (url.includes("/rest/storage/shelves")) {
-        callback(createdShelf);
-      }
-    });
+    mockPostToOpenElisServerJsonResponse.mockImplementation(
+      (url, data, callback) => {
+        if (url.includes("/rest/storage/rooms")) {
+          callback(createdRoom);
+        } else if (url.includes("/rest/storage/devices")) {
+          callback(createdDevice);
+        } else if (url.includes("/rest/storage/shelves")) {
+          callback(createdShelf);
+        }
+      },
+    );
 
     mockGetFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/rest/storage/rooms") && !url.includes("/rest/storage/rooms/")) {
+      if (
+        url.includes("/rest/storage/rooms") &&
+        !url.includes("/rest/storage/rooms/")
+      ) {
         callback(mockRooms);
       } else if (url.includes("/rest/storage/devices")) {
         callback(mockDevices);
@@ -416,3 +433,155 @@ describe("EnhancedCascadingMode", () => {
   });
 });
 
+describe("EnhancedCascadingMode Notifications", () => {
+  const mockOnLocationChange = jest.fn();
+
+  const mockRooms = [
+    { id: "1", name: "Main Laboratory", code: "MAIN", active: true },
+  ];
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockNotificationContext.setNotificationVisible.mockClear();
+    mockNotificationContext.addNotification.mockClear();
+    mockGetFromOpenElisServer.mockImplementation((url, callback) => {
+      if (
+        url.includes("/rest/storage/rooms") &&
+        !url.includes("/rest/storage/rooms/")
+      ) {
+        callback(mockRooms);
+      } else if (url.includes("/rest/storage/devices")) {
+        callback([]);
+      } else {
+        callback([]);
+      }
+    });
+  });
+
+  /**
+   * Test: Creating room successfully shows success notification and calls setNotificationVisible
+   */
+  test("testCreateRoom_Success_ShowsNotification", async () => {
+    const createdRoom = {
+      id: "2",
+      name: "New Test Room",
+      code: "NEW TEST ROOM",
+      active: true,
+    };
+
+    mockPostToOpenElisServerJsonResponse.mockImplementation(
+      (url, data, callback) => {
+        if (url.includes("/rest/storage/rooms")) {
+          callback(createdRoom);
+        }
+      },
+    );
+
+    renderWithIntl(
+      <EnhancedCascadingMode onLocationChange={mockOnLocationChange} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("room-combobox")).toBeInTheDocument();
+    });
+
+    // Type new room name
+    const roomCombobox = screen.getByTestId("room-combobox");
+    const input = roomCombobox.querySelector("input");
+    if (input) {
+      fireEvent.change(input, { target: { value: "New Test Room" } });
+      fireEvent.input(input, { target: { value: "New Test Room" } });
+    }
+
+    // Wait for add button to appear and click it
+    await waitFor(() => {
+      const addButton = screen.getByTestId("add-new-room-button");
+      expect(addButton).toBeInTheDocument();
+    });
+
+    const addButton = screen.getByTestId("add-new-room-button");
+    fireEvent.click(addButton);
+
+    // Wait for notification to be called
+    await waitFor(() => {
+      expect(mockNotificationContext.addNotification).toHaveBeenCalled();
+    });
+
+    // Verify notification format
+    expect(mockNotificationContext.addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: expect.any(String),
+        message: expect.stringContaining("New Test Room"),
+        kind: "success",
+      }),
+    );
+
+    // Verify setNotificationVisible was called
+    expect(mockNotificationContext.setNotificationVisible).toHaveBeenCalledWith(
+      true,
+    );
+  });
+
+  /**
+   * Test: Creating room with error shows error notification and calls setNotificationVisible
+   */
+  test("testCreateRoom_Error_ShowsErrorNotification", async () => {
+    const errorResponse = {
+      error: "Room with code TEST-ROOM already exists",
+    };
+
+    mockPostToOpenElisServerJsonResponse.mockImplementation(
+      (url, data, callback) => {
+        if (url.includes("/rest/storage/rooms")) {
+          callback(errorResponse);
+        }
+      },
+    );
+
+    renderWithIntl(
+      <EnhancedCascadingMode onLocationChange={mockOnLocationChange} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("room-combobox")).toBeInTheDocument();
+    });
+
+    // Type new room name
+    const roomCombobox = screen.getByTestId("room-combobox");
+    const input = roomCombobox.querySelector("input");
+    if (input) {
+      fireEvent.change(input, { target: { value: "Test Room" } });
+      fireEvent.input(input, { target: { value: "Test Room" } });
+    }
+
+    // Wait for add button to appear and click it
+    await waitFor(() => {
+      const addButton = screen.getByTestId("add-new-room-button");
+      expect(addButton).toBeInTheDocument();
+    });
+
+    const addButton = screen.getByTestId("add-new-room-button");
+    fireEvent.click(addButton);
+
+    // Wait for error notification to be called
+    await waitFor(() => {
+      expect(mockNotificationContext.addNotification).toHaveBeenCalled();
+    });
+
+    // Verify error notification format
+    expect(mockNotificationContext.addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: expect.any(String),
+        message: expect.stringContaining(
+          "Room with code TEST-ROOM already exists",
+        ),
+        kind: "error",
+      }),
+    );
+
+    // Verify setNotificationVisible was called
+    expect(mockNotificationContext.setNotificationVisible).toHaveBeenCalledWith(
+      true,
+    );
+  });
+});

@@ -32,7 +32,7 @@ describe("Add Location Button Crash Debug", function () {
 
   it("Should not crash when clicking Add Location button", function () {
     // Turn off uncaught exception handling to see real errors
-    Cypress.on('uncaught:exception', (err, runnable) => {
+    Cypress.on("uncaught:exception", (err, runnable) => {
       // Log the error but don't fail the test immediately
       cy.log("UNCAUGHT EXCEPTION:", err.message);
       return false; // Don't fail the test
@@ -67,9 +67,7 @@ describe("Add Location Button Crash Debug", function () {
       .should("contain.text", /location/i);
 
     // Click Add Location button - this is where it crashes
-    cy.get('[data-testid="add-location-button"]')
-      .should("be.visible")
-      .click();
+    cy.get('[data-testid="add-location-button"]').should("be.visible").click();
 
     // Wait a bit to see if crash happens
     cy.wait(2000);
@@ -110,4 +108,3 @@ describe("Add Location Button Crash Debug", function () {
     });
   });
 });
-
