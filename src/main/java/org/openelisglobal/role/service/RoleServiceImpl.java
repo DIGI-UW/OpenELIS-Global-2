@@ -1,8 +1,7 @@
 package org.openelisglobal.role.service;
 
 import java.util.List;
-
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.role.dao.RoleDAO;
 import org.openelisglobal.role.valueholder.Role;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class RoleServiceImpl extends BaseObjectServiceImpl<Role, String> implements RoleService {
+public class RoleServiceImpl extends AuditableBaseObjectServiceImpl<Role, String> implements RoleService {
     @Autowired
     protected RoleDAO baseObjectDAO;
 
@@ -33,7 +32,6 @@ public class RoleServiceImpl extends BaseObjectServiceImpl<Role, String> impleme
     @Transactional(readOnly = true)
     public void getData(Role role) {
         getBaseObjectDAO().getData(role);
-
     }
 
     @Override
@@ -64,6 +62,5 @@ public class RoleServiceImpl extends BaseObjectServiceImpl<Role, String> impleme
     @Transactional(readOnly = true)
     public Role getRoleById(String roleId) {
         return getBaseObjectDAO().getRoleById(roleId);
-
     }
 }

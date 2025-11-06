@@ -33,5 +33,4 @@ public class PatientIdentityType extends BaseObject<String> {
     public void setDescription(String description) {
         this.description = description;
     }
-
 }

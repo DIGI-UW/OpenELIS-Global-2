@@ -1,24 +1,21 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*
-* Contributor(s): CIRG, University of Washington, Seattle WA.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ *
+ * <p>Contributor(s): CIRG, University of Washington, Seattle WA.
+ */
 package org.openelisglobal.common.formfields;
 
 import java.util.Map;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.internationalization.MessageUtil;
 
@@ -58,9 +55,11 @@ public class FormFields {
         OrganizationOrgId, // Include db id with organization info
         Project, // Include project (RETROCI) with non-conformity info
         SampleCondition, // Allow for collection of sample condition with non-conformity
-        NON_CONFORMITY_SITE_LIST, // site (patient entry or nonconforming) is defined by a list of sites.
+        NON_CONFORMITY_SITE_LIST, // site (patient entry or nonconforming) is defined by a list of
+        // sites.
         NON_CONFORMITY_SITE_LIST_USER_ADDABLE, // Should the user be able to add to the site list
-        NON_CONFORMITY_PROVIDER_ADDRESS, // Should the providers address be collected on non-conformity page
+        NON_CONFORMITY_PROVIDER_ADDRESS, // Should the providers address be collected on non-conformity
+        // page
         QaEventsBySection, // Should sample non-conformity events regrouped by test section in report
         ADDRESS_CITY, // Is a city part of an address
         ADDRESS_DEPARTMENT, // Is department part of an address
@@ -77,14 +76,16 @@ public class FormFields {
         QA_FULL_PROVIDER_INFO, // Include provider information on non-conformity
         QASubjectNumber, // Include subject number be on non-conformity
         QATimeWithDate, // Include time in addition to date on non-conformity
-        PatientIDRequired_SampleConfirmation, // Is patient ID required for patient on sample conformation form
+        PatientIDRequired_SampleConfirmation, // Is patient ID required for patient on sample
+        // conformation form
         PatientNameRequired, // Is patient name required
         SampleEntryUseReceptionHour, // Include reception time on sample entry
         SampleEntryUseRequestDate, // Include request date on sample entry
         SampleEntryNextVisitDate, // Include next visit date on sample entry
         SampleEntryRequestingSiteSampleId, // Include sample ID from requesting site
         SampleEntryReferralSiteNameRequired, // Is referral site required
-        SampleEntryReferralSiteNameCapitialized, // Should referral site name be transformed to upper case
+        SampleEntryReferralSiteNameCapitialized, // Should referral site name be transformed to upper
+        // case
         SampleEntryReferralSiteCode, // Include referral site code on sample entry
         SampleEntryProviderFax, // Include provider fax for sample entry
         SampleEntryProviderEmail, // Include provider email for sample entry
@@ -98,8 +99,9 @@ public class FormFields {
         PatientHealthDistrict, // Include patient health district with patient info
         PatientMarriageStatus, // Include patient marriage status with patient info
         PatientEducation, // Include patient education level with patient info
-        SampleEntryPatientClinical, // Include patient clinical information on sample entry (request by CI but not
-                                    // currently implemented)
+        SampleEntryPatientClinical, // Include patient clinical information on sample entry (request by
+        // CI but not
+        // currently implemented)
         QA_DOCUMENT_NUMBER, // Include document number on non-conformity
         TEST_LOCATION_CODE // Include test location code on order entry
     }

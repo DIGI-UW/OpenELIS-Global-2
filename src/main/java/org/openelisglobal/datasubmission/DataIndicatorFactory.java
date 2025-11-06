@@ -2,7 +2,6 @@ package org.openelisglobal.datasubmission;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.openelisglobal.datasubmission.valueholder.DataIndicator;
 import org.openelisglobal.datasubmission.valueholder.DataResource;
 import org.openelisglobal.datasubmission.valueholder.DataValue;

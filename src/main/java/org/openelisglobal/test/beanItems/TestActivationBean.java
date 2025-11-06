@@ -18,7 +18,6 @@ package org.openelisglobal.test.beanItems;
 
 import java.io.Serializable;
 import java.util.List;
-
 import org.openelisglobal.common.util.IdValuePair;
 
 public class TestActivationBean implements Serializable {

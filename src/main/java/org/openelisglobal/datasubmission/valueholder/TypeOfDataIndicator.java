@@ -67,5 +67,4 @@ public class TypeOfDataIndicator extends BaseObject<String> {
     public void setDescriptionKey(String descriptionKey) {
         this.descriptionKey = descriptionKey;
     }
-
 }

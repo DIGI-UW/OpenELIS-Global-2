@@ -1,32 +1,30 @@
 /*
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*
-* Contributor(s): CIRG, University of Washington, Seattle WA.
-*/
+ * The contents of this file are subject to the Mozilla Public License
+ * Version 1.1 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
+ * License for the specific language governing rights and limitations under
+ * the License.
+ *
+ * The Original Code is OpenELIS code.
+ *
+ * Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
+ *
+ * Contributor(s): CIRG, University of Washington, Seattle WA.
+ */
 package org.openelisglobal.organization.util;
 
 import static org.openelisglobal.organization.valueholder.OrganizationComparator.ORGANIZATION_NAME_COMPARATOR;
 import static org.openelisglobal.organization.valueholder.OrganizationComparator.SHORTNAME_NUMERIC_COMPARATOR;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
@@ -50,9 +48,9 @@ public enum OrganizationTypeList {
             "EID ICAP", "SEV-CI", "ARIEL"),
     RTN_HOSPITALS("shortName", ORGANIZATION_NAME_COMPARATOR, "RTN HIV Hospitals"),
     RTN_SERVICES("shortName", ORGANIZATION_NAME_COMPARATOR, "RTN HIV Service Loc"),
-    // RTN_HOSPITALS("shortName", SHORTNAME_NUMERIC_COMPARATOR, "RTN HIV
-    // Hospitals"),
-    // RTN_SERVICES("shortName", null, "RTN HIV Service Loc"),
+// RTN_HOSPITALS("shortName", SHORTNAME_NUMERIC_COMPARATOR, "RTN HIV
+// Hospitals"),
+// RTN_SERVICES("shortName", null, "RTN HIV Service Loc"),
     ;
 
     /**
@@ -74,6 +72,7 @@ public enum OrganizationTypeList {
      * dropDowns.AIDS_STAGES.list
      */
     public static final Map<String, OrganizationTypeList> MAP = new HashMap<>();
+
     static {
         for (OrganizationTypeList ds : OrganizationTypeList.values()) {
             MAP.put(ds.name(), ds);
@@ -91,15 +90,15 @@ public enum OrganizationTypeList {
      *         or an empty list.
      */
     public final List<Organization> getList() {
-        List<Organization> all;
+        List<Organization> all = SpringContext.getBean(OrganizationService.class).getOrganizationsByTypeName(orderBy,
+                name);
         try {
-            all = SpringContext.getBean(OrganizationService.class).getOrganizationsByTypeName(orderBy, name);
             if (comparator != null) {
                 Collections.sort(all, comparator);
             }
         } catch (RuntimeException e) {
-            LogEvent.logErrorStack(e);
-            all = new ArrayList<>();
+            LogEvent.logError(e);
+            // all = new ArrayList<>(); must not return empty List if sorting fails
         }
         return all;
     }

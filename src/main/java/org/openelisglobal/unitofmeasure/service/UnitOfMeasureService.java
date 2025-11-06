@@ -13,5 +13,4 @@ public interface UnitOfMeasureService extends BaseObjectService<UnitOfMeasure, S
     void refreshNames();
 
     Localization getLocalizationForUnitOfMeasure(String id);
-
 }

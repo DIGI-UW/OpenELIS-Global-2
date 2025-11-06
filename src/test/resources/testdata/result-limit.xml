@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+
+    <sample id="201" accession_number="ACC123456" domain="A"
+        next_item_sequence="1" revision="0" entered_date="2025-07-01 08:00:00"
+        received_date="2025-07-01 08:30:00"
+        collection_date="2025-07-01 07:45:00" client_reference="REF001"
+        status="R" released_date="2025-07-01 12:00:00" sticker_rcvd_flag="Y"
+        barcode="BC123456" transmission_date="2025-07-01 13:00:00"
+        lastupdated="2025-07-01 13:30:00" spec_or_isolate="S"
+        is_confirmation="false" />
+
+    <sample_item id="601" sort_order="1" status_id="1"
+        samp_id="201" collection_date="2023-11-15 10:00:00"
+        lastupdated="2023-12-01 12:00:00" />
+
+    <type_of_test_result id="201" description="Numeric"
+        test_result_type="N" hl7_value="NM" lastupdated="2023-11-01 12:00:00" />
+    <type_of_test_result id="4" description="Alpha"
+        test_result_type="A" hl7_value="ST" lastupdated="2023-11-01 12:00:00" />
+    <type_of_test_result id="203"
+        description="Dictionary" test_result_type="D" hl7_value="CE"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <test id="7001" description="Blood Test" loinc="123456"
+        reporting_description="Complete Blood Count" sticker_req_flag="Y"
+        is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2025-12-31 12:00:00" is_reportable="N" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2025-03-20 12:00:00"
+        local_code="CBC" sort_order="2147483646" name="Complete Blood Count"
+        orderable="true" guid="abc-123" antimicrobial_resistance="true" />
+
+    <test id="7002" description="Urine Test" loinc="543216"
+        reporting_description="Urinalysis" sticker_req_flag="N" is_active="Y"
+        active_begin="2025-02-01 12:00:00" active_end="2025-12-31 12:00:00"
+        is_reportable="Y" time_holding="25" time_wait="10"
+        time_ta_average="50" time_ta_warning="70" time_ta_max="90"
+        label_qty="1" lastupdated="2025-03-20 12:00:00" local_code="UA"
+        sort_order="2147483646" name="Urinalysis" orderable="true"
+        guid="def-456" antimicrobial_resistance="false" />
+
+    <analysis id="1001" sampitem_id="601" test_id="7001"
+        revision="1" status="A" analysis_type="Medical" />
+
+    <result_limits id="1" test_id="7001"
+        test_result_type_id="201" min_age="0" max_age="18" gender="M"
+        low_normal="4.0" high_normal="10.0" low_valid="2.0" high_valid="15.0"
+        low_reporting_range="2.0" high_reporting_range="15.0"
+        lastupdated="2025-06-01 10:00:00" normal_dictionary_id="301"
+        always_validate="true" />
+
+    <result_limits id="2" test_id="7002"
+        test_result_type_id="4" min_age="19" max_age="60" gender="F"
+        low_normal="3.5" high_normal="9.5" low_valid="1.5" high_valid="12.0"
+        low_reporting_range="1.5" high_reporting_range="12.0"
+        lastupdated="2025-06-02 11:30:00" always_validate="false" />
+
+    <result_limits id="3" test_id="7002"
+        test_result_type_id="203" min_age="0" max_age="99" gender="U"
+        low_normal="2.0" high_normal="8.0" low_valid="1.0" high_valid="10.0"
+        low_reporting_range="1.0" high_reporting_range="10.0"
+        lastupdated="2025-06-03 09:15:00" always_validate="true" />
+</dataset>

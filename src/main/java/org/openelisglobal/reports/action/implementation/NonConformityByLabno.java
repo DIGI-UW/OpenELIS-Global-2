@@ -1,26 +1,24 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
-*
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
+ */
 package org.openelisglobal.reports.action.implementation;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-
+import net.sf.jasperreports.engine.JRDataSource;
+import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.services.TableIdService;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -43,9 +41,6 @@ import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
 import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
 import org.openelisglobal.spring.util.SpringContext;
 
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
-
 public abstract class NonConformityByLabno extends Report implements IReportCreator {
 
     protected ObservationHistoryTypeService observationTypeService = SpringContext
@@ -58,20 +53,20 @@ public abstract class NonConformityByLabno extends Report implements IReportCrea
     ObservationHistoryType observationType = observationTypeService.getByName("nameOfDoctor");
     private String OBSERVATION_DOCTOR_ID = observationType.getId();
 
-//    private String lowDateStr;
-//    private String highDateStr;
+    // private String lowDateStr;
+    // private String highDateStr;
     private String lowerNumber;
     private String upperNumber;
-//    private DateRange dateRange;
+    // private DateRange dateRange;
 
     private ArrayList<ARVReportData> reportItems;
 
     private Sample sample;
-//    private Project project;
-//    private String service;
+    // private Project project;
+    // private String service;
     private Patient patient;
-//    private QaEvent qaEvent;
-//    private List<SampleQaEvent> sampleQaEvents;
+    // private QaEvent qaEvent;
+    // private List<SampleQaEvent> sampleQaEvents;
 
     @Override
     protected void createReportParameters() throws IllegalStateException {
@@ -97,7 +92,7 @@ public abstract class NonConformityByLabno extends Report implements IReportCrea
         super.initializeReport();
         lowerNumber = form.getAccessionDirectNoSuffix();
         upperNumber = form.getHighAccessionDirectNoSuffix();
-//        dateRange = new DateRange(lowDateStr, highDateStr);
+        // dateRange = new DateRange(lowDateStr, highDateStr);
         createReportParameters();
         errorFound = !validateAccessionNumbers();
         if (errorFound) {
@@ -111,17 +106,15 @@ public abstract class NonConformityByLabno extends Report implements IReportCrea
         Collections.sort(reportItems, new ReportItemsComparator());
     }
 
-    /**
-     *
-     */
+    /** */
     private void createReportItems() {
         List<Sample> samples = sampleService.getSamplesByAccessionRange(lowerNumber, upperNumber);
         for (Sample sample : samples) {
             this.sample = sample;
             patient = ReportUtil.findPatient(sample);
-//            project = ReportUtil.findProject(sample);
-//            service = findService();
-//            sampleQaEvents = findSampleQaEvents();
+            // project = ReportUtil.findProject(sample);
+            // service = findService();
+            // sampleQaEvents = findSampleQaEvents();
 
             ARVReportData data = new ARVReportData();
 
@@ -175,7 +168,6 @@ public abstract class NonConformityByLabno extends Report implements IReportCrea
              * reportItems.add(data); }
              */
         }
-
     }
 
     /**
@@ -225,7 +217,6 @@ public abstract class NonConformityByLabno extends Report implements IReportCrea
              */
             return compare;
         }
-
     }
 
     @Override
@@ -289,5 +280,4 @@ public abstract class NonConformityByLabno extends Report implements IReportCrea
         }
         return number.length();
     }
-
 }

@@ -5,9 +5,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
 <script type="text/javascript">
 /*
@@ -193,10 +193,11 @@ iarv = new ArvInitialProjectChecker();
 		<td>
 			<form:select path="centerName"
 				id="centerName" onchange="iarv.checkCenterName(true)">
-				<option value=""></option>
+				<form:option value=""/>
 				<form:options items="${form.organizationTypeLists.ARV_ORGS_BY_NAME.list}" itemLabel="organizationName"
 					itemValue="id" />
 			</form:select>
+			<div id="centerNameMessage" class="blank" ></div>
 		</td>
 	</tr>
 
@@ -209,7 +210,7 @@ iarv = new ArvInitialProjectChecker();
 		<td>
 			<form:select path="centerCode"
 				id="centerCode" onchange="iarv.checkCenterCode(true)">
-				<option value=""></option>
+				<form:option value=""/>
 				<form:options items="${form.organizationTypeLists.ARV_ORGS.list}" itemLabel="doubleName"
 					itemValue="id" />
 			</form:select>
@@ -252,9 +253,9 @@ iarv = new ArvInitialProjectChecker();
 		<td>
 			<form:select path="gender"
 				onchange="iarv.checkGender(false)" id="gender">
-				<option value=""></option>
+				<form:option value=""/>
 				<form:options items="${form.formLists.GENDERS}" itemLabel="localizedName"
-					itemValue="genderType" />
+					itemValue="id" />
 			</form:select>
 			<div id="genderMessage" class="blank"></div>
 		</td>
@@ -299,7 +300,7 @@ iarv = new ArvInitialProjectChecker();
 			<form:select path="observations.hivStatus"
 					 onchange="iarv.checkHivStatus(true);"
 					 id="hivStatus"  >
-				<option value=""></option>
+				<form:option value=""/>
 				<form:options items="${form.projectData.hivStatusList}"
 					itemLabel="localizedName" itemValue="id" />
 			</form:select>
@@ -316,7 +317,7 @@ iarv = new ArvInitialProjectChecker();
 		<td>
 			<form:select path="observations.educationLevel" onchange="makeDirty();compareAllObservationHistoryFields(true)"
 				id="educationLevel">
-				<option value=""></option>
+				<form:option value=""/>
 				<form:options items="${form.dictionaryLists.EDUCATION_LEVELS.list}"
 					itemLabel="localizedName" itemValue="id" />
 			</form:select>
@@ -332,7 +333,7 @@ iarv = new ArvInitialProjectChecker();
 		<td>
 			<form:select path="observations.maritalStatus" onchange="makeDirty();compareAllObservationHistoryFields(true)"
 				id="maritalStatus">
-				<option value=""></option>
+				<form:option value=""/>
 				<form:options items="${form.dictionaryLists.MARITAL_STATUSES.list}"
 					itemLabel="localizedName" itemValue="id" />
 			</form:select>
@@ -350,7 +351,7 @@ iarv = new ArvInitialProjectChecker();
 			<form:select path="observations.nationality"
 				onchange="iarv.displayNationality();compareAllObservationHistoryFields(true)"
 				id="nationality" cssClass="text">
-				<option value=""></option>
+				<form:option value=""/>
 				<form:options items="${form.dictionaryLists.SIMPLIFIED_NATIONALITIES.list}"
 					itemLabel="localizedName" itemValue="id" />
 			</form:select>
@@ -416,16 +417,16 @@ iarv = new ArvInitialProjectChecker();
 			<form:select path="observations.anyPriorDiseases"
 				onchange="iarv.displayAnyPriorDiseases();makeDirty();compareAllObservationHistoryFields(true)"
 				cssClass="text" id="anyPriorDiseases">
-				<option value=""></option>
+				<form:option value=""/>
 				<form:options items="${form.dictionaryLists.YES_NO.list}" itemLabel="localizedName"
 					itemValue="id" />
 			</form:select>
 			<div id="anyPriorDiseasesMessage" class="blank" ></div>
 		</td>
 	</tr>
-	<c:forEach items="${form.observations.priorDiseasesList}" var="disease" varStatus="iter">
+ 	<c:forEach items="${form.observations.priorDiseasesList}" var="disease" varStatus="iter">
 		<tr id='priorDiseasesRow${iter.index}' style="display: none">
-			<%-- CLI 09.n --%>
+			<!-- CLI 09.n -->
 			<td></td>
 			<td class="observationsQuestion observationsSubquestion">
 				<c:out value="${disease.value}" />
@@ -433,15 +434,16 @@ iarv = new ArvInitialProjectChecker();
 			<td>
 				<form:select path='observations.${disease.name}'
 					onchange="makeDirty();compareAllObservationHistoryFields(true)"					
-					id="${disease.name}"
+					id="${disease.name}${iter.index}"
 					>
-					<option value=""></option>
+					<form:option value=""/>
 					<form:options items="${form.dictionaryLists.YES_NO.list}" itemLabel="localizedName"
 						itemValue="id" />
 				</form:select>
+				<div id="${disease.name}.Message${iter.index}" class="blank" ></div>
 			</td>
 		</tr>
-	</c:forEach>
+	</c:forEach> 
 	<tr id="priorDiseasesRow" style="display: none">
 		<td></td>
 		<td class="observationsQuestion observationsSubquestion">
@@ -451,10 +453,11 @@ iarv = new ArvInitialProjectChecker();
 			<form:select path="observations.priorDiseases"
 				onchange="iarv.displayPriorDiseasesOther(this, 1);makeDirty();compareAllObservationHistoryFields(true)"
 				id="priorDiseases">
-				<option value=""></option>
+				<form:option value=""/>
 				<form:options items="${form.dictionaryLists.YES_NO.list}" itemLabel="localizedName"
 					itemValue="id" />
 			</form:select>
+			<div id="priorDiseasesMessage" class="blank" ></div>
 		</td>
 	</tr>
 	<tr id="priorDiseasesValueRow" style="display: none">
@@ -481,7 +484,7 @@ iarv = new ArvInitialProjectChecker();
 			<form:select path="observations.arvProphylaxisBenefit"
 				onchange="iarv.checkArvProphylaxisBenefit(this)"
 				id="arvProphylaxisBenefit">
-				<option value=""></option>
+				<form:option value=""/>
 				<form:options items="${form.dictionaryLists.YES_NO.list}" itemLabel="localizedName"
 					itemValue="id" />
 			</form:select>
@@ -500,7 +503,7 @@ iarv = new ArvInitialProjectChecker();
 			<form:select path="observations.arvProphylaxis"
 				onchange="checkRequiredField(this); makeDirty();compareAllObservationHistoryFields(true)"
 				id="arvProphylaxis">
-				<option value=""></option>
+				<form:option value=""/>
 				<form:options items="${form.dictionaryLists.ARV_PROPHYLAXIS.list}"
 					itemLabel="localizedName" itemValue="id" />
 			</form:select>
@@ -516,7 +519,7 @@ iarv = new ArvInitialProjectChecker();
 		<td>
 			<form:select path="observations.currentARVTreatment" onchange="makeDirty();compareAllObservationHistoryFields(true)"
 				id="currentARVTreatment">
-				<option value=""></option>
+				<form:option value=""/>
 				<form:options items="${form.dictionaryLists.YES_NO.list}" itemLabel="localizedName"
 					itemValue="id" />
 			</form:select>
@@ -534,7 +537,7 @@ iarv = new ArvInitialProjectChecker();
 			<form:select path="observations.priorARVTreatment"
 				onchange="iarv.displayPriorARVTreatment(); makeDirty();compareAllObservationHistoryFields(true)"
 				id="priorARVTreatment">
-				<option value=""></option>
+				<form:option value=""/>
 				<form:options items="${form.dictionaryLists.YES_NO_NA.list}" itemLabel="localizedName"
 					itemValue="id" />
 			</form:select>
@@ -574,7 +577,7 @@ iarv = new ArvInitialProjectChecker();
 			<form:select path="observations.cotrimoxazoleTreatment"
 				onchange="makeDirty();compareAllObservationHistoryFields(true)"
 				id="cotrimoxazoleTreatment">
-				<option value=""></option>
+				<form:option value=""/>
 				<form:options items="${form.dictionaryLists.YES_NO.list}" itemLabel="localizedName"
 					itemValue="id" />
 			</form:select>
@@ -590,7 +593,7 @@ iarv = new ArvInitialProjectChecker();
 		<td>
 			<form:select path="observations.aidsStage"
 				onchange="makeDirty();compareAllObservationHistoryFields(true)" id="aidsStage">
-				<option value=""></option>
+				<form:option value=""/>
 				<form:options items="${form.dictionaryLists.AIDS_STAGES.list}" itemLabel="localizedName"
 					itemValue="id" />
 			</form:select>
@@ -615,16 +618,16 @@ iarv = new ArvInitialProjectChecker();
 			<form:select path="observations.anyCurrentDiseases"
 				onchange="iarv.checkAnyCurrentDiseases(this)"
 				cssClass="text" id="anyCurrentDiseases">
-				<option value=""></option>
+				<form:option value=""/>
 				<form:options items="${form.dictionaryLists.YES_NO.list}" itemLabel="localizedName"
 					itemValue="id" />
 			</form:select>
 			<div id="anyCurrentDiseasesMessage" class="blank"></div>
 		</td>
 	</tr>
-	<c:forEach var="disease" items="${form.observations.currentDiseasesList}" varStatus="iter">
+    <c:forEach var="disease" items="${form.observations.currentDiseasesList}" varStatus="iter">
 		<tr id='currentDiseasesRow${iter.index}' style="display: none">
-			<%-- CLI 09.n --%>
+			<!-- CLI 09.n -->
 			<td></td>
 			<td class="observationsQuestion observationsSubquestion">
 				<c:out value="${disease.value}" />
@@ -632,12 +635,13 @@ iarv = new ArvInitialProjectChecker();
 			<td>
 				<form:select path='observations.${disease.name}'
 					onchange="makeDirty();compareAllObservationHistoryFields(true)"					
-					id="${disease.name}"
+					id="${disease.name}${iter.index}"
 					>
-					<option value=""></option>
+					<form:option value=""/>
 					<form:options items="${form.dictionaryLists.YES_NO.list}" itemLabel="localizedName"
 						itemValue="id" />
 				</form:select>
+				<div id="${disease.name}.Message${iter.index}" class="blank" ></div>
 			</td>
 		</tr>
 	</c:forEach>
@@ -650,10 +654,11 @@ iarv = new ArvInitialProjectChecker();
 			<form:select path="observations.currentDiseases"
 				onchange="iarv.displayCurrentDiseasesOther(this, 1);makeDirty();compareAllObservationHistoryFields(true)"
 				id="currentDiseases">
-				<option value=""></option>
+				<form:option value=""/>
 				<form:options items="${form.dictionaryLists.YES_NO.list}" itemLabel="localizedName"
 					itemValue="id" />
 			</form:select>
+			<div id="currentDiseasesMessage" class="blank"></div>
 		</td>
 	</tr>
 
@@ -679,7 +684,7 @@ iarv = new ArvInitialProjectChecker();
 		<td>
 			<form:select path="observations.currentOITreatment" onchange="makeDirty();compareAllObservationHistoryFields(true)"
 				id="currentOITreatment">
-				<option value=""></option>
+				<form:option value=""/>
 				<form:options items="${form.dictionaryLists.YES_NO_NA.list}" itemLabel="localizedName"
 					itemValue="id" />
 			</form:select>
@@ -744,10 +749,11 @@ iarv = new ArvInitialProjectChecker();
 		<td>
 			<form:select path="observations.underInvestigation" onchange="makeDirty();compareAllObservationHistoryFields(true)"
 			id="underInvestigation">
-			<option value=""></option>
+			<form:option value=""/>
 			<form:options items="${form.dictionaryLists.YES_NO.list}" itemLabel="localizedName"
 				itemValue="id" />
 			</form:select>
+			<div id="underInvestigationMessage" class="blank"></div>
 		</td>
     </tr>    
  	<tr id="underInvestigationCommentRow">
@@ -758,6 +764,7 @@ iarv = new ArvInitialProjectChecker();
 		<td colspan="3">
 			<form:input path="projectData.underInvestigationNote" maxlength="1000" size="80"
 				onchange="makeDirty();" id="underInvestigationComment" />
+				<div id="underInvestigationCommentMessage" class="blank"></div>
 		</td>
     </tr>
 </table>

@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="CIV developer Group" id="2023081001" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_microbiology'</sqlCheck>
+        </preConditions>
+        <comment>Add menu entry for microbiology</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_sample')"/>
+            <column name="presentation_order" value="3"/>
+            <column name="element_id" value="menu_microbiology"/>
+            <column name="display_key" value="banner.menu.microbiology"/>
+            <column name="tool_tip_key" value="tooltip.bannner.menu.microbiology"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023081004" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_microbiology_tb'</sqlCheck>
+        </preConditions>
+        <comment>Add menu entry for microbiology</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_microbiology')"/>
+            <column name="presentation_order" value="1"/>
+            <column name="element_id" value="menu_microbiology_tb"/>
+            <column name="action_url" value="/MicrobiologyTb"/>
+            <column name="display_key" value="banner.menu.microbiology_tb"/>
+            <column name="tool_tip_key" value="tooltip.bannner.menu.microbiology_tb"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023081005" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_microbiology_classic'</sqlCheck>
+        </preConditions>
+        <comment>Add menu entry for microbiology</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_microbiology')"/>
+            <column name="presentation_order" value="4"/>
+            <column name="element_id" value="menu_microbiology_classic"/>
+            <column name="action_url" value="/MicrobiologyClassic"/>
+            <column name="display_key" value="banner.menu.microbiology_classic"/>
+            <column name="tool_tip_key" value="tooltip.bannner.menu.microbiology_classic"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+    </changeSet>
+
+        <changeSet author="CIV developer Group" id="2023081002" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.system_module WHERE name = 'MicrobiologyTBView'</sqlCheck>
+        </preConditions>
+        <comment>Add a module for microbiology TB</comment>
+        <insert tableName="system_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_seq"/>
+            <column name="name" value="MicrobiologyTBView"/>
+            <column name="description" value=""/>
+            <column name="has_select_flag" value="Y"/>
+            <column name="has_add_flag" value="Y"/>
+            <column name="has_update_flag" value="Y"/>
+            <column name="has_delete_flag" value="Y"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023081003" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'MicrobiologyTBView'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add roles for Microbiology </comment>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/MicrobiologyTb"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'MicrobiologyTBView')"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Reception')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'MicrobiologyTBView')"/>
+        </insert>
+    </changeSet>
+
+
+
+    <changeSet author="CIV developer Group" id="2023092401" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_report_microbiology'</sqlCheck>
+        </preConditions>
+        <comment>Add menu entry for microbiology report</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports')"/>
+            <column name="presentation_order" value="3"/>
+            <column name="element_id" value="menu_report_microbiology"/>
+            <column name="display_key" value="banner.menu.microbiology"/>
+            <column name="tool_tip_key" value="tooltip.bannner.menu.microbiology"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023092402" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_tb_report'</sqlCheck>
+        </preConditions>
+        <comment>Add menu entry for tb report</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_report_microbiology')"/>
+            <column name="presentation_order" value="1"/>
+            <column name="element_id" value="menu_tb_report"/>
+            <column name="action_url" value="/Report?type=patient&amp;report=TBPatientReport"/>
+            <column name="display_key" value="banner.menu.microbiology_tb"/>
+            <column name="tool_tip_key" value="tooltip.bannner.menu.microbiology_tb"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023100301" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'MicrobiologyTBView'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add roles for Microbiology </comment>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/MicrobiologyTb/panel_test"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'MicrobiologyTBView')"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Reception')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'MicrobiologyTBView')"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23102501" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_report_microbiology_classic'</sqlCheck>
+        </preConditions>
+        <comment>Add menu entry for microbiology</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_report_microbiology')"/>
+            <column name="presentation_order" value="4"/>
+            <column name="element_id" value="menu_report_microbiology_classic"/>
+            <column name="display_key" value="banner.menu.microbiology_classic"/>
+            <column name="tool_tip_key" value="tooltip.bannner.menu.microbiology_classic"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23102502" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_tb_report'</sqlCheck>
+        </preConditions>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value=""/>
+            <where>id=:value</where>
+            <whereParams>
+                <param valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_tb_report' limit 1)"/>
+            </whereParams>
+        </update>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="23102503" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_tb_report'</sqlCheck>
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_tb_patient_report'</sqlCheck>
+        </preConditions>
+        <comment>Add menu entry for tb report</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_tb_report')"/>
+            <column name="presentation_order" value="1"/>
+            <column name="element_id" value="menu_tb_patient_report"/>
+            <column name="action_url" value="/Report?type=patient&amp;report=TBPatientReport"/>
+            <column name="display_key" value="openreports.patientreports.title"/>
+            <column name="tool_tip_key" value="openreports.patientreports.title"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="23102504" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_tb_report'</sqlCheck>
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_tb_result_export'</sqlCheck>
+        </preConditions>
+        <comment>Add menu entry for tb report</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_tb_report')"/>
+            <column name="presentation_order" value="1"/>
+            <column name="element_id" value="menu_tb_result_export"/>
+            <column name="action_url" value="/Report?type=patient&amp;report=TBOrderExport"/>
+            <column name="display_key" value="reports.export.byDate"/>
+            <column name="tool_tip_key" value="reports.export.byDate"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23102505" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_tb_report'</sqlCheck>
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_tb_order_report'</sqlCheck>
+        </preConditions>
+        <comment>Add menu entry for tb report</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_tb_report')"/>
+            <column name="presentation_order" value="1"/>
+            <column name="element_id" value="menu_tb_order_report"/>
+            <column name="action_url" value="/Report?type=patient&amp;report=TBOrderReport"/>
+            <column name="display_key" value="openreports.activity.title"/>
+            <column name="tool_tip_key" value="openreports.activity.title"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="23110301" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_tb_order_report'</sqlCheck>
+        </preConditions>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="is_active" valueBoolean="false"/>
+            <where>id=:value</where>
+            <whereParams>
+                <param valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_tb_order_report' limit 1)"/>
+            </whereParams>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

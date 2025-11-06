@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql" />
+
+    <changeSet author="cliff" id="1">
+        <validCheckSum>8:d30ab032096adb6b489edac763c55588</validCheckSum>
+
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="result_limits" columnName="high_critical_range_low" />
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="result_limits">
+            <column name="high_critical_range_low" type="double precision" defaultValueComputed="'-Infinity'::double precision"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="cliff" id="2">
+        <validCheckSum>8:e3dfc74dae964ba133a37ecb580a0d23</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="result_limits" columnName="high_critical_range_high" />
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="result_limits">
+            <column name="high_critical_range_high" type="double precision" defaultValueComputed="'Infinity'::double precision"/>
+        </addColumn>
+    </changeSet>
+     <changeSet author="cliff" id="3">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="result_limits" columnName="low_critical_range_low" />
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="result_limits">
+            <column name="low_critical_range_low" type="double precision" defaultValueComputed="'Infinity'::double precision"/>
+        </addColumn>
+    </changeSet>
+     <changeSet author="cliff" id="4">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="result_limits" columnName="low_critical_range_high" />
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="result_limits">
+            <column name="low_critical_range_high" type="double precision" defaultValueComputed="'Infinity'::double precision"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

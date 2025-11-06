@@ -2,7 +2,6 @@ package org.openelisglobal.resultvalidation.service;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
@@ -60,7 +59,11 @@ public class ResultValidationServiceImpl implements ResultValidationService {
             if (resultUpdate.getId() != null) {
                 resultService.update(resultUpdate);
             } else {
-                resultService.insert(resultUpdate);
+                LogEvent.logWarn(this.getClass().getSimpleName(), "persistdata",
+                        "validating a result that doesn't exist yet. Creating result.");
+                String id = resultService.insert(resultUpdate);
+                LogEvent.logWarn(this.getClass().getSimpleName(), "persistdata",
+                        "Result with id: " + id + " created while validating");
             }
             if (isResultAnalysisFinalized(resultUpdate, analysisUpdateList)) {
                 try {
@@ -83,7 +86,9 @@ public class ResultValidationServiceImpl implements ResultValidationService {
         for (Note note : noteUpdateList) {
             if (note != null) {
                 if (note.getId() == null) {
-                    noteService.insert(note);
+                    if (!noteService.duplicateNoteExists(note)) {
+                        noteService.insert(note);
+                    }
                 } else {
                     noteService.update(note);
                 }
@@ -93,7 +98,6 @@ public class ResultValidationServiceImpl implements ResultValidationService {
         for (IResultUpdate updater : updaters) {
             updater.transactionalUpdate(resultSaveService);
         }
-
     }
 
     private boolean isResultAnalysisFinalized(Result result, List<Analysis> analysisUpdateList) {
@@ -112,9 +116,7 @@ public class ResultValidationServiceImpl implements ResultValidationService {
         boolean sampleFinished = true;
         List<Integer> sampleFinishedStatus = getSampleFinishedStatuses();
 
-//        System.out.println("checkIfSamplesFinished:");
         for (AnalysisItem analysisItem : resultItemList) {
-//            System.out.println("checkIfSamplesFinished:" + analysisItem.getAccessionNumber());
             String analysisSampleId = sampleService.getSampleByAccessionNumber(analysisItem.getAccessionNumber())
                     .getId();
             if (!analysisSampleId.equals(currentSampleId)) {
@@ -137,9 +139,7 @@ public class ResultValidationServiceImpl implements ResultValidationService {
                 }
 
                 sampleFinished = true;
-
             }
-
         }
     }
 
@@ -153,5 +153,4 @@ public class ResultValidationServiceImpl implements ResultValidationService {
                 SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated)));
         return sampleFinishedStatus;
     }
-
 }

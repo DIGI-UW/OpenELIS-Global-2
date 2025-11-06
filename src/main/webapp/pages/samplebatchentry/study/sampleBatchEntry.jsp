@@ -5,14 +5,13 @@
                  org.openelisglobal.common.formfields.FormFields,
                  org.openelisglobal.common.formfields.FormFields.Field,
                  org.openelisglobal.common.util.Versioning,
+                 org.owasp.encoder.Encode,
                  org.openelisglobal.internationalization.MessageUtil" %>
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
-<%@ taglib prefix="tiles" uri="http://tiles.apache.org/tags-tiles" %>
 
 <%
 	boolean restrictNewReferringSiteEntries = ConfigurationProperties.getInstance().isPropertyValueEqual(Property.restrictFreeTextRefSiteEntry, "true");
@@ -72,23 +71,15 @@ jQuery(document).ready(function() {
 });
 
 jQuery(document).ready(function () {
-    var dropdown = jQuery("select#requesterId");
-    autoCompleteWidth = dropdown.width() + 66 + 'px';
-    <% if(restrictNewReferringSiteEntries) { %>
-   			clearNonMatching = true;
-    <% } else {%>
-    		clearNonMatching = false;
-    <% } %>
-    capitialize = true;
-    // Actually executes autocomplete
-    dropdown.combobox();
-    invalidLabID = '<spring:message code="error.site.invalid"/>'; // Alert if value is typed that's not on list. FIX - add bad message icon
-    maxRepMsg = '<spring:message code="sample.entry.project.siteMaxMsg"/>';
+//     var dropdown = jQuery("select#requesterId");
+//     autoCompleteWidth = dropdown.width() + 66 + 'px';
+//     // Actually executes autocomplete
+//     dropdown.combobox();
 
-    resultCallBack = function (textValue) {
-        siteListChanged(textValue);
-    	setSave();
-    };
+//     autocompleteResultCallBack = function (selectId, textValue) {
+//         siteListChanged(textValue);
+//     	setSave();
+//     };
 });
 </script>
 <div class="hidden-fields">
@@ -157,13 +148,13 @@ jQuery(document).ready(function () {
 	<c:if test="${form.patientInfoCheck}">
 		<tr>
 			<td>
-				<tiles:insertAttribute name="patientInfo" />
+				<jsp:include page="${patientInfoFragment}"/>
 			</td>
 		</tr>
 	</c:if>
 	<tr>
 		<td>
-			<tiles:insertAttribute name="entryMethod" />
+			<jsp:include page="${entryMethodFragment}"/>
 		</td>
 	</tr>
 </table>
@@ -203,8 +194,8 @@ jQuery(document).ready(function () {
 						<th><spring:message code="test.testName"/></th>
 					</tr>
 					<tr>
-						<td><%= request.getAttribute("sampleType") %></td>
-						<td><%= request.getAttribute("testNames") %></td>
+						<td><%= Encode.forHtml((String) request.getAttribute("sampleType")) %></td>
+						<td><%= Encode.forHtml((String) request.getAttribute("testNames")) %></td>
 					</tr>
 				</table>
 				<form:hidden path="sampleXML"/>	
@@ -215,7 +206,7 @@ jQuery(document).ready(function () {
 			<tr>
 				<td>
 					<spring:message code="sample.batchentry.barcode.label.facilityid" /> 
-					: <%= request.getAttribute("facilityName") %>
+					: <%= Encode.forHtml((String) request.getAttribute("facilityName")) %>
 					<form:hidden path="sampleOrderItems.referringSiteId" id="requesterId"/>
 						
 				</td>
@@ -226,7 +217,7 @@ jQuery(document).ready(function () {
 			<tr>
 				<td>
 					<spring:message code="sample.batchentry.barcode.label.facilityid" /> 
-					: <%= request.getAttribute("facilityName") %>
+					: <%= Encode.forHtml((String) request.getAttribute("facilityName")) %>
 					<form:hidden path="sampleOrderItems.referringSiteId" id="requesterId"/>
 				</td>
 			</tr>

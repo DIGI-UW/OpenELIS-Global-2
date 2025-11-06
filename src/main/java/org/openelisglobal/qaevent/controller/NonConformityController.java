@@ -1,5 +1,6 @@
 package org.openelisglobal.qaevent.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -10,9 +11,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
@@ -84,8 +82,8 @@ public class NonConformityController extends BaseController {
             "nationalIdNew", "nationalId", "serviceNew", "newServiceName", "service", "doctorNew", "requesterSampleID",
             "providerLastName", "providerFirstName", "providerStreetAddress", "providerCity", "providerCommune",
             "providerDepartment", "providerWorkPhone", "doctor", "qaEvents*.recordNumber", "qaEvents*.id",
-            "qaEvents*.qaEvent", "qaEvents*.sampleType", "qaEvents*.section", "qaEvents*.authorizer",
-            "qaEvents*.note", "qaEvents*.remove", "commentNew", "comment" };
+            "qaEvents*.qaEvent", "qaEvents*.sampleType", "qaEvents*.section", "qaEvents*.authorizer", "qaEvents*.note",
+            "qaEvents*.remove", "commentNew", "comment" };
 
     @Autowired
     private NonConformityFormValidator formValidator;
@@ -197,7 +195,6 @@ public class NonConformityController extends BaseController {
         }
 
         form.setDepartments(DisplayListService.getInstance().getList(ListType.HAITI_DEPARTMENTS));
-
     }
 
     private void createForExistingSample(NonConformityForm form, Sample sample)
@@ -460,7 +457,7 @@ public class NonConformityController extends BaseController {
         }
 
         NonConformityUpdateData data = new NonConformityUpdateData(form, getSysUserId(request));
-//		NonConformityUpdateWorker worker = new NonConformityUpdateWorker(data);
+        // NonConformityUpdateWorker worker = new NonConformityUpdateWorker(data);
         INonConformityUpdateWorker worker = SpringContext.getBean(INonConformityUpdateWorker.class);
         worker.setWebData(data);
         try {

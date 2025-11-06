@@ -4,7 +4,6 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.List;
-
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.organization.valueholder.Organization;
@@ -114,6 +113,9 @@ public interface SampleService extends BaseObjectService<Sample, String> {
     boolean sampleContainsTestWithLoinc(String id, String loinc);
 
     List<Sample> getSamplesForSiteBetweenOrderDates(String referringSiteId, LocalDate lowerDate, LocalDate upperDate);
+
+    List<Sample> getStudySamplesForSiteBetweenOrderDates(String referringSiteId, LocalDate lowerDate,
+            LocalDate upperDate);
 
     List<Sample> getSamplesByPriority(OrderPriority priority);
 }

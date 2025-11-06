@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	 http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-	<changeSet author="moses_mutesa" id="1">
-		<preConditions onFail="MARK_RAN">
-			<tableExists tableName="system_role_module" schemaName="clinlims" />
-			<sqlCheck expectedResult="1">
-				SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Global Administrator'
-			</sqlCheck>
-			<sqlCheck expectedResult="1">
-				SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'SystemUser'
-			</sqlCheck>
-		</preConditions>
-		<comment>Add User-Filter Permisons </comment>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SystemUser')"/>
-		</insert>
-		<insert tableName="system_module_url" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_module_url_seq"/>
-			<column name="url_path" value="/SearchUnifiedSystemUserMenu"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SystemUser')"/>
-		</insert>
-	</changeSet>
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet author="moses_mutesa" id="1">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Global Administrator'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'SystemUser'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add User-Filter Permisons </comment>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SystemUser')"/>
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/SearchUnifiedSystemUserMenu"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SystemUser')"/>
+        </insert>
+    </changeSet>
 </databaseChangeLog>

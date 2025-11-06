@@ -1,7 +1,6 @@
 package org.openelisglobal.datasubmission.dao;
 
 import java.util.List;
-
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.datasubmission.valueholder.TypeOfDataIndicator;
@@ -14,7 +13,9 @@ public interface TypeOfDataIndicatorDAO extends BaseDAO<TypeOfDataIndicator, Str
 
     public List<TypeOfDataIndicator> getAllTypeOfDataIndicator() throws LIMSRuntimeException;
 
-//	public boolean insertData(TypeOfDataIndicator typeOfIndicator) throws LIMSRuntimeException;
+    // public boolean insertData(TypeOfDataIndicator typeOfIndicator) throws
+    // LIMSRuntimeException;
 
-//	public void updateData(TypeOfDataIndicator typeOfIndicator) throws LIMSRuntimeException;
+    // public void updateData(TypeOfDataIndicator typeOfIndicator) throws
+    // LIMSRuntimeException;
 }

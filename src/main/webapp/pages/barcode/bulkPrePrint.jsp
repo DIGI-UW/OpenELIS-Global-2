@@ -9,9 +9,8 @@
 
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
-<%@ taglib prefix="tiles" uri="http://tiles.apache.org/tags-tiles"%>
-<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions"%>	
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions"%>	
    
 <c:set var="altAccessionLength" value="${fn:length(form.startingAtAccession)}"/>
 <c:set var="altAccessionPrefixLength" value="6"/>
@@ -96,13 +95,9 @@ jQuery(document).ready(function () {
 	
     var dropdown = jQuery("select#requesterId");
     autoCompleteWidth = dropdown.width() + 66 + 'px';
-    clearNonMatching = true;
-    capitialize = true;
     // Actually executes autocomplete
     dropdown.combobox();
-    invalidLabID = '<spring:message code="error.site.invalid"/>'; // Alert if value is typed that's not on list. FIX - add bad message icon
-    maxRepMsg = '<spring:message code="sample.entry.project.siteMaxMsg"/>';
-    resultCallBack = function (textValue) {
+    autocompleteResultCallBack = function (selectId, textValue) {
         siteListChanged(textValue);
     	processFacilityIDChange();
        // setOrderModified();
@@ -155,10 +150,16 @@ jQuery(document).ready(function () {
 		</td>
 		<td><div id="facility-combobox">
 			<c:if test="${not sampleOrderItems.readOnly}" >
+    		    <spring:message code="error.site.invalid" var="invalidSite"/>
+    		    <spring:message code="sample.entry.project.siteMaxMsg" var="siteMaxMessage"/>
 		        <form:select id="requesterId"
 		                     path="facilityID"
 		                     onchange="siteListChanged(this);processFacilityIDChange();"
 		                     onkeyup="capitalizeValue( this.value );"
+		                     capitalize="true"
+		                     invalidlabid='${invalidSite}'
+		                     maxrepmsg='${siteMaxMessage}'
+		       			     clearNonMatching="true"
 
 		                >
 		            <option value=""></option>
@@ -187,7 +188,7 @@ jQuery(document).ready(function () {
 		<td><h2>Sample</h2></td>
 	</tr>
 	<tr>
-		<td><tiles:insertAttribute name="sampleAdd"/></td>
+		<td><jsp:include page="${sampleAddFragment}"/></td>
 	</tr>
 	<tr>
 		<td>NOTE: If a facility and/or sample and test are added, they will be printed on EVERY label</td>

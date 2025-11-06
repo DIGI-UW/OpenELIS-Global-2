@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<include file="liquibase/2.3.x.x/contact_tracing_fields.xml"/>
-	<include file="liquibase/2.3.x.x/minor_fixes.xml"/>
-	<include file="liquibase/2.3.x.x/user_url_permissions.xml"/>
-	<include file="liquibase/2.3.x.x/national_id_config.xml"/>
-	<include file="liquibase/2.3.x.x/analyzer_experiment.xml"/>
-	<include file="liquibase/2.3.x.x/new_tests.xml"/>
-	<include file="liquibase/2.3.x.x/accession_validation.xml"/>
-	<include file="liquibase/2.3.x.x/uuid_columns.xml"/>
-	<include file="liquibase/2.3.x.x/accession_validation_range.xml"/>
-	<include file="liquibase/2.3.x.x/accession_validation_range_access.xml"/>
-	<include file="liquibase/2.3.x.x/accession_sequencing.xml"/>
-	<include file="liquibase/2.3.x.x/referral_results.xml"/>
-	<include file="liquibase/2.3.x.x/in_lab_tests.xml"/>
-	<include file="liquibase/2.3.x.x/results_range.xml"/>
+    <include file="liquibase/2.3.x.x/contact_tracing_fields.xml"/>
+    <include file="liquibase/2.3.x.x/minor_fixes.xml"/>
+    <include file="liquibase/2.3.x.x/user_url_permissions.xml"/>
+    <include file="liquibase/2.3.x.x/national_id_config.xml"/>
+    <include file="liquibase/2.3.x.x/analyzer_experiment.xml"/>
+    <include file="liquibase/2.3.x.x/new_tests.xml"/>
+    <include file="liquibase/2.3.x.x/accession_validation.xml"/>
+    <include file="liquibase/2.3.x.x/uuid_columns.xml"/>
+    <include file="liquibase/2.3.x.x/accession_validation_range.xml"/>
+    <include file="liquibase/2.3.x.x/accession_validation_range_access.xml"/>
+    <include file="liquibase/2.3.x.x/accession_sequencing.xml"/>
+    <include file="liquibase/2.3.x.x/referral_results.xml"/>
+    <include file="liquibase/2.3.x.x/in_lab_tests.xml"/>
+    <include file="liquibase/2.3.x.x/results_range.xml"/>
 
 </databaseChangeLog>

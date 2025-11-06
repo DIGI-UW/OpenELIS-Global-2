@@ -1,10 +1,9 @@
 package org.openelisglobal.qaevent.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.qaevent.dao.QaEventDAO;
 import org.openelisglobal.qaevent.valueholder.QaEvent;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class QaEventServiceImpl extends BaseObjectServiceImpl<QaEvent, String> implements QaEventService {
+public class QaEventServiceImpl extends AuditableBaseObjectServiceImpl<QaEvent, String> implements QaEventService {
     @Autowired
     protected QaEventDAO baseObjectDAO;
 
@@ -29,7 +28,6 @@ public class QaEventServiceImpl extends BaseObjectServiceImpl<QaEvent, String> i
     @Transactional(readOnly = true)
     public void getData(QaEvent qaEvent) {
         getBaseObjectDAO().getData(qaEvent);
-
     }
 
     @Override

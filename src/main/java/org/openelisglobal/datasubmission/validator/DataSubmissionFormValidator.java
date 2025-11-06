@@ -1,7 +1,6 @@
 package org.openelisglobal.datasubmission.validator;
 
 import java.util.Calendar;
-
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.validator.ValidationHelper;
@@ -28,5 +27,4 @@ public class DataSubmissionFormValidator implements Validator {
         ValidationHelper.validateOptionField(form.getSiteId(), "siteId", errors,
                 new String[] { ConfigurationProperties.getInstance().getPropertyValue(Property.SiteCode) });
     }
-
 }

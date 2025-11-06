@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <include relativeToChangelogFile="true" file="add_dept_org_type.xml"/>
+    <include relativeToChangelogFile="true" file="add_analyser_import_role.xml"/>
+    <include relativeToChangelogFile="true" file="add_validation_by_date.xml"/>
+    <include relativeToChangelogFile="true" file="support_reject_sample.xml"/>
+    <include relativeToChangelogFile="true" file="site_information.xml"/>
+    <include relativeToChangelogFile="true" file="critical_range.xml"/>
+    <include relativeToChangelogFile="true" file="fix_database_bugs_retroc.xml"/>
+    <include relativeToChangelogFile="true" file="add_psc_sampletype_test_element.xml"/>
+    <include relativeToChangelogFile="true" file="add_admin_default_roles.xml"/>
+    <include relativeToChangelogFile="true" file="fix_person_table.xml"/>
+    <include relativeToChangelogFile="true" file="add_TB_menu.xml"/>
+    <include relativeToChangelogFile="true" file="add_patient_upid.xml"/>
+    <include relativeToChangelogFile="true" file="extend_person_state_column.xml"/>
+    <include relativeToChangelogFile="true" file="add_recency_testing.xml"/>
+    <include relativeToChangelogFile="true" file="add_tb_samples.xml"/>
+    <include relativeToChangelogFile="true" file="add_tb_dictionary_infos.xml"/>
+    <include relativeToChangelogFile="true" file="add_tb_tests.xml"/>
+    <include relativeToChangelogFile="true" file="add_tb_observation_type.xml"/>
+    <include relativeToChangelogFile="true" file="activate_result_modifer_role.xml"/>
+    <include relativeToChangelogFile="true" file="add_loinc_code.xml"/>
+    <include relativeToChangelogFile="true" file="add_hpv_testing.xml"/>
+    <include relativeToChangelogFile="true" file="rename_test_for_csv_export.xml"/>
+    <include relativeToChangelogFile="true" file="add_electronic_rejection.xml"/>
+
+</databaseChangeLog>

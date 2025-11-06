@@ -17,21 +17,20 @@
  */
 package org.openelisglobal.common.provider.query;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.sample.form.ProjectData;
 import org.openelisglobal.sample.util.CI.BaseProjectFormMapper.TypeOfSampleTests;
 import org.openelisglobal.sample.util.CI.IProjectFormMapper;
@@ -54,19 +53,15 @@ public class SampleItemTestProvider extends BaseQueryProvider {
     protected SampleItemService sampleItemService = SpringContext.getBean(SampleItemService.class);
 
     /**
-     * @see org.openelisglobal.common.provider.query.BaseQueryProvider#processRequest(javax.servlet.http.HttpServletRequest,
-     *      javax.servlet.http.HttpServletResponse)
+     * @see org.openelisglobal.common.provider.query.BaseQueryProvider#processRequest(jakarta.servlet.http.HttpServletRequest,
+     *      jakarta.servlet.http.HttpServletResponse)
      */
     @Override
     public void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        /**
-         * The primary Key for a sample
-         */
+        /** The primary Key for a sample */
         String sampleKey = request.getParameter("sampleKey");
-        /**
-         * the particular project form we are trying to fill validate.
-         */
+        /** the particular project form we are trying to fill validate. */
         String projectFormName = request.getParameter("projectFormName");
 
         /**
@@ -74,10 +69,11 @@ public class SampleItemTestProvider extends BaseQueryProvider {
          * relevant sample item type
          */
         String sampleItemTypeTag = request.getParameter("sampleItemTypeTag");
+        if (sampleItemTypeTag.endsWith("vl")) {
+            sampleItemTypeTag = sampleItemTypeTag.substring(0, sampleItemTypeTag.length() - 2);
+        }
 
-        /**
-         * the name (something derived from html form id)
-         */
+        /** the name (something derived from html form id) */
         String testTag = request.getParameter("testTag");
 
         StringBuilder xml = new StringBuilder();
@@ -102,7 +98,6 @@ public class SampleItemTestProvider extends BaseQueryProvider {
     /**
      * Figure out if the given "test" (actually something of a test panel) Ask the
      * project form mapper
-     *
      */
     private boolean wasTestSelected(String sampleKey, String projectFormName, String sampleItemType, String testTag)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
@@ -144,21 +139,25 @@ public class SampleItemTestProvider extends BaseQueryProvider {
             testIds.add(Integer.valueOf(test.getId()));
         }
         return analysisService.getAnalysisBySampleAndTestIds(sampleKey, testIds);
-
     }
 
     private boolean wasSampleTypeSelected(String sampleId, String projectFormName, String sampleItemType) {
-        String sampleItemDesc = changeUIIdToDescription(sampleItemType);
-        IProjectFormMapper projectFormMapper = new ProjectFormMapperFactory().getProjectInitializer(projectFormName,
-                null);
-        TypeOfSample typeOfSample = projectFormMapper.getTypeOfSample(sampleItemDesc);
-        List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sampleId);
-        for (SampleItem sampleItem : sampleItems) {
-            if (sampleItem.getTypeOfSampleId().equals(typeOfSample.getId())) {
-                return true;
+        try {
+            String sampleItemDesc = changeUIIdToDescription(sampleItemType);
+            IProjectFormMapper projectFormMapper = new ProjectFormMapperFactory().getProjectInitializer(projectFormName,
+                    null);
+            TypeOfSample typeOfSample = projectFormMapper.getTypeOfSample(sampleItemDesc);
+            List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sampleId);
+            for (SampleItem sampleItem : sampleItems) {
+                if (sampleItem.getTypeOfSampleId().equals(typeOfSample.getId())) {
+                    return true;
+                }
             }
+            return false;
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return false;
         }
-        return false;
     }
 
     private String changeUIIdToDescription(String sampleTypeId) {

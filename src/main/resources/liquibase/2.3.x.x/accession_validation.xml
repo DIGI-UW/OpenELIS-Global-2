@@ -1,55 +1,55 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<changeSet author="csteele" id="1">
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck expectedResult="0">SELECT count(*) FROM
-				clinlims.system_module_url WHERE url_path = '/AccessionValidation'
-			</sqlCheck>
-		</preConditions>
-		<insert schemaName="clinlims" tableName="system_module">
-			<column name="id" valueSequenceNext="system_module_seq" />
-			<column name="name" value="ResultsValidationGeneral" />
-			<column name="description"
-				value="General result validation pages" />
-		</insert>
-		<insert schemaName="clinlims" tableName="system_role_module">
-			<column name="id" valueSequenceNext="system_role_module_seq" />
-			<column name="system_role_id"
-				valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Validator')" />
-			<column name="system_module_id"
-				valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ResultsValidationGeneral')" />
-		</insert>
-		<insert schemaName="clinlims" tableName="system_module_url">
-			<column name="id" valueSequenceNext="system_module_url_seq" />
-			<column name="url_path" value="/AccessionValidation" />
-			<column name="system_module_id"
-				valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ResultsValidationGeneral')" />
-		</insert>
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.system_module_url WHERE url_path = '/AccessionValidation'
+            </sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="system_module">
+            <column name="id" valueSequenceNext="system_module_seq" />
+            <column name="name" value="ResultsValidationGeneral" />
+            <column name="description"
+                value="General result validation pages" />
+        </insert>
+        <insert schemaName="clinlims" tableName="system_role_module">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Validator')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ResultsValidationGeneral')" />
+        </insert>
+        <insert schemaName="clinlims" tableName="system_module_url">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/AccessionValidation" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ResultsValidationGeneral')" />
+        </insert>
 
-	</changeSet>
+    </changeSet>
 
 
-	<changeSet author="csteele" id="2">
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck expectedResult="0">select count(*) from clinlims.menu
-				where element_id = 'menu_accession_validation';
-			</sqlCheck>
-		</preConditions>
-		<comment>Insert in Validation by search by accession </comment>
-		<sql>
-			INSERT INTO clinlims.menu(id, parent_id, presentation_order, element_id,
-			action_url, click_action,
-			display_key, tool_tip_key, new_window, is_active)
-			VALUES
-			(nextval('clinlims.menu_seq'),(select id from clinlims.menu where
-			element_id='menu_resultvalidation'),20,'menu_accession_validation','/AccessionValidation.do',default,'menu.accession.validation','tooltip.accession.validation',default,default);
-		</sql>
-	</changeSet>
+    <changeSet author="csteele" id="2">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.menu
+                where element_id = 'menu_accession_validation';
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert in Validation by search by accession </comment>
+        <sql>
+            INSERT INTO clinlims.menu(id, parent_id, presentation_order, element_id,
+            action_url, click_action,
+            display_key, tool_tip_key, new_window, is_active)
+            VALUES
+            (nextval('clinlims.menu_seq'),(select id from clinlims.menu where
+            element_id='menu_resultvalidation'),20,'menu_accession_validation','/AccessionValidation.do',default,'menu.accession.validation','tooltip.accession.validation',default,default);
+        </sql>
+    </changeSet>
 
 
 

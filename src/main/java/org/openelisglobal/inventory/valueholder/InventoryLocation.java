@@ -1,7 +1,6 @@
 package org.openelisglobal.inventory.valueholder;
 
 import java.sql.Timestamp;
-
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.common.valueholder.ValueHolder;
 import org.openelisglobal.common.valueholder.ValueHolderInterface;

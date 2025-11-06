@@ -1,20 +1,18 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*
-* Contributor(s): CIRG, University of Washington, Seattle WA.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ *
+ * <p>Contributor(s): CIRG, University of Washington, Seattle WA.
+ */
 package org.openelisglobal.sample.util;
 
 import static org.openelisglobal.common.provider.validation.IAccessionNumberValidator.ValidationResults.PATIENT_STATUS_FAIL;
@@ -23,7 +21,6 @@ import static org.openelisglobal.common.provider.validation.IAccessionNumberVali
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
@@ -42,9 +39,10 @@ import org.openelisglobal.spring.util.SpringContext;
 
 public class AccessionNumberUtil {
 
-    private static AccessionNumberValidatorFactory accessionNumberValidatorFactory = new AccessionNumberValidatorFactory();
+    private static AccessionNumberValidatorFactory accessionNumberValidatorFactory = SpringContext
+            .getBean(AccessionNumberValidatorFactory.class);
 
-    private static String blacklistCharacters = ".*['\"<>\\[\\](){};:/?!@#$%^&*+=].*";
+    private static String blacklistCharacters = ".*['\"<>\\[\\](){};:/?!@#$%^&+=].*";
 
     public static boolean containsBlackListCharacters(String value) {
         return value.matches(blacklistCharacters);
@@ -67,7 +65,6 @@ public class AccessionNumberUtil {
             LogEvent.logError("AccessionNumberUtil", "getMainAccessionNumberGenerator", e.toString());
         }
         return null;
-
     }
 
     public static IAccessionNumberValidator getMainAccessionNumberValidator() {
@@ -75,6 +72,15 @@ public class AccessionNumberUtil {
             return accessionNumberValidatorFactory.getValidator(AccessionFormat.MAIN);
         } catch (LIMSInvalidConfigurationException e) {
             LogEvent.logError("AccessionNumberUtil", "getMainAccessionNumberValidator", e.toString());
+        }
+        return null;
+    }
+
+    public static IAccessionNumberGenerator getAccessionNumberGenerator(AccessionFormat format) {
+        try {
+            return accessionNumberValidatorFactory.getGenerator(format);
+        } catch (LIMSInvalidConfigurationException e) {
+            LogEvent.logError("AccessionNumberUtil", "getAccessionNumberGenerator", e.toString());
         }
         return null;
     }
@@ -90,7 +96,7 @@ public class AccessionNumberUtil {
 
     public static IAccessionNumberGenerator getProgramAccessionNumberGenerator() {
         try {
-            return accessionNumberValidatorFactory.getGenerator(AccessionFormat.PROGRAM);
+            return accessionNumberValidatorFactory.getGenerator(AccessionFormat.PROGRAMNUM);
         } catch (LIMSInvalidConfigurationException e) {
             LogEvent.logError("AccessionNumberUtil", "getProgramAccessionNumberGenerator", e.toString());
         }
@@ -99,7 +105,7 @@ public class AccessionNumberUtil {
 
     public static IAccessionNumberValidator getProgramAccessionNumberValidator() {
         try {
-            return accessionNumberValidatorFactory.getValidator(AccessionFormat.PROGRAM);
+            return accessionNumberValidatorFactory.getValidator(AccessionFormat.PROGRAMNUM);
         } catch (LIMSInvalidConfigurationException e) {
             LogEvent.logError("AccessionNumberUtil", "getProgramAccessionNumberValidator", e.toString());
         }
@@ -132,7 +138,7 @@ public class AccessionNumberUtil {
                 .valueOf(ConfigurationProperties.getInstance().getPropertyValue(Property.USE_ALT_ACCESSION_PREFIX))) {
 
             try {
-            activeValidators.add(accessionNumberValidatorFactory.getValidator(AccessionFormat.ALT_YEAR));
+                activeValidators.add(accessionNumberValidatorFactory.getValidator(AccessionFormat.ALT_YEAR));
             } catch (LIMSInvalidConfigurationException e) {
                 LogEvent.logError("AccessionNumberUtil", "getAccessionNumberValidator", e.toString());
             }
@@ -158,8 +164,8 @@ public class AccessionNumberUtil {
 
     public static ValidationResults checkAccessionNumberValidity(String accessionNumber, String recordType,
             String isRequired, String projectFormName) {
-        return getGeneralAccessionNumberValidator().checkAccessionNumberValidity(accessionNumber, recordType, isRequired,
-                projectFormName);
+        return getGeneralAccessionNumberValidator().checkAccessionNumberValidity(accessionNumber, recordType,
+                isRequired, projectFormName);
     }
 
     public static ValidationResults isPatientStatusValid(String accessionNumber, RecordStatus validStatus) {

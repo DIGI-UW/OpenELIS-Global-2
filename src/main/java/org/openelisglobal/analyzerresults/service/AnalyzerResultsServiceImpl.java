@@ -2,7 +2,6 @@ package org.openelisglobal.analyzerresults.service;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -10,7 +9,7 @@ import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.RecordStatus;
 import org.openelisglobal.note.service.NoteService;
@@ -31,7 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class AnalyzerResultsServiceImpl extends BaseObjectServiceImpl<AnalyzerResults, String>
+public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<AnalyzerResults, String>
         implements AnalyzerResultsService {
     @Autowired
     protected AnalyzerResultsDAO baseObjectDAO;
@@ -114,7 +113,7 @@ public class AnalyzerResultsServiceImpl extends BaseObjectServiceImpl<AnalyzerRe
             }
 
         } catch (RuntimeException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in AnalyzerResult insertAnalyzerResult()", e);
         }
     }
@@ -126,7 +125,6 @@ public class AnalyzerResultsServiceImpl extends BaseObjectServiceImpl<AnalyzerRe
         removeHandledResultsFromAnalyzerResults(deletableAnalyzerResults, sysUserId);
 
         insertResults(sampleGroupList, sysUserId);
-
     }
 
     private void removeHandledResultsFromAnalyzerResults(List<AnalyzerResults> deletableAnalyzerResults,
@@ -139,15 +137,17 @@ public class AnalyzerResultsServiceImpl extends BaseObjectServiceImpl<AnalyzerRe
     private boolean insertResults(List<SampleGrouping> sampleGroupList, String sysUserId) {
         for (SampleGrouping grouping : sampleGroupList) {
             if (grouping.addSample) {
-//				try {
+                // try {
                 sampleService.insertDataWithAccessionNumber(grouping.sample);
-//				} catch (LIMSRuntimeException e) {
-//					Errors errors = new BaseErrors();
-//					String errorMsg = "warning.duplicate.accession";
-//					errors.reject(errorMsg, new String[] { grouping.sample.getAccessionNumber() }, errorMsg);
-//					saveErrors(errors);
-//					return false;
-//				}
+                // } catch (LIMSRuntimeException e) {
+                // Errors errors = new BaseErrors();
+                // String errorMsg = "warning.duplicate.accession";
+                // errors.reject(errorMsg, new String[] { grouping.sample.getAccessionNumber()
+                // },
+                // errorMsg);
+                // saveErrors(errors);
+                // return false;
+                // }
             } else if (grouping.updateSample) {
                 sampleService.update(grouping.sample);
             }

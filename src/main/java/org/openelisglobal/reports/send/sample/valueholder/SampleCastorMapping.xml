@@ -133,7 +133,7 @@
     <!--INSERT CODE ELEMENT for ETHNICITY here-->
     <field name="streetAddress" type="java.lang.String">
        <bind-xml name="address" node="element" />
-    </field> 
+    </field>
     <field name="city" type="java.lang.String">
        <bind-xml name="city" node="element" />
     </field>
@@ -159,7 +159,7 @@
     </field>
     <field name="streetAddress" type="java.lang.String">
        <bind-xml name="address1" node="element" />
-    </field> 
+    </field>
     <!--INSERT address2 here?-->
     <field name="city" type="java.lang.String">
        <bind-xml name="city" node="element" />
@@ -185,7 +185,7 @@
     </field>
     <field name="lastName" type="java.lang.String">
        <bind-xml name="last" node="element" />
-    </field> 
+    </field>
     <field name="workPhone" type="java.lang.String">
        <bind-xml name="phone" node="element" />
     </field>
@@ -239,4 +239,3 @@
     </field>
   </class>
 </mapping>
-

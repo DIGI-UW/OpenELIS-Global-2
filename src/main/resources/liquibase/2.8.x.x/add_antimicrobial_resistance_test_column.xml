@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="rossumg" id="1">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="test" />
+             <not>
+                <columnExists tableName="test" columnName="antimicrobial_resistance" />
+             </not>
+        </preConditions>
+        <comment>Add Antimicrobial Resistance column to test table</comment>
+        <addColumn tableName="test">
+            <column name="antimicrobial_resistance" type="boolean" defaultValueBoolean="false" />
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="rossumg" id="2">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0"> SELECT COUNT(*) FROM clinlims.menu WHERE element_id =
+                'menu_reports_whonet_export' </sqlCheck>
+        </preConditions>
+        <comment>Add menu entry for whonet export</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id"
+                valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports')" />
+            <column name="presentation_order" value="99" />
+            <column name="element_id" value="menu_reports_whonet_export" />
+            <column name="action_url"
+                value="/Report?type=patient&amp;report=ExportWHONETReportByDate" />
+            <column name="display_key" value="reports.export.whonet" />
+            <column name="tool_tip_key" value="tooltip.reports.export.whonet" />
+            <column name="new_window" value="false" />
+            <column name="is_active" value="true" />
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

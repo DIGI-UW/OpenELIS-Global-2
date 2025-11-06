@@ -1,152 +1,152 @@
 <?xml version="1.0" encoding="utf-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	 http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-	<changeSet author="moses_mutesa" id="1">
-		<preConditions onFail="MARK_RAN">
-			<tableExists tableName="system_role_module" schemaName="clinlims" />
-			<sqlCheck expectedResult="1">
-				SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Global Administrator'
-			</sqlCheck>
-		</preConditions>
-		<comment>update Global Administrator Roles to have Acees to Test Catalogue Management </comment>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TestSectionRenameEntry')"/>
-		</insert>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'UnitOfMeasureRenameEntry')"/>
-		</insert>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'PanelManagement')"/>
-		</insert>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SampleTypeOrder')"/>
-		</insert>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TestManagementConfig')"/>
-		</insert>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TestRenameEntry')"/>
-		</insert>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TestAdd')"/>
-		</insert>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'PanelManagement')"/>
-		</insert>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SampleTypeManagement')"/>
-		</insert>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'UomManagement')"/>
-		</insert>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'UomCreate')"/>
-		</insert>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SampleTypeCreate')"/>
-		</insert>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SampleTypeOrder')"/>
-		</insert>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SampleTypeTestAssign')"/>
-		</insert>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'PanelCreate')"/>
-		</insert>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'PanelOrder')"/>
-		</insert>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'PanelTestAssign')"/>
-		</insert>
-	</changeSet>
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet author="moses_mutesa" id="1">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Global Administrator'
+            </sqlCheck>
+        </preConditions>
+        <comment>update Global Administrator Roles to have Acees to Test Catalogue Management </comment>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TestSectionRenameEntry')"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'UnitOfMeasureRenameEntry')"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'PanelManagement')"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SampleTypeOrder')"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TestManagementConfig')"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TestRenameEntry')"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TestAdd')"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'PanelManagement')"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SampleTypeManagement')"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'UomManagement')"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'UomCreate')"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SampleTypeCreate')"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SampleTypeOrder')"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SampleTypeTestAssign')"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'PanelCreate')"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'PanelOrder')"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'PanelTestAssign')"/>
+        </insert>
+    </changeSet>
 </databaseChangeLog>

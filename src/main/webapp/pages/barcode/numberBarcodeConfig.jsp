@@ -5,9 +5,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
 	
 
@@ -24,6 +24,70 @@ function checkFieldInt(field) {
 	} else {
 		validator.setFieldValidity(true, field.id);
 		selectFieldErrorDisplay(true, field);
+	}
+	
+}
+
+function validateBarcodeNumericField(field) {
+	checkFieldInt(field);
+	if (validator.isFieldValid(field.id)) {
+		if (field.id === 'numDefaultOrderLabels') {
+			var maxField = document.getElementById('numMaxOrderLabels');
+			if (+(field.value) > +(maxField.value)) {
+				validator.setFieldValidity(false, field.id);
+				selectFieldErrorDisplay(false, field);
+				validator.setFieldValidity(false, maxField.id);
+				selectFieldErrorDisplay(false, maxField);
+				alert("<spring:message code='barcode.number.exceedsmax'/>");
+			} else {
+				validator.setFieldValidity(true, field.id);
+				selectFieldErrorDisplay(true, field);
+				validator.setFieldValidity(true, maxField.id);
+				selectFieldErrorDisplay(true, maxField);
+			}
+		} else if (field.id === 'numDefaultSpecimenLabels') {
+			var maxField = document.getElementById('numMaxSpecimenLabels');
+			if (+(field.value) > +(maxField.value)) {
+				validator.setFieldValidity(false, field.id);
+				selectFieldErrorDisplay(false, field);
+				validator.setFieldValidity(false, maxField.id);
+				selectFieldErrorDisplay(false, maxField);
+				alert("<spring:message code='barcode.number.exceedsmax'/>");
+			} else {
+				validator.setFieldValidity(true, field.id);
+				selectFieldErrorDisplay(true, field);
+				validator.setFieldValidity(true, maxField.id);
+				selectFieldErrorDisplay(true, maxField);
+			}
+		} else if (field.id === 'numMaxOrderLabels') {
+			var defaultField = document.getElementById('numDefaultOrderLabels');
+			if (+(field.value) < +(defaultField.value)) {
+				validator.setFieldValidity(false, field.id);
+				selectFieldErrorDisplay(false, field);
+				validator.setFieldValidity(false, defaultField.id);
+				selectFieldErrorDisplay(false, defaultField);
+				alert("<spring:message code='barcode.number.exceedsmax'/>");
+			} else {
+				validator.setFieldValidity(true, field.id);
+				selectFieldErrorDisplay(true, field);
+				validator.setFieldValidity(true, defaultField.id);
+				selectFieldErrorDisplay(true, defaultField);
+			}
+		} else if (field.id === 'numMaxSpecimenLabels') {
+			var defaultField = document.getElementById('numDefaultSpecimenLabels');
+			if (+(field.value) < +(defaultField.value)) {
+				validator.setFieldValidity(false, field.id);
+				selectFieldErrorDisplay(false, field);
+				validator.setFieldValidity(false, defaultField.id);
+				selectFieldErrorDisplay(false, defaultField);
+				alert("<spring:message code='barcode.number.exceedsmax'/>");
+			} else {
+				validator.setFieldValidity(true, field.id);
+				selectFieldErrorDisplay(true, field);
+				validator.setFieldValidity(true, defaultField.id);
+				selectFieldErrorDisplay(true, defaultField);
+			}
+		} 
 	}
 	if (validator.isAllValid()) {
 		enableSave();
@@ -50,12 +114,12 @@ function checkFieldInt(field) {
 		<td>
 			<form:input path="numDefaultOrderLabels" 
 				id="numDefaultOrderLabels"
-				onchange="checkFieldInt(this)"/>
+				onchange="validateBarcodeNumericField(this)"/>
 		</td>
 		<td>
 			<form:input path="numDefaultSpecimenLabels"
 				id="numDefaultSpecimenLabels"
-				onchange="checkFieldInt(this)"/>
+				onchange="validateBarcodeNumericField(this)"/>
 		</td>
 	</tr>
 </table>
@@ -75,12 +139,12 @@ function checkFieldInt(field) {
 		<td>
 			<form:input path="numMaxOrderLabels" 
 				id="numMaxOrderLabels"
-				onchange="checkFieldInt(this)"/>
+				onchange="validateBarcodeNumericField(this)"/>
 		</td>
 		<td>
 			<form:input path="numMaxSpecimenLabels"
 				id="numMaxSpecimenLabels"
-				onchange="checkFieldInt(this)"/>
+				onchange="validateBarcodeNumericField(this)"/>
 		</td>
 	</tr>
 </table>

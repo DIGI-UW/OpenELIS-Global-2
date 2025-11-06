@@ -18,8 +18,7 @@ package org.openelisglobal.reports.action.implementation.reportBeans;
 
 import java.sql.Timestamp;
 
-/**
- */
+/** */
 public class ActivityReportBean {
 
     private String accessionNumber;
@@ -37,7 +36,7 @@ public class ActivityReportBean {
     private String patientId;
     private String turnaroundDays;
     private String turnaroundHours;
-    
+
     private Timestamp activityTime;
 
     public String getAccessionNumber() {
@@ -119,7 +118,7 @@ public class ActivityReportBean {
     public void setActivityTime(Timestamp activityTime) {
         this.activityTime = activityTime;
     }
-    
+
     public String getPatientLastName() {
         return patientLastName;
     }

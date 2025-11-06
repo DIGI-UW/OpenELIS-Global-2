@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="CIV developer Group" id="2403011">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="electronic_order"
+                    columnName="reject_reason" />
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims"
+            tableName="electronic_order">
+            <column name="reject_reason" type="varchar (255)">
+                <constraints nullable="true" />
+            </column>
+        </addColumn>
+        <addColumn schemaName="clinlims"
+            tableName="electronic_order">
+            <column name="reject_reason_id" type="varchar (255)">
+                <constraints nullable="true" />
+            </column>
+        </addColumn>
+        <addColumn schemaName="clinlims"
+            tableName="electronic_order">
+            <column name="reject_comment" type="varchar (255)">
+                <constraints nullable="true" />
+            </column>
+        </addColumn>
+        <setColumnRemarks
+            columnName="reject_reason_id"
+            remarks="Id from qa_event table"
+            tableName="electronic_order"/>
+    </changeSet>
+</databaseChangeLog>

@@ -1,7 +1,6 @@
 package org.openelisglobal.security;
 
 import java.security.SecureRandom;
-
 import org.mindrot.jbcrypt.BCrypt;
 
 public class PasswordUtil {
@@ -42,6 +41,4 @@ public class PasswordUtil {
         }
         return result;
     }
-
 }
-

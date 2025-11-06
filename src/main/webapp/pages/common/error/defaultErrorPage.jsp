@@ -4,9 +4,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
 <!DOCTYPE html>
 <html>
@@ -123,6 +123,16 @@
 </div>
     
 <script type="text/javascript">
+
+function isValidUrl (urlString) {
+    try { 
+    	return Boolean(new URL(urlString)); 
+    }
+    catch(e){ 
+    	return false; 
+    }
+}
+
 $(document).ready(function () {
     // jquery functions for details on error
     // Browser details not localized, but probably ok.
@@ -135,10 +145,12 @@ $(document).ready(function () {
     $("#browser-details").html(browserDetails);
     var pathname = location.href;
     $("#error-path").text(pathname);
-    var referrerPath = document.referrer;
-    var referrer = '<spring:message code="errorpage.previous"/><br />' + referrerPath;
-    if (referrerPath != '') {
-            $("#previous-path").html(referrer);
+//     ensure it is a url to prevent xss
+    if (isValidUrl(document.referrer)) {
+    	var previousPath = document.getElementById('previous-path');
+    	previousPath.appendChild(document.createTextNode('<spring:message code="errorpage.previous"/>'));
+    	previousPath.appendChild(document.createElement('br'));
+    	previousPath.appendChild(document.createTextNode(document.referrer));
     }
 });	
 </script>

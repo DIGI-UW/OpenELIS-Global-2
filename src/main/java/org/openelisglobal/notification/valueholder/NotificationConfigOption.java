@@ -1,28 +1,25 @@
 package org.openelisglobal.notification.valueholder;
 
-import java.util.List;
-
-import javax.persistence.CascadeType;
-import javax.persistence.CollectionTable;
-import javax.persistence.Column;
-import javax.persistence.ElementCollection;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
-
-import org.openelisglobal.common.valueholder.BaseObject;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import java.util.List;
+import org.openelisglobal.common.valueholder.BaseObject;
 
 @Entity
 @Table(name = "notification_config_option")
@@ -78,14 +75,13 @@ public class NotificationConfigOption extends BaseObject<Integer> {
     private boolean active;
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name="additional_contacts", joinColumns=@JoinColumn(name="notification_config_option_id"))
-    @Column(name="contact")
+    @CollectionTable(name = "additional_contacts", joinColumns = @JoinColumn(name = "notification_config_option_id"))
+    @Column(name = "contact")
     @JsonIgnore
     private List<String> additionalContacts;
 
     public NotificationConfigOption(NotificationMethod methodType, NotificationPersonType personType,
-            NotificationNature notificationNature,
-            boolean active) {
+            NotificationNature notificationNature, boolean active) {
         this.notificationMethod = methodType;
         this.notificationPersonType = personType;
         this.notificationNature = notificationNature;
@@ -93,7 +89,6 @@ public class NotificationConfigOption extends BaseObject<Integer> {
     }
 
     public NotificationConfigOption() {
-
     }
 
     @Override
@@ -153,5 +148,4 @@ public class NotificationConfigOption extends BaseObject<Integer> {
     public void setAdditionalContacts(List<String> additionalContacts) {
         this.additionalContacts = additionalContacts;
     }
-
 }

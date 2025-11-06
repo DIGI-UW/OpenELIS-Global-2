@@ -1,186 +1,186 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-	  
-	  
-  	<property name="now" value="now()" dbms="postgresql"/>
-
-	<changeSet author="cliff" id="1">
-	<validCheckSum>8:9c2b9384cf23d4b2a1dfcba623ac719e</validCheckSum>
-
-	<preConditions onFail="MARK_RAN">
-				<columnExists tableName="method" columnName="is_active" />
-		</preConditions>
-		<delete schemaName="clinlims" tableName="method">
-			<where>is_active = 'Y'</where>
-		</delete>
-	</changeSet>
-
-	<changeSet author="cliff" id="2">
-		<validCheckSum>8:362965b0de717133dbb4aba5201339fd</validCheckSum>
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<columnExists tableName="method" columnName="name_localization_id" />
-			</not>
-		</preConditions>
-		<addColumn schemaName="clinlims" tableName="method">
-			<column name="name_localization_id" type="NUMERIC(10)"/>
-		</addColumn>
-	</changeSet> 
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
 
-	<changeSet author="cliff" id="3">
-		<validCheckSum>8:a45e876c8019488694f6de348c326f5f</validCheckSum>
-		<preConditions onFail="MARK_RAN">
-		   	<tableExists tableName="method" schemaName="clinlims" />
-		</preConditions>
-		<insert schemaName="clinlims" tableName="method">
-			<column name="id" valueSequenceNext="method_seq" />
-			<column name="name" value="EIA" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="Enzyme-linked immunoassay" />
-			<column name="reporting_description" value="EIA" />
+      <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet author="cliff" id="1">
+    <validCheckSum>8:9c2b9384cf23d4b2a1dfcba623ac719e</validCheckSum>
+
+    <preConditions onFail="MARK_RAN">
+                <columnExists tableName="method" columnName="is_active" />
+        </preConditions>
+        <delete schemaName="clinlims" tableName="method">
+            <where>is_active = 'Y'</where>
+        </delete>
+    </changeSet>
+
+    <changeSet author="cliff" id="2">
+        <validCheckSum>8:362965b0de717133dbb4aba5201339fd</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="method" columnName="name_localization_id" />
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="method">
+            <column name="name_localization_id" type="NUMERIC(10)"/>
+        </addColumn>
+    </changeSet>
+
+
+    <changeSet author="cliff" id="3">
+        <validCheckSum>8:a45e876c8019488694f6de348c326f5f</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+               <tableExists tableName="method" schemaName="clinlims" />
+        </preConditions>
+        <insert schemaName="clinlims" tableName="method">
+            <column name="id" valueSequenceNext="method_seq" />
+            <column name="name" value="EIA" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Enzyme-linked immunoassay" />
+            <column name="reporting_description" value="EIA" />
             <column name="is_active" value="Y" />
             <column name="active_begin" value="2007-04-24 00:00:00"/>
             <column name="active_end"/>
-            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'EIA')"/>	
-		</insert>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'EIA')"/>
+        </insert>
         <insert schemaName="clinlims" tableName="method">
-			<column name="id" valueSequenceNext="method_seq" />
-			<column name="name" value="PCR" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="Polymerase Chain Reaction" />
-			<column name="reporting_description" value="" />
+            <column name="id" valueSequenceNext="method_seq" />
+            <column name="name" value="PCR" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Polymerase Chain Reaction" />
+            <column name="reporting_description" value="" />
             <column name="is_active" value="Y" />
             <column name="active_begin" value="2006-09-18 00:00:00"/>
             <column name="active_end"/>
-            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'PCR')"/>	
-		</insert>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'PCR')"/>
+        </insert>
         <insert schemaName="clinlims" tableName="method">
-			<column name="id" valueSequenceNext="method_seq" />
-			<column name="name" value="STAIN" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="Stain" />
-			<column name="reporting_description" value="" />
+            <column name="id" valueSequenceNext="method_seq" />
+            <column name="name" value="STAIN" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Stain" />
+            <column name="reporting_description" value="" />
             <column name="is_active" value="Y" />
             <column name="active_begin" value="2006-09-29 00:00:00"/>
             <column name="active_end"/>
-            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'STAIN')"/>	
-		</insert>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'STAIN')"/>
+        </insert>
         <insert schemaName="clinlims" tableName="method">
-			<column name="id" valueSequenceNext="method_seq" />
-			<column name="name" value="CULTURE" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="Culture" />
-			<column name="reporting_description" value="" />
+            <column name="id" valueSequenceNext="method_seq" />
+            <column name="name" value="CULTURE" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Culture" />
+            <column name="reporting_description" value="" />
             <column name="is_active" value="N" />
             <column name="active_begin" value="2006-09-29 00:00:00"/>
             <column name="active_end"/>
-            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'CULTURE')"/>	
-		</insert>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'CULTURE')"/>
+        </insert>
         <insert schemaName="clinlims" tableName="method">
-			<column name="id" valueSequenceNext="method_seq" />
-			<column name="name" value="PROBE" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="Probe" />
-			<column name="reporting_description" value="" />
+            <column name="id" valueSequenceNext="method_seq" />
+            <column name="name" value="PROBE" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Probe" />
+            <column name="reporting_description" value="" />
             <column name="is_active" value="Y" />
             <column name="active_begin" value="2006-09-29 00:00:00"/>
             <column name="active_end"/>
-            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'PROBE')"/>	
-		</insert>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'PROBE')"/>
+        </insert>
         <insert schemaName="clinlims" tableName="method">
-			<column name="id" valueSequenceNext="method_seq" />
-			<column name="name" value="BIOCHEMICAL" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="Biochemical" />
-			<column name="reporting_description" value="" />
+            <column name="id" valueSequenceNext="method_seq" />
+            <column name="name" value="BIOCHEMICAL" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Biochemical" />
+            <column name="reporting_description" value="" />
             <column name="is_active" value="Y" />
             <column name="active_begin" value="2006-09-29 00:00:00"/>
             <column name="active_end"/>
-            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'BIOCHEMICAL')"/>	
-		</insert>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'BIOCHEMICAL')"/>
+        </insert>
 
-		 <insert schemaName="clinlims" tableName="method">
-			<column name="id" valueSequenceNext="method_seq" />
-			<column name="name" value="Diane Test" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="Diane Test" />
-			<column name="reporting_description" value="" />
+         <insert schemaName="clinlims" tableName="method">
+            <column name="id" valueSequenceNext="method_seq" />
+            <column name="name" value="Diane Test" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Diane Test" />
+            <column name="reporting_description" value="" />
             <column name="is_active" value="Y" />
             <column name="active_begin" value="2006-09-06 00:00:00"/>
             <column name="active_end"/>
-            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Diane Test')"/>	
-		</insert>
-		 <insert schemaName="clinlims" tableName="method">
-			<column name="id" valueSequenceNext="method_seq" />
-			<column name="name" value="HPLC" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="High Pressure Liquid Chromatography" />
-			<column name="reporting_description" value="" />
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Diane Test')"/>
+        </insert>
+         <insert schemaName="clinlims" tableName="method">
+            <column name="id" valueSequenceNext="method_seq" />
+            <column name="name" value="HPLC" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="High Pressure Liquid Chromatography" />
+            <column name="reporting_description" value="" />
             <column name="is_active" value="Y" />
             <column name="active_begin" value="2006-09-29 00:00:00"/>
             <column name="active_end"/>
-            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'HPLC')"/>	
-		</insert>
-		 <insert schemaName="clinlims" tableName="method">
-			<column name="id" valueSequenceNext="method_seq" />
-			<column name="name" value="DNA SEQUENCING" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="DNA Sequencing" />
-			<column name="reporting_description" value="" />
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'HPLC')"/>
+        </insert>
+         <insert schemaName="clinlims" tableName="method">
+            <column name="id" valueSequenceNext="method_seq" />
+            <column name="name" value="DNA SEQUENCING" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="DNA Sequencing" />
+            <column name="reporting_description" value="" />
             <column name="is_active" value="Y" />
             <column name="active_begin" value="2006-09-29 00:00:00"/>
             <column name="active_end"/>
-            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'DNA SEQUENCING')"/>	
-		</insert>
-		 <insert schemaName="clinlims" tableName="method">
-			<column name="id" valueSequenceNext="method_seq" />
-			<column name="name" value="AUTO" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="Automated (Haiti)" />
-			<column name="reporting_description" value="" />
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'DNA SEQUENCING')"/>
+        </insert>
+         <insert schemaName="clinlims" tableName="method">
+            <column name="id" valueSequenceNext="method_seq" />
+            <column name="name" value="AUTO" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Automated (Haiti)" />
+            <column name="reporting_description" value="" />
             <column name="is_active" value="Y" />
             <column name="active_begin" value="2006-09-24 00:00:00"/>
             <column name="active_end"/>
-            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'AUTO')"/>	
-		</insert>
-		 <insert schemaName="clinlims" tableName="method">
-			<column name="id" valueSequenceNext="method_seq" />
-			<column name="name" value="MANUAL" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="test done manually (Haiti)" />
-			<column name="reporting_description" value="" />
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'AUTO')"/>
+        </insert>
+         <insert schemaName="clinlims" tableName="method">
+            <column name="id" valueSequenceNext="method_seq" />
+            <column name="name" value="MANUAL" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test done manually (Haiti)" />
+            <column name="reporting_description" value="" />
             <column name="is_active" value="Y" />
             <column name="active_begin" value="2009-09-29 00:00:00"/>
             <column name="active_end"/>
-            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'MANUAL')"/>	
-		</insert>
-		<insert schemaName="clinlims" tableName="method">
-			<column name="id" valueSequenceNext="method_seq" />
-			<column name="name" value="HIV_TEST_KIT" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="Uses Hiv test kit" />
-			<column name="reporting_description" value="" />
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'MANUAL')"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="method">
+            <column name="id" valueSequenceNext="method_seq" />
+            <column name="name" value="HIV_TEST_KIT" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Uses Hiv test kit" />
+            <column name="reporting_description" value="" />
             <column name="is_active" value="Y" />
             <column name="active_begin" value="2009-09-30 00:00:00"/>
             <column name="active_end"/>
-            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'HIV_TEST_KIT')"/>	
-		</insert>
-		<insert schemaName="clinlims" tableName="method">
-			<column name="id" valueSequenceNext="method_seq" />
-			<column name="name" value="SYPHILIS_TEST_KIT" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="Test kit for syphilis" />
-			<column name="reporting_description" value="" />
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'HIV_TEST_KIT')"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="method">
+            <column name="id" valueSequenceNext="method_seq" />
+            <column name="name" value="SYPHILIS_TEST_KIT" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Test kit for syphilis" />
+            <column name="reporting_description" value="" />
             <column name="is_active" value="Y" />
             <column name="active_begin" value="2009-10-29 00:00:00"/>
             <column name="active_end"/>
-            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'SYPHILIS_TEST_KIT')"/>	
-		</insert>
-	</changeSet>
-	
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'SYPHILIS_TEST_KIT')"/>
+        </insert>
+    </changeSet>
+
 </databaseChangeLog>

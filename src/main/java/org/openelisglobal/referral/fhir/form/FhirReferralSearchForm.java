@@ -1,10 +1,8 @@
 package org.openelisglobal.referral.fhir.form;
 
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import java.util.List;
-
-import javax.validation.constraints.Min;
-import javax.validation.constraints.Pattern;
-
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
@@ -101,5 +99,4 @@ public class FhirReferralSearchForm extends BaseForm {
     public void setGenders(List<IdValuePair> genders) {
         this.genders = genders;
     }
-
 }

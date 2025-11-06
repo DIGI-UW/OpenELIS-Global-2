@@ -1,7 +1,7 @@
 package org.openelisglobal.gender.service;
 
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.gender.dao.GenderDAO;
 import org.openelisglobal.gender.valueholder.Gender;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class GenderServiceImpl extends BaseObjectServiceImpl<Gender, Integer> implements GenderService {
+public class GenderServiceImpl extends AuditableBaseObjectServiceImpl<Gender, Integer> implements GenderService {
     @Autowired
     protected GenderDAO baseObjectDAO;
 
@@ -51,5 +51,4 @@ public class GenderServiceImpl extends BaseObjectServiceImpl<Gender, Integer> im
     public Gender getGenderByType(String type) {
         return getMatch("genderType", type).orElse(null);
     }
-
 }

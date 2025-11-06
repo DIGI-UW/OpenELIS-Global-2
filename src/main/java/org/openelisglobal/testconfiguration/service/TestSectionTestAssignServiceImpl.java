@@ -30,5 +30,4 @@ public class TestSectionTestAssignServiceImpl implements TestSectionTestAssignSe
             testSectionService.update(deActivateTestSection);
         }
     }
-
 }

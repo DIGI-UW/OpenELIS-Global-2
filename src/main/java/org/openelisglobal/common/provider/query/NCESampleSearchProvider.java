@@ -1,13 +1,11 @@
 package org.openelisglobal.common.provider.query;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.servlet.validation.AjaxServlet;
 import org.openelisglobal.common.util.XMLUtil;
@@ -40,7 +38,8 @@ public class NCESampleSearchProvider extends BaseQueryProvider {
         String nationalID = request.getParameter("nationalID");
         String labNumber = request.getParameter("labNumber");
         String guid = request.getParameter("guid");
-//        String suppressExternalSearch = request.getParameter("suppressExternalSearch");
+        // String suppressExternalSearch =
+        // request.getParameter("suppressExternalSearch");
         String patientID = null;
 
         String result = VALID;
@@ -71,7 +70,6 @@ public class NCESampleSearchProvider extends BaseQueryProvider {
             }
         }
         ajaxServlet.sendData(xml.toString(), result, request, response);
-
     }
 
     private String createSampleXML(StringBuilder xml, Sample sample) {
@@ -100,5 +98,4 @@ public class NCESampleSearchProvider extends BaseQueryProvider {
     public AjaxServlet getServlet() {
         return ajaxServlet;
     }
-
 }

@@ -119,5 +119,4 @@ public class TwelveWellRow {
     public void setValue12(String value12) {
         this.value12 = value12;
     }
-
 }

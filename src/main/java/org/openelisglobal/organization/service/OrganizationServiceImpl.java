@@ -1,10 +1,9 @@
 package org.openelisglobal.organization.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.organization.dao.OrganizationDAO;
 import org.openelisglobal.organization.dao.OrganizationOrganizationTypeDAO;
 import org.openelisglobal.organization.valueholder.Organization;
@@ -13,7 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class OrganizationServiceImpl extends BaseObjectServiceImpl<Organization, String>
+public class OrganizationServiceImpl extends AuditableBaseObjectServiceImpl<Organization, String>
         implements OrganizationService {
     @Autowired
     protected OrganizationDAO baseObjectDAO;
@@ -45,6 +44,12 @@ public class OrganizationServiceImpl extends BaseObjectServiceImpl<Organization,
     @Transactional(readOnly = true)
     public Organization getOrganizationByName(Organization organization, boolean ignoreCase) {
         return baseObjectDAO.getOrganizationByName(organization, ignoreCase);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Organization getOrganizationByShortName(String shortName, boolean ignoreCase) {
+        return baseObjectDAO.getOrganizationByShortName(shortName, ignoreCase);
     }
 
     @Override
@@ -90,7 +95,6 @@ public class OrganizationServiceImpl extends BaseObjectServiceImpl<Organization,
     @Transactional(readOnly = true)
     public void getData(Organization organization) {
         getBaseObjectDAO().getData(organization);
-
     }
 
     @Override
@@ -192,8 +196,8 @@ public class OrganizationServiceImpl extends BaseObjectServiceImpl<Organization,
     @Transactional
     public void deactivateOrganizations(List<Organization> deactivateOrganizations) {
         for (Organization organization : getBaseObjectDAO().getAll()) {
-            for (Organization deactivateOrganization : deactivateOrganizations)  {
-                if (deactivateOrganization.getId().equals(organization.getId()) ) {
+            for (Organization deactivateOrganization : deactivateOrganizations) {
+                if (deactivateOrganization.getId().equals(organization.getId())) {
                     organization.setIsActive("N");
                 }
             }
@@ -222,5 +226,4 @@ public class OrganizationServiceImpl extends BaseObjectServiceImpl<Organization,
     public Organization getOrganizationByFhirId(String uuid) {
         return baseObjectDAO.getOrganizationByFhirId(uuid);
     }
-
 }

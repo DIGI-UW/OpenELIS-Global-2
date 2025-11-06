@@ -6,9 +6,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
   
 <script type="text/javascript">
 function EidProjectChecker() {
@@ -80,7 +80,6 @@ eid = new EidProjectChecker();
         <form:input path="receivedTimeForDisplay"
             onkeyup="filterTimeKeys(this, event);"              
             onblur="eid.checkReceivedTime(true);"
-
             cssClass="text"
             id="eid.receivedTimeForDisplay" maxlength="5"/>
             <div id="eid.receivedTimeForDisplayMessage" class="blank" ></div>
@@ -125,10 +124,11 @@ eid = new EidProjectChecker();
                          id="eid.centerName"
                          onchange="eid.checkCenterName(true)">
                 <option value=""></option>
-                <form:options items="${organizationTypeLists.EID_ORGS_BY_NAME.list}"
+                <form:options items="${form.organizationTypeLists['EID_ORGS_BY_NAME'].list}"
                     itemLabel="organizationName"
                     itemValue="id" />
             </form:select>
+            <div id="eid.centerNameMessage" class="blank" ></div>
         </td>
     </tr>
     <tr>
@@ -139,7 +139,7 @@ eid = new EidProjectChecker();
                     id="eid.centerCode"
                     onchange="eid.checkCenterCode(true);" >
                 <option value=""></option>
-                <form:options items="${organizationTypeLists.EID_ORGS.list}" itemLabel="doubleName" itemValue="id" />
+                <form:options items="${form.organizationTypeLists['EID_ORGS'].list}" itemLabel="doubleName" itemValue="id" />
             </form:select>
             <div id="eid.centerCodeMessage" class="blank"></div>
         </td>
@@ -170,7 +170,8 @@ eid = new EidProjectChecker();
             <form:input path="siteSubjectNumber"
                 id="eid.siteSubjectNumber"
                 cssClass="text"
-                onchange="eid.checkSiteSubjectNumber(true)"/>
+                onkeyup="addPatientCodeSlashes(this, event);"
+                onchange="eid.checkSiteSubjectNumber(true);validateSiteSubjectNumber(this)"  maxlength="18"/>
             <div id="eid.siteSubjectNumberMessage" class="blank"></div>
         </td>
     </tr>
@@ -198,7 +199,7 @@ eid = new EidProjectChecker();
                     cssClass="text" id="eid.whichPCR"
                     onchange="eid.checkEIDWhichPCR(this)" >
                 <option value=""></option>
-                <form:options items="${dictionaryLists.EID_WHICH_PCR.list}" itemLabel="localizedName" itemValue="id" />
+                <form:options items="${form.dictionaryLists['EID_WHICH_PCR'].list}" itemLabel="localizedName" itemValue="id" />
             </form:select>
             <div id="eid.whichPCRMessage" class="blank"></div>
         </td>
@@ -211,7 +212,7 @@ eid = new EidProjectChecker();
             <form:select path="observations.reasonForSecondPCRTest" cssClass="text" id="eid.reasonForSecondPCRTest"
                     onchange="makeDirty();compareAllObservationHistoryFields(true)" >
                 <option value=""></option>
-                <form:options items="${dictionaryLists.EID_SECOND_PCR_REASON.list}" itemLabel="localizedName" itemValue="id" />
+                <form:options items="${form.dictionaryLists['EID_SECOND_PCR_REASON'].list}" itemLabel="localizedName" itemValue="id" />
             </form:select>
             <div id="eid.reasonForSecondPCRTestMessage" class="blank"></div>
         </td>
@@ -262,6 +263,7 @@ eid = new EidProjectChecker();
                       maxlength="10"
                       onkeyup="addDateSlashes(this, event);"
                       onchange="eid.checkDateOfBirth(false);"
+                      id="eid.dateOfBirth"
                       />
                 <div id="eid.dateOfBirthMessage" class="blank" ></div>
             </td>
@@ -280,7 +282,7 @@ eid = new EidProjectChecker();
                 <INPUT type="text" name="ageWeek" id="eid.ageWeek" size="3"
                     onchange="eid.checkAge( this, true, 'week' ); clearField('eid.month');"
                     maxlength="2" />
-                <div id="ageMessage" class="blank" ></div>
+                <div id="eid.ageMessage" class="blank" ></div>
             </td>
         </tr>
 
@@ -294,8 +296,8 @@ eid = new EidProjectChecker();
                          id="eid.gender"
                          onchange="eid.checkGender(true)" >
                 <option value=""></option>
-                <form:options items="${formLists.GENDERS}"
-                    itemLabel="localizedName" itemValue="genderType" />
+                <form:options items="${form.formLists['GENDERS']}"
+                    itemLabel="localizedName" itemValue="id" />
                 </form:select>
                 <div id="eid.genderMessage" class="blank" ></div>
             </td>
@@ -307,7 +309,7 @@ eid = new EidProjectChecker();
             <form:select path="observations.eidInfantPTME" cssClass="text" id="eid.eidInfantPTME"
                     onchange="makeDirty();compareAllObservationHistoryFields(true)" >
                 <option value=""></option>
-                <form:options items="${dictionaryLists.YES_NO.list}" itemLabel="localizedName" itemValue="id" />
+                <form:options items="${form.dictionaryLists['YES_NO'].list}" itemLabel="localizedName" itemValue="id" />
             </form:select>
             <div id="eid.InfantPTMEMessage" class="blank"></div>
         </td>
@@ -319,7 +321,7 @@ eid = new EidProjectChecker();
             <form:select path="observations.eidTypeOfClinic" cssClass="text" id="eid.eidTypeOfClinic"
                     onchange="makeDirty();projectChecker.displayTypeOfClinicOther();compareAllObservationHistoryFields(true)" >
                 <option value=""></option>
-                <form:options items="${dictionaryLists.EID_TYPE_OF_CLINIC.list}" itemLabel="localizedName" itemValue="id" />
+                <form:options items="${form.dictionaryLists['EID_TYPE_OF_CLINIC'].list}" itemLabel="localizedName" itemValue="id" />
             </form:select>
             <div id="eid.eidTypeOfClinicMessage" class="blank"></div>
         </td>
@@ -343,7 +345,7 @@ eid = new EidProjectChecker();
             <form:select path="observations.eidHowChildFed" cssClass="text" id="eid.eidHowChildFed"
                     onchange="makeDirty();compareAllObservationHistoryFields(true)" >
                 <option value=""></option>
-                <form:options items="${dictionaryLists.EID_HOW_CHILD_FED.list}" itemLabel="localizedName" itemValue="id" />
+                <form:options items="${form.dictionaryLists['EID_HOW_CHILD_FED'].list}" itemLabel="localizedName" itemValue="id" />
             </form:select>
             <div id="eid.eidHowChildFedMessage" class="blank"></div>
         </td>
@@ -355,7 +357,7 @@ eid = new EidProjectChecker();
             <form:select path="observations.eidStoppedBreastfeeding" cssClass="text" id="eid.eidStoppedBreastfeeding"
                     onchange="makeDirty();compareAllObservationHistoryFields(true)" >'
                 <option value=""></option>
-                <form:options items="${dictionaryLists.EID_STOPPED_BREASTFEEDING.list}" itemLabel="localizedName" itemValue="id" />
+                <form:options items="${form.dictionaryLists['EID_STOPPED_BREASTFEEDING'].list}" itemLabel="localizedName" itemValue="id" />
             </form:select>
             <div id="eid.eidStoppedBreastfeedingMessage" class="blank"></div>
         </td>
@@ -368,7 +370,7 @@ eid = new EidProjectChecker();
             <form:select path="observations.eidInfantSymptomatic" cssClass="text" id="eid.eidInfantSymptomatic"
                     onchange="makeDirty();compareAllObservationHistoryFields(true)" >
                 <option value=""></option>
-                <form:options items="${dictionaryLists.YES_NO.list}" itemLabel="localizedName" itemValue="id" />
+                <form:options items="${form.dictionaryLists['YES_NO'].list}" itemLabel="localizedName" itemValue="id" />
             </form:select>
             <div id="eid.eidInfantSymptomaticMessage" class="blank"></div>
         </td>
@@ -379,7 +381,7 @@ eid = new EidProjectChecker();
             <form:select path="observations.eidInfantsARV" cssClass="text" id="eid.eidInfantsARV"
                     onchange="makeDirty();compareAllObservationHistoryFields(true)" >
                 <option value=""></option>
-                <form:options items="${dictionaryLists.EID_INFANT_PROPHYLAXIS_ARV.list}" itemLabel="localizedName" itemValue="id" />
+                <form:options items="${form.dictionaryLists['EID_INFANT_PROPHYLAXIS_ARV'].list}" itemLabel="localizedName" itemValue="id" />
             </form:select>
             <div id="eid.eidInfantsARVMessage" class="blank"></div>
         </td>
@@ -391,7 +393,7 @@ eid = new EidProjectChecker();
             <form:select path="observations.eidInfantCotrimoxazole" cssClass="text" id="eid.eidInfantCotrimoxazole"
                     onchange="makeDirty();compareAllObservationHistoryFields(true)" >
                 <option value=""></option>
-                <form:options items="${dictionaryLists.YES_NO_UNKNOWN.list}" itemLabel="localizedName" itemValue="id" />
+                <form:options items="${form.dictionaryLists['YES_NO_UNKNOWN'].list}" itemLabel="localizedName" itemValue="id" />
             </form:select>
             <div id="eid.eidInfantCotrimoxazoleMessage" class="blank"></div>
         </td>
@@ -409,7 +411,7 @@ eid = new EidProjectChecker();
             <form:select path="observations.eidMothersHIVStatus" cssClass="text" id="eid.eidMothersHIVStatus"
                     onchange="makeDirty();compareAllObservationHistoryFields(true)" >
                 <option value=""></option>
-                <form:options items="${dictionaryLists.EID_MOTHERS_HIV_STATUS.list}" itemLabel="localizedName" itemValue="id" />
+                <form:options items="${form.dictionaryLists['EID_MOTHERS_HIV_STATUS'].list}" itemLabel="localizedName" itemValue="id" />
             </form:select>
             <div id="eid.eidMothersHIVStatusMessage" class="blank"></div>
         </td>
@@ -421,7 +423,7 @@ eid = new EidProjectChecker();
             <form:select path="observations.eidMothersARV" cssClass="text" id="eid.eidMothersARV"
                     onchange="makeDirty();compareAllObservationHistoryFields(true)" >
                 <option value=""></option>
-                <form:options items="${dictionaryLists.EID_MOTHERS_ARV_TREATMENT.list}" itemLabel="localizedName" itemValue="id" />
+                <form:options items="${form.dictionaryLists['EID_MOTHERS_ARV_TREATMENT'].list}" itemLabel="localizedName" itemValue="id" />
             </form:select>
             <div id="eid.eidMothersARVMessage" class="blank"></div>
         </td>
@@ -461,9 +463,10 @@ eid = new EidProjectChecker();
             <form:select path="observations.underInvestigation" onchange="makeDirty();compareAllObservationHistoryFields(true)"
             id="eid.underInvestigation">
             <option value=""></option>
-            <form:options items="${dictionaryLists.YES_NO.list}" itemLabel="localizedName"
+            <form:options items="${form.dictionaryLists['YES_NO'].list}" itemLabel="localizedName"
                 itemValue="id" />
             </form:select>
+            <div id="eid.underInvestigationMessage" class="blank" ></div>
         </td>
     </tr>    
     <tr id="eid.underInvestigationCommentRow" >
@@ -474,6 +477,7 @@ eid = new EidProjectChecker();
         <td colspan="3">
             <form:input path="projectData.underInvestigationNote" maxlength="1000" size="80"
                 onchange="makeDirty();" id="eid.underInvestigationComment" />
+                <div id="eid.underInvestigationMessage" class="blank" ></div>
         </td>
     </tr>
 </table>

@@ -7,5 +7,4 @@ public interface ClientNotificationSender<T extends RemoteNotification> {
     public Class<T> forClass();
 
     public void send(T notification);
-
 }

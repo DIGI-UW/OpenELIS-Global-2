@@ -2,7 +2,6 @@ package org.openelisglobal.qaevent.valueholder;
 
 import java.sql.Date;
 import java.util.Objects;
-
 import org.openelisglobal.common.valueholder.BaseObject;
 
 public class NceActionLog extends BaseObject<String> {
@@ -73,20 +72,21 @@ public class NceActionLog extends BaseObject<String> {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         NceActionLog that = (NceActionLog) o;
-        return id == that.id &&
-                Objects.equals(correctiveAction, that.correctiveAction) &&
-                Objects.equals(actionType, that.actionType) &&
-                Objects.equals(personResponsible, that.personResponsible) &&
-                Objects.equals(dateCompleted, that.dateCompleted) &&
-                Objects.equals(turnAroundTime, that.turnAroundTime) &&
-                Objects.equals(ncEventId, that.ncEventId);
+        return id == that.id && Objects.equals(correctiveAction, that.correctiveAction)
+                && Objects.equals(actionType, that.actionType)
+                && Objects.equals(personResponsible, that.personResponsible)
+                && Objects.equals(dateCompleted, that.dateCompleted)
+                && Objects.equals(turnAroundTime, that.turnAroundTime) && Objects.equals(ncEventId, that.ncEventId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, correctiveAction, actionType, personResponsible, dateCompleted, turnAroundTime, ncEventId);
+        return Objects.hash(id, correctiveAction, actionType, personResponsible, dateCompleted, turnAroundTime,
+                ncEventId);
     }
 }

@@ -1,8 +1,7 @@
 package org.openelisglobal.config;
 
-import javax.persistence.EntityManagerFactory;
+import jakarta.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,8 +29,8 @@ public class HibernateConfig {
             emf = new LocalContainerEntityManagerFactoryBean();
             emf.setDataSource(dataSource);
             emf.setPersistenceXmlLocation("classpath:persistence/persistence.xml");
-//            activate this once we migrate away from hbm.xmls and persistence.xml
-//            emf.setPackagesToScan("org.openelisglobal");
+            // activate this once we migrate away from hbm.xmls and persistence.xml
+            // emf.setPackagesToScan("org.openelisglobal");
         }
 
         return emf;
@@ -46,5 +45,4 @@ public class HibernateConfig {
         }
         return transactionManager;
     }
-
 }

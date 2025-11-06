@@ -1,32 +1,31 @@
 /*
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*
-* Contributor(s): CIRG, University of Washington, Seattle WA.
-*/
+ * The contents of this file are subject to the Mozilla Public License
+ * Version 1.1 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
+ * License for the specific language governing rights and limitations under
+ * the License.
+ *
+ * The Original Code is OpenELIS code.
+ *
+ * Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
+ *
+ * Contributor(s): CIRG, University of Washington, Seattle WA.
+ */
 
 /**
  * Cote d'Ivoire
+ *
  * @author pahill
  * @since 2010-06-15
  */
 package org.openelisglobal.patient.saving;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.services.StatusService.RecordStatus;
 import org.openelisglobal.common.util.DateUtil;
@@ -75,7 +74,6 @@ public class PatientEntry extends Accessioner implements IPatientEntry {
         projectFormMapper.setPatientForm(true);
         projectForm = projectFormMapper.getProjectForm();
         findStatusSet();
-
     }
 
     @Override
@@ -84,7 +82,7 @@ public class PatientEntry extends Accessioner implements IPatientEntry {
     }
 
     @Override
-    protected void populateSampleData()  {
+    protected void populateSampleData() {
         Timestamp receivedDate = DateUtil.convertStringDatePreserveStringTimeToTimestamp(
                 sample.getReceivedDateForDisplay(), sample.getReceived24HourTimeForDisplay(),
                 projectFormMapper.getReceivedDate(), projectFormMapper.getReceivedTime());

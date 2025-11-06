@@ -59,14 +59,14 @@
 				</textElement>
 				<textFieldExpression><![CDATA[$P{labName1}]]></textFieldExpression>
 			</textField>
-			<textField textAdjust="StretchHeight">
+			<textField>
 				<reportElement positionType="Float" x="126" y="42" width="310" height="16" uuid="a125b9e4-21d0-4c94-93da-f8ccaed3252f"/>
 				<textElement textAlignment="Center">
 					<font size="12" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$P{reportTitle}]]></textFieldExpression>
 			</textField>
-			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+			<textField isBlankWhenNull="true">
 				<reportElement mode="Transparent" x="2" y="21" width="568" height="13" backcolor="#FFFFFF" uuid="29515185-af4b-49c6-ae92-f2cca6a33002"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle" markup="html">
 					<font size="10" isBold="true"/>

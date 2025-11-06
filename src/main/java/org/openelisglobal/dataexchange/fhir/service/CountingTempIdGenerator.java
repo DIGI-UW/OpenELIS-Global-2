@@ -8,5 +8,4 @@ public class CountingTempIdGenerator implements TempIdGenerator {
     public String getNextId() {
         return Integer.toString(++lastTempId);
     }
-
 }

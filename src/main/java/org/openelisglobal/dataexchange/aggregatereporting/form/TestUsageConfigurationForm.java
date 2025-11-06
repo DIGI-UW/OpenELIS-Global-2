@@ -1,7 +1,6 @@
 package org.openelisglobal.dataexchange.aggregatereporting.form;
 
 import java.util.Collection;
-
 import org.openelisglobal.common.form.BaseForm;
 
 public class TestUsageConfigurationForm extends BaseForm {

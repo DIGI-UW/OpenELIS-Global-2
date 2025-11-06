@@ -1,9 +1,8 @@
 package org.openelisglobal.testtrailer.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.testtrailer.dao.TestTrailerDAO;
 import org.openelisglobal.testtrailer.valueholder.TestTrailer;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class TestTrailerServiceImpl extends BaseObjectServiceImpl<TestTrailer, String> implements TestTrailerService {
+public class TestTrailerServiceImpl extends AuditableBaseObjectServiceImpl<TestTrailer, String>
+        implements TestTrailerService {
     @Autowired
     protected TestTrailerDAO baseObjectDAO;
 
@@ -28,7 +28,6 @@ public class TestTrailerServiceImpl extends BaseObjectServiceImpl<TestTrailer, S
     @Transactional(readOnly = true)
     public void getData(TestTrailer testTrailer) {
         getBaseObjectDAO().getData(testTrailer);
-
     }
 
     @Override

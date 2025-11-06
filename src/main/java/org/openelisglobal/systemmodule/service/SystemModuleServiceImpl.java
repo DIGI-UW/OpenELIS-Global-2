@@ -1,9 +1,8 @@
 package org.openelisglobal.systemmodule.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.systemmodule.dao.SystemModuleDAO;
 import org.openelisglobal.systemmodule.valueholder.SystemModule;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class SystemModuleServiceImpl extends BaseObjectServiceImpl<SystemModule, String>
+public class SystemModuleServiceImpl extends AuditableBaseObjectServiceImpl<SystemModule, String>
         implements SystemModuleService {
     @Autowired
     protected SystemModuleDAO baseObjectDAO;
@@ -29,7 +28,6 @@ public class SystemModuleServiceImpl extends BaseObjectServiceImpl<SystemModule,
     @Transactional(readOnly = true)
     public void getData(SystemModule systemModule) {
         getBaseObjectDAO().getData(systemModule);
-
     }
 
     @Override

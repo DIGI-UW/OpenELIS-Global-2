@@ -1,7 +1,7 @@
 package org.openelisglobal.typeofsample.service;
 
 import java.util.List;
-
+import java.util.Locale;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.test.valueholder.Test;
@@ -39,15 +39,13 @@ public interface TypeOfSampleService extends BaseObjectService<TypeOfSample, Str
 
     List<Test> getActiveTestsBySampleTypeId(String sampleType, boolean b);
 
-    List<Test> getActiveTestsBySampleTypeIdAndTestUnit(String sampleType, boolean b , List<String> testUnitIds);
-
-    List<Test> getAllActiveTestsByTestUnit(boolean b , List<String> testUnitIds);
+    List<Test> getActiveTestsBySampleTypeIdAndTestUnit(String sampleType, boolean b, List<String> testUnitIds);
 
     TypeOfSample getTransientTypeOfSampleById(String sampleTypeId);
 
     void clearCache();
 
-    TypeOfSample getTypeOfSampleForTest(String testId);
+    List<TypeOfSample> getTypeOfSampleForTest(String testId);
 
     String getTypeOfSampleNameForId(String id);
 
@@ -56,4 +54,6 @@ public interface TypeOfSampleService extends BaseObjectService<TypeOfSample, Str
     List<TypeOfSample> getTypeOfSampleForPanelId(String id);
 
     Localization getLocalizationForSampleType(String id);
+
+    TypeOfSample getTypeOfSampleByLocalizedName(String typeOfSampleName, Locale locale);
 }

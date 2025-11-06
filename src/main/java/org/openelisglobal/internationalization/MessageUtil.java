@@ -1,7 +1,6 @@
 package org.openelisglobal.internationalization;
 
 import java.util.Locale;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -18,7 +17,6 @@ public class MessageUtil {
     MessageSource messageSource;
 
     private MessageUtil() {
-
     }
 
     public static void setMessageSource(MessageSource messageSource) {

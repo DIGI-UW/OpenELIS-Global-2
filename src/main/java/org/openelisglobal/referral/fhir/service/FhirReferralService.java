@@ -11,7 +11,9 @@ public interface FhirReferralService {
 
     Bundle referAnalysisesToOrganization(Referral referral) throws FhirLocalPersistingException;
 
-//    Bundle cancelReferralToOrganization(String organizationId, String sampleId, List<String> analysisIds)
-//            throws FhirLocalPersistingException;
+    // Bundle cancelReferralToOrganization(String organizationId, String sampleId,
+    // List<String>
+    // analysisIds)
+    // throws FhirLocalPersistingException;
 
 }

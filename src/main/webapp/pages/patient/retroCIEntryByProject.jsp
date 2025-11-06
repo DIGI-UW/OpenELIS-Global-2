@@ -1,15 +1,14 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8"
 	import="org.openelisglobal.common.action.IActionConstants,
 			org.openelisglobal.login.valueholder.UserSessionData,
-            org.openelisglobal.common.util.Versioning,java.util.HashSet,org.owasp.encoder.Encode"%>
+			org.openelisglobal.common.util.*,org.openelisglobal.internationalization.MessageUtil,
+            java.util.HashSet,org.owasp.encoder.Encode"%>
 
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
-<%@ taglib prefix="tiles" uri="http://tiles.apache.org/tags-tiles"%>
 
 <%
 	String requestType = (String)request.getSession().getAttribute("type");
@@ -111,7 +110,7 @@ function clearFormElements(fieldIds) {
 <script type="text/javascript">
 function Studies() {
 	this.validators = new Array();
-	this.studyNames = ["InitialARV_Id", "FollowUpARV_Id", "RTN_Id", "_Id", "RTN_Id"];
+	this.studyNames = ["InitialARV_Id", "FollowUpARV_Id", "RTN_Id", "_Id", "RTN_Id","EID_Id","VL_Id","Recency_Id"];
 
 	this.validators["InitialARV_Id"] = new FieldValidator();
 	this.validators["InitialARV_Id"].setRequiredFields( new Array("receivedDateForDisplay", "interviewDate", "centerCode", "subjectOrSiteSubject", "labNo", "gender", "dateOfBirth") );
@@ -122,11 +121,14 @@ function Studies() {
 	this.validators["EID_Id"].setRequiredFields( new Array("eid.receivedDateForDisplay", "eid.interviewDate", "eid.centerCode", "eid.centerName", "subjectOrSiteSubject", "eid.labNo", "eid.dateOfBirth", "eid.gender" ) );
 	
 	this.validators["VL_Id"] = new FieldValidator();
-	this.validators["VL_Id"].setRequiredFields( new Array("vl.receivedDateForDisplay", "vl.interviewDate", "vl.centerCode", "vl.centerName", "subjectOrSiteSubject", "vl.labNo", "vl.dateOfBirth", "vl.gender" ) );
+	this.validators["VL_Id"].setRequiredFields( new Array("vl.receivedDateForDisplay", "vl.interviewDate", "subjectOrSiteSubject", "vl.labNo", "vl.dateOfBirth", "vl.gender" ) );
 	
 	this.validators["RTN_Id"] = new FieldValidator();
 	this.validators["RTN_Id"].setRequiredFields( new Array("rtn.labNo", "rtn.receivedDateForDisplay", "rtn.interviewDate", "rtn.gender", "rtn.dateOfBirth", "rtn.nameOfDoctor", "rtn.service", "rtn.hospital") );
 
+	this.validators["Recency_Id"] = new FieldValidator();
+	this.validators["Recency_Id"].setRequiredFields(new Array("rt.centerCode", "rt.receivedDateForDisplay","rt.interviewDate", "rt.gender", "rt.labno", "rt.asanteTest","rt.dateOfBirth"));
+	
 	this.getValidator = function /*FieldValidator*/ (divId) {
 		return this.validators[divId];
 	}
@@ -143,6 +145,7 @@ function Studies() {
 		this.projectChecker["EID_Id"] = eid;	
 		this.projectChecker["VL_Id"] = vl;
 		this.projectChecker["RTN_Id"] = rtn;
+		this.projectChecker["Recency_Id"] = rtn;
 	}
 
 	this.getProjectChecker = function (divId) {
@@ -166,7 +169,9 @@ var formFields = null;
 // the ID of the div with the right questions is the same as the projectFormName
 function switchStudyForm( divId ) {
 	hideAllDivs();
+	//setDefaultTests(divId);
 	if (divId != "" && divId != "0") {
+		sessionStorage.setItem("selectedDivId",divId);
 		$("projectFormName").value = divId;
     	toggleDisabledDiv(document.getElementById(divId), true);
 		document.getElementById(divId).style.display = "block";
@@ -194,7 +199,7 @@ function adjustFieldsForRequestType() {
 	}
 	
   	if (requestType == "readwrite" || requestType == "readonly") {
-    	$("studyFormsID").style.display = "none";
+    	//$("studyFormsID").style.display = "none";
     	if ( projectChecker != null ) {
 			$(projectChecker.idPre + "patientRecordStatusRow").style.display = "table-row";
 			$(projectChecker.idPre + "sampleRecordStatusRow").style.display = "table-row";
@@ -214,7 +219,7 @@ function adjustFieldsForRequestType() {
 	case "verify":
 		break;		
 	case "readwrite":
-		projectChecker.setFieldsForEdit( canEditPatientSubjectNos, canEditAccessionNo );    		
+		// projectChecker.setFieldsForEdit( canEditPatientSubjectNos, canEditAccessionNo );    		
 		setSaveButton();
 		break;
 	case "readonly":
@@ -247,9 +252,11 @@ function setProjectName(divId) {
  * A list of answers that equate to yes in certain lists when comparing (cross check or 2nd entry for a match).
  */
 yesesInDiseases = [
-     <%= org.openelisglobal.dictionary.ObservationHistoryList.YES_NO.getList().get(0).getId() %>,
-	 <%= org.openelisglobal.dictionary.ObservationHistoryList.YES_NO_UNKNOWN.getList().get(0).getId() %>
+     <%=Encode.forJavaScript(org.openelisglobal.dictionary.ObservationHistoryList.YES_NO.getList().get(0).getId()) %>,
+	 <%=Encode.forJavaScript(org.openelisglobal.dictionary.ObservationHistoryList.YES_NO_UNKNOWN.getList().get(0).getId()) %>
 	 ];
+	 
+var type = '<%=Encode.forJavaScript(requestType)%>';
 
 function hideAllDivs(){
 	toggleDisabledDiv(document.getElementById("InitialARV_Id"), false);
@@ -257,14 +264,15 @@ function hideAllDivs(){
 	toggleDisabledDiv(document.getElementById("RTN_Id"), false);
 	toggleDisabledDiv(document.getElementById("EID_Id"), false);
 	toggleDisabledDiv(document.getElementById("VL_Id"), false);
+	toggleDisabledDiv(document.getElementById("Recency_Id"), false);
 
 	document.getElementById('InitialARV_Id').style.display = "none";
 	document.getElementById('FollowUpARV_Id').style.display = "none";
 	document.getElementById('RTN_Id').style.display = "none";
 	document.getElementById('EID_Id').style.display = "none";
-	document.getElementById('VL_Id').style.display = "none";
+	document.getElementById('VL_Id').style.display = "none"; 
+	document.getElementById('Recency_Id').style.display = "none"; 
 }
-
 </script>
 
 <script type="text/javascript">
@@ -278,7 +286,7 @@ function /*void*/ makeDirty(){
 	}
 	// Adds warning when leaving page if content has been entered into makeDirty form fields
 	function formWarning(){ 
-    return "<spring:message code="banner.menu.dataLossWarning"/>";
+    return '<spring:message code="banner.menu.dataLossWarning"/>';
 	}
 	window.onbeforeunload = formWarning;
 }
@@ -295,14 +303,18 @@ function savePage__() {
 }
 
 function initializeStudySelection() {
-	selectStudy($('projectFormName').value);
+	//selectStudy($('projectFormName').value);
+	selectStudy(sessionStorage.getItem("selectedDivId"));
 }
 
 </script>
 <b><spring:message code="sample.entry.project.form" /> </b>
-<tiles:insertAttribute name="patientSearch" ignore="true"/>
+<c:if test="${not empty patientSearchFragment}">
+	<jsp:include page="${patientSearchFragment}"/>
+</c:if>
+<%-- <tiles:insertAttribute name="patientSearch" ignore="true"/> --%>
 <br/>
-<select name="studyForms" onchange="selectStudy(this.value);" id="studyFormsID">
+<select name="studyForms" onchange="switchStudyForm(this.value);" id="studyFormsID">
 	<option value="0" selected>
 	</option>
 	<option value="InitialARV_Id">
@@ -314,34 +326,47 @@ function initializeStudySelection() {
 	<option value="RTN_Id">
 		<spring:message code="sample.entry.project.RTN.title" />
 	</option>
+	<option value="VL_Id" ><spring:message code="sample.entry.project.VL.title"/></option>
+	<option value="EID_Id" ><spring:message code="sample.entry.project.EID.title"/></option>
+	<option value="Recency_Id" ><spring:message code="sample.entry.project.RT.title"/></option>
 </select>
 <br />
-<hr>
+<hr />
 
 <form:hidden path="observations.projectFormName" id="projectFormName" />
 <form:hidden path="patientUpdateStatus" id="processingStatus"  />
 <form:hidden path="patientPK" 			id="patientPK" />
 <form:hidden path="samplePK" 			id="samplePK" />
 <form:hidden path="" id="subjectOrSiteSubject" value="" />
+<form:hidden path="patientFhirUuid" id="patientFhirUuid"/>
 <div id="studies">
 	<div id="InitialARV_Id" style="display: none;">
-		<tiles:insertAttribute name="arvInitialStudy"/>
+		<jsp:include page="${arvInitialStudyFragment}"/>
 	</div>
 	
-	<div id="FollowUpARV_Id" style="display: none;">
-		<tiles:insertAttribute name="arvFollowupStudy"/>
+ 	<div id="FollowUpARV_Id" style="display: none;">
+		<jsp:include page="${arvFollowupStudyFragment}"/>
 	</div>
 	<div id="EID_Id" style="display: none;">
-		<tiles:insertAttribute name="ediStudy"/>
+		<jsp:include page="${ediStudyFragment}"/>
 	</div>
 	<div id="VL_Id" style="display: none;">
-		<tiles:insertAttribute name="lvStudy"/>
+		<jsp:include page="${lvStudyFragment}"/>
 	</div>
 	<div id="RTN_Id" style="display: none;">
-		<tiles:insertAttribute name="rtnStudy"/>
+		<jsp:include page="${rtnStudyFragment}"/>
+	</div>
+	<div id="Recency_Id" style="display: none;">
+		<jsp:include page="${rtStudyFragment}"/>
 	</div>
 </div>
 <script type="text/javascript">
+function checkVLSampleType(e){
+	$("vl.pscvlTaken").checked = (e.id === "vl.pscvlTaken");
+	$("vl.dbsvlTaken").checked = (e.id === "vl.dbsvlTaken");
+	$("vl.edtaTubeTaken").checked = (e.id === "vl.edtaTubeTaken");
+}
+
 // All openElis struts pages have a function to override to do some work onLoad
 function onLoad() {
 	// alert("load 1 " + $("projectFormName").value);
@@ -349,5 +374,6 @@ function onLoad() {
 	studies.initializeProjectChecker();
 	registerPatientSearchChanged();
 	projectChecker == null || projectChecker.refresh();
+	vl.checkGenderForVlPregnancyOrSuckle();
 }
 </script>

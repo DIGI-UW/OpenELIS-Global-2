@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <localization id="203" description="Test Description 1"
+        english="TB" french="TB" />
+    <localization id="202" description="Test Description 2"
+        english="Urinalysis" french="Urinalysis" />
+    <localization id="201" description="Test Description 3"
+        english="blood test" french="Merci" />
+    <scriptlet id="400" name="Scriptlet 1" code_type="T"
+        code_source="Source1" lastupdated="2025-03-13 12:00:00" />
+    <scriptlet id="401" name="Scriptlet 2" code_type="T"
+        code_source="Source2" lastupdated="2025-03-14 12:00:00" />
+
+    <method id="10" name="therapy" description="using therapy"
+        name_localization_id="201" reporting_description="" is_active="Y"
+        active_begin="2012-11-01" lastupdated="2023-10-01 12:00:00" />
+    <method id="11" name="imagining" description="scanning the body"
+        name_localization_id="202" reporting_description="" is_active="N"
+        active_begin="2013-11-01" active_end="2013-12-01"
+        lastupdated="2023-10-01 12:00:00" />
+    <label id="1" name="Patient Label"
+        description="Label for patient samples" printer_type="T"
+        scriptlet_id="400" lastupdated="2025-03-20 12:00:00" />
+    <label id="2" name="Specimen Label"
+        description="Label for specimen tracking" printer_type="L"
+        scriptlet_id="401" lastupdated="2025-03-21 08:30:00" />
+
+    <test_trailer id="200" name="Trailer Name 1"
+        description="Description 1" text="Sample Text 1"
+        lastupdated="2025-03-13 12:00:00" />
+    <test_trailer id="201" name="Trailer Name 2"
+        description="Description 2" text="Sample Text 2"
+        lastupdated="2025-03-14 12:00:00" />
+    <test_formats id="501" lastupdated="2025-03-21 12:00:00" />
+    <test_formats id="500" lastupdated="2025-03-21 12:00:00" />
+
+
+
+    <test_section id="302" name="Hematology"
+        description="Blood-related tests" is_external="N"
+        lastupdated="2025-06-10 10:00:00" sort_order="1" is_active="Y"
+        name_localization_id="201" display_key="section.hematology" />
+
+    <test_section id="300" name="Microbiology"
+        description="Infectious diseases" is_external="N"
+        lastupdated="2025-06-10 10:15:00" sort_order="2" is_active="Y"
+        name_localization_id="202" display_key="section.microbiology" />
+
+    <test_section id="301" name="Hematology"
+        description="Toxic substances analysis" is_external="Y"
+        lastupdated="2025-06-10 10:30:00" sort_order="3" is_active="Y"
+        name_localization_id="203" display_key="section.toxicology" />
+
+
+    <test id="1" description="Blood Test" loinc="123456"
+        reporting_description="Complete Blood Count" sticker_req_flag="Y"
+        is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2025-12-31 12:00:00" is_reportable="N" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2025-03-20 12:00:00"
+        local_code="CBC" sort_order="2147483646" name="Complete Blood Count"
+        orderable="true" guid="abc-123" name_localization_id="201"
+        antimicrobial_resistance="true" />
+
+    <test id="2" description="Urine Test" loinc="543216"
+        reporting_description="Urinalysis" sticker_req_flag="N" is_active="Y"
+        active_begin="2025-02-01 12:00:00" active_end="2025-12-31 12:00:00"
+        is_reportable="Y" time_holding="25" time_wait="10"
+        time_ta_average="50" time_ta_warning="70" time_ta_max="90"
+        label_qty="1" lastupdated="2025-03-20 12:00:00" local_code="UA"
+        sort_order="2147483646" name="Urinalysis" orderable="true"
+        guid="def-456" name_localization_id="202"
+        antimicrobial_resistance="false" />
+
+    <test id="901" method_id="10" uom_id="5"
+        description="Complete Blood Count" loinc="57021-8"
+        reporting_description="CBC Panel" sticker_req_flag="Y" is_active="Y"
+        active_begin="2024-01-01 00:00:00" active_end="2025-01-01 00:00:00"
+        is_reportable="Y" time_holding="30" time_wait="10"
+        time_ta_average="20" time_ta_warning="25" time_ta_max="35"
+        label_qty="1" lastupdated="2025-07-29 12:00:00" label_id="100"
+        test_trailer_id="200" test_section_id="300" scriptlet_id="400"
+        test_format_id="500" local_code="CBC001" sort_order="1"
+        name="cbc test" orderable="true"
+        guid="123e4567-e89b-12d3-a456-426614174000" name_localization_id="203"
+        reporting_name_localization_id="2001" />
+
+    <test id="902" method_id="11" uom_id="6"
+        description="HIV Screening" loinc="56785-4"
+        reporting_description="HIV Test" sticker_req_flag="N" is_active="Y"
+        active_begin="2024-06-01 00:00:00" active_end="2025-06-01 00:00:00"
+        is_reportable="Y" time_holding="60" time_wait="15"
+        time_ta_average="30" time_ta_warning="35" time_ta_max="45"
+        label_qty="1" lastupdated="2025-07-29 12:05:00" label_id="101"
+        test_trailer_id="201" test_section_id="301" scriptlet_id="401"
+        test_format_id="501" local_code="HIV001" sort_order="2"
+        name="hiv screening" orderable="true"
+        guid="223e4567-e89b-12d3-a456-426614174001" name_localization_id="203"
+        reporting_name_localization_id="2002" />
+
+    <test_analyte id="1" test_id="901" result_group="1"
+        sort_order="1" testalyt_type="T" lastupdated="2025-03-19 10:00:00"
+        is_reportable="Y" />
+    <test_analyte id="2" test_id="902" result_group="1"
+        sort_order="2" testalyt_type="R" lastupdated="2025-03-19 10:01:00"
+        is_reportable="Y" />
+</dataset>

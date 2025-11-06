@@ -1,0 +1,84 @@
+/* src/components/Dashboard.css */
+.home-dashboard-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 50px;
+  padding: 50px;
+}
+
+.dashboard-view {
+  padding: 50px;
+}
+.dashboard-tile {
+  padding: 20px;
+  border-radius: 3px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background-color: #f4f4f4;
+}
+
+.tile-title {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.tile-subtitle {
+  margin-top: 5px;
+  color: #666;
+}
+
+.tile-value {
+  margin-top: 10px;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.tile-icon {
+  position: absolute;
+  top: 0.1rem;
+  right: 0.1rem;
+}
+
+.icon-wrapper {
+  transition: border-color 0.3s; /* Add a smooth transition effect for the border */
+}
+
+.icon-wrapper:hover {
+  border: 1px solid #78a9ff; /* Add a blue border on hover */
+  cursor: pointer;
+}
+
+.tile-title-view {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.tile-subtitle-view {
+  margin-top: 5px;
+  color: #666;
+}
+
+.tile-value-view {
+  margin-top: 10px;
+  font-size: 1.9rem;
+  font-weight: bold;
+}
+
+@media (max-width: 925px) {
+  .home-dashboard-container {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+    padding: 22px;
+  }
+}
+
+@media (max-width: 500px) {
+  .home-dashboard-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 846px) {
+  .dashboard-view {
+    padding: 0;
+  }
+}

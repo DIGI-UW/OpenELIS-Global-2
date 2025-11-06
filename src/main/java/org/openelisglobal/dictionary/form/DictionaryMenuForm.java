@@ -1,18 +1,14 @@
 package org.openelisglobal.dictionary.form;
 
+import jakarta.validation.constraints.Pattern;
 import java.util.List;
-
-import javax.validation.constraints.Pattern;
-
-import org.hibernate.validator.constraints.SafeHtml;
 import org.openelisglobal.common.form.AdminOptionMenuForm;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.validation.annotations.SafeHtml;
 
 public class DictionaryMenuForm extends AdminOptionMenuForm<Dictionary> {
-    /**
-     *
-     */
+    /** */
     private static final long serialVersionUID = -1585240883233995437L;
 
     // for display
@@ -20,7 +16,7 @@ public class DictionaryMenuForm extends AdminOptionMenuForm<Dictionary> {
 
     private List<@Pattern(regexp = ValidationHelper.ID_REGEX) String> selectedIDs;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String searchString = "";
 
     public DictionaryMenuForm() {

@@ -1,0 +1,144 @@
+version: '3.3'
+services:
+  certs:
+    container_name: oe-certs
+    image: itechuw/certgen:main
+    restart: always
+    environment:
+      - KEYSTORE_PW="kspass"
+      - TRUSTSTORE_PW="tspass"
+    networks:
+      - default
+    volumes:
+      - key_trust-store-volume:/etc/openelis-global
+      - keys-vol:/etc/ssl/private/
+      - certs-vol:/etc/ssl/certs/
+
+  database:
+      container_name: openelisglobal-database 
+      image: postgres:14.4
+      ports:
+          - "15432:5432"
+      restart: always
+      env_file:
+          - ./volume/database/database.env
+      volumes:
+              # preserves the database between containers
+          - db-data:/var/lib/postgresql/data                
+              # files here will run on install
+          - ./volume/database/dbInit:/docker-entrypoint-initdb.d
+      networks:
+          - default
+      healthcheck:
+            test: [ "CMD", "pg_isready", "-q", "-d", "clinlims", "-U", "clinlims" ]
+            timeout: 45s
+            interval: 10s
+            retries: 10      
+
+  oe.openelis.org:
+    container_name: openelisglobal-webapp
+    image: "${DOCKER_TEST_NAME}:${GITHUB_REF_NAME}"
+    depends_on:
+      - database
+      - certs
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    restart: always
+    networks:
+      default:
+        ipv4_address: 172.20.1.121
+    environment:
+      - DEFAULT_PW=adminADMIN!
+      - TZ=Africa/Nairobi
+      # context.xml doesn't seem to be able to pick up environment variables directly, so we are passing them in as CATALINA_OPTS
+      - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://database:5432/clinlims -Ddatasource.username=clinlims
+    volumes:
+      -  key_trust-store-volume:/etc/openelis-global
+      - ./volume/plugins/:/var/lib/openelis-global/plugins
+      - ./volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
+    secrets:
+      - source: datasource.password
+      - source: common.properties
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      timeout: 10s
+      interval: 30s
+      retries: 3
+      start_period: 2m
+
+  fhir.openelis.org:
+    container_name: external-fhir-api
+    image: "${DOCKER_TEST_NAME}-fhir:${GITHUB_REF_NAME}"
+    depends_on:
+      - database
+      - certs
+    ports:
+      - "8081:8080"
+      - "8444:8443"
+    networks:
+      - default
+    restart: always
+    environment:
+      SPRING_CONFIG_LOCATION: file:///run/secrets/hapi_application.yaml
+      TZ: Africa/Nairobi
+      JAVA_OPTS: "-Djavax.net.ssl.trustStore=/etc/openelis-global/truststore 
+                      -Djavax.net.ssl.trustStorePassword=tspass
+                      -Djavax.net.ssl.trustStoreType=pkcs12 
+                      -Djavax.net.ssl.keyStore=/etc/openelis-global/keystore 
+                      -Djavax.net.ssl.keyStorePassword=kspass 
+                      -Djavax.net.ssl.keyStoreType=pkcs12"
+    volumes:
+      -  key_trust-store-volume:/etc/openelis-global
+      - ./volume/tomcat/hapi_server.xml:/opt/bitnami/tomcat/conf/server.xml
+    secrets:
+      - source: hapi_application.yaml 
+      
+  frontend.openelis.org:
+    image: "${DOCKER_TEST_NAME}-frontend:${GITHUB_REF_NAME}"
+    container_name: openelisglobal-front-end  
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      timeout: 10s
+      interval: 30s
+      retries: 3
+      start_period: 2m
+
+  proxy:
+    image: "${DOCKER_TEST_NAME}-proxy:${GITHUB_REF_NAME}"
+    container_name: openelisglobal-proxy
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - certs-vol:/etc/nginx/certs/
+      - keys-vol:/etc/nginx/keys/
+      - ./volume/nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - default  
+    restart: unless-stopped
+    depends_on:
+      - certs
+
+secrets:
+  datasource.password:
+    file: ./volume/properties/datasource.password
+  common.properties:
+    file:  ./volume/properties/common.properties
+  hapi_application.yaml:
+    file: ./volume/properties/hapi_application.yaml 
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.1.0/24
+
+volumes:
+  db-data:
+  key_trust-store-volume:
+  certs-vol:
+  keys-vol:

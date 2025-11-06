@@ -1,11 +1,9 @@
 package org.openelisglobal.inventory.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
@@ -166,9 +164,9 @@ public class InventoryController extends BaseController {
                 inventoryReceiptService.insert(inventory.getReceipt());
             }
 
-//			tx.commit();
+            // tx.commit();
         } catch (LIMSRuntimeException e) {
-//			tx.rollback();
+            // tx.rollback();
             setupDisplayItems(form);
             return findForward(FWD_FAIL_INSERT, form);
         }
@@ -271,7 +269,6 @@ public class InventoryController extends BaseController {
             LogEvent.logError(e.getMessage(), e);
         }
         return newInventory;
-
     }
 
     private InventorySet createInventorySet(String kitName, String receiveDate, String expirationDate, String lotNumber,
@@ -316,71 +313,76 @@ public class InventoryController extends BaseController {
         return modifiedItems;
     }
 
-//    protected Errors validateAll(HttpServletRequest request, Errors errors, BaseForm form)  {
-//
-//        // test validation against database
-//        String testNameSelected = (String) form.get("testName");
-//
-//        if (!StringUtil.isNullorNill(testNameSelected)) {
-//            Test test = new Test();
-//            test.setTestName(testNameSelected);
-//            test = testService.getTestByName(test);
-//
-//            String messageKey = "testresult.testName";
-//
-//            if (test == null) {
-//                errors.reject("errors.invalid", new Object[] { MessageUtil.getMessage(messageKey) }, "errors.invalid");
-//            }
-//        }
-//
-//        // scriptlet validation against database
-//        String scriptletSelected = (String) form.get("scriptletName");
-//
-//        if (!StringUtil.isNullorNill(scriptletSelected)) {
-//            Scriptlet scriptlet = new Scriptlet();
-//            scriptlet.setScriptletName(scriptletSelected);
-//            scriptlet = scriptletService.getScriptletByName(scriptlet);
-//
-//            String messageKey = "testresult.scriptletName";
-//
-//            if (scriptlet == null) {
-//                errors.reject("errors.invalid", new Object[] { MessageUtil.getMessage(messageKey) }, "errors.invalid");
-//            }
-//        }
-//
-//        // validate for testResult D -> value must be dictionary ID
-//        String testResultType = (String) form.get("testResultType");
-//
-//        if (testResultType.equals("D")) {
-//            String val = (String) form.get("value");
-//            String messageKey = "testresult.value";
-//            try {
-//                Integer.parseInt(val);
-//
-//                Dictionary dictionary = new Dictionary();
-//                dictionary.setId(val);
-//                List dictionarys = dictionaryService.getAll();
-//
-//                boolean found = false;
-//                for (int i = 0; i < dictionarys.size(); i++) {
-//                    Dictionary d = (Dictionary) dictionarys.get(i);
-//                    if (dictionary.getId().equals(d.getId())) {
-//                        found = true;
-//                    }
-//                }
-//
-//                if (!found) {
-//                    errors.reject("errors.invalid", new Object[] { MessageUtil.getMessage(messageKey) },
-//                            "errors.invalid");
-//                }
-//            } catch (NumberFormatException e) {
-//                // bugzilla 2154
-//                LogEvent.logError(e.toString(), e);
-//                errors.reject("errors.invalid", new Object[] { MessageUtil.getMessage(messageKey) }, "errors.invalid");
-//            }
-//        }
-//        return errors;
-//    }
+    // protected Errors validateAll(HttpServletRequest request, Errors errors,
+    // BaseForm form) {
+    //
+    // // test validation against database
+    // String testNameSelected = (String) form.get("testName");
+    //
+    // if (!StringUtil.isNullorNill(testNameSelected)) {
+    // Test test = new Test();
+    // test.setTestName(testNameSelected);
+    // test = testService.getTestByName(test);
+    //
+    // String messageKey = "testresult.testName";
+    //
+    // if (test == null) {
+    // errors.reject("errors.invalid", new Object[] {
+    // MessageUtil.getMessage(messageKey) }, "errors.invalid");
+    // }
+    // }
+    //
+    // // scriptlet validation against database
+    // String scriptletSelected = (String) form.get("scriptletName");
+    //
+    // if (!StringUtil.isNullorNill(scriptletSelected)) {
+    // Scriptlet scriptlet = new Scriptlet();
+    // scriptlet.setScriptletName(scriptletSelected);
+    // scriptlet = scriptletService.getScriptletByName(scriptlet);
+    //
+    // String messageKey = "testresult.scriptletName";
+    //
+    // if (scriptlet == null) {
+    // errors.reject("errors.invalid", new Object[] {
+    // MessageUtil.getMessage(messageKey) }, "errors.invalid");
+    // }
+    // }
+    //
+    // // validate for testResult D -> value must be dictionary ID
+    // String testResultType = (String) form.get("testResultType");
+    //
+    // if (testResultType.equals("D")) {
+    // String val = (String) form.get("value");
+    // String messageKey = "testresult.value";
+    // try {
+    // Integer.parseInt(val);
+    //
+    // Dictionary dictionary = new Dictionary();
+    // dictionary.setId(val);
+    // List dictionarys = dictionaryService.getAll();
+    //
+    // boolean found = false;
+    // for (int i = 0; i < dictionarys.size(); i++) {
+    // Dictionary d = (Dictionary) dictionarys.get(i);
+    // if (dictionary.getId().equals(d.getId())) {
+    // found = true;
+    // }
+    // }
+    //
+    // if (!found) {
+    // errors.reject("errors.invalid", new Object[] {
+    // MessageUtil.getMessage(messageKey) },
+    // "errors.invalid");
+    // }
+    // } catch (NumberFormatException e) {
+    // // bugzilla 2154
+    // LogEvent.logError(e);
+    // errors.reject("errors.invalid", new Object[] {
+    // MessageUtil.getMessage(messageKey) }, "errors.invalid");
+    // }
+    // }
+    // return errors;
+    // }
 
     @Override
     protected String findLocalForward(String forward) {

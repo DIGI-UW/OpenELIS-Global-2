@@ -1,23 +1,20 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ */
 package org.openelisglobal.sampleitem.valueholder;
 
 import java.sql.Timestamp;
 import java.util.UUID;
-
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.common.valueholder.ValueHolder;
 import org.openelisglobal.common.valueholder.ValueHolderInterface;
@@ -35,7 +32,7 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
 
     private String id;
 
-    private String quantity;
+    private Double quantity;
 
     private UUID fhirUuid;
     private ValueHolderInterface sample;
@@ -52,6 +49,10 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
     private Timestamp collectionDate;
     private String statusId;
     private String collector;
+    private boolean rejected = false;
+    private String rejectReasonId;
+    private boolean voided = false;
+    private String voidReason;
 
     public SampleItem() {
         super();
@@ -87,11 +88,11 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
         return id;
     }
 
-    public void setQuantity(String quantity) {
+    public void setQuantity(Double quantity) {
         this.quantity = quantity;
     }
 
-    public String getQuantity() {
+    public Double getQuantity() {
         return quantity;
     }
 
@@ -225,4 +226,35 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
         return fhirUuid == null ? "" : fhirUuid.toString();
     }
 
+    public boolean isRejected() {
+        return rejected;
+    }
+
+    public void setRejected(boolean rejected) {
+        this.rejected = rejected;
+    }
+
+    public String getRejectReasonId() {
+        return rejectReasonId;
+    }
+
+    public void setRejectReasonId(String rejectReasonId) {
+        this.rejectReasonId = rejectReasonId;
+    }
+
+    public boolean isVoided() {
+        return voided;
+    }
+
+    public void setVoided(boolean voided) {
+        this.voided = voided;
+    }
+
+    public String getVoidReason() {
+        return voidReason;
+    }
+
+    public void setVoidReason(String voidReason) {
+        this.voidReason = voidReason;
+    }
 }

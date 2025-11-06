@@ -1,0 +1,93 @@
+{
+  "name": "openelis-global-react-app",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@carbon/charts": "^1.5.2",
+    "@carbon/charts-react": "^1.5.2",
+    "@carbon/icons-react": "^11.17.0",
+    "@carbon/react": "^1.15.0",
+    "@carbon/themes": "11.10.0",
+    "@fortawesome/fontawesome-svg-core": "^1.2.28",
+    "@fortawesome/free-regular-svg-icons": "^5.13.0",
+    "@fortawesome/free-solid-svg-icons": "^5.13.0",
+    "@fortawesome/react-fontawesome": "^0.1.9",
+    "@mui/icons-material": "^5.11.11",
+    "@testing-library/jest-dom": "^4.2.4",
+    "@testing-library/react": "^9.5.0",
+    "@testing-library/user-event": "^7.2.1",
+    "carbon-components": "^10.58.12",
+    "cors": "^2.8.5",
+    "d3": "^7.6.1",
+    "date-fns": "^2.8.1",
+    "dayjs": "^1.10.4",
+    "formik": "^2.2.9",
+    "formik-error-focus": "2.0.0",
+    "geopattern": "1.2.3",
+    "jsonpath": "^1.1.1",
+    "lodash-es": "^4.17.15",
+    "prettier-eslint": "15.0.1",
+    "qs": "6.11.0",
+    "react": "^17.0.2",
+    "react-avatar": "5.0.3",
+    "react-confirm-alert": "^2.7.0",
+    "react-data-table-component": "^7.5.3",
+    "react-dom": "^17.0.2",
+    "react-i18next": "11.x",
+    "react-idle-timer": "^5.7.2",
+    "react-intl": "^5.20.12",
+    "react-router-dom": "^5.2.0",
+    "react-scripts": "5.0.1",
+    "rxjs": "6.x",
+    "sass": "^1.54.3",
+    "sass-loader": "^12.3.0",
+    "single-spa": "5.x",
+    "style-loader": "^3.3.1",
+    "styled-components": "^5.3.6",
+    "swr": "2.0.3",
+    "web-vitals": "^2.1.4",
+    "yup": "^0.29.2"
+  },
+  "scripts": {
+    "start": "GENERATE_SOURCEMAP=false HTTPS=true react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "cy:run": "cypress run --headless --browser chrome",
+    "cy:open": "cypress open --browser chrome",
+    "format": "prettier ./ --write",
+    "check-format": "prettier ./ --check"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "resolutions": {
+    "**/@types/react": "16.14.5"
+  },
+  "devDependencies": {
+    "cypress": "^12.17.3",
+    "cypress-xpath": "^2.0.1",
+    "eslint": "^8.48.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "prettier": "^3.4.2",
+    "sass": "^1.57.1"
+  }
+}

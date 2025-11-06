@@ -1,7 +1,6 @@
 package org.openelisglobal.referral.fhir.form;
 
 import java.util.List;
-
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 
 public class FhirReferralForm extends FhirReferralSearchForm {
@@ -27,5 +26,4 @@ public class FhirReferralForm extends FhirReferralSearchForm {
     public List<ElectronicOrder> getElectronicOrders() {
         return electronicOrders;
     }
-
 }

@@ -6,8 +6,8 @@ import static org.openelisglobal.reports.action.implementation.reportBeans.CSVCo
 import static org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBuilder.Strategy.SAMPLE_STATUS;
 
 import java.sql.Date;
-
 import org.openelisglobal.reports.action.implementation.Report.DateRange;
+import org.openelisglobal.reports.form.ReportForm.DateType;
 
 /**
  * If we had a big resultSet with various columns for CSV export, we need a few
@@ -23,10 +23,9 @@ import org.openelisglobal.reports.action.implementation.Report.DateRange;
 public class HaitiColumnBuilder extends CSVColumnBuilder {
 
     private DateRange dateRange;
+    private DateType dateType;
 
-    /**
-     *
-     */
+    /** */
     public HaitiColumnBuilder(DateRange dateRange) {
         super(null);
         this.dateRange = dateRange;
@@ -63,12 +62,26 @@ public class HaitiColumnBuilder extends CSVColumnBuilder {
      */
     @Override
     public void makeSQL() {
+        // Switch date column according to selected DateType: PK
+        String dateColumn = "s.entered_date ";
+        switch (dateType) {
+        case ORDER_DATE:
+            dateColumn = "s.entered_date ";
+            break;
+        case RESULT_DATE:
+            dateColumn = "a.released_date ";
+            break;
+        case PRINT_DATE:
+            dateColumn = "dt.report_generation_time ";
+        default:
+            break;
+        }
         query = new StringBuilder();
         Date lowDate = dateRange.getLowDate();
         Date highDate = dateRange.getHighDate();
-        query.append(
-                "SELECT s.id as sample_id, s.accession_number, s.entered_date, s.received_date, s.collection_date, s.status_id "
-                        + ", pat.national_id, pat.birth_date, per.first_name, per.last_name, pat.gender " + " ");
+        query.append("SELECT s.id as sample_id, s.accession_number, s.entered_date, s.received_date,"
+                + " s.collection_date, s.status_id , pat.national_id, pat.birth_date, per.first_name,"
+                + " per.last_name, pat.gender  ");
 
         // all crosstab or sub-select generated tables need to be listed in the
         // following list and in the WHERE clause at the bottom
@@ -79,8 +92,8 @@ public class HaitiColumnBuilder extends CSVColumnBuilder {
 
         // all observation history values
         appendOrganization(lowDate, highDate);
-        appendObservationHistoryCrosstab(lowDate, highDate);
-        appendResultCrosstab(lowDate, highDate);
+        appendObservationHistoryCrosstab(lowDate, highDate, dateColumn);
+        appendResultCrosstab(lowDate, highDate, dateColumn);
 
         // and finally the join that puts these all together. Each cross table should be
         // listed here otherwise it's not in the result and you'll get a full join
@@ -100,12 +113,11 @@ public class HaitiColumnBuilder extends CSVColumnBuilder {
      */
     private void appendOrganization(Date lowDate, Date highDate) {
         appendCrosstabPreamble(SQLConstant.ORGANIZATION);
-        query.append(
-
-                "\n( SELECT s.id as s_id, o.name AS organization_name FROM organization AS o, sample AS s, sample_organization as so "
-                        + "\n     WHERE s.collection_date >= date('" + formatDateForDatabaseSql(lowDate) + "') "
-                        + "\n     AND   s.collection_date <= date('" + formatDateForDatabaseSql(highDate) + "') "
-                        + "\n     AND   s.id = so.samp_id AND so.org_id = o.id ) AS ORGANIZATION " + "\n  ");
+        query.append("\n" + "( SELECT s.id as s_id, o.name AS organization_name FROM organization AS o, sample AS"
+                + " s, sample_organization as so \n" + "     WHERE s.collection_date >= date('"
+                + formatDateForDatabaseSql(lowDate) + "') " + "\n     AND   s.collection_date <= date('"
+                + formatDateForDatabaseSql(highDate) + "') "
+                + "\n     AND   s.id = so.samp_id AND so.org_id = o.id ) AS ORGANIZATION " + "\n  ");
         appendCrosstabPostfix(lowDate, highDate, SQLConstant.ORGANIZATION);
     }
 }

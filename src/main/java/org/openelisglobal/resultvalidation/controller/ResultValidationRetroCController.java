@@ -1,11 +1,9 @@
 package org.openelisglobal.resultvalidation.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
@@ -20,7 +18,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.ModelAndView;
 
 @Controller
@@ -39,14 +36,14 @@ public class ResultValidationRetroCController extends BaseResultValidationRetroC
         binder.setAllowedFields(ALLOWED_FIELDS);
     }
 
-    @RequestMapping(value = "/ResultValidationRetroC", method = RequestMethod.GET)
-    public ModelAndView showResultValidationRetroC(HttpServletRequest request)
+    @RequestMapping(value = "/ResultValidationRetroC")
+    public ModelAndView showResultValidationRetroC(HttpServletRequest request, ResultValidationForm form)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-        ResultValidationForm form = new ResultValidationForm();
 
         request.getSession().setAttribute(SAVE_DISABLED, "true");
         String testSectionName = (request.getParameter("type"));
         String testName = (request.getParameter("test"));
+        form.setTestSection(testSectionName);
 
         ResultValidationPaging paging = new ResultValidationPaging();
         String newPage = request.getParameter("page");
@@ -62,10 +59,12 @@ public class ResultValidationRetroCController extends BaseResultValidationRetroC
                 sectionName = getDBSectionName(sectionName);
                 List<AnalysisItem> resultList = resultsValidationUtility.getResultValidationList(sectionName, testName,
                         getValidationStatus(testSectionName));
+                form.setSearchFinished(true);
                 paging.setDatabaseResults(request, form, resultList);
             }
 
         } else {
+            form.setSearchFinished(true);
             paging.page(request, form, Integer.parseInt(newPage));
         }
 
@@ -81,21 +80,35 @@ public class ResultValidationRetroCController extends BaseResultValidationRetroC
         List<Integer> validationStatus = new ArrayList<>();
 
         if ("serology".equals(testSection)) {
-            validationStatus
-                    .add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
-            validationStatus.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)));
+            validationStatus.add(Integer.parseInt(
+                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
+            validationStatus.add(
+                    Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)));
             // This next status determines if NonConformity analysis can still
             // be displayed on bio. validation page. We are awaiting feedback on
             // RetroCI
             // validationStatus.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming)));
         } else {
-            validationStatus
-                    .add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
+            validationStatus.add(Integer.parseInt(
+                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
             if (ConfigurationProperties.getInstance()
                     .isPropertyValueEqual(ConfigurationProperties.Property.VALIDATE_REJECTED_TESTS, "true")) {
-                validationStatus.add(
-                        Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+                validationStatus.add(Integer.parseInt(
+                        SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
             }
+        }
+
+        return validationStatus;
+    }
+
+    public List<Integer> getValidationStatus() {
+        List<Integer> validationStatus = new ArrayList<>();
+        validationStatus.add(Integer
+                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
+        if (ConfigurationProperties.getInstance()
+                .isPropertyValueEqual(ConfigurationProperties.Property.VALIDATE_REJECTED_TESTS, "true")) {
+            validationStatus.add(Integer.parseInt(
+                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
         }
 
         return validationStatus;

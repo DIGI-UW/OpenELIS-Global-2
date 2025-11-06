@@ -7,5 +7,4 @@ public interface IPagingForm {
     void setPaging(PagingBean pagingBean);
 
     PagingBean getPaging();
-
 }

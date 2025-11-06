@@ -11,5 +11,4 @@ public class ClientResultsViewInfoDAOImpl extends BaseDAOImpl<ClientResultsViewB
     public ClientResultsViewInfoDAOImpl() {
         super(ClientResultsViewBean.class);
     }
-
 }

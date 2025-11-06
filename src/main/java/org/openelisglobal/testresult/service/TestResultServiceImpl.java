@@ -6,8 +6,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testresult.dao.TestResultDAO;
@@ -17,7 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class TestResultServiceImpl extends BaseObjectServiceImpl<TestResult, String> implements TestResultService {
+public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestResult, String>
+        implements TestResultService {
     @Autowired
     protected TestResultDAO baseObjectDAO;
 
@@ -61,7 +61,6 @@ public class TestResultServiceImpl extends BaseObjectServiceImpl<TestResult, Str
     @Transactional(readOnly = true)
     public void getData(TestResult testResult) {
         getBaseObjectDAO().getData(testResult);
-
     }
 
     @Override
@@ -113,7 +112,6 @@ public class TestResultServiceImpl extends BaseObjectServiceImpl<TestResult, Str
                 } else {
                     return Integer.parseInt(o1.getSortOrder()) - Integer.parseInt(o2.getSortOrder());
                 }
-
             }
         });
         return testResults;

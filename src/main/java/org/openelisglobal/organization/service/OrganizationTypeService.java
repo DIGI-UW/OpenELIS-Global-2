@@ -1,7 +1,6 @@
 package org.openelisglobal.organization.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.organization.valueholder.OrganizationType;
 

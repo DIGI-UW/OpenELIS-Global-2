@@ -1,7 +1,6 @@
 package org.openelisglobal.observationhistory.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;

@@ -1,31 +1,17 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.dataexchange.order.action;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
-
-import org.openelisglobal.dataexchange.order.action.IOrderInterpreter.InterpreterResults;
-import org.openelisglobal.dataexchange.order.action.OrderWorker.OrderResult;
-import org.openelisglobal.spring.util.SpringContext;
 
 import ca.uhn.hl7v2.AcknowledgmentCode;
 import ca.uhn.hl7v2.HL7Exception;
@@ -39,6 +25,14 @@ import ca.uhn.hl7v2.model.v251.message.ORL_O22;
 import ca.uhn.hl7v2.model.v251.segment.ERR;
 import ca.uhn.hl7v2.protocol.ReceivingApplication;
 import ca.uhn.hl7v2.protocol.ReceivingApplicationException;
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletException;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import org.openelisglobal.dataexchange.order.action.IOrderInterpreter.InterpreterResults;
+import org.openelisglobal.dataexchange.order.action.OrderWorker.OrderResult;
+import org.openelisglobal.spring.util.SpringContext;
 
 public class OrderServlet extends HohServlet {
 
@@ -49,9 +43,7 @@ public class OrderServlet extends HohServlet {
         setApplication(new OrderApplication());
     }
 
-    /**
-     * The application does the actual processing
-     */
+    /** The application does the actual processing */
     private class OrderApplication implements ReceivingApplication {
         /**
          * processMessage is fired each time a new message arrives.
@@ -64,15 +56,16 @@ public class OrderServlet extends HohServlet {
         public Message processMessage(Message message, Map theMetadata)
                 throws ReceivingApplicationException, HL7Exception {
             // LogEvent.logFatal("OrderServlet", "processMessage", message.encode());
-            // LogEvent.logInfo(this.getClass().getName(), "method unkown", "Received message:\n" + message.printStructure());
+            // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown", "Received
+            // message:\n" + message.printStructure());
 
             // TO DO add message signature verification for authentication of messages
 
             OrderWorker worker = new OrderWorker(message);
 
-            worker.setInterpreter(SpringContext.getBean(HL7OrderInterpreter.class));
-            worker.setExistanceChecker(SpringContext.getBean(DBOrderExistanceChecker.class));
-            worker.setPersister(SpringContext.getBean(DBOrderPersister.class));
+            worker.setInterpreter(SpringContext.getBean(IOrderInterpreter.class));
+            worker.setExistanceChecker(SpringContext.getBean(IOrderExistanceChecker.class));
+            worker.setPersister(SpringContext.getBean(IOrderPersister.class));
 
             OrderResult orderResult = worker.handleOrderRequest();
 
@@ -155,7 +148,6 @@ public class OrderServlet extends HohServlet {
                                     response);
                             response.insertERR(err, errorCnt++);
                         }
-
                     }
                 } else {
                     response = ackToOrlO22((ACK) omlMessage.generateACK(AcknowledgmentCode.AE,
@@ -210,13 +202,10 @@ public class OrderServlet extends HohServlet {
          * err.getSeverity().setValue("E"); return err; }
          */
 
-        /**
-         * {@inheritDoc}
-         */
+        /** {@inheritDoc} */
         @Override
         public boolean canProcess(Message theMessage) {
             return true;
         }
-
     }
 }

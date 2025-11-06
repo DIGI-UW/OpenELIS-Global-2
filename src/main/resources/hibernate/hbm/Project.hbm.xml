@@ -1,72 +1,72 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class name="org.openelisglobal.project.valueholder.Project"
-		table="PROJECT" optimistic-lock="version" dynamic-update="true">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<param name="sequence_name">project_seq</param>
-			</generator>
-		</id>
-		<version name="lastupdated" column="LASTUPDATED"
-			type="timestamp" access="field" />
+    <class name="org.openelisglobal.project.valueholder.Project"
+        table="PROJECT" optimistic-lock="version" dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">project_seq</param>
+            </generator>
+        </id>
+        <version name="lastupdated" column="LASTUPDATED"
+            type="timestamp" access="field" />
 
-		<many-to-one name="scriptlet"
-			class="org.openelisglobal.scriptlet.valueholder.Scriptlet"
-			fetch="select">
-			<column name="SCRIPTLET_ID" precision="10" scale="0" />
-		</many-to-one>
-		<property name="projectName" type="java.lang.String">
-			<column name="NAME" length="20" not-null="true" />
-		</property>
-		<!--bugzilla 1922 map sys_user_id to valueholder SystemUser instead of 
-			to sysUserId so that we can access system user name -->
-		<many-to-one name="systemUser"
-			class="org.openelisglobal.systemuser.valueholder.SystemUser"
-			fetch="select">
-			<column name="SYS_USER_ID" precision="10" scale="0"
-				not-null="true" />
-		</many-to-one>
-		<property name="description" type="java.lang.String">
-			<column name="DESCRIPTION" length="60" />
-		</property>
-		<property name="startedDate" type="java.sql.Date">
-			<column name="STARTED_DATE" length="7" />
-		</property>
-		<property name="completedDate" type="java.sql.Date">
-			<column name="COMPLETED_DATE" length="7" />
-		</property>
-		<property name="isActive" type="java.lang.String">
-			<column name="IS_ACTIVE" length="1" />
-		</property>
-		<property name="referenceTo" type="java.lang.String">
-			<column name="REFERENCE_TO" length="20" />
-		</property>
-		<property name="programCode" type="java.lang.String">
-			<column name="PROGRAM_CODE" length="10" />
-		</property>
-		<!--bugzilla 2438 -->
-		<property name="localAbbreviation" type="java.lang.String">
-			<column name="LOCAL_ABBREV" length="10" unique="true" />
-		</property>
+        <many-to-one name="scriptlet"
+            class="org.openelisglobal.scriptlet.valueholder.Scriptlet"
+            fetch="select">
+            <column name="SCRIPTLET_ID" precision="10" scale="0" />
+        </many-to-one>
+        <property name="projectName" type="java.lang.String">
+            <column name="NAME" length="20" not-null="true" />
+        </property>
+        <!--bugzilla 1922 map sys_user_id to valueholder SystemUser instead of
+            to sysUserId so that we can access system user name -->
+        <many-to-one name="systemUser"
+            class="org.openelisglobal.systemuser.valueholder.SystemUser"
+            fetch="select">
+            <column name="SYS_USER_ID" precision="10" scale="0"
+                not-null="true" />
+        </many-to-one>
+        <property name="description" type="java.lang.String">
+            <column name="DESCRIPTION" length="60" />
+        </property>
+        <property name="startedDate" type="java.sql.Date">
+            <column name="STARTED_DATE" length="7" />
+        </property>
+        <property name="completedDate" type="java.sql.Date">
+            <column name="COMPLETED_DATE" length="7" />
+        </property>
+        <property name="isActive" type="java.lang.String">
+            <column name="IS_ACTIVE" length="1" />
+        </property>
+        <property name="referenceTo" type="java.lang.String">
+            <column name="REFERENCE_TO" length="20" />
+        </property>
+        <property name="programCode" type="java.lang.String">
+            <column name="PROGRAM_CODE" length="10" />
+        </property>
+        <!--bugzilla 2438 -->
+        <property name="localAbbreviation" type="java.lang.String">
+            <column name="LOCAL_ABBREV" length="10" unique="true" />
+        </property>
 
-		<property name="nameKey" type="java.lang.String">
-			<column name="display_key" length="60" not-null="false" />
-		</property>
+        <property name="nameKey" type="java.lang.String">
+            <column name="display_key" length="60" not-null="false" />
+        </property>
 
-		<set name="organizations" table="project_organization"
-			lazy="false">
-			<key column="project_id" />
-			<many-to-many column="org_id"
-				class="org.openelisglobal.organization.valueholder.Organization" />
-		</set>
-		<!-- <set name="projectParameters" inverse="true"> <key> <column name="PROJECT_ID" 
-			precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.projectparameter.valueholder.ProjectParameter" 
-			/> </set> -->
-	</class>
+        <set name="organizations" table="project_organization"
+            lazy="false">
+            <key column="project_id" />
+            <many-to-many column="org_id"
+                class="org.openelisglobal.organization.valueholder.Organization" />
+        </set>
+        <!-- <set name="projectParameters" inverse="true"> <key> <column name="PROJECT_ID"
+            precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.projectparameter.valueholder.ProjectParameter"
+            /> </set> -->
+    </class>
 </hibernate-mapping>

@@ -1,18 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.reports.action.implementation;
 
@@ -23,7 +20,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
+import net.sf.jasperreports.engine.JRDataSource;
+import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.service.AnalyteService;
@@ -42,9 +40,6 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestServiceImpl;
-
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 
 public class IndicatorHIV extends IndicatorReport implements IReportCreator, IReportParameterSetter {
 
@@ -70,7 +65,6 @@ public class IndicatorHIV extends IndicatorReport implements IReportCreator, IRe
     private static DictionaryService dictionaryService = SpringContext.getBean(DictionaryService.class);
 
     static {
-
         Dictionary dictionary = dictionaryService.getDictionaryEntrysByNameAndCategoryDescription("Positive",
                 "Conclusion");
         if (dictionary != null) {
@@ -205,7 +199,7 @@ public class IndicatorHIV extends IndicatorReport implements IReportCreator, IRe
                 }
 
                 try {
-                    Double value = Double.valueOf(firstResult.getValue());
+                    Double value = Double.valueOf(firstResult.getValue(true));
 
                     if (value >= firstResult.getMinNormal() && value <= firstResult.getMaxNormal()) {
                         bucket.negative++;
@@ -219,7 +213,7 @@ public class IndicatorHIV extends IndicatorReport implements IReportCreator, IRe
             } else if (testName.equals("Colloidal Gold / Shangai Kehua") || testName.equals("Determine")
                     || testName.equals("HIV test rapide") || testName.equals("Test Rapide VIH")
                     || testName.equals("Test rapide HIV 1 + HIV 2")) {
-                String value = firstResult.getValue();
+                String value = firstResult.getValue(true);
                 if (isPositive(value)) {
                     bucket.positive++;
                 } else if (TEST_HIV_NEG_ID.equals(value)) {
@@ -233,27 +227,27 @@ public class IndicatorHIV extends IndicatorReport implements IReportCreator, IRe
                 String analyteName = result.getAnalyte() == null ? "" : result.getAnalyte().getAnalyteName();
 
                 if ("Result 1".equals(analyteName)) {
-                    if (TEST_HIV_NEG_ID.equals(result.getValue())) {
+                    if (TEST_HIV_NEG_ID.equals(result.getValue(true))) {
                         bucket.negative++;
                     } else {
                         bucket.pending++;
                     }
                 } else {
                     bucket.pending--;
-                    if (TEST_HIV_NEG_ID.equals(result.getValue())) {
+                    if (TEST_HIV_NEG_ID.equals(result.getValue(true))) {
                         bucket.negative++;
-                    } else if (TEST_HIV_POS_ID.equals(result.getValue())) {
+                    } else if (TEST_HIV_POS_ID.equals(result.getValue(true))) {
                         bucket.positive++;
                     }
-                    if (TEST_HIV_IND_ID.equals(result.getValue())) {
+                    if (TEST_HIV_IND_ID.equals(result.getValue(true))) {
                         bucket.indeterminate++;
                     }
                 }
             } else if (testName.equals("Oraquick")) {
                 Result result = resultList.get(0);
-                if (CLINICAL_POSITIVE_ID.equals(result.getValue())) {
+                if (CLINICAL_POSITIVE_ID.equals(result.getValue(true))) {
                     bucket.positive++;
-                } else if (CLINICAL_NEGATIVE_ID.equals(result.getValue())) {
+                } else if (CLINICAL_NEGATIVE_ID.equals(result.getValue(true))) {
                     bucket.negative++;
                 }
             }

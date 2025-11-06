@@ -1,28 +1,30 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
  */
 package org.openelisglobal.person.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Pattern;
 import java.util.HashSet;
 import java.util.Set;
-
-import javax.validation.constraints.Email;
-import javax.validation.constraints.Pattern;
-
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.AssociationInverseSide;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.ObjectPath;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.PropertyValue;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.validation.annotations.ValidName;
 import org.openelisglobal.validation.constraintvalidator.NameValidator.NameType;
 
@@ -32,9 +34,11 @@ public class Person extends BaseObject<String> {
     private String id;
 
     @ValidName(nameType = NameType.LAST_NAME)
+    @KeywordField(normalizer = "lowercase")
     private String lastName;
 
     @ValidName(nameType = NameType.FIRST_NAME)
+    @KeywordField(normalizer = "lowercase")
     private String firstName;
 
     private String middleName;
@@ -50,12 +54,16 @@ public class Person extends BaseObject<String> {
     private String zipCode;
 
     private String country;
+
     @Pattern(regexp = ValidationHelper.PHONE_REGEX)
     private String workPhone;
+
     @Pattern(regexp = ValidationHelper.PHONE_REGEX)
     private String homePhone;
+
     @Pattern(regexp = ValidationHelper.PHONE_REGEX)
     private String cellPhone;
+
     @Pattern(regexp = ValidationHelper.PHONE_REGEX)
     private String primaryPhone;
 
@@ -63,11 +71,12 @@ public class Person extends BaseObject<String> {
     @Email
     private String email;
 
-    private Set patients = new HashSet(0);
+    @JsonIgnore
+    @AssociationInverseSide(inversePath = @ObjectPath(@PropertyValue(propertyName = "person")))
+    private Set<Patient> patients = new HashSet<>(0);
 
     public Person() {
         super();
-
     }
 
     @Override
@@ -198,6 +207,11 @@ public class Person extends BaseObject<String> {
 
     public void setPatients(Set patients) {
         this.patients = patients;
+    }
+
+    public void addPatient(Patient patient) {
+        patients.add(patient);
+        patient.setPerson(this);
     }
 
     public String getPrimaryPhone() {

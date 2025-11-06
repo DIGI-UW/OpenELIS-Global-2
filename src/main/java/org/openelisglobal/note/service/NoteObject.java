@@ -9,5 +9,4 @@ public interface NoteObject {
     String getObjectId();
 
     BoundTo getBoundTo();
-
 }

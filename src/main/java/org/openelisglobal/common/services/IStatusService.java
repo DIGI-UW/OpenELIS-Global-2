@@ -67,5 +67,4 @@ public interface IStatusService {
     public void deleteRecordStatus(Sample sample, Patient patient, String sysUserId);
 
     public String getStatusNameFromId(String id);
-
 }

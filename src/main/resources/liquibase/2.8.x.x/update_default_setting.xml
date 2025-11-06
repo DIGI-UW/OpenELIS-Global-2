@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+<property name="now" value="now()" dbms="postgresql"/>
+ <changeSet author="moses_mutesa" id="1">
+        <preConditions onFail="MARK_RAN">
+                <tableExists tableName="system_user_role"/>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM system_user_role WHERE system_user_id = (SELECT id FROM system_user WHERE login_name = 'admin') AND role_id = (SELECT id FROM system_role WHERE name = 'Cytopathologist') ;
+                </sqlCheck>
+        </preConditions>
+        <comment>Add default Program Global Roles to admin User </comment>
+        <insert tableName="system_user_role" schemaName="clinlims">
+            <column name="system_user_id" valueComputed="(SELECT id FROM system_user WHERE login_name = 'admin')" />
+            <column name="role_id" valueComputed="(SELECT id FROM system_role WHERE name = 'Cytopathologist')" />
+        </insert>
+        <insert tableName="system_user_role" schemaName="clinlims">
+            <column name="system_user_id" valueComputed="(SELECT id FROM system_user WHERE login_name = 'admin')" />
+            <column name="role_id" valueComputed="(SELECT id FROM system_role WHERE name = 'Pathologist')" />
+        </insert>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="2">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">select count(*) from clinlims.site_information where name = 'restrictFreeTextProviderEntry' AND description = 'should national ID be required on the patient entry screen'; </sqlCheck>
+        </preConditions>
+        <update schemaName="clinlims" tableName="site_information">
+            <column name="value" value="false" />
+            <column name="description" value="Restrict Free Text Provider Entry" />
+            <where>name = 'restrictFreeTextProviderEntry' AND description = 'should national ID be required on the patient entry screen'</where>
+        </update>
+    </changeSet>
+     <changeSet author="mozzymutesa" id="3">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'Report:RoutineExport'
+            </sqlCheck>
+        </preConditions>
+        <comment>Create AdminReportPrint Module </comment>
+
+        <insert schemaName="clinlims" tableName="system_module">
+            <column name="id" valueSequenceNext="system_module_seq" />
+            <column name="name" value="Report:RoutineExport" />
+            <column name="description" value="Report => Routine => Eport Routine" />
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'Report:RoutineExport')" />
+        </insert>
+         <insert schemaName="clinlims"
+              tableName="system_module_param">
+            <column name="id" valueSequenceNext="system_module_param_seq" />
+              <column name="name" value="report"/>
+              <column name="value" value="CISampleRoutineExport"/>
+          </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/ReportPrint" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'Report:RoutineExport')" />
+                 <column name="system_module_param_id" valueComputed="(SELECT id FROM system_module_param WHERE value = 'CISampleRoutineExport')"/>
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/Report" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'Report:RoutineExport')" />
+                 <column name="system_module_param_id" valueComputed="(SELECT id FROM system_module_param WHERE value = 'CISampleRoutineExport')"/>
+        </insert>
+    </changeSet>
+     <changeSet author="mozzymutesa" id="4">
+     <preConditions onFail="MARK_RAN">
+        <tableExists tableName="menu"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE action_url = '/Report?type=routine&amp;report=CISampleRoutineExport' AND element_id = 'menu_reports_export_routine' ;
+            </sqlCheck>
+        </preConditions>
+        <comment>update action url of Routine Export report</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/Report?type=routine&amp;report=CISampleRoutineExport" />
+            <where>element_id='menu_reports_export_routine'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

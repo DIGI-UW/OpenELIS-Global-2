@@ -9,6 +9,7 @@ services:
         volumes:
             - ./dev/plugins:/var/lib/openelis-global/plugins
             - ./dev/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
+            -  lucene_index-vol:/var/lib/lucene_index
         secrets:
             - source: common.properties
         tty: true
@@ -16,6 +17,6 @@ services:
         entrypoint: bash
 secrets:
   common.properties:
-    file: ./dev/properties/common.properties  
-    
-            
+    file: ./dev/properties/common.properties
+volumes:
+    lucene_index-vol:

@@ -1,7 +1,7 @@
 package org.openelisglobal.hibernate.converter;
 
-import javax.persistence.AttributeConverter;
-import javax.persistence.Converter;
+import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Converter;
 
 @Converter(autoApply = false)
 public class StringToIntegerConverter implements AttributeConverter<String, Integer> {
@@ -15,5 +15,4 @@ public class StringToIntegerConverter implements AttributeConverter<String, Inte
     public String convertToEntityAttribute(Integer dbData) {
         return dbData.toString();
     }
-
 }

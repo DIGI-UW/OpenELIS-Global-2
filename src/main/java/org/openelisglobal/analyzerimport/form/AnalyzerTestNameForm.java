@@ -1,15 +1,13 @@
 package org.openelisglobal.analyzerimport.form;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import java.util.List;
-
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Pattern;
-
-import org.hibernate.validator.constraints.SafeHtml;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.validation.annotations.SafeHtml;
 
 public class AnalyzerTestNameForm extends BaseForm {
 
@@ -28,7 +26,7 @@ public class AnalyzerTestNameForm extends BaseForm {
     private String testId;
 
     @NotBlank
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String analyzerTestName;
 
     private boolean newMapping = true;

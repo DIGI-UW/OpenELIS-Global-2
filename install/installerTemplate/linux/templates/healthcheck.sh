@@ -9,8 +9,8 @@ while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symli
 done
 scriptDir="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
 
-if [ $(curl -k --fail --silent --cert-type P12 --cert /run/secrets/keystore:[% keystore_password %] https://fhir.openelis.org:8443/fhir/Task?status=requested -o /dev/null -w '%{http_code}' -s) == "200" ]; then 
-	exit 0;
+if [ $(curl -k --fail --silent --cert-type P12 --cert /run/secrets/keystore:[% keystore_password %] https://fhir.openelis.org:8443/fhir/Task?status=requested -o /dev/null -w '%{http_code}' -s) == "200" ]; then
+    exit 0;
 else
-	exit 1;
+    exit 1;
 fi

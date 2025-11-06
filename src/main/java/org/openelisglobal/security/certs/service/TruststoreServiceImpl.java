@@ -7,7 +7,6 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -30,7 +29,5 @@ public class TruststoreServiceImpl implements TruststoreService {
         try (FileOutputStream fos = new FileOutputStream(trustStore.getFile().getAbsolutePath())) {
             keystore.store(fos, trustStorePassword);
         }
-
     }
-
 }

@@ -1,10 +1,9 @@
 package org.openelisglobal.panel.service;
 
 import java.util.List;
-
 import org.hibernate.Hibernate;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.dao.PanelDAO;
 import org.openelisglobal.panel.valueholder.Panel;
@@ -13,7 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class PanelServiceImpl extends BaseObjectServiceImpl<Panel, String> implements PanelService {
+public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, String> implements PanelService {
 
     @Autowired
     protected PanelDAO baseObjectDAO;
@@ -31,7 +30,6 @@ public class PanelServiceImpl extends BaseObjectServiceImpl<Panel, String> imple
     @Transactional(readOnly = true)
     public void getData(Panel panel) {
         getBaseObjectDAO().getData(panel);
-
     }
 
     @Override
@@ -148,5 +146,10 @@ public class PanelServiceImpl extends BaseObjectServiceImpl<Panel, String> imple
         Localization localization = panel != null ? panel.getLocalization() : null;
         Hibernate.initialize(localization);
         return localization;
+    }
+
+    @Override
+    public Panel getPanelByLoincCode(String loincCode) {
+        return getBaseObjectDAO().getPanelByLoincCode(loincCode);
     }
 }

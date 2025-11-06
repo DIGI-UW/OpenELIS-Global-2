@@ -1,55 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<changeSet author="csteele" id="1">
-		<comment>specify max vs deafult for barcode site info</comment>
-		<update schemaName="clinlims" tableName="site_information">
-			<column name="name" value="numMaxOrderLabels" />
-			<where>name = 'numOrderLabels'</where>
-		</update>
-		<update schemaName="clinlims" tableName="site_information">
-			<column name="name" value="numMaxSpecimenLabels" />
-			<where>name = 'numSpecimenLabels'</where>
-		</update>
-		<update schemaName="clinlims" tableName="site_information">
-			<column name="name" value="numMaxAliquotLabels" />
-			<where>name = 'numAliquotLabels'</where>
-		</update>
-		
-		<insert schemaName="clinlims" tableName="site_information">
-			<column name="id" valueSequenceNext="site_information_seq" />
-			<column name="name" value="numDefaultOrderLabels" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="default number of order labels printed" />
-			<column name="value" value="2" />
-			<column name="encrypted" value="false" />
-			<column name="value_type" value="text" />
-			<column name="group" value="0" />
-		</insert>
-		<insert schemaName="clinlims" tableName="site_information">
-			<column name="id" valueSequenceNext="site_information_seq" />
-			<column name="name" value="numDefaultSpecimenLabels" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="default number of specimen labels printed" />
-			<column name="value" value="1" />
-			<column name="encrypted" value="false" />
-			<column name="value_type" value="text" />
-			<column name="group" value="0" />
-		</insert>
-		<insert schemaName="clinlims" tableName="site_information">
-			<column name="id" valueSequenceNext="site_information_seq" />
-			<column name="name" value="numDefaultAliquotLabels" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="default number of aliquot labels printed" />
-			<column name="value" value="1" />
-			<column name="encrypted" value="false" />
-			<column name="value_type" value="text" />
-			<column name="group" value="0" />
-		</insert>
-	</changeSet>
+    <changeSet author="csteele" id="1">
+        <comment>specify max vs deafult for barcode site info</comment>
+        <update schemaName="clinlims" tableName="site_information">
+            <column name="name" value="numMaxOrderLabels" />
+            <where>name = 'numOrderLabels'</where>
+        </update>
+        <update schemaName="clinlims" tableName="site_information">
+            <column name="name" value="numMaxSpecimenLabels" />
+            <where>name = 'numSpecimenLabels'</where>
+        </update>
+        <update schemaName="clinlims" tableName="site_information">
+            <column name="name" value="numMaxAliquotLabels" />
+            <where>name = 'numAliquotLabels'</where>
+        </update>
+
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="numDefaultOrderLabels" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="default number of order labels printed" />
+            <column name="value" value="2" />
+            <column name="encrypted" value="false" />
+            <column name="value_type" value="text" />
+            <column name="group" value="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="numDefaultSpecimenLabels" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="default number of specimen labels printed" />
+            <column name="value" value="1" />
+            <column name="encrypted" value="false" />
+            <column name="value_type" value="text" />
+            <column name="group" value="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="numDefaultAliquotLabels" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="default number of aliquot labels printed" />
+            <column name="value" value="1" />
+            <column name="encrypted" value="false" />
+            <column name="value_type" value="text" />
+            <column name="group" value="0" />
+        </insert>
+    </changeSet>
 
 </databaseChangeLog>

@@ -1,7 +1,6 @@
 package org.openelisglobal.result.form;
 
 import java.util.List;
-
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.paging.PagingBean;
 import org.openelisglobal.common.util.IdValuePair;
@@ -9,7 +8,7 @@ import org.openelisglobal.inventory.form.InventoryKitItem;
 import org.openelisglobal.patient.form.PatientInfoForm;
 import org.openelisglobal.test.beanItems.TestResultItem;
 
-//no validation, only used to send info from server to client
+// no validation, only used to send info from server to client
 public class AccessionResultsForm extends BaseForm implements PatientInfoForm, ResultsPagingForm {
     private PagingBean paging;
 
@@ -59,8 +58,8 @@ public class AccessionResultsForm extends BaseForm implements PatientInfoForm, R
 
     private List<IdValuePair> referralOrganizations;
 
-     // for display
-     private List<IdValuePair> methods;
+    // for display
+    private List<IdValuePair> methods;
 
     public AccessionResultsForm() {
         setFormName("AccessionResultsForm");
@@ -289,5 +288,4 @@ public class AccessionResultsForm extends BaseForm implements PatientInfoForm, R
     public void setMethods(List<IdValuePair> methods) {
         this.methods = methods;
     }
-
 }

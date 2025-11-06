@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet author="moses_mutesa" id="1">
+        <validCheckSum>8:9844944289511738612313fb87d1e7cd</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="reflex_rule" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create reflex_rule table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="reflex_rule_seq" startValue="1" />
+        <createTable tableName="reflex_rule">
+            <column name="id" type="INTEGER" valueSequenceNext="reflex_rule_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="rule_name" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="overall" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="toggled" type="boolean"/>
+            <column name="active" type="boolean"/>
+            <column name="last_updated" type="datetime"/>
+            <column name="analyte_id" type="int"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="2">
+        <validCheckSum>8:3efa783f20de09d84c060757b166a812</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="reflex_rule_action" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create reflex_rule_action table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="reflex_rule_action_seq" startValue="1" />
+        <createTable tableName="reflex_rule_action">
+            <column name="id" type="INTEGER" valueSequenceNext="reflex_rule_action_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="reflex_test_name" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reflex_test_id" type="varchar(64)">
+              <constraints nullable="false"/>
+            </column>
+            <column name="sample_id" type="varchar(64)">
+              <constraints nullable="false"/>
+            </column>
+            <column name="internal_note" type="varchar(64)"/>
+            <column name="external_note" type="varchar(64)"/>
+            <column name="add_notification" type="varchar(2)"/>
+            <column name="reflex_rule_id" type="int"/>
+            <column name="test_reflex_id" type="int"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="action_reflex_rule_id_fk"
+                                 baseTableName="reflex_rule_action" baseColumnNames="reflex_rule_id"
+                                 referencedTableName="reflex_rule" referencedColumnNames="id"/>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="3">
+        <validCheckSum>8:de5decf5688d5302521a51f7a26987e9</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="reflex_rule_condition" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create reflex_rule_condition table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="reflex_rule_condition_seq" startValue="1" />
+        <createTable tableName="reflex_rule_condition">
+            <column name="id" type="INTEGER" valueSequenceNext="reflex_rule_condition_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_id" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="test_name" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="test_id" type="varchar(64)"/>
+            <column name="relation" type="varchar(64)"/>
+            <column name="value" type="varchar(64)"/>
+            <column name="value2" type="varchar(64)"/>
+            <column name="reflex_rule_id" type="int"/>
+            <column name="test_analyte_id" type="int"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="condition_reflex_rule_id_fk"
+                                 baseTableName="reflex_rule_condition" baseColumnNames="reflex_rule_id"
+                                 referencedTableName="reflex_rule" referencedColumnNames="id"/>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="4">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="test_reflex" schemaName="clinlims" />
+            <not>
+                <columnExists tableName="test_reflex" columnName="non_dictionary_value" />
+            </not>
+        </preConditions>
+        <comment>add Non Dictionary Value Column to test_reflex table</comment>
+        <addColumn schemaName="clinlims" tableName="test_reflex">
+            <column name="non_dictionary_value" type="VARCHAR(50)"  />
+        </addColumn>
+        <addColumn schemaName="clinlims" tableName="test_reflex">
+            <column name="relation" type="VARCHAR(40)"  />
+        </addColumn>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="5">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="test_reflex" schemaName="clinlims" />
+            <not>
+                <columnExists tableName="test_reflex" columnName="internalNote" />
+            </not>
+        </preConditions>
+        <comment>add InternalNote and External Column to test_reflex table</comment>
+        <addColumn schemaName="clinlims" tableName="test_reflex">
+            <column name="internal_note" type="VARCHAR(50)"  />
+        </addColumn>
+        <addColumn schemaName="clinlims" tableName="test_reflex">
+            <column name="external_note" type="VARCHAR(50)"  />
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

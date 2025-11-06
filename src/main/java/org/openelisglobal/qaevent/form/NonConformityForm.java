@@ -1,13 +1,10 @@
 package org.openelisglobal.qaevent.form;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import java.util.List;
-
-import javax.validation.Valid;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Pattern;
-
-import org.hibernate.validator.constraints.SafeHtml;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
@@ -15,6 +12,7 @@ import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.project.valueholder.Project;
 import org.openelisglobal.qaevent.valueholder.retroCI.QaEventItem;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.validation.annotations.SafeHtml;
 import org.openelisglobal.validation.annotations.ValidAccessionNumber;
 import org.openelisglobal.validation.annotations.ValidDate;
 import org.openelisglobal.validation.annotations.ValidName;
@@ -52,7 +50,7 @@ public class NonConformityForm extends BaseForm {
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { NonConformity.class })
     private String projectId = "";
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { NonConformity.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { NonConformity.class })
     private String project = "";
 
     // unused?
@@ -83,22 +81,22 @@ public class NonConformityForm extends BaseForm {
     @NotNull(groups = { NonConformity.class })
     private Boolean doctorNew = Boolean.TRUE;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { NonConformity.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { NonConformity.class })
     private String doctor = "";
 
     @NotNull(groups = { NonConformity.class })
     private Boolean serviceNew = Boolean.TRUE;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { NonConformity.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { NonConformity.class })
     private String service = "";
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { NonConformity.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { NonConformity.class })
     private String newServiceName = "";
 
     @Valid
     private List<QaEventItem> qaEvents;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { NonConformity.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { NonConformity.class })
     private String section = "";
 
     // for display
@@ -116,10 +114,10 @@ public class NonConformityForm extends BaseForm {
     // @NotNull(groups = { NonConformity.class })
     private Boolean commentNew;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { NonConformity.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { NonConformity.class })
     private String comment = "";
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { NonConformity.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { NonConformity.class })
     private String biologest = "";
 
     // for display
@@ -140,16 +138,16 @@ public class NonConformityForm extends BaseForm {
     @Pattern(regexp = ValidationHelper.PHONE_REGEX, groups = { NonConformity.class })
     private String providerWorkPhone = "";
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { NonConformity.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { NonConformity.class })
     private String providerStreetAddress = "";
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { NonConformity.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { NonConformity.class })
     private String providerCity = "";
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { NonConformity.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { NonConformity.class })
     private String providerCommune = "";
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { NonConformity.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { NonConformity.class })
     private String providerDepartment = "";
 
     // for display

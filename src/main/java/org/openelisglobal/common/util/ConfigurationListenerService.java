@@ -7,5 +7,4 @@ public interface ConfigurationListenerService {
     List<ConfigurationListener> getConfigurationListeners();
 
     void refreshConfigurations();
-
 }

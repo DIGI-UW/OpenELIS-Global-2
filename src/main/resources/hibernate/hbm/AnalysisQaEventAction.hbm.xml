@@ -1,42 +1,42 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class
-		name="org.openelisglobal.analysisqaeventaction.valueholder.AnalysisQaEventAction"
-		table="ANALYSIS_QAEVENT_ACTION" optimistic-lock="version"
-		dynamic-update="true">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<!--bugzilla 2076 fixed typo -->
-				<param name="sequence_name">analysis_qaevent_action_seq</param>
-			</generator>
-		</id>
-		<version name="lastupdated" column="LASTUPDATED"
-			type="timestamp" access="field" />
+    <class
+        name="org.openelisglobal.analysisqaeventaction.valueholder.AnalysisQaEventAction"
+        table="ANALYSIS_QAEVENT_ACTION" optimistic-lock="version"
+        dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <!--bugzilla 2076 fixed typo -->
+                <param name="sequence_name">analysis_qaevent_action_seq</param>
+            </generator>
+        </id>
+        <version name="lastupdated" column="LASTUPDATED"
+            type="timestamp" access="field" />
 
-		<many-to-one name="action"
-			class="org.openelisglobal.action.valueholder.Action" fetch="select">
-			<column name="ACTION_ID" precision="10" scale="0" />
-		</many-to-one>
-		<many-to-one name="analysisQaEvent"
-			class="org.openelisglobal.analysisqaevent.valueholder.AnalysisQaEvent"
-			fetch="select">
-			<column name="ANALYSIS_QAEVENT_ID" precision="10" scale="0" />
-		</many-to-one>
+        <many-to-one name="action"
+            class="org.openelisglobal.action.valueholder.Action" fetch="select">
+            <column name="ACTION_ID" precision="10" scale="0" />
+        </many-to-one>
+        <many-to-one name="analysisQaEvent"
+            class="org.openelisglobal.analysisqaevent.valueholder.AnalysisQaEvent"
+            fetch="select">
+            <column name="ANALYSIS_QAEVENT_ID" precision="10" scale="0" />
+        </many-to-one>
 
-		<property name="createdDate" type="java.sql.Date">
-			<column name="CREATED_DATE" length="7" />
-		</property>
-		<!--bugzilla 2481 -->
-		<many-to-one name="systemUser"
-			class="org.openelisglobal.systemuser.valueholder.SystemUser"
-			fetch="select">
-			<column name="SYS_USER_ID" precision="10" scale="0" />
-		</many-to-one>
-	</class>
+        <property name="createdDate" type="java.sql.Date">
+            <column name="CREATED_DATE" length="7" />
+        </property>
+        <!--bugzilla 2481 -->
+        <many-to-one name="systemUser"
+            class="org.openelisglobal.systemuser.valueholder.SystemUser"
+            fetch="select">
+            <column name="SYS_USER_ID" precision="10" scale="0" />
+        </many-to-one>
+    </class>
 </hibernate-mapping>

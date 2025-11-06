@@ -1,8 +1,7 @@
 package org.openelisglobal.patientidentity.service;
 
 import java.util.List;
-
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.patientidentity.dao.PatientIdentityDAO;
 import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class PatientIdentityServiceImpl extends BaseObjectServiceImpl<PatientIdentity, String>
+public class PatientIdentityServiceImpl extends AuditableBaseObjectServiceImpl<PatientIdentity, String>
         implements PatientIdentityService {
     @Autowired
     protected PatientIdentityDAO baseObjectDAO;

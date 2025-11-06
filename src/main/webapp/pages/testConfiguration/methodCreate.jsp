@@ -9,9 +9,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 <%--
   ~ The contents of this file are subject to the Mozilla Public License
   ~ Version 1.1 (the "License"); you may not use this file except in
@@ -186,7 +186,7 @@
         </tr>
         <tr>
             <td><span class="requiredlabel">*</span><form:input path="methodEnglishName" cssClass="required" size="40"
-                                                               onchange="handleInput(this, 'english');checkForDuplicates('english');"/>
+                                                               onchange="handleInput(this, 'english');"/>
             </td>
             <td><span class="requiredlabel">*</span><form:input path="methodFrenchName" cssClass="required" size="40"
                                                                onchange="handleInput(this, 'french');"/>

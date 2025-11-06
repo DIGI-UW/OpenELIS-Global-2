@@ -1,36 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	 http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<changeSet author="csteele" id="1">
-		<comment>create indices on older tables</comment>
-		<sql>
-		CREATE INDEX IF NOT EXISTS e_order_external_id_idx on clinlims.electronic_order (
-		    external_id
-		);
-		CREATE INDEX IF NOT EXISTS e_order_patient_id_idx on clinlims.electronic_order (
-		    patient_id
-		);
-		CREATE INDEX IF NOT EXISTS person_lwr_last_name_idx on clinlims.person (
-		    lower(last_name)
-		);
-		CREATE INDEX IF NOT EXISTS person_lwr_first_name_idx on clinlims.person (
-		    lower(first_name)
-		);
-		CREATE INDEX IF NOT EXISTS patient_lwr_national_id_idx on clinlims.patient (
-		   lower(national_id)
-		);
-		CREATE INDEX IF NOT EXISTS patient_identity_identity_data_idx on clinlims.patient_identity (
-		    lower(identity_data)
-		);
-		CREATE INDEX IF NOT EXISTS patient_identity_patient_id_idx on clinlims.patient_identity (
-		    patient_id
-		);
-		</sql>
-		
-	</changeSet>
+    <changeSet author="csteele" id="1">
+        <comment>create indices on older tables</comment>
+        <sql>
+        CREATE INDEX IF NOT EXISTS e_order_external_id_idx on clinlims.electronic_order (
+            external_id
+        );
+        CREATE INDEX IF NOT EXISTS e_order_patient_id_idx on clinlims.electronic_order (
+            patient_id
+        );
+        CREATE INDEX IF NOT EXISTS person_lwr_last_name_idx on clinlims.person (
+            lower(last_name)
+        );
+        CREATE INDEX IF NOT EXISTS person_lwr_first_name_idx on clinlims.person (
+            lower(first_name)
+        );
+        CREATE INDEX IF NOT EXISTS patient_lwr_national_id_idx on clinlims.patient (
+           lower(national_id)
+        );
+        CREATE INDEX IF NOT EXISTS patient_identity_identity_data_idx on clinlims.patient_identity (
+            lower(identity_data)
+        );
+        CREATE INDEX IF NOT EXISTS patient_identity_patient_id_idx on clinlims.patient_identity (
+            patient_id
+        );
+        </sql>
+
+    </changeSet>
 
 </databaseChangeLog>

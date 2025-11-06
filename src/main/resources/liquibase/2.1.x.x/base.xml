@@ -1,19 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<include file="liquibase/2.1.x.x/external_connections.xml"/>
-	<include file="liquibase/2.1.x.x/lab_director_signature.xml"/>
-	<include file="liquibase/2.1.x.x/sample_nature.xml"/>
-	<include file="liquibase/2.1.x.x/client_notifications.xml"/>
-	<include file="liquibase/2.1.x.x/locator_form_integration.xml"/>
-	<include file="liquibase/2.1.x.x/user_manual_translation.xml"/>
-	<include file="liquibase/2.1.x.x/admin_menu_clean.xml"/>
-	<include file="liquibase/2.1.x.x/patient_status_report_menu.xml"/>
-	<include file="liquibase/2.1.x.x/sample_batch_entry_module_permission.xml"/>
-	<include file="liquibase/2.1.x.x/barcode_label_info_alter.xml"/>
+    <include file="liquibase/2.1.x.x/fix_migration_issues.xml"/>
+    <include file="liquibase/2.1.x.x/external_connections.xml"/>
+    <include file="liquibase/2.1.x.x/lab_director_signature.xml"/>
+    <include file="liquibase/2.1.x.x/sample_nature.xml"/>
+    <include file="liquibase/2.1.x.x/client_notifications.xml"/>
+    <include file="liquibase/2.1.x.x/locator_form_integration.xml"/>
+    <include file="liquibase/2.1.x.x/user_manual_translation.xml"/>
+    <include file="liquibase/2.1.x.x/admin_menu_clean.xml"/>
+    <include file="liquibase/2.1.x.x/patient_status_report_menu.xml"/>
+    <include file="liquibase/2.1.x.x/sample_batch_entry_module_permission.xml"/>
+    <include file="liquibase/2.1.x.x/barcode_label_info_alter.xml"/>
 
 </databaseChangeLog>

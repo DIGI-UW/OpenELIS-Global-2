@@ -1,38 +1,36 @@
 package org.openelisglobal.siteinformation.form;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import java.util.List;
-
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Pattern;
-
-import org.hibernate.validator.constraints.SafeHtml;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.validation.annotations.SafeHtml;
 
 public class SiteInformationForm extends BaseForm {
     @NotNull
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String paramName = "";
 
     @NotNull
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String description = "";
 
     @NotNull
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String value = "";
 
     // what about this is encrypted?
     private boolean encrypted;
 
     // in validator
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String valueType = "text";
 
     // in validator
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String siteInfoDomainName;
 
     // for display
@@ -42,7 +40,7 @@ public class SiteInformationForm extends BaseForm {
     private Boolean editable = Boolean.TRUE;
 
     // in validator
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String tag = "";
 
     @Pattern(regexp = ValidationHelper.MESSAGE_KEY_REGEX)

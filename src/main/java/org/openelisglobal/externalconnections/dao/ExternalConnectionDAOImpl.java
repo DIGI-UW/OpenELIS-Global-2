@@ -13,5 +13,4 @@ public class ExternalConnectionDAOImpl extends BaseDAOImpl<ExternalConnection, I
     public ExternalConnectionDAOImpl() {
         super(ExternalConnection.class);
     }
-
 }

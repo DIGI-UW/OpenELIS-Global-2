@@ -8,9 +8,7 @@ import org.springframework.validation.AbstractBindingResult;
 @Scope("prototype")
 public class BaseErrors extends AbstractBindingResult {
 
-    /**
-     *
-     */
+    /** */
     private static final long serialVersionUID = 959269351827856310L;
 
     public BaseErrors() {
@@ -30,5 +28,4 @@ public class BaseErrors extends AbstractBindingResult {
         // not bound to actual object
         return null;
     }
-
 }

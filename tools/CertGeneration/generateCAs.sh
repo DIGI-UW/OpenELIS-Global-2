@@ -51,7 +51,7 @@ then
   mkdir -p $ROOT_CA_DIR
   cd $ROOT_CA_DIR
   mkdir newcerts certs crl private requests
-  
+
   touch index.txt
   touch index.txt.attr
   echo '1000' > serial
@@ -64,7 +64,7 @@ then
 
   openssl genrsa -aes256 -out private/ca.ROOT.key.pem -passout pass:$PASSWORD 4096
   echo "made root key for $COUNTRY_NAME"
-     
+
   openssl req -config openssl_root.cnf -new -x509 -sha256 \
     -extensions v3_ca -key $ROOT_CA_DIR/private/ca.ROOT.key.pem \
     -passin pass:$PASSWORD \
@@ -85,28 +85,27 @@ then
   echo 1000 > $INT_CA_DIR/crlnumber
   echo '1234' > serial
   cp $SCRIPT_DIR/openssl_intermediate.cnf $INT_CA_DIR/openssl_intermediate.cnf
-  
+
   echo "running find ./ \( -type d -name .git -prune \) -o -type f -print0 | xargs -0 sed -i s/DOMAINNAME/${COUNTRY_NAME//\//\\\/}/g"
   echo "running find ./ \( -type d -name .git -prune \) -o -type f -print0 | xargs -0 sed -i s/INT_DIRECTORY/${INT_CA_DIR//\//\\\/}/g"
   find ./ \( -type d -name .git -prune \) -o -type f -print0 | xargs -0 sed -i s/DOMAINNAME/${COUNTRY_NAME//\//\\\/}/g
   find ./ \( -type d -name .git -prune \) -o -type f -print0 | xargs -0 sed -i s/INT_DIRECTORY/${INT_CA_DIR//\//\\\/}/g
-  
+
   openssl req -config $INT_CA_DIR/openssl_intermediate.cnf -new \
     -newkey rsa:4096 -keyout $INT_CA_DIR/private/int.$COUNTRY_NAME.key.pem \
     -passout pass:$PASSWORD \
     -out $INT_CA_DIR/csr/int.$COUNTRY_NAME.csr
   echo "made intermediate key for $COUNTRY_NAME"
   echo "made intermediate csr for $COUNTRY_NAME"
-  
+
   openssl ca -config $ROOT_CA_DIR/openssl_root.cnf -extensions v3_intermediate_ca -days 3650 \
     -notext -md sha256 -in $INT_CA_DIR/csr/int.$COUNTRY_NAME.csr \
     -batch -passin pass:$PASSWORD  \
     -out $INT_CA_DIR/certs/int.$COUNTRY_NAME.crt.pem \
     -rand_serial
   echo "made intermediate crt for $COUNTRY_NAME"
-  
+
   cat $INT_CA_DIR/certs/int.$COUNTRY_NAME.crt.pem $ROOT_CA_DIR/certs/ca.ROOT.crt.pem \
     > $INT_CA_DIR/certs/chain.$COUNTRY_NAME.crt.pem
   echo "made CA chain crt for $COUNTRY_NAME"
 fi
-  

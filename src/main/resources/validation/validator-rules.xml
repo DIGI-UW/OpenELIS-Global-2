@@ -1,41 +1,41 @@
 <!DOCTYPE form-validation PUBLIC
           "-//Apache Software Foundation//DTD Commons Validator Rules Configuration 1.1.3//EN"
           "http://jakarta.apache.org/commons/dtds/validator_1_1_3.dtd">
-<!-- This file contains the default Struts Validator pluggable validator 
-	definitions. It should be placed somewhere under /WEB-INF and referenced 
-	in the struts-config.xml under the plug-in element for the ValidatorPlugIn. 
-	<plug-in className="org.apache.struts.validator.ValidatorPlugIn"> <set-property 
-	property="pathnames" value="/WEB-INF/validator-rules.xml, /WEB-INF/validation.xml"/> 
-	</plug-in> These are the default error messages associated with each validator 
-	defined in this file. They should be added to your projects ApplicationResources.properties 
-	file or you can associate new ones by modifying the pluggable validators 
-	msg attributes in this file. # Struts Validator Error Messages errors.required={0} 
-	is required. errors.minlength={0} can not be less than {1} characters. errors.maxlength={0} 
-	can not be greater than {1} characters. errors.invalid={0} is invalid. errors.byte={0} 
-	must be a byte. errors.short={0} must be a short. errors.integer={0} must 
-	be an integer. errors.long={0} must be a long. errors.float={0} must be a 
-	float. errors.double={0} must be a double. errors.date={0} is not a date. 
-	errors.range={0} is not in the range {1} through {2}. errors.creditcard={0} 
-	is an invalid credit card number. errors.email={0} is an invalid e-mail address. 
-	Note: Starting in Struts 1.2.0 the default javascript definitions have been 
-	consolidated to commons-validator. The default can be overridden by supplying 
-	a <javascript> element with a CDATA section, just as in struts 1.1. -->
+<!-- This file contains the default Struts Validator pluggable validator
+    definitions. It should be placed somewhere under /WEB-INF and referenced
+    in the struts-config.xml under the plug-in element for the ValidatorPlugIn.
+    <plug-in className="org.apache.struts.validator.ValidatorPlugIn"> <set-property
+    property="pathnames" value="/WEB-INF/validator-rules.xml, /WEB-INF/validation.xml"/>
+    </plug-in> These are the default error messages associated with each validator
+    defined in this file. They should be added to your projects ApplicationResources.properties
+    file or you can associate new ones by modifying the pluggable validators
+    msg attributes in this file. # Struts Validator Error Messages errors.required={0}
+    is required. errors.minlength={0} can not be less than {1} characters. errors.maxlength={0}
+    can not be greater than {1} characters. errors.invalid={0} is invalid. errors.byte={0}
+    must be a byte. errors.short={0} must be a short. errors.integer={0} must
+    be an integer. errors.long={0} must be a long. errors.float={0} must be a
+    float. errors.double={0} must be a double. errors.date={0} is not a date.
+    errors.range={0} is not in the range {1} through {2}. errors.creditcard={0}
+    is an invalid credit card number. errors.email={0} is an invalid e-mail address.
+    Note: Starting in Struts 1.2.0 the default javascript definitions have been
+    consolidated to commons-validator. The default can be overridden by supplying
+    a <javascript> element with a CDATA section, just as in struts 1.1. -->
 
 <form-validation>
 
-	<global>
+    <global>
 
-		<validator name="required"
-			classname="org.apache.struts.validator.FieldChecks"
-			method="validateRequired"
-			methodParams="java.lang.Object,
+        <validator name="required"
+            classname="org.apache.struts.validator.FieldChecks"
+            method="validateRequired"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest"
-			msg="errors.required">
-			<javascript>
+            msg="errors.required">
+            <javascript>
  <![CDATA[             function validateRequired(form) {
         var isValid = true;
         var focusField = null;
@@ -47,7 +47,7 @@
 
         for (x in oRequired) {
             var field = form[oRequired[x][0]];
-          //THIS IS WHY JS HAS TO BE ADDED TO THIS FILE - NULL CHECK IS NOT IN DEFAULT VERSION!!! 
+          //THIS IS WHY JS HAS TO BE ADDED TO THIS FILE - NULL CHECK IS NOT IN DEFAULT VERSION!!!
           if (field != null) {
 
             if ((field.type == 'hidden' ||
@@ -82,7 +82,7 @@
                     fields[i++] = oRequired[x][1];
                     isValid = false;
                 }
-            } else if (field.type == "select-multiple") { 
+            } else if (field.type == "select-multiple") {
                 var numOptions = field.options.length;
                 lastSelected=-1;
                 for(loop=numOptions-1;loop>=0;loop--) {
@@ -127,69 +127,69 @@
     function trim(s) {
           return s.replace( /^\s*/, "" ).replace( /\s*$/, "" );
     }
-            
-            
+
+
   ]]>
-			</javascript>
-		</validator>
+            </javascript>
+        </validator>
 
 
-		<validator name="requiredif"
-			classname="org.apache.struts.validator.FieldChecks"
-			method="validateRequiredIf"
-			methodParams="java.lang.Object,
+        <validator name="requiredif"
+            classname="org.apache.struts.validator.FieldChecks"
+            method="validateRequiredIf"
+            methodParams="java.lang.Object,
                                org.apache.commons.validator.ValidatorAction,
                                org.apache.commons.validator.Field,
                                org.apache.struts.action.ActionMessages,
                                org.apache.commons.validator.Validator,
                                javax.servlet.http.HttpServletRequest"
-			msg="errors.required" />
+            msg="errors.required" />
 
-		<validator name="validwhen" msg="errors.required"
-			classname="org.openelisglobal.common.util.validator.ValidWhen"
-			method="validateValidWhen"
-			methodParams="java.lang.Object,
+        <validator name="validwhen" msg="errors.required"
+            classname="org.openelisglobal.common.util.validator.ValidWhen"
+            method="validateValidWhen"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest" />
 
-		<validator name="minlength"
-			classname="org.apache.struts.validator.FieldChecks"
-			method="validateMinLength"
-			methodParams="java.lang.Object,
+        <validator name="minlength"
+            classname="org.apache.struts.validator.FieldChecks"
+            method="validateMinLength"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest"
-			depends="" msg="errors.minlength"
-			jsFunction="org.apache.commons.validator.javascript.validateMinLength" />
+            depends="" msg="errors.minlength"
+            jsFunction="org.apache.commons.validator.javascript.validateMinLength" />
 
 
-		<validator name="maxlength"
-			classname="org.apache.struts.validator.FieldChecks"
-			method="validateMaxLength"
-			methodParams="java.lang.Object,
+        <validator name="maxlength"
+            classname="org.apache.struts.validator.FieldChecks"
+            method="validateMaxLength"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest"
-			depends="" msg="errors.maxlength">
-			<javascript>
+            depends="" msg="errors.maxlength">
+            <javascript>
  <![CDATA[          function validateMaxLength(form) {
         var isValid = true;
         var focusField = null;
         var i = 0;
         var fields = new Array();
-        var formName = form.getAttributeNode("name"); 
+        var formName = form.getAttributeNode("name");
 
-        oMaxLength = eval('new ' + formName.value + '_maxlength()');        
+        oMaxLength = eval('new ' + formName.value + '_maxlength()');
         for (x in oMaxLength) {
             var field = form[oMaxLength[x][0]];
-            //THIS IS WHY JS HAS TO BE ADDED TO THIS FILE - NULL CHECK IS NOT IN DEFAULT VERSION!!! 
+            //THIS IS WHY JS HAS TO BE ADDED TO THIS FILE - NULL CHECK IS NOT IN DEFAULT VERSION!!!
             if (field != null) {
             if ((field.type == 'hidden' ||
                 field.type == 'text' ||
@@ -215,38 +215,38 @@
         return isValid;
     }
   ]]>
-			</javascript>
-		</validator>
+            </javascript>
+        </validator>
 
 
 
-		<validator name="mask"
-			classname="org.apache.struts.validator.FieldChecks"
-			method="validateMask"
-			methodParams="java.lang.Object,
+        <validator name="mask"
+            classname="org.apache.struts.validator.FieldChecks"
+            method="validateMask"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest"
-			depends="" msg="errors.invalid">
-			<javascript>
+            depends="" msg="errors.invalid">
+            <javascript>
  <![CDATA[   function validateMask(form) {
         var isValid = true;
         var focusField = null;
         var i = 0;
         var fields = new Array();
-        var formName = form.getAttributeNode("name"); 
+        var formName = form.getAttributeNode("name");
 
-        oMasked = eval('new ' + formName.value + '_mask()');      
+        oMasked = eval('new ' + formName.value + '_mask()');
         for (x in oMasked) {
             var field = form[oMasked[x][0]];
-            //THIS IS WHY JS HAS TO BE ADDED TO THIS FILE - NULL CHECK IS NOT IN DEFAULT VERSION!!! 
+            //THIS IS WHY JS HAS TO BE ADDED TO THIS FILE - NULL CHECK IS NOT IN DEFAULT VERSION!!!
             if (field != null) {
             if ((field.type == 'hidden' ||
                 field.type == 'text' ||
                  field.type == 'textarea' ||
-				 field.type == 'file') &&
+                 field.type == 'file') &&
                  (field.value.length > 0) &&
                  field.disabled == false) {
 
@@ -272,100 +272,100 @@
        return mask.exec(value);
     }
   ]]>
-			</javascript>
-		</validator>
+            </javascript>
+        </validator>
 
 
 
-		<validator name="byte"
-			classname="org.apache.struts.validator.FieldChecks"
-			method="validateByte"
-			methodParams="java.lang.Object,
+        <validator name="byte"
+            classname="org.apache.struts.validator.FieldChecks"
+            method="validateByte"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest"
-			depends="" msg="errors.byte" jsFunctionName="ByteValidations" />
+            depends="" msg="errors.byte" jsFunctionName="ByteValidations" />
 
 
-		<validator name="short"
-			classname="org.apache.struts.validator.FieldChecks"
-			method="validateShort"
-			methodParams="java.lang.Object,
+        <validator name="short"
+            classname="org.apache.struts.validator.FieldChecks"
+            method="validateShort"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest"
-			depends="" msg="errors.short" jsFunctionName="ShortValidations" />
+            depends="" msg="errors.short" jsFunctionName="ShortValidations" />
 
 
-		<validator name="integer"
-			classname="org.apache.struts.validator.FieldChecks"
-			method="validateInteger"
-			methodParams="java.lang.Object,
+        <validator name="integer"
+            classname="org.apache.struts.validator.FieldChecks"
+            method="validateInteger"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest"
-			depends="" msg="errors.integer" jsFunctionName="IntegerValidations">
-			<javascript>
-	<![CDATA[ function validateInteger(form) {
+            depends="" msg="errors.integer" jsFunctionName="IntegerValidations">
+            <javascript>
+    <![CDATA[ function validateInteger(form) {
         var bValid = true;
         var focusField = null;
         var i = 0;
         var fields = new Array();
-        var formName = form.getAttributeNode("name"); 
+        var formName = form.getAttributeNode("name");
 
         oInteger = eval('new ' + formName.value + '_IntegerValidations()');
         for (x in oInteger) {
             var field = form[oInteger[x][0]];
-            
-			//BGM 12-8-06 Added field !=null check first before using it, javascript causes error.
-			if(field !=null) {
-				if ((field.type == 'hidden' ||
+
+            //BGM 12-8-06 Added field !=null check first before using it, javascript causes error.
+            if(field !=null) {
+                if ((field.type == 'hidden' ||
                 field.type == 'text' ||
                 field.type == 'textarea' ||
                 field.type == 'select-one' ||
                 field.type == 'radio') &&
                 field.disabled == false) {
 
-	                var value = '';
-	                // get field's value
-	                if (field.type == "select-one") {
-	                    var si = field.selectedIndex;
-	                    if (si >= 0) {
-	                        value = field.options[si].value;
-	                    }
-	                } else {
-	                    value = field.value;
-	                }
-	
-	                if (value.length > 0) {
-	
-	                    if (!isAllDigits(value)) {
-	                        bValid = false;
-	                        if (i == 0) {
-	                            focusField = field;
-	                        }
-	                        fields[i++] = oInteger[x][1];
-	
-	                    } else {
-	                        var iValue = parseInt(value);
-	                        if (isNaN(iValue) || !(iValue >= -2147483648 && iValue <= 2147483647)) {
-	                            if (i == 0) {
-	                                focusField = field;
-	                            }
-	                            fields[i++] = oInteger[x][1];
-	                            bValid = false;
-	                       }
-	                   }
-	               }
-            	}	
-			}
-            
+                    var value = '';
+                    // get field's value
+                    if (field.type == "select-one") {
+                        var si = field.selectedIndex;
+                        if (si >= 0) {
+                            value = field.options[si].value;
+                        }
+                    } else {
+                        value = field.value;
+                    }
+
+                    if (value.length > 0) {
+
+                        if (!isAllDigits(value)) {
+                            bValid = false;
+                            if (i == 0) {
+                                focusField = field;
+                            }
+                            fields[i++] = oInteger[x][1];
+
+                        } else {
+                            var iValue = parseInt(value);
+                            if (isNaN(iValue) || !(iValue >= -2147483648 && iValue <= 2147483647)) {
+                                if (i == 0) {
+                                    focusField = field;
+                                }
+                                fields[i++] = oInteger[x][1];
+                                bValid = false;
+                           }
+                       }
+                   }
+                }
+            }
+
         }
         if (fields.length > 0) {
            focusField.focus();
@@ -393,83 +393,83 @@
         }
         return true;
     }
-				
-	]]>
+
+    ]]>
 
 
 
-			</javascript>
-		</validator>
+            </javascript>
+        </validator>
 
-		<validator name="long"
-			classname="org.apache.struts.validator.FieldChecks"
-			method="validateLong"
-			methodParams="java.lang.Object,
+        <validator name="long"
+            classname="org.apache.struts.validator.FieldChecks"
+            method="validateLong"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest"
-			depends="" msg="errors.long" />
+            depends="" msg="errors.long" />
 
 
-		<validator name="float"
-			classname="org.apache.struts.validator.FieldChecks"
-			method="validateFloat"
-			methodParams="java.lang.Object,
+        <validator name="float"
+            classname="org.apache.struts.validator.FieldChecks"
+            method="validateFloat"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest"
-			depends="" msg="errors.float" jsFunctionName="FloatValidations" />
+            depends="" msg="errors.float" jsFunctionName="FloatValidations" />
 
-		<validator name="double"
-			classname="org.apache.struts.validator.FieldChecks"
-			method="validateDouble"
-			methodParams="java.lang.Object,
+        <validator name="double"
+            classname="org.apache.struts.validator.FieldChecks"
+            method="validateDouble"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest"
-			depends="" msg="errors.double" />
+            depends="" msg="errors.double" />
 
-		<validator name="time"
-			classname="org.openelisglobal.common.util.validator.FieldChecks"
-			method="validateTime"
-			methodParams="java.lang.Object,
+        <validator name="time"
+            classname="org.openelisglobal.common.util.validator.FieldChecks"
+            method="validateTime"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest"
-			depends="" msg="errors.time" />
+            depends="" msg="errors.time" />
 
 
-		<validator name="date"
-			classname="org.openelisglobal.common.util.validator.FieldChecks"
-			method="validateDate"
-			methodParams="java.lang.Object,
+        <validator name="date"
+            classname="org.openelisglobal.common.util.validator.FieldChecks"
+            method="validateDate"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest"
-			depends="" msg="errors.date" jsFunctionName="DateValidations">
-			<javascript>
+            depends="" msg="errors.date" jsFunctionName="DateValidations">
+            <javascript>
  <![CDATA[    function validateDate(form) {
        var bValid = true;
        var focusField = null;
        var i = 0;
        var fields = new Array();
-       var formName = form.getAttributeNode("name"); 
+       var formName = form.getAttributeNode("name");
 
        oDate = eval('new ' + formName.value + '_DateValidations()');
 
        for (x in oDate) {
            var field = form[oDate[x][0]];
-            //THIS IS WHY JS HAS TO BE ADDED TO THIS FILE - NULL CHECK IS NOT IN DEFAULT VERSION!!! 
+            //THIS IS WHY JS HAS TO BE ADDED TO THIS FILE - NULL CHECK IS NOT IN DEFAULT VERSION!!!
            if (field != null) {
            var value = field.value;
            var datePattern = oDate[x][2]("datePatternStrict");
@@ -593,9 +593,9 @@
        }
        return bValid;
     }
-    
+
     function isValidDate(day, month, year) {
-	    if (month < 1 || month > 12) {
+        if (month < 1 || month > 12) {
             return false;
         }
         if (day < 1 || day > 31) {
@@ -615,68 +615,68 @@
         return true;
     }
   ]]>
-			</javascript>
-		</validator>
+            </javascript>
+        </validator>
 
 
-		<validator name="intRange"
-			classname="org.apache.struts.validator.FieldChecks"
-			method="validateIntRange"
-			methodParams="java.lang.Object,
+        <validator name="intRange"
+            classname="org.apache.struts.validator.FieldChecks"
+            method="validateIntRange"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest"
-			depends="integer" msg="errors.range" />
+            depends="integer" msg="errors.range" />
 
 
-		<validator name="floatRange"
-			classname="org.apache.struts.validator.FieldChecks"
-			method="validateFloatRange"
-			methodParams="java.lang.Object,
+        <validator name="floatRange"
+            classname="org.apache.struts.validator.FieldChecks"
+            method="validateFloatRange"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest"
-			depends="float" msg="errors.range" />
+            depends="float" msg="errors.range" />
 
-		<validator name="doubleRange"
-			classname="org.apache.struts.validator.FieldChecks"
-			method="validateDoubleRange"
-			methodParams="java.lang.Object,
+        <validator name="doubleRange"
+            classname="org.apache.struts.validator.FieldChecks"
+            method="validateDoubleRange"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest"
-			depends="double" msg="errors.range" />
+            depends="double" msg="errors.range" />
 
 
-		<validator name="creditCard"
-			classname="org.apache.struts.validator.FieldChecks"
-			method="validateCreditCard"
-			methodParams="java.lang.Object,
+        <validator name="creditCard"
+            classname="org.apache.struts.validator.FieldChecks"
+            method="validateCreditCard"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest"
-			depends="" msg="errors.creditcard" />
+            depends="" msg="errors.creditcard" />
 
 
-		<validator name="email"
-			classname="org.apache.struts.validator.FieldChecks"
-			method="validateEmail"
-			methodParams="java.lang.Object,
+        <validator name="email"
+            classname="org.apache.struts.validator.FieldChecks"
+            method="validateEmail"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest"
-			depends="" msg="errors.email">
-			<javascript>
+            depends="" msg="errors.email">
+            <javascript>
  <![CDATA[      function validateEmail(form) {
         var bValid = true;
         var focusField = null;
@@ -689,10 +689,10 @@
 
         for (x in oEmail) {
             var field = form[oEmail[x][0]];
-    //THIS IS WHY JS HAS TO BE ADDED TO THIS FILE - NULL CHECK IS NOT IN DEFAULT VERSION!!! 
+    //THIS IS WHY JS HAS TO BE ADDED TO THIS FILE - NULL CHECK IS NOT IN DEFAULT VERSION!!!
           if (field != null) {
-            
-            if ((field.type == 'hidden' || 
+
+            if ((field.type == 'hidden' ||
                  field.type == 'text' ||
                  field.type == 'textarea') &&
                 (field.value.length > 0) &&
@@ -763,26 +763,26 @@
     }
 
   ]]>
-			</javascript>
-		</validator>
+            </javascript>
+        </validator>
 
-		<validator name="url"
-			classname="org.apache.struts.validator.FieldChecks"
-			method="validateUrl"
-			methodParams="java.lang.Object,
+        <validator name="url"
+            classname="org.apache.struts.validator.FieldChecks"
+            method="validateUrl"
+            methodParams="java.lang.Object,
                        org.apache.commons.validator.ValidatorAction,
                        org.apache.commons.validator.Field,
                        org.apache.struts.action.ActionMessages,
                        org.apache.commons.validator.Validator,
                        javax.servlet.http.HttpServletRequest"
-			depends="" msg="errors.url" />
+            depends="" msg="errors.url" />
 
-		<!-- This simply allows struts to include the validateUtilities into a 
-			page, it should not be used as a validation rule. -->
-		<validator name="includeJavaScriptUtilities" classname=""
-			method="" methodParams="" depends="" msg=""
-			jsFunction="org.apache.commons.validator.javascript.validateUtilities" />
+        <!-- This simply allows struts to include the validateUtilities into a
+            page, it should not be used as a validation rule. -->
+        <validator name="includeJavaScriptUtilities" classname=""
+            method="" methodParams="" depends="" msg=""
+            jsFunction="org.apache.commons.validator.javascript.validateUtilities" />
 
-	</global>
+    </global>
 
 </form-validation>

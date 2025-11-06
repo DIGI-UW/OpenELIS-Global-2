@@ -1,33 +1,27 @@
 package org.openelisglobal.common.service;
 
 import java.io.Serializable;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.ObjectNotFoundException;
-import org.openelisglobal.audittrail.dao.AuditTrailService;
-import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 public abstract class BaseObjectServiceImpl<T extends BaseObject<PK>, PK extends Serializable>
         implements BaseObjectService<T, PK> {
 
-    @Autowired
-    protected AuditTrailService auditTrailDAO;
+    protected final Class<T> classType;
 
-    private final Class<T> classType;
-
-    protected boolean auditTrailLog = false;
     protected List<String> defaultSortOrder = new ArrayList<>(Arrays.asList("id"));
 
     public BaseObjectServiceImpl(Class<T> clazz) {
@@ -40,7 +34,6 @@ public abstract class BaseObjectServiceImpl<T extends BaseObject<PK>, PK extends
     @Transactional(readOnly = true)
     public T get(PK id) {
         return getBaseObjectDAO().get(id).orElseThrow(() -> new ObjectNotFoundException(id, classType.getName()));
-
     }
 
     @Override
@@ -186,9 +179,6 @@ public abstract class BaseObjectServiceImpl<T extends BaseObject<PK>, PK extends
     public PK insert(T baseObject) {
         PK id = getBaseObjectDAO().insert(baseObject);
         baseObject.setId(id);
-        if (auditTrailLog) {
-            auditTrailDAO.saveNewHistory(baseObject, baseObject.getSysUserId(), getBaseObjectDAO().getTableName());
-        }
         return id;
     }
 
@@ -212,7 +202,6 @@ public abstract class BaseObjectServiceImpl<T extends BaseObject<PK>, PK extends
         } else {
             return update(baseObject);
         }
-
     }
 
     @Override
@@ -228,19 +217,18 @@ public abstract class BaseObjectServiceImpl<T extends BaseObject<PK>, PK extends
     @Override
     @Transactional
     public T update(T baseObject) {
-        return update(baseObject, IActionConstants.AUDIT_TRAIL_UPDATE);
-    }
-
-    protected T update(T baseObject, String auditTrailType) {
-        if (auditTrailLog) {
-            T oldObject = getBaseObjectDAO().get(baseObject.getId())
-                    .orElseThrow(() -> new ObjectNotFoundException(baseObject.getId(), classType.getName()));
-            getBaseObjectDAO().evict(oldObject);
-            auditTrailDAO.saveHistory(baseObject, oldObject, baseObject.getSysUserId(), auditTrailType,
-                    getBaseObjectDAO().getTableName());
+        if (baseObject.getLastupdated() == null) {
+            // this is done so detached objects that are being updated don't do an insert
+            // operation
+            // when their version value is null (hiberante behaviour)
+            LogEvent.logWarn(this.getClass().getSimpleName(), "update",
+                    "running update on an object with a missing version field can result in unintended"
+                            + " inserts instead of updates");
+            LogEvent.logWarn(this.getClass().getSimpleName(), "update", "setting lastUpdated to now for object: "
+                    + baseObject.getClass().getSimpleName() + " with id: " + baseObject.getId());
+            baseObject.setLastupdated(Timestamp.from(Instant.now()));
         }
         return getBaseObjectDAO().update(baseObject);
-
     }
 
     @Override
@@ -253,18 +241,9 @@ public abstract class BaseObjectServiceImpl<T extends BaseObject<PK>, PK extends
         return resultObjects;
     }
 
-    // used for "deleting" an object but operation is actually an update
-    protected void updateDelete(T baseObject) {
-        update(baseObject, IActionConstants.AUDIT_TRAIL_DELETE);
-    }
-
     @Override
     @Transactional
     public void delete(T baseObject) {
-        if (auditTrailLog) {
-            auditTrailDAO.saveHistory(null, baseObject, baseObject.getSysUserId(), IActionConstants.AUDIT_TRAIL_DELETE,
-                    getBaseObjectDAO().getTableName());
-        }
         // this is so we can make sure entity is managed before it is deleted as calling
         // delete on an unmanaged object will mean it is not removed from the database
         getBaseObjectDAO().delete(getBaseObjectDAO().get(baseObject.getId())
@@ -294,7 +273,6 @@ public abstract class BaseObjectServiceImpl<T extends BaseObject<PK>, PK extends
         for (PK id : ids) {
             delete(id, sysUserId);
         }
-
     }
 
     @Override
@@ -363,9 +341,5 @@ public abstract class BaseObjectServiceImpl<T extends BaseObject<PK>, PK extends
     @Transactional(readOnly = true)
     public boolean hasPrevious(String id) {
         return getBaseObjectDAO().getPrevious(id).isPresent();
-    }
-
-    protected void disableLogging() {
-        this.auditTrailLog = false;
     }
 }

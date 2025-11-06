@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet author="mozzymutesa" id="1">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="person" columnName="state" />
+            <sqlCheck expectedResult="2">SELECT character_maximum_length FROM information_schema.columns WHERE table_name='person' AND column_name='state'</sqlCheck>
+        </preConditions>
+        <comment>Increase size of the person.state column</comment>
+        <modifyDataType tableName="person" columnName="state" newDataType="varchar(225)"/>
+    </changeSet>
+</databaseChangeLog>

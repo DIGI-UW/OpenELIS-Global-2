@@ -2,8 +2,7 @@ package org.openelisglobal.sampleqaevent.service;
 
 import java.sql.Date;
 import java.util.List;
-
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleqaevent.dao.SampleQaEventDAO;
 import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
@@ -12,7 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class SampleQaEventServiceImpl extends BaseObjectServiceImpl<SampleQaEvent, String>
+public class SampleQaEventServiceImpl extends AuditableBaseObjectServiceImpl<SampleQaEvent, String>
         implements SampleQaEventService {
     @Autowired
     protected SampleQaEventDAO baseObjectDAO;
@@ -37,7 +36,6 @@ public class SampleQaEventServiceImpl extends BaseObjectServiceImpl<SampleQaEven
     @Transactional(readOnly = true)
     public void getData(SampleQaEvent sampleQaEvent) {
         getBaseObjectDAO().getData(sampleQaEvent);
-
     }
 
     @Override

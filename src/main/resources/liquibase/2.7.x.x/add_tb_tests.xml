@@ -1,0 +1,2075 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+<!-- TB sample type localisations -->
+    <changeSet author="CIV developer Group" id="2023091801"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.localization WHERE french = 'GeneXpert MTB/RIF'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.localization(id, description, english,french, lastupdated) VALUES
+            (nextval('localization_seq'),'test name','GeneXpert MTB/RIF','GeneXpert MTB/RIF',now()),
+            (nextval('localization_seq'),'test name','TB LAMP','TB LAMP',now()),
+            (nextval('localization_seq'),'test name','Auramine bacilloscopy','Bacilloscopie Auramine',now()),
+            (nextval('localization_seq'),'test name','Bacilloscopie Ziehl-Neelsen','Bacilloscopie Ziehl-Neelsen',	now()),
+            (nextval('localization_seq'),'test name','Culture Milieu LJ','Culture Milieu LJ',now()),
+            (nextval('localization_seq'),'test name','Culture Milieu MGIT','Culture Milieu MGIT',now()),
+            (nextval('localization_seq'),'panel name','MTBDRplus','MTBDRplus',now()),
+            (nextval('localization_seq'),'panel name','MTBDRsl','MTBDRsl',now()),
+            (nextval('localization_seq'),'test name','Rifampicine','Rifampicine',now()),
+            (nextval('localization_seq'),'test name','Isoniazide','Isoniazide',now()),
+            (nextval('localization_seq'),'test name','Fluoroquinolone','Fluoroquinolone',now()),
+            (nextval('localization_seq'),'test name','Injectable','Injectable',now()),
+            (nextval('localization_seq'),'panel name','Antibiogram TB 1st Line','Antibiogramme TB 1ere Ligne',now()),
+            (nextval('localization_seq'),'panel name','Antibiogram TB 2nd Line','Antibiogramme TB 2e Ligne',now()),
+            (nextval('localization_seq'),'test name','Pyrazinamide','Pyrazinamide',now()),
+            (nextval('localization_seq'),'test name','Ethambutol','Ethambutol',now()),
+            (nextval('localization_seq'),'test name','Capreomicine','Capreomicine',now()),
+            (nextval('localization_seq'),'test name','Teridizone','Teridizone',now()),
+            (nextval('localization_seq'),'test name','Kanamycine','Kanamycine',now()),
+            (nextval('localization_seq'),'test name','Imipenem','Imipenem',now()),
+            (nextval('localization_seq'),'test name','Streptomicine','Streptomicine',now()),
+            (nextval('localization_seq'),'test name','Ethionamide','Ethionamide',now()),
+            (nextval('localization_seq'),'test name','Prothionamide','Prothionamide',now()),
+            (nextval('localization_seq'),'test name','Cyclosérine','Cyclosérine',now()),
+            (nextval('localization_seq'),'test name','Linezolid','Linezolid',now()),
+            (nextval('localization_seq'),'test name','Moxifloxacine','Moxifloxacine',now()),
+            (nextval('localization_seq'),'test name','Clofazimine','Clofazimine',now()),
+            (nextval('localization_seq'),'test name','Levofloxacine','Levofloxacine',now()),
+            (nextval('localization_seq'),'test name','PAS','PAS',now()),
+            (nextval('localization_seq'),'test name','Imipénème-Cilastatine','Imipénème-Cilastatine',now()),
+            (nextval('localization_seq'),'test name','Meropenem','Meropenem',now()),
+            (nextval('localization_seq'),'test name','Bedaquilline','Bedaquilline',now()),
+            (nextval('localization_seq'),'test name','Delamanide','Delamanide',now()),
+            (nextval('localization_seq'),'test name','TB LAM urinaire','TB LAM urinaire',now()),
+            (nextval('localization_seq'),'test report name','GeneXpert MTB/RIF','GeneXpert MTB/RIF',now()),
+            (nextval('localization_seq'),'test report name','TB LAMP','TB LAMP',now()),
+            (nextval('localization_seq'),'test report name','Auramine bacilloscopy','Bacilloscopie Auramine',now()),
+            (nextval('localization_seq'),'test report name','Bacilloscopie Ziehl-Neelsen','Bacilloscopie Ziehl-Neelsen',	now()),
+            (nextval('localization_seq'),'test report name','Culture Milieu LJ','Culture Milieu LJ',now()),
+            (nextval('localization_seq'),'test report name','Culture Milieu MGIT','Culture Milieu MGIT',now()),
+            (nextval('localization_seq'),'test report name','Rifampicine','Rifampicine',now()),
+            (nextval('localization_seq'),'test report name','Isoniazide','Isoniazide',now()),
+            (nextval('localization_seq'),'test report name','Fluoroquinolone','Fluoroquinolone',now()),
+            (nextval('localization_seq'),'test report name','Injectable','Injectable',now()),
+            (nextval('localization_seq'),'test report name','Pyrazinamide','Pyrazinamide',now()),
+            (nextval('localization_seq'),'test report name','Ethambutol','Ethambutol',now()),
+            (nextval('localization_seq'),'test report name','Capreomicine','Capreomicine',now()),
+            (nextval('localization_seq'),'test report name','Teridizone','Teridizone',now()),
+            (nextval('localization_seq'),'test report name','Kanamycine','Kanamycine',now()),
+            (nextval('localization_seq'),'test report name','Imipenem','Imipenem',now()),
+            (nextval('localization_seq'),'test report name','Streptomicine','Streptomicine',now()),
+            (nextval('localization_seq'),'test report name','Ethionamide','Ethionamide',now()),
+            (nextval('localization_seq'),'test report name','Prothionamide','Prothionamide',now()),
+            (nextval('localization_seq'),'test report name','Cyclosérine','Cyclosérine',now()),
+            (nextval('localization_seq'),'test report name','Linezolid','Linezolid',now()),
+            (nextval('localization_seq'),'test report name','Moxifloxacine','Moxifloxacine',now()),
+            (nextval('localization_seq'),'test report name','Clofazimine','Clofazimine',now()),
+            (nextval('localization_seq'),'test report name','Levofloxacine','Levofloxacine',now()),
+            (nextval('localization_seq'),'test report name','PAS','PAS',now()),
+            (nextval('localization_seq'),'test report name','Imipénème-Cilastatine','Imipénème-Cilastatine',now()),
+            (nextval('localization_seq'),'test report name','Meropenem','Meropenem',now()),
+            (nextval('localization_seq'),'test report name','Bedaquilline','Bedaquilline',now()),
+            (nextval('localization_seq'),'test report name','Delamanide','Delamanide',now()),
+            (nextval('localization_seq'),'test report name','TB LAM urinaire','TB LAM urinaire',now());
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023091802"	context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.dictionary WHERE dict_entry = 'MTB non détecté' </sqlCheck>
+        </preConditions>
+
+        <sql>
+            INSERT INTO
+            clinlims.dictionary(id,is_active,dict_entry,lastupdated,local_abbrev,dictionary_category_id,display_key,sort_order,name_localization_id)
+            VALUES
+            (nextval('dictionary_seq'),'Y','MTB non détecté',now(),'MTB NotD',null,
+            'dictionary.tb.result.mtb_not_detected',80001,null),
+            (nextval('dictionary_seq'),'Y','MTB détecté RIF sensible',now(),'MTB RifS',null,
+            'dictionary.tb.result.mtb_detected_sensible',80002,null),
+            (nextval('dictionary_seq'),'Y','MTB détecté RIF Résistant',now(),'MTB RifR',null,
+            'dictionary.tb.result.mtb_detected_resistant',80003,null),
+            (nextval('dictionary_seq'),'Y','MTB détecté RIF indéterminé',now(),'MTB RifI',null,
+            'dictionary.tb.result.mtb_ind',80004,null),
+            (nextval('dictionary_seq'),'Y','Erreur',now(),'Erreur',null,
+            'dictionary.tb.result.error',80005,null),
+            (nextval('dictionary_seq'),'Y','Invalide',now(),'Invalide',null,
+            'dictionary.tb.result.invalide',80006,null),
+            (nextval('dictionary_seq'),'Y','Pas de résultat',now(),'NoResult',null,
+            'dictionary.tb.result.no_result',80007,null),
+            (nextval('dictionary_seq'),'Y','MTB détecté',now(),'MTB DET',null,
+            'dictionary.tb.result.mtb_detected',80008,null),
+            (nextval('dictionary_seq'),'Y','Positif +',now(),'Pos +',null,
+            'dictionary.tb.result.mtb_pos1P',80009,null),
+            (nextval('dictionary_seq'),'Y','Positif ++',now(),'Pos ++',null,
+            'dictionary.tb.result.mtb_pos2P',80010,null),
+            (nextval('dictionary_seq'),'Y','Positif +++',now(),'Pos +++',null,
+            'dictionary.tb.result.mtb_pos3P',80011,null),
+            (nextval('dictionary_seq'),'Y','Positif Rare BAAR',now(),'Pos RB',null,
+            'dictionary.tb.result.mtb_posRB',80012,null),
+            (nextval('dictionary_seq'),'Y','Négatif',now(),'Negative',null,
+            'dictionary.tb.result.negative',80013,null),
+            (nextval('dictionary_seq'),'Y','Culture contaminée',now(),'Culture C',null,
+            'dictionary.tb.result.culture_cont',80014,null),
+            (nextval('dictionary_seq'),'Y','Culture négative',now(),'Culture N',null,
+            'dictionary.tb.result.culture_neg',80015,null),
+            (nextval('dictionary_seq'),'Y','Culture positive',now(),'Culture P',null,
+            'dictionary.tb.result.culture_pos',80016,null),
+            (nextval('dictionary_seq'),'Y','Resistant',now(),'Resistant',null,
+            'dictionary.tb.result.culture_res',80017,null),
+            (nextval('dictionary_seq'),'Y','Sensible',now(),'Sensible',null,
+            'dictionary.tb.result.culture_sens',80018,null);
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023091803" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.test WHERE description = 'GeneXpert MTB/RIF'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.test(id, method_id, uom_id, description,loinc, reporting_description,sticker_req_flag, is_active,active_begin, active_end, is_reportable,
+            time_holding, time_wait,time_ta_average, time_ta_warning,time_ta_max, label_qty, lastupdated,label_id, test_trailer_id,test_section_id, scriptlet_id,
+            test_format_id, local_code,	sort_order, name, orderable,guid,name_localization_id, reporting_name_localization_id,default_test_result_id, notify_results)
+            VALUES
+            (nextval('test_seq'),null,null,'GeneXpert MTB/RIF','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'GeneXpert MTB/RIF',1,'GeneXpert MTB/RIF','t','c9413e2e-8979-440f-9673-6bf1ddc73f6f',
+            (select id	from localization where description = 'test name' and french = 'GeneXpert MTB/RIF' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'GeneXpert MTB/RIF' limit 1),	null,'f'),
+            (nextval('test_seq'),null,null,'TB LAMP','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'TB LAMP',1,'TB LAMP','t','837e42e0-e9a1-45dd-b89d-2e764553448b',
+            (select id	from localization where description = 'test name' and french = 'TB LAMP' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'TB LAMP' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Bacilloscopie Auramine','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Bacilloscopie Auramine',1,'Bacilloscopie Auramine','t','e4543638-81c2-4a14-95a2-fe706d321b21',
+            (select id	from localization where description = 'test name' and french = 'Bacilloscopie Auramine' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Bacilloscopie Auramine' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Bacilloscopie Ziehl-Neelsen','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Bacilloscopie Ziehl-Neelsen',1,'Bacilloscopie Ziehl-Neelsen','t','1ee24887-4c74-460f-8eb3-4aed3a323a2d',
+            (select id	from localization where description = 'test name' and french = 'Bacilloscopie Ziehl-Neelsen' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Bacilloscopie Ziehl-Neelsen' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Culture Milieu LJ','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Culture Milieu LJ',1,'Culture Milieu LJ','t','b0373870-04d7-4a55-92f5-eed1e2fc3935',
+            (select id	from localization where description = 'test name' and french = 'Culture Milieu LJ' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Culture Milieu LJ' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Culture Milieu MGIT','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Culture Milieu MGIT',1,'Culture Milieu MGIT','t','1043ff93-ca92-4123-87d9-bc63dc4cb8fb',
+            (select id	from localization where description = 'test name' and french = 'Culture Milieu MGIT' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Culture Milieu MGIT' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Rifampicine','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Rifampicine',1,'Rifampicine','t','b026e596-9455-45d1-bb1e-701826855338',
+            (select id	from localization where description = 'test name' and french = 'Rifampicine' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Rifampicine' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Isoniazide','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Isoniazide',1,'Isoniazide','t','34a8ded2-3418-4410-88a1-6b61639aab54',
+            (select id	from localization where description = 'test name' and french = 'Isoniazide' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Isoniazide' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Fluoroquinolone','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Fluoroquinolone',1,'Fluoroquinolone','t','b7a92712-0d6c-4c62-b516-4e2c5aa9db15',
+            (select id	from localization where description = 'test name' and french = 'Fluoroquinolone' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Fluoroquinolone' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Injectable','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Injectable',1,'Injectable','t','02c088d2-20a0-4c5d-8a38-eda89876a6c0',
+            (select id	from localization where description = 'test name' and french = 'Injectable' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Injectable' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Pyrazinamide','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Pyrazinamide',1,'Pyrazinamide','t','a82f3b98-6a7e-4884-bb91-c4a174ce3f72',
+            (select id	from localization where description = 'test name' and french = 'Pyrazinamide' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Pyrazinamide' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Ethambutol','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Ethambutol',1,'Ethambutol','t','b115cb58-511d-41d1-8212-d6d88053b9e2',
+            (select id	from localization where description = 'test name' and french = 'Ethambutol' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Ethambutol' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Capreomicine','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Capreomicine',1,'Capreomicine','t','89d4e974-ae49-4b93-8906-98b579a86f69',
+            (select id	from localization where description = 'test name' and french = 'Capreomicine' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Capreomicine' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Teridizone','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Teridizone',1,'Teridizone','t','5d56f762-ca73-485e-92fc-6fd035cacd8e',
+            (select id	from localization where description = 'test name' and french = 'Teridizone' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Teridizone' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Kanamycine','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Kanamycine',1,'Kanamycine','t','5354866f-64b0-43a9-a414-e168418db871',
+            (select id	from localization where description = 'test name' and french = 'Kanamycine' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Kanamycine' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Imipenem','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Imipenem',1,'Imipenem','t','077ea0ca-d075-49f9-a33d-5a0e891efb71',
+            (select id	from localization where description = 'test name' and french = 'Imipenem' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Imipenem' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Streptomicine','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Streptomicine',1,'Streptomicine','t','f248174d-84b2-4ec1-8ebe-528ec62c210d',
+            (select id	from localization where description = 'test name' and french = 'Streptomicine' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Streptomicine' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Ethionamide','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Ethionamide',1,'Ethionamide','t','95a8a513-c3de-4caf-b9e3-f2abc20281c7',
+            (select id	from localization where description = 'test name' and french = 'Ethionamide' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Ethionamide' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Prothionamide','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Prothionamide',1,'Prothionamide','t','47b7255c-3d7e-4d22-a37e-723667a5daef',
+            (select id	from localization where description = 'test name' and french = 'Prothionamide' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Prothionamide' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Cyclosérine','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Cyclosérine',1,'Cyclosérine','t','020d39d0-5eec-4ca9-bcc9-4a1031d1e339',
+            (select id	from localization where description = 'test name' and french = 'Cyclosérine' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Cyclosérine' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Linezolid','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Linezolid',1,'Linezolid','t','7681ae7b-f62c-4480-a83b-18a008d336e2',
+            (select id	from localization where description = 'test name' and french = 'Linezolid' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Linezolid' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Moxifloxacine','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Moxifloxacine',1,'Moxifloxacine','t','b10587c8-d3b5-486c-bac2-8d07c62144d7',
+            (select id	from localization where description = 'test name' and french = 'Moxifloxacine' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Moxifloxacine' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Clofazimine','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Clofazimine',1,'Clofazimine','t','6834169e-c1d2-49ba-9272-34d4fda0519e',
+            (select id	from localization where description = 'test name' and french = 'Clofazimine' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Clofazimine' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Levofloxacine','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Levofloxacine',1,'Levofloxacine','t','5bf4b52c-52b8-4164-b634-c57e22a0f4eb',
+            (select id	from localization where description = 'test name' and french = 'Levofloxacine' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Levofloxacine' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'PAS','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'PAS',1,'PAS','t','4a2941a2-0997-4538-89e0-5a7e4fcb14de',
+            (select id	from localization where description = 'test name' and french = 'PAS' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'PAS' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Imipénème-Cilastatine','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Imipénème-Cilastatine',1,'Imipénème-Cilastatine','t','b33a435c-d884-4c80-a324-dffd4a289697',
+            (select id	from localization where description = 'test name' and french = 'Imipénème-Cilastatine' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Imipénème-Cilastatine' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Meropenem','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Meropenem',1,'Meropenem','t','4fe3dcf0-ea96-4523-b530-1cf3f116871c',
+            (select id	from localization where description = 'test name' and french = 'Meropenem' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Meropenem' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Bedaquilline','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Bedaquilline',1,'Bedaquilline','t','1498e2db-4114-4489-b378-27e7710fbdf3',
+            (select id	from localization where description = 'test name' and french = 'Bedaquilline' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Bedaquilline' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'Delamanide','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'Delamanide',1,'Delamanide','t','a66669e6-27dc-4895-9b5e-981151b00f3a',
+            (select id	from localization where description = 'test name' and french = 'Delamanide' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'Delamanide' limit 1),null,'f'),
+            (nextval('test_seq'),null,null,'TB LAM urinaire','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),null,null,
+            (select id	from test_section where name = 'TB' limit 1),
+            null,null,'TB LAM urinaire',1,'TB LAM urinaire','t','f41361dc-1c51-4684-a42d-5ec34435a387',
+            (select id	from localization where description = 'test name' and french = 'TB LAM urinaire' limit 1),
+            (select id from localization where	description = 'test report name' and french = 'TB LAM urinaire' limit 1),null,'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091804"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Sputum' OR description = 'Crachat limit 1'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT into clinlims.sampletype_test(id, sample_type_id, test_id,is_panel)
+            VALUES
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'GeneXpert MTB/RIF'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'TB LAMP'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Bacilloscopie Auramine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Bacilloscopie Ziehl-Neelsen'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Culture Milieu LJ'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Culture Milieu MGIT'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Rifampicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Isoniazide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Fluoroquinolone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Injectable'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Pyrazinamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Ethambutol'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Capreomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Teridizone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Kanamycine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Imipenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Streptomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Ethionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Prothionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Cyclosérine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Linezolid'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Moxifloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Clofazimine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Levofloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'PAS'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Imipénème-Cilastatine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Meropenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Bedaquilline'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'Delamanide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Sputum' OR description = 'Crachat' limit 1),
+            (select id from	test where description = 'TB LAM urinaire'),'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091805"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Liquide pleural' limit 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT into clinlims.sampletype_test(id, sample_type_id, test_id,is_panel)
+            VALUES
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'GeneXpert MTB/RIF'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural'  limit 1),
+            (select id from	test where description = 'TB LAMP'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Auramine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Ziehl-Neelsen'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural'  limit 1),
+            (select id from	test where description = 'Culture Milieu LJ'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural'  limit 1),
+            (select id from	test where description = 'Culture Milieu MGIT'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural'  limit 1),
+            (select id from	test where description = 'Rifampicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural'  limit 1),
+            (select id from	test where description = 'Isoniazide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural'  limit 1),
+            (select id from	test where description = 'Fluoroquinolone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Injectable'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Pyrazinamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Ethambutol'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Capreomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Teridizone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Kanamycine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Imipenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Streptomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Ethionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Prothionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Cyclosérine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Linezolid'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Moxifloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Clofazimine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Levofloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'PAS'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Imipénème-Cilastatine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Meropenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Bedaquilline'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'Delamanide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide pleural' limit 1),
+            (select id from	test where description = 'TB LAM urinaire'),'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091806"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'LCR' limit 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT into clinlims.sampletype_test(id, sample_type_id, test_id,is_panel)
+            VALUES
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'GeneXpert MTB/RIF'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR'  limit 1),
+            (select id from	test where description = 'TB LAMP'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Auramine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Ziehl-Neelsen'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR'  limit 1),
+            (select id from	test where description = 'Culture Milieu LJ'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR'  limit 1),
+            (select id from	test where description = 'Culture Milieu MGIT'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR'  limit 1),
+            (select id from	test where description = 'Rifampicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR'  limit 1),
+            (select id from	test where description = 'Isoniazide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR'  limit 1),
+            (select id from	test where description = 'Fluoroquinolone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Injectable'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Pyrazinamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Ethambutol'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Capreomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Teridizone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Kanamycine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Imipenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Streptomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Ethionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Prothionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Cyclosérine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Linezolid'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Moxifloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Clofazimine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Levofloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'PAS'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Imipénème-Cilastatine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Meropenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Bedaquilline'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'Delamanide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'LCR' limit 1),
+            (select id from	test where description = 'TB LAM urinaire'),'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091807"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Pus ganglionnaires' limit 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT into clinlims.sampletype_test(id, sample_type_id, test_id,is_panel)
+            VALUES
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'GeneXpert MTB/RIF'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires'  limit 1),
+            (select id from	test where description = 'TB LAMP'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Auramine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Ziehl-Neelsen'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires'  limit 1),
+            (select id from	test where description = 'Culture Milieu LJ'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires'  limit 1),
+            (select id from	test where description = 'Culture Milieu MGIT'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires'  limit 1),
+            (select id from	test where description = 'Rifampicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires'  limit 1),
+            (select id from	test where description = 'Isoniazide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires'  limit 1),
+            (select id from	test where description = 'Fluoroquinolone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Injectable'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Pyrazinamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Ethambutol'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Capreomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Teridizone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Kanamycine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Imipenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Streptomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Ethionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Prothionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Cyclosérine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Linezolid'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Moxifloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Clofazimine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Levofloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'PAS'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Imipénème-Cilastatine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Meropenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Bedaquilline'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'Delamanide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Pus ganglionnaires' limit 1),
+            (select id from	test where description = 'TB LAM urinaire'),'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091808"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Liquide d’ascite' limit 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT into clinlims.sampletype_test(id, sample_type_id, test_id,is_panel)
+            VALUES
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'GeneXpert MTB/RIF'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite'  limit 1),
+            (select id from	test where description = 'TB LAMP'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Auramine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Ziehl-Neelsen'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite'  limit 1),
+            (select id from	test where description = 'Culture Milieu LJ'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite'  limit 1),
+            (select id from	test where description = 'Culture Milieu MGIT'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite'  limit 1),
+            (select id from	test where description = 'Rifampicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite'  limit 1),
+            (select id from	test where description = 'Isoniazide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite'  limit 1),
+            (select id from	test where description = 'Fluoroquinolone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Injectable'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Pyrazinamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Ethambutol'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Capreomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Teridizone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Kanamycine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Imipenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Streptomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Ethionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Prothionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Cyclosérine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Linezolid'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Moxifloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Clofazimine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Levofloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'PAS'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Imipénème-Cilastatine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Meropenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Bedaquilline'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'Delamanide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’ascite' limit 1),
+            (select id from	test where description = 'TB LAM urinaire'),'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091809"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Liquide articulaire' limit 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT into clinlims.sampletype_test(id, sample_type_id, test_id,is_panel)
+            VALUES
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'GeneXpert MTB/RIF'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire'  limit 1),
+            (select id from	test where description = 'TB LAMP'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Auramine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Ziehl-Neelsen'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire'  limit 1),
+            (select id from	test where description = 'Culture Milieu LJ'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire'  limit 1),
+            (select id from	test where description = 'Culture Milieu MGIT'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire'  limit 1),
+            (select id from	test where description = 'Rifampicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire'  limit 1),
+            (select id from	test where description = 'Isoniazide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire'  limit 1),
+            (select id from	test where description = 'Fluoroquinolone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Injectable'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Pyrazinamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Ethambutol'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Capreomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Teridizone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Kanamycine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Imipenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Streptomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Ethionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Prothionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Cyclosérine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Linezolid'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Moxifloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Clofazimine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Levofloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'PAS'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Imipénème-Cilastatine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Meropenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Bedaquilline'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'Delamanide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide articulaire' limit 1),
+            (select id from	test where description = 'TB LAM urinaire'),'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091810"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Liquide de ponction péricardique' limit 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT into clinlims.sampletype_test(id, sample_type_id, test_id,is_panel)
+            VALUES
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'GeneXpert MTB/RIF'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique'  limit 1),
+            (select id from	test where description = 'TB LAMP'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Auramine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Ziehl-Neelsen'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique'  limit 1),
+            (select id from	test where description = 'Culture Milieu LJ'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique'  limit 1),
+            (select id from	test where description = 'Culture Milieu MGIT'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique'  limit 1),
+            (select id from	test where description = 'Rifampicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique'  limit 1),
+            (select id from	test where description = 'Isoniazide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique'  limit 1),
+            (select id from	test where description = 'Fluoroquinolone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Injectable'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Pyrazinamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Ethambutol'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Capreomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Teridizone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Kanamycine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Imipenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Streptomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Ethionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Prothionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Cyclosérine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Linezolid'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Moxifloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Clofazimine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Levofloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'PAS'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Imipénème-Cilastatine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Meropenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Bedaquilline'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'Delamanide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide de ponction péricardique' limit 1),
+            (select id from	test where description = 'TB LAM urinaire'),'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091811"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Selles' limit 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT into clinlims.sampletype_test(id, sample_type_id, test_id,is_panel)
+            VALUES
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'GeneXpert MTB/RIF'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles'  limit 1),
+            (select id from	test where description = 'TB LAMP'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Auramine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Ziehl-Neelsen'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles'  limit 1),
+            (select id from	test where description = 'Culture Milieu LJ'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles'  limit 1),
+            (select id from	test where description = 'Culture Milieu MGIT'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles'  limit 1),
+            (select id from	test where description = 'Rifampicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles'  limit 1),
+            (select id from	test where description = 'Isoniazide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles'  limit 1),
+            (select id from	test where description = 'Fluoroquinolone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Injectable'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Pyrazinamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Ethambutol'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Capreomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Teridizone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Kanamycine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Imipenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Streptomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Ethionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Prothionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Cyclosérine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Linezolid'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Moxifloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Clofazimine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Levofloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'PAS'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Imipénème-Cilastatine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Meropenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Bedaquilline'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'Delamanide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Selles' limit 1),
+            (select id from	test where description = 'TB LAM urinaire'),'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091812"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Urines' limit 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT into clinlims.sampletype_test(id, sample_type_id, test_id,is_panel)
+            VALUES
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'GeneXpert MTB/RIF'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines'  limit 1),
+            (select id from	test where description = 'TB LAMP'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Auramine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Ziehl-Neelsen'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines'  limit 1),
+            (select id from	test where description = 'Culture Milieu LJ'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines'  limit 1),
+            (select id from	test where description = 'Culture Milieu MGIT'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines'  limit 1),
+            (select id from	test where description = 'Rifampicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines'  limit 1),
+            (select id from	test where description = 'Isoniazide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines'  limit 1),
+            (select id from	test where description = 'Fluoroquinolone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Injectable'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Pyrazinamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Ethambutol'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Capreomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Teridizone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Kanamycine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Imipenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Streptomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Ethionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Prothionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Cyclosérine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Linezolid'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Moxifloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Clofazimine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Levofloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'PAS'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Imipénème-Cilastatine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Meropenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Bedaquilline'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'Delamanide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Urines' limit 1),
+            (select id from	test where description = 'TB LAM urinaire'),'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091813"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Liquide d’aspiration gastrique' limit 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT into clinlims.sampletype_test(id, sample_type_id, test_id,is_panel)
+            VALUES
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'GeneXpert MTB/RIF'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique'  limit 1),
+            (select id from	test where description = 'TB LAMP'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Auramine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Ziehl-Neelsen'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique'  limit 1),
+            (select id from	test where description = 'Culture Milieu LJ'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique'  limit 1),
+            (select id from	test where description = 'Culture Milieu MGIT'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique'  limit 1),
+            (select id from	test where description = 'Rifampicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique'  limit 1),
+            (select id from	test where description = 'Isoniazide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique'  limit 1),
+            (select id from	test where description = 'Fluoroquinolone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Injectable'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Pyrazinamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Ethambutol'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Capreomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Teridizone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Kanamycine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Imipenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Streptomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Ethionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Prothionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Cyclosérine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Linezolid'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Moxifloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Clofazimine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Levofloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'PAS'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Imipénème-Cilastatine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Meropenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Bedaquilline'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'Delamanide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration gastrique' limit 1),
+            (select id from	test where description = 'TB LAM urinaire'),'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091814"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Liquide d’aspiration broncho-alvéolaire' limit 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT into clinlims.sampletype_test(id, sample_type_id, test_id,is_panel)
+            VALUES
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'GeneXpert MTB/RIF'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire'  limit 1),
+            (select id from	test where description = 'TB LAMP'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Auramine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire'  limit 1),
+            (select id from	test where description = 'Bacilloscopie Ziehl-Neelsen'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire'  limit 1),
+            (select id from	test where description = 'Culture Milieu LJ'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire'  limit 1),
+            (select id from	test where description = 'Culture Milieu MGIT'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire'  limit 1),
+            (select id from	test where description = 'Rifampicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire'  limit 1),
+            (select id from	test where description = 'Isoniazide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire'  limit 1),
+            (select id from	test where description = 'Fluoroquinolone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Injectable'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Pyrazinamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Ethambutol'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Capreomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Teridizone'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Kanamycine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Imipenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Streptomicine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Ethionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Prothionamide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Cyclosérine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Linezolid'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Moxifloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Clofazimine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Levofloxacine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'PAS'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Imipénème-Cilastatine'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Meropenem'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Bedaquilline'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'Delamanide'),'f'),
+            (nextval('sample_type_test_seq'),(select id from type_of_sample where description = 'Liquide d’aspiration broncho-alvéolaire' limit 1),
+            (select id from	test where description = 'TB LAM urinaire'),'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091815"	context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.result_limits WHERE test_id =
+                (select id from clinlims.test where description = 'GeneXpert MTB/RIF')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.result_limits(id, test_id,	test_result_type_id,min_age, max_age, gender, low_normal,
+            high_normal, low_valid,	high_valid, lastupdated, normal_dictionary_id,	always_validate)
+            VALUES
+            (nextval('result_limits_seq'),(select id from test where description = 'GeneXpert MTB/RIF'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'TB LAMP'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Bacilloscopie Auramine'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Bacilloscopie Ziehl-Neelsen'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Culture Milieu LJ'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Culture Milieu MGIT'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Rifampicine'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Isoniazide'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Fluoroquinolone'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Injectable'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Pyrazinamide'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Ethambutol'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Capreomicine'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Teridizone'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Kanamycine'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Imipenem'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Streptomicine'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Ethionamide'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Prothionamide'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Cyclosérine'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Cyclosérine'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Linezolid'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Moxifloxacine'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Clofazimine'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Levofloxacine'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'PAS'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Imipénème-Cilastatine'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Meropenem'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Meropenem'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Bedaquilline'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'Delamanide'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f'),
+            (nextval('result_limits_seq'),(select id from test where description = 'TB LAM urinaire'),
+            2,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091845" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'GeneXpert MTB/RIF')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'GeneXpert MTB/RIF'),	null,null,'D',
+            (select id from dictionary where dict_entry = 'MTB non détecté' limit 1),	null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'GeneXpert MTB/RIF'),	null,null,'D',
+            (select id from dictionary where dict_entry = 'MTB détecté RIF sensible' limit 1),	null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'GeneXpert MTB/RIF'),	null,null,'D',
+            (select id from dictionary where dict_entry = 'MTB détecté RIF Résistant' limit 1),	null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'GeneXpert MTB/RIF'),	null,null,'D',
+            (select id from dictionary where dict_entry = 'MTB détecté RIF indéterminé' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'GeneXpert MTB/RIF'),	null,null,'D',
+            (select id from dictionary where dict_entry = 'Erreur' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'GeneXpert MTB/RIF'),	null,null,'D',
+            (select id from dictionary where dict_entry = 'Invalide' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'GeneXpert MTB/RIF'),	null,null,'D',
+            (select id from dictionary where dict_entry = 'Pas de résultat' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091816" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'TB LAMP')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'TB LAMP'),null,null,'D',
+            (select id from dictionary where dict_entry = 'MTB non détecté' limit 1),	null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'TB LAMP'),	null,null,'D',
+            (select id from dictionary where dict_entry = 'MTB détecté' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091817" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Bacilloscopie Auramine')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Bacilloscopie Auramine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Positif +' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Bacilloscopie Auramine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Positif ++' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Bacilloscopie Auramine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Positif +++' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Bacilloscopie Auramine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Positif Rare BAAR' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Bacilloscopie Auramine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Négatif' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091818" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Bacilloscopie Ziehl-Neelsen')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Bacilloscopie Ziehl-Neelsen'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Positif +' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Bacilloscopie Ziehl-Neelsen'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Positif ++' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Bacilloscopie Ziehl-Neelsen'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Positif +++' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Bacilloscopie Ziehl-Neelsen'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Positif Rare BAAR' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Bacilloscopie Ziehl-Neelsen'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Négatif' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091819" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Culture Milieu LJ')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Culture Milieu LJ'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Culture contaminée' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Culture Milieu LJ'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Culture négative' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Culture Milieu LJ'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Culture positive' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091820" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Culture Milieu MGIT')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Culture Milieu MGIT'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Culture contaminée' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Culture Milieu MGIT'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Culture négative' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Culture Milieu MGIT'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Culture positive' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091821" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Rifampicine')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Rifampicine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Rifampicine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091822" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Isoniazide')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Isoniazide'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Isoniazide'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091823" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Fluoroquinolone')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Fluoroquinolone'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Fluoroquinolone'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091824" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Injectable')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Injectable'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Injectable'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091825" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Pyrazinamide')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Pyrazinamide'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Pyrazinamide'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091826" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Ethambutol')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Ethambutol'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Ethambutol'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091827" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Capreomicine')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Capreomicine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Capreomicine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091828" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Teridizone')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Teridizone'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Teridizone'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091829" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Kanamycine')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Kanamycine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Kanamycine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091830" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Imipenem')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Imipenem'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Imipenem'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091831" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Streptomicine')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Streptomicine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Streptomicine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091832" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Ethionamide')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Ethionamide'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Ethionamide'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091833" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Prothionamide')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Prothionamide'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Prothionamide'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091834" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Cyclosérine')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Cyclosérine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Cyclosérine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091835" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Linezolid')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Linezolid'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Linezolid'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091836" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Moxifloxacine')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Moxifloxacine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Moxifloxacine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091837" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Clofazimine')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Clofazimine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Clofazimine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091838" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Levofloxacine')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Levofloxacine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Levofloxacine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091839" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'PAS')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'PAS'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'PAS'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091840" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Imipénème-Cilastatine')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Imipénème-Cilastatine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Imipénème-Cilastatine'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091841" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Meropenem')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Meropenem'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Meropenem'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091842" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Bedaquilline')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Bedaquilline'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Bedaquilline'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091843" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'Delamanide')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'Delamanide'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Resistant' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'Delamanide'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Sensible' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091844" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =(select id from clinlims.test where description = 'TB LAM urinaire')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,
+            is_quantifiable,is_active,is_normal) VALUES
+            (nextval('test_result_seq'), (select id from test where description = 'TB LAM urinaire'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Positif' limit 1),null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'), (select id from test where description = 'TB LAM urinaire'),null,null,'D',
+            (select id from dictionary where dict_entry = 'Négatif' limit 1),null,null,null,now(),null,1,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023092101"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="tb_method_test_seq"
+                    schemaName="clinlims" />
+            </not>
+        </preConditions>
+    <createSequence sequenceName="tb_method_test_seq"
+        incrementBy="1" cycle="false" cacheSize="200" startValue="1"
+        schemaName="clinlims" />
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023092102"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="tb_method_test" />
+            </not>
+        </preConditions>
+        <createTable tableName="tb_method_test"
+            schemaName="clinlims">
+            <column name="id" type="integer"
+                defaultValueComputed="nextval('tb_method_test_seq')">
+                <constraints primaryKey="true" />
+            </column>
+            <column name="test_id" type="varchar(100)">
+                <constraints nullable="false" />
+            </column>
+            <column name="method_id" type="varchar(100)">
+            <constraints nullable="false" />
+            </column>
+            <column name="is_active" type="varchar(2)" defaultValue="Y"></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023092103"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_method_test" />
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM dictionary WHERE dict_entry ='Diagnostic moléculaire TB'	LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.tb_method_test(id,method_id,test_id,is_active) VALUES
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Diagnostic moléculaire TB' limit 1),
+            (select id from test where name ='GeneXpert MTB/RIF' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Diagnostic moléculaire TB' limit 1),
+            (select id from test where name ='TB LAMP' limit 1),'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023092104"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_method_test" />
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM dictionary WHERE dict_entry ='Microscopie TB' LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.tb_method_test(id,method_id,test_id,is_active) VALUES
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Microscopie TB' limit 1),
+            (select id from test where name ='Bacilloscopie Auramine' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Microscopie TB' limit 1),
+            (select id from test where name ='Bacilloscopie Ziehl-Neelsen' limit 1),'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023092105"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_method_test" />
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM dictionary WHERE dict_entry ='Culture TB' LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.tb_method_test(id,method_id,test_id,is_active) VALUES
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Culture TB' limit 1),
+            (select id from test where name ='Culture Milieu LJ' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Culture TB' limit 1),
+            (select id from test where name ='Culture Milieu MGIT' limit 1),'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023092106"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_method_test" />
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM dictionary WHERE dict_entry ='Diagnostic Immunologique TB' LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.tb_method_test(id,method_id,test_id,is_active) VALUES
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Diagnostic Immunologique TB' limit 1),
+            (select id from test where name ='TB LAM urinaire' limit 1),'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023092107"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_method_test" />
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM dictionary WHERE dict_entry ='Tests de sensibilité genotypique LPA' LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.tb_method_test(id,method_id,test_id,is_active) VALUES
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité genotypique LPA' limit 1),
+            (select id from test where name ='Rifampicine' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité genotypique LPA' limit 1),
+            (select id from test where name ='Isoniazide' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité genotypique LPA' limit 1),
+            (select id from test where name ='Fluoroquinolone' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité genotypique LPA' limit 1),
+            (select id from test where name ='Injectable' limit 1),'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023092108"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_method_test" />
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM dictionary WHERE dict_entry ='Tests de sensibilité phénotypique' LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.tb_method_test(id,method_id,test_id,is_active) VALUES
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Rifampicine' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Isoniazide' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Pyrazinamide' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Ethambutol' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Capreomicine' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Teridizone' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Kanamycine' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Imipenem' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Streptomicine' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Ethionamide' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Prothionamide' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Cyclosérine' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Linezolid' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Moxifloxacine' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Clofazimine' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Levofloxacine' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='PAS' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Imipénème-Cilastatine' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Meropenem' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Bedaquilline' limit 1),'Y'),
+            (nextval('tb_method_test_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from test where name ='Delamanide' limit 1),'Y');
+        </sql>
+    </changeSet>
+
+    <!-- add TB panels -->
+    <changeSet author="CIV developer Group" id="2023092109"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM panel WHERE name ='MTBDRplus'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.panel(id,name,description,lastupdated,sort_order,is_active,name_localization_id) VALUES
+            (nextval('panel_seq'), 'MTBDRplus','MTBDRplus', now(), 51,'Y', (select id from clinlims.localization where
+            french ='MTBDRplus' limit 1)),
+            (nextval('panel_seq'), 'MTBDRsl','MTBDRsl', now(), 52,'Y', (select id from clinlims.localization where
+            french ='MTBDRsl' limit 1)),
+            (nextval('panel_seq'), 'Antibiogramme TB 1ere Ligne','Antibiogramme TB 1ere Ligne', now(), 53,'Y', (select id from clinlims.localization where
+            french ='Antibiogramme TB 1ere Ligne' limit 1)),
+            (nextval('panel_seq'), 'Antibiogramme TB 2e Ligne','Antibiogramme TB 2e Ligne', now(), 54,'Y', (select id from clinlims.localization where
+            french ='Antibiogramme TB 2e Ligne' limit 1));
+        </sql>
+    </changeSet>
+
+    <!-- add TB panelItems -->
+    <changeSet author="CIV developer Group" id="2023092111"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT  count(*)  FROM panel WHERE name ='MTBDRplus' LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.panel_item(id,panel_id,lastupdated,test_id) VALUES
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='MTBDRplus' limit 1),now(),(select id from clinlims.test where
+            name ='Rifampicine' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='MTBDRplus' limit 1),now(),(select id from clinlims.test where
+            name ='Isoniazide' limit 1));
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023092112"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM panel WHERE name ='MTBDRsl' LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.panel_item(id,panel_id,lastupdated,test_id) VALUES
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='MTBDRsl' limit 1),now(),(select id from clinlims.test where
+            name ='Fluoroquinolone' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='MTBDRsl' limit 1),now(),(select id from clinlims.test where
+            name ='Injectable' limit 1));
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023092113"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM panel WHERE name ='Antibiogramme TB 1ere Ligne' LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.panel_item(id,panel_id,lastupdated,test_id) VALUES
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 1ere Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Rifampicine' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 1ere Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Isoniazide' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 1ere Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Pyrazinamide' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 1ere Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Ethambutol' limit 1));
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023092114"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM panel WHERE name ='Antibiogramme TB 2e Ligne' LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.panel_item(id,panel_id,lastupdated,test_id) VALUES
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 2e Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Capreomicine' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 2e Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Teridizone' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 2e Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Kanamycine' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 2e Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Pyrazinamide' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 2e Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Imipenem' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 2e Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Streptomicine' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 2e Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Ethionamide' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 2e Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Prothionamide' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 2e Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Cyclosérine' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 2e Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Linezolid' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 2e Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Moxifloxacine' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 2e Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Clofazimine' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 2e Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Levofloxacine' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 2e Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='PAS' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 2e Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Imipénème-Cilastatine' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 2e Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Meropenem' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 2e Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Bedaquilline' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='Antibiogramme TB 2e Ligne' limit 1),now(),(select id from clinlims.test where
+            name ='Delamanide' limit 1));
+        </sql>
+    </changeSet>
+
+
+    <changeSet author="CIV developer Group" id="2023092201"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_method_test"
+                schemaName="clinlims" />
+        </preConditions>
+        <sql>
+            ALTER TABLE clinlims.tb_method_test ALTER COLUMN method_id TYPE	numeric(10) USING method_id::numeric;
+            ALTER TABLE clinlims.tb_method_test ALTER COLUMN test_id TYPE numeric(10) USING test_id::numeric;
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023092202"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="tb_method_panel_seq"
+                    schemaName="clinlims" />
+            </not>
+        </preConditions>
+    <createSequence sequenceName="tb_method_panel_seq"
+        incrementBy="1" cycle="false" cacheSize="200" startValue="1"
+        schemaName="clinlims" />
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023092203"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="tb_method_panel" />
+            </not>
+        </preConditions>
+        <createTable tableName="tb_method_panel"
+            schemaName="clinlims">
+            <column name="id" type="integer"
+                defaultValueComputed="nextval('tb_method_panel_seq')">
+                <constraints primaryKey="true" />
+            </column>
+            <column name="panel_id" type="numeric">
+                <constraints nullable="false" />
+            </column>
+            <column name="method_id" type="numeric">
+            <constraints nullable="false" />
+            </column>
+            <column name="is_active" type="varchar(2)" defaultValue="Y"></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2023092204"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_method_panel" />
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM dictionary WHERE dict_entry ='Tests de sensibilité genotypique LPA' LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.tb_method_panel(id,method_id,panel_id,is_active) VALUES
+            (nextval('tb_method_panel_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité genotypique LPA' limit 1),
+            (select id from panel where name ='MTBDRplus' limit 1),'Y'),
+            (nextval('tb_method_panel_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité genotypique LPA' limit 1),
+            (select id from panel where name ='MTBDRsl' limit 1),'Y');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023092205"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_method_panel" />
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM dictionary WHERE dict_entry ='Tests de sensibilité phénotypique' LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.tb_method_panel(id,method_id,panel_id,is_active) VALUES
+            (nextval('tb_method_panel_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from panel where name ='Antibiogramme TB 1ere Ligne' limit 1),'Y'),
+            (nextval('tb_method_panel_seq'), (select id from dictionary where
+            dict_entry ='Tests de sensibilité phénotypique' limit 1),
+            (select id from panel where name ='Antibiogramme TB 2e Ligne' limit 1),'Y');
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

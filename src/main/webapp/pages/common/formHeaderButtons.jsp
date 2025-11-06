@@ -5,12 +5,10 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %> 
+ 
 			
-<%@ taglib uri="http://tiles.apache.org/tags-tiles" prefix="tiles" %>
-
 <c:set var="formName" value="${form.formName}"/>
 <%
 	if(null != pageContext.getAttribute("formName")) {

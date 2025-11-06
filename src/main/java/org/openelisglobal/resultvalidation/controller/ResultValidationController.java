@@ -2,6 +2,7 @@ package org.openelisglobal.resultvalidation.controller;
 
 import static org.apache.commons.validator.GenericValidator.isBlankOrNull;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -11,10 +12,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import javax.servlet.http.HttpServletRequest;
-
-import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.action.IActionConstants;
@@ -33,6 +30,7 @@ import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.services.serviceBeans.ResultSaveBean;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
@@ -88,11 +86,11 @@ public class ResultValidationController extends BaseResultValidationController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "testSectionId", "paging.currentPage", "testSection",
             "testName", "resultList*.accessionNumber", "resultList*.analysisId", "resultList*.testId",
-            "resultList*.sampleId", "resultList*.resultType", "resultList*.sampleGroupingNumber",
-            "resultList*.noteId", "resultList*.resultId", "resultList*.hasQualifiedResult",
-            "resultList*.sampleIsAccepted", "resultList*.sampleIsRejected", "resultList*.result",
-            "resultList*.qualifiedResultValue", "resultList*.multiSelectResultValues", "resultList*.isAccepted",
-            "resultList*.isRejected", "resultList*.note" };
+            "resultList*.sampleId", "resultList*.resultType", "resultList*.sampleGroupingNumber", "resultList*.noteId",
+            "resultList*.resultId", "resultList*.hasQualifiedResult", "resultList*.sampleIsAccepted",
+            "resultList*.lowerCritical", "resultList*.higherCritical", "resultList*.sampleIsRejected",
+            "resultList*.result", "resultList*.qualifiedResultValue", "resultList*.multiSelectResultValues",
+            "resultList*.isAccepted", "resultList*.isRejected", "resultList*.note" };
 
     // autowiring not needed, using constructor injection
     private AnalysisService analysisService;
@@ -162,8 +160,8 @@ public class ResultValidationController extends BaseResultValidationController {
         if (GenericValidator.isBlankOrNull(newPage)) {
 
             // load testSections for drop down
-            String resultsRoleId =  roleService.getRoleByName(Constants.ROLE_VALIDATION).getId();
-            List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request) ,resultsRoleId);
+            String resultsRoleId = roleService.getRoleByName(Constants.ROLE_VALIDATION).getId();
+            List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), resultsRoleId);
             form.setTestSections(testSections);
             form.setTestSectionsByName(DisplayListService.getInstance().getList(ListType.TEST_SECTION_BY_NAME));
 
@@ -176,18 +174,19 @@ public class ResultValidationController extends BaseResultValidationController {
             ResultsValidationUtility resultsValidationUtility = SpringContext.getBean(ResultsValidationUtility.class);
             setRequestType(ts == null ? MessageUtil.getMessage("workplan.unit.types") : ts.getLocalizedName());
 
-            if ( !(GenericValidator.isBlankOrNull(form.getTestSectionId()) &&
-                    GenericValidator.isBlankOrNull(form.getAccessionNumber())) )  {
+            if (!(GenericValidator.isBlankOrNull(form.getTestSectionId())
+                    && GenericValidator.isBlankOrNull(form.getAccessionNumber()))) {
 
                 resultList = resultsValidationUtility.getResultValidationList(getValidationStatus(),
-                        form.getTestSectionId(), form.getAccessionNumber());
-                filteredresultList = userService.filterAnalystResultsByLabUnitRoles(getSysUserId(request), resultList, Constants.ROLE_VALIDATION);     
+                        form.getTestSectionId(), form.getAccessionNumber(), form.getTestDate());
+                filteredresultList = userService.filterAnalysisResultsByLabUnitRoles(getSysUserId(request), resultList,
+                        Constants.ROLE_VALIDATION);
                 int count = resultsValidationUtility.getCountResultValidationList(getValidationStatus(),
                         form.getTestSectionId());
                 request.setAttribute("analysisCount", count);
                 request.setAttribute("pageSize", filteredresultList.size());
                 form.setSearchFinished(true);
-                } else {
+            } else {
                 resultList = new ArrayList<>();
             }
             paging.setDatabaseResults(request, form, filteredresultList);
@@ -201,12 +200,12 @@ public class ResultValidationController extends BaseResultValidationController {
 
     public List<Integer> getValidationStatus() {
         List<Integer> validationStatus = new ArrayList<>();
-        validationStatus
-                .add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
+        validationStatus.add(Integer
+                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
         if (ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(ConfigurationProperties.Property.VALIDATE_REJECTED_TESTS, "true")) {
-            validationStatus
-                    .add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+            validationStatus.add(Integer.parseInt(
+                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
         }
 
         return validationStatus;
@@ -232,10 +231,11 @@ public class ResultValidationController extends BaseResultValidationController {
 
         request.getSession().setAttribute(SAVE_DISABLED, "true");
 
-        List<Result> checkPagedResults = (List<Result>) request.getSession().getAttribute(IActionConstants.RESULTS_SESSION_CACHE);
+        List<Result> checkPagedResults = (List<Result>) request.getSession()
+                .getAttribute(IActionConstants.RESULTS_SESSION_CACHE);
         List<Result> checkResults = (List<Result>) checkPagedResults.get(0);
         if (checkResults.size() == 0) {
-            LogEvent.logDebug(this.getClass().getName(), "ResultValidation()", "Attempted save of stale page.");
+            LogEvent.logDebug(this.getClass().getSimpleName(), "ResultValidation()", "Attempted save of stale page.");
             List<AnalysisItem> staleItemList = form.getResultList();
 
             Errors staleErrors = new BaseErrors();
@@ -284,12 +284,12 @@ public class ResultValidationController extends BaseResultValidationController {
         // wrapper object for holding modifedResultSet and newResultSet
         IResultSaveService resultSaveService = new ResultValidationSaveService();
 
-//        if (testSectionName.equals("serology")) {
-//            createUpdateElisaList(resultItemList, analysisUpdateList);
-//        } else {
-            createUpdateList(resultItemList, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList,
-                    resultSaveService, areListeners);
-//        }
+        // if (testSectionName.equals("serology")) {
+        // createUpdateElisaList(resultItemList, analysisUpdateList);
+        // } else {
+        createUpdateList(resultItemList, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList,
+                resultSaveService, areListeners);
+        // }
 
         try {
             resultValidationService.persistdata(deletableList, analysisUpdateList, resultUpdateList, resultItemList,
@@ -301,13 +301,13 @@ public class ResultValidationController extends BaseResultValidationController {
                 LogEvent.logError(e);
             }
         } catch (LIMSRuntimeException e) {
-            LogEvent.logErrorStack(e);
+            LogEvent.logError(e);
             throw e;
         }
 
         for (IResultUpdate updater : updaters) {
 
-//            updater.postTransactionalCommitUpdate(resultSaveService);
+            // updater.postTransactionalCommitUpdate(resultSaveService);
         }
 
         // route save back to RetroC specific ResultValidationRetroCAction
@@ -345,7 +345,6 @@ public class ResultValidationController extends BaseResultValidationController {
                 String errorMsg = "errors.followingAccession";
                 errors.reject(errorMsg, new String[] { augmentedAccession.toString() }, errorMsg);
                 errors.addAllErrors(errorList);
-
             }
         }
 
@@ -368,11 +367,8 @@ public class ResultValidationController extends BaseResultValidationController {
                     && isBlankOrNull(analysisItem.getQualifiedResultValue())) {
                 errorList.reject("errors.missing.result.details", new String[] { "Result" },
                         "errors.missing.result.details");
-
             }
-
         }
-
     }
 
     private void createUpdateList(List<AnalysisItem> analysisItems, List<Analysis> analysisUpdateList,
@@ -390,14 +386,16 @@ public class ResultValidationController extends BaseResultValidationController {
                 if (!analysisIdList.contains(analysis.getId())) {
 
                     if (analysisItem.getIsAccepted()) {
-                        analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
+                        analysis.setStatusId(
+                                SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
                         analysis.setReleasedDate(new java.sql.Date(Calendar.getInstance().getTimeInMillis()));
                         analysisIdList.add(analysis.getId());
                         analysisUpdateList.add(analysis);
                     }
 
                     if (analysisItem.getIsRejected()) {
-                        analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected));
+                        analysis.setStatusId(SpringContext.getBean(IStatusService.class)
+                                .getStatusID(AnalysisStatus.BiologistRejected));
                         analysisIdList.add(analysis.getId());
                         analysisUpdateList.add(analysis);
                     }
@@ -469,7 +467,8 @@ public class ResultValidationController extends BaseResultValidationController {
                 List<Analysis> acceptedAnalysisList = createAnalysisFromElisaAnalysisItem(resultItem);
 
                 for (Analysis analysis : acceptedAnalysisList) {
-                    analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
+                    analysis.setStatusId(
+                            SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
                     analysisUpdateList.add(analysis);
                 }
             }
@@ -478,10 +477,10 @@ public class ResultValidationController extends BaseResultValidationController {
                 List<Analysis> rejectedAnalysisList = createAnalysisFromElisaAnalysisItem(resultItem);
 
                 for (Analysis analysis : rejectedAnalysisList) {
-                    analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected));
+                    analysis.setStatusId(
+                            SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected));
                     analysisUpdateList.add(analysis);
                 }
-
             }
         }
     }
@@ -502,6 +501,10 @@ public class ResultValidationController extends BaseResultValidationController {
         }
         if (!isBlankOrNull(analysisItem.getIntegralResult())) {
             analysis = getAnalysisFromId(analysisItem.getIntegralAnalysisId());
+            analysisList.add(analysis);
+        }
+        if (!isBlankOrNull(analysisItem.getGenscreenResult())) {
+            analysis = getAnalysisFromId(analysisItem.getGenscreenAnalysisId());
             analysisList.add(analysis);
         }
         if (!isBlankOrNull(analysisItem.getVironostikaResult())) {

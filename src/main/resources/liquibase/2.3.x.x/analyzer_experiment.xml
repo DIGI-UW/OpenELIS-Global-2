@@ -1,52 +1,52 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
 
-	<changeSet author="csteele" id="1">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<tableExists tableName="analyzer_experiment" />
-			</not>
-		</preConditions>
-		
-	    <createSequence incrementBy="1" schemaName="clinlims"
-			sequenceName="analyzer_experiment_seq" startValue="1" />
-		<createTable schemaName="clinlims"
-			tableName="analyzer_experiment">
-	        <column name="id" type="INTEGER" valueSequenceNext="analyzer_experiment_seq" >
-				<constraints primaryKey="true" />
-			</column>
-			<column name="analyzer_id" type="NUMERIC(10)" >
-				<constraints
-					foreignKeyName="fk_analyzer_experiment_analyzer"
-					references="analyzer(id)"/>
-			</column>
-			<column name="name" type="VARCHAR(255)">
-				<constraints nullable="false"/>
-			</column>
-			<column name="file" type="bytea" >
-				<constraints nullable="false"/>
-			</column>
-			<column name="last_updated" type="DATE" />
-		</createTable>
-		
-		<addColumn schemaName= "clinlims"
-			tableName="analyzer" >
-			<column name="has_setup_page" 
-				defaultValueBoolean="false"
-				type="BOOLEAN"/>  
-		</addColumn>  
-	</changeSet>
-	
-	<changeSet author="csteele" id="2">
-		<modifyDataType schemaName="clinlims"
-	        tableName="analyzer"
-	        columnName="name"
-	        newDataType="varchar(255)"/>
-	</changeSet>
-	
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="analyzer_experiment" />
+            </not>
+        </preConditions>
+
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="analyzer_experiment_seq" startValue="1" />
+        <createTable schemaName="clinlims"
+            tableName="analyzer_experiment">
+            <column name="id" type="INTEGER" valueSequenceNext="analyzer_experiment_seq" >
+                <constraints primaryKey="true" />
+            </column>
+            <column name="analyzer_id" type="NUMERIC(10)" >
+                <constraints
+                    foreignKeyName="fk_analyzer_experiment_analyzer"
+                    references="analyzer(id)"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file" type="bytea" >
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="DATE" />
+        </createTable>
+
+        <addColumn schemaName= "clinlims"
+            tableName="analyzer" >
+            <column name="has_setup_page"
+                defaultValueBoolean="false"
+                type="BOOLEAN"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="csteele" id="2">
+        <modifyDataType schemaName="clinlims"
+            tableName="analyzer"
+            columnName="name"
+            newDataType="varchar(255)"/>
+    </changeSet>
+
 </databaseChangeLog>

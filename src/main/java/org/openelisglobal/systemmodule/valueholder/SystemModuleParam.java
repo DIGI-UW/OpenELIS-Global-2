@@ -2,7 +2,6 @@ package org.openelisglobal.systemmodule.valueholder;
 
 import java.util.HashSet;
 import java.util.Set;
-
 import org.openelisglobal.common.valueholder.BaseObject;
 
 public class SystemModuleParam extends BaseObject<String> {

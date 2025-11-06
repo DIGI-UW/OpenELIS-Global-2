@@ -5,12 +5,12 @@ import org.openelisglobal.datasubmission.valueholder.DataValue;
 
 public interface DataValueDAO extends BaseDAO<DataValue, String> {
 
-//	public void getData(DataValue dataValue) throws LIMSRuntimeException;
+    // public void getData(DataValue dataValue) throws LIMSRuntimeException;
 
-//	public DataValue getDataValue(String id) throws LIMSRuntimeException;
+    // public DataValue getDataValue(String id) throws LIMSRuntimeException;
 
-//	public boolean insertData(DataValue dataValue) throws LIMSRuntimeException;
+    // public boolean insertData(DataValue dataValue) throws LIMSRuntimeException;
 
-//	public void updateData(DataValue dataValue) throws LIMSRuntimeException;
+    // public void updateData(DataValue dataValue) throws LIMSRuntimeException;
 
 }

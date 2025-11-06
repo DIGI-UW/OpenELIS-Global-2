@@ -28,6 +28,10 @@ public class PatientEntryByProjectFormValidator implements Validator {
             validateVLForm(form, errors);
         } else if ("EID_Id".equals(form.getObservations().getProjectFormName())) {
             validateEIDForm(form, errors);
+        } else if ("Recency_Id".equals(form.getObservations().getProjectFormName())) {
+            validateRecencyForm(form, errors);
+        } else if ("HPV_Id".equals(form.getObservations().getProjectFormName())) {
+            validateHPVForm(form, errors);
         } else {
             errors.reject("error.formname.unrecognized", "The provided form name is unrecognized");
         }
@@ -56,15 +60,15 @@ public class PatientEntryByProjectFormValidator implements Validator {
         ValidationHelper.validateFieldRequired(form.getGender(), "gender", errors);
 
         ValidationHelper.validateFieldRequired(form.getBirthDateForDisplay(), "birthDateForDisplay", errors);
-
     }
 
     private void validateVLForm(PatientEntryByProjectForm form, Errors errors) {
-        ValidationHelper.validateFieldRequired(form.getCenterName(), "centerName", errors);
-
-        if (form.getCenterCode() == null) {
-            errors.rejectValue("centerCode", "field.error.required");
-        }
+        // ValidationHelper.validateFieldRequired(form.getCenterName(), "centerName",
+        // errors);
+        //
+        // if (form.getCenterCode() == null) {
+        // errors.rejectValue("centerCode", "field.error.required");
+        // }
 
         ValidationHelper.validateFieldRequired(form.getReceivedDateForDisplay(), "receivedDateForDisplay", errors);
 
@@ -82,7 +86,40 @@ public class PatientEntryByProjectFormValidator implements Validator {
         ValidationHelper.validateFieldRequired(form.getBirthDateForDisplay(), "birthDateForDisplay", errors);
 
         ValidationHelper.validateFieldRequired(form.getGender(), "gender", errors);
+    }
 
+    private void validateRecencyForm(PatientEntryByProjectForm form, Errors errors) {
+        // ValidationHelper.validateFieldRequired(form.getCenterName(), "centerName",
+        // errors);
+        //
+        // if (form.getCenterCode() == null) {
+        // errors.rejectValue("centerCode", "field.error.required");
+        // }
+
+        ValidationHelper.validateFieldRequired(form.getReceivedDateForDisplay(), "receivedDateForDisplay", errors);
+
+        ValidationHelper.validateFieldRequired(form.getInterviewDate(), "interviewDate", errors);
+
+        ValidationHelper.validateFieldRequired(form.getSiteSubjectNumber(), "siteSubjectNumber", errors);
+
+        ValidationHelper.validateFieldRequired(form.getLabNo(), "labNo", errors);
+
+        ValidationHelper.validateFieldRequired(form.getBirthDateForDisplay(), "birthDateForDisplay", errors);
+
+        ValidationHelper.validateFieldRequired(form.getGender(), "gender", errors);
+    }
+
+    private void validateHPVForm(PatientEntryByProjectForm form, Errors errors) {
+
+        ValidationHelper.validateFieldRequired(form.getReceivedDateForDisplay(), "receivedDateForDisplay", errors);
+
+        ValidationHelper.validateFieldRequired(form.getInterviewDate(), "interviewDate", errors);
+
+        ValidationHelper.validateFieldRequired(form.getSiteSubjectNumber(), "siteSubjectNumber", errors);
+
+        ValidationHelper.validateFieldRequired(form.getLabNo(), "labNo", errors);
+
+        ValidationHelper.validateFieldRequired(form.getBirthDateForDisplay(), "birthDateForDisplay", errors);
     }
 
     private void validateRTNForm(PatientEntryByProjectForm form, Errors errors) {
@@ -104,7 +141,6 @@ public class PatientEntryByProjectFormValidator implements Validator {
         ValidationHelper.validateFieldRequired(form.getBirthDateForDisplay(), "birthDateForDisplay", errors);
 
         ValidationHelper.validateFieldRequired(form.getLabNo(), "labNo", errors);
-
     }
 
     private void validateFollowUpARVForm(PatientEntryByProjectForm form, Errors errors) {
@@ -128,7 +164,6 @@ public class PatientEntryByProjectFormValidator implements Validator {
         ValidationHelper.validateFieldRequired(form.getGender(), "gender", errors);
 
         ValidationHelper.validateFieldRequired(form.getBirthDateForDisplay(), "birthDateForDisplay", errors);
-
     }
 
     private void validateInitialARVForm(PatientEntryByProjectForm form, Errors errors) {
@@ -154,7 +189,5 @@ public class PatientEntryByProjectFormValidator implements Validator {
         ValidationHelper.validateFieldRequired(form.getGender(), "gender", errors);
 
         ValidationHelper.validateFieldRequired(form.getBirthDateForDisplay(), "birthDateForDisplay", errors);
-
     }
-
 }

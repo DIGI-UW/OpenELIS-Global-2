@@ -35,5 +35,4 @@ public class PatientPatientType extends BaseObject<String> {
     public void setPatientTypeId(String patientTypeId) {
         this.patientTypeId = patientTypeId;
     }
-
 }

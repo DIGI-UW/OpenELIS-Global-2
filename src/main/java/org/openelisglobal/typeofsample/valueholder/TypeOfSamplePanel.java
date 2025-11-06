@@ -33,5 +33,4 @@ public class TypeOfSamplePanel extends BaseObject<String> {
     public void setPanelId(String panelId) {
         this.panelId = panelId;
     }
-
 }

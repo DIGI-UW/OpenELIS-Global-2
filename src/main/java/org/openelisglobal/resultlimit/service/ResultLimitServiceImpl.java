@@ -1,5 +1,6 @@
 package org.openelisglobal.resultlimit.service;
 
+import jakarta.annotation.PostConstruct;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
@@ -8,13 +9,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
-
-import javax.annotation.PostConstruct;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
@@ -35,7 +33,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @DependsOn({ "springContext" })
-public class ResultLimitServiceImpl extends BaseObjectServiceImpl<ResultLimit, String> implements ResultLimitService {
+public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<ResultLimit, String>
+        implements ResultLimitService {
 
     private static final double INVALID_PATIENT_AGE = Double.MIN_VALUE;
 
@@ -283,7 +282,8 @@ public class ResultLimitServiceImpl extends BaseObjectServiceImpl<ResultLimit, S
      * Get the valid range for numeric result limits. For other result types an
      * empty string will be returned
      *
-     * @param resultLimit       The limit from which we will get the valid reporting range
+     * @param resultLimit       The limit from which we will get the valid reporting
+     *                          range
      * @param significantDigits The numbe of significant digit to display
      * @param separator         -- how to separate the numbers
      * @return The range
@@ -294,8 +294,31 @@ public class ResultLimitServiceImpl extends BaseObjectServiceImpl<ResultLimit, S
         String range = "";
         if (resultLimit != null && !GenericValidator.isBlankOrNull(resultLimit.getResultTypeId())) {
             if (NUMERIC_RESULT_TYPE_ID.equals(resultLimit.getResultTypeId())) {
-                range = getDisplayNormalRange(resultLimit.getLowReportingRange(), resultLimit.getHighReportingRange(), significantDigits,
-                        separator);
+                range = getDisplayNormalRange(resultLimit.getLowReportingRange(), resultLimit.getHighReportingRange(),
+                        significantDigits, separator);
+            }
+        }
+        return range;
+    }
+
+    /**
+     * Get the valid low critical range for numeric result limits. For other result
+     * types an empty string will be returned
+     *
+     * @param resultLimit       The limit from which we will get the valid reporting
+     *                          range
+     * @param significantDigits The numbe of significant digit to display
+     * @param separator         -- how to separate the numbers
+     * @return The range
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public String getDisplayCriticalRange(ResultLimit resultLimit, String significantDigits, String separator) {
+        String range = "";
+        if (resultLimit != null && !GenericValidator.isBlankOrNull(resultLimit.getResultTypeId())) {
+            if (NUMERIC_RESULT_TYPE_ID.equals(resultLimit.getResultTypeId())) {
+                range = getDisplayNormalRange(resultLimit.getLowCritical(), resultLimit.getHighCritical(),
+                        significantDigits, separator);
             }
         }
         return range;

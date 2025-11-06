@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-public class EnumValueItemImplServiceImpl extends BaseObjectServiceImpl<EnumValueItemImpl, String>
+public class EnumValueItemImplServiceImpl extends AuditableBaseObjectServiceImpl<EnumValueItemImpl, String>
         implements EnumValueItemImplService {
     @Autowired
     protected EnumValueItemImplDAO baseObjectDAO;

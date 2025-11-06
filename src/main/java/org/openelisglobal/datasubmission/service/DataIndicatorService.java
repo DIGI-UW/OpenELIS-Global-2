@@ -1,7 +1,6 @@
 package org.openelisglobal.datasubmission.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.datasubmission.valueholder.DataIndicator;
 import org.openelisglobal.datasubmission.valueholder.TypeOfDataIndicator;

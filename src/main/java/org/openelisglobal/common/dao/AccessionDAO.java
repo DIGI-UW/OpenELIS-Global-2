@@ -15,5 +15,4 @@ public interface AccessionDAO {
     AccessionNumberInfo get(AccessionIdentity accessionIdentity);
 
     boolean exists(AccessionIdentity accessionIdentity);
-
 }

@@ -4,12 +4,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
-<%@ taglib prefix="tiles" uri="http://tiles.apache.org/tags-tiles"%>	 
 
-	
 
 <script type="text/javascript" >
 
@@ -51,11 +48,11 @@ jQuery(document).ready( function() {
 </script>
 
 <div id="searchDiv" class="colorFill"  >
-<tiles:insertAttribute name="searchPanel" />
+<jsp:include page="${searchPanelFragment}"/>
 </div>
 <c:if test="${form.searchFinished}">
 	<div id="resultsDiv" class="colorFill" >
-		<tiles:insertAttribute name="resultsPanel" />
+		<jsp:include page="${resultsPanelFragment}"/>
 	</div>
 </c:if>
 

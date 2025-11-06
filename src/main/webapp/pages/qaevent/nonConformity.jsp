@@ -14,9 +14,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
 <%
 	boolean useProject = FormFields.getInstance().useField(Field.Project);
@@ -460,8 +460,15 @@ function  processPhoneSuccess(xhr){
 					<tr>
 						<td><%= MessageUtil.getContextualMessage("sample.entry.project.siteName") %>
 						<td>
+    		            	<spring:message code="error.site.invalid" var="invalidSite"/>
+    		           		<spring:message code="sample.entry.project.siteMaxMsg" var="siteMaxMessage"/>
 							<form:select path="service" id="site"
-									     onchange="makeDirty();$('serviceNew').value = true;">
+									     onchange="makeDirty();$('serviceNew').value = true;"
+		                    capitalize="true"
+		                    invalidlabid='${invalidSite}'
+		                    maxrepmsg='${siteMaxMessage}'
+		       			    clearNonMatching="false"
+		       			    >
 								<option value=""></option>
 								<form:options items="${form.siteList}" itemLabel="value" itemValue="id" />
 						   	</form:select>
@@ -791,13 +798,9 @@ tweekSampleTypeOptions();
 jQuery(document).ready( function() {
      	var dropdown = jQuery( "select#site" );
         autoCompleteWidth = dropdown.width() + 66 + 'px';
-        clearNonMatching = false;
-        capitialize = true;
         dropdown.combobox();
-       // invalidLabID = '<spring:message code="error.site.invalid"/>'; // Alert if value is typed that's not on list. FIX - add badmessage icon
-        maxRepMsg = '<spring:message code="sample.entry.project.siteMaxMsg"/>'; 
         
-        resultCallBack = function( textValue) {
+        autocompleteResultCallBack = function( selectId, textValue) {
   				siteListChanged(textValue);
   				makeDirty();
   				setSave();

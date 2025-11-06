@@ -1,19 +1,21 @@
 package org.openelisglobal.validation.constraintvalidator;
-import javax.annotation.PostConstruct;
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
 import org.openelisglobal.common.util.ConfigurationListener;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.validation.annotations.ValidName;
 import org.springframework.stereotype.Component;
+
 @Component
 public class NameValidator implements ConstraintValidator<ValidName, String>, ConfigurationListener {
     public enum NameType {
         USERNAME, FIRST_NAME, LAST_NAME, FULL_NAME
     }
+
     private static final SiteInformation DEFAULT_SITE_INFORATION = new SiteInformation();
     private static final String DEFAULT_REGEX = "0-9a-z .'_@-";
     private static String FIRST_NAME_REGEX;
@@ -39,6 +41,7 @@ public class NameValidator implements ConstraintValidator<ValidName, String>, Co
         nameType = constraint.nameType();
         DEFAULT_SITE_INFORATION.setValue(DEFAULT_REGEX);
     }
+
     private String getRegex(NameType nameType) {
         switch (nameType) {
         case FIRST_NAME:
@@ -53,6 +56,7 @@ public class NameValidator implements ConstraintValidator<ValidName, String>, Co
             return null;
         }
     }
+
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
         if (org.apache.commons.validator.GenericValidator.isBlankOrNull(value)) {
@@ -68,6 +72,7 @@ public class NameValidator implements ConstraintValidator<ValidName, String>, Co
         }
         return false;
     }
+
     @Override
     public void refreshConfiguration() {
 
@@ -80,11 +85,11 @@ public class NameValidator implements ConstraintValidator<ValidName, String>, Co
         FULL_NAME_REGEX = "(?iu)^["
                 + escapeRegexChars(siteInformationService.getMatch("name", "firstNameCharset")
                         .orElse(new SiteInformation()).getValue())
-                + "]*([ ]*[" + escapeRegexChars(siteInformationService.getMatch("name", "lastNameCharset").orElse(DEFAULT_SITE_INFORATION).getValue())
+                + "]*([ ]*[" + escapeRegexChars(siteInformationService.getMatch("name", "lastNameCharset")
+                        .orElse(DEFAULT_SITE_INFORATION).getValue())
                 + "])?$";
         USER_NAME_REGEX = "(?iu)^[" + escapeRegexChars(
                 siteInformationService.getMatch("name", "userNameCharset").orElse(DEFAULT_SITE_INFORATION).getValue())
                 + "]*$";
     }
 }
-

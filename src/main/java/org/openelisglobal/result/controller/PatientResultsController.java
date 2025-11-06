@@ -1,11 +1,9 @@
 package org.openelisglobal.result.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
@@ -52,6 +50,7 @@ public class PatientResultsController extends BaseController {
     @RequestMapping(value = "/PatientResults", method = RequestMethod.GET)
     public ModelAndView showPatientResults(HttpServletRequest request)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+
         PatientResultsForm form = new PatientResultsForm();
         form.setReferralOrganizations(DisplayListService.getInstance().getList(ListType.REFERRAL_ORGANIZATIONS));
 
@@ -63,7 +62,7 @@ public class PatientResultsController extends BaseController {
         form.setReferralReasons(DisplayListService.getInstance().getList(DisplayListService.ListType.REFERRAL_REASONS));
         form.setRejectReasons(DisplayListService.getInstance()
                 .getNumberedListWithLeadingBlank(DisplayListService.ListType.REJECTION_REASONS));
-        form.setMethods(DisplayListService.getInstance().getList(ListType.METHODS));        
+        form.setMethods(DisplayListService.getInstance().getList(ListType.METHODS));
         PatientSearch patientSearch = new PatientSearch();
         patientSearch.setLoadFromServerWithPatient(true);
         patientSearch.setSelectedPatientActionButtonText(MessageUtil.getMessage("resultsentry.patient.search"));
@@ -85,13 +84,16 @@ public class PatientResultsController extends BaseController {
                 if (statusRules.equals(STATUS_RULES_RETROCI)) {
                     resultsUtility.addExcludedAnalysisStatus(AnalysisStatus.TechnicalRejected);
                     resultsUtility.addExcludedAnalysisStatus(AnalysisStatus.Canceled);
+                    resultsUtility.addExcludedAnalysisStatus(AnalysisStatus.SampleRejected);
                 } else if (statusRules.equals(STATUS_RULES_HAITI) || statusRules.equals(STATUS_RULES_HAITI_LNSP)) {
                     resultsUtility.addExcludedAnalysisStatus(AnalysisStatus.Canceled);
+                    resultsUtility.addExcludedAnalysisStatus(AnalysisStatus.SampleRejected);
                 }
 
                 List<TestResultItem> results = resultsUtility.getGroupedTestsForPatient(patient);
 
-                List<TestResultItem> filteredResults = userService.filterResultsByLabUnitRoles(getSysUserId(request), results ,Constants.ROLE_RESULTS);
+                List<TestResultItem> filteredResults = userService.filterResultsByLabUnitRoles(getSysUserId(request),
+                        results, Constants.ROLE_RESULTS);
                 form.setTestResult(filteredResults);
 
                 // move this out of results utility

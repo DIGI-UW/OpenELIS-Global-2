@@ -1,30 +1,25 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.dataexchange.order.action;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletInputStream;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-
-import javax.servlet.ServletException;
-import javax.servlet.ServletInputStream;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.openelisglobal.common.log.LogEvent;
 
 public class OrderRawServlet extends HttpServlet {
@@ -38,14 +33,16 @@ public class OrderRawServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-//		LogEvent.logFatal("IndicatorAggregationReportingServlet", "size", String.valueOf(request.getContentLength()));
+        // LogEvent.logFatal("IndicatorAggregationReportingServlet", "size",
+        // String.valueOf(request.getContentLength()));
         String info = "\ncharacterEncoding: " + request.getCharacterEncoding() + "\ncontentLength: "
                 + request.getContentLength() + "\ncontentType: " + request.getContentType() + "\n\n";
 
         String sentIndicators = getDocument(request.getInputStream(), request.getContentLength());
 
-        // LogEvent.logInfo(this.getClass().getName(), "method unkown", info);
-        // LogEvent.logInfo(this.getClass().getName(), "method unkown", sentIndicators);
+        // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown", info);
+        // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown",
+        // sentIndicators);
 
         LogEvent.logFatal("OrderRawServletServlet", "raw", info + sentIndicators);
 
@@ -74,5 +71,4 @@ public class OrderRawServlet extends HttpServlet {
     }
 
     private static final long serialVersionUID = 1L;
-
 }

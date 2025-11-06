@@ -1,11 +1,9 @@
 package org.openelisglobal.analyzerimport.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.form.AnalyzerTestNameForm;
@@ -74,7 +72,6 @@ public class AnalyzerTestNameController extends BaseController {
 
         newForm.setAnalyzerList(analyzerList);
         newForm.setTestList(testList);
-
 
         if (request.getParameter("ID") != null && isValidID(request.getParameter("ID"))) {
             String[] splitId = request.getParameter("ID").split("#");
@@ -166,7 +163,7 @@ public class AnalyzerTestNameController extends BaseController {
 
         } catch (LIMSRuntimeException e) {
             String errorMsg = null;
-            if (e.getException() instanceof org.hibernate.StaleObjectStateException) {
+            if (e.getCause() instanceof org.hibernate.StaleObjectStateException) {
                 errorMsg = "errors.OptimisticLockException";
             } else {
                 errorMsg = "errors.UpdateException";

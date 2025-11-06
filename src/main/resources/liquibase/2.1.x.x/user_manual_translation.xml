@@ -1,26 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-	  
-	  
-  	<property name="now" value="now()" dbms="postgresql"/>
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<changeSet author="csteele" id="1">
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_help_user_manual' AND action_url = '/docs/UserManual'</sqlCheck> 
-		</preConditions>
-		<update schemaName="clinlims" tableName="menu">
-			<column name="action_url" value="/docs/UserManual" />
-			<where>element_id = 'menu_help_user_manual'</where>
-		</update>
-		<rollback>
-		<update schemaName="clinlims" tableName="menu">
-			<column name="action_url" value="/documentation/CI_Regional_fr.pdf" />
-			<where>element_id = 'menu_help_user_manual'</where>
-		</update>
-		</rollback>
-	</changeSet>
+
+      <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_help_user_manual' AND action_url = '/docs/UserManual'</sqlCheck>
+        </preConditions>
+        <update schemaName="clinlims" tableName="menu">
+            <column name="action_url" value="/docs/UserManual" />
+            <where>element_id = 'menu_help_user_manual'</where>
+        </update>
+        <rollback>
+        <update schemaName="clinlims" tableName="menu">
+            <column name="action_url" value="/documentation/CI_Regional_fr.pdf" />
+            <where>element_id = 'menu_help_user_manual'</where>
+        </update>
+        </rollback>
+    </changeSet>
 </databaseChangeLog>

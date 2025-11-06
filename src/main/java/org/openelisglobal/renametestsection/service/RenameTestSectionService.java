@@ -1,7 +1,6 @@
 package org.openelisglobal.renametestsection.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.renametestsection.valueholder.RenameTestSection;

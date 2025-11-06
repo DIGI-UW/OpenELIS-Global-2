@@ -1,0 +1,335 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+      <property name="now" value="now()" dbms="postgresql"/>
+    <changeSet author="mozzymutesa" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="cytology_specimen_adequacy" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create cytology_specimen_adequacy table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="cytology_specimen_adequacy_seq" startValue="1" />
+        <createTable tableName="cytology_specimen_adequacy">
+            <column name="id" type="INTEGER" valueSequenceNext="cytology_specimen_adequacy_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="result_type" type="VARCHAR(255)"/>
+            <column name="satisfaction" type="VARCHAR(255)"/>
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="mozzymutesa" id="2">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="cytology_specimen_adequacy_value" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create cytology_specimen_adequacy_value table</comment>
+        <createTable tableName="cytology_specimen_adequacy_value">
+            <column name="value" type="VARCHAR(255)"/>
+            <column name="cytology_specimen_adequacy_id" type="INTEGER"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="cytology_specimen_adequacy_value_cytology_specimen_adequacy_id_fk"
+                                 baseTableName="cytology_specimen_adequacy_value" baseColumnNames="cytology_specimen_adequacy_id"
+                                 referencedTableName="cytology_specimen_adequacy" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet author="mozzymutesa" id="3">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="cytology_sample" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create cytology_sample table</comment>
+        <createTable tableName="cytology_sample">
+            <column name="id" type="INTEGER" valueSequenceNext="program_sample_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="technician_id" type="NUMERIC(10)"/>
+            <column name="cytopathologist_id" type="NUMERIC(10)"/>
+            <column name="specimen_adequacy_id" type="INTEGER"/>
+            <column name="program_id" type="NUMERIC(10)"/>
+            <column name="sample_id" type="NUMERIC(10)"/>
+            <column name="status" type="VARCHAR(255)"/>
+            <column name="questionnaire_response_uuid" type="uuid" />
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="cytology_sample_program_id_fk"
+                                 baseTableName="cytology_sample" baseColumnNames="program_id"
+                                 referencedTableName="program" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="cytology_sample_sample_id_fk"
+                                 baseTableName="cytology_sample" baseColumnNames="sample_id"
+                                 referencedTableName="sample" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="cytology_sample_technician_id_fk"
+                                 baseTableName="cytology_sample" baseColumnNames="technician_id"
+                                 referencedTableName="system_user" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="cytology_sample_cytopathologist_id_fk"
+                                 baseTableName="cytology_sample" baseColumnNames="cytopathologist_id"
+                                 referencedTableName="system_user" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="cytology_sample_specimen_adequacy_id_fk"
+                                 baseTableName="cytology_sample" baseColumnNames="specimen_adequacy_id"
+                                 referencedTableName="cytology_specimen_adequacy" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet author="mozzymutesa" id="4">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="cytology_slide" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create cytology_slide table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="cytology_slide_seq" startValue="1" />
+        <createTable tableName="cytology_slide">
+            <column name="id" type="INTEGER" valueSequenceNext="cytology_slide_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="cytology_sample_id" type="int"/>
+            <column name="slide_number" type="int"/>
+            <column name="image" type="bytea"/>
+            <column name="file_type" type="VARCHAR(255)"/>
+            <column name="location" type="VARCHAR(255)"/>
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="cytology_slide_cytology_sample_id_fk"
+                                 baseTableName="cytology_slide" baseColumnNames="cytology_sample_id"
+                                 referencedTableName="cytology_sample" referencedColumnNames="id"/>
+    </changeSet>
+    <changeSet author="mozzymutesa" id="5">
+        <preConditions onFail="MARK_RAN">
+        <sqlCheck expectedResult="0">select count(*) from clinlims.test_section where name = 'Cytology'; </sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="cytology test section" />
+            <column name="english" value="Cytology" />
+            <column name="french" value="Cytology"/>
+        </insert>
+        <insert tableName="test_section" schemaName="clinlims">
+            <column name="id" valueSequenceNext="test_section_seq" />
+            <column name="name" value="Cytology" />
+            <column name="description" value="Cytology Department" />
+            <column name="is_external" value="N" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="sort_order" value="2147483647" />
+            <column name="is_active" value="Y" />
+            <column name="name_localization_id" valueComputed="(select id from localization where description = 'cytology test section' and english = 'Cytology' limit 1)" />
+            <column name="display_key" value="testsection.Cytologyy" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="mozzymutesa" id="6">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Cytopathologist'
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Cytopathologist Role and permission for pages</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq" />
+            <column name="name" value="Cytopathologist" />
+            <column name="description" value="Access to Cytology Page" />
+            <column name="is_grouping_role" value="false" />
+            <column name="grouping_parent"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Global Roles')" />
+            <column name="display_key" value="role.Cytopathologist" />
+            <column name="active" value="true" />
+            <column name="editable" value="false" />
+        </insert>
+        <insert schemaName="clinlims" tableName="system_module">
+            <column name="id" valueSequenceNext="system_module_seq" />
+            <column name="name" value="Cytology" />
+            <column name="description" value="Cytology pages" />
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Cytopathologist')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'Cytology')" />
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/CytologyOrderEntry" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'Cytology')" />
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/CytologyDashboard" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'Cytology')" />
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/CytologyCaseView" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'Cytology')" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="mozzymutesa" id="7">
+      <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">select count(*) from clinlims.dictionary_category where description = 'Cytology Specimen Adequacy - Satisfactory';
+            </sqlCheck>
+    </preConditions>
+    <comment>adds Cytology adequacy in dictionary_category</comment>
+
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq" />
+            <column name="description" value="Cytology Specimen Adequacy - Satisfactory" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="AdqSatis" />
+            <column name="name" value="cytology_adequacy_satisfactory" />
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq" />
+            <column name="description" value="Cytology Specimen Adequacy - Un Satisfactory" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="AdqUnSatis" />
+            <column name="name" value="cytology_adequacy_unsatisfactory" />
+        </insert>
+  </changeSet>
+
+  <changeSet author="mozzymutesa" id="8">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="cytology_diagnosis" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create  cytology_diagnosis table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="cytology_diagnosis_seq" startValue="1" />
+        <createTable tableName="cytology_diagnosis">
+            <column name="id" type="INTEGER" valueSequenceNext="cytology_diagnosis_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="negative_diagnosis" type="boolean"/>
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="mozzymutesa" id="9">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="cytology_diagnosis_result_map" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create  cytology_diagnosis_result_map table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="cytology_diagnosis_result_map_seq" startValue="1" />
+        <createTable tableName="cytology_diagnosis_result_map">
+            <column name="id" type="INTEGER" valueSequenceNext="cytology_diagnosis_result_map_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="category" type="VARCHAR(255)"/>
+            <column name="result_type" type="VARCHAR(255)"/>
+            <column name="results" type="VARCHAR(255)"/>
+            <column name="cytology_diagnosis_id" type="INTEGER"/>
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="cytology_diagnosis_result_map_cytology_diagnosis_id_fk"
+                                 baseTableName="cytology_diagnosis_result_map" baseColumnNames="cytology_diagnosis_id"
+                                 referencedTableName="cytology_diagnosis" referencedColumnNames="id"/>
+    </changeSet>
+
+  <changeSet author="mozzymutesa" id="10">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="cytology_sample" columnName="cytology_diagnosis_id" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>add columns to the cytology_sample table</comment>
+        <addColumn schemaName="clinlims" tableName="cytology_sample">
+            <column name="cytology_diagnosis_id" type="INTEGER"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="cytology_sample_cytology_diagnosis_id_fk"
+                                 baseTableName="cytology_sample" baseColumnNames="cytology_diagnosis_id"
+                                 referencedTableName="cytology_diagnosis" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet author="mozzymutesa" id="11">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">select count(*) from clinlims.dictionary_category where name = 'cytology_epithelial_cell_abnomalit_squamous';
+            </sqlCheck>
+    </preConditions>
+    <comment>adds Cytology Diagnosis Results in dictionary_category</comment>
+
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq" />
+            <column name="description" value="Cytology Epithelial Cell Abnomality - Squamous" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="diagEpithS" />
+            <column name="name" value="cytology_epithelial_cell_abnomalit_squamous" />
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq" />
+            <column name="description" value="Cytology Epithelial Cell Abnomality - Glandular" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="diagEpithG" />
+            <column name="name" value="cytology_epithelial_cell_abnomalit_glandular" />
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq" />
+            <column name="description" value="Cytology Non-neoplastic cellular variations" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="daigNonNeo" />
+            <column name="name" value="cytology_non-neoplastic_cellular_variations" />
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq" />
+            <column name="description" value="Cytology Reactive cellular changes" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="daiagReact" />
+            <column name="name" value="cytology_reactive_cellular_changes" />
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq" />
+            <column name="description" value="Cytology Diagnosis Organisms" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="diagOrg" />
+            <column name="name" value="cytology_diagnosis_organisms" />
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq" />
+            <column name="description" value="Cytology Diagnosis Other" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="diagOther" />
+            <column name="name" value="cytology_diagnosis_other" />
+        </insert>
+  </changeSet>
+  <changeSet author="mozzymutesa" id="12">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="cytology_report" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create cytology_report table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="cytology_report_seq" startValue="1" />
+        <createTable tableName="cytology_report">
+            <column name="id" type="INTEGER" valueSequenceNext="cytology_report_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="cytology_sample_id" type="int"/>
+            <column name="report_type" type="VARCHAR(255)"/>
+            <column name="image" type="bytea"/>
+            <column name="file_type" type="VARCHAR(255)"/>
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="cytology_report_report_cytology_sample_id_fk"
+                                 baseTableName="cytology_report" baseColumnNames="cytology_sample_id"
+                                 referencedTableName="cytology_sample" referencedColumnNames="id"/>
+    </changeSet>
+</databaseChangeLog>

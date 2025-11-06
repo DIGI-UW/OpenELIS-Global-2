@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet author="CIV Developer Group" id="23101801"
+        context="ci_general,ci_regional,CDIRetroCI">
+        <preConditions onFail="CONTINUE">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                select count(*) from
+                clinlims.system_role
+                where name = 'Results modifier' limit 1;
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                select count(*) from
+                clinlims.system_role
+                where name = 'Lab Unit Roles' limit 1;
+            </sqlCheck>
+        </preConditions>
+        <update tableName="system_role" schemaName="clinlims">
+            <column name="active" valueBoolean="true" />
+            <column name="editable" valueBoolean="false" />
+            <column name="grouping_parent"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Lab Unit Roles')" />
+            <where>id=:value</where>
+            <whereParams>
+                <param
+                    valueComputed="(SELECT id FROM system_role WHERE name = 'Results modifier')" />
+            </whereParams>
+        </update>
+    </changeSet>
+</databaseChangeLog>

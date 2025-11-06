@@ -1,9 +1,7 @@
 package org.openelisglobal.externalconnections.form;
 
+import jakarta.validation.Valid;
 import java.util.List;
-
-import javax.validation.Valid;
-
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.externalconnections.valueholder.BasicAuthenticationData;
 import org.openelisglobal.externalconnections.valueholder.CertificateAuthenticationData;
@@ -14,9 +12,7 @@ import org.openelisglobal.externalconnections.valueholder.ExternalConnectionCont
 
 public class ExternalConnectionForm extends BaseForm {
 
-    /**
-     *
-     */
+    /** */
     private static final long serialVersionUID = -4622561239579733266L;
 
     @Valid
@@ -82,5 +78,4 @@ public class ExternalConnectionForm extends BaseForm {
     public void setProgrammedConnections(List<ProgrammedConnection> programmedConnections) {
         this.programmedConnections = programmedConnections;
     }
-
 }

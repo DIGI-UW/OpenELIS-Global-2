@@ -7,9 +7,8 @@ import org.openelisglobal.role.valueholder.Role;
 /**
  * The primary purpose of this class is to make the code more literate. It adds
  * no new behavior
- * 
- * @author pauls
  *
+ * @author pauls
  */
 public class RoleModule extends PermissionModule {
 
@@ -61,5 +60,4 @@ public class RoleModule extends PermissionModule {
     public void setPermissionAgent(PermissionAgent agent) {
         setRole((Role) agent);
     }
-
 }

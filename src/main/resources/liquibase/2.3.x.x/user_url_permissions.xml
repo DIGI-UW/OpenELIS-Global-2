@@ -1,239 +1,239 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
 <changeSet author="csteele" id="1" >
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module_url WHERE url_path = '/TestModifyEntry'</sqlCheck> 
-		</preConditions>
-      	<insert schemaName="clinlims"
-      		tableName="system_module_url">
-			<column name="id" valueSequenceNext="system_module_url_seq" />
-			<column name="url_path" value="/TestModifyEntry" />
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TestAdd')"/>
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_role_module">
-			<column name="id" valueSequenceNext="system_role_module_seq" />
-      		<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Maintenance Admin')"/>
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TestAdd')"/>
-      	</insert>
-	</changeSet>
-	
-	<changeSet author="csteele" id="2" >
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module_url WHERE url_path = '/BarcodeConfiguration'</sqlCheck> 
-		</preConditions>
-      	<insert schemaName="clinlims"
-      		tableName="system_module">
-			<column name="id" valueSequenceNext="system_module_seq" />
-			<column name="name" value="BarcodeConfig" />
-			<column name="description" value="Barcode Configuration pages" />
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_role_module">
-			<column name="id" valueSequenceNext="system_role_module_seq" />
-      		<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Maintenance Admin')"/>
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'BarcodeConfig')"/>
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_module_url">
-			<column name="id" valueSequenceNext="system_module_url_seq" />
-			<column name="url_path" value="/BarcodeConfiguration" />
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'BarcodeConfig')"/>
-      	</insert>
-      	
-	</changeSet>
-	
-	<changeSet author="csteele" id="3" >
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module_url WHERE url_path = '/ReportConfiguration'</sqlCheck> 
-		</preConditions>
-      	<insert schemaName="clinlims"
-      		tableName="system_module">
-			<column name="id" valueSequenceNext="system_module_seq" />
-			<column name="name" value="ReportConfig" />
-			<column name="description" value="Report Configuration pages" />
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_role_module">
-			<column name="id" valueSequenceNext="system_role_module_seq" />
-      		<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Maintenance Admin')"/>
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ReportConfig')"/>
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_module_url">
-			<column name="id" valueSequenceNext="system_module_url_seq" />
-			<column name="url_path" value="/ReportConfiguration" />
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ReportConfig')"/>
-      	</insert>
-      	
-	</changeSet>
-	
-	<changeSet author="csteele" id="4" >
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module_url WHERE url_path = '/BatchTestReassignment'</sqlCheck> 
-		</preConditions>
-      	<insert schemaName="clinlims"
-      		tableName="system_module">
-			<column name="id" valueSequenceNext="system_module_seq" />
-			<column name="name" value="BatchTestReassignment" />
-			<column name="description" value="BatchTestReassignment pages" />
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_role_module">
-			<column name="id" valueSequenceNext="system_role_module_seq" />
-      		<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Maintenance Admin')"/>
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'BatchTestReassignment')"/>
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_module_url">
-			<column name="id" valueSequenceNext="system_module_url_seq" />
-			<column name="url_path" value="/BatchTestReassignment" />
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'BatchTestReassignment')"/>
-      	</insert>
-      	
-	</changeSet>
-	
-	<changeSet author="csteele" id="5" >
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module_url WHERE url_path = '/ExternalConnectionsMenu'</sqlCheck> 
-		</preConditions>
-      	<insert schemaName="clinlims"
-      		tableName="system_module">
-			<column name="id" valueSequenceNext="system_module_seq" />
-			<column name="name" value="ExternalConnection" />
-			<column name="description" value="ExternalConnection pages" />
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_role_module">
-			<column name="id" valueSequenceNext="system_role_module_seq" />
-      		<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Maintenance Admin')"/>
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ExternalConnection')"/>
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_module_url">
-			<column name="id" valueSequenceNext="system_module_url_seq" />
-			<column name="url_path" value="/ExternalConnectionsMenu" />
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ExternalConnection')"/>
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_module_url">
-			<column name="id" valueSequenceNext="system_module_url_seq" />
-			<column name="url_path" value="/ExternalConnection" />
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ExternalConnection')"/>
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_module_url">
-			<column name="id" valueSequenceNext="system_module_url_seq" />
-			<column name="url_path" value="TestExternalConnection" />
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ExternalConnection')"/>
-      	</insert>
-      	
-	</changeSet>
-	
-	<changeSet author="csteele" id="6" >
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module_url WHERE url_path = '/ValidationConfigurationMenu'</sqlCheck> 
-		</preConditions>
-      	<insert schemaName="clinlims"
-      		tableName="system_module">
-			<column name="id" valueSequenceNext="system_module_seq" />
-			<column name="name" value="ValidationConfig" />
-			<column name="description" value="ValidationConfig pages" />
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_role_module">
-			<column name="id" valueSequenceNext="system_role_module_seq" />
-      		<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Maintenance Admin')"/>
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ValidationConfig')"/>
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_module_url">
-			<column name="id" valueSequenceNext="system_module_url_seq" />
-			<column name="url_path" value="/ValidationConfigurationMenu" />
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ValidationConfig')"/>
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_module_url">
-			<column name="id" valueSequenceNext="system_module_url_seq" />
-			<column name="url_path" value="/ValidationConfiguration" />
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ValidationConfig')"/>
-      	</insert>
-      	
-	</changeSet>
-	
-	<changeSet author="csteele" id="7" >
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module_url WHERE url_path = '/ListPlugins'</sqlCheck> 
-		</preConditions>
-      	<insert schemaName="clinlims"
-      		tableName="system_module">
-			<column name="id" valueSequenceNext="system_module_seq" />
-			<column name="name" value="ListPlugins" />
-			<column name="description" value="ListPlugins pages" />
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_role_module">
-			<column name="id" valueSequenceNext="system_role_module_seq" />
-      		<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Maintenance Admin')"/>
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ListPlugins')"/>
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_module_url">
-			<column name="id" valueSequenceNext="system_module_url_seq" />
-			<column name="url_path" value="/ListPlugins" />
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ListPlugins')"/>
-      	</insert>
-      	
-	</changeSet>
-	
-	<changeSet author="csteele" id="8" >
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module WHERE name = 'ReportCovid'</sqlCheck> 
-		</preConditions>
-      	<insert schemaName="clinlims"
-      		tableName="system_module">
-			<column name="id" valueSequenceNext="system_module_seq" />
-			<column name="name" value="ReportCovid" />
-			<column name="description" value="covid report pages" />
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_role_module">
-			<column name="id" valueSequenceNext="system_role_module_seq" />
-      		<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Maintenance Admin')"/>
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ReportCovid')"/>
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_role_module">
-			<column name="id" valueSequenceNext="system_role_module_seq" />
-      		<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Reports')"/>
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ReportCovid')"/>
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_module_param">
-			<column name="id" valueSequenceNext="system_module_param_seq" />
-      		<column name="name" value="report"/>
-      		<column name="value" value="covidResultsReport"/>
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_module_url">
-			<column name="id" valueSequenceNext="system_module_url_seq" />
-			<column name="url_path" value="/ReportPrint" />
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ReportCovid')"/>
-      		<column name="system_module_param_id" valueComputed="(SELECT id FROM system_module_param WHERE value = 'covidResultsReport')"/>
-      	</insert>
-      	<insert schemaName="clinlims"
-      		tableName="system_module_url">
-			<column name="id" valueSequenceNext="system_module_url_seq" />
-			<column name="url_path" value="/Report" />
-      		<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ReportCovid')"/>
-      		<column name="system_module_param_id" valueComputed="(SELECT id FROM system_module_param WHERE value = 'covidResultsReport')"/>
-      	</insert>
-      	
-	</changeSet>
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module_url WHERE url_path = '/TestModifyEntry'</sqlCheck>
+        </preConditions>
+          <insert schemaName="clinlims"
+              tableName="system_module_url">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/TestModifyEntry" />
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TestAdd')"/>
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_role_module">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+              <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Maintenance Admin')"/>
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TestAdd')"/>
+          </insert>
+    </changeSet>
+
+    <changeSet author="csteele" id="2" >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module_url WHERE url_path = '/BarcodeConfiguration'</sqlCheck>
+        </preConditions>
+          <insert schemaName="clinlims"
+              tableName="system_module">
+            <column name="id" valueSequenceNext="system_module_seq" />
+            <column name="name" value="BarcodeConfig" />
+            <column name="description" value="Barcode Configuration pages" />
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_role_module">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+              <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Maintenance Admin')"/>
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'BarcodeConfig')"/>
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_module_url">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/BarcodeConfiguration" />
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'BarcodeConfig')"/>
+          </insert>
+
+    </changeSet>
+
+    <changeSet author="csteele" id="3" >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module_url WHERE url_path = '/ReportConfiguration'</sqlCheck>
+        </preConditions>
+          <insert schemaName="clinlims"
+              tableName="system_module">
+            <column name="id" valueSequenceNext="system_module_seq" />
+            <column name="name" value="ReportConfig" />
+            <column name="description" value="Report Configuration pages" />
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_role_module">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+              <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Maintenance Admin')"/>
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ReportConfig')"/>
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_module_url">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/ReportConfiguration" />
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ReportConfig')"/>
+          </insert>
+
+    </changeSet>
+
+    <changeSet author="csteele" id="4" >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module_url WHERE url_path = '/BatchTestReassignment'</sqlCheck>
+        </preConditions>
+          <insert schemaName="clinlims"
+              tableName="system_module">
+            <column name="id" valueSequenceNext="system_module_seq" />
+            <column name="name" value="BatchTestReassignment" />
+            <column name="description" value="BatchTestReassignment pages" />
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_role_module">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+              <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Maintenance Admin')"/>
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'BatchTestReassignment')"/>
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_module_url">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/BatchTestReassignment" />
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'BatchTestReassignment')"/>
+          </insert>
+
+    </changeSet>
+
+    <changeSet author="csteele" id="5" >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module_url WHERE url_path = '/ExternalConnectionsMenu'</sqlCheck>
+        </preConditions>
+          <insert schemaName="clinlims"
+              tableName="system_module">
+            <column name="id" valueSequenceNext="system_module_seq" />
+            <column name="name" value="ExternalConnection" />
+            <column name="description" value="ExternalConnection pages" />
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_role_module">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+              <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Maintenance Admin')"/>
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ExternalConnection')"/>
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_module_url">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/ExternalConnectionsMenu" />
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ExternalConnection')"/>
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_module_url">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/ExternalConnection" />
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ExternalConnection')"/>
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_module_url">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="TestExternalConnection" />
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ExternalConnection')"/>
+          </insert>
+
+    </changeSet>
+
+    <changeSet author="csteele" id="6" >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module_url WHERE url_path = '/ValidationConfigurationMenu'</sqlCheck>
+        </preConditions>
+          <insert schemaName="clinlims"
+              tableName="system_module">
+            <column name="id" valueSequenceNext="system_module_seq" />
+            <column name="name" value="ValidationConfig" />
+            <column name="description" value="ValidationConfig pages" />
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_role_module">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+              <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Maintenance Admin')"/>
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ValidationConfig')"/>
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_module_url">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/ValidationConfigurationMenu" />
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ValidationConfig')"/>
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_module_url">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/ValidationConfiguration" />
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ValidationConfig')"/>
+          </insert>
+
+    </changeSet>
+
+    <changeSet author="csteele" id="7" >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module_url WHERE url_path = '/ListPlugins'</sqlCheck>
+        </preConditions>
+          <insert schemaName="clinlims"
+              tableName="system_module">
+            <column name="id" valueSequenceNext="system_module_seq" />
+            <column name="name" value="ListPlugins" />
+            <column name="description" value="ListPlugins pages" />
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_role_module">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+              <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Maintenance Admin')"/>
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ListPlugins')"/>
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_module_url">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/ListPlugins" />
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ListPlugins')"/>
+          </insert>
+
+    </changeSet>
+
+    <changeSet author="csteele" id="8" >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module WHERE name = 'ReportCovid'</sqlCheck>
+        </preConditions>
+          <insert schemaName="clinlims"
+              tableName="system_module">
+            <column name="id" valueSequenceNext="system_module_seq" />
+            <column name="name" value="ReportCovid" />
+            <column name="description" value="covid report pages" />
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_role_module">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+              <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Maintenance Admin')"/>
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ReportCovid')"/>
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_role_module">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+              <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Reports')"/>
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ReportCovid')"/>
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_module_param">
+            <column name="id" valueSequenceNext="system_module_param_seq" />
+              <column name="name" value="report"/>
+              <column name="value" value="covidResultsReport"/>
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_module_url">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/ReportPrint" />
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ReportCovid')"/>
+              <column name="system_module_param_id" valueComputed="(SELECT id FROM system_module_param WHERE value = 'covidResultsReport')"/>
+          </insert>
+          <insert schemaName="clinlims"
+              tableName="system_module_url">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/Report" />
+              <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ReportCovid')"/>
+              <column name="system_module_param_id" valueComputed="(SELECT id FROM system_module_param WHERE value = 'covidResultsReport')"/>
+          </insert>
+
+    </changeSet>
 
 </databaseChangeLog>

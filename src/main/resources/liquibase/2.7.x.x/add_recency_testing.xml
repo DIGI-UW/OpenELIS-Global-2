@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="CIV developer Group" id="202309101"
+        context="ci_recency_testing">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="project" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.project
+                WHERE name = 'Recency Testing'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add entry for recency testing</comment>
+        <insert tableName="project" schemaName="clinlims">
+            <column name="id" valueSequenceNext="project_seq" />
+            <column name="name" value="Recency Testing" />
+            <column name="description" value="Recency Testing" />
+            <column name="is_active" value="Y" />
+            <column name="program_code" value="RTRI" />
+            <column name="lastupdated" value="now()" />
+            <column name="display_key" value="project.Recency.name" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202309102"
+        context="ci_recency_testing">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.localization WHERE french = 'Asante HIV-1 Rapid Recency'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.localization(
+            id, description, english,
+            french, lastupdated)
+            VALUES
+            (nextval('localization_seq'),'test name','Asante HIV-1 Rapid Recency','Asante HIV-1 Rapid Recency',
+            now());
+            INSERT INTO clinlims.localization(
+            id, description, english,
+            french, lastupdated)
+            VALUES
+            (nextval('localization_seq'),'test report name','Rapid Test for Recent infection','Test Rapide pour Infection Récente',
+            now());
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="202309103"
+        context="ci_recency_testing">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.dictionary WHERE dict_entry = 'Long-Term' </sqlCheck>
+        </preConditions>
+
+        <sql>
+            INSERT INTO
+            clinlims.dictionary(id,is_active,dict_entry,lastupdated,local_abbrev,dictionary_category_id,display_key,sort_order,name_localization_id)
+            VALUES
+            (nextval('dictionary_seq'),'Y','Long-Term',now(),'Long-Term',null,
+            'dictionary.recency.result.long_term',55000,null),
+            (nextval('dictionary_seq'),'Y','Recent',now(),'Recent',null,
+            'dictionary.recency.result.recent',55000,null),
+            (nextval('dictionary_seq'),'Y','Inconclusive',now(),'Inconclusive',null,
+            'dictionary.recency.result.Inconclusive',55000,null),
+            (nextval('dictionary_seq'),'Y','Invalid',now(),'Invalid',null,
+            'dictionary.recency.result.Invalid',55000,null);
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="202309104"
+        context="ci_recency_testing">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.test
+                WHERE description = 'Asante HIV-1 Rapid Recency(Plasma)'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.test(
+            id, method_id, uom_id, description,
+            loinc, reporting_description,
+            sticker_req_flag, is_active,
+            active_begin, active_end, is_reportable,
+            time_holding, time_wait,
+            time_ta_average, time_ta_warning,
+            time_ta_max, label_qty, lastupdated,
+            label_id, test_trailer_id,
+            test_section_id, scriptlet_id,
+            test_format_id, local_code,
+            sort_order, name, orderable,
+            guid,
+            name_localization_id, reporting_name_localization_id,
+            default_test_result_id, notify_results)
+            VALUES
+            (nextval('test_seq'),null,null,'Asante HIV-1 Rapid Recency(Plasma)','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),
+            null,null,136,null,null,'Asante HIV-1 Rapid Recency',1,'Asante HIV-1 Rapid Recency','t',
+            '6224b40c-388d-41f5-9c70-34c69d149569',
+            (select id
+            from localization
+            where description = 'test name' and
+            english = 'Asante HIV-1 Rapid Recency' limit
+            1),
+            (select id from localization where
+            description = 'test report name' and english = 'Rapid Test for Recent infection' limit 1),
+            null,'f');
+            INSERT INTO clinlims.test(
+            id,
+            method_id, uom_id, description, loinc, reporting_description,
+            sticker_req_flag, is_active, active_begin, active_end, is_reportable,
+            time_holding, time_wait, time_ta_average, time_ta_warning,
+            time_ta_max, label_qty, lastupdated, label_id, test_trailer_id,
+            test_section_id, scriptlet_id, test_format_id, local_code,
+            sort_order, name, orderable,
+            guid, name_localization_id,
+            reporting_name_localization_id,
+            default_test_result_id,
+            notify_results)
+            VALUES
+            (nextval('test_seq'),null,null,'Asante HIV-1 Rapid Recency(Serum)','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),
+            null,null,136,null,null,'Asante HIV-1 Rapid Recency',1,'Asante HIV-1 Rapid Recency','t',
+            '21d9cdc8-e58a-4ba3-9a39-52c15a0c5848',
+            (select id
+            from localization
+            where description = 'test name' and
+            english = 'Asante HIV-1 Rapid Recency' limit
+            1),
+            (select id from localization where
+            description = 'test report name' and english = 'Rapid Test for Recent infection' limit 1),
+            null,'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202309105"
+        context="ci_recency_testing">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.sampletype_test WHERE test_id =
+                (select id from
+                clinlims.test where description = 'Asante HIV-1 Rapid Recency(Plasma)')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT into clinlims.sampletype_test(id, sample_type_id, test_id,
+            is_panel)
+            VALUES (nextval('sample_type_test_seq'),
+            (select id from
+            type_of_sample where description = 'Plasma' limit
+            1),
+            (select id from
+            test where description = 'Asante HIV-1 Rapid Recency(Plasma)'),
+            'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202309106"
+        context="ci_recency_testing">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.sampletype_test WHERE test_id =
+                (select id from
+                clinlims.test where description = 'Asante HIV-1 Rapid Recency(Serum)')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT into clinlims.sampletype_test(id, sample_type_id, test_id,
+            is_panel)
+            VALUES (nextval('sample_type_test_seq'),
+            (select id from
+            type_of_sample where description = 'Serum' limit
+            1),
+            (select id from
+            test where description = 'Asante HIV-1 Rapid Recency(Serum)'),
+            'f');
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="202309107"
+        context="ci_recency_testing">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.result_limits WHERE test_id =
+                (select id from clinlims.test
+                where description = 'Asante HIV-1 Rapid Recency(Plasma)')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.result_limits(id, test_id,
+            test_result_type_id,
+            min_age, max_age, gender, low_normal,
+            high_normal, low_valid,
+            high_valid, lastupdated, normal_dictionary_id,
+            always_validate)
+            VALUES (nextval('result_limits_seq'),
+            (select id from
+            test where
+            description = 'Asante HIV-1 Rapid Recency(Plasma)'),
+            4,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f');
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="202309108"
+        context="ci_recency_testing">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.result_limits WHERE test_id =
+                (select id from clinlims.test
+                where description = 'Asante HIV-1 Rapid Recency(Serum)')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.result_limits(id, test_id,
+            test_result_type_id,
+            min_age, max_age, gender, low_normal,
+            high_normal, low_valid,
+            high_valid, lastupdated, normal_dictionary_id,
+            always_validate)
+            VALUES (nextval('result_limits_seq'),
+            (select id from
+            test where
+            description = 'Asante HIV-1 Rapid Recency(Serum)'),
+            4,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f');
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="202309109"
+        context="ci_recency_testing">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_result WHERE test_id =
+                (select id from clinlims.test
+                where description = 'Asante HIV-1 Rapid Recency(Serum)')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,is_quantifiable,is_active,is_normal)
+            VALUES
+            (nextval('test_result_seq'),
+            (select id from test where description = 'Asante HIV-1 Rapid Recency(Serum)'),	null,null,'D',
+            (select id from dictionary where dict_entry = 'Long-Term' limit 1),
+            null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'),
+            (select id from test where description = 'Asante HIV-1 Rapid Recency(Serum)'),
+            null,null,'D',
+            (select id from dictionary where dict_entry = 'Recent' limit 1),
+            null,null,null,now(),null,2,'f','t','f'),
+            (nextval('test_result_seq'),
+            (select id from test where description ='Asante HIV-1 Rapid Recency(Serum)'),
+            null,null,'D',(select id from dictionary where dict_entry = 'Inconclusive' limit 1),
+            null,null,null,now(),null,3,'f','t','f'),
+            (nextval('test_result_seq'),(select id from test where description ='Asante HIV-1 Rapid Recency(Serum)'),
+            null,null,'D',
+            (select id from dictionary where dict_entry = 'Invalid' limit 1),null,null,null,now(),null,4,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202309110"
+        context="ci_recency_testing">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.test_result WHERE test_id =
+                (select id from clinlims.test where description = 'Asante HIV-1 Rapid Recency(Plasma)')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,scriptlet_id,sort_order,is_quantifiable,is_active,is_normal)
+            VALUES
+            (nextval('test_result_seq'),
+            (select id from test where description = 'Asante HIV-1 Rapid Recency(Plasma)'),	null,null,'D',
+            (select id from dictionary where dict_entry = 'Long-Term' limit 1),
+            null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'),
+            (select id from test where description = 'Asante HIV-1 Rapid Recency(Plasma)'),
+            null,null,'D',
+            (select id from dictionary where dict_entry = 'Recent' limit 1),
+            null,null,null,now(),null,2,'f','t','f'),
+            (nextval('test_result_seq'),
+            (select id from test where description ='Asante HIV-1 Rapid Recency(Plasma)'),
+            null,null,'D',(select id from dictionary where dict_entry = 'Inconclusive' limit 1),
+            null,null,null,now(),null,3,'f','t','f'),
+            (nextval('test_result_seq'),(select id from test where description ='Asante HIV-1 Rapid Recency(Plasma)'),
+            null,null,'D',
+            (select id from dictionary where dict_entry = 'Invalid' limit 1),null,null,null,now(),null,4,'f','t','f');
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

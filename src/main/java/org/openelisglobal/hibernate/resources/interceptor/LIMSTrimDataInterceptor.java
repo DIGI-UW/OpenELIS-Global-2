@@ -1,41 +1,37 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/ 
-* 
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-* 
-* The Original Code is OpenELIS code.
-* 
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-* 
-*
-* Contributor(s): CIRG, University of Washington, Seattle WA.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ *
+ * <p>Contributor(s): CIRG, University of Washington, Seattle WA.
+ */
 package org.openelisglobal.hibernate.resources.interceptor;
 
 import java.io.Serializable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import org.hibernate.EmptyInterceptor;
 import org.hibernate.type.Type;
 import org.openelisglobal.audittrail.valueholder.History;
 
 /**
  * @author diane benz
- * 
+ *         <p>
  *         To change this generated comment edit the template variable
  *         "typecomment": Window>Preferences>Java>Templates. To enable and
  *         disable the creation of type comments go to
  *         Window>Preferences>Java>Code Generation. bugzilla 1939 (trim changed
  *         data before update/insert) this interceptor is registered in
  *         HibernateUtil (it is a global interceptor)
- * 
+ *         <p>
  *         originally designed to trim leading and trailing spaces from a string
  *         bugzilla 2109 added trimming of spaces embedded in a string (replace
  *         multiple spaces with 1 space)
@@ -78,7 +74,6 @@ public class LIMSTrimDataInterceptor extends EmptyInterceptor {
         }
 
         return super.onFlushDirty(entity, id, currentState, previousState, propertyNames, types);
-
     }
 
     private String trimWhiteSpace(String origional) {

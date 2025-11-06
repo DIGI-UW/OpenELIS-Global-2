@@ -1,8 +1,7 @@
 package org.openelisglobal.testconfiguration.controller;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.hibernate.HibernateException;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.log.LogEvent;
@@ -78,11 +77,11 @@ public class UomRenameEntryController extends BaseController {
 
             // not using localization for UOM
 
-//            Localization name = unitOfMeasure.getLocalization();
-//
-//            name.setEnglish( nameEnglish.trim() );
-//            name.setFrench( nameFrench.trim() );
-//            name.setSysUserId( userId );
+            // Localization name = unitOfMeasure.getLocalization();
+            //
+            // name.setEnglish( nameEnglish.trim() );
+            // name.setFrench( nameFrench.trim() );
+            // name.setSysUserId( userId );
 
             unitOfMeasure.setUnitOfMeasureName(nameEnglish.trim());
             unitOfMeasure.setSysUserId(userId);
@@ -92,7 +91,6 @@ public class UomRenameEntryController extends BaseController {
             } catch (HibernateException e) {
                 LogEvent.logDebug(e);
             }
-
         }
 
         // Refresh Uom names

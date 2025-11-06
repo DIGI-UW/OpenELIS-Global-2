@@ -1,7 +1,6 @@
 package org.openelisglobal.sample.validator;
 
 import java.util.Iterator;
-
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
@@ -30,7 +29,6 @@ public class SamplePatientEntryFormValidator implements Validator {
         if (!GenericValidator.isBlankOrNull(form.getSampleXML())) {
             validateSampleXML(form.getSampleXML(), errors);
         }
-
     }
 
     @SuppressWarnings("unchecked")
@@ -57,7 +55,6 @@ public class SamplePatientEntryFormValidator implements Validator {
             if (errors.hasErrors()) {
                 return;
             }
-
         } // validate panel ids
         String[] panelIDs = sampleItem.attributeValue("panels").split(",");
         for (int j = 0; j < panelIDs.length; ++j) {
@@ -84,6 +81,5 @@ public class SamplePatientEntryFormValidator implements Validator {
         // validate sample id
         String sampleId = sampleItem.attributeValue("sampleID");
         ValidationHelper.validateIdField(sampleId, "sampleXML", "sampleXML sampleID", errors, true);
-
     }
 }

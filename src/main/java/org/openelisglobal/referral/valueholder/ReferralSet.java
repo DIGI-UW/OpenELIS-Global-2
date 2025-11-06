@@ -2,7 +2,6 @@ package org.openelisglobal.referral.valueholder;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.spring.util.SpringContext;
@@ -56,7 +55,6 @@ public class ReferralSet {
 
     public void setNote(Note note) {
         this.note = note;
-
     }
 
     public void setReferral(Referral referral) {

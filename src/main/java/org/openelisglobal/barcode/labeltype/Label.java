@@ -1,7 +1,8 @@
 package org.openelisglobal.barcode.labeltype;
 
+import com.itextpdf.text.Font;
+import com.itextpdf.text.Font.FontFamily;
 import java.util.ArrayList;
-
 import org.openelisglobal.barcode.LabelField;
 import org.openelisglobal.barcode.service.BarcodeLabelInfoService;
 import org.openelisglobal.barcode.valueholder.BarcodeLabelInfo;
@@ -9,26 +10,23 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.spring.util.SpringContext;
 
-import com.lowagie.text.Font;
-
 /**
  * Stores all the values, layout, and acts as a link to the persisted meta data
  * that is stored in the database. Used in printing bar code labels through the
  * BarcodeLabelMaker class
  *
  * @author Caleb
- *
  */
 public abstract class Label {
 
     // for sizing the bar code area
-    static int SMALL_BARCODE = 3; // just over half of the width
-    static int MED_BARCODE = 4; // just over 3/4 the width
-    static int LARGE_BARCODE = 5; // entire width
+    static int SMALL_BARCODE = 6; // just over half of the width
+    static int MED_BARCODE = 8; // just over 3/4 the width
+    static int LARGE_BARCODE = 9; // most of the width
 
     // default fonts
-    private Font valueFont = new Font(Font.HELVETICA, 9, Font.NORMAL);
-    private Font nameFont = new Font(Font.HELVETICA, 9, Font.BOLD);
+    private Font valueFont = new Font(FontFamily.HELVETICA, 9, Font.NORMAL);
+    private Font nameFont = new Font(FontFamily.HELVETICA, 9, Font.BOLD);
 
     // default dimension (height width are used only as a ratio)
     // pdfWidth and pdfHeight used for actual pdfScaling
@@ -39,7 +37,7 @@ public abstract class Label {
     public float pdfWidth;
 
     // default bar code size
-    private int barcodeSpace = MED_BARCODE;
+    private int barcodeSpace = LARGE_BARCODE;
 
     // default number of copies to print
     private int numLabels = 1;
@@ -48,6 +46,7 @@ public abstract class Label {
     protected ArrayList<LabelField> aboveFields;
     protected ArrayList<LabelField> belowFields;
     private String code;
+    private String codeLabel;
 
     // information stored in/for database
     private BarcodeLabelInfo labelInfo;
@@ -147,7 +146,7 @@ public abstract class Label {
     }
 
     /**
-     * Get the unscaled bar code space (3-5)
+     * Get the unscaled bar code space (6-10)
      *
      * @return The space the bar code uses (half the number of columns)
      */
@@ -156,7 +155,7 @@ public abstract class Label {
     }
 
     /**
-     * Set unscaled bar code space (3-5)
+     * Set unscaled bar code space (6-10)
      *
      * @param barcodeSpace The space the bar code uses (half the number of columns)
      */
@@ -210,6 +209,14 @@ public abstract class Label {
         this.code = code;
     }
 
+    public String getCodeLabel() {
+        return codeLabel == null ? code : codeLabel;
+    }
+
+    public void setCodeLabel(String codeLabel) {
+        this.codeLabel = codeLabel;
+    }
+
     /**
      * Get number of labels to attempt to print
      *
@@ -257,10 +264,10 @@ public abstract class Label {
                 curColumns = 0;
             }
             curColumns += field.getColspan();
-            if (curColumns > 10) {
+            if (curColumns > 20) {
                 // throw error
                 // row is completed, add to num row
-            } else if (curColumns == 10) {
+            } else if (curColumns == 20) {
                 completeRow = true;
                 curColumns = 0;
                 ++numRows;
@@ -302,7 +309,7 @@ public abstract class Label {
                 labelInfo = new BarcodeLabelInfo(code);
             }
         } catch (LIMSRuntimeException e) {
-            LogEvent.logErrorStack(e);
+            LogEvent.logError(e);
         }
     }
 
@@ -313,5 +320,4 @@ public abstract class Label {
     public void incrementNumPrinted() {
         labelInfo.incrementNumPrinted();
     }
-
 }

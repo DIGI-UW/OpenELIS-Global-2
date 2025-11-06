@@ -1,29 +1,25 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
  *
- * Contributor(s): CIRG, University of Washington, Seattle WA.
+ * <p>Contributor(s): CIRG, University of Washington, Seattle WA.
  */
 package org.openelisglobal.common.provider.query;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.math.BigDecimal;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.provider.query.workerObjects.PatientSearchLocalAndExternalWorker;
@@ -94,7 +90,6 @@ public class PatientSearchProvider extends BaseQueryProvider {
             }
         }
         ajaxServlet.sendData(xml.toString(), result, request, response);
-
     }
 
     private PatientSearchResults getSearchResultsForPatient(Patient patient) {
@@ -102,14 +97,10 @@ public class PatientSearchProvider extends BaseQueryProvider {
         PersonService personService = SpringContext.getBean(PersonService.class);
         personService.getData(patient.getPerson());
         return new PatientSearchResults(BigDecimal.valueOf(Long.parseLong(patient.getId())),
-                patientPatientService.getFirstName(patient), 
-                patientPatientService.getLastName(patient),
-                patientPatientService.getGender(patient), 
-                patientPatientService.getEnteredDOB(patient),
-                patientPatientService.getNationalId(patient), 
-                patient.getExternalId(),
-                patientPatientService.getSTNumber(patient), 
-                patientPatientService.getSubjectNumber(patient),
+                patientPatientService.getFirstName(patient), patientPatientService.getLastName(patient),
+                patientPatientService.getGender(patient), patientPatientService.getEnteredDOB(patient),
+                patientPatientService.getNationalId(patient), patient.getExternalId(),
+                patientPatientService.getSTNumber(patient), patientPatientService.getSubjectNumber(patient),
                 patientPatientService.getGUID(patient),
                 SpringContext.getBean(ObservationHistoryService.class).getMostRecentValueForPatient(
                         ObservationType.REFERRERS_PATIENT_ID, patientPatientService.getPatientId(patient)));
@@ -146,5 +137,4 @@ public class PatientSearchProvider extends BaseQueryProvider {
     public AjaxServlet getServlet() {
         return ajaxServlet;
     }
-
 }

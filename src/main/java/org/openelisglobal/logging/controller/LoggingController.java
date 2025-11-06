@@ -2,6 +2,7 @@ package org.openelisglobal.logging.controller;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
+import org.openelisglobal.common.log.LogEvent;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -10,9 +11,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class LoggingController {
 
     @GetMapping(path = "/logging")
-    public void changeLoggingLevel(@RequestParam(name = "logLevel", defaultValue = "E") String logLevel,
+    public void changeLoggingLevel(@RequestParam(name = "logLevel", defaultValue = "I") String logLevel,
             @RequestParam(name = "logger", defaultValue = "org.openelisglobal") String logger,
-            @RequestParam(name = "rootLogLevel", defaultValue = "E") String rootLogLevel) {
+            @RequestParam(name = "rootLogLevel", defaultValue = "I") String rootLogLevel) {
         org.apache.logging.log4j.Level log4jLogLevel;
         org.apache.logging.log4j.Level rootLog4jLogLevel;
         switch (logLevel) {
@@ -49,7 +50,15 @@ public class LoggingController {
         } else {
             Configurator.setLevel(logger, log4jLogLevel);
         }
-
     }
 
+    @GetMapping(path = "/logging/test")
+    public void loggingLevelTest() {
+        LogEvent.logTrace(this.getClass().getSimpleName(), "changeLoggingLevel", "test logging message");
+        LogEvent.logDebug(this.getClass().getSimpleName(), "changeLoggingLevel", "test logging message");
+        LogEvent.logInfo(this.getClass().getSimpleName(), "changeLoggingLevel", "test logging message");
+        LogEvent.logWarn(this.getClass().getSimpleName(), "changeLoggingLevel", "test logging message");
+        LogEvent.logError(this.getClass().getSimpleName(), "changeLoggingLevel", "test logging message");
+        LogEvent.logFatal(this.getClass().getSimpleName(), "changeLoggingLevel", "test logging message");
+    }
 }

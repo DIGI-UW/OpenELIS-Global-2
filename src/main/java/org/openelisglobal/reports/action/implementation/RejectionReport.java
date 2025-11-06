@@ -20,10 +20,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-
+import net.sf.jasperreports.engine.JRDataSource;
+import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
+import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
@@ -41,9 +44,6 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestServiceImpl;
-
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 
 public abstract class RejectionReport extends Report implements IReportCreator {
     private int PREFIX_LENGTH = AccessionNumberUtil.getMainAccessionNumberGenerator().getInvarientLength();
@@ -131,8 +131,13 @@ public abstract class RejectionReport extends Report implements IReportCreator {
                 break;
             }
         }
-
-        item.setAccessionNumber(sampleService.getAccessionNumber(sample).substring(PREFIX_LENGTH));
+        if (AccessionFormat.ALPHANUM.toString()
+                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.AccessionFormat))) {
+            item.setAccessionNumber(AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(
+                    sampleService.getAccessionNumber(sample).substring(PREFIX_LENGTH)));
+        } else {
+            item.setAccessionNumber(sampleService.getAccessionNumber(sample).substring(PREFIX_LENGTH));
+        }
         item.setReceivedDate(sampleService.getTwoYearReceivedDateForDisplay(sample));
         item.setCollectionDate(
                 DateUtil.convertTimestampToTwoYearStringDate(analysis.getSampleItem().getCollectionDate()));

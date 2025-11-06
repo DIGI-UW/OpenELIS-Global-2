@@ -1,19 +1,17 @@
 package org.openelisglobal.provider.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-import javax.validation.constraints.Pattern;
-
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseMenuController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.form.AdminOptionMenuForm;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.provider.form.ProviderMenuForm;
 import org.openelisglobal.provider.service.ProviderService;
@@ -93,8 +91,10 @@ public class ProviderMenuController extends BaseMenuController<Provider> {
         request.setAttribute(MENU_FROM_RECORD, String.valueOf(startingRecNo));
         int numOfRecs = 0;
         if (providers != null) {
-            if (providers.size() > SystemConfiguration.getInstance().getDefaultPageSize()) {
-                numOfRecs = SystemConfiguration.getInstance().getDefaultPageSize();
+            if (providers.size() > Integer
+                    .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))) {
+                numOfRecs = Integer
+                        .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
             } else {
                 numOfRecs = providers.size();
             }
@@ -135,7 +135,7 @@ public class ProviderMenuController extends BaseMenuController<Provider> {
 
     @Override
     protected int getPageSize() {
-        return SystemConfiguration.getInstance().getDefaultPageSize();
+        return Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
     }
 
     // gnr: Deactivate not Delete
@@ -166,10 +166,10 @@ public class ProviderMenuController extends BaseMenuController<Provider> {
             providerService.deactivateProviders(providers);
         } catch (LIMSRuntimeException e) {
             // bugzilla 2154
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
 
             String errorMsg;
-            if (e.getException() instanceof org.hibernate.StaleObjectStateException) {
+            if (e.getCause() instanceof org.hibernate.StaleObjectStateException) {
                 errorMsg = "errors.OptimisticLockException";
             } else {
                 errorMsg = "errors.DeleteException";
@@ -177,7 +177,6 @@ public class ProviderMenuController extends BaseMenuController<Provider> {
             result.reject(errorMsg);
             redirectAttributes.addFlashAttribute(Constants.REQUEST_ERRORS, result);
             return findForward(FWD_FAIL_DELETE, form);
-
         }
         redirectAttributes.addAttribute(FWD_SUCCESS, true);
         return findForward(FWD_SUCCESS_DELETE, form);
@@ -186,7 +185,7 @@ public class ProviderMenuController extends BaseMenuController<Provider> {
     @Override
     protected String findLocalForward(String forward) {
         if (FWD_SUCCESS.equals(forward)) {
-            return "masterListsPageDefinition";
+            return "providerMasterListsPageDefinition";
         } else if (FWD_FAIL.equals(forward)) {
             return "redirect:/MasterListsPage";
         } else if (FWD_SUCCESS_DELETE.equals(forward)) {
@@ -207,5 +206,4 @@ public class ProviderMenuController extends BaseMenuController<Provider> {
     protected String getPageSubtitleKey() {
         return "provider.browse.title";
     }
-
 }

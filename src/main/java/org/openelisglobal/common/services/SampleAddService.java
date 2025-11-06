@@ -1,18 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.common.services;
 
@@ -22,7 +19,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
-
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -46,6 +43,7 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
@@ -70,7 +68,7 @@ public class SampleAddService {
     private static PanelItemService panelItemService = SpringContext.getBean(PanelItemService.class);
     private static ObservationHistoryTypeService ohtService = SpringContext
             .getBean(ObservationHistoryTypeService.class);
-
+    private static UnitOfMeasureService unitOfMeasureService = SpringContext.getBean(UnitOfMeasureService.class);
 
     private static String getObservationHistoryTypeId(String name) {
         ObservationHistoryType oht;
@@ -112,9 +110,16 @@ public class SampleAddService {
                 Map<String, String> testIdToSampleTypeMap = getTestIdToSelectionMap(
                         sampleItem.attributeValue("testSampleTypeMap"));
 
-                String collectionDate = sampleItem.attributeValue("date").trim();
-                String collectionTime = sampleItem.attributeValue("time").trim();
+                String collectionDate = sampleItem.attributeValue("date") == null ? null
+                        : sampleItem.attributeValue("date").trim();
+                String collectionTime = sampleItem.attributeValue("time") == null ? null
+                        : sampleItem.attributeValue("time").trim();
                 String collectionDateTime = null;
+                String rejectedValue = sampleItem.attributeValue("rejected") == null ? null
+                        : sampleItem.attributeValue("rejected").trim();
+                boolean rejected = StringUtils.isNotBlank(rejectedValue) ? Boolean.parseBoolean(rejectedValue) : false;
+                String rejectReasonId = sampleItem.attributeValue("rejectReasonId") == null ? null
+                        : sampleItem.attributeValue("rejectReasonId").trim();
 
                 if (!GenericValidator.isBlankOrNull(collectionDate)
                         && !GenericValidator.isBlankOrNull(collectionTime)) {
@@ -139,8 +144,28 @@ public class SampleAddService {
                 item.setSample(sample);
                 item.setTypeOfSample(typeOfSampleService.getTypeOfSampleById(sampleItem.attributeValue("sampleID")));
                 item.setSortOrder(Integer.toString(sampleItemIdIndex));
-                item.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered));
+                if (rejected) {
+                    item.setStatusId(
+                            SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.SampleRejected));
+                } else {
+                    item.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered));
+                }
                 item.setCollector(sampleItem.attributeValue("collector"));
+
+                String quantityStr = sampleItem.attributeValue("quantity");
+                if (quantityStr != null && !quantityStr.trim().isEmpty()) {
+                    item.setQuantity(Double.valueOf(quantityStr));
+                }
+
+                item.setExternalId(sample.getAccessionNumber() + "-" + sampleItemIdIndex);
+
+                String uomId = sampleItem.attributeValue("uom");
+                if (uomId != null && !uomId.trim().isEmpty()) {
+                    item.setUnitOfMeasure(unitOfMeasureService.getUnitOfMeasureById(uomId));
+                }
+
+                item.setRejected(rejected);
+                item.setRejectReasonId(rejectReasonId);
 
                 if (!GenericValidator.isBlankOrNull(collectionDateTime)) {
                     item.setCollectionDate(DateUtil.convertStringDateToTimestamp(collectionDateTime));
@@ -152,7 +177,6 @@ public class SampleAddService {
                 sampleItemsTests.add(new SampleTestCollection(item, tests,
                         USE_RECEIVE_DATE_FOR_COLLECTION_DATE ? collectionDateFromRecieveDate : collectionDateTime,
                         initialConditionList, testIdToUserSectionMap, testIdToSampleTypeMap, sampleNature));
-
             }
         } catch (DocumentException e) {
             LogEvent.logDebug(e);
@@ -271,7 +295,6 @@ public class SampleAddService {
             this.testIdToUserSampleTypeMap = testIdToUserSampleTypeMap;
             initialSampleConditionIdList = initialConditionList;
             this.sampleNature = sampleNature;
-
         }
     }
 }

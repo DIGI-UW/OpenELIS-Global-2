@@ -7,10 +7,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
-<%@ taglib prefix="tiles" uri="http://tiles.apache.org/tags-tiles" %>
+
 
 <%
     boolean acceptExternalOrders = ConfigurationProperties.getInstance().isPropertyValueEqual(Property.ACCEPT_EXTERNAL_ORDERS, "true");
@@ -146,18 +145,18 @@ function /*void*/ setNext(valid) {
 <%-- Order --%>    
 <div id=orderEntryPage >
 	<h2><%= MessageUtil.getContextualMessage("sample.entry.order.label") %></h2>	
-	<tiles:insertAttribute name="sampleOrder"/>
+	<jsp:include page="${sampleOrderFragment}"/>
 </div>
 
 <%-- Sample --%>  
 <div id=sampleEntryPage >
 	<h2><%= MessageUtil.getContextualMessage("sample.entry.sampleList.label") %></h2>
-	<tiles:insertAttribute name="addSample"/>
+	<jsp:include page="${addSampleFragment}"/>
 </div>
 
 <%-- Barcode Configuration --%>
 <div id=configureBarcodePage >
 	<h2><%= MessageUtil.getContextualMessage("sample.batchentry.configureBarcode") %></h2>
-	<tiles:insertAttribute name="configureLabels" />
+	<jsp:include page="${configureLabelsFragment}"/>
 </div>
 

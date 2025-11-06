@@ -1,7 +1,6 @@
 package org.openelisglobal.qaevent.valueholder;
 
 import java.sql.Timestamp;
-
 import org.openelisglobal.common.valueholder.BaseObject;
 
 public class NceCategory extends BaseObject<String> {
@@ -15,7 +14,6 @@ public class NceCategory extends BaseObject<String> {
     private String active;
 
     private Timestamp lastUpdated;
-
 
     @Override
     public String getId() {

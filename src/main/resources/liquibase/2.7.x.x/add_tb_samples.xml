@@ -1,0 +1,400 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+<!-- TB sample type localisations -->
+    <changeSet author="CIV developer Group" id="202309141"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT count(*) FROM
+                clinlims.localization WHERE french = 'Sputum'
+            </sqlCheck>
+        </preConditions>
+        <update tableName="localization" schemaName="clinlims">
+            <column name="french" value="Crachat"></column>
+            <where>french='Sputum'</where>
+        </update>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="202309142"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.localization WHERE french = 'Crachat'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="description" value="sampleType name" />
+            <column name="english" value="Sputum" />
+            <column name="french" value="Crachat" />
+            <column name="lastupdated" valueDate="now()" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202309151"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.localization WHERE french = 'Liquide pleural'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="description" value="sampleType name" />
+            <column name="english" value="Pleural fluid" />
+            <column name="french" value="Liquide pleural" />
+            <column name="lastupdated" valueDate="now()" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202309152"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.localization WHERE french = 'LCR'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="description" value="sampleType name" />
+            <column name="english" value="CSF" />
+            <column name="french" value="LCR" />
+            <column name="lastupdated" valueDate="now()" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202309153"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.localization WHERE french = 'Pus ganglionnaires'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="description" value="sampleType name" />
+            <column name="english" value="Lymph node pus" />
+            <column name="french" value="Pus ganglionnaires" />
+            <column name="lastupdated" valueDate="now()" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202309154"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.localization WHERE french = 'Liquide d’ascite'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="description" value="sampleType name" />
+            <column name="english" value="Ascites fluid" />
+            <column name="french" value="Liquide d’ascite" />
+            <column name="lastupdated" valueDate="now()" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202309155"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.localization WHERE french = 'Liquide articulaire'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="description" value="sampleType name" />
+            <column name="english" value="Joint fluid" />
+            <column name="french" value="Liquide articulaire" />
+            <column name="lastupdated" valueDate="now()" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202309156"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.localization WHERE french = 'Liquide de ponction péricardique'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="description" value="sampleType name" />
+            <column name="english" value="Pericardial puncture fluid" />
+            <column name="french" value="Liquide de ponction péricardique" />
+            <column name="lastupdated" valueDate="now()" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202309157"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.localization WHERE french = 'Selles'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="description" value="sampleType name" />
+            <column name="english" value="Stools" />
+            <column name="french" value="Selles" />
+            <column name="lastupdated" valueDate="now()" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202309158"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.localization WHERE french = 'Urines'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="description" value="sampleType name" />
+            <column name="english" value="Urine" />
+            <column name="french" value="Urines" />
+            <column name="lastupdated" valueDate="now()" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202309159"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.localization WHERE french = 'Liquide d’aspiration gastrique'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="description" value="sampleType name" />
+            <column name="english" value="Gastric aspiration fluid" />
+            <column name="french" value="Liquide d’aspiration gastrique" />
+            <column name="lastupdated" valueDate="now()" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091510"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.localization WHERE french = 'Liquide d’aspiration broncho-alvéolaire'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="description" value="sampleType name" />
+            <column name="english" value="Broncho-alveolar suction fluid" />
+            <column name="french" value="Liquide d’aspiration broncho-alvéolaire" />
+            <column name="lastupdated" valueDate="now()" />
+        </insert>
+    </changeSet>
+
+<!-- TB sample type -->
+
+    <changeSet author="CIV developer Group" id="2023091511" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="type_of_sample" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Sputum' OR description = 'Crachat'</sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value ="Sputum"/>
+            <column name="domain" value ="H"/>
+            <column name="local_abbrev" value ="Sputum"/>
+            <column name="is_active" valueBoolean ="true"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE french = 'Sputum' OR french ='Crachat' limit 1)"/>
+            <column name="display_key" value ="Sample.type.Sputum"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091512" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="type_of_sample" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Liquide pleural'</sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value ="Liquide pleural"/>
+            <column name="domain" value ="H"/>
+            <column name="local_abbrev" value ="Liq Pleu"/>
+            <column name="is_active" valueBoolean ="true"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE french = 'Liquide pleural' limit 1)"/>
+            <column name="display_key" value ="Sample.type.pleural_fluid"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091513" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="type_of_sample" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'LCR'</sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value ="LCR"/>
+            <column name="domain" value ="H"/>
+            <column name="local_abbrev" value ="LCR"/>
+            <column name="is_active" valueBoolean ="true"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE french = 'LCR' limit 1)"/>
+            <column name="display_key" value ="Sample.type.LCR"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091514" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="type_of_sample" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Pus ganglionnaires'</sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value ="Pus ganglionnaires"/>
+            <column name="domain" value ="H"/>
+            <column name="local_abbrev" value ="Pus Gang"/>
+            <column name="is_active" valueBoolean ="true"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE french = 'Pus ganglionnaires' limit 1)"/>
+            <column name="display_key" value ="Sample.type.lymph_node_pus"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091515" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="type_of_sample" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Liquide d’ascite'</sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value ="Liquide d’ascite"/>
+            <column name="domain" value ="H"/>
+            <column name="local_abbrev" value ="Liq Asc"/>
+            <column name="is_active" valueBoolean ="true"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE french = 'Liquide d’ascite' limit 1)"/>
+            <column name="display_key" value ="Sample.type.ascites_fluid"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091516" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="type_of_sample" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Liquide articulaire'</sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value ="Liquide articulaire"/>
+            <column name="domain" value ="H"/>
+            <column name="local_abbrev" value ="Liq Art"/>
+            <column name="is_active" valueBoolean ="true"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE french = 'Liquide articulaire' limit 1)"/>
+            <column name="display_key" value ="Sample.type.joint_fluid"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091517" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="type_of_sample" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Liquide de ponction péricardique'</sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value ="Liquide de ponction péricardique"/>
+            <column name="domain" value ="H"/>
+            <column name="local_abbrev" value ="Liq per"/>
+            <column name="is_active" valueBoolean ="true"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE french = 'Liquide de ponction péricardique' limit 1)"/>
+            <column name="display_key" value ="Sample.type.pericardial_fluid"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091518" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="type_of_sample" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Selles'</sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value ="Selles"/>
+            <column name="domain" value ="H"/>
+            <column name="local_abbrev" value ="Selles"/>
+            <column name="is_active" valueBoolean ="true"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE french = 'Selles' limit 1)"/>
+            <column name="display_key" value ="Sample.type.stools"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091519" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="type_of_sample" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.type_of_sample WHERE description in ('Urines','Urine')</sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value ="Urines"/>
+            <column name="domain" value ="H"/>
+            <column name="local_abbrev" value ="Urines"/>
+            <column name="is_active" valueBoolean ="true"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE french in ('Urines','Urine') limit 1)"/>
+            <column name="display_key" value ="Sample.type.Urines"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091520" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="type_of_sample" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.type_of_sample WHERE description ='Liquide d’aspiration gastrique'</sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value ="Liquide d’aspiration gastrique"/>
+            <column name="domain" value ="H"/>
+            <column name="local_abbrev" value ="Liq Gast"/>
+            <column name="is_active" valueBoolean ="true"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE french ='Liquide d’aspiration gastrique' limit 1)"/>
+            <column name="display_key" value ="Sample.type.gastric_fluid"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091521" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="type_of_sample" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.type_of_sample WHERE description ='Liquide d’aspiration broncho-alvéolaire'</sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value ="Liquide d’aspiration broncho-alvéolaire"/>
+            <column name="domain" value ="H"/>
+            <column name="local_abbrev" value ="Liq Bron"/>
+            <column name="is_active" valueBoolean ="true"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE french ='Liquide d’aspiration broncho-alvéolaire' limit 1)"/>
+            <column name="display_key" value ="Sample.type.broncho_alveolar_suction_fluid"/>
+        </insert>
+    </changeSet>
+
+    <!-- Add TB test section -->
+    <changeSet author="CIV developer Group" id="2023091522"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.localization WHERE french = 'Tuberculose'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="description" value="test unit name" />
+            <column name="english" value="Tuberculosis" />
+            <column name="french" value="Tuberculose" />
+            <column name="lastupdated" valueDate="now()" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091523" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="test_section" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.test_section WHERE name ='TB'</sqlCheck>
+        </preConditions>
+        <insert tableName="test_section" schemaName="clinlims">
+            <column name="id" valueSequenceNext="test_section_seq"/>
+            <column name="name" value ="TB"/>
+            <column name="description" value ="Tuberculose"/>
+            <column name="is_external" value ="N"/>
+            <column name="lastupdated" valueDate ="now()"/>
+            <column name="is_active" value ="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE french ='Tuberculose' limit 1)"/>
+            <column name="display_key" value ="test_section.TB"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091524"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.test_section WHERE name ='TB' limit 1
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="lab_unit_role_map" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueSequenceNext="lab_unit_role_map_lab_unit_role_map_id_seq" />
+            <column name="lab_unit" valueComputed="(SELECT id FROM clinlims.test_section WHERE name ='TB' limit 1)"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

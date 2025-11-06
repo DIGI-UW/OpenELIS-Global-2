@@ -1,9 +1,7 @@
 package org.openelisglobal.resultvalidation.form;
 
+import jakarta.validation.Valid;
 import java.util.List;
-
-import javax.validation.Valid;
-
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.paging.PagingBean;
 import org.openelisglobal.common.util.IdValuePair;
@@ -282,5 +280,4 @@ public class AccessionValidationForm extends BaseForm implements PatientInfoForm
     public void setTestName(String testName) {
         this.testName = testName;
     }
-
 }

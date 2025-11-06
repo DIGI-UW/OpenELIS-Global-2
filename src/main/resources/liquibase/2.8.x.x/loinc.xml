@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+        </preConditions>
+        <comment>add loinc codes to many tests</comment>
+        <update tableName="test" schemaName="clinlims">
+            <column name="loinc" value="6690-2" />
+            <where>name = 'White Blood Cells Count (WBC)' AND (loinc is null OR loinc = '')</where>
+        </update>
+        <update tableName="test" schemaName="clinlims">
+            <column name="loinc" value="789-8" />
+            <where>name = 'Red Blood Cells Count (RBC)' AND (loinc is null OR loinc = '')</where>
+        </update>
+        <update tableName="test" schemaName="clinlims">
+            <column name="loinc" value="718-7" />
+            <where>name = 'Hemoglobin' AND (loinc is null OR loinc = '')</where>
+        </update>
+        <update tableName="test" schemaName="clinlims">
+            <column name="loinc" value="4544-3" />
+            <where>name = 'Hematocrit' AND (loinc is null OR loinc = '')</where>
+        </update>
+        <update tableName="test" schemaName="clinlims">
+            <column name="loinc" value="787-2" />
+            <where>name = 'Medium corpuscular volum' AND (loinc is null OR loinc = '')</where>
+        </update>
+        <update tableName="test" schemaName="clinlims">
+            <column name="loinc" value="777-3" />
+            <where>name = 'Platelets' AND (loinc is null OR loinc = '')</where>
+        </update>
+        <update tableName="test" schemaName="clinlims">
+            <column name="loinc" value="751-8" />
+            <where>name = 'Neutrophiles' AND (loinc is null OR loinc = '')</where>
+        </update>
+        <update tableName="test" schemaName="clinlims">
+            <column name="loinc" value="770-8" />
+            <where>name = 'Neutrophiles (%)' AND (loinc is null OR loinc = '')</where>
+        </update>
+        <update tableName="test" schemaName="clinlims">
+            <column name="loinc" value="731-0" />
+            <where>name = 'Lymphocytes (Abs)' AND (loinc is null OR loinc = '')</where>
+        </update>
+        <update tableName="test" schemaName="clinlims">
+            <column name="loinc" value="736-9" />
+            <where>name = 'Lymphocytes (%)' AND (loinc is null OR loinc = '')</where>
+        </update>
+        <update tableName="test" schemaName="clinlims">
+            <column name="loinc" value="742-7" />
+            <where>name = 'Monocytes (Abs)' AND (loinc is null OR loinc = '')</where>
+        </update>
+        <update tableName="test" schemaName="clinlims">
+            <column name="loinc" value="5905-5" />
+            <where>name = 'Monocytes (%)' AND (loinc is null OR loinc = '')</where>
+        </update>
+        <update tableName="test" schemaName="clinlims">
+            <column name="loinc" value="711-2" />
+            <where>name = 'Eosinophiles' AND (loinc is null OR loinc = '')</where>
+        </update>
+        <update tableName="test" schemaName="clinlims">
+            <column name="loinc" value="713-8" />
+            <where>name = 'Eosinophiles (%)' AND (loinc is null OR loinc = '')</where>
+        </update>
+        <update tableName="test" schemaName="clinlims">
+            <column name="loinc" value="704-7" />
+            <where>name = 'Basophiles' AND (loinc is null OR loinc = '')</where>
+        </update>
+        <update tableName="test" schemaName="clinlims">
+            <column name="loinc" value="706-2" />
+            <where>name = 'Basophiles (%)' AND (loinc is null OR loinc = '')</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

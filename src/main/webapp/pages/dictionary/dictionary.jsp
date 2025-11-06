@@ -6,9 +6,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 <%--bugzilla 2108 added required asterisks--%>
 
 <div id="sound"></div>
@@ -73,7 +73,7 @@ function validateForm(form) {
         <%--bugzilla 1847--%>
 		<tr>
 						<td class="label">
-							<spring:message code="dictionary.localAbbreviation"/>:
+							<spring:message code="dictionary.localAbbreviation"/>:<span class="requiredlabel">*</span>
 						</td>	
 						<td> 
 						    <form:input path="localAbbreviation" size="10" onblur="this.value=this.value.toUpperCase()" />

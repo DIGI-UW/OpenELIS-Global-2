@@ -1,16 +1,15 @@
 package org.openelisglobal.common.valueholder;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.io.Serializable;
-
-import javax.persistence.Column;
-import javax.persistence.Embeddable;
-import javax.persistence.EmbeddedId;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
-
+import java.util.Objects;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 
 @Entity(name = "accession_number_info")
@@ -50,6 +49,9 @@ public class AccessionNumberInfo {
         @Enumerated(EnumType.STRING)
         private AccessionFormat type;
 
+        AccessionIdentity() {
+        }
+
         public AccessionIdentity(String prefix, AccessionFormat type) {
             this.setPrefix(prefix);
             this.setType(type);
@@ -71,6 +73,19 @@ public class AccessionNumberInfo {
             this.type = type;
         }
 
-    }
+        public boolean equals(Object o) {
+            if (this == o)
+                return true;
+            if (o == null || getClass() != o.getClass())
+                return false;
 
+            AccessionIdentity that = (AccessionIdentity) o;
+
+            return Objects.equals(this.prefix, that.prefix) && Objects.equals(this.type, that.type);
+        }
+
+        public int hashCode() {
+            return Objects.hash(prefix, type);
+        }
+    }
 }

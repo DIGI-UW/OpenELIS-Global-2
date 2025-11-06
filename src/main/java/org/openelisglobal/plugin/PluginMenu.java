@@ -32,5 +32,4 @@ public class PluginMenu extends Menu {
     public void setParent(Menu parentMenu) {
         this.parentMenu = parentMenu;
     }
-
 }

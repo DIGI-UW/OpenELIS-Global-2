@@ -2,7 +2,8 @@ version: '3.3'
 services:
     certs:
         container_name: oe-certs 
-        image: ghcr.io/i-tech-uw/certgen:main
+        image: itechuw/certgen:main
+        platform: linux/amd64
         restart: always
         environment:
             - KEYSTORE_PW="kspass"
@@ -10,10 +11,13 @@ services:
         networks:
             - default
         volumes:
-            -  cert-volume:/etc/openelis-global
+            -  key_trust-store-volume:/etc/openelis-global
+            -  keys-vol:/etc/ssl/private/
+            -  certs-vol:/etc/ssl/certs/
+
     database:
         container_name: openelisglobal-database 
-        image: postgres:9.5
+        image: postgres:14.4
         ports:
             - "15432:5432"
         restart: always
@@ -33,12 +37,12 @@ services:
             retries: 10 
             
     oe.openelis.org:
-        build:
-          context: .
         container_name: openelisglobal-webapp 
-        image: openelisglobal-webapp.build     
+        image: itechuw/openelis-global-2:develop   
+        platform: linux/amd64 
         depends_on:
             - database
+            - certs
         ports:
             - "8080:8080"
             - "8443:8443"
@@ -47,23 +51,32 @@ services:
           default:
               ipv4_address: 172.20.1.121
 
-        restart: always
         environment:
             - DEFAULT_PW=adminADMIN! 
             - TZ=Africa/Nairobi
               # context.xml doesn't seem to be able to pick up environment variables directly, so we are passing them in as CATALINA_OPTS
             - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://database:5432/clinlims -Ddatasource.username=clinlims
         volumes:
-            -  cert-volume:/etc/openelis-global
+            -  key_trust-store-volume:/etc/openelis-global
             - ./volume/plugins/:/var/lib/openelis-global/plugins
             - ./volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
+            -  lucene_index-vol:/var/lib/lucene_index
+            - ./volume/test-map/test-loinc-map.csv:/var/lib/openelis-global/plugin-test-mappings/test-loinc-map.csv
+            - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
+            - ./volume/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
+            #Runing OpenELIS with the locally compiled war file
+            #- ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war
         secrets:
             - source: datasource.password
             - source: common.properties
             
     fhir.openelis.org:
         container_name: external-fhir-api
-        image: hapiproject/hapi:v5.4.0
+        image: itechuw/openelis-global-2-fhir:develop
+        platform: linux/amd64
+        depends_on:
+            - database
+            - certs
         ports:
             - "8081:8080"
             - "8444:8443"
@@ -71,6 +84,7 @@ services:
             - default
         restart: always
         environment:
+          SPRING_CONFIG_LOCATION: file:///run/secrets/hapi_application.yaml
           TZ: Africa/Nairobi
 
           JAVA_OPTS: "-Djavax.net.ssl.trustStore=/etc/openelis-global/truststore 
@@ -81,16 +95,47 @@ services:
                       -Djavax.net.ssl.keyStoreType=pkcs12"            
         
         volumes:
-            -  cert-volume:/etc/openelis-global
-            - ./volume/tomcat/hapi_server.xml:/usr/local/tomcat/conf/server.xml
+            -  key_trust-store-volume:/etc/openelis-global
+            - ./volume/tomcat/hapi_server.xml:/opt/bitnami/tomcat/conf/server.xml
         secrets:
-            - source: common.properties
-                
+             - source: hapi_application.yaml 
+
+
+         
+    frontend.openelis.org:
+        image: itechuw/openelis-global-2-frontend:develop
+        container_name: openelisglobal-front-end
+        platform: linux/amd64
+        networks:
+        - default
+        environment:
+        - CHOKIDAR_USEPOLLING=true
+        tty: true
+
+    proxy:
+        image: itechuw/openelis-global-2-proxy:develop
+        container_name: openelisglobal-proxy
+        platform: linux/amd64
+        ports:
+            - 80:80
+            - 443:443
+        volumes:
+            - certs-vol:/etc/nginx/certs/
+            - keys-vol:/etc/nginx/keys/
+            - ./volume/nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
+        networks:
+            - default
+        restart: unless-stopped
+        depends_on:
+        - certs        
+            
 secrets:
   datasource.password:
     file: ./volume/properties/datasource.password  
   common.properties:
     file:  ./volume/properties/common.properties  
+  hapi_application.yaml:
+    file: ./volume/properties/hapi_application.yaml    
 
 networks:
   default:
@@ -101,6 +146,7 @@ networks:
         
 volumes:
   db-data:
-  cert-volume:
-       
-    
+  key_trust-store-volume:
+  certs-vol:
+  keys-vol:
+  lucene_index-vol:

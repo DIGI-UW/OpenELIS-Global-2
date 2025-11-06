@@ -2,7 +2,6 @@ package org.openelisglobal.sampleproject.service;
 
 import java.sql.Date;
 import java.util.List;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.sampleproject.valueholder.SampleProject;
 

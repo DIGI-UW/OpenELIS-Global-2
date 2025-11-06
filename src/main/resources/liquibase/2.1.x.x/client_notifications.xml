@@ -1,89 +1,89 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-	  
-	<changeSet author="csteele" id="1">
-		<addColumn schemaName= "clinlims" tableName="test" >
-			<column name="notify_results" defaultValueBoolean="false" type="BOOLEAN"/>  
-		</addColumn>  
-	</changeSet>
-	
-	<changeSet author="csteele" id="2">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<tableExists tableName="client_results_view" />
-			</not>
-		</preConditions>
-		<createTable schemaName="clinlims" tableName="client_results_view">  
-	        <column name="id" type="INTEGER" valueSequenceNext="client_results_view_seq" >
-				<constraints primaryKey="true" />
-			</column>
-			<column name="password" type="VARCHAR(255)" />
-			<column name="result_id" type="NUMERIC(10)" >
-				<constraints
-					foreignKeyName="fk_client_results_view_result"
-					references="result(id)"/>
-			</column>
-			<column name="last_updated" type="DATE" />
-	    </createTable>  
-	    <createSequence incrementBy="1" schemaName="clinlims"
-			sequenceName="client_results_view_seq" startValue="1" />
-	</changeSet>
-	
-	<changeSet author="csteele" id="3">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<tableExists tableName="notification_payload_template" />
-			</not>
-		</preConditions>
-		<createTable schemaName="clinlims" tableName="notification_payload_template">  
-	        <column name="id" type="INTEGER" valueSequenceNext="notification_payload_template_seq" >
-				<constraints primaryKey="true" />
-			</column>
-			<column name="message_template" type="VARCHAR(10000)" />
-			<column name="subject_template" type="VARCHAR(255)" />
-			<column name="type" type="VARCHAR(255)" >
-				<constraints
-					unique="true"
-					uniqueConstraintName="unique_notification_payload_template_type"
-					nullable="false"
-					notNullConstraintName="null_notification_payload_template_type"/>
-			</column>
-			<column name="last_updated" type="DATE" />
-	    </createTable>  
-	    <createSequence incrementBy="1" schemaName="clinlims"
-			sequenceName="notification_payload_template_seq" startValue="1" />
-	</changeSet>
-	
-	<changeSet author="csteele" id="4">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<tableExists tableName="ozekimessageout" />
-			</not>
-		</preConditions>
-		<createTable schemaName="clinlims" tableName="ozekimessageout">  
-	        <column name="id" type="INTEGER" autoIncrement="true" valueSequenceNext="notification_payload_template_seq" >
-				<constraints primaryKey="true" />
-			</column>
-			<column name="sender" type="VARCHAR(30)" />
-			<column name="receiver" type="VARCHAR(30)" />
-			<column name="msg" type="VARCHAR(160)" />
-			<column name="senttime" type="VARCHAR(100)" />
-			<column name="receivedtime" type="VARCHAR(100)" />
-			<column name="operator" type="VARCHAR(100)" />
-			<column name="msgtype" type="VARCHAR(30)" />
-			<column name="preference" type="VARCHAR(30)" />
-			<column name="status" type="VARCHAR(100)" />
-			<column name="errormsg" type="VARCHAR(250)" />
-	    </createTable>  
-	    <createIndex schemaName="clinlims" 
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="csteele" id="1">
+        <addColumn schemaName= "clinlims" tableName="test" >
+            <column name="notify_results" defaultValueBoolean="false" type="BOOLEAN"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="csteele" id="2">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="client_results_view" />
+            </not>
+        </preConditions>
+        <createTable schemaName="clinlims" tableName="client_results_view">
+            <column name="id" type="INTEGER" valueSequenceNext="client_results_view_seq" >
+                <constraints primaryKey="true" />
+            </column>
+            <column name="password" type="VARCHAR(255)" />
+            <column name="result_id" type="NUMERIC(10)" >
+                <constraints
+                    foreignKeyName="fk_client_results_view_result"
+                    references="result(id)"/>
+            </column>
+            <column name="last_updated" type="DATE" />
+        </createTable>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="client_results_view_seq" startValue="1" />
+    </changeSet>
+
+    <changeSet author="csteele" id="3">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notification_payload_template" />
+            </not>
+        </preConditions>
+        <createTable schemaName="clinlims" tableName="notification_payload_template">
+            <column name="id" type="INTEGER" valueSequenceNext="notification_payload_template_seq" >
+                <constraints primaryKey="true" />
+            </column>
+            <column name="message_template" type="VARCHAR(10000)" />
+            <column name="subject_template" type="VARCHAR(255)" />
+            <column name="type" type="VARCHAR(255)" >
+                <constraints
+                    unique="true"
+                    uniqueConstraintName="unique_notification_payload_template_type"
+                    nullable="false"
+                    notNullConstraintName="null_notification_payload_template_type"/>
+            </column>
+            <column name="last_updated" type="DATE" />
+        </createTable>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="notification_payload_template_seq" startValue="1" />
+    </changeSet>
+
+    <changeSet author="csteele" id="4">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="ozekimessageout" />
+            </not>
+        </preConditions>
+        <createTable schemaName="clinlims" tableName="ozekimessageout">
+            <column name="id" type="INTEGER" autoIncrement="true" valueSequenceNext="notification_payload_template_seq" >
+                <constraints primaryKey="true" />
+            </column>
+            <column name="sender" type="VARCHAR(30)" />
+            <column name="receiver" type="VARCHAR(30)" />
+            <column name="msg" type="VARCHAR(160)" />
+            <column name="senttime" type="VARCHAR(100)" />
+            <column name="receivedtime" type="VARCHAR(100)" />
+            <column name="operator" type="VARCHAR(100)" />
+            <column name="msgtype" type="VARCHAR(30)" />
+            <column name="preference" type="VARCHAR(30)" />
+            <column name="status" type="VARCHAR(100)" />
+            <column name="errormsg" type="VARCHAR(250)" />
+        </createTable>
+        <createIndex schemaName="clinlims"
             tableName="ozekimessageout"
-            indexName="idx_ozekimessageout_id">  
-        	<column name="id"/>  
-    	</createIndex> 
-	</changeSet>
-	
+            indexName="idx_ozekimessageout_id">
+            <column name="id"/>
+        </createIndex>
+    </changeSet>
+
 </databaseChangeLog>

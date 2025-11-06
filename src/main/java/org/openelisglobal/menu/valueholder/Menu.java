@@ -1,27 +1,26 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/ 
-* 
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-* 
-* The Original Code is OpenELIS code.
-* 
-* Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
-*
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
+ */
 package org.openelisglobal.menu.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.common.valueholder.ValueHolder;
 import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.internationalization.MessageUtil;
 
+@JsonIgnoreProperties({ "serialVersionUID", "id", "parent", "click_action", "localizedTitle", "localizedTooltip" })
 public class Menu extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
@@ -45,6 +44,8 @@ public class Menu extends BaseObject<String> {
     private boolean openInNewWindow;
 
     private boolean isActive;
+
+    private boolean hideInOldUI;
 
     public String getId() {
         return id;
@@ -144,5 +145,13 @@ public class Menu extends BaseObject<String> {
 
     public void setIsActive(boolean isActive) {
         this.isActive = isActive;
+    }
+
+    public boolean isHideInOldUI() {
+        return hideInOldUI;
+    }
+
+    public void setHideInOldUI(boolean hideInOldUI) {
+        this.hideInOldUI = hideInOldUI;
     }
 }

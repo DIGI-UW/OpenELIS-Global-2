@@ -1,7 +1,6 @@
 package org.openelisglobal.result.form;
 
 import java.util.List;
-
 import org.openelisglobal.test.beanItems.TestResultItem;
 
 public interface IResultsForm {
@@ -13,5 +12,4 @@ public interface IResultsForm {
     void setTestSectionId(String string);
 
     String getTestSectionId();
-
 }

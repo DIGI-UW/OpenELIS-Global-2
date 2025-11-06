@@ -1,9 +1,8 @@
 package org.openelisglobal.patientidentitytype.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.patientidentitytype.dao.PatientIdentityTypeDAO;
 import org.openelisglobal.patientidentitytype.valueholder.PatientIdentityType;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class PatientIdentityTypeServiceImpl extends BaseObjectServiceImpl<PatientIdentityType, String>
+public class PatientIdentityTypeServiceImpl extends AuditableBaseObjectServiceImpl<PatientIdentityType, String>
         implements PatientIdentityTypeService {
     @Autowired
     protected PatientIdentityTypeDAO baseObjectDAO;

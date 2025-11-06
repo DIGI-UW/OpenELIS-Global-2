@@ -1,7 +1,6 @@
 package org.openelisglobal.dataexchange.orderresult.valueholder;
 
 import java.sql.Timestamp;
-
 import org.openelisglobal.common.valueholder.BaseObject;
 
 public class HL7MessageOut extends BaseObject<String> {
@@ -49,5 +48,4 @@ public class HL7MessageOut extends BaseObject<String> {
     public void setLastupdated(Timestamp lastupdated) {
         this.lastupdated = lastupdated;
     }
-
 }

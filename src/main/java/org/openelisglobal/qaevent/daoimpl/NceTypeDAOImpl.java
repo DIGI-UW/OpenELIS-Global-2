@@ -1,8 +1,8 @@
 package org.openelisglobal.qaevent.daoimpl;
 
 import java.util.List;
-
 import org.hibernate.Session;
+import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -25,13 +25,10 @@ public class NceTypeDAOImpl extends BaseDAOImpl<NceType, String> implements NceT
         List<NceType> list;
         try {
             String sql = "from NceType nt order by nt.id";
-            org.hibernate.Query query = entityManager.unwrap(Session.class).createQuery(sql);
+            Query<NceType> query = entityManager.unwrap(Session.class).createQuery(sql, NceType.class);
             list = query.list();
-            // entityManager.unwrap(Session.class).flush(); // CSL remove old
-            // entityManager.unwrap(Session.class).clear(); // CSL remove old
-
         } catch (RuntimeException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in NceCategory getAllNceType()", e);
         }
         return list;

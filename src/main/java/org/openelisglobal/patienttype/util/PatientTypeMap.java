@@ -3,7 +3,6 @@ package org.openelisglobal.patienttype.util;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.patient.service.PatientTypeService;
 import org.openelisglobal.patientidentity.valueholder.PatientIdentity;

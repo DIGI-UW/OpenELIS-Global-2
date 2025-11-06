@@ -1,12 +1,11 @@
 package org.openelisglobal.systemuser.service;
 
-import java.util.List;
 import java.util.ArrayList;
-
+import java.util.List;
 import org.apache.commons.lang3.ObjectUtils;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.systemuser.dao.SystemUserDAO;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class SystemUserServiceImpl extends BaseObjectServiceImpl<SystemUser, String> implements SystemUserService {
+public class SystemUserServiceImpl extends AuditableBaseObjectServiceImpl<SystemUser, String>
+        implements SystemUserService {
     @Autowired
     protected SystemUserDAO baseObjectDAO;
 
@@ -40,7 +40,6 @@ public class SystemUserServiceImpl extends BaseObjectServiceImpl<SystemUser, Str
     @Transactional(readOnly = true)
     public void getData(SystemUser systemUser) {
         getBaseObjectDAO().getData(systemUser);
-
     }
 
     @Override
@@ -128,5 +127,4 @@ public class SystemUserServiceImpl extends BaseObjectServiceImpl<SystemUser, Str
         }
         return ObjectUtils.defaultIfNull(count, 0);
     }
-
 }

@@ -2,7 +2,6 @@ package org.openelisglobal.common.provider.validation;
 
 import java.util.HashSet;
 import java.util.Set;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -21,7 +20,6 @@ public class AltYearAccessionValidator extends BaseSiteYearAccessionValidator im
 
         return MessageUtil.getMessage("sample.entry.invalid.accession.number.suggestion") + " "
                 + suggestedAccessionNumber;
-
     }
 
     @Override
@@ -125,5 +123,4 @@ public class AltYearAccessionValidator extends BaseSiteYearAccessionValidator im
 
         return currentHighAccessionNumber.substring(SITE_START, YEAR_END) + incrementAsString;
     }
-
 }

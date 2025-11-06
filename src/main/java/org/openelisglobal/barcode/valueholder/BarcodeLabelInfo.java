@@ -6,7 +6,6 @@ import org.openelisglobal.common.valueholder.BaseObject;
  * Class for persisting bar code label information in the database
  *
  * @author Caleb
- *
  */
 public class BarcodeLabelInfo extends BaseObject<String> {
 
@@ -93,5 +92,4 @@ public class BarcodeLabelInfo extends BaseObject<String> {
     public void setType(String type) {
         this.type = type;
     }
-
 }

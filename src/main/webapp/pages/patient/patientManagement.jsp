@@ -6,15 +6,12 @@
                  org.openelisglobal.common.services.PhoneNumberService,
 				 org.openelisglobal.common.services.AddressService,
                  org.openelisglobal.common.util.*, org.openelisglobal.internationalization.MessageUtil" %>
-
+				 <%@page import="org.openelisglobal.common.util.DateUtil"%>
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
-
-<%@ taglib uri="http://tiles.apache.org/tags-tiles" prefix="tiles"%>
 
 
 <script type="text/javascript" src="scripts/ajaxCalls.js?"></script>
@@ -384,7 +381,7 @@ function  /*void*/ updatePatientAge( DOB )
 {
 	var date = String( DOB.value );
 
-	var datePattern = '<%=SystemConfiguration.getInstance().getPatternForDateLocale() %>';
+	var datePattern = '<%=DateUtil.getDateFormat() %>';
 	var splitPattern = datePattern.split("/");
 	var dayIndex = 0;
 	var monthIndex = 1;
@@ -528,7 +525,7 @@ function  /*void*/ pt_updateDOB( ageYears, ageMonths, ageDays )
 		}
 		year = date.getFullYear();
 
-		var datePattern = '<%=SystemConfiguration.getInstance().getPatternForDateLocale() %>';
+		var datePattern = '<%=DateUtil.getDateFormat() %>';
 		var splitPattern = datePattern.split("/");
 
 		var DOB = "";
@@ -939,8 +936,8 @@ function  processSubjectNumberSuccess(xhr){
 <form:hidden path="patientProperties.patientLastUpdated" id="patientLastUpdated"/>
 <form:hidden path="patientProperties.personLastUpdated" id="personLastUpdated"/>
 
-<%-- 	<tiles:insertAttribute name="patientSearch" /> --%>
-	<tiles:insertAttribute name="patientEnhancedSearch" />
+<%-- 	<jsp:include page="${patientSearchFragment}"/> --%>
+	<jsp:include page="${patientEnhancedSearchFragment}"/>
 
 <%-- 	<nested:hidden name='${form.formName}' property="patientProperties.patientProcessingStatus" id="processingStatus" value="add" />
 	<nested:hidden name='${form.formName}' property="patientProperties.patientPK" id="patientPK_ID" />
@@ -1542,9 +1539,11 @@ function selectedPatientChangedForManagement(firstName, lastName, gender, DOB, s
 
 var registered = false;
 
-function registerPatientChangedForManagement(){
-	if( !registered ){
-		addPatientChangedListener( selectedPatientChangedForManagement );
+function registerPatientChangedForManagement() {
+	if (!registered) {
+		if (typeof addPatientChangedListener === 'function') {
+			addPatientChangedListener(selectedPatientChangedForManagement);
+		}
 		registered = true;
 	}
 }

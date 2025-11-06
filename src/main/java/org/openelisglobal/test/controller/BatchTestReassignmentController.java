@@ -1,12 +1,10 @@
 package org.openelisglobal.test.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -75,10 +73,10 @@ public class BatchTestReassignmentController extends BaseController {
         if (result.hasErrors()) {
             saveErrors(result);
             return findForward(FWD_FAIL_INSERT, form);
-
         }
         String jsonString = form.getJsonWad();
-        // LogEvent.logInfo(this.getClass().getName(), "method unkown", jsonString);
+        // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown",
+        // jsonString);
 
         List<Analysis> newAnalysis = new ArrayList<>();
         List<Analysis> cancelAnalysis = new ArrayList<>();
@@ -90,7 +88,7 @@ public class BatchTestReassignmentController extends BaseController {
             analysisService.updateAnalysises(cancelAnalysis, newAnalysis, getSysUserId(request));
 
         } catch (LIMSRuntimeException e) {
-            LogEvent.logErrorStack(e);
+            LogEvent.logError(e);
         }
 
         if (changeBeans.isEmpty()) {
@@ -162,7 +160,6 @@ public class BatchTestReassignmentController extends BaseController {
         } catch (ParseException e) {
             LogEvent.logDebug(e);
         }
-
     }
 
     private List<Analysis> createNewAnalysis(List<Test> newTests, List<Analysis> changeAnalysis) {
@@ -212,7 +209,8 @@ public class BatchTestReassignmentController extends BaseController {
     }
 
     private String getStatusName(String statusId) {
-        StatusService.AnalysisStatus status = SpringContext.getBean(IStatusService.class).getAnalysisStatusForID(statusId);
+        StatusService.AnalysisStatus status = SpringContext.getBean(IStatusService.class)
+                .getAnalysisStatusForID(statusId);
         String name = getStatusName(status);
         return name == null ? SpringContext.getBean(IStatusService.class).getStatusName(status) : name;
     }

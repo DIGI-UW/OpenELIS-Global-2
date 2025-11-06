@@ -1,26 +1,26 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
-*
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
+ */
 package org.openelisglobal.reports.action.implementation;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-
+import net.sf.jasperreports.engine.JRDataSource;
+import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
+import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
+import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.QAService.QAObservationType;
 import org.openelisglobal.common.services.TableIdService;
@@ -43,9 +43,6 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
 import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
 import org.openelisglobal.spring.util.SpringContext;
-
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 
 public abstract class NonConformityByDate extends Report implements IReportCreator {
     private String lowDateStr;
@@ -102,9 +99,7 @@ public abstract class NonConformityByDate extends Report implements IReportCreat
         Collections.sort(reportItems, new ReportItemsComparator());
     }
 
-    /**
-     *
-     */
+    /** */
     private void createReportItems() {
         List<Sample> samples = sampleService.getSamplesReceivedInDateRange(lowDateStr, highDateStr);
         for (Sample sample : samples) {
@@ -121,7 +116,13 @@ public abstract class NonConformityByDate extends Report implements IReportCreat
                 String noteForSample = NonConformityHelper.getNoteForSample(sample);
 
                 NonConformityReportData data = new NonConformityReportData();
-                data.setAccessionNumber(sample.getAccessionNumber());
+                if (AccessionFormat.ALPHANUM.toString()
+                        .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.AccessionFormat))) {
+                    data.setAccessionNumber(
+                            AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(sample.getAccessionNumber()));
+                } else {
+                    data.setAccessionNumber(sample.getAccessionNumber());
+                }
                 data.setSubjectNumber(patient.getNationalId());
                 data.setSiteSubjectNumber(patient.getExternalId());
                 data.setStudy((project != null) ? project.getLocalizedName() : "");
@@ -168,9 +169,7 @@ public abstract class NonConformityByDate extends Report implements IReportCreat
         return errorFound ? new JRBeanCollectionDataSource(errorMsgs) : new JRBeanCollectionDataSource(reportItems);
     }
 
-    /**
-     * check everything
-     */
+    /** check everything */
     private boolean validateSubmitParameters() {
         return (dateRange.validateHighLowDate("report.error.message.date.received.missing"));
     }
@@ -197,7 +196,6 @@ public abstract class NonConformityByDate extends Report implements IReportCreat
             compare = StringUtil.compareWithNulls(left.getSampleType(), right.getSampleType());
             return compare;
         }
-
     }
 
     @Override
@@ -206,5 +204,4 @@ public abstract class NonConformityByDate extends Report implements IReportCreat
     }
 
     protected abstract String getHeaderName();
-
 }

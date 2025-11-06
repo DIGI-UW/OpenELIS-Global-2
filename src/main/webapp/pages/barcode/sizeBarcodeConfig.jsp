@@ -5,9 +5,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
 	
 
@@ -40,6 +40,8 @@ function checkFieldFloat(field) {
 	<tr>
 		<td><spring:message code="barcode.label.type.order"/>:</td>
 		<td><spring:message code="barcode.label.type.specimen"/>:</td>
+		<td><spring:message code="barcode.label.type.block"/>:</td>
+		<td><spring:message code="barcode.label.type.slide"/>:</td>
 	</tr>
 	<tr>
 		<td>
@@ -56,6 +58,20 @@ function checkFieldFloat(field) {
 				onchange="checkFieldFloat(this)"/>
 			<spring:message code="siteInfo.size.units"/>
 		</td>
+		<td>
+			<spring:message code="siteInfo.size.height"/>:
+			<form:input path="heightBlockLabels"
+				id="heightBlockLabels"
+				onchange="checkFieldFloat(this)"/>
+			<spring:message code="siteInfo.size.units"/>
+		</td>
+		<td>
+			<spring:message code="siteInfo.size.height"/>:
+			<form:input path="heightSlideLabels"
+				id="heightSlideLabels"
+				onchange="checkFieldFloat(this)"/>
+			<spring:message code="siteInfo.size.units"/>
+		</td>
 	</tr>
 	<tr>
 		<td>
@@ -69,6 +85,20 @@ function checkFieldFloat(field) {
 			<spring:message code="siteInfo.size.width"/>:
 			<form:input path="widthSpecimenLabels"
 				id="widthSpecimenLabels"
+				onchange="checkFieldFloat(this)"/>
+			<spring:message code="siteInfo.size.units"/>
+		</td>
+		<td>
+			<spring:message code="siteInfo.size.width"/>:
+			<form:input path="widthBlockLabels"
+				id="widthBlockLabels"
+				onchange="checkFieldFloat(this)"/>
+			<spring:message code="siteInfo.size.units"/>
+		</td>
+		<td>
+			<spring:message code="siteInfo.size.width"/>:
+			<form:input path="widthSlideLabels"
+				id="widthSlideLabels"
 				onchange="checkFieldFloat(this)"/>
 			<spring:message code="siteInfo.size.units"/>
 		</td>

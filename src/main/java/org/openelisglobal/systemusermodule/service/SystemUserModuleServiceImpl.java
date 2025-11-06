@@ -3,9 +3,8 @@ package org.openelisglobal.systemusermodule.service;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.systemusermodule.dao.SystemUserModuleDAO;
 import org.openelisglobal.systemusermodule.valueholder.PermissionModule;
 import org.openelisglobal.systemusermodule.valueholder.SystemUserModule;
@@ -14,7 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class SystemUserModuleServiceImpl extends BaseObjectServiceImpl<SystemUserModule, String>
+public class SystemUserModuleServiceImpl extends AuditableBaseObjectServiceImpl<SystemUserModule, String>
         implements SystemUserModuleService {
 
     @Autowired
@@ -96,6 +95,7 @@ public class SystemUserModuleServiceImpl extends BaseObjectServiceImpl<SystemUse
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Set<String> getAllPermittedPagesFromAgentId(int roleId) {
         Set<String> permittedPages = new HashSet<>();
         List<SystemUserModule> permissionModules = getAllPermissionModulesByAgentId((roleId));
@@ -105,5 +105,4 @@ public class SystemUserModuleServiceImpl extends BaseObjectServiceImpl<SystemUse
         }
         return permittedPages;
     }
-
 }

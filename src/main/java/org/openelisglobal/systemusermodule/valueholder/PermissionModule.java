@@ -5,7 +5,7 @@ import org.openelisglobal.common.valueholder.ValueHolder;
 import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.systemmodule.valueholder.SystemModule;
 
-abstract public class PermissionModule extends BaseObject<String> {
+public abstract class PermissionModule extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
@@ -87,9 +87,9 @@ abstract public class PermissionModule extends BaseObject<String> {
         return systemModuleId;
     }
 
-    abstract public String getPermissionAgentId();
+    public abstract String getPermissionAgentId();
 
-    abstract public PermissionAgent getPermissionAgent();
+    public abstract PermissionAgent getPermissionAgent();
 
-    abstract public void setPermissionAgent(PermissionAgent agent);
+    public abstract void setPermissionAgent(PermissionAgent agent);
 }

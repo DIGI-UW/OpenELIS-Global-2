@@ -1,19 +1,16 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
-*
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
+ */
 package org.openelisglobal.reports.action.implementation.reportBeans;
 
 import static org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBuilder.Strategy.DATE_TIME;
@@ -21,9 +18,6 @@ import static org.openelisglobal.reports.action.implementation.reportBeans.CSVCo
 import static org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBuilder.Strategy.NONE;
 
 import java.sql.Date;
-
-//import org.apache.commons.validator.GenericValidator;
-
 import org.openelisglobal.reports.action.implementation.Report.DateRange;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
@@ -90,7 +84,6 @@ public class ForCIDashboardColumnBuilder extends CIColumnBuilder {
      * @return the SQL for (nearly) one big row for each sample in the date range
      *         for the particular project.
      */
-
     @Override
     public void makeSQL() {
         Test test = SpringContext.getBean(TestService.class).getActiveTestsByName("Viral Load").get(0);
@@ -100,12 +93,14 @@ public class ForCIDashboardColumnBuilder extends CIColumnBuilder {
         query.append(SELECT_SAMPLE_PATIENT_ORGANIZATION);
         // all crosstab generated tables need to be listed in the following list and in
         // the WHERE clause at the bottom
-        query.append(
-                "\n, pat.id AS patient_oe_id, a.started_date,a.completed_date,a.released_date,a.printed_date, r.value as \"Viral Load\", a.type_of_sample_name, dt.name as report_name,dt.report_generation_time ");
+        query.append("\n" + ", pat.id AS patient_oe_id,"
+                + " a.started_date,a.completed_date,a.released_date,a.printed_date, r.value as \"Viral"
+                + " Load\", a.type_of_sample_name, dt.name as report_name,dt.report_generation_time ");
 
         // ordinary lab (sample and patient) tables
         query.append(FROM_SAMPLE_PATIENT_ORGANIZATION
-                + ", clinlims.sample_item as si, clinlims.analysis as a, clinlims.result as r, clinlims.document_track as dt ");
+                + ", clinlims.sample_item as si, clinlims.analysis as a, clinlims.result as r,"
+                + " clinlims.document_track as dt ");
 
         // all observation history values
         // appendObservationHistoryCrosstab(lowDatePostgres, highDatePostgres);
@@ -130,9 +125,8 @@ public class ForCIDashboardColumnBuilder extends CIColumnBuilder {
         /////////
         // no don't insert another crosstab or table here, go up before the main WHERE
         ///////// clause
-        // LogEvent.logInfo(this.getClass().getName(), "method unkown",
+        // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown",
         ///////// query.toString());
         return;
     }
-
 }

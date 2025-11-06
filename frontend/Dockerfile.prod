@@ -1,0 +1,32 @@
+# build env
+FROM node:18-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci 
+# preferred, but there appears to be some overlap 
+# RUN npm ci --omit=dev
+COPY . ./
+# preferred, but there appears to be issues
+# COPY ./src ./src
+# COPY ./public ./public
+# COPY ./tsconfig.json ./tsconfig.json
+# COPY ./.prettierrc.json ./.prettierrc.json
+# COPY ./.eslintrc.js ./.eslintrc.js
+RUN npm run build
+
+# production env
+FROM nginx:1.15-alpine
+USER root
+COPY --from=build /app/build /usr/share/nginx/html
+COPY --from=build /app/nginx/nginx.conf /etc/nginx/conf.d/default.conf
+
+RUN apk update; \
+    apk upgrade; \
+    apk add curl; \
+    apk add bash
+
+ADD nginx/healthcheck.sh /healthcheck.sh
+RUN chown nginx:nginx /healthcheck.sh; \
+    chmod 770 /healthcheck.sh;
+
+CMD ["nginx", "-g", "daemon off;"]

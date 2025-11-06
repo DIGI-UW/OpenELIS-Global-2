@@ -1,0 +1,71 @@
+$ui-01: #f4f4f4;
+$ui-02: #ffffff;
+$ui-03: #e0e0e0;
+$ui-04: #8d8d8d;
+$ui-05: #161616;
+$text-02: #525252;
+$text-03: #a8a8a8;
+$ui-background: #ffffff;
+$color-gray-30: #c6c6c6;
+$color-gray-70: #525252;
+$color-gray-100: #161616;
+$color-blue-60-2: #0f62fe;
+$color-blue-10: #edf5ff;
+$color-yellow-50: #feecae;
+$carbon--red-50: #fa4d56;
+$inverse-link: #78a9ff;
+$support-02: #24a148;
+$inverse-support-03: #f1c21b;
+$warning-background: #fff8e1;
+$openmrs-background-grey: #f4f4f4;
+$danger: #da1e28;
+$interactive-01: #0f62fe;
+$field-01: #f4f4f4;
+$grey-2: #e0e0e0;
+$labeldropdown: #c6c6c6;
+
+$brand-primary-10: #d9fbfb;
+$brand-primary-20: #9ef0f0;
+$brand-primary-30: #3ddbd9;
+$brand-primary-40: #08bdba;
+$brand-primary-50: #009d9a;
+
+/* 60,70 and 80 are already declared as brand-01, 02 and 03 respectively */
+
+$brand-primary-90: #022b30;
+$brand-primary-100: #081a1c;
+
+@mixin brand-01($property) {
+  #{$property}: #005d5d;
+  #{$property}: var(--brand-01);
+}
+
+@mixin brand-02($property) {
+  #{$property}: #004144;
+  #{$property}: var(--brand-02);
+}
+
+@mixin brand-03($property) {
+  #{$property}: #007d79;
+  #{$property}: var(--brand-03);
+}
+
+:root {
+  --brand-01: #005d5d;
+  --brand-02: #004144;
+  --brand-03: #007d79;
+}
+
+$breakpoint-phone-min: 0px;
+$breakpoint-phone-max: 600px;
+$breakpoint-tablet-min: 601px;
+$breakpoint-tablet-max: 1023px;
+$breakpoint-small-desktop-min: 1024px;
+$breakpoint-small-desktop-max: 1439px;
+$breakpoint-large-desktop-min: 1440px;
+$breakpoint-large-desktop-max: 99999999px;
+
+/* These color variables will be removed in a future release */
+$brand-teal-01: #007d79;
+$brand-01: #005d5d;
+$brand-02: #004144;

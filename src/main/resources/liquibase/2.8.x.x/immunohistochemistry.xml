@@ -1,0 +1,2475 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+      <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet author="csteele" id="1">
+    <validCheckSum>8:ab895f74386ecc421575297f4641e78b</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="immunohistochemistry_sample" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create immunohistochemistry table</comment>
+        <createTable tableName="immunohistochemistry_sample">
+            <column name="id" type="INTEGER" valueSequenceNext="program_sample_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="technician_id" type="NUMERIC(10)"/>
+            <column name="pathologist_id" type="NUMERIC(10)"/>
+            <column name="program_id" type="NUMERIC(10)"/>
+            <column name="sample_id" type="NUMERIC(10)"/>
+            <column name="status" type="VARCHAR(255)"/>
+            <column name="questionnaire_response_uuid" type="uuid" />
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="immunohistochemistry_sample_program_id_fk"
+                                 baseTableName="immunohistochemistry_sample" baseColumnNames="program_id"
+                                 referencedTableName="program" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="immunohistochemistry_sample_sample_id_fk"
+                                 baseTableName="immunohistochemistry_sample" baseColumnNames="sample_id"
+                                 referencedTableName="sample" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet author="mozzymutesa" id="2">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.test_section where name = 'Immunohistochemistry'; </sqlCheck>
+        </preConditions>
+        <comment>Add Immunohistochemistry test section</comment>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Immunohistochemistry test section" />
+            <column name="english" value="Immunohistochemistry" />
+            <column name="french" value="Immunohistochemistry"/>
+        </insert>
+        <insert tableName="test_section" schemaName="clinlims">
+            <column name="id" valueSequenceNext="test_section_seq" />
+            <column name="name" value="Immunohistochemistry" />
+            <column name="description" value="Immunohistochemistry Department" />
+            <column name="is_external" value="N" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="sort_order" value="2147483647" />
+            <column name="is_active" value="Y" />
+            <column name="name_localization_id" valueComputed="(select id from localization where description = 'Immunohistochemistry test section' and english = 'Immunohistochemistry' limit 1)" />
+            <column name="display_key" value="testsection.Immunohistochemistry" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="mozzymutesa" id="3">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="immunohistochemistry_report" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create immunohistochemistry_report table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="immunohistochemistry_report_seq" startValue="1" />
+        <createTable tableName="immunohistochemistry_report">
+            <column name="id" type="INTEGER" valueSequenceNext="immunohistochemistry_report_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="immunohistochemistry_sample_id" type="int"/>
+            <column name="report_type" type="VARCHAR(255)"/>
+            <column name="image" type="bytea"/>
+            <column name="file_type" type="VARCHAR(255)"/>
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="immunohistochemistry_report_immunohistochemistry_sample_id_fk"
+                                 baseTableName="immunohistochemistry_report" baseColumnNames="immunohistochemistry_sample_id"
+                                 referencedTableName="immunohistochemistry_sample" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet author="mozzymutesa" id="4">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="immunohistochemistry_sample" columnName="pathology_sample_id" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>add columns to the immunohistochemistry_sample table</comment>
+        <addColumn schemaName="clinlims" tableName="immunohistochemistry_sample">
+            <column name="pathology_sample_id" type="INTEGER"/>
+        </addColumn>
+        <addColumn schemaName="clinlims" tableName="immunohistochemistry_sample">
+            <column name="reffered" type="boolean"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="immunohistochemistry_pathology_sample_id_fk"
+                                 baseTableName="immunohistochemistry_sample" baseColumnNames="pathology_sample_id"
+                                 referencedTableName="pathology_sample" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet author="csteele" id="5">
+        <validCheckSum>8:08ff7e2e5eb4c04bd2b7f5bb869f5b14</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.type_of_sample where description = 'Immunohistochemistry specimen'; </sqlCheck>
+        </preConditions>
+        <comment>add immunohistochemistry sample type info</comment>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="sampleType name" />
+            <column name="english" value="Immunohistochemistry specimen" />
+            <column name="french" value="Immunohistochemistry specimen"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="type_of_sample">
+            <column name="id" valueNumeric=" nextval( 'type_of_sample_seq' ) "/>
+            <column name="description" value="Immunohistochemistry specimen"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="domain" value='H' />
+            <column name="local_abbrev" value='IMMUNO' />
+            <column name="display_key" value="sample.type.immunohistochemistrySpecimen"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Immunohistochemistry specimen' and description = 'sampleType name' limit 1)"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="csteele" id="6">
+        <validCheckSum>8:0fb458f9d4381982c866b642617489ba</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                select count(*) from clinlims.test where description = 'Anti-Pan Keratin';
+            </sqlCheck>
+        </preConditions>
+        <comment>add immunohistochemistry test and sample type info</comment>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-Pan Keratin" />
+            <column name="french" value="Anti-Pan Keratin"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-Pan Keratin (AE 1/AE3/PCK26) Primary Antibody" />
+            <column name="french" value="Anti-Pan Keratin (AE 1/AE3/PCK26) Primary Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-Pan Keratin"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='AE1/AE3' />
+            <column name="name" value="test.AE1/AE3"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-Pan Keratin' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-Pan Keratin (AE 1/AE3/PCK26) Primary Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="eb340239-5581-4edb-a69b-8d681bc36a8c"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Pan Keratin' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Pan Keratin' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="AMACR (p504 s)" />
+            <column name="french" value="AMACR (p504 s)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-p504s (SP116) Rabbit Monoclonal Primary Antibody" />
+            <column name="french" value="Anti-p504s (SP116) Rabbit Monoclonal Primary Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="AMACR (p504 s)"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='Amacr' />
+            <column name="name" value="test.Amacr"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'AMACR (p504 s)' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-p504s (SP116) Rabbit Monoclonal Primary Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="6343acce-1297-4449-b7e1-0e30c6515e12"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'AMACR (p504 s)' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'AMACR (p504 s)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="BCL 2" />
+            <column name="french" value="BCL 2"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-Bcl-2 (124) Mouse Monoclonal Primary Antibody" />
+            <column name="french" value="Anti-Bcl-2 (124) Mouse Monoclonal Primary Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="BCL 2"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='BCL2' />
+            <column name="name" value="test.BCL2"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'BCL 2' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-Bcl-2 (124) Mouse Monoclonal Primary Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="1a489c69-6825-4655-8f4c-a4adaf9c5e53"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'BCL 2' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'BCL 2' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="BCL 6" />
+            <column name="french" value="BCL 6"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti Bcl-6 (GI191E/A8) Mouse Monoclonal Antibody" />
+            <column name="french" value="Anti Bcl-6 (GI191E/A8) Mouse Monoclonal Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="BCL 6"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='BCL6' />
+            <column name="name" value="test.BCL6"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'BCL 6' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti Bcl-6 (GI191E/A8) Mouse Monoclonal Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="7de0cf1a-29ba-4568-8307-06f0f31d7c9e"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'BCL 6' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'BCL 6' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="BerEp4" />
+            <column name="french" value="BerEp4"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Ep-CAM/Epithelial Specific Antigen (Ber-EP4) Mouse Monoclonal Antibody" />
+            <column name="french" value="Ep-CAM/Epithelial Specific Antigen (Ber-EP4) Mouse Monoclonal Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="BerEp4"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='Ber Ep4' />
+            <column name="name" value="test.Ber Ep4"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'BerEp4' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Ep-CAM/Epithelial Specific Antigen (Ber-EP4) Mouse Monoclonal Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="2a13cb0e-5767-41c6-b221-541584cfb4f6"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'BerEp4' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'BerEp4' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Calponin" />
+            <column name="french" value="Calponin"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Calponin-1 (EP798Y) Rabbit Monoclonal Antibody" />
+            <column name="french" value="Calponin-1 (EP798Y) Rabbit Monoclonal Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Calponin"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='Calponin' />
+            <column name="name" value="test.Calponin"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Calponin' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Calponin-1 (EP798Y) Rabbit Monoclonal Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="40844d55-737f-4b64-889a-ca02135fca4b"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Calponin' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Calponin' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Calretinin" />
+            <column name="french" value="Calretinin"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-Calretinin (SP65) Rabbit Monoclonal Primary Antibody" />
+            <column name="french" value="Anti-Calretinin (SP65) Rabbit Monoclonal Primary Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Calretinin"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='Calretinin' />
+            <column name="name" value="test.Calretinin"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Calretinin' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-Calretinin (SP65) Rabbit Monoclonal Primary Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="06317d24-0d17-4c46-a564-d80ec751b42d"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Calretinin' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Calretinin' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-CD10" />
+            <column name="french" value="Anti-CD10"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-CD10 (SP 67) rabbit monoclonal antibody" />
+            <column name="french" value="Anti-CD10 (SP 67) rabbit monoclonal antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-CD10"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='CD10' />
+            <column name="name" value="test.CD10"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD10' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD10 (SP 67) rabbit monoclonal antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="588df143-40fc-4a98-a154-eff9b26a5328"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD10' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD10' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-CD15" />
+            <column name="french" value="Anti-CD15"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-CD 15 (MMA) mouse monoclonal antibody" />
+            <column name="french" value="Anti-CD 15 (MMA) mouse monoclonal antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-CD15"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='CD15' />
+            <column name="name" value="test.CD15"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD15' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD 15 (MMA) mouse monoclonal antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="625552e2-67bb-43e2-b5d8-db33c3b32773"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD15' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD15' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-CD20" />
+            <column name="french" value="Anti-CD20"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-CD 20 (L26) mouse monoclonal antibody" />
+            <column name="french" value="Anti-CD 20 (L26) mouse monoclonal antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-CD20"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='CD20' />
+            <column name="name" value="test.CD20"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD20' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD 20 (L26) mouse monoclonal antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="04879a2e-0c18-4993-a067-535a819bcaee"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD20' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD20' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-CD22" />
+            <column name="french" value="Anti-CD22"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-CD 22 (SP104) rabbit monoclonal antibody" />
+            <column name="french" value="Anti-CD 22 (SP104) rabbit monoclonal antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-CD22"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='CD22' />
+            <column name="name" value="test.CD22"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD22' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD 22 (SP104) rabbit monoclonal antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="1fa3b37d-86a6-48f9-8306-16c9a28c2117"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD22' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD22' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-CD 3" />
+            <column name="french" value="Anti-CD 3"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-CD 3 (2GV6) rabbit monoclonal antibody" />
+            <column name="french" value="Anti-CD 3 (2GV6) rabbit monoclonal antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-CD 3"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='CD3' />
+            <column name="name" value="test.CD3"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD 3' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD 3 (2GV6) rabbit monoclonal antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="0280be82-ab06-4f98-87fe-36b87777d81c"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD 3' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD 3' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-CD30" />
+            <column name="french" value="Anti-CD30"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-CD30 (Ber-H2) Mouse Monoclonal Antibody" />
+            <column name="french" value="Anti-CD30 (Ber-H2) Mouse Monoclonal Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-CD30"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='CD30' />
+            <column name="name" value="test.CD30"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD30' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD30 (Ber-H2) Mouse Monoclonal Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="ccc86a47-014d-414d-8147-2ca38f1bb92f"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD30' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD30' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-CD34" />
+            <column name="french" value="Anti-CD34"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-CD34 (QBEnd/10) Primary Mouse Monoclonal Antibody" />
+            <column name="french" value="Anti-CD34 (QBEnd/10) Primary Mouse Monoclonal Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-CD34"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='CD34' />
+            <column name="name" value="test.CD34"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD34' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD34 (QBEnd/10) Primary Mouse Monoclonal Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="0b64473a-8a9f-4655-a605-0396b1bde976"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD34' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD34' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-CD45" />
+            <column name="french" value="Anti-CD45"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-CD 45-LCA (RP2/18) Primary antibody" />
+            <column name="french" value="Anti-CD 45-LCA (RP2/18) Primary antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-CD45"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='CD45' />
+            <column name="name" value="test.CD45"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD45' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD 45-LCA (RP2/18) Primary antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="21a43f5e-c27e-49ee-8dfe-4eade8eefc25"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD45' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD45' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-CD 5" />
+            <column name="french" value="Anti-CD 5"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-CD 5 (SP 19) rabbit monoclonal antibody" />
+            <column name="french" value="Anti-CD 5 (SP 19) rabbit monoclonal antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-CD 5"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='CD5' />
+            <column name="name" value="test.CD5"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD 5' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD 5 (SP 19) rabbit monoclonal antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="2f4229d5-5678-4c01-a6c6-5aaed30d28c5"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD 5' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD 5' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-CD56" />
+            <column name="french" value="Anti-CD56"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-CD56 (MRQ-42) Rabbit Monoclonal Antibody" />
+            <column name="french" value="Anti-CD56 (MRQ-42) Rabbit Monoclonal Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-CD56"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='CD56' />
+            <column name="name" value="test.CD56"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD56' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD56 (MRQ-42) Rabbit Monoclonal Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="fbd4b9f6-04a1-42b1-ab16-c82146dd6681"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD56' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD56' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-CD7" />
+            <column name="french" value="Anti-CD7"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-CD 7 (5P94) Rabbit monoclonal antibody" />
+            <column name="french" value="Anti-CD 7 (5P94) Rabbit monoclonal antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-CD7"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='CD7' />
+            <column name="name" value="test.CD7"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD7' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD 7 (5P94) Rabbit monoclonal antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="333f35a9-1675-43e6-944e-ebb2af80424f"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD7' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD7' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-CD79a" />
+            <column name="french" value="Anti-CD79a"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-CD 79a (SP18) Rabbit Monoclonal antibody" />
+            <column name="french" value="Anti-CD 79a (SP18) Rabbit Monoclonal antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-CD79a"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='CD79a' />
+            <column name="name" value="test.CD79a"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD79a' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD 79a (SP18) Rabbit Monoclonal antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="705849c3-099c-4023-9fc5-d4c997017e66"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD79a' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD79a' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-CD99 (O13)" />
+            <column name="french" value="Anti-CD99 (O13)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-CD99 (O13) Mouse Monoclonal Primary Antibody" />
+            <column name="french" value="Anti-CD99 (O13) Mouse Monoclonal Primary Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-CD99 (O13)"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='CD99' />
+            <column name="name" value="test.CD99"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD99 (O13)' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-CD99 (O13) Mouse Monoclonal Primary Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="1ca7041f-b7cf-4bbb-aff8-62251247f39d"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD99 (O13)' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD99 (O13)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-CDX-2 (EPR2764Y)" />
+            <column name="french" value="Anti-CDX-2 (EPR2764Y)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="CDX-2 (EPR2764Y) Rabbit Monoclonal Antibody" />
+            <column name="french" value="CDX-2 (EPR2764Y) Rabbit Monoclonal Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-CDX-2 (EPR2764Y)"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='CDX-2' />
+            <column name="name" value="test.CDX-2"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-CDX-2 (EPR2764Y)' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'CDX-2 (EPR2764Y) Rabbit Monoclonal Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="ba1911ad-c264-4407-a188-2b4a0fd113c4"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CDX-2 (EPR2764Y)' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CDX-2 (EPR2764Y)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-Chromogranin A" />
+            <column name="french" value="Anti-Chromogranin A"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-Chromogranin A (LK2H10) primary antibody" />
+            <column name="french" value="Anti-Chromogranin A (LK2H10) primary antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-Chromogranin A"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='Cg A' />
+            <column name="name" value="test.Cg A"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-Chromogranin A' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-Chromogranin A (LK2H10) primary antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="745547e2-f484-4ef5-9f57-2f93dedc5d59"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Chromogranin A' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Chromogranin A' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-Cytokeratin 20" />
+            <column name="french" value="Anti-Cytokeratin 20"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-Cytokeratin 20(SP33) rabbit monoclonal antibody" />
+            <column name="french" value="Anti-Cytokeratin 20(SP33) rabbit monoclonal antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-Cytokeratin 20"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='CK20' />
+            <column name="name" value="test.CK20"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-Cytokeratin 20' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-Cytokeratin 20(SP33) rabbit monoclonal antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="52db0e50-0fd0-49dd-b2d4-c2fe40faa132"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Cytokeratin 20' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Cytokeratin 20' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-Cytokeratin 5/6" />
+            <column name="french" value="Anti-Cytokeratin 5/6"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-Cytokeratin 5/6 (D5/16b4) mouse monoclonal antibody" />
+            <column name="french" value="Anti-Cytokeratin 5/6 (D5/16b4) mouse monoclonal antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-Cytokeratin 5/6"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='CK5/6' />
+            <column name="name" value="test.CK5/6"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-Cytokeratin 5/6' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-Cytokeratin 5/6 (D5/16b4) mouse monoclonal antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="3dc6ebe0-28da-497f-b2e2-2d3fc2a6779f"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Cytokeratin 5/6' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Cytokeratin 5/6' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-Cytokeratin 7" />
+            <column name="french" value="Anti-Cytokeratin 7"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-Cytokeratin 7 (SP52) Rabbit monoclonal antibody" />
+            <column name="french" value="Anti-Cytokeratin 7 (SP52) Rabbit monoclonal antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-Cytokeratin 7"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='CK7' />
+            <column name="name" value="test.CK7"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-Cytokeratin 7' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-Cytokeratin 7 (SP52) Rabbit monoclonal antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="6bb42c54-cb74-4254-9ddb-3006bc2f93f5"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Cytokeratin 7' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Cytokeratin 7' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-Cyclin D1 (SP4-R)" />
+            <column name="french" value="Anti-Cyclin D1 (SP4-R)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="VENTANA anti-Cyclin D1 (SP4-R) Rabbit Monoclonal Primary Antibody" />
+            <column name="french" value="VENTANA anti-Cyclin D1 (SP4-R) Rabbit Monoclonal Primary Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-Cyclin D1 (SP4-R)"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='Cyclin D1' />
+            <column name="name" value="test.Cyclin D1"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-Cyclin D1 (SP4-R)' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'VENTANA anti-Cyclin D1 (SP4-R) Rabbit Monoclonal Primary Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="553f9920-d1b6-44c0-a734-2dc877567218"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Cyclin D1 (SP4-R)' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Cyclin D1 (SP4-R)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-Desmin" />
+            <column name="french" value="Anti-Desmin"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-Desmin (DE-R-11) Primary Antibody" />
+            <column name="french" value="Anti-Desmin (DE-R-11) Primary Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-Desmin"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='Desmin' />
+            <column name="name" value="test.Desmin"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-Desmin' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-Desmin (DE-R-11) Primary Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="93d571a0-0f2a-46c4-aa7c-3c043ef09412"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Desmin' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Desmin' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="DOG1 (SP31)" />
+            <column name="french" value="DOG1 (SP31)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="DOG 1(SP31) rabbit monoclonal antibody" />
+            <column name="french" value="DOG 1(SP31) rabbit monoclonal antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="DOG1 (SP31)"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='DOG1' />
+            <column name="name" value="test.DOG1"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'DOG1 (SP31)' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'DOG 1(SP31) rabbit monoclonal antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="ca616b31-31dc-40db-b704-2f4fb2c75da7"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'DOG1 (SP31)' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'DOG1 (SP31)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-E-Cadherin" />
+            <column name="french" value="Anti-E-Cadherin"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-E-cadherin (36) mouse monoclonal antibody" />
+            <column name="french" value="Anti-E-cadherin (36) mouse monoclonal antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-E-Cadherin"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='E-Cad' />
+            <column name="name" value="test.E-Cad"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-E-Cadherin' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-E-cadherin (36) mouse monoclonal antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="630c2b6f-bded-4b17-bfe8-dfcdc423e476"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-E-Cadherin' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-E-Cadherin' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-EMA (E29)" />
+            <column name="french" value="Anti-EMA (E29)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-EMA (E29) Mouse Monoclonal Primary Antibody" />
+            <column name="french" value="Anti-EMA (E29) Mouse Monoclonal Primary Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-EMA (E29)"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='EMA' />
+            <column name="name" value="test.EMA"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-EMA (E29)' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-EMA (E29) Mouse Monoclonal Primary Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="93370450-795b-4f42-a595-b0e85c1a6635"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-EMA (E29)' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-EMA (E29)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-ER" />
+            <column name="french" value="Anti-ER"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-ER (SP1) Rabbit monoclonal antibody" />
+            <column name="french" value="Anti-ER (SP1) Rabbit monoclonal antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-ER"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='ER' />
+            <column name="name" value="test.ER"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-ER' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-ER (SP1) Rabbit monoclonal antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="34698d39-4714-4078-8077-526b19436e30"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-ER' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-ER' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-Gata 3" />
+            <column name="french" value="Anti-Gata 3"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="GATA3 (L50-823) Mouse Monoclonal Antibody" />
+            <column name="french" value="GATA3 (L50-823) Mouse Monoclonal Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-Gata 3"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='Gata3' />
+            <column name="name" value="test.Gata3"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-Gata 3' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'GATA3 (L50-823) Mouse Monoclonal Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="7993603d-2ac5-4d56-aedc-29fea4077233"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Gata 3' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Gata 3' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Glial Fibrillary Acidic Protein" />
+            <column name="french" value="Glial Fibrillary Acidic Protein"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Glial Fibrillary Acidic Protein (GFAP) (EP672Y) Rabbit monoclonal antibody" />
+            <column name="french" value="Glial Fibrillary Acidic Protein (GFAP) (EP672Y) Rabbit monoclonal antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Glial Fibrillary Acidic Protein"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='GFAP' />
+            <column name="name" value="test.GFAP"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Glial Fibrillary Acidic Protein' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Glial Fibrillary Acidic Protein (GFAP) (EP672Y) Rabbit monoclonal antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="8e7b08e2-e008-4f7a-ae53-d277a2bc9370"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Glial Fibrillary Acidic Protein' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Glial Fibrillary Acidic Protein' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-hepatocyte Specific Antigen (Hep Par-1)" />
+            <column name="french" value="Anti-hepatocyte Specific Antigen (Hep Par-1)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-Hepatocyte Specific Antigen (Hep Par-1) (OCH1E5) Mouse Monoclonal Antibody" />
+            <column name="french" value="Anti-Hepatocyte Specific Antigen (Hep Par-1) (OCH1E5) Mouse Monoclonal Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-hepatocyte Specific Antigen (Hep Par-1)"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='Hep Par1' />
+            <column name="name" value="test.Hep Par1"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-hepatocyte Specific Antigen (Hep Par-1)' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-Hepatocyte Specific Antigen (Hep Par-1) (OCH1E5) Mouse Monoclonal Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="911246c1-5604-4e83-8765-995851e1530b"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-hepatocyte Specific Antigen (Hep Par-1)' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-hepatocyte Specific Antigen (Hep Par-1)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Her2 Dual ISH" />
+            <column name="french" value="Her2 Dual ISH"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="HER2 Dual In Situ Hybridization (CISH/SISH)" />
+            <column name="french" value="HER2 Dual In Situ Hybridization (CISH/SISH)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Her2 Dual ISH"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='HER2 ISH' />
+            <column name="name" value="test.HER2 ISH"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Her2 Dual ISH' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'HER2 Dual In Situ Hybridization (CISH/SISH)' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="47af71cc-8650-4480-9dbc-c0e8ea42b07e"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Her2 Dual ISH' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Her2 Dual ISH' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-HER2" />
+            <column name="french" value="Anti-HER2"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-HER-2/neu (4B5) Rabbit Monoclonal Primary Antibody" />
+            <column name="french" value="Anti-HER-2/neu (4B5) Rabbit Monoclonal Primary Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-HER2"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='HER2/neu' />
+            <column name="name" value="test.HER2/neu"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-HER2' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-HER-2/neu (4B5) Rabbit Monoclonal Primary Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="e94ea45b-dcb3-4a73-8442-45eff1be37fa"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-HER2' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-HER2' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-melanosome (HMB45)" />
+            <column name="french" value="Anti-melanosome (HMB45)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-melanosome (HMB45) mouse Monoclonal antibody" />
+            <column name="french" value="Anti-melanosome (HMB45) mouse Monoclonal antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-melanosome (HMB45)"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='HMB45' />
+            <column name="name" value="test.HMB45"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-melanosome (HMB45)' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-melanosome (HMB45) mouse Monoclonal antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="2434a0ba-fac8-4e46-aa79-caa2c9e41729"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-melanosome (HMB45)' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-melanosome (HMB45)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Inhibin" />
+            <column name="french" value="Inhibin"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Inhibin alpha (MRQ-63) Rabbit Monoclonal Primary Antibody" />
+            <column name="french" value="Inhibin alpha (MRQ-63) Rabbit Monoclonal Primary Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Inhibin"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='Inhibin' />
+            <column name="name" value="test.Inhibin"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Inhibin' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Inhibin alpha (MRQ-63) Rabbit Monoclonal Primary Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="2ca7742a-4765-47ca-a7af-88e570ab1526"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Inhibin' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Inhibin' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-Ki67" />
+            <column name="french" value="Anti-Ki67"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-KI 67 (MIB-1) clone (30-9) rabbit monoclonal" />
+            <column name="french" value="Anti-KI 67 (MIB-1) clone (30-9) rabbit monoclonal"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-Ki67"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='KI-67' />
+            <column name="name" value="test.KI-67"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-Ki67' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-KI 67 (MIB-1) clone (30-9) rabbit monoclonal' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="a2a8c85d-3d28-4b72-852a-4488138fbe0c"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Ki67' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Ki67' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-MUC2" />
+            <column name="french" value="Anti-MUC2"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="MUC2 (MRQ-18) Mouse Monoclonal Antibody" />
+            <column name="french" value="MUC2 (MRQ-18) Mouse Monoclonal Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-MUC2"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='MUC2' />
+            <column name="name" value="test.MUC2"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-MUC2' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'MUC2 (MRQ-18) Mouse Monoclonal Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="922c982c-3d5c-47b6-913c-f4b5d2da763d"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-MUC2' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-MUC2' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-MUM1" />
+            <column name="french" value="Anti-MUM1"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="MUM1 (EP190) Rabbit Monoclonal Primary Antibody" />
+            <column name="french" value="MUM1 (EP190) Rabbit Monoclonal Primary Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-MUM1"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='MUM1' />
+            <column name="name" value="test.MUM1"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-MUM1' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'MUM1 (EP190) Rabbit Monoclonal Primary Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="1c360748-a7e1-485d-a51d-6131f86630bd"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-MUM1' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-MUM1' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Myogenin (F5D)" />
+            <column name="french" value="Myogenin (F5D)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Myogenin (F5D) Mouse Monoclonal Antibody" />
+            <column name="french" value="Myogenin (F5D) Mouse Monoclonal Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Myogenin (F5D)"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='Myogenin' />
+            <column name="name" value="test.Myogenin"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Myogenin (F5D)' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Myogenin (F5D) Mouse Monoclonal Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="13cfdfe2-b0b2-4a91-bda9-10cf7875a215"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Myogenin (F5D)' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Myogenin (F5D)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Napsin A (MRQ-60)" />
+            <column name="french" value="Napsin A (MRQ-60)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Napsin A (MRQ-60) Mouse Monoclonal Primary Antibody" />
+            <column name="french" value="Napsin A (MRQ-60) Mouse Monoclonal Primary Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Napsin A (MRQ-60)"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='Napsin A' />
+            <column name="name" value="test.Napsin A"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Napsin A (MRQ-60)' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Napsin A (MRQ-60) Mouse Monoclonal Primary Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="f3ff69c6-5949-416c-a037-907d03889f3b"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Napsin A (MRQ-60)' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Napsin A (MRQ-60)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="CINtec® p16 Histology" />
+            <column name="french" value="CINtec® p16 Histology"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="CINtec® p16" />
+            <column name="french" value="CINtec® p16"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="CINtec® p16 Histology"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='P16' />
+            <column name="name" value="test.P16"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'CINtec® p16 Histology' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'CINtec® p16' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="082b28cf-dfc1-4116-bd5d-19d96354b29e"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'CINtec® p16 Histology' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'CINtec® p16 Histology' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-p40 (BC28)" />
+            <column name="french" value="Anti-p40 (BC28)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-p40 (BC28) Mouse Monoclonal Primary Antibody" />
+            <column name="french" value="Anti-p40 (BC28) Mouse Monoclonal Primary Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-p40 (BC28)"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='P40' />
+            <column name="name" value="test.P40"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-p40 (BC28)' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-p40 (BC28) Mouse Monoclonal Primary Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="da869e51-054d-49c5-80bd-51dc3ddbc242"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-p40 (BC28)' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-p40 (BC28)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="P 53" />
+            <column name="french" value="P 53"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-p53 (D0-7) Primary Antibody" />
+            <column name="french" value="Anti-p53 (D0-7) Primary Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="P 53"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='P53' />
+            <column name="name" value="test.P53"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'P 53' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-p53 (D0-7) Primary Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="4b97d479-05cf-499a-ade2-84a3cf062907"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'P 53' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'P 53' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-p63 (4A4)" />
+            <column name="french" value="Anti-p63 (4A4)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-p63 (4A4) Mouse Monoclonal Primary Antibody" />
+            <column name="french" value="Anti-p63 (4A4) Mouse Monoclonal Primary Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-p63 (4A4)"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='P63' />
+            <column name="name" value="test.P63"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-p63 (4A4)' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-p63 (4A4) Mouse Monoclonal Primary Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="002d38dd-e905-424e-9117-e33a55ecd5ba"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-p63 (4A4)' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-p63 (4A4)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Pax 5" />
+            <column name="french" value="Pax 5"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-PAX5 (SP34) Rabbit Monoclonal Primary Antibody" />
+            <column name="french" value="Anti-PAX5 (SP34) Rabbit Monoclonal Primary Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Pax 5"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='PAX5' />
+            <column name="name" value="test.PAX5"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Pax 5' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-PAX5 (SP34) Rabbit Monoclonal Primary Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="8e277c20-577b-4127-b4cc-cec3502acae4"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Pax 5' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Pax 5' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Pax 8" />
+            <column name="french" value="Pax 8"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-PAX8 (MRQ-50) Mouse monoclonal Antibody" />
+            <column name="french" value="Anti-PAX8 (MRQ-50) Mouse monoclonal Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Pax 8"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='PAX8' />
+            <column name="name" value="test.PAX8"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Pax 8' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-PAX8 (MRQ-50) Mouse monoclonal Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="978ed42d-4aac-475c-97d2-5df49df125e5"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Pax 8' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Pax 8' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-PR" />
+            <column name="french" value="Anti-PR"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-PR (1E2) Rabbit monoclonal Antibody" />
+            <column name="french" value="Anti-PR (1E2) Rabbit monoclonal Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-PR"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='PR' />
+            <column name="name" value="test.PR"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-PR' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-PR (1E2) Rabbit monoclonal Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="17afe174-bf3c-4c47-9688-419cbcd6221e"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-PR' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-PR' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-S100" />
+            <column name="french" value="Anti-S100"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-S100 (Polyclonal) primary antibody" />
+            <column name="french" value="Anti-S100 (Polyclonal) primary antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-S100"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='S100' />
+            <column name="name" value="test.S100"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-S100' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-S100 (Polyclonal) primary antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="10672b8f-86f0-4277-a0ca-c9086bf97826"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-S100' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-S100' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Actin Smooth Muscle" />
+            <column name="french" value="Actin Smooth Muscle"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Actin Smooth Muscle (1A4) Mouse Monoclonal Antibody" />
+            <column name="french" value="Actin Smooth Muscle (1A4) Mouse Monoclonal Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Actin Smooth Muscle"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='SMA' />
+            <column name="name" value="test.SMA"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Actin Smooth Muscle' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Actin Smooth Muscle (1A4) Mouse Monoclonal Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="da27733a-0487-4a43-88fd-14b87c337770"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Actin Smooth Muscle' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Actin Smooth Muscle' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-Synaptophysin (SP11)" />
+            <column name="french" value="Anti-Synaptophysin (SP11)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-Synaptophysin (SP Ii) Rabbit Monoclonal Primary Antibody" />
+            <column name="french" value="Anti-Synaptophysin (SP Ii) Rabbit Monoclonal Primary Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-Synaptophysin (SP11)"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='Synapto' />
+            <column name="name" value="test.Synapto"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-Synaptophysin (SP11)' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-Synaptophysin (SP Ii) Rabbit Monoclonal Primary Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="5877c71c-2876-424b-8e19-0b2f6d04b17c"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Synaptophysin (SP11)' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Synaptophysin (SP11)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-Thyroid Transcription Factor" />
+            <column name="french" value="Anti-Thyroid Transcription Factor"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-Thyroid Transcription Factor-1 (5P141) Rabbit monoclonal antibody" />
+            <column name="french" value="Anti-Thyroid Transcription Factor-1 (5P141) Rabbit monoclonal antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-Thyroid Transcription Factor"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='TTF1' />
+            <column name="name" value="test.TTF1"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-Thyroid Transcription Factor' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-Thyroid Transcription Factor-1 (5P141) Rabbit monoclonal antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="f6235d06-1e58-4136-9d25-90aaf15c6744"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Thyroid Transcription Factor' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Thyroid Transcription Factor' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Thyroglobulin (2H11+6E1)" />
+            <column name="french" value="Thyroglobulin (2H11+6E1)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Thyroglobulin (2H11+6E1) Mouse Monoclonal Antibody" />
+            <column name="french" value="Thyroglobulin (2H11+6E1) Mouse Monoclonal Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Thyroglobulin (2H11+6E1)"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='Thyroglobulin' />
+            <column name="name" value="test.Thyroglobulin"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Thyroglobulin (2H11+6E1)' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Thyroglobulin (2H11+6E1) Mouse Monoclonal Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="47d3c528-7f08-4192-afb7-e5851a2ba2ba"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Thyroglobulin (2H11+6E1)' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Thyroglobulin (2H11+6E1)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Wilms' tumor 1 protein (WT1)" />
+            <column name="french" value="Wilms' tumor 1 protein (WT1)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="WT1 (6F-H2) Mouse Monoclonal Antibody" />
+            <column name="french" value="WT1 (6F-H2) Mouse Monoclonal Antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Wilms' tumor 1 protein (WT1)"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='WT1' />
+            <column name="name" value="test.WT1"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Wilms'' tumor 1 protein (WT1)' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'WT1 (6F-H2) Mouse Monoclonal Antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="265d3ffc-1660-4fe9-96c9-1343b2493c68"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Wilms'' tumor 1 protein (WT1)' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Wilms'' tumor 1 protein (WT1)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Anti-Vimentin" />
+            <column name="french" value="Anti-Vimentin"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Anti-Vimentin (V9) mouse monoclonal antibody" />
+            <column name="french" value="Anti-Vimentin (V9) mouse monoclonal antibody"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Anti-Vimentin"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Immunohistochemistry' limit 1)" />
+            <column name="local_code" value='Vimentin' />
+            <column name="name" value="test.Vimentin"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Anti-Vimentin' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Anti-Vimentin (V9) mouse monoclonal antibody' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="69311654-db72-451a-8170-59aa59d537c0"/>
+        </insert>
+        <insert tableName="test_result">
+            <column name="id" valueNumeric="nextval( 'test_result_seq' )"/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Vimentin' ) " />
+            <column name="tst_rslt_type" value="R" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="t"/>
+            <column name="sort_order" valueNumeric="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Immunohistochemistry specimen' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Vimentin' ) " />
+        </insert>
+    </changeSet>
+    <changeSet author="mozzymutesa" id="7">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">select count(*) from clinlims.dictionary_category where name = 'ihc_breast_cancer_report_intensity';
+            </sqlCheck>
+    </preConditions>
+    <comment>adds Breast Cancer Hormone Receptor Status Report Parameter Lists in dictionary_category</comment>
+
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq" />
+            <column name="description" value="IHC Breast Cancer Report Intensity" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="ihcBcrInte" />
+            <column name="name" value="ihc_breast_cancer_report_intensity" />
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq" />
+            <column name="description" value="IHC Breast Cancer Report CerbB2 Pattern" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="ihcBcrCerb" />
+            <column name="name" value="ihc_breast_cancer_report_cerbb2_pattern" />
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq" />
+            <column name="description" value="IHC Breast Cancer Report Molecular subtype" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="ihcBcrMole" />
+            <column name="name" value="ihc_breast_cancer_report_molecular_subtype" />
+        </insert>
+  </changeSet>
+  <changeSet author="mozzymutesa" id="8">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">select count(*) from clinlims.dictionary where dict_entry = 'Strong';
+        </sqlCheck>
+    </preConditions>
+    <comment>add default IHC Intensity Options in Dictionary</comment>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Strong" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'ihc_breast_cancer_report_intensity' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Weak" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'ihc_breast_cancer_report_intensity' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="No" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'ihc_breast_cancer_report_intensity' limit 1)" />
+        </insert>
+     </changeSet>
+</databaseChangeLog>

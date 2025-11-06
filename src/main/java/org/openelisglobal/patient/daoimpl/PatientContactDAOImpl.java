@@ -1,9 +1,8 @@
 package org.openelisglobal.patient.daoimpl;
 
 import java.util.List;
-
-import org.hibernate.Query;
 import org.hibernate.Session;
+import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -26,16 +25,13 @@ public class PatientContactDAOImpl extends BaseDAOImpl<PatientContact, String> i
 
         try {
             String sql = "From PatientContact p where p.patientId = :patientId";
-            Query query = entityManager.unwrap(Session.class).createQuery(sql);
+            Query<PatientContact> query = entityManager.unwrap(Session.class).createQuery(sql, PatientContact.class);
             query.setParameter("patientId", Integer.parseInt(patientId));
             patients = query.list();
-            // entityManager.unwrap(Session.class).flush(); // CSL remove old
-            // entityManager.unwrap(Session.class).clear(); // CSL remove old
         } catch (RuntimeException e) {
-            LogEvent.logDebug(e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in PatientContactDAOImpl getForPatient() ", e);
         }
         return patients;
     }
-
 }

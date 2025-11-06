@@ -1,21 +1,19 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.resultvalidation.util;
 
+import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -24,9 +22,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-
-import javax.annotation.PostConstruct;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -85,7 +80,6 @@ import org.springframework.web.context.WebApplicationContext;
 @Service
 @Scope(value = WebApplicationContext.SCOPE_REQUEST, proxyMode = ScopedProxyMode.TARGET_CLASS)
 public class ResultsValidationRetroCIUtility {
-
     // private static String VIRAL_LOAD_ID = "";
     private static String ANALYTE_CD4_CT_GENERATED_ID;
 
@@ -127,8 +121,10 @@ public class ResultsValidationRetroCIUtility {
 
     @PostConstruct
     private void initializeGlobalVariables() {
-        notValidStatus.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)));
-        notValidStatus.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+        notValidStatus.add(
+                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)));
+        notValidStatus.add(Integer
+                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
         Analyte analyte = new Analyte();
         analyte.setAnalyteName("Conclusion");
         analyte = analyteService.getAnalyteByName(analyte, false);
@@ -172,7 +168,6 @@ public class ResultsValidationRetroCIUtility {
                     public int compare(ResultValidationItem o1, ResultValidationItem o2) {
                         return o1.getAccessionNumber().compareTo(o2.getAccessionNumber());
                     }
-
                 });
                 resultList = testResultListToELISAAnalysisList(testList, statusList);
 
@@ -192,8 +187,8 @@ public class ResultsValidationRetroCIUtility {
                     testList = getUnValidatedTestResultItemsInTestSection(testSectionId, statusList);
                     // Immunology and Hematology are together
                     // Not sure if this is the correct way to judge this business rule
-                    if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.configurationName,
-                            "CI_GENERAL") && testSectionName.equals("Immunology")) {
+                    if (ConfigurationProperties.getInstance().isCaseInsensitivePropertyValueEqual(
+                            Property.configurationName, "CI_GENERAL") && testSectionName.equals("Immunology")) {
                         sw.setMark("Immuno time");
                         // add Hematology tests to list
                         totalTestName = MessageUtil.getMessage("test.validation.total.percent");
@@ -219,7 +214,6 @@ public class ResultsValidationRetroCIUtility {
         sw.report();
 
         return resultList;
-
     }
 
     private void addPrecentageResultsTotal(List<ResultValidationItem> hematologyResults) {
@@ -310,7 +304,6 @@ public class ResultsValidationRetroCIUtility {
                         : accessionComp);
             }
         });
-
     }
 
     private void setGroupingNumbers(List<AnalysisItem> resultList) {
@@ -396,13 +389,12 @@ public class ResultsValidationRetroCIUtility {
                                     ? dictionary.getDictEntry()
                                     : dictionary.getLocalAbbreviation();
                         } catch (RuntimeException e) {
-                            LogEvent.logInfo(this.getClass().getName(), "getGroupedTestsForAnalysisList",
+                            LogEvent.logInfo(this.getClass().getSimpleName(), "getGroupedTestsForAnalysisList",
                                     e.getMessage());
                             // no-op
                         }
 
                         validationItem.setResultValue(resultValue);
-
                     }
 
                     validationItem.setAnalysis(analysis);
@@ -469,7 +461,7 @@ public class ResultsValidationRetroCIUtility {
                     analysis.getSampleItem().getSortOrder(), result,
                     analysis.getSampleItem().getSample().getAccessionNumber(), notes);
 
-            notes = null;// we only want it once
+            notes = null; // we only want it once
             if (resultItem.getQualifiedDictionaryId() != null) {
                 parentItem = resultItem;
             }
@@ -486,7 +478,7 @@ public class ResultsValidationRetroCIUtility {
         List<TestResult> testResults = getPossibleResultsForTest(test);
 
         String displayTestName = TestServiceImpl.getLocalizedTestNameWithType(test);
-//		displayTestName = augmentTestNameWithRange(displayTestName, result);
+        // displayTestName = augmentTestNameWithRange(displayTestName, result);
 
         ResultValidationItem testItem = new ResultValidationItem();
 
@@ -667,7 +659,6 @@ public class ResultsValidationRetroCIUtility {
                     conclusion = result.getValue();
                 }
             }
-
         }
 
         if (conclusion != null) {
@@ -678,7 +669,6 @@ public class ResultsValidationRetroCIUtility {
         }
 
         return finalResult;
-
     }
 
     public AnalysisItem testResultItemToELISAAnalysisItem(ResultValidationItem testResultItem) {
@@ -701,7 +691,6 @@ public class ResultsValidationRetroCIUtility {
         elisaResultItem = setElisaTestResult(testResultItem.getTestName(), elisaResultItem);
 
         return elisaResultItem;
-
     }
 
     public AnalysisItem addTestResultToELISAAnalysisItem(ResultValidationItem testResultItem, AnalysisItem eItem) {
@@ -715,7 +704,6 @@ public class ResultsValidationRetroCIUtility {
         eItem = setElisaTestResult(testResultItem.getTestName(), eItem);
 
         return eItem;
-
     }
 
     public AnalysisItem setElisaTestResult(String testName, AnalysisItem eItem) {
@@ -725,9 +713,16 @@ public class ResultsValidationRetroCIUtility {
         if (testName.equals("Murex")) {
             eItem.setMurexResult(result);
             eItem.setMurexAnalysisId(analysisId);
+        }
+        if (testName.equals("Murex Combinaison")) {
+            eItem.setMurexResult(result);
+            eItem.setMurexAnalysisId(analysisId);
         } else if (testName.equals("Integral")) {
             eItem.setIntegralResult(result);
             eItem.setIntegralAnalysisId(analysisId);
+        } else if (testName.equals("Genscreen")) {
+            eItem.setGenscreenResult(result);
+            eItem.setGenscreenAnalysisId(analysisId);
         } else if (testName.equals("Vironostika")) {
             eItem.setVironostikaResult(result);
             eItem.setVironostikaAnalysisId(analysisId);
@@ -867,8 +862,9 @@ public class ResultsValidationRetroCIUtility {
         analysisResultItem.setReflexGroup(testResultItem.isReflexGroup());
         analysisResultItem.setChildReflex(testResultItem.isChildReflex());
         if (!(testResultItem.getAnalysis() == null)) {
-            analysisResultItem.setNonconforming(testResultItem.isNonconforming() || SpringContext.getBean(IStatusService.class)
-                    .matches(testResultItem.getAnalysis().getStatusId(), AnalysisStatus.TechnicalRejected));
+            analysisResultItem
+                    .setNonconforming(testResultItem.isNonconforming() || SpringContext.getBean(IStatusService.class)
+                            .matches(testResultItem.getAnalysis().getStatusId(), AnalysisStatus.TechnicalRejected));
         }
         analysisResultItem.setQualifiedDictionaryId(testResultItem.getQualifiedDictionaryId());
         analysisResultItem.setQualifiedResultValue(testResultItem.getQualifiedResultValue());
@@ -876,7 +872,6 @@ public class ResultsValidationRetroCIUtility {
         analysisResultItem.setHasQualifiedResult(testResultItem.isHasQualifiedResult());
 
         return analysisResultItem;
-
     }
 
     private String getFormattedResult(ResultValidationItem testResultItem) {
@@ -910,7 +905,6 @@ public class ResultsValidationRetroCIUtility {
             }
         }
         return uomName;
-
     }
 
     public String getTestSectionId(String testSectionName) {
@@ -946,5 +940,4 @@ public class ResultsValidationRetroCIUtility {
     public List<SampleQaEvent> getSampleQaEvents(Sample sample) {
         return sampleQaEventService.getSampleQaEventsBySample(sample);
     }
-
 }

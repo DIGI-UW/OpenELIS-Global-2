@@ -1,9 +1,8 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" %>
-<%@ page import="java.util.*"%>
+<%@ page import="java.util.*,
+		 		 org.owasp.encoder.Encode" %>
 
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib uri="http://tiles.apache.org/tags-tiles" prefix="tiles"%>
-
 
 <!DOCTYPE html>
 <html>
@@ -98,19 +97,25 @@
 </div>
     
 <script type="text/javascript">
+function isValidUrl (urlString) {
+    try { 
+    	return Boolean(new URL(urlString)); 
+    }
+    catch(e){ 
+    	return false; 
+    }
+}
+
 $(document).ready(function () {
     // jquery functions for details on error
     // Currently not localized.
-    var pathname = location.href;
-    $("#error-path").text(pathname);
-    var referrerPath = document.referrer;
-    var referrer = '<spring:message code="errorpage.previous" text="errorpage.previous"/><br /><span class="troubleshooting">' + referrerPath + '"</span>"';
-    if (referrerPath != '') {
-            $("#previous-path").html(referrer);
-            // To build mailto link - currenly not in use
-            //var mailAdmin = '<a href="mailto:address_of_admin@uw.edu&subject=Page Error&body=A major error occurred in the OpenELIS system.%0D%0A%0D%0AError page: ' + pathname +'%0D%0AError Time: ' + myDate + '%0D%0AUser-agent header: ' + navigator.userAgent + '">system administrator</a>';
-            //$("#admin-mail").html(mailAdmin);
-    }
+    $("#error-path").text(location.href);
+
+	//  ensure it is a url to prevent xss
+	if (isValidUrl(document.referrer)) {
+	     var referrerMsg = '<spring:message code="errorpage.previous"/><br />' + document.referrer;
+	     $("#previous-path").html(referrerMsg);
+	}
 });	
 </script>
     

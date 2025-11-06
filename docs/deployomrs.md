@@ -1,119 +1,167 @@
 # Lab Orders and Results exchange between OpenMRS and OpenELIS
 
-The Lab Order workflow between OpenELIS and [OpenMRS](http://openmrs.org) will use the [OpenMRS FHIR Workflow Module](https://www.hl7.org/fhir/workflow-module.html) and suggested [Communication Patterns](https://www.hl7.org/fhir/workflow-communications.html#12.6.2.1) to implement the ordering of lab tests from OpenMRS to OpenELIS and the returning the results to OpenMRS.
+The Lab Order workflow between OpenELIS and [OpenMRS](http://openmrs.org) will
+use the
+[OpenMRS FHIR Workflow Module](https://www.hl7.org/fhir/workflow-module.html)
+and suggested
+[Communication Patterns](https://www.hl7.org/fhir/workflow-communications.html#12.6.2.1)
+to implement the ordering of lab tests from OpenMRS to OpenELIS and the
+returning the results to OpenMRS.
 
-The current communication workflow uses HL7 V2.5.1 messages as documented here: (https://github.com/openelisglobal/openelisglobal-core/wiki/Result-Reporting). This functionality is implemented in [openmrs-module-labintegration](https://github.com/IsantePlus/openmrs-module-labintegration), an OpenMRS module made for an implementation of OpenMRS deployed in Haiti called [iSantePlus](https://github.com/IsantePlus).  
+The current communication workflow uses HL7 V2.5.1 messages as documented here:
+(https://github.com/openelisglobal/openelisglobal-core/wiki/Result-Reporting).
+This functionality is implemented in
+[openmrs-module-labintegration](https://github.com/IsantePlus/openmrs-module-labintegration),
+an OpenMRS module made for an implementation of OpenMRS deployed in Haiti called
+[iSantePlus](https://github.com/IsantePlus).
 
 ## Communication Overview
+
 ![screen1](img/omrsoe2.png)
 
+## Intergration Between iSantéPlus and OPenELIS
 
-## Intergration Between iSantéPlus and OPenELIS 
 ### iSantéPlus
+
 1. Install iSantePlus using one of the following approaches:
-	
-	1. Docker: https://github.com/IsantePlus/isanteplus-docker
-	
-	1. Apache Tomcat WAR: [SOP iSantePlus Installation.docx](https://wiki.openmrs.org/download/attachments/235274282/SOP%20iSantePlus%20Installation.docx?version=1&modificationDate=1590637509000&api=v2)
 
-1. [Install](https://wiki.openmrs.org/display/docs/Administering+Modules) the [OpenMRS FHIR module](https://github.com/pmanko/openmrs-module-isanteplus-labonfhir) using the following omod file: [openmrs-module-fhir2.omod](https://drive.google.com/file/d/1SSlVrChKQ6i0zVbUgzR7Blx_czjiJhcG/view?usp=sharing)
+   1. Docker: https://github.com/IsantePlus/isanteplus-docker
 
-1. Install the iSantePlus Lab on FHIR module using the following omod file: labonfhir-1.0.0-SNAPSHOT.omod
+   1. Apache Tomcat WAR:
+      [SOP iSantePlus Installation.docx](https://wiki.openmrs.org/download/attachments/235274282/SOP%20iSantePlus%20Installation.docx?version=1&modificationDate=1590637509000&api=v2)
+
+1. [Install](https://wiki.openmrs.org/display/docs/Administering+Modules) the
+   [OpenMRS FHIR module](https://github.com/pmanko/openmrs-module-isanteplus-labonfhir)
+   using the following omod file:
+   [openmrs-module-fhir2.omod](https://drive.google.com/file/d/1SSlVrChKQ6i0zVbUgzR7Blx_czjiJhcG/view?usp=sharing)
+
+1. Install the iSantePlus Lab on FHIR module using the following omod file:
+   labonfhir-1.0.0-SNAPSHOT.omod
 
 1. Restart iSantePlus
 
-Start up the OpenELIS Update Task in `System Administration` → `Advanced Administration` → `Scheduler` → `Manage Scheduler`
+Start up the OpenELIS Update Task in `System Administration` →
+`Advanced Administration` → `Scheduler` → `Manage Scheduler`
 
 ![screen1](img/omrsoe1.png)
 
 ### OpenELIS Global 2.x
+
 1. Install OpenELIS Global 2.x using the instructions [HERE](../install)
-1. Navigate to the "results reporting" configuration: https://IPforyourserver:8443/OpenELIS-Global/ResultReportingConfiguration
-1. Move the radio button for Result Reporting to "Enable" and enter in the URL for the OpenMRS connection like in the example below. 
-	* Please note, the Test URL button may not respond to the FHIR module, so please disregard any errors if you click it.  
-1. Click Save at the bottom of the page. 
+1. Navigate to the "results reporting" configuration:
+   https://IPforyourserver:8443/OpenELIS-Global/ResultReportingConfiguration
+1. Move the radio button for Result Reporting to "Enable" and enter in the URL
+   for the OpenMRS connection like in the example below.
+   - Please note, the Test URL button may not respond to the FHIR module, so
+     please disregard any errors if you click it.
+1. Click Save at the bottom of the page.
 
 ![screen1](img/omrsoe3.png)
 
 ## FHIR Based Intergration Between Openmrs 3.x and OPenELIS 2.6
+
 ### Openmrs 3.x
-1. Setup  OpenRMS 3.x on top an instance of the Refference Application see [more](https://wiki.openmrs.org/display/projects/3.x+Implementer+Documentation)
 
-2. Load the Following Modules
-    * [FHIR2 module](https://github.com/openmrs/openmrs-module-fhir2) version  >= 1.4.0 
-    * [Lab on FHIR](https://github.com/openmrs/openmrs-module-labonfhir) module 
-    * [Order Entry Ui Module](https://github.com/openmrs/openmrs-module-orderentryui)
-    * [Order Entry Owa](https://github.com/openmrs/openmrs-owa-orderentry)   
-3. Configure the required settings .
-    * `labonfhir.openElisUrl` ,The URL for the FHIR server where OpenELIS polls the Orders From.
-    * `labonfhir.openElisUserUuid` ,UUID for the service user that represents OpenELIS 
+1.  Setup OpenRMS 3.x on top an instance of the Refference Application see
+    [more](https://openmrs.atlassian.net/wiki/spaces/projects/pages/26936930/O3+Implementer+Documentation+Set+Up+Configure+Deploy)
 
-    [see more](https://github.com/openmrs/openmrs-module-labonfhir#usage) on Configuring the above Modules.  
+2.  Load the Following Modules
+    - [FHIR2 module](https://github.com/openmrs/openmrs-module-fhir2) version >=
+      1.4.0
+    - [Lab on FHIR](https://github.com/openmrs/openmrs-module-labonfhir) module
+    - [Order Entry Ui Module](https://github.com/openmrs/openmrs-module-orderentryui)
+    - [Order Entry Owa](https://github.com/openmrs/openmrs-owa-orderentry)
+3.  Configure the required settings .
 
-    Note: The Lab test Concept should be of class `Test` ,and should be mapped to a  `Loinc code` that matches a the `Test Loinc Code` in OpenELIS
+    - `labonfhir.openElisUrl` ,The URL for the FHIR server where OpenELIS polls
+      the Orders From.
+    - `labonfhir.openElisUserUuid` ,UUID for the service user that represents
+      OpenELIS
 
+    [see more](https://github.com/openmrs/openmrs-module-labonfhir#usage) on
+    Configuring the above Modules.
 
-4. Go to the Reff App (2.x) Patient Dashbord ,Go to `Prescribed Medication` Widget.
-  	![screen1](img/widget.png) 
+    Note: The Lab test Concept should be of class `Test` ,and should be mapped
+    to a `Loinc code` that matches a the `Test Loinc Code` in OpenELIS
 
-	See more on [Creating Orders](https://wiki.openmrs.org/display/projects/Order+Entry+UI+End+User+Guide+for+Creating+Drug+Orders) using the Order           Entry Owa.
+4.  Go to the Reff App (2.x) Patient Dashbord ,Go to `Prescribed Medication`
+    Widget. ![screen1](img/widget.png)
 
-  
-  	![screen1](img/order.png)
+    See more on
+    [Creating Orders](https://wiki.openmrs.org/display/projects/Order+Entry+UI+End+User+Guide+for+Creating+Drug+Orders)
+    using the Order Entry Owa.
 
-5. If the [Lab on FHIR](https://github.com/openmrs/openmrs-module-labonfhir) module is rightly configured ,it will generate the lab FHIR Bundle and push to the remote Fhir Server for OpenELIS to poll the orders
+    ![screen1](img/order.png)
 
-6. Start the OpenELIS Pull Task ,to start polling for Lab Results via the Sheduler Interface  
-`System Administration` → `Advanced Administration` → `Scheduler` → `Manage Scheduler`
+5.  If the [Lab on FHIR](https://github.com/openmrs/openmrs-module-labonfhir)
+    module is rightly configured ,it will generate the lab FHIR Bundle and push
+    to the remote Fhir Server for OpenELIS to poll the orders
 
-	![screen1](img/omrsoe1.png)
+6.  Start the OpenELIS Pull Task ,to start polling for Lab Results via the
+    Sheduler Interface  
+    `System Administration` → `Advanced Administration` → `Scheduler` →
+    `Manage Scheduler`
 
-7. To view the lab Results , Ensure you have the [patient-test-results-app](https://github.com/openmrs/openmrs-esm-patient-chart/tree/master/packages/esm-patient-test-results-app).
-Go to the Patient DashBoard in 3.x ui and click Test Results. 
-![screen1](img/test-results.png)
+        ![screen1](img/omrsoe1.png)
 
+7.  To view the lab Results , Ensure you have the
+    [patient-test-results-app](https://github.com/openmrs/openmrs-esm-patient-chart/tree/master/packages/esm-patient-test-results-app).
+    Go to the Patient DashBoard in 3.x ui and click Test Results.
+    ![screen1](img/test-results.png)
 
-### OpenELIS Global 2.6.x 
-The FHIR based Lab Workflow is supported in OpenELIS 2.6 .  
+### OpenELIS Global 2.6.x
 
-1. Start an instance of OpenELIS with the following configuration properties set in the properties file.
+The FHIR based Lab Workflow is supported in OpenELIS 2.6 .
 
-    * `org.openelisglobal.fhirstore.uri=<localFhirServerUrl>` . This is the Fhir Server that runs paralel with OPenELIS
+1. Start an instance of OpenELIS with the following configuration properties set
+   in the properties file.
 
-    * `org.openelisglobal.remote.source.uri=<remoreFhirServerUr>`. This is the Fhir server that the Lab on FHIR module points to ie via the `labonfhir.openElisUrl`
-    * `org.openelisglobal.remote.source.updateStatus=true`
-    *  `org.openelisglobal.remote.source.identifier=Practitioner/<userUuuid>` .This is the UUID of the user who created the Order ie `labonfhir.openElisUserUuid`
-    * `org.openelisglobal.task.useBasedOn=true`
+   - `org.openelisglobal.fhirstore.uri=<localFhirServerUrl>` . This is the Fhir
+     Server that runs paralel with OPenELIS
 
-    * `org.openelisglobal.fhir.subscriber=h<remoreFhirServerUrl>` .
-    * `org.openelisglobal.fhir.subscriber.resources=Task,Patient,ServiceRequest,DiagnosticReport,Observation,Specimen,Practitioner,Encounter`
+   - `org.openelisglobal.remote.source.uri=<remoreFhirServerUr>`. This is the
+     Fhir server that the Lab on FHIR module points to ie via the
+     `labonfhir.openElisUrl`
+   - `org.openelisglobal.remote.source.updateStatus=true`
+   - `org.openelisglobal.remote.source.identifier=Practitioner/<userUuuid>`
+     .This is the UUID of the user who created the Order ie
+     `labonfhir.openElisUserUuid`
+   - `org.openelisglobal.task.useBasedOn=true`
 
-2. Ensure OpenELIS has the test that maps to the same LOINC code as the test Concept in OpenMRS.
-This can be added via the  
- `Admin page` → `Test Management` → `Add Tests` 
-![screen1](img/addTest.png)
+   - `org.openelisglobal.fhir.subscriber=h<remoreFhirServerUrl>` .
+   - `org.openelisglobal.fhir.subscriber.resources=Task,Patient,ServiceRequest,DiagnosticReport,Observation,Specimen,Practitioner,Encounter`
 
-3. Configure OpenELIS to accept electronic order.
-`Admin` → `Order Entry Configuration` → `external orders`
-![screen1](img/accepteorder.png)
+2. Ensure OpenELIS has the test that maps to the same LOINC code as the test
+   Concept in OpenMRS. This can be added via the  
+    `Admin page` → `Test Management` → `Add Tests` ![screen1](img/addTest.png)
 
+3. Configure OpenELIS to accept electronic order. `Admin` →
+   `Order Entry Configuration` → `external orders`
+   ![screen1](img/accepteorder.png)
 
 4. Search for the Electronic Order ie  
- `Order` → `Electronic Orders` and then Complete the Order
-Note that the user should have the right Lab Unit Priviledges to complete the Order
-![screen1](img/eOrders.png)
+    `Order` → `Electronic Orders` and then Complete the Order Note that the user
+   should have the right Lab Unit Priviledges to complete the Order ![screen1](img/eOrders.png)
 
-5. After Results are captured and Validated , OpenELIS sends back the results to OpenMRS as a Diagnostic Report with an Observation
+5. After Results are captured and Validated , OpenELIS sends back the results to
+   OpenMRS as a Diagnostic Report with an Observation
 
 ## Required FHIR Resources
+
 ### Task
+
 > [more info](https://wiki.openmrs.org/display/projects/Task+Resource)
 
-The Task resource is created along with the corresponding ServiceRequest resource when a clinician creates a TestOrder and decides to send it to OpenELIS.
+The Task resource is created along with the corresponding ServiceRequest
+resource when a clinician creates a TestOrder and decides to send it to
+OpenELIS.
 
-This resource is used to track the status of the lab order request from initiation to completion, and as a container for all other resources related to the given order.
+This resource is used to track the status of the lab order request from
+initiation to completion, and as a container for all other resources related to
+the given order.
 
-*Example Task:*
+_Example Task:_
+
 ```
 {
     "resourceType": "Task",
@@ -151,12 +199,17 @@ This resource is used to track the status of the lab order request from initiati
     }
 }
 ```
+
 ### ServiceRequest
+
 > [more info](https://wiki.openmrs.org/display/projects/ServiceRequest+Resource)
 
-The ServiceRequest resource represents the TestOrder placed in OpenMRS. It is referenced from the Task with the Task.basedOn element, and sent to OpenELIS with the Task to initiate the processing of the order. 
+The ServiceRequest resource represents the TestOrder placed in OpenMRS. It is
+referenced from the Task with the Task.basedOn element, and sent to OpenELIS
+with the Task to initiate the processing of the order.
 
-*Example Service Request:*
+_Example Service Request:_
+
 ```
 {
     "resourceType": "ServiceRequest",
@@ -188,12 +241,17 @@ The ServiceRequest resource represents the TestOrder placed in OpenMRS. It is re
     }
 }
 ```
+
 ### DiagnosticReport
+
 > [more info](https://wiki.openmrs.org/display/projects/DiagnosticReport+Resource)
 
-The DiagnosticReport resource  is the container for the results of an Order, and holds these results in the DiagnosticReport.result element as references to Observation resources. 
+The DiagnosticReport resource is the container for the results of an Order, and
+holds these results in the DiagnosticReport.result element as references to
+Observation resources.
 
-*Example Diagnostic Report*
+_Example Diagnostic Report_
+
 ```
 {
   "resourceType": "DiagnosticReport",
@@ -240,12 +298,14 @@ The DiagnosticReport resource  is the container for the results of an Order, and
   ]
 }
 ```
+
 ### Observation
+
 > [more info](https://wiki.openmrs.org/display/projects/Observation+Resource)
 
 The Observation resource contains the results of the Lab Order request.
 
-*Example Observation:*
+_Example Observation:_
 
 ```
 {
@@ -287,11 +347,13 @@ The Observation resource contains the results of the Lab Order request.
   }
 }
 ```
+
 ### Patient
 
 > [more info](https://wiki.openmrs.org/display/projects/Patient+Resource)
 
-The Patient resource contains vital information for OpenELIS to fullfill the lab order request, and is referenced by the Task.
+The Patient resource contains vital information for OpenELIS to fullfill the lab
+order request, and is referenced by the Task.
 
 Example Patient:
 
@@ -344,17 +406,13 @@ Example Patient:
 ```
 
 ## Relevant FHIR Docs
-* [Using Tasks in a RESTful Context](https://www.hl7.org/fhir/task.html#12.1.2.1)
-* [Workflow Module](https://www.hl7.org/fhir/workflow-module.html)
-* [Diagnostic Module](https://www.hl7.org/fhir/diagnostics-module.html)
-* [Example: Workflow states for a lab order for a blood test](https://www.hl7.org/fhir/workflow-communications.html#12.6.2.1)
-* [Option G: POST of Task to fulfiller's system](https://www.hl7.org/fhir/workflow-management.html#optiong)
+
+- [Using Tasks in a RESTful Context](https://www.hl7.org/fhir/task.html#12.1.2.1)
+- [Workflow Module](https://www.hl7.org/fhir/workflow-module.html)
+- [Diagnostic Module](https://www.hl7.org/fhir/diagnostics-module.html)
+- [Example: Workflow states for a lab order for a blood test](https://www.hl7.org/fhir/workflow-communications.html#12.6.2.1)
+- [Option G: POST of Task to fulfiller's system](https://www.hl7.org/fhir/workflow-management.html#optiong)
 
 ## Relevant OpenMRS Talk Posts
+
 [The handling and mapping of lab order status for the lab workflow](https://talk.openmrs.org/t/the-handling-and-mapping-of-lab-order-status-for-the-lab-workflow/26348)
-
-
-
-
-
- 

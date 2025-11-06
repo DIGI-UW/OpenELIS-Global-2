@@ -1,12 +1,11 @@
 
-<%@ taglib uri="http://tiles.apache.org/tags-tiles" prefix="tiles"%>
 <table width="100%">
 <tr width="100%">
-<td width="15%"><tiles:insertAttribute name="left"/></td>
-<td width="85%"><tiles:insertAttribute name="right"/></td>
+<td width="15%"><jsp:include page="${leftFragment}"/></td>
+<td width="85%"><jsp:include page="${rightFragment}"/></td>
 </tr>
 <tr><td colspan="2">
-<tiles:insertAttribute name="homePageContent"/>
+<jsp:include page="${homePageContentFragment}"/>
 </td>
 </tr>
 </table>

@@ -2,7 +2,6 @@ package org.openelisglobal.reportconfiguration.form;
 
 import java.io.Serializable;
 import java.util.List;
-
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.reportconfiguration.valueholder.Report;
 import org.openelisglobal.reportconfiguration.valueholder.ReportCategory;
@@ -20,7 +19,6 @@ public class ReportConfigurationForm extends BaseForm implements Serializable {
 
     private String idOrder;
 
-
     private MultipartFile reportTemplateFile;
 
     /*
@@ -30,7 +28,6 @@ public class ReportConfigurationForm extends BaseForm implements Serializable {
 
     private String menuDisplayKey;
     private String menuActionUrl;
-
 
     public ReportConfigurationForm() {
         this.currentReport = new Report();

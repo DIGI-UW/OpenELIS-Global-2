@@ -1,27 +1,22 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.dataexchange.resultreporting;
 
+import jakarta.servlet.http.HttpServletResponse;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.servlet.http.HttpServletResponse;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -73,27 +68,34 @@ public class ResultReportingTransfer {
         for (TestResultsXmit result : resultReport.getTestResults()) {
 
             // TODO delete if successfully moved to other area
-//            if (result.getReferringOrderNumber() == null) { // walk-in create FHIR
-//                String patientGuid = result.getPatientGUID();
-//                String accessionNumber = result.getAccessionNumber();
-//                accessionNumber = accessionNumber.substring(0,accessionNumber.indexOf('-')); // disregard test number within set
-//                org.openelisglobal.patient.valueholder.Patient patient = patientService.getPatientForGuid(patientGuid);
-//                fhirTransformService.createObservationAndDiagnosticReportFromResult(result, patient);
-////                String fhirJson = fhirTransformService.CreateFhirFromOESample(result, patient);
-////                LogEvent.logDebug(this.getClass().getName(), "sendResults", "" + fhirJson);
-//                continue;
-//            }
-//            if (!result.getReferringOrderNumber().isEmpty()) { // eOrder create FHIR
-//
-//                String orderNumber = result.getReferringOrderNumber();
-//                List<ElectronicOrder> eOrders = electronicOrderService.getElectronicOrdersByExternalId(orderNumber);
-//                ElectronicOrder eOrder = eOrders.get(eOrders.size() - 1);
-//                ExternalOrderStatus eOrderStatus = SpringContext.getBean(IStatusService.class)
-//                        .getExternalOrderStatusForID(eOrder.getStatusId());
-//
-//                fhirTransformService.CreateFhirFromOESample(eOrder, result);
-//                continue;
-//            }
+            // if (result.getReferringOrderNumber() == null) { // walk-in create FHIR
+            // String patientGuid = result.getPatientGUID();
+            // String accessionNumber = result.getAccessionNumber();
+            // accessionNumber = accessionNumber.substring(0,accessionNumber.indexOf('-'));
+            // // disregard test number within set
+            // org.openelisglobal.patient.valueholder.Patient patient =
+            // patientService.getPatientForGuid(patientGuid);
+            // fhirTransformService.createObservationAndDiagnosticReportFromResult(result,
+            // patient);
+            //// String fhirJson = fhirTransformService.CreateFhirFromOESample(result,
+            // patient);
+            //// LogEvent.logDebug(this.getClass().getSimpleName(), "sendResults", "" +
+            // fhirJson);
+            // continue;
+            // }
+            // if (!result.getReferringOrderNumber().isEmpty()) { // eOrder create FHIR
+            //
+            // String orderNumber = result.getReferringOrderNumber();
+            // List<ElectronicOrder> eOrders =
+            // electronicOrderService.getElectronicOrdersByExternalId(orderNumber);
+            // ElectronicOrder eOrder = eOrders.get(eOrders.size() - 1);
+            // ExternalOrderStatus eOrderStatus =
+            // SpringContext.getBean(IStatusService.class)
+            // .getExternalOrderStatusForID(eOrder.getStatusId());
+            //
+            // fhirTransformService.CreateFhirFromOESample(eOrder, result);
+            // continue;
+            // }
             if (!GenericValidator.isBlankOrNull(result.getReferringOrderNumber())) { // HL7
                 ITransmissionResponseHandler responseHandler = new ResultFailHandler(reportingResult);
                 new ReportTransmission().sendHL7Report(resultReport, url, responseHandler);
@@ -146,7 +148,7 @@ public class ResultReportingTransfer {
             try {
                 SpringContext.getBean(ReportExternalExportService.class).insert(report);
             } catch (LIMSRuntimeException e) {
-                LogEvent.logErrorStack(e);
+                LogEvent.logError(e);
             }
         }
 
@@ -186,11 +188,11 @@ public class ResultReportingTransfer {
 
             try {
                 trackService.insertAll(documents);
-//				for (DocumentTrack document : documents) {
-//					trackService.insert(document);
-//				}
+                // for (DocumentTrack document : documents) {
+                // trackService.insert(document);
+                // }
             } catch (LIMSRuntimeException e) {
-                LogEvent.logErrorStack(e);
+                LogEvent.logError(e);
             }
         }
     }

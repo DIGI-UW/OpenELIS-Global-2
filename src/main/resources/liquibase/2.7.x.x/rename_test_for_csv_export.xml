@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+ <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM localization WHERE french = 'Determine' AND english = 'Murex' ;
+            </sqlCheck>
+        </preConditions>
+        <comment>rename Murex/Determine to not collide with other Murex test in CSV export</comment>
+        <update tableName="localization" schemaName="clinlims">
+            <column name="english" value="Determine" />
+            <where>french = 'Determine' AND english = 'Murex'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

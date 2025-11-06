@@ -1,19 +1,16 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/ 
-* 
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-* 
-* The Original Code is OpenELIS code.
-* 
-* Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
-*
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
+ */
 package org.openelisglobal.reports.action.implementation.reportBeans;
 
 import static org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBuilder.Strategy.BLANK;
@@ -35,7 +32,7 @@ public class ARVFollowupColumnBuilder extends ARVColumnBuilder {
         add("educationLevel", "SESNIVET", BLANK);
         add("maritalStatus", "SESETCV1", BLANK);
         add("nationality", "NATIONAL", BLANK); // nationality "other" is NOT stored in some other observation, but in
-                                               // the same observ, so we have to let actual strings pass through.
+        // the same observ, so we have to let actual strings pass through.
         add("legalResidence", "RESIDE", BLANK);
         add("hivStatus", "STATVIH", DICT_RAW);
         add("hivStatus", "VIH", new ARVFollowupInitalHIVStrategy());
@@ -118,5 +115,4 @@ public class ARVFollowupColumnBuilder extends ARVColumnBuilder {
         add("currentOITreatment", "TRAITIO", BLANK);
         addAllResultsColumns();
     }
-
 }

@@ -10,24 +10,46 @@ function OEPager(formName, sufix) {
 
 	this.pageFoward = function() {
 		window.onbeforeunload = null;
-		//this.form.action = this.formName.sub('Form', '') +"?page=" + (this.currentPageNumber + 1) + this.sufix;
+		var queryParams = new URLSearchParams(window.location.search);
+		var baseURL= window.location.pathname;
 		var url = window.location.href;
+		this.form.action = this.formName.sub('Form', '') +"?page=" + (this.currentPageNumber + 1) + this.sufix;
 		if (url.indexOf("RetroC")!==-1){
-			this.form.action = this.formName.sub('Form', '') +"RetroC?pageResults=true&page=" + (this.currentPageNumber + 1) + this.sufix;
+			//this.form.action = this.formName.sub('Form', '') +"RetroC?pageResults=true&page=" + (this.currentPageNumber + 1) + this.sufix;
+			queryParams.set("pageResults", true);
+			queryParams.set("page", (this.currentPageNumber + 1));
+			this.form.action = baseURL+"?"+queryParams.toString();
+			//this.form.action = url+"&pageResults=true&page=" + (this.currentPageNumber + 1);
 		}
-		else { this.form.action = this.formName.sub('Form', '') +"?pageResults=true&page=" + (this.currentPageNumber + 1) + this.sufix;}
+		else { 
+		//this.form.action = this.formName.sub('Form', '') +"?pageResults=true&page=" + (this.currentPageNumber + 1) + this.sufix;
+			queryParams.set("pageResults", true);
+			queryParams.set("page", (this.currentPageNumber + 1));
+			this.form.action = baseURL+"?"+queryParams.toString();
+		//this.form.action = url+"&pageResults=true&page=" + (this.currentPageNumber + 1);
+		}
 		//'<%= logbookType == "" ? "" : "&type=" + logbookType  %>';
 		this.form.submit();
 	};
 
 	this.pageBack = function() {
 		window.onbeforeunload = null;
+		var queryParams = new URLSearchParams(window.location.search);
+		var baseURL= window.location.pathname;
 		//this.form.action = this.formName.sub('Form', '') +"RetroC?page=" + (this.currentPageNumber - 1) + this.sufix;
 		var url = window.location.href;
 		if (url.indexOf("RetroC")!==-1){
-			this.form.action = this.formName.sub('Form', '') +"RetroC?pageResults=true&page=" + (this.currentPageNumber - 1) + this.sufix;
+			//this.form.action = this.formName.sub('Form', '') +"RetroC?pageResults=true&page=" + (this.currentPageNumber - 1) + this.sufix;
+			queryParams.set("pageResults", true);
+			queryParams.set("page", (this.currentPageNumber - 1));
+			this.form.action = baseURL+"?"+queryParams.toString();
 		}
-		else { this.form.action = this.formName.sub('Form', '') +"?pageResults=true&page=" + (this.currentPageNumber - 1) + this.sufix;}
+		else { 
+		//this.form.action = this.formName.sub('Form', '') +"?pageResults=true&page=" + (this.currentPageNumber - 1) + this.sufix;
+			queryParams.set("pageResults", true);
+			queryParams.set("page", (this.currentPageNumber - 1));
+			this.form.action = baseURL+"?"+queryParams.toString();
+		}
 		//		+ '<%= logbookType == "" ? "" : "&type=" + logbookType  %>';
 		this.form.submit();
 	};

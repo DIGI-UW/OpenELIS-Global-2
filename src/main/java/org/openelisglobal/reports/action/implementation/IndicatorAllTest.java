@@ -1,18 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.reports.action.implementation;
 
@@ -22,7 +19,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+import net.sf.jasperreports.engine.JRDataSource;
+import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
@@ -37,23 +35,22 @@ import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
-
 /**
  * The contents of this file are subject to the Mozilla Public License Version
  * 1.1 (the "License"); you may not use this file except in compliance with the
  * License. You may obtain a copy of the License at http://www.mozilla.org/MPL/
  *
+ * <p>
  * Software distributed under the License is distributed on an "AS IS" basis,
  * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
  * the specific language governing rights and limitations under the License.
  *
+ * <p>
  * The Original Code is OpenELIS code.
  *
+ * <p>
  * Copyright (C) CIRG, University of Washington, Seattle WA. All Rights
  * Reserved.
- *
  */
 public abstract class IndicatorAllTest extends IndicatorReport implements IReportCreator, IReportParameterSetter {
 
@@ -94,7 +91,6 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
         mergeLists();
 
         setTestAggregates();
-
     }
 
     private void setTestMapForAllTests() {
@@ -116,7 +112,6 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
             testNameToBucketList.put(TestServiceImpl.getUserLocalizedReportingTestName(test), bucket);
             testBucketList.add(bucket);
         }
-
     }
 
     private void setAnalysisForDateRange() {
@@ -154,7 +149,8 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
                 boolean finished = false;
                 boolean inProgress = false;
                 for (Analysis panelAnalysis : panelIdToAnalysisMap.get(panelId)) {
-                    if (SpringContext.getBean(IStatusService.class).matches(panelAnalysis.getStatusId(), AnalysisStatus.Canceled)) {
+                    if (SpringContext.getBean(IStatusService.class).matches(panelAnalysis.getStatusId(),
+                            AnalysisStatus.Canceled)) {
                         canceled = true;
                         break;
                     } else if (SpringContext.getBean(IStatusService.class).matches(panelAnalysis.getStatusId(),
@@ -179,7 +175,8 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
 
                     String status;
                     if (inProgress || (notStarted && finished)) {
-                        status = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
+                        status = SpringContext.getBean(IStatusService.class)
+                                .getStatusID(AnalysisStatus.TechnicalAcceptance);
                     } else if (notStarted) {
                         status = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted);
                     } else {
@@ -191,7 +188,6 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
 
                     createAndAddBucketIfNeeded(panelName, proxyAnalysis);
                 }
-
             }
         }
         // go through map and both classify panels and return sets with any canceled
@@ -242,11 +238,13 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
             }
 
             if (testBucket != null) {
-                if (SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(), AnalysisStatus.NotStarted)) {
+                if (SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(),
+                        AnalysisStatus.NotStarted)) {
                     testBucket.notStartedCount++;
                 } else if (inProgress(analysis)) {
                     testBucket.inProgressCount++;
-                } else if (SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {
+                } else if (SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(),
+                        AnalysisStatus.Finalized)) {
                     testBucket.finishedCount++;
                 }
             }
@@ -280,15 +278,18 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
         proxyTestSection.setId(templateAnalysis.getTestSection().getId());
 
         proxyTest.setTestSection(proxyTestSection);
-//        proxyTest.setTestName(panelName);
+        // proxyTest.setTestName(panelName);
 
         return proxyAnalysis;
     }
 
     private boolean inProgress(Analysis analysis) {
-        return SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(), AnalysisStatus.TechnicalAcceptance)
-                || SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(), AnalysisStatus.TechnicalRejected)
-                || SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(), AnalysisStatus.BiologistRejected);
+        return SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(),
+                AnalysisStatus.TechnicalAcceptance)
+                || SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(),
+                        AnalysisStatus.TechnicalRejected)
+                || SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(),
+                        AnalysisStatus.BiologistRejected);
     }
 
     private void mergeLists() {
@@ -322,9 +323,7 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
 
                 return order;
             }
-
         });
-
     }
 
     private void addEmptySectionsToBucketList(Map<String, TestSection> testSectionMap, List<TestBucket> bucketList) {
@@ -351,7 +350,7 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
     @Override
     protected String getNameForReportRequest() {
         return "";
-//        return MessageUtil.getMessage("openreports.all.tests.aggregate");
+        // return MessageUtil.getMessage("openreports.all.tests.aggregate");
     }
 
     private void setTestAggregates() {
@@ -384,5 +383,4 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
     protected String getNameForReport() {
         return MessageUtil.getContextualMessage("openreports.all.tests.aggregate");
     }
-
 }

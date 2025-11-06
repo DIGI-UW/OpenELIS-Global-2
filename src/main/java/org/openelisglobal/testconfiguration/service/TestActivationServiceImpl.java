@@ -1,7 +1,6 @@
 package org.openelisglobal.testconfiguration.service;
 
 import java.util.List;
-
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -45,5 +44,4 @@ public class TestActivationServiceImpl implements TestActivationService {
             SpringContext.getBean(TypeOfSampleService.class).clearCache();
         }
     }
-
 }

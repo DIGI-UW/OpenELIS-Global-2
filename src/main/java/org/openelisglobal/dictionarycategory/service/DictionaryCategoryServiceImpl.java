@@ -1,7 +1,7 @@
 package org.openelisglobal.dictionarycategory.service;
 
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.dictionarycategory.dao.DictionaryCategoryDAO;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class DictionaryCategoryServiceImpl extends BaseObjectServiceImpl<DictionaryCategory, String>
+public class DictionaryCategoryServiceImpl extends AuditableBaseObjectServiceImpl<DictionaryCategory, String>
         implements DictionaryCategoryService {
     @Autowired
     protected DictionaryCategoryDAO baseObjectDAO;
@@ -55,5 +55,4 @@ public class DictionaryCategoryServiceImpl extends BaseObjectServiceImpl<Diction
     public DictionaryCategory getDictionaryCategoryByName(String name) {
         return getBaseObjectDAO().getDictionaryCategoryByName(name);
     }
-
 }

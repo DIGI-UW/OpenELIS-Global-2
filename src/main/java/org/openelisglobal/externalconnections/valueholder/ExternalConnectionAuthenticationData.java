@@ -1,14 +1,13 @@
 package org.openelisglobal.externalconnections.valueholder;
 
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.MappedSuperclass;
-import javax.persistence.OneToOne;
-import javax.persistence.SequenceGenerator;
-import javax.validation.Valid;
-
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.validation.Valid;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.externalconnections.valueholder.ExternalConnection.AuthType;
 
@@ -50,5 +49,4 @@ public abstract class ExternalConnectionAuthenticationData extends BaseObject<In
     public void setId(Integer id) {
         this.id = id;
     }
-
 }

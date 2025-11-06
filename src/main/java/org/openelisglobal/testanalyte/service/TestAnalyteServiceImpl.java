@@ -1,8 +1,7 @@
 package org.openelisglobal.testanalyte.service;
 
 import java.util.List;
-
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.dao.TestAnalyteDAO;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
@@ -11,7 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class TestAnalyteServiceImpl extends BaseObjectServiceImpl<TestAnalyte, String> implements TestAnalyteService {
+public class TestAnalyteServiceImpl extends AuditableBaseObjectServiceImpl<TestAnalyte, String>
+        implements TestAnalyteService {
     @Autowired
     protected TestAnalyteDAO baseObjectDAO;
 

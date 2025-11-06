@@ -9,9 +9,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
 <link rel="stylesheet" href="css/jquery_ui/jquery.ui.all.css?">
 <link rel="stylesheet" href="css/customAutocomplete.css?">
@@ -211,18 +211,13 @@ function mySaveAction() {
    };
 
 	function disableAddRoles() {
-		var rolesSection = document.getElementById("rolesRow");
-		var tables = rolesSection.getElementsByTagName("table");
-		var allLabSelected = false;
-		for (var y = 1; y < tables.length; y++) {
-			var allLabUnitsOption = tables[y].rows[0].cells[1].getElementsByTagName("option")[0];
-			if (allLabUnitsOption.selected == true) {
-				allLabSelected = true;
-			}
-		}
-		if (allLabSelected) {
+		var rolesTable1 = document.getElementById("rolesTable_1");
+		var selectedLabUnit = rolesTable1.rows[0].cells[1].getElementsByTagName("select")[0];
+		var value = selectedLabUnit.options[selectedLabUnit.selectedIndex].value;
+		if (value == "1=AllLabUnits") {
+			alert("<spring:message code="systemuserrole.select.allLabUnits.warning"/>");
 			document.getElementById("createNewRoles").disabled = true;
-		} else {
+		}else {
 			document.getElementById("createNewRoles").disabled = false;
 		}
 	}
@@ -231,7 +226,7 @@ function mySaveAction() {
 
 <script>
 var userRolesData = JSON.parse('${form.userLabRoleData}' != '' ? '${form.userLabRoleData}' : '{}');
-console.log(userRolesData);
+//console.log(userRolesData);
 
 // this dynamically Renders sets of Lab Unit Roles with data if user roles data exists			 
 function renderUserRolesData() {
@@ -444,7 +439,7 @@ function handleCopyPermisions(element){
 <hr/>
 <table>
 	<tr>
-	    <td> <spring:message code="systemuserrole.copypermisions"/> </td>
+	    <td> <spring:message code="systemuserrole.copypermissions"/> </td>
 		<td>
 		<input type="text" id="systemUserToCopySelector" onchange="handleCopyPermisions(this);" oninput="activateCopyPermisions();"/>
 		 <form:hidden id="systemUserToCopy" path="systemUserIdToCopy" />

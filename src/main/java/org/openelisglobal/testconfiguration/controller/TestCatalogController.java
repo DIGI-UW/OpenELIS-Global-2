@@ -1,14 +1,12 @@
 package org.openelisglobal.testconfiguration.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dictionary.service.DictionaryService;
@@ -118,8 +116,9 @@ public class TestCatalogController extends BaseController {
                     catalog.setSignificantDigits(
                             testService.getPossibleTestResults(test).get(0).getSignificantDigits());
                 } else {
-                    LogEvent.logWarn(TestCatalogController.class.getName(), "createTestList",
-                            "test that doesn't have an active test result found. Possibly issue with data in database");
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "createTestList",
+                            "test that doesn't have an active test result found. Possibly issue with data in"
+                                    + " database");
                     catalog.setSignificantDigits("0");
                 }
                 catalog.setHasLimitValues(true);
@@ -169,7 +168,6 @@ public class TestCatalogController extends BaseController {
 
         return SpringContext.getBean(ResultLimitService.class).getDisplayReferenceRange(resultLimits.get(0), null,
                 null);
-
     }
 
     private List<String> createDictionaryValues(TestService testService, Test test) {
@@ -221,6 +219,10 @@ public class TestCatalogController extends BaseController {
                     significantDigits, "-"));
             bean.setValidRange(SpringContext.getBean(ResultLimitService.class).getDisplayValidRange(limit,
                     significantDigits, "-"));
+            bean.setReportingRange(SpringContext.getBean(ResultLimitService.class).getDisplayReportingRange(limit,
+                    significantDigits, "-"));
+            bean.setCriticalRange(SpringContext.getBean(ResultLimitService.class).getDisplayCriticalRange(limit,
+                    significantDigits, "-"));
             bean.setGender(limit.getGender());
             bean.setAgeRange(SpringContext.getBean(ResultLimitService.class).getDisplayAgeRange(limit, "-"));
             limitBeans.add(bean);
@@ -246,5 +248,4 @@ public class TestCatalogController extends BaseController {
 
         return panelString;
     }
-
 }

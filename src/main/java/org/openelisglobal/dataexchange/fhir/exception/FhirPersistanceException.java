@@ -13,5 +13,4 @@ public class FhirPersistanceException extends FhirGeneralException {
     public FhirPersistanceException(Exception e) {
         super(e);
     }
-
 }

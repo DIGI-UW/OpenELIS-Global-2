@@ -1,9 +1,9 @@
 package org.openelisglobal.organization.service;
 
+import ca.uhn.fhir.context.FhirContext;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Endpoint;
 import org.hl7.fhir.r4.model.Resource;
@@ -15,8 +15,6 @@ import org.openelisglobal.organization.valueholder.Organization;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import ca.uhn.fhir.context.FhirContext;
 
 @Service
 public class OrganizationExportServiceImpl implements OrganizationExportService {
@@ -67,7 +65,7 @@ public class OrganizationExportServiceImpl implements OrganizationExportService 
 
     private Endpoint addFhirConnectionInfo(org.hl7.fhir.r4.model.Organization fhirOrganization,
             Organization organization, String tempId) {
-        Endpoint endpoint = new Endpoint()//
+        Endpoint endpoint = new Endpoint() //
                 .setAddress(organization.getInternetAddress());
         endpoint.setId(tempId);
         fhirOrganization.addEndpoint(fhirTransformService.createReferenceFor(endpoint));
@@ -81,5 +79,4 @@ public class OrganizationExportServiceImpl implements OrganizationExportService 
         fhirOrganization.setPartOf(fhirTransformService.createReferenceFor(partOfOrg));
         return partOfOrg;
     }
-
 }

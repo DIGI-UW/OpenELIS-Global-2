@@ -1,67 +1,67 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-	  
-	  
-  	<property name="now" value="now()" dbms="postgresql"/>
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<changeSet author="csteele" id="1">
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.site_information WHERE name = 'labDirectorSignature'</sqlCheck> 
-		</preConditions>
-		<insert schemaName="clinlims" tableName="site_information">
-			<column name="id" valueSequenceNext="site_information_seq" />
-			<column name="name" value="labDirectorSignature" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="image for lab director signature" />
-			<column name="value" value=" " />
-			<column name="encrypted" value="false" />
-			<column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'printedReportsConfig')" />
-			<column name="value_type" value="logoUpload" />
-			<column name="instruction_key" value="siteInfo.instruction.directorsignature.i" />
-			<column name="group" value="0" />
-			<column name="description_key" value="siteInfo.instruction.directorsignature.d" />
-		</insert>
-		<insert schemaName="clinlims" tableName="site_information">
-			<column name="id" valueSequenceNext="site_information_seq" />
-			<column name="name" value="labDirectorName" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="image for lab director name" />
-			<column name="value" value=" " />
-			<column name="encrypted" value="false" />
-			<column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'printedReportsConfig')" />
-			<column name="value_type" value="text" />
-			<column name="instruction_key" value="siteInfo.instruction.directorname.i" />
-			<column name="group" value="0" />
-			<column name="description_key" value="siteInfo.instruction.directorname.d" />
-		</insert>
-		<insert schemaName="clinlims" tableName="site_information">
-			<column name="id" valueSequenceNext="site_information_seq" />
-			<column name="name" value="labDirectorTitle" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="image for lab director title" />
-			<column name="value" value=" " />
-			<column name="encrypted" value="false" />
-			<column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'printedReportsConfig')" />
-			<column name="value_type" value="text" />
-			<column name="instruction_key" value="siteInfo.instruction.directortitle.i" />
-			<column name="group" value="0" />
-			<column name="description_key" value="siteInfo.instruction.directortitle.d" />
-		</insert>
-		<rollback>
-			<delete schemaName="clinlims" tableName="site_information">
-				<where>name='labDirectorSignature'</where>
-			</delete>
-			<delete schemaName="clinlims" tableName="site_information">
-				<where>name='labDirectorName'</where>
-			</delete>
-			<delete schemaName="clinlims" tableName="site_information">
-				<where>name='labDirectorTitle'</where>
-			</delete>
-		</rollback>
-	</changeSet>
-	
+
+      <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.site_information WHERE name = 'labDirectorSignature'</sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="labDirectorSignature" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="image for lab director signature" />
+            <column name="value" value=" " />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'printedReportsConfig')" />
+            <column name="value_type" value="logoUpload" />
+            <column name="instruction_key" value="siteInfo.instruction.directorsignature.i" />
+            <column name="group" value="0" />
+            <column name="description_key" value="siteInfo.instruction.directorsignature.d" />
+        </insert>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="labDirectorName" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="image for lab director name" />
+            <column name="value" value=" " />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'printedReportsConfig')" />
+            <column name="value_type" value="text" />
+            <column name="instruction_key" value="siteInfo.instruction.directorname.i" />
+            <column name="group" value="0" />
+            <column name="description_key" value="siteInfo.instruction.directorname.d" />
+        </insert>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="labDirectorTitle" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="image for lab director title" />
+            <column name="value" value=" " />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'printedReportsConfig')" />
+            <column name="value_type" value="text" />
+            <column name="instruction_key" value="siteInfo.instruction.directortitle.i" />
+            <column name="group" value="0" />
+            <column name="description_key" value="siteInfo.instruction.directortitle.d" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name='labDirectorSignature'</where>
+            </delete>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name='labDirectorName'</where>
+            </delete>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name='labDirectorTitle'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

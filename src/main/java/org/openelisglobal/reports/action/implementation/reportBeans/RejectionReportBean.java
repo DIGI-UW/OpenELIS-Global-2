@@ -16,8 +16,7 @@
 
 package org.openelisglobal.reports.action.implementation.reportBeans;
 
-/**
- */
+/** */
 public class RejectionReportBean {
 
     private String accessionNumber;

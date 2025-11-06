@@ -1,29 +1,24 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.common.services;
 
+import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import javax.annotation.PostConstruct;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -53,8 +48,8 @@ public class StatusService implements IStatusService {
     }
 
     public enum AnalysisStatus {
-        NotStarted, Canceled, TechnicalAcceptance, TechnicalRejected, BiologistRejected, NonConforming_depricated,
-        Finalized
+        SampleRejected, NotStarted, Canceled, TechnicalAcceptance, TechnicalRejected, BiologistRejected,
+        NonConforming_depricated, Finalized
     }
 
     public enum RecordStatus {
@@ -62,7 +57,7 @@ public class StatusService implements IStatusService {
     }
 
     public enum SampleStatus {
-        Entered, Canceled
+        SampleRejected, Entered, Canceled
     }
 
     public enum StatusType {
@@ -409,6 +404,8 @@ public class StatusService implements IStatusService {
             analysisStatusToObjectMap.put(AnalysisStatus.Finalized, status);
         } else if (name.equals("NonConforming")) {
             analysisStatusToObjectMap.put(AnalysisStatus.NonConforming_depricated, status);
+        } else if (name.equals("Sample Rejected")) {
+            analysisStatusToObjectMap.put(AnalysisStatus.SampleRejected, status);
         }
     }
 
@@ -433,6 +430,8 @@ public class StatusService implements IStatusService {
             sampleStatusToObjectMap.put(SampleStatus.Entered, status);
         } else if (name.equals("SampleCanceled")) {
             sampleStatusToObjectMap.put(SampleStatus.Canceled, status);
+        } else if (name.equals("Sample Rejected")) {
+            sampleStatusToObjectMap.put(SampleStatus.SampleRejected, status);
         }
     }
 
@@ -465,7 +464,6 @@ public class StatusService implements IStatusService {
         for (Entry<ExternalOrderStatus, StatusOfSample> status : externalOrderStatusToObjectMap.entrySet()) {
             idToExternalOrderStatusMap.put(status.getValue().getId(), status.getKey());
         }
-
     }
 
     @Transactional(readOnly = true)

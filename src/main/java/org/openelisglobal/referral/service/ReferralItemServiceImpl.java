@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -138,13 +137,13 @@ public class ReferralItemServiceImpl implements ReferralItemService {
 
         while (!referralResults.isEmpty()) {
             ReferralResult referralResult = referralResults.get(0); // use the top one to load various bits of
-                                                                    // information.
+            // information.
             ReferredTest referralTest = new ReferredTest();
             referralTest.setReferralId(referralResult.getReferralId());
             referralResults = setReferralItemForNextTest(referralTest, referralResults); // remove one or more
-                                                                                         // referralResults from the
-                                                                                         // list as needed (for
-                                                                                         // multiResults).
+            // referralResults from the
+            // list as needed (for
+            // multiResults).
             referralTest.setReferredReportDate(
                     DateUtil.convertTimestampToStringDate(referralResult.getReferralReportDate()));
             referralTest.setReferralResultId(referralResult.getId());
@@ -260,7 +259,7 @@ public class ReferralItemServiceImpl implements ReferralItemService {
         return valueList;
     }
 
-    private final static class ReferralComparator implements Comparator<ReferralItem> {
+    private static final class ReferralComparator implements Comparator<ReferralItem> {
         @Override
         public int compare(ReferralItem left, ReferralItem right) {
             int result = left.getAccessionNumber().compareTo(right.getAccessionNumber());

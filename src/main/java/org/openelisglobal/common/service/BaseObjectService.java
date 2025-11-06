@@ -4,7 +4,6 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
 import org.openelisglobal.common.valueholder.BaseObject;
 
 public interface BaseObjectService<T extends BaseObject<PK>, PK extends Serializable> {
@@ -292,5 +291,4 @@ public interface BaseObjectService<T extends BaseObject<PK>, PK extends Serializ
      * @return check if baseObject has a previous baseObject in the database
      */
     public boolean hasPrevious(String id);
-
 }

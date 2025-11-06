@@ -1,0 +1,233 @@
+@use "@carbon/styles/scss/spacing";
+@use "@carbon/styles/scss/type";
+@import "../commons/scss/vars.scss";
+
+.timelineHeader {
+  position: sticky;
+  top: 6.5rem;
+  z-index: 1;
+}
+
+.dateHeaderContainer {
+  padding: 0;
+  box-sizing: border-box;
+  display: grid;
+  grid-auto-flow: row;
+  column-gap: 1px;
+  row-gap: 0px;
+  background-color: $color-gray-30;
+  grid-template: auto auto / 9em auto;
+  border-collapse: collapse;
+}
+
+.grid {
+  width: fit-content;
+  background-color: $color-gray-30;
+  display: grid;
+  grid-auto-rows: auto;
+  gap: 1px;
+  justify-items: center;
+  align-items: center;
+}
+
+.dayColumn,
+.yearColumn {
+  @include type.type-style("heading-compact-01");
+  color: $text-02;
+}
+
+.timeColumn {
+  @include type.type-style("body-compact-01");
+  color: $text-02;
+  scroll-snap-align: start;
+}
+
+.paddedMain {
+  box-sizing: border-box;
+  padding: 20px;
+}
+
+.timelineCell {
+  background-color: white;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  justify-items: center;
+  align-items: center;
+  padding: 0.5rem;
+}
+
+.timelineDataCell {
+  @extend .timelineCell;
+  justify-items: first baseline;
+
+  p {
+    @include type.type-style("body-compact-01");
+    color: $text-02;
+  }
+}
+
+.gridContainer {
+  padding: 0;
+  box-sizing: border-box;
+  display: grid;
+  grid-auto-flow: row;
+  column-gap: 1px;
+  row-gap: 0px;
+  background-color: $color-gray-30;
+  grid-template: auto auto / 9em auto;
+  border-collapse: collapse;
+  overflow-x: scroll;
+  width: 100%;
+  background-color: white;
+  scrollbar-width: auto;
+  // &::-webkit-scrollbar {
+  //   // needed for Chrome, Edge, Opera, Safari
+  //   display: none;
+  // }
+}
+
+.rowHeader {
+  overflow: hidden;
+  align-self: flex-start;
+  background-color: $ui-03;
+  padding: 0.6rem 1rem;
+}
+
+.rowStartCell {
+  @extend .timelineCell;
+  position: -webkit-sticky; /* Safari */
+  position: sticky;
+  left: 0;
+  top: auto;
+  display: grid;
+  grid-auto-flow: row;
+  gap: 0.5px;
+  justify-items: baseline;
+  align-items: center;
+  padding: 1rem;
+}
+
+.timelineCellZebra {
+  background-color: $ui-03;
+}
+
+.dateHeaderInner {
+  overflow-x: auto;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.timeSlotInner {
+  background-color: $ui-03;
+  padding: 3px 10px;
+  justify-self: stretch;
+  align-self: stretch;
+  display: grid;
+  align-items: center;
+
+  div {
+    position: sticky;
+    left: calc(10em + 10px);
+    width: max-content;
+  }
+}
+
+.cornerGridElement {
+  grid-row: span 1;
+  position: sticky;
+  left: 0px;
+  top: 0px;
+  z-index: 3;
+  padding: 0rem 1rem;
+
+  div {
+    @include type.type-style("heading-compact-01");
+
+    left: 0;
+    width: 100%;
+    word-wrap: normal;
+  }
+}
+
+.shadow {
+  box-shadow: 8px 0 20px 0 rgba(0, 0, 0, 0.15);
+}
+
+.trendlineLink {
+  @include type.type-style("body-compact-01");
+  color: $interactive-01;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.rangeUnits {
+  @include type.type-style("helper-text-01");
+  // color: $text-05;
+}
+
+.offScaleHigh,
+.offScaleLow,
+.criticallyHigh,
+.criticallyLow,
+.high,
+.low {
+  p {
+    @include type.type-style("heading-compact-01");
+  }
+}
+
+.high,
+.low {
+  box-shadow: 0 0 0 1px #000000;
+}
+
+.criticallyHigh,
+.criticallyLow {
+  box-shadow:
+    0 0 0 1px $danger,
+    inset 0 0 0 1px $danger;
+}
+
+.offScaleLow {
+  p::after {
+    content: " ↓↓↓";
+  }
+}
+
+.offScaleHigh {
+  p::after {
+    content: " ↑↑↑";
+  }
+}
+
+.criticallyLow {
+  p::after {
+    content: " ↓↓";
+  }
+}
+
+.criticallyHigh {
+  p::after {
+    content: " ↑↑";
+  }
+}
+
+.low {
+  p::after {
+    content: " ↓";
+  }
+}
+
+.high {
+  p::after {
+    content: " ↑";
+  }
+}
+
+.shadowBox {
+  grid-row: 2 / -1;
+  grid-column: 1 / 2;
+}

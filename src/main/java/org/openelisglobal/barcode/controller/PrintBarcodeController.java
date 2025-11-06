@@ -1,5 +1,8 @@
 package org.openelisglobal.barcode.controller;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -10,11 +13,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import javax.annotation.PostConstruct;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.barcode.form.PrintBarcodeForm;
@@ -140,7 +138,7 @@ public class PrintBarcodeController extends BaseController {
     private void addPrePrintFields(@Valid PrintBarcodeForm form) throws LIMSInvalidConfigurationException {
         form.setSampleOrderItems(sampleOrderService.getSampleOrderItem());
         form.setSampleTypes(displayListService.getList(ListType.SAMPLE_TYPE_ACTIVE));
-        form.setTestSectionList(displayListService.getList(ListType.TEST_SECTION));
+        form.setTestSectionList(displayListService.getList(ListType.TEST_SECTION_ACTIVE));
         form.setCurrentDate(DateUtil.getCurrentDateAsText());
         form.setCurrentTime(DateUtil.getCurrentTimeAsText());
         form.getSampleOrderItems().setReceivedTime(DateUtil.getCurrentTimeAsText());
@@ -165,7 +163,6 @@ public class PrintBarcodeController extends BaseController {
         patientSearch.setLoadFromServerWithPatient(true);
         patientSearch.setSelectedPatientActionButtonText(MessageUtil.getMessage("label.patient.search.select"));
         displayObjects.put("patientSearch", patientSearch);
-
     }
 
     @Override
@@ -311,6 +308,5 @@ public class PrintBarcodeController extends BaseController {
                 return o1.getTestName().compareTo(o2.getTestName());
             }
         }
-
     }
 }

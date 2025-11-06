@@ -1,11 +1,10 @@
 package org.openelisglobal.sample.form;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import java.util.List;
-
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Pattern;
-
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
@@ -20,14 +19,16 @@ import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.validation.annotations.ValidDate;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class SamplePatientEntryForm extends BaseForm {
 
     public interface SamplePatientEntryBatch {
-
     }
 
     public interface SamplePatientEntry {
     }
+
+    private Boolean rememberSiteAndRequester;
 
     @ValidDate(relative = DateRelation.TODAY, groups = { SamplePatientEntry.class, SamplePatientEntryBatch.class })
     private String currentDate = "";
@@ -67,7 +68,7 @@ public class SamplePatientEntryForm extends BaseForm {
     // for display
     private PatientSearch patientSearch;
 
- // for display
+    // for display
     private PatientEnhancedSearch patientEnhancedSearch;
 
     @Valid
@@ -89,6 +90,9 @@ public class SamplePatientEntryForm extends BaseForm {
     private Boolean warning = false;
 
     private boolean useReferral;
+
+    // for display
+    private List<IdValuePair> rejectReasonList;
 
     public SamplePatientEntryForm() {
         setFormName("samplePatientEntryForm");
@@ -278,4 +282,19 @@ public class SamplePatientEntryForm extends BaseForm {
         this.useReferral = useReferral;
     }
 
+    public List<IdValuePair> getRejectReasonList() {
+        return rejectReasonList;
+    }
+
+    public void setRejectReasonList(List<IdValuePair> rejectReasonList) {
+        this.rejectReasonList = rejectReasonList;
+    }
+
+    public Boolean getRememberSiteAndRequester() {
+        return rememberSiteAndRequester;
+    }
+
+    public void setRememberSiteAndRequester(Boolean rememberSiteAndRequester) {
+        this.rememberSiteAndRequester = rememberSiteAndRequester;
+    }
 }

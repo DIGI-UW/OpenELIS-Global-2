@@ -2,7 +2,6 @@ package org.openelisglobal.qaevent.valueholder;
 
 import java.sql.Timestamp;
 import java.util.Objects;
-
 import org.openelisglobal.common.valueholder.BaseObject;
 
 public class NceType extends BaseObject<String> {
@@ -63,14 +62,13 @@ public class NceType extends BaseObject<String> {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         NceType nceType = (NceType) o;
-        return id == nceType.id &&
-                Objects.equals(name, nceType.name) &&
-                Objects.equals(displayKey, nceType.displayKey) &&
-                Objects.equals(active, nceType.active) &&
-                Objects.equals(lastupdated, nceType.lastupdated);
+        return id == nceType.id && Objects.equals(name, nceType.name) && Objects.equals(displayKey, nceType.displayKey)
+                && Objects.equals(active, nceType.active) && Objects.equals(lastupdated, nceType.lastupdated);
     }
 
     @Override

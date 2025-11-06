@@ -1,0 +1,40 @@
+{
+  "program": {
+    "code": "IHC",
+    "programName": "Immunohistochemistry",
+    "questionnaireUUID": "a508c3d2-0abd-4e15-b43d-ff96afb3bec9"
+  },
+  "testSectionName": "Immunohistochemistry",
+  "additionalOrderEntryQuestions": {
+    "resourceType" : "Questionnaire",
+    "id" : "a508c3d2-0abd-4e15-b43d-ff96afb3bec9",
+    "text" : {
+      "status" : "generated",
+      "div" : "<div xmlns=\"http://www.w3.org/1999/xhtml\">\n      \n      <pre>\n            1.Comorbidity?\n              1.1 Cardial Comorbidity\n                1.1.1 Angina?\n                1.1.2 MI?\n              1.2 Vascular Comorbidity?\n              ...\n            Histopathology\n              Abdominal\n                pT category?\n              ...\n          </pre>\n    \n    </div>"
+    },
+    "name" : "Immunohistochemistry Reception",
+    "status" : "active",
+    "subjectType" : ["Patient", "Specimen", "ServiceRequest"],
+    "description" : "Extra information for Immunohistochemistry workflow",
+    "item" : [
+      {
+      "linkId" : "6d821b70-fee6-4da0-a094-1e9d20a55d48",
+      "text" : "Site of Specimen",
+      "type" : "choice",
+      "answerOption" : []
+    },{
+      "linkId" : "5c89c621-7dcc-481a-abd6-d64af8077a58",
+      "text" : "Block Number",
+      "type" : "text"
+    },{
+      "linkId" : "e430bd11-4557-4666-ac0c-d87c562b6078",
+      "text" : "Provisional Clinical Diagnosis",
+      "type" : "choice",
+      "answerOption" : []
+    },{
+      "linkId" : "228c9b51-24ad-44c7-b434-8e2ecf4a7471",
+      "text" : "Radiotherapy Card Number",
+      "type" : "text"
+    }]
+  }
+}

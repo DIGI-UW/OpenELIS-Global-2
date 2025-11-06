@@ -23,7 +23,5 @@ public class ChangePasswordLoginFormValidator implements Validator {
         if (!form.getNewPassword().equals(form.getConfirmPassword())) {
             errors.reject("login.error.password.notmatch");
         }
-
     }
-
 }

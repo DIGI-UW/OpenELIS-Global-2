@@ -1,9 +1,7 @@
 package org.openelisglobal.dev.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.dev.form.WebTestInfoForm;
 import org.openelisglobal.login.service.LoginUserService;
@@ -51,12 +49,11 @@ public class webtestInfoController extends BaseController {
 
         addUserInfo(xmlBuilder);
         // addUserLocked(xmlBuilder);
-//		addNumberOfPatients(xmlBuilder);
-//		addNumberOfSamples(xmlBuilder);
+        // addNumberOfPatients(xmlBuilder);
+        // addNumberOfSamples(xmlBuilder);
 
         xmlBuilder.append("</webTestInfo>");
         return xmlBuilder.toString();
-
     }
 
     private void addUserInfo(StringBuilder xmlBuilder) {
@@ -77,23 +74,23 @@ public class webtestInfoController extends BaseController {
         }
     }
 
-//	private void addNumberOfPatients(StringBuilder xmlBuilder) {
-//		int count = new PatientDAOImpl().getCount();
-//
-//		xmlBuilder.append("<patient-count>");
-//		xmlBuilder.append(String.valueOf(count));
-//		xmlBuilder.append("</patient-count>");
-//
-//	}
+    // private void addNumberOfPatients(StringBuilder xmlBuilder) {
+    // int count = new PatientDAOImpl().getCount();
+    //
+    // xmlBuilder.append("<patient-count>");
+    // xmlBuilder.append(String.valueOf(count));
+    // xmlBuilder.append("</patient-count>");
+    //
+    // }
 
-//	private void addNumberOfSamples(StringBuilder xmlBuilder) {
-//		int count = new PatientDAOImpl().getCount();
-//
-//		xmlBuilder.append("<sample-count>");
-//		xmlBuilder.append(String.valueOf(count));
-//		xmlBuilder.append("</sample-count>");
-//
-//	}
+    // private void addNumberOfSamples(StringBuilder xmlBuilder) {
+    // int count = new PatientDAOImpl().getCount();
+    //
+    // xmlBuilder.append("<sample-count>");
+    // xmlBuilder.append(String.valueOf(count));
+    // xmlBuilder.append("</sample-count>");
+    //
+    // }
 
     @Override
     protected String findLocalForward(String forward) {

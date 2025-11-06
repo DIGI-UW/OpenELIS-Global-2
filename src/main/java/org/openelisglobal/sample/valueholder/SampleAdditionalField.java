@@ -1,19 +1,18 @@
 package org.openelisglobal.sample.valueholder;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.MapsId;
+import jakarta.persistence.Table;
 import java.io.Serializable;
-
-import javax.persistence.Column;
-import javax.persistence.Convert;
-import javax.persistence.Embeddable;
-import javax.persistence.EmbeddedId;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.MapsId;
-import javax.persistence.Table;
-
+import java.util.Objects;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField.SampleAdditionalFieldId;
@@ -35,6 +34,7 @@ public class SampleAdditionalField extends BaseObject<SampleAdditionalFieldId> {
     @ManyToOne
     @JoinColumn(name = "sample_id")
     private Sample sample;
+
     @Column(name = "field_value")
     private String fieldValue;
 
@@ -81,9 +81,11 @@ public class SampleAdditionalField extends BaseObject<SampleAdditionalFieldId> {
     @Embeddable
     public static class SampleAdditionalFieldId implements Serializable {
         private static final long serialVersionUID = -9097137007120585441L;
+
         @Column(name = "field_name")
         @Enumerated(value = EnumType.STRING)
         private AdditionalFieldName fieldName;
+
         @Convert(converter = StringToIntegerConverter.class)
         private String sampleId;
 
@@ -103,6 +105,19 @@ public class SampleAdditionalField extends BaseObject<SampleAdditionalFieldId> {
             this.sampleId = sampleId;
         }
 
-    }
+        public boolean equals(Object o) {
+            if (this == o)
+                return true;
+            if (o == null || getClass() != o.getClass())
+                return false;
 
+            SampleAdditionalFieldId that = (SampleAdditionalFieldId) o;
+
+            return Objects.equals(this.fieldName, that.fieldName) && Objects.equals(this.sampleId, that.sampleId);
+        }
+
+        public int hashCode() {
+            return Objects.hash(fieldName, sampleId);
+        }
+    }
 }

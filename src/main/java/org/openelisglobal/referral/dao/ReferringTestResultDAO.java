@@ -17,14 +17,14 @@ package org.openelisglobal.referral.dao;
 
 import java.sql.Date;
 import java.util.List;
-
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.referral.valueholder.ReferringTestResult;
 
 public interface ReferringTestResultDAO extends BaseDAO<ReferringTestResult, String> {
 
-//	public boolean insertData(ReferringTestResult referringTestResult) throws LIMSRuntimeException;
+    // public boolean insertData(ReferringTestResult referringTestResult) throws
+    // LIMSRuntimeException;
 
     public List<ReferringTestResult> getReferringTestResultsForSampleItem(String sampleItemId)
             throws LIMSRuntimeException;

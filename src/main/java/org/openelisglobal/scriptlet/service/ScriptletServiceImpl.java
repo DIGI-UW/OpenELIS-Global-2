@@ -1,9 +1,8 @@
 package org.openelisglobal.scriptlet.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.scriptlet.dao.ScriptletDAO;
 import org.openelisglobal.scriptlet.valueholder.Scriptlet;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class ScriptletServiceImpl extends BaseObjectServiceImpl<Scriptlet, String> implements ScriptletService {
+public class ScriptletServiceImpl extends AuditableBaseObjectServiceImpl<Scriptlet, String>
+        implements ScriptletService {
     @Autowired
     protected ScriptletDAO baseObjectDAO;
 
@@ -28,7 +28,6 @@ public class ScriptletServiceImpl extends BaseObjectServiceImpl<Scriptlet, Strin
     @Transactional(readOnly = true)
     public void getData(Scriptlet scriptlet) {
         getBaseObjectDAO().getData(scriptlet);
-
     }
 
     @Override

@@ -1,14 +1,12 @@
 package org.openelisglobal.sample.service;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
-import javax.annotation.PostConstruct;
-import javax.servlet.http.HttpServletRequest;
-
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.address.service.AddressPartService;
@@ -18,14 +16,16 @@ import org.openelisglobal.address.valueholder.PersonAddress;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.provider.query.PatientSearchResults;
-import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.patient.action.IPatientUpdate;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
+import org.openelisglobal.patient.service.PatientContactService;
 import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.patient.valueholder.PatientContact;
 import org.openelisglobal.patientidentity.service.PatientIdentityService;
 import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
 import org.openelisglobal.patientidentitytype.util.PatientIdentityTypeMap;
@@ -35,7 +35,6 @@ import org.openelisglobal.patienttype.valueholder.PatientPatientType;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
-import org.openelisglobal.search.service.SearchResultsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
@@ -43,7 +42,7 @@ import org.springframework.validation.Errors;
 
 @Service
 @Scope("prototype")
-public class PatientManagementUpdate implements IPatientUpdate {
+public class PatientManagementUpdate extends ControllerUtills implements IPatientUpdate {
 
     private String currentUserId;
     protected Patient patient;
@@ -63,10 +62,7 @@ public class PatientManagementUpdate implements IPatientUpdate {
     @Autowired
     private PatientPatientTypeService patientPatientTypeService;
     @Autowired
-    private SearchResultsService search;
-    private final String AMBIGUOUS_DATE_CHAR = ConfigurationProperties.getInstance()
-            .getPropertyValue(ConfigurationProperties.Property.AmbiguousDateHolder);
-    private final String AMBIGUOUS_DATE_HOLDER = AMBIGUOUS_DATE_CHAR + AMBIGUOUS_DATE_CHAR;
+    private PatientContactService patientContactService;
     protected PatientUpdateStatus patientUpdateStatus = PatientUpdateStatus.NO_ACTION;
 
     private String ADDRESS_PART_VILLAGE_ID;
@@ -85,60 +81,11 @@ public class PatientManagementUpdate implements IPatientUpdate {
                 ADDRESS_PART_VILLAGE_ID = addressPart.getId();
             }
         }
-
-    }
-
-    protected String getSysUserId(HttpServletRequest request) {
-        UserSessionData usd = (UserSessionData) request.getSession().getAttribute(IActionConstants.USER_SESSION_DATA);
-        return String.valueOf(usd.getSystemUserId());
     }
 
     public void setSysUserIdFromRequest(HttpServletRequest request) {
         UserSessionData usd = (UserSessionData) request.getSession().getAttribute(IActionConstants.USER_SESSION_DATA);
         currentUserId = String.valueOf(usd.getSystemUserId());
-    }
-
-    private Errors validatePatientInfo(PatientManagementInfo patientInfo) {
-        Errors errors = new BaseErrors();
-        boolean disallowDuplicateSubjectNumbers = ConfigurationProperties.getInstance()
-                .isPropertyValueEqual(ConfigurationProperties.Property.ALLOW_DUPLICATE_SUBJECT_NUMBERS, "false");
-        boolean disallowDuplicateNationalIds = ConfigurationProperties.getInstance()
-                .isPropertyValueEqual(ConfigurationProperties.Property.ALLOW_DUPLICATE_NATIONAL_IDS, "false");
-        if (disallowDuplicateSubjectNumbers || disallowDuplicateNationalIds) {
-            String newSTNumber = GenericValidator.isBlankOrNull(patientInfo.getSTnumber()) ? null
-                    : patientInfo.getSTnumber();
-            String newSubjectNumber = GenericValidator.isBlankOrNull(patientInfo.getSubjectNumber()) ? null
-                    : patientInfo.getSubjectNumber();
-            String newNationalId = GenericValidator.isBlankOrNull(patientInfo.getNationalId()) ? null
-                    : patientInfo.getNationalId();
-
-            List<PatientSearchResults> results = search.getSearchResults(null, null, newSTNumber, newSubjectNumber,
-                    newNationalId, null, null, null, null, null);
-
-            if (!results.isEmpty()) {
-
-                for (PatientSearchResults result : results) {
-                    if (!result.getPatientID().equals(patientInfo.getPatientPK())) {
-                        if (disallowDuplicateSubjectNumbers && newSTNumber != null
-                                && newSTNumber.equals(result.getSTNumber())) {
-                            errors.reject("error.duplicate.STNumber", null, null);
-                        }
-                        if (disallowDuplicateSubjectNumbers && newSubjectNumber != null
-                                && newSubjectNumber.equals(result.getSubjectNumber())) {
-                            errors.reject("error.duplicate.subjectNumber", null, null);
-                        }
-                        if (disallowDuplicateNationalIds && newNationalId != null
-                                && newNationalId.equals(result.getNationalId())) {
-                            errors.reject("error.duplicate.nationalId", null, null);
-                        }
-                    }
-                }
-            }
-        }
-
-        validateBirthdateFormat(patientInfo, errors);
-
-        return errors;
     }
 
     private void initMembers() {
@@ -154,25 +101,6 @@ public class PatientManagementUpdate implements IPatientUpdate {
         person = patient.getPerson();
 
         patientIdentities = identityService.getPatientIdentitiesForPatient(patient.getId());
-    }
-
-    private void validateBirthdateFormat(PatientManagementInfo patientInfo, Errors errors) {
-        String birthDate = patientInfo.getBirthDateForDisplay();
-        boolean validBirthDateFormat = true;
-
-        if (!GenericValidator.isBlankOrNull(birthDate)) {
-            validBirthDateFormat = birthDate.length() == 10;
-            // the regex matches ambiguous day and month or ambiguous day or completely
-            // formed date
-            if (validBirthDateFormat) {
-                validBirthDateFormat = birthDate.matches("(((" + AMBIGUOUS_DATE_HOLDER + "|\\d{2})/\\d{2})|"
-                        + AMBIGUOUS_DATE_HOLDER + "/(" + AMBIGUOUS_DATE_HOLDER + "|\\d{2}))/\\d{4}");
-            }
-
-            if (!validBirthDateFormat) {
-                errors.reject("error.birthdate.format", null, null);
-            }
-        }
     }
 
     private void copyFormBeanToValueHolders(PatientManagementInfo patientInfo)
@@ -269,7 +197,6 @@ public class PatientManagementUpdate implements IPatientUpdate {
                 && !patientInfo.getAddressDepartment().equals("0")) {
             insertNewPatientInfo(ADDRESS_PART_DEPT_ID, patientInfo.getAddressDepartment(), "D");
         }
-
     }
 
     private void insertNewPatientInfo(String partId, String value, String type) {
@@ -281,6 +208,29 @@ public class PatientManagementUpdate implements IPatientUpdate {
         address.setValue(value);
         address.setSysUserId(currentUserId);
         personAddressService.insert(address);
+    }
+
+    private void persistContact(PatientManagementInfo patientInfo, Patient patient) {
+        if (GenericValidator.isBlankOrNull(patientInfo.getPatientContact().getId())) {
+            PatientContact contact = patientInfo.getPatientContact();
+            Person contactPerson = patientInfo.getPatientContact().getPerson();
+            contact.setPatientId(patient.getId());
+            contact.setSysUserId(patient.getSysUserId());
+            contactPerson.setSysUserId(patient.getSysUserId());
+
+            personService.insert(contactPerson);
+            patientContactService.insert(contact);
+        } else {
+            Person newContactPerson = patientInfo.getPatientContact().getPerson();
+            PatientContact contact = patientContactService.get(patientInfo.getPatientContact().getId());
+            Person oldContactPerson = contact.getPerson();
+            oldContactPerson.setEmail(newContactPerson.getEmail());
+            oldContactPerson.setLastName(newContactPerson.getLastName());
+            oldContactPerson.setFirstName(newContactPerson.getFirstName());
+            oldContactPerson.setPrimaryPhone(newContactPerson.getPrimaryPhone());
+            contact.setSysUserId(patient.getSysUserId());
+            oldContactPerson.setSysUserId(patient.getSysUserId());
+        }
     }
 
     public void persistIdentityType(String paramValue, String type) throws LIMSRuntimeException {
@@ -326,7 +276,7 @@ public class PatientManagementUpdate implements IPatientUpdate {
         try {
             typeName = patientInfo.getPatientType();
         } catch (RuntimeException e) {
-            LogEvent.logInfo(this.getClass().getName(), "method unkown", "typeName ignored");
+            LogEvent.logInfo(this.getClass().getSimpleName(), "persistPatientType", "typeName ignored");
         }
 
         if (!GenericValidator.isBlankOrNull(typeName) && !"0".equals(typeName)) {
@@ -352,7 +302,8 @@ public class PatientManagementUpdate implements IPatientUpdate {
     @Override
     public Errors preparePatientData(HttpServletRequest request, PatientManagementInfo patientInfo)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-        Errors errors = validatePatientInfo(patientInfo);
+        Errors errors = new BaseErrors();
+        ValidatePatientInfo.validatePatientInfo(errors, patientInfo);
         if (errors.hasErrors()) {
             return errors;
         }
@@ -402,7 +353,7 @@ public class PatientManagementUpdate implements IPatientUpdate {
 
         if (patientUpdateStatus == PatientUpdateStatus.ADD) {
             UUID uuid = UUID.randomUUID();
-//            patientInfo.setFhirUuid(uuid);
+            // patientInfo.setFhirUuid(uuid);
             patientInfo.setGuid(uuid.toString());
             patient.setFhirUuid(uuid);
             patientService.insert(patient);
@@ -410,15 +361,14 @@ public class PatientManagementUpdate implements IPatientUpdate {
             patientService.update(patient);
         }
 
+        persistContact(patientInfo, patient);
         persistPatientRelatedInformation(patientInfo);
         patientID = patient.getId();
         patientInfo.setPatientPK(patientID);
-
     }
 
     @Override
     public String getPatientId(SamplePatientEntryForm form) {
         return GenericValidator.isBlankOrNull(patientID) ? form.getPatientProperties().getPatientPK() : patientID;
     }
-
 }

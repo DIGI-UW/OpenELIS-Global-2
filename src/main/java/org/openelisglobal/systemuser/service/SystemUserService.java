@@ -1,7 +1,6 @@
 package org.openelisglobal.systemuser.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 

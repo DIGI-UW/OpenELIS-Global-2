@@ -1,0 +1,2620 @@
+{
+  "program": {
+    "code": "PATH",
+    "programName": "Histopathology",
+    "questionnaireUUID": "73f19a23-3899-4c4f-b7a1-8f945b72ded8"
+  },
+  "testSectionName": "Pathology",
+  "additionalOrderEntryQuestions": {
+    "resourceType": "Questionnaire",
+    "id": "73f19a23-3899-4c4f-b7a1-8f945b72ded8",
+    "text": {
+      "status": "generated",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">\n      \n      <pre>\n            1.Comorbidity?\n              1.1 Cardial Comorbidity\n                1.1.1 Angina?\n                1.1.2 MI?\n              1.2 Vascular Comorbidity?\n              ...\n            Histopathology\n              Abdominal\n                pT category?\n              ...\n          </pre>\n    \n    </div>"
+    },
+    "identifier": [
+      {
+        "system": "urn:ietf:rfc:3986",
+        "value": "urn:oid:2.16.840.1.113883.4.642.20.2"
+      }
+    ],
+    "name": "Pathology Reception",
+    "status": "active",
+    "subjectType": ["Patient", "Specimen", "ServiceRequest"],
+    "description": "Extra information for Pathology workflow",
+    "item": [
+      {
+        "linkId": "1be6029b-fe61-4c72-b6c4-6f5858d86b29",
+        "text": "Specimen",
+        "type": "choice",
+        "answerOption": [
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C31",
+              "display": "ACCESSORY SINUSES"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C31.9",
+              "display": "ACESSORY SINUS  NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C72.4",
+              "display": "ACOUSTIC NERVE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C74",
+              "display": "ADRENAL GLAND"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C24.1",
+              "display": "AMPULLA OF VATER"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C21.1",
+              "display": "ANAL CANAL"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C21.8",
+              "display": "ANORECTAL JUNCTION"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C11.3",
+              "display": "ANTERIOR WALL NASOPHARYNX"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C67.3",
+              "display": "ANTERIOR WALL OF BLADDER"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C21",
+              "display": "ANUS AND ANAL CANAL"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C38.2",
+              "display": "AORTIC VALVE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C18.1",
+              "display": "APPENDIX"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "ASCF",
+              "display": "ASCITIC FLUID"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "ASBRA",
+              "display": "ASP CYST BRAIN"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNDEN",
+              "display": "ASP DENTAL CYST"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNLN2",
+              "display": "ASP L\\N ABDOMEN"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNLN3",
+              "display": "ASP L\\N AXILLA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNLN4",
+              "display": "ASP L\\N INGUINA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNLN8",
+              "display": "ASP L\\N MULT.RE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNLN9",
+              "display": "ASP L\\N NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNLN5",
+              "display": "ASP L\\N PELVIC"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNLN1",
+              "display": "ASP L\\N THORAX"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FN OV",
+              "display": "ASP OVARY"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNPAN",
+              "display": "ASP PANCREAS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNTES",
+              "display": "ASP TESTIS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNTRA",
+              "display": "ASP TRACHEA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNELB",
+              "display": "ASP. ELBOW"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FN NC",
+              "display": "ASP. NASAL CAV."
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FN PA",
+              "display": "ASP. PAROTID"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNcLN",
+              "display": "ASP.CERV.L\\NODE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNend",
+              "display": "ASP.ENDOMETRIUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FN PR",
+              "display": "ASP.PROSTATE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNSMN",
+              "display": "ASP.SUBMANDIBUL"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "ASPNS",
+              "display": "ASP/NOT/SPECIFY"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNMAN",
+              "display": "ASPIR MANDIBLE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FN ST",
+              "display": "ASPIR SOFTISSUE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FN BR",
+              "display": "ASPIRATE BREAST"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNKID",
+              "display": "ASPIRATE KIDNEY"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "ASPLV",
+              "display": "ASPIRATE LIVER"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "ASPLU",
+              "display": "ASPIRATE LUNG"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNORB",
+              "display": "ASPIRATE ORBIT"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNPUB",
+              "display": "ASPIRATE PUBIS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNSCA",
+              "display": "ASPIRATE SCALP"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "ASPSP",
+              "display": "ASPIRATE SPINE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "ASPAB",
+              "display": "ASPIRATEABDOMEN"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNMAX",
+              "display": "ASPIRATEMAXILLA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNPLU",
+              "display": "ASPIRATEPLEURA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "ASPSC",
+              "display": "ASPIRATESCROTUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "ASPST",
+              "display": "ASPIRATESTOMACH"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FN TH",
+              "display": "ASPIRATETHYROID"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FN BN",
+              "display": "ASPIRATION BONE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "ASPGB",
+              "display": "ASPIRGALLBLAD"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNLN0",
+              "display": "ASPL\\NHEAD/NECK"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNMED",
+              "display": "ASPMEDIASTINIUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNSAL",
+              "display": "ASPSALIVARY"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNSYN",
+              "display": "ASPSYNOV/KNEEFL"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C50.6",
+              "display": "AXILLARY TAIL BREAST"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "BARR",
+              "display": "BARR BODIES"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C01",
+              "display": "BASE OF TONGUE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "BEEF",
+              "display": "BEEF"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C24.9",
+              "display": "BILIARY TRACT NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C67",
+              "display": "BLADDER"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C67.5",
+              "display": "BLADDER NECK"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C42.0",
+              "display": "BLOOD"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "B",
+              "display": "BLOOD"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "B&U",
+              "display": "BLOOD & URINE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "BB/BP",
+              "display": "BLOOD BAGS/PROD"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "BC",
+              "display": "BLOOD CULTURE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "ANA",
+              "display": "BLOOD FOR ANA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C38.5",
+              "display": "BLOOD VESSELS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C25.1",
+              "display": "BODY OF PANCREAS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C60.2",
+              "display": "BODY OF PENIS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C16.2",
+              "display": "BODY OF STOMACH"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C42.1",
+              "display": "BONE MARROW"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C40",
+              "display": "BONES,JOINTS & CARTILAGE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C71",
+              "display": "BRAIN"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C71.7",
+              "display": "BRAIN STEM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C50",
+              "display": "BREAST"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "BBRUS",
+              "display": "BRONCHIAL BRUSHING"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "BRWSH",
+              "display": "BRONCHIAL WASH"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C34",
+              "display": "BRONCHUS & LUNG"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "BUC",
+              "display": "BUCCAL SMEAR"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C18.0",
+              "display": "CAECUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C16.0",
+              "display": "CARDIA NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "CAT",
+              "display": "CATHETER TIP"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C72.1",
+              "display": "CAUDA EQUINA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C50.1",
+              "display": "CENTRAL PORTION OF BREAST"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "CSF",
+              "display": "CER. SPI. FLU."
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C71.6",
+              "display": "CEREBELLUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C70.0",
+              "display": "CEREBRAL MENINGES"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C71.0",
+              "display": "CEREBRUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "PS",
+              "display": "CERVICAL SMEAR"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "CE",
+              "display": "CERVICAL SWAB"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C53",
+              "display": "CERVIX"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C06.0",
+              "display": "CHEEK MUCOSA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "CHE",
+              "display": "CHEESE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "CHI",
+              "display": "CHICKEN"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C51.2",
+              "display": "CLITORIS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C18.2",
+              "display": "COLON ASCENDING"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C18.6",
+              "display": "COLON DESCENDING"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C18.9",
+              "display": "COLON NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C18.7",
+              "display": "COLON SIGMOID"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C18.4",
+              "display": "COLON TRANSVERSE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C00.6",
+              "display": "COMMISSURE OF LIP"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C49",
+              "display": "CON & SUBCUT &SOFT TISSUE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C69.0",
+              "display": "CONJUNCTIVA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "MEAL",
+              "display": "COOKED FOOD"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "ING",
+              "display": "COOL"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C69.1",
+              "display": "CORNEA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C54.9",
+              "display": "CORPUS UTERI"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C72.5",
+              "display": "CRANIAL NERVE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C13.0",
+              "display": "CRICOID"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C62.1",
+              "display": "DESCENDED TESTIS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "DIF",
+              "display": "DIFOUT"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C67.1",
+              "display": "DOME OF BLADDER"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C17.0",
+              "display": "DUODENUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C44.2",
+              "display": "EAR EXTERNAL"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "ERS",
+              "display": "EAR SWAB"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C53.0",
+              "display": "ENDOCERVIX"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C75",
+              "display": "ENDOCRINE&RELAT.STRUCTURE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C54.1",
+              "display": "ENDOMETRIUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C63.0",
+              "display": "EPIDIDYMIS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "Erc",
+              "display": "ERYTHROCYTE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C31.1",
+              "display": "ETHMOID SINUS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C53.1",
+              "display": "EXOCERVIX"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C00.2",
+              "display": "EXTERNAL LIP NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C00.1",
+              "display": "EXTERNAL LOWER LIP"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C00.0",
+              "display": "EXTERNAL UPPER LIP"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C24.0",
+              "display": "EXTRAHEPATIC BILE DUCT"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C69",
+              "display": "EYE & ADNEXAE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "ES",
+              "display": "EYE SWAB"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C44.1",
+              "display": "EYELID"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "F",
+              "display": "FAECES"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C57.0",
+              "display": "FALLOPIAN TUBE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FISH",
+              "display": "FISH"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C04",
+              "display": "FLOOR OF MOUTH"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C04.9",
+              "display": "FLOOR OF MOUTH NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FD",
+              "display": "FLUID"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C55.9",
+              "display": "FOETUS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C71.1",
+              "display": "FRONTAL LOBE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C31.2",
+              "display": "FRONTAL SINUS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C16.1",
+              "display": "FUNDUS STOMACH"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C54.3",
+              "display": "FUNDUS UTERI"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C23",
+              "display": "GALL BLADDER"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C16.3",
+              "display": "GASTRIC ANTRUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C26.9",
+              "display": "GASTROINTESTINAL TRACTNOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C60.1",
+              "display": "GLANS PENIS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C32.0",
+              "display": "GLOTTIS VOCAL CORD"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C03",
+              "display": "GUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C42.4",
+              "display": "HAEMATOPOIETIC SYSTEM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C05.0",
+              "display": "HARD PALATE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C25.0",
+              "display": "HEAD OF PANCREAS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C38.0",
+              "display": "HEART"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C18.3",
+              "display": "HEPATIC FLEXURE COLON"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C13",
+              "display": "HYPOPHARYNX"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C17.2",
+              "display": "ILEUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C76.2",
+              "display": "ILLDEFINED ABDOMEN"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C76.0",
+              "display": "ILLDEFINED HEAD,FACE NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C76.3",
+              "display": "ILLDEFINED PELVIS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C76",
+              "display": "ILLDEFINED SITES"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C76.1",
+              "display": "ILLDEFINED THORAX"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C26.0",
+              "display": "INTESTINAL TRACT  NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C22.1",
+              "display": "INTRAHEPATIC BILE DUCT"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C25.4",
+              "display": "ISLET OF PANCREAS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C17.1",
+              "display": "JEJENUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C64",
+              "display": "KIDNEY"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C51.0",
+              "display": "LABIUM MAJUS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C51.1",
+              "display": "LABIUM MINUS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C69.5",
+              "display": "LACRIMAL GLANDS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C32.3",
+              "display": "LARYNGEAL CARTILAGE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C32",
+              "display": "LARYNX"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C32.9",
+              "display": "LARYNX,NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C11.2",
+              "display": "LATERAL WALL NASOPHARYNX"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C67.2",
+              "display": "LATERAL WALL OF BLADDER"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "LES",
+              "display": "LESION"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "Lkc",
+              "display": "LEUCOCYTE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C00",
+              "display": "LIP"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C22.0",
+              "display": "LIVER"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "LIA",
+              "display": "LIVER ABSCESS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C40.2",
+              "display": "LONGBONES LOW LIMB,JOINT"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C03.1",
+              "display": "LOWER GUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C50.3",
+              "display": "LOWER INNER QUAD. BREAST"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C76.5",
+              "display": "LOWER LIMP NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C34.3",
+              "display": "LOWER LOBE, LUNG"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C50.5",
+              "display": "LOWER OUTER QUAD. BREAST"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C15.5",
+              "display": "LOWER THIRD OF OESOPHAGUS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C77.3",
+              "display": "LYMPH  NODE AXILLA / ARM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C77.9",
+              "display": "LYMPH  NODE NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C77.4",
+              "display": "LYMPH NODE INGUINA / LEG"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C77.2",
+              "display": "LYMPH NODE INTRAABDOMINAL"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C77.8",
+              "display": "LYMPH NODE MULTIPLEREGION"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C77.5",
+              "display": "LYMPH NODE PELVIC"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C77.1",
+              "display": "LYMPH NODE THORAX"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C77.0",
+              "display": "LYMPH NODE-HEAD/FACE/NECK"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C34.0",
+              "display": "MAIN BRONCHUS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C08.9",
+              "display": "MAJOR SALIVARY GLAND"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C41.1",
+              "display": "MANDIBLE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C31.0",
+              "display": "MAXILLARY SINUS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C17.3",
+              "display": "MECKEL DIVERTICULUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C38.3",
+              "display": "MEDIASTINUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C70",
+              "display": "MENINGES"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C30.1",
+              "display": "MIDDLE EAR"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C34.2",
+              "display": "MIDDLE LOBE, LUNG"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C15.4",
+              "display": "MIDDLE THIRD  OESOPHAGUS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C38.1",
+              "display": "MITRAL VALVE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "MS",
+              "display": "MOUTH SWAB"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C00.5",
+              "display": "MUCOSA OF LIP NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C00.4",
+              "display": "MUCOSA OF LOWER LIP"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C00.3",
+              "display": "MUCOSA OF UPPER LIP"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C54.2",
+              "display": "MYOMETRIUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "N",
+              "display": "NAIL"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C30.0",
+              "display": "NASAL CAVITY"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "NASAL",
+              "display": "NASAL DIS/SECRE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "NS",
+              "display": "NASAL SWAB"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C11",
+              "display": "NASOPHARYNX"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C11.9",
+              "display": "NASOPHARYNX, NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C50.0",
+              "display": "NIPPLE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "FNNIP",
+              "display": "NIPPLEDISCHARGE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C26",
+              "display": "OAI DIGESTIVE ORGANS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C39",
+              "display": "OAI RESPIRATORY SYSTEM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C24",
+              "display": "OAU BILE TRACT"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C57",
+              "display": "OAU FEMAL ORGANS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C63",
+              "display": "OAU MALE ORGAN"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C06",
+              "display": "OAU PART MOUTH"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C02",
+              "display": "OAU PART TONGUE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C68",
+              "display": "OAU URINARY ORGANS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C71.4",
+              "display": "OCCIPITAL LOBE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C15",
+              "display": "OESOPHAGUS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C72.2",
+              "display": "OLFACTORY NERVE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C48.1",
+              "display": "OMENTUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C72.3",
+              "display": "OPTIC NERVE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C69.6",
+              "display": "ORBIT"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C10",
+              "display": "OROPHARYNX"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C14",
+              "display": "OTHER LIP,ORAL,PHARYNX"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C08",
+              "display": "OTHER SALIVARY GLAND"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C56",
+              "display": "OVARY"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C00.8",
+              "display": "OVERLYING LESION OF LIP"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C05",
+              "display": "PALATE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C05.9",
+              "display": "PALATE NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C25",
+              "display": "PANCREAS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C25.3",
+              "display": "PANCREATIC DUCT"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C75.0",
+              "display": "PARATHYROID GLAND"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C71.3",
+              "display": "PARIETAL LOBE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C07",
+              "display": "PAROTID GLAND"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C60",
+              "display": "PENIS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "PERIF",
+              "display": "PERICARDIUM FL."
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C47",
+              "display": "PERIPHERAL & AUTO N.S."
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "peri",
+              "display": "PERITONEALFLUID"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "PERI",
+              "display": "PERITONEALFLUID"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C48.2",
+              "display": "PERITONEUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C75.1",
+              "display": "PITUITARY GLAND"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C58",
+              "display": "PLACENTA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "P",
+              "display": "PLASMA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C38.4",
+              "display": "PLEURA,NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "PLEF",
+              "display": "PLEURAL FLUID"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "PF",
+              "display": "PLEURAL FLUID"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "PM",
+              "display": "POST-MORTEM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C11.1",
+              "display": "POST. WALL NASOPHARYNX"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C67.4",
+              "display": "POSTERIOR WALL OF BLADDER"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C60.0",
+              "display": "PREPUCE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C61",
+              "display": "PROSTATE GLAND"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "PUS",
+              "display": "PUS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "PSS",
+              "display": "PUS SWAB"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C16.4",
+              "display": "PYLORUS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C12",
+              "display": "PYRIFORM SINUS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C19",
+              "display": "RECTOSIGMOID JUNCTION"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C20",
+              "display": "RECTUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "RST",
+              "display": "RENAL CALCULUS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C65",
+              "display": "RENAL PELVIS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C42.3",
+              "display": "RETICULOENDOTHELIALSYSTEM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C69.2",
+              "display": "RETINA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C06.2",
+              "display": "RETROMOLAR AREA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C48",
+              "display": "RETROPERITONEUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C41.3",
+              "display": "RIB,STERNUM & CLAVICLE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C41.4",
+              "display": "SACRUM & PELVIS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "SAL",
+              "display": "SALIVA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "SCRAP",
+              "display": "SCRAPINGS CYTO"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C63.2",
+              "display": "SCROTUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "SF",
+              "display": "SEMINAL FLUID"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "S",
+              "display": "SERUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C40.3",
+              "display": "SHORTBONES LOW LIMB,JOINT"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C40.1",
+              "display": "SHORTBONES UP. LIMB,JOINT"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C44",
+              "display": "SKIN"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C44.5",
+              "display": "SKIN BREAST"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C44.7",
+              "display": "SKIN LOWER LIMB"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C44.9",
+              "display": "SKIN NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C44.3",
+              "display": "SKIN OF FACE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C44.0",
+              "display": "SKIN OF LIP"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C44.4",
+              "display": "SKIN OF SCALP"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C44.8",
+              "display": "SKIN OVERLAPING"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C44.6",
+              "display": "SKIN UPPER LIMB"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C41.0",
+              "display": "SKULL & FACE BONE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C17",
+              "display": "SMALL INTESTINE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "SMIUD",
+              "display": "SMEAR FROM IUCD"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C05.1",
+              "display": "SOFT PALATE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C000",
+              "display": "SPECIMEN NOT SPECIFIED"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C63.1",
+              "display": "SPERMATIC CORD"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C31.3",
+              "display": "SPHENOID SINUS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C72.0",
+              "display": "SPINAL CORD"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "Sf",
+              "display": "SPINAL FLUID"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C70.1",
+              "display": "SPINAL MENINGES"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C72",
+              "display": "SPINAL& C.N.S"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C42.2",
+              "display": "SPLEEN"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C18.5",
+              "display": "SPLENIC FLEXURE COLON"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "SPT",
+              "display": "SPUTUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C16",
+              "display": "STOMACH"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "STONE",
+              "display": "STONES"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "ST",
+              "display": "STOOLS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C32.2",
+              "display": "SUBGLOTTIS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C08.1",
+              "display": "SUBLINGUAL GLAND"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C08.0",
+              "display": "SUBMANDIBULAR GLAND"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C11.0",
+              "display": "SUPERIOR WALL NASOPHARYNX"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C32.1",
+              "display": "SUPRAGLOTTIS EPIGLOTTIS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C25.2",
+              "display": "TAIL OF PANCREAS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C71.2",
+              "display": "TEMPORAL LOBE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C62",
+              "display": "TESTIS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "TS",
+              "display": "THROAT SWAB"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C37",
+              "display": "THYMUS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C73.9",
+              "display": "THYROGLOSSAL D."
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C73",
+              "display": "THYROID"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C09",
+              "display": "TONSIL"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "TP",
+              "display": "TOOTH PASTE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C03.9",
+              "display": "TOOTH SOCKET"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C33",
+              "display": "TRACHEA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C38.6",
+              "display": "TRICUSPID VALVE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C67.0",
+              "display": "TRIGONE OF BLADDER"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "TZANC",
+              "display": "TZANCK SMEAR"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "SALAD",
+              "display": "UNCOOKED VEGET."
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C62.0",
+              "display": "UNDESCENDED TESTIS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C80.9",
+              "display": "UNKNOWN PRIMARU SITE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C03.0",
+              "display": "UPPER GUM"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C50.2",
+              "display": "UPPER INNER QUAD. BREAST"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C76.4",
+              "display": "UPPER LIMB NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C34.1",
+              "display": "UPPER LOBE, LUNG"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C50.4",
+              "display": "UPPER OUTER QUAD. BREAST"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C15.3",
+              "display": "UPPER THIRD OF EOSOPHAGUS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C67.7",
+              "display": "URACHUS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C66",
+              "display": "URETER"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C67.6",
+              "display": "URETERIC ORIFICE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "us",
+              "display": "URETHAL"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C68.0",
+              "display": "URETHRA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "US",
+              "display": "URETHRAL SWAB"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "UR",
+              "display": "URETHRAL SWAB"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "U",
+              "display": "URINE"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "U&B",
+              "display": "URINE AND BLOOD"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "UPROT",
+              "display": "URINE PROTEIN"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C55.1",
+              "display": "UTERUS BIL TUBES&OVARIES"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C55",
+              "display": "UTERUS NOS"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C55.2",
+              "display": "UTERUS UNI TUBE & OVARY"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C55.4",
+              "display": "UTERUS W/O CERVIX"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C55.3",
+              "display": "UTERUS W/O TUBES&OVARIES"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C05.2",
+              "display": "UVULA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C52",
+              "display": "VAGINA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "VD",
+              "display": "VAGINAL DISCHAR"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "VF",
+              "display": "VAGINAL FLUID"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "VA",
+              "display": "VAGINAL SWAB"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C52.9",
+              "display": "VAGINAL VAULT"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "VS",
+              "display": "VAULT SMEAR"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C41.2",
+              "display": "VERTEBRAL COLUMN"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C06.1",
+              "display": "VESTIBULE OF MOUTH"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "C51",
+              "display": "VULVA"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "VU",
+              "display": "VULVAL SWAB"
+            }
+          },
+          {
+            "valueCoding": {
+              "system": "http://openelis-global.org/pathSpecimenNature",
+              "code": "WS",
+              "display": "WOUND SWAB"
+            }
+          }
+        ]
+      },
+      {
+        "linkId": "b1e193ef-21fa-4642-a401-d57a56831cb5",
+        "text": "Specimen Type",
+        "type": "choice",
+        "answerOption": [
+          { "valueString": "Biopsy" },
+          { "valueString": "Partial Organ" },
+          { "valueString": "Whole Organ" }
+        ]
+      },
+      {
+        "linkId": "6d821b70-fee6-4da0-a094-1e9d20a55d48",
+        "text": "Nature/Site of Specimen",
+        "type": "text"
+      },
+      {
+        "linkId": "5c89c621-7dcc-481a-abd6-d64af8077a58",
+        "text": "Procedure performed",
+        "type": "choice",
+        "answerOption": [
+          { "valueString": "Core Biopsy" },
+          { "valueString": "Lumpectomy" }
+        ]
+      },
+      {
+        "linkId": "e430bd11-4557-4666-ac0c-d87c562b6078",
+        "text": "Provisional Clinical Diagnosis",
+        "type": "text"
+      },
+      {
+        "linkId": "f63294dc-c115-4015-a910-831edb12a6a1",
+        "text": "Previous Surgery / Treatment",
+        "type": "text"
+      },
+      {
+        "linkId": "ed38e5f5-9322-4c00-842d-af94e458e6e0",
+        "text": "Unit Number",
+        "type": "text"
+      },
+      {
+        "linkId": "4d21fa84-4063-4959-be75-890c40be7ad6",
+        "text": "Private Reference Number",
+        "type": "text"
+      }
+    ]
+  }
+}

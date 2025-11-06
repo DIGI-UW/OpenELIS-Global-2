@@ -5,9 +5,8 @@
 <%@ page isELIgnored="false"%>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<script type="text/javascript" src="scripts/externalConnections.js"></script>
 <script>
 
 	jQuery(document).ready(function() {
@@ -255,15 +254,6 @@
 			<form:input id="connectionUri" path="externalConnection.uri" onInput="setSave();checkIfHttps()"/>
 			<span id="locked"><i class="fas fa-lock" style="color:Green;"></i></span>
 			<span id="unlocked"><i class="fas fa-lock-open" style="color:DarkRed;"></i></span>
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<button type="button" onClick="testConnection()"><spring:message code="externalConnections.test"/></button>
-			<span id="connect-wait" hidden="hidden"><i class="fas fa-spinner" style="color:Blue;" ></i></span>
-			<span id="connect-success" hidden="hidden"><i class="fas fa-check-double" style="color:Green;" ></i></span>
-			<span id="connect-partial" hidden="hidden"><i class="fas fa-check" style="color:Goldenrod;"></i></span>
-			<span id="connect-fail" hidden="hidden"><i class="fas fa-times" style="color:DarkRed;"></i></span>
 		</td>
 	</tr>
 </table>

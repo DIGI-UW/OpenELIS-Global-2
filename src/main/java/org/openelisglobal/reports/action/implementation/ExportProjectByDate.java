@@ -1,18 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.reports.action.implementation;
 
@@ -24,7 +21,6 @@ import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.commons.validator.GenericValidator;
 import org.jfree.util.Log;
 import org.openelisglobal.common.util.StringUtil;
@@ -98,9 +94,7 @@ public class ExportProjectByDate extends CSVSampleExportReport implements IRepor
         createReportItems();
     }
 
-    /**
-     * check everything
-     */
+    /** check everything */
     private boolean validateSubmitParameters() {
         return dateRange.validateHighLowDate("report.error.message.date.received.missing") && validateProject();
     }
@@ -110,7 +104,7 @@ public class ExportProjectByDate extends CSVSampleExportReport implements IRepor
      *         otherwise
      */
     private boolean validateProject() {
-        if (isBlankOrNull(projectStr) || "0".equals(Integer.getInteger(projectStr).toString())) {
+        if (isBlankOrNull(projectStr) || "0".equals(Integer.valueOf(projectStr).toString())) {
             add1LineErrorMessage("report.error.message.project.missing");
             return false;
         }
@@ -122,9 +116,7 @@ public class ExportProjectByDate extends CSVSampleExportReport implements IRepor
         return true;
     }
 
-    /**
-     * creating the list for generation to the report
-     */
+    /** creating the list for generation to the report */
     private void createReportItems() {
         try {
             csvColumnBuilder = getColumnBuilder(projectStr);

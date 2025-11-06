@@ -1,109 +1,109 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-	  
-  	<property name="now" value="now()" dbms="postgresql"/>
-	<changeSet author="cliff" id="1">
-		<validCheckSum>8:8e37fd2d0295b9fd826c6f8bb67eac08</validCheckSum>
-		<preConditions onFail="MARK_RAN">
-		    <tableExists tableName="localization" schemaName="clinlims" />
-		</preConditions>
-		<insert schemaName="clinlims" tableName="localization">
-			<column name="id" valueSequenceNext="localization_seq" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="The method used for tests" />
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+      <property name="now" value="now()" dbms="postgresql"/>
+    <changeSet author="cliff" id="1">
+        <validCheckSum>8:8e37fd2d0295b9fd826c6f8bb67eac08</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="localization" schemaName="clinlims" />
+        </preConditions>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="The method used for tests" />
             <column name="english" value="EIA" />
-            <column name="french" value="EIE"/>			
-		</insert>
+            <column name="french" value="EIE"/>
+        </insert>
        <insert schemaName="clinlims" tableName="localization">
-			<column name="id" valueSequenceNext="localization_seq" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="The method used for tests" />
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="The method used for tests" />
             <column name="english" value="PCR" />
-            <column name="french" value="réaction en chaîne par polymérase"/>			
-		</insert>
+            <column name="french" value="réaction en chaîne par polymérase"/>
+        </insert>
         <insert schemaName="clinlims" tableName="localization">
-			<column name="id" valueSequenceNext="localization_seq" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="The method used for tests" />
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="The method used for tests" />
             <column name="english" value="STAIN" />
-            <column name="french" value="TACHE"/>			
-		</insert>
+            <column name="french" value="TACHE"/>
+        </insert>
         <insert schemaName="clinlims" tableName="localization">
-			<column name="id" valueSequenceNext="localization_seq" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="The method used for tests" />
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="The method used for tests" />
             <column name="english" value="CULTURE" />
-            <column name="french" value="CULTURE"/>			
-		</insert>
+            <column name="french" value="CULTURE"/>
+        </insert>
         <insert schemaName="clinlims" tableName="localization">
-			<column name="id" valueSequenceNext="localization_seq" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="The method used for tests" />
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="The method used for tests" />
             <column name="english" value="PROBE" />
-            <column name="french" value="SONDE"/>			
-		</insert>
+            <column name="french" value="SONDE"/>
+        </insert>
         <insert schemaName="clinlims" tableName="localization">
-			<column name="id" valueSequenceNext="localization_seq" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="The method used for tests" />
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="The method used for tests" />
             <column name="english" value="BIOCHEMICAL" />
-            <column name="french" value="BIOCHIMIQUE"/>			
-		</insert>
-		<insert schemaName="clinlims" tableName="localization">
-			<column name="id" valueSequenceNext="localization_seq" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="The method used for tests" />
+            <column name="french" value="BIOCHIMIQUE"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="The method used for tests" />
             <column name="english" value="HIV_TEST_KIT" />
-            <column name="french" value="HIV_TEST_KIT"/>			
-		</insert>
-		<insert schemaName="clinlims" tableName="localization">
-			<column name="id" valueSequenceNext="localization_seq" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="The method used for tests" />
+            <column name="french" value="HIV_TEST_KIT"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="The method used for tests" />
             <column name="english" value="Diane Test" />
-            <column name="french" value="Diane Test"/>			
-		</insert>
-		<insert schemaName="clinlims" tableName="localization">
-			<column name="id" valueSequenceNext="localization_seq" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="The method used for tests" />
+            <column name="french" value="Diane Test"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="The method used for tests" />
             <column name="english" value="HPLC" />
-            <column name="french" value="CLHP"/>			
-		</insert>
-		<insert schemaName="clinlims" tableName="localization">
-			<column name="id" valueSequenceNext="localization_seq" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="The method used for tests" />
+            <column name="french" value="CLHP"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="The method used for tests" />
             <column name="english" value="DNA SEQUENCING" />
-            <column name="french" value="ADN SÉQUENÇAGE"/>			
-		</insert>
-		<insert schemaName="clinlims" tableName="localization">
-			<column name="id" valueSequenceNext="localization_seq" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="The method used for tests" />
+            <column name="french" value="ADN SÉQUENÇAGE"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="The method used for tests" />
             <column name="english" value="AUTO" />
-            <column name="french" value="AUTO"/>			
-		</insert>
-		<insert schemaName="clinlims" tableName="localization">
-			<column name="id" valueSequenceNext="localization_seq" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="The method used for tests" />
+            <column name="french" value="AUTO"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="The method used for tests" />
             <column name="english" value="MANUAL" />
-            <column name="french" value="MANUEL"/>			
-		</insert>
-		<insert schemaName="clinlims" tableName="localization">
-			<column name="id" valueSequenceNext="localization_seq" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="The method used for tests" />
+            <column name="french" value="MANUEL"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="The method used for tests" />
             <column name="english" value="SYPHILIS_TEST_KIT" />
-            <column name="french" value="SYPHILIS_TEST_KIT"/>			
-		</insert>
-		
-		
-	</changeSet>
-	
+            <column name="french" value="SYPHILIS_TEST_KIT"/>
+        </insert>
+
+
+    </changeSet>
+
 </databaseChangeLog>

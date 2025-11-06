@@ -1,8 +1,7 @@
 package org.openelisglobal.referral.service;
 
 import java.util.List;
-
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.referral.dao.ReferringTestResultDAO;
 import org.openelisglobal.referral.valueholder.ReferringTestResult;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class ReferringTestResultServiceImpl extends BaseObjectServiceImpl<ReferringTestResult, String>
+public class ReferringTestResultServiceImpl extends AuditableBaseObjectServiceImpl<ReferringTestResult, String>
         implements ReferringTestResultService {
     @Autowired
     protected ReferringTestResultDAO baseObjectDAO;

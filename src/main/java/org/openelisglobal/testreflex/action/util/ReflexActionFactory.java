@@ -1,4 +1,3 @@
-
 package org.openelisglobal.testreflex.action.util;
 
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -15,5 +14,4 @@ public class ReflexActionFactory {
             return new DefaultReflexActions();
         }
     }
-
 }

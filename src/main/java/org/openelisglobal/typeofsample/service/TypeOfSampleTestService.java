@@ -1,7 +1,6 @@
 package org.openelisglobal.typeofsample.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 
@@ -16,7 +15,7 @@ public interface TypeOfSampleTestService extends BaseObjectService<TypeOfSampleT
 
     Integer getTotalTypeOfSampleTestCount();
 
-    TypeOfSampleTest getTypeOfSampleTestForTest(String testId);
+    // TypeOfSampleTest getTypeOfSampleTestForTest(String testId);
 
     List<TypeOfSampleTest> getTypeOfSampleTestsForSampleType(String sampleTypeId);
 }

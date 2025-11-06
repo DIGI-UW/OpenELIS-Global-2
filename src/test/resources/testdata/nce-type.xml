@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <nce_category id="1001" active="0"
+        name="Incorrect Sample Labeling"
+        display_key="nce.incorrect_sample_labeling"
+        last_updated="2025-07-25 10:30:00" />
+
+    <nce_category id="1002" active="1"
+        name="Improper Storage Conditions"
+        display_key="nce.improper_storage_conditions"
+        last_updated="2025-07-25 10:15:00" />
+
+
+    <nce_type id="1" name="specimen damaged"
+        display_key="specimen_damaged" category_id="1001" active="true"
+        last_updated="2025-07-25 10:00:00" />
+    <nce_type id="2" name="missing label"
+        display_key="missing_label" category_id="1001" active="true"
+        last_updated="2025-07-25 10:05:00" />
+    <nce_type id="3" name="expired reagent"
+        display_key="expired_reagent" category_id="1002" active="false"
+        last_updated="2025-07-25 10:10:00" />
+    <nce_type id="4" name="incorrect result"
+        display_key="incorrect_result" category_id="1001" active="true"
+        last_updated="2025-07-25 10:05:00" />
+    <nce_type id="5" name="broken container"
+        display_key="broken_container" category_id="1002" active="true"
+        last_updated="2025-07-25 10:05:00" />
+</dataset>

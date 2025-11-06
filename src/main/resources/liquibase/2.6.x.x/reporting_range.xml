@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<property name="now" value="now()" dbms="postgresql" />
+    <property name="now" value="now()" dbms="postgresql" />
 
-	<changeSet author="cliff" id="1">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<columnExists tableName="result_limits" columnName="low_reporting_range" />
-			</not>
-		</preConditions>
-		<addColumn schemaName="clinlims" tableName="result_limits">
-			<column name="low_reporting_range" type="double precision" defaultValueComputed="'-Infinity'::double precision"/>
-		</addColumn>
-	</changeSet>
+    <changeSet author="cliff" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="result_limits" columnName="low_reporting_range" />
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="result_limits">
+            <column name="low_reporting_range" type="double precision" defaultValueComputed="'-Infinity'::double precision"/>
+        </addColumn>
+    </changeSet>
 
     <changeSet author="cliff" id="2">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<columnExists tableName="result_limits" columnName="high_reporting_range" />
-			</not>
-		</preConditions>
-		<addColumn schemaName="clinlims" tableName="result_limits">
-			<column name="high_reporting_range" type="double precision" defaultValueComputed="'Infinity'::double precision"/>
-		</addColumn>
-	</changeSet>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="result_limits" columnName="high_reporting_range" />
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="result_limits">
+            <column name="high_reporting_range" type="double precision" defaultValueComputed="'Infinity'::double precision"/>
+        </addColumn>
+    </changeSet>
 
 </databaseChangeLog>

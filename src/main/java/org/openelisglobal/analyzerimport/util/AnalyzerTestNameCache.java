@@ -1,19 +1,17 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
  *
- * Contributor(s): CIRG, University of Washington, Seattle WA.
+ * <p>Contributor(s): CIRG, University of Washington, Seattle WA.
  */
 package org.openelisglobal.analyzerimport.util;
 
@@ -21,7 +19,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
@@ -43,14 +40,14 @@ public class AnalyzerTestNameCache {
         private static final AnalyzerTestNameCache INSTANCE = new AnalyzerTestNameCache();
     }
 
-    public final static String SYSMEX_XT2000_NAME = "Sysmex XT 2000";
-    public final static String COBAS_INTEGRA400_NAME = "Cobas Integra";
-    public final static String FACSCALIBUR = "Facscalibur";
-    public final static String EVOLIS = "Evolis";
-    public final static String COBAS_TAQMAN = "Cobas Taqman";
-    public final static String FACSCANTO = "FacsCanto";
-    public final static String COBAS_DBS = "CobasDBS";
-    public final static String COBAS_C311 = "Cobas C311";
+    public static final String SYSMEX_XT2000_NAME = "Sysmex XT 2000";
+    public static final String COBAS_INTEGRA400_NAME = "Cobas Integra";
+    public static final String FACSCALIBUR = "Facscalibur";
+    public static final String EVOLIS = "Evolis";
+    public static final String COBAS_TAQMAN = "Cobas Taqman";
+    public static final String FACSCANTO = "FacsCanto";
+    public static final String COBAS_DBS = "CobasDBS";
+    public static final String COBAS_C311 = "Cobas C311";
     private final HashMap<String, Map<String, MappedTestName>> analyzerNameToTestNameMap = new HashMap<>();
     private Map<String, String> analyzerNameToIdMap;
     private Map<String, String> requestTODBName = new HashMap<>();
@@ -142,7 +139,6 @@ public class AnalyzerTestNameCache {
                 testMap.put(mapping.getAnalyzerTestName(), mappedTestName);
             }
         }
-
     }
 
     private MappedTestName createMappedTestName(TestService testService, AnalyzerTestMapping mapping) {

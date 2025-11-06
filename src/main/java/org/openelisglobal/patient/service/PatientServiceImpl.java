@@ -1,20 +1,18 @@
 package org.openelisglobal.patient.service;
 
+import jakarta.annotation.PostConstruct;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
-import javax.annotation.PostConstruct;
-
 import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.service.PersonAddressService;
 import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.address.valueholder.PersonAddress;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
@@ -41,16 +39,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class PatientServiceImpl extends BaseObjectServiceImpl<Patient, String> implements PatientService {
+public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, String> implements PatientService {
 
-    public final static String ADDRESS_STREET = "Street";
-    public final static String ADDRESS_STATE = "State";
-    public final static String ADDRESS_VILLAGE = "village";
-    public final static String ADDRESS_DEPT = "department";
-    public final static String ADDRESS_COMMUNE = "commune";
-    public final static String ADDRESS_ZIP = "zip";
-    public final static String ADDRESS_COUNTRY = "Country";
-    public final static String ADDRESS_CITY = "City";
+    public static final String ADDRESS_STREET = "Street";
+    public static final String ADDRESS_STATE = "State";
+    public static final String ADDRESS_VILLAGE = "village";
+    public static final String ADDRESS_DEPT = "department";
+    public static final String ADDRESS_COMMUNE = "commune";
+    public static final String ADDRESS_ZIP = "zip";
+    public static final String ADDRESS_COUNTRY = "Country";
+    public static final String ADDRESS_CITY = "City";
 
     // These have getters
     private static String PATIENT_ST_IDENTITY;
@@ -189,7 +187,6 @@ public class PatientServiceImpl extends BaseObjectServiceImpl<Patient, String> i
         if (patientType != null) {
             PATIENT_OTHER_NATIONALITY = patientType.getId();
         }
-
     }
 
     PatientServiceImpl() {
@@ -540,7 +537,6 @@ public class PatientServiceImpl extends BaseObjectServiceImpl<Patient, String> i
     @Transactional(readOnly = true)
     public void getData(Patient patient) {
         getBaseObjectDAO().getData(patient);
-
     }
 
     @Override
@@ -621,7 +617,7 @@ public class PatientServiceImpl extends BaseObjectServiceImpl<Patient, String> i
 
         if (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD) {
             UUID uuid = UUID.randomUUID();
-//            patientInfo.setFhirUuid(uuid);
+            // patientInfo.setFhirUuid(uuid);
             patientInfo.setGuid(uuid.toString());
             patient.setFhirUuid(uuid);
             insert(patient);
@@ -740,7 +736,6 @@ public class PatientServiceImpl extends BaseObjectServiceImpl<Patient, String> i
             insertNewPatientAddressInfo(ADDRESS_PART_DEPT_ID, patientInfo.getAddressDepartment(), "D", patient,
                     sysUserId);
         }
-
     }
 
     @Override
@@ -799,7 +794,7 @@ public class PatientServiceImpl extends BaseObjectServiceImpl<Patient, String> i
         try {
             typeName = patientInfo.getPatientType();
         } catch (RuntimeException e) {
-            LogEvent.logInfo(this.getClass().getName(), "persistPatientType", "ignoring exception");
+            LogEvent.logInfo(this.getClass().getSimpleName(), "persistPatientType", "ignoring exception");
         }
 
         if (!GenericValidator.isBlankOrNull(typeName) && !"0".equals(typeName)) {
@@ -831,5 +826,4 @@ public class PatientServiceImpl extends BaseObjectServiceImpl<Patient, String> i
     public Patient getByExternalId(String id) {
         return baseObjectDAO.getByExternalId(id);
     }
-
 }

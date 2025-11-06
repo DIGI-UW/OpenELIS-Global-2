@@ -1,7 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
 import java.util.List;
-
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.common.service.BaseObjectService;

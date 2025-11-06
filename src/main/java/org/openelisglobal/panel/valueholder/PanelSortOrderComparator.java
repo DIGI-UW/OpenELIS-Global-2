@@ -31,8 +31,6 @@ public class PanelSortOrderComparator implements Comparable<Object> {
             Panel t_a = (Panel) a;
             Panel t_b = (Panel) b;
             return (new Integer(t_a.getSortOrderInt())).compareTo(new Integer(t_b.getSortOrderInt()));
-
         }
     };
-
 }

@@ -2,17 +2,16 @@ package org.openelisglobal.address.service;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.openelisglobal.address.dao.PersonAddressDAO;
 import org.openelisglobal.address.valueholder.AddressPK;
 import org.openelisglobal.address.valueholder.PersonAddress;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class PersonAddressServiceImpl extends BaseObjectServiceImpl<PersonAddress, AddressPK>
+public class PersonAddressServiceImpl extends AuditableBaseObjectServiceImpl<PersonAddress, AddressPK>
         implements PersonAddressService {
     @Autowired
     protected PersonAddressDAO baseObjectDAO;

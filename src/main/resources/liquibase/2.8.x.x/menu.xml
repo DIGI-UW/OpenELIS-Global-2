@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="reagan-meant" id="25-10-2025">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_aliquot'
+            </sqlCheck>
+        </preConditions>
+        <comment>create sample aliquot tab menu option</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="presentation_order" value="121" />
+            <column name="element_id" value="menu_aliquot" />
+            <column name="action_url" value="/Aliquot" />
+            <column name="display_key" value="banner.menu.aliquot"  />
+            <column name="tool_tip_key" value="banner.menu.aliquot.tooltip" />
+            <column name="new_window" valueBoolean="true" />
+            <column name="is_active" valueBoolean="true" />
+        </insert>
+    </changeSet>
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_billing'
+            </sqlCheck>
+        </preConditions>
+        <comment>create billing tab menu option</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="presentation_order" value="1" />
+            <column name="element_id" value="menu_billing" />
+            <column name="action_url" value="" />
+            <column name="display_key" value="banner.menu.billing"  />
+            <column name="tool_tip_key" value="banner.menu.billing.tooltip" />
+            <column name="new_window" valueBoolean="true" />
+            <column name="is_active" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="csteele" id="2">
+        <validCheckSum>8:620478311cf02d94f80878d0f8ab3a1b</validCheckSum>
+        <preConditions>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_nonconformity'
+            </sqlCheck>
+        </preConditions>
+        <comment>update nonconform tab menu option</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="is_active" valueComputed="(SELECT (si.value = 'true') FROM clinlims.site_information si WHERE si.name = 'Non Conformity tab')"/>
+            <where>element_id IN ('menu_nonconformity', 'menu_non_conforming_report', 'menu_non_conforming_view', 'menu_non_conforming_view')</where>
+        </update>
+        <delete tableName="site_information" schemaName="clinlims">
+            <where>name='Non Conformity tab'</where>
+        </delete>
+    </changeSet>
+
+    <changeSet author="csteele" id="3">
+        <validCheckSum>8:ee04bcb56f3968937708c47b637e7149</validCheckSum>
+        <preConditions>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_patient'
+            </sqlCheck>
+        </preConditions>
+        <comment>update patient tab menu option</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="presentation_order" value="2" />
+            <column name="element_id" value="menu_patienthistory" />
+            <column name="action_url" value="/PatientHistory" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_patient')" />
+            <column name="display_key" value="banner.menu.patienthistory"  />
+            <column name="tool_tip_key" value="banner.menu.patienthistory.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+        </insert>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="presentation_order" value="3"/>
+            <where>element_id IN ('menu_patient_create')</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="is_active" valueComputed="(SELECT (si.value = 'true') FROM clinlims.site_information si WHERE si.name = 'Patient management tab')"/>
+            <where>element_id IN ('menu_patient', 'menu_patient_add_or_edit', 'menu_patient_study', 'menu_patient_create', 'menu_patient_create_initial', 'menu_patient_create_double', 'menu_patient_edit', 'menu_patient_consult')</where>
+        </update>
+        <delete tableName="site_information" schemaName="clinlims">
+            <where>name='Patient management tab'</where>
+        </delete>
+    </changeSet>
+
+    <changeSet author="csteele" id="4">
+        <preConditions>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_sample_create'
+            </sqlCheck>
+        </preConditions>
+        <comment>update study tab menu option</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="is_active" valueComputed="(SELECT (si.value = 'true') FROM clinlims.site_information si WHERE si.name = 'Study Management tab')"/>
+            <where>element_id IN ('menu_sample_create', 'menu_sample_create_initial', 'menu_sample_create_double', 'menu_sample_consult', 'menu_patient_create', 'menu_patient_create_initial', 'menu_patient_create_double', 'menu_patient_edit', 'menu_patient_consult', 'menu_reports_study', 'menu_reports_patients', 'menu_reports_arv', 'menu_reports_arv_initial1', 'menu_reports_arv_initial2', 'menu_reports_arv_followup1', 'menu_reports_arv_followup2', 'menu_reports_eid', 'menu_reports_eid_version1', 'menu_reports_eid_version2', 'menu_reports_indeterminate', 'menu_reports_indeterminate_version1', 'menu_reports_indeterminate_version2', 'menu_reports_indeterminate_location', 'menu_reports_special', 'menu_reports_patient_collection', 'menu_reports_patient_associated', 'menu_reports_indicator', 'menu_reports_indicator_performance', 'menu_reports_validation_backlog.study', 'menu_reports_nonconformity.study', 'menu_reports_nonconformity_date.study', 'menu_reports_nonconformity_section.study', 'menu_reports_nonconformity_notification.study', 'menu_reports_followupRequired_ByLocation.study', 'menu_reports_export', 'menu_reports_auditTrail.study', 'menu_reports_arv_all', 'menu_reports_vl', 'menu_reports_vl_version1', 'menu_reports_nonconformity.Labno', 'menu_resultvalidation_study', 'menu_resultvalidation_immunology', 'menu_resultvalidation_biochemistry', 'menu_resultvalidation_serology', 'menu_resultvalidation_dnapcr', 'menu_resultvalidation_virology', 'menu_resultvalidation_viralload', 'menu_resultvalidation_genotyping')</where>
+        </update>
+        <delete tableName="site_information" schemaName="clinlims">
+            <where>name='Study Management tab'</where>
+        </delete>
+    </changeSet>
+
+    <changeSet author="csteele" id="5">
+        <comment>delete unused menu option</comment>
+        <delete tableName="site_information" schemaName="clinlims">
+            <where>name='Data Submission'</where>
+        </delete>
+        <delete tableName="site_information" schemaName="clinlims">
+            <where>name='Data Sub URL'</where>
+        </delete>
+    </changeSet>
+
+    <changeSet author="csteele" id="6">
+        <preConditions>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_pathology'
+            </sqlCheck>
+        </preConditions>
+        <comment>insert pathology tab menu option</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="presentation_order" value="8" />
+            <column name="element_id" value="menu_pathology" />
+            <column name="display_key" value="sidenav.label.pathology"  />
+            <column name="tool_tip_key" value="sidenav.label.pathology.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+        </insert>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="presentation_order" value="1" />
+            <column name="element_id" value="menu_pathologydashboard" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_pathology')" />
+            <column name="action_url" value="/PathologyDashboard" />
+            <column name="display_key" value="sidenav.label.pathology.dashboard"  />
+            <column name="tool_tip_key" value="sidenav.label.pathology.dashboard.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="csteele" id="7">
+        <preConditions>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_immunochem'
+            </sqlCheck>
+        </preConditions>
+        <comment>insert immunochem tab menu option</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="presentation_order" value="9" />
+            <column name="element_id" value="menu_immunochem" />
+            <column name="display_key" value="sidenav.label.immunochem"  />
+            <column name="tool_tip_key" value="sidenav.label.immunochem.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+        </insert>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="presentation_order" value="1" />
+            <column name="element_id" value="menu_immunochemdashboard" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_immunochem')" />
+            <column name="action_url" value="/ImmunohistochemistryDashboard" />
+            <column name="display_key" value="sidenav.label.immunochem.dashboard"  />
+            <column name="tool_tip_key" value="sidenav.label.immunochem.dashboard.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="csteele" id="8">
+        <preConditions>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_cytology'
+            </sqlCheck>
+        </preConditions>
+        <comment>insert immunochem tab menu option</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="presentation_order" value="10" />
+            <column name="element_id" value="menu_cytology" />
+            <column name="display_key" value="sidenav.label.cytology"  />
+            <column name="tool_tip_key" value="sidenav.label.cytology.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+        </insert>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="presentation_order" value="1" />
+            <column name="element_id" value="menu_cytologydashboard" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_cytology')" />
+            <column name="action_url" value="/CytologyDashboard" />
+            <column name="display_key" value="sidenav.label.cytology.dashboard"  />
+            <column name="tool_tip_key" value="sidenav.label.cytology.dashboard.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="csteele" id="9">
+        <comment>update results search menu options</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="presentation_order" value="6" />
+            <column name="element_id" value="menu_results_search_testdate" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_results')" />
+            <column name="action_url" value="/result?type=date&amp;doRange=false" />
+            <column name="display_key" value="sidenav.label.results.testdate"  />
+            <column name="tool_tip_key" value="sidenav.label.results.testdate.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+        </insert>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_results')" />
+            <where>parent_id=(SELECT id FROM clinlims.menu WHERE element_id = 'menu_results_search')</where>
+        </update>
+        <delete tableName="menu" schemaName="clinlims">
+            <where>element_id='menu_results_search'</where>
+        </delete>
+    </changeSet>
+
+    <changeSet author="csteele" id="10">
+        <comment>update order of top level menu</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="presentation_order" value="0" />
+            <where>element_id='menu_home'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="presentation_order" value="10" />
+            <where>element_id='menu_sample'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="presentation_order" value="20" />
+            <where>element_id='menu_patient'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="presentation_order" value="30" />
+            <where>element_id='menu_nonconformity'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="presentation_order" value="40" />
+            <where>element_id='menu_workplan'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="presentation_order" value="50" />
+            <where>element_id='menu_pathology'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="presentation_order" value="60" />
+            <where>element_id='menu_immunochem'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="presentation_order" value="70" />
+            <where>element_id='menu_cytology'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="presentation_order" value="80" />
+            <where>element_id='menu_results'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="presentation_order" value="90" />
+            <where>element_id='menu_resultvalidation'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="presentation_order" value="100" />
+            <where>element_id='menu_reports'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="presentation_order" value="110" />
+            <where>element_id='menu_administration'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="presentation_order" value="120" />
+            <where>element_id='menu_billing'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="presentation_order" value="130" />
+            <where>element_id='menu_help'</where>
+        </update>
+    </changeSet>
+
+    <changeSet author="csteele" id="11">
+        <comment>update action url of report urls</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/RoutineReports" />
+            <where>element_id='menu_reports_routine'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/StudyReports" />
+            <where>element_id='menu_reports_study'</where>
+        </update>
+    </changeSet>
+
+    <changeSet author="moses_mutesa" id="12">
+        <comment>update results search menu options</comment>
+        <delete tableName="menu" schemaName="clinlims">
+            <where>element_id='menu_results_search_testdate'</where>
+        </delete>
+    </changeSet>
+
+    <changeSet author="csteele" id="13">
+        <comment>add column to track if Menu shows up in old UI</comment>
+        <addColumn tableName="menu" schemaName="clinlims">
+            <column name="hide_in_old_ui" type="BOOLEAN" defaultValueBoolean="false"/>
+        </addColumn>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="hide_in_old_ui" valueBoolean="true" />
+            <where>element_id in ('menu_billing', 'menu_patienthistory', 'menu_pathology', 'menu_pathologydashboard', 'menu_immunochem', 'menu_immunochemdashboard', 'menu_cytology', 'menu_cytologydashboard', 'menu_results_search_testdate')</where>
+        </update>
+    </changeSet>
+
+    <changeSet author="vishal" id="14">
+        <comment>Update pathology menu to remove dashboard submenu and add direct URL</comment>
+        <!-- Delete the dashboard submenu -->
+        <delete tableName="menu" schemaName="clinlims">
+            <where>element_id='menu_pathologydashboard'</where>
+        </delete>
+        <!-- Update the parent menu with the action URL -->
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/PathologyDashboard"/>
+            <where>element_id='menu_pathology'</where>
+        </update>
+    </changeSet>
+
+    <changeSet author="vishal" id="15">
+        <comment>Update cytology menu to remove dashboard submenu and add direct URL</comment>
+        <delete tableName="menu" schemaName="clinlims">
+            <where>element_id='menu_cytologydashboard'</where>
+        </delete>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/CytologyDashboard"/>
+            <where>element_id='menu_cytology'</where>
+        </update>
+    </changeSet>
+
+    <changeSet author="vishal" id="16">
+        <comment>Update immunochemistry menu to remove dashboard submenu and add direct URL</comment>
+        <delete tableName="menu" schemaName="clinlims">
+            <where>element_id='menu_immunochemdashboard'</where>
+        </delete>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/ImmunohistochemistryDashboard"/>
+            <where>element_id='menu_immunochem'</where>
+        </update>
+    </changeSet>
+
+
+</databaseChangeLog>

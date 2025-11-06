@@ -1,27 +1,22 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.analyzerresults.action;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.form.IPagingForm;
@@ -60,10 +55,11 @@ public class AnalyzerResultsPaging {
         }
 
         request.getSession().setAttribute(IActionConstants.SAVE_DISABLED, IActionConstants.FALSE);
-        List<AnalyzerResultItem> clientTests = form.getResultList();
-        PagingBean bean = form.getPaging();
+        // List<AnalyzerResultItem> clientTests = form.getResultList();
+        // PagingBean bean = form.getPaging();
 
-        paging.updatePagedResults(request.getSession(), clientTests, bean, pagingHelper);
+        // paging.updatePagedResults(request.getSession(), clientTests, bean,
+        // pagingHelper);
 
         List<AnalyzerResultItem> resultPage = paging.getPage(newPage, request.getSession());
         if (resultPage != null) {
@@ -123,7 +119,6 @@ public class AnalyzerResultsPaging {
             for (int i = 0; i < clientItems.size(); i++) {
                 cacheItems.set(i, clientItems.get(i));
             }
-
         }
 
         @Override
@@ -156,7 +151,6 @@ public class AnalyzerResultsPaging {
                         mappingList.add(new IdValuePair(currentAccession, pageString));
                     }
                 }
-
             }
 
             return mappingList;

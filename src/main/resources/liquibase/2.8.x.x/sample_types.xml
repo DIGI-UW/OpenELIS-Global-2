@@ -1,0 +1,667 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+      <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.type_of_sample where description = 'Tissue antemortem'; </sqlCheck>
+        </preConditions>
+        <comment>add pathology test info</comment>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="sampleType name" />
+            <column name="english" value="Tissue antemortem" />
+            <column name="french" value="Tissue antemortem"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="type_of_sample">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Tissue antemortem"/>
+            <column name="lastupdated" valueDate="now()" />
+            <column name="domain" value="H" />
+            <column name="local_abbrev" value="TAM" />
+            <column name="is_active" value="t" />
+            <column name="display_key" value="sample.type.anteMortemsampleType"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Tissue antemortem' and description = 'sampleType name' limit 1)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueNumeric="(select id from clinlims.type_of_sample where description = 'Tissue antemortem' )"/>
+            <column name="test_id" valueNumeric="(select id from clinlims.test where description = 'Histopathology examination' )" />
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="sampleType name" />
+            <column name="english" value="Tissue post mortem" />
+            <column name="french" value="Tissue post mortem"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="type_of_sample">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Tissue post mortem"/>
+            <column name="lastupdated" valueDate="now()" />
+            <column name="domain" value="H" />
+            <column name="local_abbrev" value="TAM" />
+            <column name="is_active" value="t" />
+            <column name="display_key" value="sample.type.postMortemsampleType"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Tissue post mortem' and description = 'sampleType name' limit 1)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueNumeric="(select id from clinlims.type_of_sample where description = 'Tissue post mortem' )"/>
+            <column name="test_id" valueNumeric="(select id from clinlims.test where description = 'Histopathology examination' )" />
+        </insert>
+    </changeSet>
+    <changeSet author="csteele" id="1.1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="2">select count(*) from clinlims.type_of_sample where local_abbrev = 'TAM'; </sqlCheck>
+        </preConditions>
+        <update schemaName="clinlims" tableName="type_of_sample">
+            <column name="lastupdated" valueDate="now()" />
+            <column name="local_abbrev" value="TMP" />
+            <where>description='Tissue post mortem'</where>
+        </update>
+    </changeSet>
+
+    <changeSet author="csteele" id="2">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                select count(*)
+                from clinlims.sampletype_test
+                where sample_type_id = ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' LIMIT 1)
+                AND test_id = ( select id from clinlims.test where description = 'Anti-Pan Keratin' LIMIT 1)
+                ;
+            </sqlCheck>
+        </preConditions>
+        <comment>add immunohistochemistry tests to antemortem</comment>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Pan Keratin' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'AMACR (p504 s)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'BCL 2' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'BCL 6' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'BerEp4' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Calponin' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Calretinin' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD10' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD15' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD20' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD22' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD 3' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD30' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD34' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD45' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD 5' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD56' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD7' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD79a' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD99 (O13)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CDX-2 (EPR2764Y)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Chromogranin A' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Cytokeratin 20' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Cytokeratin 5/6' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Cytokeratin 7' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Cyclin D1 (SP4-R)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Desmin' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'DOG1 (SP31)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-E-Cadherin' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-EMA (E29)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-ER' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Gata 3' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Glial Fibrillary Acidic Protein' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-hepatocyte Specific Antigen (Hep Par-1)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Her2 Dual ISH' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-HER2' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-melanosome (HMB45)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Inhibin' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Ki67' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-MUC2' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-MUM1' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Myogenin (F5D)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Napsin A (MRQ-60)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'CINtec® p16 Histology' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-p40 (BC28)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'P 53' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-p63 (4A4)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Pax 5' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Pax 8' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-PR' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-S100' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Actin Smooth Muscle' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Synaptophysin (SP11)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Thyroid Transcription Factor' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Thyroglobulin (2H11+6E1)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Wilms'' tumor 1 protein (WT1)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue antemortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Vimentin' ) " />
+        </insert>
+    </changeSet>
+
+    <changeSet author="csteele" id="4">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                select count(*)
+                from clinlims.sampletype_test
+                where sample_type_id = ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' LIMIT 1)
+                AND test_id = ( select id from clinlims.test where description = 'Anti-Pan Keratin' LIMIT 1)
+                ;
+            </sqlCheck>
+        </preConditions>
+        <comment>add immunohistochemistry tests to post mortem</comment>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Pan Keratin' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'AMACR (p504 s)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'BCL 2' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'BCL 6' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'BerEp4' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Calponin' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Calretinin' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD10' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD15' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD20' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD22' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD 3' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD30' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD34' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD45' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD 5' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD56' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD7' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD79a' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CD99 (O13)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-CDX-2 (EPR2764Y)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Chromogranin A' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Cytokeratin 20' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Cytokeratin 5/6' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Cytokeratin 7' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Cyclin D1 (SP4-R)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Desmin' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'DOG1 (SP31)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-E-Cadherin' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-EMA (E29)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-ER' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Gata 3' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Glial Fibrillary Acidic Protein' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-hepatocyte Specific Antigen (Hep Par-1)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Her2 Dual ISH' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-HER2' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-melanosome (HMB45)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Inhibin' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Ki67' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-MUC2' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-MUM1' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Myogenin (F5D)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Napsin A (MRQ-60)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'CINtec® p16 Histology' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-p40 (BC28)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'P 53' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-p63 (4A4)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Pax 5' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Pax 8' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-PR' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-S100' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Actin Smooth Muscle' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Synaptophysin (SP11)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Thyroid Transcription Factor' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Thyroglobulin (2H11+6E1)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Wilms'' tumor 1 protein (WT1)' ) " />
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueNumeric=" nextval( 'sample_type_test_seq' ) "/>
+            <column name="sample_type_id" valueNumeric=" ( select id from clinlims.type_of_sample where description = 'Tissue post mortem' ) "/>
+            <column name="test_id"  valueNumeric=" ( select id from clinlims.test where description = 'Anti-Vimentin' ) " />
+        </insert>
+    </changeSet>
+
+
+</databaseChangeLog>

@@ -1,21 +1,19 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.dataexchange.MalariaSurveilance;
 
+import jakarta.servlet.http.HttpServletResponse;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
@@ -24,9 +22,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import javax.servlet.http.HttpServletResponse;
-
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -63,7 +58,8 @@ public class MalariaSurveilanceJob implements Job {
     private static Map<String, String> RAPID_DICTIONARY_ID_VALUE_MAP;
     private static List<String> MALARIA_TEST_NAMES;
     private static List<String> RAPID_TEST_NAMES;
-    private static final String FINISHED_STATUS_ID = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
+    private static final String FINISHED_STATUS_ID = SpringContext.getBean(IStatusService.class)
+            .getStatusID(AnalysisStatus.Finalized);
 
     private StringBuffer buffer;
 
@@ -129,7 +125,7 @@ public class MalariaSurveilanceJob implements Job {
 
     @Override
     public void execute(JobExecutionContext arg0) throws JobExecutionException {
-        LogEvent.logInfo(this.getClass().getName(), "method unkown",
+        LogEvent.logInfo(this.getClass().getSimpleName(), "execute",
                 "MalariaSurveilance triggered: " + DateUtil.getCurrentDateAsText("dd-MM-yyyy hh:mm"));
         LogEvent.logInfo("MalariaSurveilance", "execute()",
                 "Gathering triggered: " + DateUtil.getCurrentDateAsText("dd-MM-yyyy hh:mm"));
@@ -178,9 +174,7 @@ public class MalariaSurveilanceJob implements Job {
 
             new ReportTransmission().sendRawReport(buffer.toString(), url, sendAsychronously, responseHandler,
                     HTTP_TYPE.POST);
-
         }
-
     }
 
     private void writeReportForDayPeriod(int daysAgo) {
@@ -266,14 +260,14 @@ public class MalariaSurveilanceJob implements Job {
         @Override
         public void handleResponse(int httpReturnStatus, List<String> errors, String msg) {
             if (httpReturnStatus == HttpServletResponse.SC_OK) {
-
             }
+
             switch (httpReturnStatus) {
             case HttpServletResponse.SC_OK:
                 setJobTimestamp(runTime);
                 break;
             default:
-                LogEvent.logInfo(this.getClass().getName(), "method unkown", errors.toString());
+                LogEvent.logInfo(this.getClass().getSimpleName(), "handleResponse", errors.toString());
             }
         }
 
@@ -285,10 +279,8 @@ public class MalariaSurveilanceJob implements Job {
             try {
                 cronSchedulerService.update(gatherScheduler);
             } catch (LIMSRuntimeException e) {
-                LogEvent.logError(e.toString(), e);
+                LogEvent.logError(e);
             }
         }
-
     }
-
 }

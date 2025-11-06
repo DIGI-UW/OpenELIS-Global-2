@@ -9,12 +9,10 @@ import java.sql.Timestamp;
  * DAO implementation to read/write/update and properly track changes. The
  * changes are tracked as appropriate in the application, DB logs and the entity
  * itself.
- * 
- * @author pahill
  *
+ * @author pahill
  * @param <T> the class of the index
  */
-
 public interface SimpleBaseEntity<T> extends Serializable {
 
     T getId();

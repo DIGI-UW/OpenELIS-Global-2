@@ -7,9 +7,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 <script type="text/javascript" src="scripts/ajaxCalls.js?"></script>
 
 
@@ -51,10 +51,6 @@ function /*boolean*/ hasRequriedValues(){
 	return true;	
 }
 
-function testConnection( identifier){
-	testConnectionOnServer(identifier, jQuery("#" + identifier).val(), processTestSuccess);
-}
-
 function  /*void*/ processTestSuccess(xhr){
 
     //alert(xhr.responseText);
@@ -90,12 +86,6 @@ function  /*void*/ processTestSuccess(xhr){
     			   id = "${reports.connectionTestIdentifier}"
     			   size="80" />
     </td>
-    <c:if test="${not empty reports.connectionTestIdentifier}">
-    <td>
-		<input type="button" value='<spring:message code="connection.test.button"/>' onclick='testConnection( "${reports.connectionTestIdentifier}");' >
-		<spring:message code="connection.test.button.message"/> 
-    </td>
-    </c:if>
   </tr>
   <c:if test="${resports.isScheduled}">
   <tr>

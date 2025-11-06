@@ -1,89 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-	<changeSet id="1" author="mosesmutesa">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<tableExists tableName="user_lab_unit_roles"/>
-			</not>
-		</preConditions>
-		<comment>
-			Creating user_lab_unit_roles table
-		</comment>
-		<createTable tableName="user_lab_unit_roles">
-			<column name="system_user_id" type="int">
-				<constraints primaryKey="true" nullable="false"/>
-			</column>
-			<column name="last_updated" type="datetime"/>
-		</createTable>
-		<addForeignKeyConstraint constraintName="user_lab_unit_role_systemUser_fk"
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet id="1" author="mosesmutesa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="user_lab_unit_roles"/>
+            </not>
+        </preConditions>
+        <comment>
+            Creating user_lab_unit_roles table
+        </comment>
+        <createTable tableName="user_lab_unit_roles">
+            <column name="system_user_id" type="int">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="user_lab_unit_role_systemUser_fk"
                                  baseTableName="user_lab_unit_roles" baseColumnNames="system_user_id"
                                  referencedTableName="system_user" referencedColumnNames="id"/>
-	</changeSet>
-	<changeSet id="2" author="mosesmutesa">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<tableExists tableName="lab_unit_role_map"/>
-			</not>
-		</preConditions>
-		<comment>
-			Creating lab_unit_role_map table
-		</comment>
-		<createTable tableName="lab_unit_role_map">
-			<column name="lab_unit_role_map_id" type="int" autoIncrement="true">
-				<constraints primaryKey="true" nullable="false"/>
-			</column>
-			<column name="lab_unit" type="varchar(64)">
-				<constraints nullable="false"/>
-			</column>
-		</createTable>
-	</changeSet>
-	<changeSet id="3" author="mosesmutesa">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<tableExists tableName="lab_roles"/>
-			</not>
-		</preConditions>
-		<comment>
-			Creating lab_roles table
-		</comment>
-		<createTable tableName="lab_roles">
-			<column name="lab_unit_role_map_id" type="int">
-				<constraints nullable="false"/>
-			</column>
-			<column name="role" type="varchar(64)"/>
-		</createTable>
-		<addForeignKeyConstraint constraintName="lab_unit_role_map__fk"
+    </changeSet>
+    <changeSet id="2" author="mosesmutesa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="lab_unit_role_map"/>
+            </not>
+        </preConditions>
+        <comment>
+            Creating lab_unit_role_map table
+        </comment>
+        <createTable tableName="lab_unit_role_map">
+            <column name="lab_unit_role_map_id" type="int" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="lab_unit" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="3" author="mosesmutesa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="lab_roles"/>
+            </not>
+        </preConditions>
+        <comment>
+            Creating lab_roles table
+        </comment>
+        <createTable tableName="lab_roles">
+            <column name="lab_unit_role_map_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role" type="varchar(64)"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="lab_unit_role_map__fk"
                                  baseTableName="lab_roles" baseColumnNames="lab_unit_role_map_id"
                                  referencedTableName="lab_unit_role_map" referencedColumnNames="lab_unit_role_map_id"/>
-	</changeSet>
-	<changeSet id="4" author="mosesmutesa">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<tableExists tableName="lab_unit_roles"/>
-			</not>
-		</preConditions>
-		<comment>
-			Creating lab_unit_roles table
-		</comment>
-		<createTable tableName="lab_unit_roles">
-			<column name="system_user_id" type="int">
-				<constraints nullable="false"/>
-			</column>
-			<column name="lab_unit_role_map_id" type="int">
-				<constraints nullable="false"/>
-			</column>
-		</createTable>
-		<addForeignKeyConstraint constraintName="user_lab_role_id__fk"
+    </changeSet>
+    <changeSet id="4" author="mosesmutesa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="lab_unit_roles"/>
+            </not>
+        </preConditions>
+        <comment>
+            Creating lab_unit_roles table
+        </comment>
+        <createTable tableName="lab_unit_roles">
+            <column name="system_user_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lab_unit_role_map_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint constraintName="user_lab_role_id__fk"
                                  baseTableName="lab_unit_roles" baseColumnNames="system_user_id"
                                  referencedTableName="user_lab_unit_roles" referencedColumnNames="system_user_id"/>
-		<addForeignKeyConstraint constraintName="user_lab_unit_role_map_fk"
+        <addForeignKeyConstraint constraintName="user_lab_unit_role_map_fk"
                                  baseTableName="lab_unit_roles" baseColumnNames="lab_unit_role_map_id"
                                  referencedTableName="lab_unit_role_map" referencedColumnNames="lab_unit_role_map_id"/>
-	</changeSet>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="2312131">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="lab_unit_roles"/>
+            <tableExists tableName="lab_unit_role_map"/>
+        </preConditions>
+        <sql>
+            ALTER TABLE clinlims.lab_unit_roles DROP CONSTRAINT user_lab_unit_role_map_fk;
+            ALTER TABLE clinlims.lab_unit_roles ADD CONSTRAINT user_lab_unit_role_map_fk FOREIGN KEY (lab_unit_role_map_id) REFERENCES clinlims.lab_unit_role_map(lab_unit_role_map_id) ON DELETE CASCADE ON UPDATE CASCADE;
+        </sql>
+    </changeSet>
 </databaseChangeLog>
-
-

@@ -6,7 +6,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
@@ -124,6 +123,9 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
      * @return {@link Date} object or null if there is a parse error.
      */
     private Date getDate(String value, String pattern) {
+        if (value == null) {
+            return null;
+        }
         try {
             SimpleDateFormat format = new SimpleDateFormat(pattern);
             return new Date(format.parse(value).getTime());
@@ -144,7 +146,8 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
                 DisplayListService.getInstance().getList(DisplayListService.ListType.SEVERITY_CONSEQUENCES_LIST));
         form.setSeverityRecurrenceList(
                 DisplayListService.getInstance().getList(DisplayListService.ListType.SEVERITY_RECURRENCE_LIST));
-        form.setReportingUnits(DisplayListService.getInstance().getList(DisplayListService.ListType.TEST_SECTION));
+        form.setReportingUnits(
+                DisplayListService.getInstance().getList(DisplayListService.ListType.TEST_SECTION_ACTIVE));
 
         SystemUser systemUser = systemUserService.getUserById(form.getCurrentUserId());
         form.setName(systemUser.getFirstName() + " " + systemUser.getLastName());
@@ -254,8 +257,8 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
     }
 
     private void setActionLogs(NonConformingEventForm form, NcEvent ncEvent) {
-        if (form.getActionLogStr() != null) {
-            List<NceActionLog> actionLogs = initNceActionLog(form.getActionLogStr());
+        if (form.getActionLog() != null) {
+            List<NceActionLog> actionLogs = form.getActionLog();
             if (actionLogs != null) {
                 for (NceActionLog actionLog : actionLogs) {
                     actionLog.setNcEventId(Integer.parseInt(ncEvent.getId()));
@@ -264,7 +267,6 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
                 }
             }
         }
-
     }
 
     @Override
@@ -272,6 +274,8 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
         NcEvent ncEvent = ncEventService.get(form.getId());
         if (ncEvent != null) {
             ncEvent.setDiscussionDate(form.getDiscussionDate());
+            ncEvent.setDateCompleted(getDate(form.getDateCompleted(), "dd/MM/yyyy")); // Convert the string to a Date
+                                                                                      // object
             setActionLogs(form, ncEvent);
             ncEvent.setSysUserId(form.getCurrentUserId());
             ncEventService.update(ncEvent);

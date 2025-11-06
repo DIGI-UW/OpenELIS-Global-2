@@ -1,7 +1,6 @@
 package org.openelisglobal.testconfiguration.form;
 
 import java.util.List;
-
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestCatalog;

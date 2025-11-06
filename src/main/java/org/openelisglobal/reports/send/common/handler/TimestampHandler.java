@@ -1,37 +1,29 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ */
 package org.openelisglobal.reports.send.common.handler;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-
 import org.exolab.castor.mapping.GeneralizedFieldHandler;
 import org.openelisglobal.common.log.LogEvent;
 
-/**
- * The FieldHandler for the Date class
- *
- */
+/** The FieldHandler for the Date class */
 public class TimestampHandler extends GeneralizedFieldHandler {
 
     private static final String FORMAT = "yyyy-MM-dd";
 
-    /**
-     * Creates a new MyDateHandler instance
-     */
+    /** Creates a new MyDateHandler instance */
     public TimestampHandler() {
         super();
     }
@@ -74,7 +66,7 @@ public class TimestampHandler extends GeneralizedFieldHandler {
 
         } catch (ParseException e) {
             // bugzilla 2154
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new IllegalArgumentException(e);
         }
         return date;
@@ -106,5 +98,4 @@ public class TimestampHandler extends GeneralizedFieldHandler {
         // -- it's not needed.
         return null;
     }
-
 }

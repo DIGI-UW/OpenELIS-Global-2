@@ -10,5 +10,4 @@ public interface TruststoreService {
 
     void addTrustedCert(String alias, Certificate certificate)
             throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException;
-
 }

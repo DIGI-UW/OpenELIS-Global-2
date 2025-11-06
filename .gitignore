@@ -1,6 +1,6 @@
 # compiled code #
 *.class
-
+*.DS_Store
 # Package Files #
 *.war
 *.ear
@@ -9,6 +9,8 @@
 liqubase.properties
 
 # IDE files #
+.idea/
+.vscode/
 .classpath
 .settings/
 .project
@@ -25,3 +27,13 @@ src/main/resources/adminPassword.txt
 /OEInstaller/
 /docs_back
 /bin/
+/.apt_generated/
+*/plugins/*.jar
+Patient/*
+volume/database/data/*
+tools/Liquibase-Outdated
+volume/tomcat/*
+volume/database/data*/*
+volume/logs/*
+volume/ocl/*
+volume/odoo/*

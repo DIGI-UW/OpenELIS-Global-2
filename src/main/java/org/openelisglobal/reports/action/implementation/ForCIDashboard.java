@@ -1,18 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.reports.action.implementation;
 
@@ -25,7 +22,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.commons.validator.GenericValidator;
 import org.jfree.util.Log;
 import org.openelisglobal.common.util.StringUtil;
@@ -85,13 +81,13 @@ public class ForCIDashboard extends CSVSampleExportReport implements IReportPara
         super.initializeReport();
         errorFound = false;
 
-        indicStr = form.getProjectCode();
+        indicStr = form.getVlStudyType();
 
         lowDateStr = form.getLowerDateRange();
         highDateStr = form.getUpperDateRange();
-        projectStr = form.getProjectCode();
+        projectStr = form.getVlStudyType();
         dateRange = new DateRange(lowDateStr, highDateStr);
-        String[] splitline = form.getProjectCode().split(":");
+        String[] splitline = form.getVlStudyType().split(":");
 
         projectStr = splitline[0];
         // indicLabel = splitline[1];
@@ -105,9 +101,7 @@ public class ForCIDashboard extends CSVSampleExportReport implements IReportPara
         createReportItems();
     }
 
-    /**
-     * check everything
-     */
+    /** check everything */
     private boolean validateSubmitParameters() {
         return dateRange.validateHighLowDate("report.error.message.date.received.missing") && validateProject();
     }
@@ -129,9 +123,7 @@ public class ForCIDashboard extends CSVSampleExportReport implements IReportPara
         return true;
     }
 
-    /**
-     * creating the list for generation to the report
-     */
+    /** creating the list for generation to the report */
     private void createReportItems() {
         try {
             csvColumnBuilder = getColumnBuilder();
@@ -170,7 +162,8 @@ public class ForCIDashboard extends CSVSampleExportReport implements IReportPara
     private boolean writeAble(String result) {
 
         String workingResult = result.split("\\(")[0].trim();
-        // LogEvent.logInfo(this.getClass().getName(), "method unkown", "result=" +
+        // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown", "result="
+        // +
         // result + " / workingResult= " +
         // workingResult);
         String[] splitLine = indicStr.split(":");
@@ -178,8 +171,8 @@ public class ForCIDashboard extends CSVSampleExportReport implements IReportPara
         if (indic.equals("Unsuppressed VL")) {
             return workingResult.contains("Log7")
                     || !workingResult.contains("L") && !workingResult.contains("X") && !workingResult.contains("<")
-                            && workingResult.length() > 0 && Double.parseDouble(workingResult) >= 1000;// workingResult.length()>=4
-                                                                                                       // &&
+                            && workingResult.length() > 0 && Double.parseDouble(workingResult) >= 1000; // workingResult.length()>=4
+            // &&
         } else if (indic.equals("Suppressed VL")) {
             return workingResult.contains("L") || workingResult.contains("<") || (workingResult.length() > 0
                     && !workingResult.contains("X") && Double.parseDouble(workingResult) < 1000);
@@ -214,7 +207,6 @@ public class ForCIDashboard extends CSVSampleExportReport implements IReportPara
     private CSVColumnBuilder getColumnBuilder() {
         // String projectTag = CIColumnBuilder.translateProjectId(projectId);
         return new ForCIDashboardColumnBuilder(dateRange, projectStr);
-
     }
 
     /*
@@ -242,18 +234,18 @@ public class ForCIDashboard extends CSVSampleExportReport implements IReportPara
         List<Project> projects = new ArrayList<>();
         Project curProject = new Project();
 
-//		  project.setProjectName("Antiretroviral Study");
-//		  projects.add(projectService.getProjectByName(project, false, false));
-//		  project.setProjectName("Antiretroviral Followup Study");
-//		  projects.add(projectService.getProjectByName(project, false, false));
-//		  project.setProjectName("Routine HIV Testing");
-//		  projects.add(projectService.getProjectByName(project, false, false));
-//		  project.setProjectName("Early Infant Diagnosis for HIV Study");
-//		  projects.add(projectService.getProjectByName(project, false, false));
-//		  project.setProjectName("Viral Load Results");
-//		  projects.add(projectService.getProjectByName(project, false, false));
-//		  project.setProjectName("Indeterminate Results");
-//		  projects.add(projectService.getProjectByName(project, false, false));
+        // project.setProjectName("Antiretroviral Study");
+        // projects.add(projectService.getProjectByName(project, false, false));
+        // project.setProjectName("Antiretroviral Followup Study");
+        // projects.add(projectService.getProjectByName(project, false, false));
+        // project.setProjectName("Routine HIV Testing");
+        // projects.add(projectService.getProjectByName(project, false, false));
+        // project.setProjectName("Early Infant Diagnosis for HIV Study");
+        // projects.add(projectService.getProjectByName(project, false, false));
+        // project.setProjectName("Viral Load Results");
+        // projects.add(projectService.getProjectByName(project, false, false));
+        // project.setProjectName("Indeterminate Results");
+        // projects.add(projectService.getProjectByName(project, false, false));
 
         curProject.setId("28:Unsuppressed VL");
         curProject.setProjectName("Unsuppressed VL");

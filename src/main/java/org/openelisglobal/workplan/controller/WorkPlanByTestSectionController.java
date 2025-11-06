@@ -1,11 +1,9 @@
 package org.openelisglobal.workplan.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -17,8 +15,8 @@ import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.QAService.QAObservationType;
 import org.openelisglobal.common.util.ConfigurationProperties;
-import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
@@ -68,9 +66,8 @@ public class WorkPlanByTestSectionController extends BaseWorkplanController {
     @RequestMapping(value = "/WorkPlanByTestSection", method = RequestMethod.GET)
     public ModelAndView showWorkPlanByTestSection(
             @Validated(WorkplanForm.PrintWorkplan.class) @ModelAttribute("form") WorkplanForm form,
-            BindingResult result,
-            HttpServletRequest request)
-                    throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+            BindingResult result, HttpServletRequest request)
+            throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
         if (result.hasErrors()) {
             saveErrors(result);
             return findForward(FWD_FAIL, form);
@@ -81,13 +78,13 @@ public class WorkPlanByTestSectionController extends BaseWorkplanController {
         String workplan = form.getType();
 
         // load testSections for drop down
-        String resultsRoleId =  roleService.getRoleByName(Constants.ROLE_RESULTS).getId();
-        List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request) ,resultsRoleId);
+        String resultsRoleId = roleService.getRoleByName(Constants.ROLE_RESULTS).getId();
+        List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), resultsRoleId);
         form.setTestSections(testSections);
         form.setTestSectionsByName(DisplayListService.getInstance().getList(ListType.TEST_SECTION_BY_NAME));
 
         List<TestResultItem> workplanTests = new ArrayList<>();
-        List<TestResultItem> filteredTests = new ArrayList<>() ;
+        List<TestResultItem> filteredTests = new ArrayList<>();
         TestSection ts = null;
 
         if (!GenericValidator.isBlankOrNull(testSectionId)) {
@@ -96,7 +93,8 @@ public class WorkPlanByTestSectionController extends BaseWorkplanController {
 
             // get tests based on test section
             workplanTests = getWorkplanByTestSection(testSectionId);
-            filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), workplanTests ,Constants.ROLE_RESULTS);
+            filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), workplanTests,
+                    Constants.ROLE_RESULTS);
             form.setWorkplanTests(filteredTests);
             form.setSearchFinished(Boolean.TRUE);
             if (ts != null) {
@@ -210,7 +208,6 @@ public class WorkPlanByTestSectionController extends BaseWorkplanController {
                     workplanTestList.add(testResultItem);
                 }
             }
-
         }
 
         return workplanTestList;
@@ -241,7 +238,6 @@ public class WorkPlanByTestSectionController extends BaseWorkplanController {
             testResultItem.setSampleGroupingNumber(sampleGroupingNumber);
             newIndex++;
         }
-
     }
 
     private void addPatientNameToList(TestResultItem firstTestResultItem, List<TestResultItem> workplanTestList,
@@ -255,7 +251,6 @@ public class WorkPlanByTestSectionController extends BaseWorkplanController {
         testResultItem.setSampleGroupingNumber(sampleGroupingNumber);
         testResultItem.setServingAsTestGroupIdentifier(true);
         workplanTestList.add(insertPosition, testResultItem);
-
     }
 
     private boolean isPatientNameAdded() {
@@ -271,7 +266,7 @@ public class WorkPlanByTestSectionController extends BaseWorkplanController {
                 QAService qa = new QAService(event);
                 if (!GenericValidator.isBlankOrNull(qa.getObservationValue(QAObservationType.SECTION))
                         && qa.getObservationValue(QAObservationType.SECTION)
-                        .equals(analysis.getTestSection().getNameKey())) {
+                                .equals(analysis.getTestSection().getNameKey())) {
                     return true;
                 }
             }

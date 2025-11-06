@@ -1,12 +1,10 @@
 package org.openelisglobal.typeoftestresult.service;
 
+import jakarta.annotation.PostConstruct;
 import java.util.EnumSet;
-
-import javax.annotation.PostConstruct;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.typeoftestresult.dao.TypeOfTestResultDAO;
 import org.openelisglobal.typeoftestresult.valueholder.TypeOfTestResult;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @DependsOn({ "springContext" })
-public class TypeOfTestResultServiceImpl extends BaseObjectServiceImpl<TypeOfTestResult, String>
+public class TypeOfTestResultServiceImpl extends AuditableBaseObjectServiceImpl<TypeOfTestResult, String>
         implements TypeOfTestResultService {
 
     public enum ResultType {
@@ -40,7 +38,6 @@ public class TypeOfTestResultServiceImpl extends BaseObjectServiceImpl<TypeOfTes
                     resultType.id = typeOfTestResultService.getTypeOfTestResultByType(resultType.DBValue).getId();
                 }
             }
-
         }
 
         ResultType(String dbValue) {

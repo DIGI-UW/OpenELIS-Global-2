@@ -1,17 +1,15 @@
 package org.openelisglobal.person.service;
 
+import jakarta.annotation.PostConstruct;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import javax.annotation.PostConstruct;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.service.PersonAddressService;
 import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.address.valueholder.PersonAddress;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.person.dao.PersonDAO;
 import org.openelisglobal.person.valueholder.Person;
@@ -22,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @DependsOn({ "springContext" })
-public class PersonServiceImpl extends BaseObjectServiceImpl<Person, String> implements PersonService {
+public class PersonServiceImpl extends AuditableBaseObjectServiceImpl<Person, String> implements PersonService {
 
     private Map<String, String> addressPartIdToNameMap;
 
@@ -80,7 +78,6 @@ public class PersonServiceImpl extends BaseObjectServiceImpl<Person, String> imp
         lastName += firstName;
 
         return lastName;
-
     }
 
     @Override
@@ -200,5 +197,4 @@ public class PersonServiceImpl extends BaseObjectServiceImpl<Person, String> imp
     public Person getPersonById(String personId) {
         return getBaseObjectDAO().getPersonById(personId);
     }
-
 }

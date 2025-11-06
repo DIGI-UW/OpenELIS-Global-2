@@ -1,12 +1,10 @@
 package org.openelisglobal.dictionary.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-
 import org.apache.commons.beanutils.PropertyUtils;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
@@ -15,8 +13,8 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.dictionary.form.DictionaryForm;
@@ -175,16 +173,16 @@ public class DictionaryController extends BaseController {
             }
         } catch (LIMSRuntimeException e) {
             // bugzilla 2154
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             // 1482
-            if (e.getException() instanceof org.hibernate.StaleObjectStateException) {
+            if (e.getCause() instanceof org.hibernate.StaleObjectStateException) {
                 result.reject("errors.OptimisticLockException");
-            } else if (e.getException() instanceof LIMSDuplicateRecordException) {
+            } else if (e.getCause() instanceof LIMSDuplicateRecordException) {
                 String messageKey = "dictionary.dictEntryByCategory";
                 String msg = MessageUtil.getMessage(messageKey);
                 result.reject("errors.DuplicateRecord.activate", new String[] { msg },
                         "errors.DuplicateRecord.activate");
-            } else if (e.getException() instanceof LIMSFrozenRecordException) {
+            } else if (e.getCause() instanceof LIMSFrozenRecordException) {
                 String messageKey = "dictionary.dictEntry";
                 String msg = MessageUtil.getMessage(messageKey);
                 result.reject("errors.FrozenRecord", new String[] { msg }, "errors.FrozenRecord");
@@ -204,7 +202,6 @@ public class DictionaryController extends BaseController {
             request.setAttribute(PREVIOUS_DISABLED, "true");
             request.setAttribute(NEXT_DISABLED, "true");
             return findForward(FWD_FAIL_INSERT, form);
-
         }
 
         status.setComplete();
@@ -234,7 +231,6 @@ public class DictionaryController extends BaseController {
         DictionaryCategory dictionaryCategory = dictionaryCategoryService.get(selectedCategoryId);
         dictionary.setDictionaryCategory(dictionaryCategory);
         return dictionary;
-
     }
 
     private boolean checkForDictionaryFrozenCheck(DictionaryForm form) {
@@ -249,7 +245,8 @@ public class DictionaryController extends BaseController {
         String dirtyFormFields = form.getDirtyFormFields();
         String isActiveValue = form.getIsActive();
 
-        String[] dirtyFields = dirtyFormFields.split(SystemConfiguration.getInstance().getDefaultIdSeparator(), -1);
+        String[] dirtyFields = dirtyFormFields
+                .split(ConfigurationProperties.getInstance().getPropertyValue("default.idSeparator"), -1);
         List<String> listOfDirtyFields = new ArrayList<>();
 
         for (int i = 0; i < dirtyFields.length; i++) {
@@ -284,8 +281,7 @@ public class DictionaryController extends BaseController {
     }
 
     @RequestMapping(value = "/CancelDictionary", method = RequestMethod.GET)
-    public ModelAndView cancelDictionary(HttpServletRequest request,
-            SessionStatus status) {
+    public ModelAndView cancelDictionary(HttpServletRequest request, SessionStatus status) {
         status.setComplete();
         return findForward(FWD_CANCEL, new DictionaryForm());
     }

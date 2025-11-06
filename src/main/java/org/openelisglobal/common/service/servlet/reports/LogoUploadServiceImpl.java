@@ -31,13 +31,13 @@ public class LogoUploadServiceImpl implements LogoUploadService {
         if (!newImage) {
             // The reason the old image is deleted and a new one added is because updating
             // the image doesn't work.
-            imageService.delete(imageService.get(imageId));
+            image.setId(imageId);
+            imageService.delete(image);
         }
-        imageService.save(image);
+        Image savedImage = imageService.save(image);
 
-        logoInformation.setValue(image.getId());
+        logoInformation.setValue(savedImage.getId());
         logoInformation.setSysUserId("1");
         siteInformationService.update(logoInformation);
     }
-
 }

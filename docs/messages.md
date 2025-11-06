@@ -1,12 +1,12 @@
-# Examples of the messages sent between a “referring” facility and a “referral” lab. 
+# Examples of the messages sent between a “referring” facility and a “referral” lab.
 
-The **referring **lab/clinic is the one which has an order that they would like to send to the **referral **lab for analysis and results.
+The **referring **lab/clinic is the one which has an order that they would like
+to send to the **referral **lab for analysis and results.
 
-This is an example of what is currently sent between referring and referral labs. Not every field is necessary for the exchange
-
+This is an example of what is currently sent between referring and referral
+labs. Not every field is necessary for the exchange
 
 # Created By Referring Lab
-
 
 ## Original Order Task:
 
@@ -57,7 +57,6 @@ _Used internally by the referring lab_
 "authoredOn": "2021-05-17T00:00:00-07:00"
 
 }
-
 
 ## Referring Order Task:
 
@@ -119,52 +118,51 @@ _Sent to the referral lab to start the import process_
 
 }
 
-
 ## ServiceRequest:
 
 _Contains the loinc code of what is referred_
 
 {
 
- "resourceType": "ServiceRequest",
+"resourceType": "ServiceRequest",
 
- "id": "6207a536-68ed-4b5d-828d-79f4c046af75",
+"id": "6207a536-68ed-4b5d-828d-79f4c046af75",
 
- "meta": {
+"meta": {
 
-   "versionId": "2",
+"versionId": "2",
 
-   "lastUpdated": "2021-05-17T23:54:55.546+00:00",
+"lastUpdated": "2021-05-17T23:54:55.546+00:00",
 
-   "source": "#bFZoGNc5gaEDkkIx"
+"source": "#bFZoGNc5gaEDkkIx"
 
- },
+},
 
- "identifier": [ {
+"identifier": [ {
 
-   "system":[ "http://openelis-global.org/analysis_uuid"](http://openelis-global.org/analysis_uuid),
+"system":[ "http://openelis-global.org/analysis_uuid"](http://openelis-global.org/analysis_uuid),
 
-   "value": "6207a536-68ed-4b5d-828d-79f4c046af75"
+"value": "6207a536-68ed-4b5d-828d-79f4c046af75"
 
- } ],
+} ],
 
- "requisition": {
+"requisition": {
 
-   "system":[ "http://openelis-global.org/samp_labNo"](http://openelis-global.org/samp_labNo),
+"system":[ "http://openelis-global.org/samp_labNo"](http://openelis-global.org/samp_labNo),
 
-   "value": "20210000000000090"
+"value": "20210000000000090"
 
- },
+},
 
- "status": "active",
+"status": "active",
 
- "intent": "original-order",
+"intent": "original-order",
 
- "priority": "routine",
+"priority": "routine",
 
- "code": {
+"code": {
 
-   "coding": [ {
+"coding": [ {
 
      "system":[ "http://loinc.org"](http://loinc.org),
 
@@ -172,135 +170,138 @@ _Contains the loinc code of what is referred_
 
      "display": "COVID-19 PCR"
 
-   } ]
+} ]
 
- },
+},
 
- "subject": {
+"subject": {
 
-   "reference": "Patient/329f09da-0fc9-419d-9575-ace689544269"
+"reference": "Patient/329f09da-0fc9-419d-9575-ace689544269"
 
- },
+},
 
- "authoredOn": "2021-05-17T16:53:12-07:00",
+"authoredOn": "2021-05-17T16:53:12-07:00",
 
- "specimen": [ {
+"specimen": [ {
 
-   "reference": "Specimen/6f93831a-8745-4105-9f2a-0140bc27469f"
+"reference": "Specimen/6f93831a-8745-4105-9f2a-0140bc27469f"
 
- } ]
+} ]
 
 }
-
 
 ## Patient:
 
 {
 
- "resourceType": "Patient",
+"resourceType": "Patient",
 
- "id": "329f09da-0fc9-419d-9575-ace689544269",
+"id": "329f09da-0fc9-419d-9575-ace689544269",
 
- "meta": {
+"meta": {
 
-   "versionId": "4",
+"versionId": "4",
 
-   "lastUpdated": "2021-04-30T00:07:43.944+00:00",
+"lastUpdated": "2021-04-30T00:07:43.944+00:00",
 
-   "source": "#PsZSVy7K5fn83mfx"
+"source": "#PsZSVy7K5fn83mfx"
 
- },
+},
 
- "text": {
+"text": {
 
-   "status": "generated",
+"status": "generated",
 
-   "div": "&lt;div xmlns=\"http://www.w3.org/1999/xhtml\">&lt;div class=\"hapiHeaderText\">crày &lt;b>CRAY &lt;/b>&lt;/div>&lt;table class=\"hapiPropertyTable\">&lt;tbody>&lt;tr>&lt;td>Identifier&lt;/td>&lt;td>121212&lt;/td>&lt;/tr>&lt;tr>&lt;td>Date of birth&lt;/td>&lt;td>&lt;span>16 May 1994&lt;/span>&lt;/td>&lt;/tr>&lt;/tbody>&lt;/table>&lt;/div>"
+"div": "&lt;div xmlns=\"http://www.w3.org/1999/xhtml\">&lt;div
+class=\"hapiHeaderText\">crày &lt;b>CRAY &lt;/b>&lt;/div>&lt;table
+class=\"hapiPropertyTable\">&lt;tbody>&lt;tr>&lt;td>Identifier&lt;/td>&lt;td>121212&lt;/td>&lt;/tr>&lt;tr>&lt;td>Date
+of birth&lt;/td>&lt;td>&lt;span>16 May
+1994&lt;/span>&lt;/td>&lt;/tr>&lt;/tbody>&lt;/table>&lt;/div>"
 
- },
+},
 
- "identifier": [ {
+"identifier": [ {
 
-   "system":[ "http://openelis-global.org/pat_subjectNumber"](http://openelis-global.org/pat_subjectNumber),
+"system":[ "http://openelis-global.org/pat_subjectNumber"](http://openelis-global.org/pat_subjectNumber),
 
-   "value": "121212"
+"value": "121212"
 
- }, {
+}, {
 
-   "system":[ "http://openelis-global.org/pat_nationalId"](http://openelis-global.org/pat_nationalId),
+"system":[ "http://openelis-global.org/pat_nationalId"](http://openelis-global.org/pat_nationalId),
 
-   "value": "121212"
+"value": "121212"
 
- }, {
+}, {
 
-   "system":[ "http://openelis-global.org/pat_guid"](http://openelis-global.org/pat_guid),
+"system":[ "http://openelis-global.org/pat_guid"](http://openelis-global.org/pat_guid),
 
-   "value": "329f09da-0fc9-419d-9575-ace689544269"
+"value": "329f09da-0fc9-419d-9575-ace689544269"
 
- }, {
+}, {
 
-   "system":[ "http://openelis-global.org/pat_uuid"](http://openelis-global.org/pat_uuid),
+"system":[ "http://openelis-global.org/pat_uuid"](http://openelis-global.org/pat_uuid),
 
-   "value": "329f09da-0fc9-419d-9575-ace689544269"
+"value": "329f09da-0fc9-419d-9575-ace689544269"
 
- } ],
+} ],
 
- "name": [ {
+"name": [ {
 
-   "family": "cray",
+"family": "cray",
 
-   "given": [ "crày" ]
+"given": [ "crày" ]
 
- } ],
+} ],
 
- "gender": "male",
+"gender": "male",
 
- "birthDate": "1994-05-16"
+"birthDate": "1994-05-16"
 
 }
 
+## Specimen:
 
-## Specimen: 
-
-_If present, this will be used to determine the sample type if the loinc code matches multiple sample types_
+_If present, this will be used to determine the sample type if the loinc code
+matches multiple sample types_
 
 {
 
- "resourceType": "Specimen",
+"resourceType": "Specimen",
 
- "id": "6f93831a-8745-4105-9f2a-0140bc27469f",
+"id": "6f93831a-8745-4105-9f2a-0140bc27469f",
 
- "meta": {
+"meta": {
 
-   "versionId": "2",
+"versionId": "2",
 
-   "lastUpdated": "2021-05-17T23:54:55.845+00:00",
+"lastUpdated": "2021-05-17T23:54:55.845+00:00",
 
-   "source": "#aSxblsC7BShvZNCU"
+"source": "#aSxblsC7BShvZNCU"
 
- },
+},
 
- "identifier": [ {
+"identifier": [ {
 
-   "system":[ "http://openelis-global.org/sampleItem_uuid"](http://openelis-global.org/sampleItem_uuid),
+"system":[ "http://openelis-global.org/sampleItem_uuid"](http://openelis-global.org/sampleItem_uuid),
 
-   "value": "6f93831a-8745-4105-9f2a-0140bc27469f"
+"value": "6f93831a-8745-4105-9f2a-0140bc27469f"
 
- } ],
+} ],
 
- "accessionIdentifier": {
+"accessionIdentifier": {
 
-   "system":[ "http://openelis-global.org/sampleItem_labNo"](http://openelis-global.org/sampleItem_labNo),
+"system":[ "http://openelis-global.org/sampleItem_labNo"](http://openelis-global.org/sampleItem_labNo),
 
-   "value": "20210000000000090-1"
+"value": "20210000000000090-1"
 
- },
+},
 
- "status": "available",
+"status": "available",
 
- "type": {
+"type": {
 
-   "coding": [ {
+"coding": [ {
 
      "system":[ "http://openelis-global.org/sampleType"](http://openelis-global.org/sampleType),
 
@@ -308,29 +309,27 @@ _If present, this will be used to determine the sample type if the loinc code ma
 
      "display": "Fluid"
 
-   } ]
+} ]
 
- },
+},
 
- "subject": {
+"subject": {
 
-   "reference": "Patient/329f09da-0fc9-419d-9575-ace689544269"
+"reference": "Patient/329f09da-0fc9-419d-9575-ace689544269"
 
- },
+},
 
- "receivedTime": "2021-05-17T16:52:49-07:00",
+"receivedTime": "2021-05-17T16:52:49-07:00",
 
- "request": [ {
+"request": [ {
 
-   "reference": "ServiceRequest/6207a536-68ed-4b5d-828d-79f4c046af75"
+"reference": "ServiceRequest/6207a536-68ed-4b5d-828d-79f4c046af75"
 
- } ]
+} ]
 
 }
 
-
 # Created By Referral Lab
-
 
 ## Task:
 
@@ -388,10 +387,10 @@ _Used solely internally by the referring lab_
 
 }
 
-
 ## ServiceRequest:
 
-_Based on the referred service request, used to link the observation and diagnostic report_
+_Based on the referred service request, used to link the observation and
+diagnostic report_
 
 {
 
@@ -467,7 +466,6 @@ _Based on the referred service request, used to link the observation and diagnos
 
 }
 
-
 ## DiagnosticReport:
 
 {
@@ -490,7 +488,13 @@ _Based on the referred service request, used to link the observation and diagnos
 
 "status": "generated",
 
-"div": "&lt;div xmlns=\"http://www.w3.org/1999/xhtml\">&lt;div class=\"hapiHeaderText\"/>&lt;table class=\"hapiPropertyTable\">&lt;tbody>&lt;tr>&lt;td>Status&lt;/td>&lt;td>PRELIMINARY&lt;/td>&lt;/tr>&lt;/tbody>&lt;/table>&lt;table class=\"hapiTableOfValues\">&lt;thead>&lt;tr>&lt;td>Name&lt;/td>&lt;td>Value&lt;/td>&lt;td>Interpretation&lt;/td>&lt;td>Reference Range&lt;/td>&lt;td>Status&lt;/td>&lt;/tr>&lt;/thead>&lt;tbody>&lt;tr class=\"hapiTableOfValuesRowOdd\">&lt;td/>&lt;td>SARS-COV-2 RNA NOT DETECTED&lt;/td>&lt;td/>&lt;td/>&lt;td>PRELIMINARY&lt;/td>&lt;/tr>&lt;/tbody>&lt;/table>&lt;/div>"
+"div": "&lt;div xmlns=\"http://www.w3.org/1999/xhtml\">&lt;div
+class=\"hapiHeaderText\"/>&lt;table
+class=\"hapiPropertyTable\">&lt;tbody>&lt;tr>&lt;td>Status&lt;/td>&lt;td>PRELIMINARY&lt;/td>&lt;/tr>&lt;/tbody>&lt;/table>&lt;table
+class=\"hapiTableOfValues\">&lt;thead>&lt;tr>&lt;td>Name&lt;/td>&lt;td>Value&lt;/td>&lt;td>Interpretation&lt;/td>&lt;td>Reference
+Range&lt;/td>&lt;td>Status&lt;/td>&lt;/tr>&lt;/thead>&lt;tbody>&lt;tr
+class=\"hapiTableOfValuesRowOdd\">&lt;td/>&lt;td>SARS-COV-2 RNA NOT
+DETECTED&lt;/td>&lt;td/>&lt;td/>&lt;td>PRELIMINARY&lt;/td>&lt;/tr>&lt;/tbody>&lt;/table>&lt;/div>"
 
 },
 
@@ -529,7 +533,6 @@ _Based on the referred service request, used to link the observation and diagnos
 } ]
 
 }
-
 
 ## Observation:
 

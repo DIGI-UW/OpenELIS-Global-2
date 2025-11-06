@@ -5,9 +5,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
  
 <c:set var="valueEditable" value="${form.editable}"/>
@@ -33,6 +33,17 @@
             jQuery('input[name="save"]').removeAttr('disabled');
         }
     }
+
+      var imageName = '${form.paramName}';
+       fetch('./dbImage/siteInformation/' + imageName)
+                .then(response => response.json())
+                .then(data => {
+                    var imageElement = document.getElementById("imagePreview");
+                    imageElement.src = data.value;
+                })
+                .catch(error => {
+                    console.log('Error fetching image data:', error);
+        });
 </script>
 
 
@@ -79,7 +90,7 @@
 </c:if>
 <c:if test="${form.valueType == 'logoUpload'}">
 	<input type="hidden" name="logoName" id="logoName" />
-    <img id="imagePreview" src="./dbImage/siteInformation/${form.paramName}.jpg"  
+    <img id="imagePreview" src="./dbImage/siteInformation/${form.paramName}"  
        	 height="42" 
 	     width="42"  />
     <br>

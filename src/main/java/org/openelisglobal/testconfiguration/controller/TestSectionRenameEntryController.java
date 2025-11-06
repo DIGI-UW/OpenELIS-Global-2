@@ -1,8 +1,7 @@
 package org.openelisglobal.testconfiguration.controller;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.hibernate.HibernateException;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.log.LogEvent;
@@ -41,7 +40,8 @@ public class TestSectionRenameEntryController extends BaseController {
     public ModelAndView showTestSectionRenameEntry(HttpServletRequest request) {
         TestSectionRenameEntryForm form = new TestSectionRenameEntryForm();
 
-        form.setTestSectionList(DisplayListService.getInstance().getList(DisplayListService.ListType.TEST_SECTION));
+        form.setTestSectionList(
+                DisplayListService.getInstance().getList(DisplayListService.ListType.TEST_SECTION_ACTIVE));
 
         return findForward(FWD_SUCCESS, form);
     }
@@ -64,7 +64,8 @@ public class TestSectionRenameEntryController extends BaseController {
             @ModelAttribute("form") @Valid TestSectionRenameEntryForm form, BindingResult result) {
         if (result.hasErrors()) {
             saveErrors(result);
-            form.setTestSectionList(DisplayListService.getInstance().getList(DisplayListService.ListType.TEST_SECTION));
+            form.setTestSectionList(
+                    DisplayListService.getInstance().getList(DisplayListService.ListType.TEST_SECTION_ACTIVE));
             return findForward(FWD_FAIL_INSERT, form);
         }
 
@@ -93,11 +94,10 @@ public class TestSectionRenameEntryController extends BaseController {
             } catch (HibernateException e) {
                 LogEvent.logDebug(e);
             }
-
         }
 
         // Refresh Test Section names
-        DisplayListService.getInstance().getFreshList(DisplayListService.ListType.TEST_SECTION);
+        DisplayListService.getInstance().getFreshList(DisplayListService.ListType.TEST_SECTION_ACTIVE);
     }
 
     @Override

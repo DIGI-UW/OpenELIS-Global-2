@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="csteele" id="1" runAlways="true">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM clinlims.panel_item WHERE test_id NOT IN (SELECT id FROM clinlims.test)
+                </sqlCheck>
+            </not>
+        </preConditions>
+        <comment>remove panel items that test no longer exist in db</comment>
+        <delete tableName="panel_item" schemaName="clinlims">
+            <where>test_id NOT IN (SELECT id FROM clinlims.test)</where>
+        </delete>
+    </changeSet>
+
+</databaseChangeLog>

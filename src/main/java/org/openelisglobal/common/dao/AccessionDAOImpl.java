@@ -1,14 +1,13 @@
 package org.openelisglobal.common.dao;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Query;
 import java.math.BigInteger;
-
-import javax.persistence.EntityManager;
-import javax.persistence.NoResultException;
-import javax.persistence.PersistenceContext;
-import javax.persistence.Query;
-
 import org.hibernate.HibernateException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.valueholder.AccessionNumberInfo;
 import org.openelisglobal.common.valueholder.AccessionNumberInfo.AccessionIdentity;
@@ -23,10 +22,10 @@ public class AccessionDAOImpl implements AccessionDAO {
     @Override
     public long getNextNumberIncrement(String prefix, AccessionFormat accessionFormat) {
         try {
-            String sql = "UPDATE accession_number_info"//
-                    + " SET cur_val = cur_val + 1 "//
-                    + " WHERE prefix = :prefix"//
-                    + " AND type = :type"//
+            String sql = "UPDATE accession_number_info" //
+                    + " SET cur_val = cur_val + 1 " //
+                    + " WHERE prefix = :prefix" //
+                    + " AND type = :type" //
                     + " RETURNING cur_val";
             Query query = entityManager.createNativeQuery(sql);
             query.setParameter("prefix", prefix);
@@ -36,6 +35,7 @@ public class AccessionDAOImpl implements AccessionDAO {
         } catch (NoResultException e) {
             return 0;
         } catch (HibernateException e) {
+            LogEvent.logError(e);
             throw new LIMSRuntimeException(
                     "Error in " + this.getClass().getSimpleName() + " " + "getNextNumberIncrement", e);
         }
@@ -44,8 +44,8 @@ public class AccessionDAOImpl implements AccessionDAO {
     @Override
     public long getNextNumberNoIncrement(String prefix, AccessionFormat accessionFormat) {
         try {
-            String sql = "SELECT cur_val FROM accession_number_info"//
-                    + " WHERE prefix = :prefix"//
+            String sql = "SELECT cur_val FROM accession_number_info" //
+                    + " WHERE prefix = :prefix" //
                     + " AND type = :type";
             Query query = entityManager.createNativeQuery(sql);
             query.setParameter("prefix", prefix);
@@ -53,6 +53,7 @@ public class AccessionDAOImpl implements AccessionDAO {
 
             return ((BigInteger) query.getSingleResult()).longValue() + 1;
         } catch (HibernateException e) {
+            LogEvent.logError(e);
             throw new LIMSRuntimeException(
                     "Error in " + this.getClass().getSimpleName() + " " + "getNextNumberNoIncrement", e);
         }
@@ -64,6 +65,7 @@ public class AccessionDAOImpl implements AccessionDAO {
             entityManager.persist(info);
             return entityManager.find(AccessionNumberInfo.class, info.getAccessionIdentity());
         } catch (HibernateException e) {
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in " + this.getClass().getSimpleName() + " " + "save", e);
         }
     }
@@ -73,6 +75,7 @@ public class AccessionDAOImpl implements AccessionDAO {
         try {
             return entityManager.find(AccessionNumberInfo.class, accessionIdentity);
         } catch (HibernateException e) {
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in " + this.getClass().getSimpleName() + " " + "get", e);
         }
     }
@@ -82,8 +85,8 @@ public class AccessionDAOImpl implements AccessionDAO {
         try {
             return entityManager.find(AccessionNumberInfo.class, accessionIdentity) != null;
         } catch (HibernateException e) {
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in " + this.getClass().getSimpleName() + " " + "exists", e);
         }
     }
-
 }

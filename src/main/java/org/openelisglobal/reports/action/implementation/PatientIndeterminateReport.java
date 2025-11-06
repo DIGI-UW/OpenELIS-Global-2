@@ -1,24 +1,22 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.reports.action.implementation;
 
 import java.util.ArrayList;
 import java.util.List;
-
+import net.sf.jasperreports.engine.JRDataSource;
+import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -33,9 +31,6 @@ import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
 import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestServiceImpl;
-
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 
 public abstract class PatientIndeterminateReport extends RetroCIPatientReport {
 
@@ -68,7 +63,6 @@ public abstract class PatientIndeterminateReport extends RetroCIPatientReport {
         setTestInfo(data);
 
         reportItems.add(data);
-
     }
 
     protected void setPatientInfo(IndeterminateReportData data) {
@@ -136,18 +130,20 @@ public abstract class PatientIndeterminateReport extends RetroCIPatientReport {
             }
 
             setIndeterminateData(data, testName, valid ? resultValue : invalidValue);
-
         }
 
         data.setStatus(atLeastOneAnalysisNotValidated ? MessageUtil.getMessage("report.status.partial")
                 : MessageUtil.getMessage("report.status.complete"));
-
     }
 
     private void setIndeterminateData(IndeterminateReportData data, String testName, String resultValue) {
         if (testName.equals("Integral")) {
             data.setIntegral(resultValue);
+        } else if (testName.equals("Genscreen")) {
+            data.setGenscreen(resultValue);
         } else if (testName.equals("Murex")) {
+            data.setMurex(resultValue);
+        } else if (testName.equals("Murex Combinaison")) {
             data.setMurex(resultValue);
         } else if (testName.equals("Vironostika")) {
             data.setVironstika(resultValue);

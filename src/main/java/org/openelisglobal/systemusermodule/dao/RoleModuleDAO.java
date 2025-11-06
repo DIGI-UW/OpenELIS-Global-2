@@ -7,5 +7,4 @@ public interface RoleModuleDAO extends PermissionModuleDAO<RoleModule> {
     RoleModule getRoleModuleByRoleAndModuleId(String roleId, String moduleId);
 
     boolean duplicateRoleModuleExists(RoleModule roleModule);
-
 }

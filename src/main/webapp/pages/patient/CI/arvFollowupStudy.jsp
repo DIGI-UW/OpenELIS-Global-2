@@ -6,9 +6,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 	
 <script type="text/javascript">
 
@@ -227,6 +227,7 @@ farv = new ArvFollowupProjectChecker();
 				<option value=""></option>
 				<form:options items="${form.organizationTypeLists.ARV_ORGS.list}" itemLabel="doubleName" itemValue="id" />
 			</form:select>
+			<div id="farv.centerCodeMessage" class="blank"></div>
 		</td>
 	</tr>
 	<tr> <%-- SUI 06 --%>
@@ -261,7 +262,7 @@ farv = new ArvFollowupProjectChecker();
 					 onchange="farv.checkGender(false)" id="farv.gender"  >
 				<option value=""></option>
 				<form:options items="${form.formLists.GENDERS}"
-					itemLabel="localizedName" itemValue="genderType" />
+					itemLabel="localizedName" itemValue="id" />
 			</form:select>
 			<div id="farv.genderMessage" class="blank"></div>
 		</td>
@@ -390,6 +391,7 @@ farv = new ArvFollowupProjectChecker();
 				<form:options items="${form.dictionaryLists.YES_NO.list}"
 					itemLabel="localizedName" itemValue="id" />
 			</form:select>
+			<div id="farv.anyCurrentDiseasesMessage" class="blank"></div>
 		</td>
 	</tr>
 	<%-- Diseases --%>
@@ -409,6 +411,7 @@ farv = new ArvFollowupProjectChecker();
 					<form:options items="${form.dictionaryLists.YES_NO.list}" itemLabel="localizedName"
 						itemValue="id" />
 				</form:select>
+				<div id="farv.${disease.name}.Message" class="blank"></div>
 			</td>
 		</tr>
 	</c:forEach>
@@ -425,6 +428,7 @@ farv = new ArvFollowupProjectChecker();
 				<form:options items="${form.dictionaryLists.YES_NO.list}"
 					itemLabel="localizedName" itemValue="id" />
 			</form:select>
+			<div id="currentDiseasesMessage" class="blank"></div>
 		</td>
 	</tr>
 	<tr id="farv.currentDiseasesValueRow" style="display:none">
@@ -452,6 +456,7 @@ farv = new ArvFollowupProjectChecker();
 				<form:options items="${form.dictionaryLists.YES_NO.list}"
 					itemLabel="localizedName" itemValue="id" />
 			</form:select>
+			<div id="farv.antiTbTreatmentMessage" class="blank"></div>
 		</td>
 	</tr>
 	<tr> <%-- SUI 19 --%>
@@ -466,6 +471,7 @@ farv = new ArvFollowupProjectChecker();
 				<form:options items="${form.dictionaryLists.YES_NO.list}"
 					itemLabel="localizedName" itemValue="id" />
 			</form:select>
+			<div id="farv.interruptedARVTreatmentMessage" class="blank"></div>
 		</td>
 	</tr>
 	<tr id="farv.priorARVTreatmentRow" style="display:none"> <%-- SUI 20 --%>
@@ -480,6 +486,7 @@ farv = new ArvFollowupProjectChecker();
 				<form:options items="${form.dictionaryLists.YES_NO_NA.list}"
 					itemLabel="localizedName" itemValue="id" />
 			</form:select>
+			<div id="farv.priorARVTreatmentMessage" class="blank"></div>
 		</td>
 	</tr>
 	<tr id="farv.onGoingARVTreatmentINNsRow" style="display:none"> <%--SUI 21 --%>
@@ -488,7 +495,7 @@ farv = new ArvFollowupProjectChecker();
 			<spring:message code="patient.project.onGoingARVTreatmentINNs" />
 		</td>
 	</tr>
-	<c:forEach var="ongoingARVTreatment" varStatus="iter" items="${formobservations.priorARVTreatmentINNsList}" >
+	<c:forEach var="ongoingARVTreatment" varStatus="iter" items="${form.observations.priorARVTreatmentINNsList}" >
 		<tr style="display:none" id='farv.priorARVTreatmentINNRow${iter.index}'><%-- SUI 21 --%>
 			<td></td>
 			<td class="bulletItem">${iter.index + 1})</td>
@@ -524,6 +531,7 @@ farv = new ArvFollowupProjectChecker();
 				<form:input path='observations.arvTreatmentAdverseEffects[${iter.index}].type'
 					onchange="makeDirty();compareAllObservationHistoryFields(true);"
 					id='farv.arvTreatmentAdvEffType${iter.index}'/>
+					<div id="farv.arvTreatmentAdvEffType${iter.index}Message" class="blank"></div>
 			</td>
 			<td >
 				<spring:message code="patient.project.treatmentAdverseEffects.grade"/>
@@ -623,7 +631,7 @@ farv = new ArvFollowupProjectChecker();
 				<option value=""></option>
 				<form:options items="${form.dictionaryLists.YES_NO_NA.list}" itemLabel="localizedName" itemValue="id" />
 			</form:select>
-			<div id="farv.cotrimoxazoleTreatmentAnyAdverseEffects" class="blank"></div>
+			<div id="farv.cotrimoxazoleTreatmentAnyAdverseEffectsMessage" class="blank"></div>
 		</td>
 	</tr>
 	<c:forEach var="adverseEffect" varStatus="iter" items="${form.observations.cotrimoxazoleTreatmentAdverseEffects}" >
@@ -633,11 +641,13 @@ farv = new ArvFollowupProjectChecker();
 				<spring:message code="patient.project.treatmentAdverseEffects.type"/>
 				<form:input path='observations.cotrimoxazoleTreatmentAdverseEffects[${iter.index}].type'
 					onchange="compareAllObservationHistoryFields(true);" id='farv.cotrimoxazoleTreatAdvEffType${iter.index}>'/>
+					<div id="farv.cotrimoxazoleTreatmentAnyAdverseEffectsMessage" class="blank"></div>
 			</td>
 			<td>
 				<spring:message code="patient.project.treatmentAdverseEffects.grade"/>
 				<form:input path='observations.cotrimoxazoleTreatmentAdverseEffects[${iter.index}].grade'
 					onchange="compareAllObservationHistoryFields(true);" id='farv.cotrimoxazoleTreatAdvEffGrd${iter.index}' />
+					<div id="farv.cotrimoxazoleTreatAdvEffGrd${iter.index}Message" class="blank"></div>
 			</td>
 		</tr>
 	</c:forEach>
@@ -713,6 +723,7 @@ farv = new ArvFollowupProjectChecker();
 			<form:options items="${form.dictionaryLists.YES_NO.list}" itemLabel="localizedName"
 				itemValue="id" />
 			</form:select>
+			<div id="farv.underInvestigationMessage" class="blank"></div>
 		</td>
     </tr>    
 	<tr id="farv.underInvestigationCommentRow" >
@@ -723,6 +734,7 @@ farv = new ArvFollowupProjectChecker();
 		<td colspan="3">
 			<form:input path="projectData.underInvestigationNote" maxlength="1000" size="80"
 				onchange="makeDirty();" id="farv.underInvestigationComment" />
+				<div id="farv.underInvestigationCommentMessage" class="blank"></div>
 		</td>
     </tr>
 </table>

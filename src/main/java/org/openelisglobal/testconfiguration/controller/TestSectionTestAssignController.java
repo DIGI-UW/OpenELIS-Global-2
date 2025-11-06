@@ -1,12 +1,10 @@
 package org.openelisglobal.testconfiguration.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-
 import org.hibernate.HibernateException;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.log.LogEvent;
@@ -57,7 +55,7 @@ public class TestSectionTestAssignController extends BaseController {
 
     private void setupDisplayItems(TestSectionTestAssignForm form) {
         List<IdValuePair> testSections = DisplayListService.getInstance()
-                .getListWithLeadingBlank(DisplayListService.ListType.TEST_SECTION);
+                .getListWithLeadingBlank(DisplayListService.ListType.TEST_SECTION_ACTIVE);
         LinkedHashMap<IdValuePair, List<IdValuePair>> testSectionTestsMap = new LinkedHashMap<>(testSections.size());
 
         for (IdValuePair sectionPair : testSections) {
@@ -148,7 +146,7 @@ public class TestSectionTestAssignController extends BaseController {
             LogEvent.logDebug(e);
         }
 
-        DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_ACTIVE);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_INACTIVE);
 
         return findForward(FWD_SUCCESS_INSERT, form);

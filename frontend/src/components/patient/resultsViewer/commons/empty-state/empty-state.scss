@@ -1,0 +1,56 @@
+@use "@carbon/styles/scss/spacing";
+@use "@carbon/styles/scss/type";
+@import "../scss/vars.scss";
+
+.action {
+  margin-bottom: spacing.$spacing-03;
+}
+
+.content {
+  @include type.type-style("heading-compact-01");
+  color: $text-02;
+  margin-top: spacing.$spacing-05;
+  margin-bottom: spacing.$spacing-03;
+}
+
+.desktopHeading {
+  h4 {
+    @include type.type-style("heading-compact-02");
+    color: $text-02;
+  }
+}
+
+.tabletHeading {
+  h4 {
+    @include type.type-style("heading-03");
+    color: $text-02;
+  }
+}
+
+.desktopHeading,
+.tabletHeading {
+  text-align: left;
+  text-transform: capitalize;
+  margin-bottom: spacing.$spacing-05;
+
+  h4:after {
+    content: "";
+    display: block;
+    width: 2rem;
+    padding-top: 0.188rem;
+    border-bottom: 0.375rem solid var(--brand-03);
+  }
+}
+
+.heading:after {
+  content: "";
+  display: block;
+  width: 2rem;
+  padding-top: 0.188rem;
+  border-bottom: 0.375rem solid var(--brand-03);
+}
+
+.tile {
+  text-align: center;
+  border: 1px solid $ui-03;
+}

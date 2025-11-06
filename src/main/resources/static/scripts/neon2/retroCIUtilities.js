@@ -282,3 +282,53 @@ function /*void*/ syncLists(selectList1, selectList2) {
     var list2i = findInputSelectionIndex(selectList2, selectList1.options[selectList1.selectedIndex].value);
     selectList2.selectedIndex = list2i;
 }
+
+
+/**sample add by project **/
+
+
+	function checkVLSampleType(e) {
+		$("vl.pscvlTaken").checked = (e.id === "vl.pscvlTaken");
+		$("vl.dbsvlTaken").checked = (e.id === "vl.dbsvlTaken");
+		$("vl.edtaTubeTaken").checked = (e.id === "vl.edtaTubeTaken");
+	}
+
+
+	function findEOrder() {
+		var value = jQuery("#externalOrderNumber").val()
+		if (value) {
+			var url = new URL(window.location.href);
+			var search_params = url.searchParams;
+			search_params.set('ID', value);
+			url.search = search_params.toString();
+			window.location.replace(url.toString());
+		}
+	}
+
+function getNextAccessionNumber() {
+    generateNextScanNumber(processScanSuccess);
+}
+
+function processScanSuccess(xhr) {
+    var formField = xhr.responseXML.getElementsByTagName("formfield").item(0);
+    var returnedData = formField.firstChild.nodeValue;
+    var message = xhr.responseXML.getElementsByTagName("message").item(0);
+    var success = message.firstChild.nodeValue == "valid";
+	if (success) {
+      $("hpv.labNoForDisplay").value = returnedData;
+      $("hpv.labNo").value = returnedData;
+    } else {
+        $("hpv.labNoForDisplay").value = "";
+        $("hpv.labNo").value = "";
+    }
+}
+
+function checkAccessionNumber(accessionNumber) {
+    if (!fieldIsEmptyById("hpv.labNo")) {
+        validateAccessionNumberOnServer(false, false, accessionNumber.id, accessionNumber.value, processAccessionSuccess, null);
+    }
+    else {
+         selectFieldErrorDisplay(false, $("hpv.labNo"));
+    }
+}
+

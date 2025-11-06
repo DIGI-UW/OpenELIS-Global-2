@@ -2,7 +2,6 @@ package org.openelisglobal.notification.dao;
 
 import java.util.List;
 import java.util.Optional;
-
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.notification.valueholder.TestNotificationConfig;
 
@@ -13,5 +12,4 @@ public interface TestNotificationConfigDAO extends BaseDAO<TestNotificationConfi
     List<TestNotificationConfig> getTestNotificationConfigsForTestIds(List<String> testIds);
 
     TestNotificationConfig getForConfigOption(Integer configOptionId);
-
 }

@@ -1,0 +1,769 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="CIV developer Group" id="23111601"
+        context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="project" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.project
+                WHERE name = 'HPV Testing'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add entry for HPV testing</comment>
+        <insert tableName="project" schemaName="clinlims">
+            <column name="id" valueSequenceNext="project_seq" />
+            <column name="name" value="HPV Testing" />
+            <column name="description" value="HPV Testing" />
+            <column name="is_active" value="Y" />
+            <column name="program_code" value="HPVT" />
+            <column name="lastupdated" value="now()" />
+            <column name="display_key" value="project.HPV.name" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111602"
+        context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.localization WHERE french = 'HPV 16'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.localization(id, description, english,	french, lastupdated)
+            VALUES	(nextval('localization_seq'),'test name','HPV 16','HPV 16',	now());
+            INSERT INTO clinlims.localization(id, description, english,	french, lastupdated)
+            VALUES (nextval('localization_seq'),'test report name','HPV 16','HPV 16',now());
+            INSERT INTO clinlims.localization(id, description, english,	french, lastupdated)
+            VALUES	(nextval('localization_seq'),'test name','HPV 18','HPV 18',	now());
+            INSERT INTO clinlims.localization(id, description, english,	french, lastupdated)
+            VALUES (nextval('localization_seq'),'test report name','HPV 18','HPV 18',now());
+            INSERT INTO clinlims.localization(id, description, english,	french, lastupdated)
+            VALUES	(nextval('localization_seq'),'test name','Other HR HPV','Autre HPV HR',	now());
+            INSERT INTO clinlims.localization(id, description, english,	french, lastupdated)
+            VALUES (nextval('localization_seq'),'test report name','Other HR HPV','Autre HPV HR',now());
+
+            INSERT INTO clinlims.localization(id, description, english,	french, lastupdated)
+            VALUES	(nextval('localization_seq'),'test name','HPV 18_45','HPV 18_45',	now());
+            INSERT INTO clinlims.localization(id, description, english,	french, lastupdated)
+            VALUES (nextval('localization_seq'),'test report name','HPV 18_45','HPV 18_45',now());
+            INSERT INTO clinlims.localization(id, description, english,	french, lastupdated)
+            VALUES	(nextval('localization_seq'),'test name','HPV P3','HPV P3',	now());
+            INSERT INTO clinlims.localization(id, description, english,	french, lastupdated)
+            VALUES (nextval('localization_seq'),'test report name','HPV P3','HPV P3',now());
+            INSERT INTO clinlims.localization(id, description, english,	french, lastupdated)
+            VALUES	(nextval('localization_seq'),'test name','HPV P4','HPV P4',	now());
+            INSERT INTO clinlims.localization(id, description, english,	french, lastupdated)
+            VALUES (nextval('localization_seq'),'test report name','HPV P4','HPV P4',now());
+            INSERT INTO clinlims.localization(id, description, english,	french, lastupdated)
+            VALUES	(nextval('localization_seq'),'test name','HPV P5','HPV P5',	now());
+            INSERT INTO clinlims.localization(id, description, english,	french, lastupdated)
+            VALUES (nextval('localization_seq'),'test report name','HPV P5','HPV P5',now());
+
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="23111612" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="localization" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.localization WHERE description = 'Prélèvement cervico-vaginal'</sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value ="Prélèvement cervico-vaginal"/>
+            <column name="english" value ="Cervico-vaginal sampling"/>
+            <column name="french" value ="Prélèvement cervico-vaginal"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="23111603" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="type_of_sample" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Prélèvement cervico-vaginal'</sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value ="Prélèvement cervico-vaginal"/>
+            <column name="domain" value ="H"/>
+            <column name="local_abbrev" value ="prel. vag."/>
+            <column name="is_active" valueBoolean ="true"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE description = 'Prélèvement cervico-vaginal')"/>
+            <column name="display_key" value ="sample.type.hpv_sample"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111604"
+        context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.test WHERE description = 'HPV 16'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.test(
+            id, method_id, uom_id, description,
+            loinc, reporting_description,
+            sticker_req_flag, is_active,
+            active_begin, active_end, is_reportable,
+            time_holding, time_wait,
+            time_ta_average, time_ta_warning,
+            time_ta_max, label_qty, lastupdated,
+            label_id, test_trailer_id,
+            test_section_id, scriptlet_id,
+            test_format_id, local_code,
+            sort_order, name, orderable,
+            guid,
+            name_localization_id, reporting_name_localization_id,
+            default_test_result_id, notify_results)
+            VALUES
+            (nextval('test_seq'),null,null,'HPV 16','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),
+            null,null,136,null,null,'HPV 16',1,'HPV 16','t',
+            '7032dd53-47aa-4b64-9349-b781675720b3',
+            (select id
+            from localization
+            where description = 'test name' and
+            english = 'HPV 16' limit
+            1),
+            (select id from localization where
+            description = 'test report name' and english = 'HPV 16' limit 1),
+            null,'f');
+            INSERT INTO clinlims.test(
+            id, method_id, uom_id, description,
+            loinc, reporting_description,
+            sticker_req_flag, is_active,
+            active_begin, active_end, is_reportable,
+            time_holding, time_wait,
+            time_ta_average, time_ta_warning,
+            time_ta_max, label_qty, lastupdated,
+            label_id, test_trailer_id,
+            test_section_id, scriptlet_id,
+            test_format_id, local_code,
+            sort_order, name, orderable,
+            guid,
+            name_localization_id, reporting_name_localization_id,
+            default_test_result_id, notify_results)
+            VALUES
+            (nextval('test_seq'),null,null,'HPV 18','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),
+            null,null,136,null,null,'HPV 18',1,'HPV 18','t',
+            '69021779-30e0-48db-be22-006d48d83a28',
+            (select id
+            from localization
+            where description = 'test name' and
+            english = 'HPV 18' limit
+            1),
+            (select id from localization where
+            description = 'test report name' and english = 'HPV 18' limit 1),
+            null,'f');
+            INSERT INTO clinlims.test(
+            id, method_id, uom_id, description,
+            loinc, reporting_description,
+            sticker_req_flag, is_active,
+            active_begin, active_end, is_reportable,
+            time_holding, time_wait,
+            time_ta_average, time_ta_warning,
+            time_ta_max, label_qty, lastupdated,
+            label_id, test_trailer_id,
+            test_section_id, scriptlet_id,
+            test_format_id, local_code,
+            sort_order, name, orderable,
+            guid,
+            name_localization_id, reporting_name_localization_id,
+            default_test_result_id, notify_results)
+            VALUES
+            (nextval('test_seq'),null,null,'Autre HPV HR','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),
+            null,null,136,null,null,'Autre HPV HR',1,'Autre HPV HR','t',
+            'df40ca99-f4ce-44a0-9359-4e0fc591f4ca',
+            (select id
+            from localization
+            where description = 'test name' and
+            english = 'Other HR HPV' limit
+            1),
+            (select id from localization where
+            description = 'test report name' and english = 'Other HR HPV' limit 1),
+            null,'f');
+
+            INSERT INTO clinlims.test(
+            id, method_id, uom_id, description,
+            loinc, reporting_description,
+            sticker_req_flag, is_active,
+            active_begin, active_end, is_reportable,
+            time_holding, time_wait,
+            time_ta_average, time_ta_warning,
+            time_ta_max, label_qty, lastupdated,
+            label_id, test_trailer_id,
+            test_section_id, scriptlet_id,
+            test_format_id, local_code,
+            sort_order, name, orderable,
+            guid,
+            name_localization_id, reporting_name_localization_id,
+            default_test_result_id, notify_results)
+            VALUES
+            (nextval('test_seq'),null,null,'HPV 18_45','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),
+            null,null,136,null,null,'HPV 18_45',1,'HPV 18_45','t',
+            '7461c494-4ad9-45b8-94ed-026a2cae2e17',
+            (select id
+            from localization
+            where description = 'test name' and
+            english = 'HPV 18_45' limit
+            1),
+            (select id from localization where
+            description = 'test report name' and english = 'HPV 18_45' limit 1),
+            null,'f');
+            INSERT INTO clinlims.test(
+            id, method_id, uom_id, description,
+            loinc, reporting_description,
+            sticker_req_flag, is_active,
+            active_begin, active_end, is_reportable,
+            time_holding, time_wait,
+            time_ta_average, time_ta_warning,
+            time_ta_max, label_qty, lastupdated,
+            label_id, test_trailer_id,
+            test_section_id, scriptlet_id,
+            test_format_id, local_code,
+            sort_order, name, orderable,
+            guid,
+            name_localization_id, reporting_name_localization_id,
+            default_test_result_id, notify_results)
+            VALUES
+            (nextval('test_seq'),null,null,'HPV P3','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),
+            null,null,136,null,null,'HPV P3',1,'HPV P3','t',
+            'f244ea85-bf64-480f-92cc-a777b408cae6',
+            (select id
+            from localization
+            where description = 'test name' and
+            english = 'HPV P3' limit
+            1),
+            (select id from localization where
+            description = 'test report name' and english = 'HPV P3' limit 1),
+            null,'f');
+            INSERT INTO clinlims.test(
+            id, method_id, uom_id, description,
+            loinc, reporting_description,
+            sticker_req_flag, is_active,
+            active_begin, active_end, is_reportable,
+            time_holding, time_wait,
+            time_ta_average, time_ta_warning,
+            time_ta_max, label_qty, lastupdated,
+            label_id, test_trailer_id,
+            test_section_id, scriptlet_id,
+            test_format_id, local_code,
+            sort_order, name, orderable,
+            guid,
+            name_localization_id, reporting_name_localization_id,
+            default_test_result_id, notify_results)
+            VALUES
+            (nextval('test_seq'),null,null,'HPV P4','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),
+            null,null,136,null,null,'HPV P4',1,'HPV P4','t',
+            '190f3db5-f881-4b3b-af5a-1a9c3ee64e43',
+            (select id
+            from localization
+            where description = 'test name' and
+            english = 'HPV P4' limit
+            1),
+            (select id from localization where
+            description = 'test report name' and english = 'HPV P4' limit 1),
+            null,'f');
+            INSERT INTO clinlims.test(
+            id, method_id, uom_id, description,
+            loinc, reporting_description,
+            sticker_req_flag, is_active,
+            active_begin, active_end, is_reportable,
+            time_holding, time_wait,
+            time_ta_average, time_ta_warning,
+            time_ta_max, label_qty, lastupdated,
+            label_id, test_trailer_id,
+            test_section_id, scriptlet_id,
+            test_format_id, local_code,
+            sort_order, name, orderable,
+            guid,
+            name_localization_id, reporting_name_localization_id,
+            default_test_result_id, notify_results)
+            VALUES
+            (nextval('test_seq'),null,null,'HPV P5','',null,null,'Y',null,null,'N',null,null,null,null,null,null,now(),
+            null,null,136,null,null,'HPV P5',1,'HPV P5','t',
+            'e1c6d0dd-92c1-4921-8cdb-afab4cb4c894',
+            (select id
+            from localization
+            where description = 'test name' and
+            english = 'HPV P5' limit
+            1),
+            (select id from localization where
+            description = 'test report name' and english = 'HPV P5' limit 1),
+            null,'f');
+            ;
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111605" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sampletype_test" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Prélèvement cervico-vaginal'</sqlCheck>
+        </preConditions>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Prélèvement cervico-vaginal')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'HPV 16')"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111606" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sampletype_test" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Prélèvement cervico-vaginal'</sqlCheck>
+        </preConditions>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Prélèvement cervico-vaginal')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'HPV 18')"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111607" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sampletype_test" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Prélèvement cervico-vaginal'</sqlCheck>
+        </preConditions>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Prélèvement cervico-vaginal')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Autre HPV HR')"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111614" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sampletype_test" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Prélèvement cervico-vaginal'</sqlCheck>
+        </preConditions>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Prélèvement cervico-vaginal')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'HPV P3')"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111615" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sampletype_test" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Prélèvement cervico-vaginal'</sqlCheck>
+        </preConditions>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Prélèvement cervico-vaginal')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'HPV P4')"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111616" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sampletype_test" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Prélèvement cervico-vaginal'</sqlCheck>
+        </preConditions>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Prélèvement cervico-vaginal')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'HPV P5')"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111611" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sampletype_test" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Prélèvement cervico-vaginal'</sqlCheck>
+        </preConditions>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Prélèvement cervico-vaginal')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'HPV 18_45')"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="23111608" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.result_limits WHERE test_id =(select id from clinlims.test where description = 'HPV 16')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.result_limits(id, test_id,	test_result_type_id,min_age, max_age, gender, low_normal,high_normal, low_valid,
+            high_valid, lastupdated, normal_dictionary_id,always_validate)
+            VALUES (nextval('result_limits_seq'),
+            (select id from	test where	description = 'HPV 16'),4,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111609" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.result_limits WHERE test_id = (select id from clinlims.test where description = 'HPV 18')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.result_limits(id, test_id,	test_result_type_id,min_age, max_age, gender, low_normal,high_normal, low_valid,
+            high_valid, lastupdated, normal_dictionary_id,always_validate)
+            VALUES (nextval('result_limits_seq'),
+            (select id from	test where	description = 'HPV 18'), 4,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111610" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.result_limits WHERE test_id = (select id from clinlims.test where description = 'Autre HPV HR')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.result_limits(id, test_id, test_result_type_id,min_age, max_age, gender, low_normal,
+            high_normal, low_valid,	high_valid, lastupdated, normal_dictionary_id,	always_validate)
+            VALUES (nextval('result_limits_seq'),
+            (select id from	test where description = 'Autre HPV HR'),	4,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111617" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.result_limits WHERE test_id = (select id from clinlims.test where description = 'HPV 18_45')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.result_limits(id, test_id, test_result_type_id,min_age, max_age, gender, low_normal,
+            high_normal, low_valid,	high_valid, lastupdated, normal_dictionary_id,	always_validate)
+            VALUES (nextval('result_limits_seq'),
+            (select id from	test where description = 'HPV 18_45'),	4,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111618" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.result_limits WHERE test_id = (select id from clinlims.test where description = 'HPV P3')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.result_limits(id, test_id, test_result_type_id,min_age, max_age, gender, low_normal,
+            high_normal, low_valid,	high_valid, lastupdated, normal_dictionary_id,	always_validate)
+            VALUES (nextval('result_limits_seq'),
+            (select id from	test where description = 'HPV P3'),	4,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111619" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.result_limits WHERE test_id = (select id from clinlims.test where description = 'HPV P4')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.result_limits(id, test_id, test_result_type_id,min_age, max_age, gender, low_normal,
+            high_normal, low_valid,	high_valid, lastupdated, normal_dictionary_id,	always_validate)
+            VALUES (nextval('result_limits_seq'),
+            (select id from	test where description = 'HPV P4'),	4,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111620" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.result_limits WHERE test_id = (select id from clinlims.test where description = 'HPV P5')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.result_limits(id, test_id, test_result_type_id,min_age, max_age, gender, low_normal,
+            high_normal, low_valid,	high_valid, lastupdated, normal_dictionary_id,	always_validate)
+            VALUES (nextval('result_limits_seq'),
+            (select id from	test where description = 'HPV P5'),	4,0,'Infinity',null,'-Infinity','Infinity','-Infinity','Infinity',now(),null,'f');
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="23111621"
+        context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.test_result WHERE test_id =(select id from clinlims.test
+                where description = 'HPV 16')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,
+            scriptlet_id,sort_order,is_quantifiable,is_active,is_normal)
+            VALUES
+            (nextval('test_result_seq'),
+            (select id from test where description = 'HPV 16'),	null,null,'D',
+            (select id from dictionary where display_key = 'dictionary.result.Invalid' limit 1),
+            null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'),
+            (select id from test where description = 'HPV 16'),
+            null,null,'D',
+            (select id from dictionary where display_key = 'dictionary.result.Positif' limit 1),
+            null,null,null,now(),null,2,'f','t','f'),
+            (nextval('test_result_seq'),
+            (select id from test where description = 'HPV 16'),
+            null,null,'D',
+            (select id from dictionary where display_key = 'dictionary.result.Negatif' limit 1),
+            null,null,null,now(),null,2,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111622"
+        context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.test_result WHERE test_id =(select id from clinlims.test
+                where description = 'HPV 18')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,
+            scriptlet_id,sort_order,is_quantifiable,is_active,is_normal)
+            VALUES
+            (nextval('test_result_seq'),
+            (select id from test where description = 'HPV 18'),	null,null,'D',
+            (select id from dictionary where display_key = 'dictionary.result.Invalid' limit 1),
+            null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'),
+            (select id from test where description = 'HPV 18'),
+            null,null,'D',
+            (select id from dictionary where display_key = 'dictionary.result.Positif' limit 1),
+            null,null,null,now(),null,2,'f','t','f'),
+            (nextval('test_result_seq'),
+            (select id from test where description = 'HPV 18'),
+            null,null,'D',
+            (select id from dictionary where display_key = 'dictionary.result.Negatif' limit 1),
+            null,null,null,now(),null,2,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111623"
+        context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.test_result WHERE test_id =(select id from clinlims.test
+                where description = 'Autre HPV HR')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,
+            scriptlet_id,sort_order,is_quantifiable,is_active,is_normal)
+            VALUES
+            (nextval('test_result_seq'),
+            (select id from test where description = 'Autre HPV HR'),	null,null,'D',
+            (select id from dictionary where display_key = 'dictionary.result.Invalid' limit 1),
+            null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'),
+            (select id from test where description = 'Autre HPV HR'),
+            null,null,'D',
+            (select id from dictionary where display_key = 'dictionary.result.Positif' limit 1),
+            null,null,null,now(),null,2,'f','t','f'),
+            (nextval('test_result_seq'),
+            (select id from test where description = 'Autre HPV HR'),
+            null,null,'D', (select id from dictionary where display_key = 'dictionary.result.Negatif' limit 1),
+            null,null,null,now(),null,2,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111624"
+        context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.test_result WHERE test_id =(select id from clinlims.test
+                where description = 'HPV 18_45')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,
+            scriptlet_id,sort_order,is_quantifiable,is_active,is_normal)
+            VALUES
+            (nextval('test_result_seq'),
+            (select id from test where description = 'HPV 18_45'),	null,null,'D',
+            (select id from dictionary where display_key = 'dictionary.result.Invalid' limit 1),
+            null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'),
+            (select id from test where description = 'HPV 18_45'),
+            null,null,'D',
+            (select id from dictionary where display_key = 'dictionary.result.Positif' limit 1),
+            null,null,null,now(),null,2,'f','t','f'),
+            (nextval('test_result_seq'),
+            (select id from test where description = 'HPV 18_45'),
+            null,null,'D', (select id from dictionary where display_key = 'dictionary.result.Negatif' limit 1),
+            null,null,null,now(),null,2,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111625"
+        context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.test_result WHERE test_id =(select id from clinlims.test
+                where description = 'HPV P3')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,
+            scriptlet_id,sort_order,is_quantifiable,is_active,is_normal)
+            VALUES
+            (nextval('test_result_seq'),
+            (select id from test where description = 'HPV P3'),	null,null,'D',
+            (select id from dictionary where display_key = 'dictionary.result.Invalid' limit 1),
+            null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'),
+            (select id from test where description = 'HPV P3'),
+            null,null,'D',
+            (select id from dictionary where display_key = 'dictionary.result.Positif' limit 1),
+            null,null,null,now(),null,2,'f','t','f'),
+            (nextval('test_result_seq'),
+            (select id from test where description = 'HPV P3'),
+            null,null,'D', (select id from dictionary where display_key = 'dictionary.result.Negatif' limit 1),
+            null,null,null,now(),null,2,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111626" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.test_result WHERE test_id =(select id from clinlims.test
+                where description = 'HPV P4')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,
+            scriptlet_id,sort_order,is_quantifiable,is_active,is_normal)
+            VALUES
+            (nextval('test_result_seq'),
+            (select id from test where description = 'HPV P4'),	null,null,'D',
+            (select id from dictionary where display_key = 'dictionary.result.Invalid' limit 1),
+            null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'),
+            (select id from test where description = 'HPV P4'),
+            null,null,'D',
+            (select id from dictionary where display_key = 'dictionary.result.Positif' limit 1),
+            null,null,null,now(),null,2,'f','t','f'),
+            (nextval('test_result_seq'),
+            (select id from test where description = 'HPV P4'),
+            null,null,'D', (select id from dictionary where display_key = 'dictionary.result.Negatif' limit 1),
+            null,null,null,now(),null,2,'f','t','f');
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111627" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.test_result WHERE test_id =(select id from clinlims.test
+                where description = 'HPV P5')
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.test_result(id,test_id,result_group,flags,tst_rslt_type,value,significant_digits,quant_limit,cont_level,lastupdated,
+            scriptlet_id,sort_order,is_quantifiable,is_active,is_normal)
+            VALUES
+            (nextval('test_result_seq'),
+            (select id from test where description = 'HPV P5'),	null,null,'D',
+            (select id from dictionary where display_key = 'dictionary.result.Invalid' limit 1),
+            null,null,null,now(),null,1,'f','t','f'),
+            (nextval('test_result_seq'),
+            (select id from test where description = 'HPV P5'),
+            null,null,'D',
+            (select id from dictionary where display_key = 'dictionary.result.Positif' limit 1),
+            null,null,null,now(),null,2,'f','t','f'),
+            (nextval('test_result_seq'),
+            (select id from test where description = 'HPV P5'),
+            null,null,'D', (select id from dictionary where display_key = 'dictionary.result.Negatif' limit 1),
+            null,null,null,now(),null,2,'f','t','f');
+        </sql>
+    </changeSet>
+
+    <!-- add HPV panels -->
+    <changeSet author="CIV developer Group" id="23111701" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="localization" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.localization WHERE description = 'HPV HR'</sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value ="HPV HR"/>
+            <column name="english" value ="HR HPV"/>
+            <column name="french" value ="HPV HR"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111702" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM panel WHERE name ='HPV HR'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.panel(id,name,description,lastupdated,sort_order,is_active,name_localization_id) VALUES
+            (nextval('panel_seq'), 'HPV HR','HPV HR', now(), 100,'Y', (select id from clinlims.localization where
+            french ='HPV HR' limit 1));
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111703" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT  count(*)  FROM panel WHERE name ='HPV HR' LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.panel_item(id,panel_id,lastupdated,test_id) VALUES
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='HPV HR' limit 1),now(),(select id from clinlims.test where
+            name ='HPV 16' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='HPV HR' limit 1),now(),(select id from clinlims.test where
+            name ='HPV 18' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='HPV HR' limit 1),now(),(select id from clinlims.test where
+            name ='Autre HPV HR' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='HPV HR' limit 1),now(),(select id from clinlims.test where
+            name ='HPV P3' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='HPV HR' limit 1),now(),(select id from clinlims.test where
+            name ='HPV P4' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='HPV HR' limit 1),now(),(select id from clinlims.test where
+            name ='HPV P5' limit 1)),
+            (nextval('panel_item_seq'),(select id from clinlims.panel where name ='HPV HR' limit 1),now(),(select id from clinlims.test where
+            name ='HPV 18_45' limit 1));
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="23111704" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT  count(*)  FROM panel WHERE name ='HPV HR' LIMIT 1
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT  count(*)  FROM type_of_sample WHERE description ='Prélèvement cervico-vaginal' LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.sampletype_panel(id,sample_type_id,panel_id) VALUES
+            (nextval('sample_type_panel_seq'),(select id from clinlims.type_of_sample where description ='Prélèvement cervico-vaginal' limit 1),
+            (select id from clinlims.panel where name ='HPV HR' limit 1));
+        </sql>
+    </changeSet>
+
+    <!-- HPV observation history type for sampling type -->
+    <changeSet author="CIV developer Group" id="23112101" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.observation_history_type WHERE type_name = 'hpvSamplingMethod'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.observation_history_type(id, type_name, description,lastupdated) VALUES
+            (nextval('observation_history_type_seq'),'hpvSamplingMethod','Sampling Method for HPV sample',now());
+        </sql>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="23112102" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.dictionary_category WHERE description = 'HPV Sampling Method'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value ="HPV Sampling Method"/>
+            <column name="lastupdated" valueDate ="now()"/>
+            <column name="local_abbrev" value ="HPVSampM"/>
+            <column name="name" value ="HPV Sampling Method"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="23112103" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="dictionary" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM
+                clinlims.dictionary_category WHERE description = 'HPV Sampling Method' limit 1</sqlCheck>
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM
+                clinlims.dictionary WHERE dict_entry = 'Auto Sampling'</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.dictionary(id,is_active,dict_entry,lastupdated,local_abbrev,dictionary_category_id,display_key,sort_order,name_localization_id)
+            VALUES
+            (nextval('dictionary_seq'),'Y','Auto Sampling',now(),'AutoSamp',(select id from clinlims.dictionary_category where description = 'HPV Sampling Method' limit 1),
+            'dictionary.hpv.auto.sampling',55000,null),
+            (nextval('dictionary_seq'),'Y','Health Worker Sampling',now(),'HWSamp',(select id from clinlims.dictionary_category where description = 'HPV Sampling Method' limit 1),
+            'dictionary.hpv.hw.sampling',55001,null);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

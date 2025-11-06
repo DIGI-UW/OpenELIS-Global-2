@@ -1,5 +1,6 @@
 package org.openelisglobal.sample.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -10,9 +11,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.analysis.service.AnalysisService;
@@ -80,17 +78,16 @@ public class SampleEditController extends BaseController {
             "sampleOrderItems.referringPatientNumber", "sampleOrderItems.referringSiteId",
             "sampleOrderItems.referringSiteName", "sampleOrderItems.referringSiteCode",
             "sampleOrderItems.referringSiteDepartmentId", "sampleOrderItems.referringSiteDepartmentName",
-            "sampleOrderItems.program", "sampleOrderItems.providerId", "sampleOrderItems.facilityAddressStreet",
+            "sampleOrderItems.program", "sampleOrderItems.providerId", "sampleOrderItems.providerLastName",
+            "sampleOrderItems.providerFirstName", "sampleOrderItems.facilityAddressStreet",
             "sampleOrderItems.facilityAddressCommune", "sampleOrderItems.facilityPhone", "sampleOrderItems.facilityFax",
             "sampleOrderItems.paymentOptionSelection", "sampleOrderItems.billingReferenceNumber",
-            "sampleOrderItems.testLocationCode", "sampleOrderItems.otherLocationCode",
-            "sampleOrderItems.priority",
+            "sampleOrderItems.testLocationCode", "sampleOrderItems.otherLocationCode", "sampleOrderItems.priority",
             //
             "accessionNumber", "newAccessionNumber", "isEditable", "maxAccessionNumber",
             "existingTests*.sampleItemChanged", "existingTests*.sampleItemId", "existingTests*.analysisId",
             "existingTests*.collectionDate", "existingTests*.collectionTime", "existingTests*.removeSample",
             "existingTests*.canceled", "possibleTests*.testId", "possibleTests*.sampleItemId", "possibleTests*.add" };
-
 
     @Autowired
     SampleEditFormValidator formValidator;
@@ -119,8 +116,8 @@ public class SampleEditController extends BaseController {
     private SampleService sampleService;
     @Autowired
     private TestService testService;
-//	@Autowired
-//	private OrganizationOrganizationTypeService orgOrgTypeService;
+    // @Autowired
+    // private OrganizationOrganizationTypeService orgOrgTypeService;
     @Autowired
     private TypeOfSampleService typeOfSampleService;
     @Autowired
@@ -208,7 +205,7 @@ public class SampleEditController extends BaseController {
         if (FormFields.getInstance().useField(FormFields.Field.SampleNature)) {
             form.setSampleNatureList(DisplayListService.getInstance().getList(ListType.SAMPLE_NATURE));
         }
-
+        form.setRejectReasonList(DisplayListService.getInstance().getList(ListType.REJECTION_REASONS));
         form.setCurrentDate(DateUtil.getCurrentDateAsText());
         PatientSearch patientSearch = new PatientSearch();
         patientSearch.setLoadFromServerWithPatient(true);
@@ -252,7 +249,6 @@ public class SampleEditController extends BaseController {
                     accessionNumber = sample.getAccessionNumber();
                 }
             }
-
         }
         return accessionNumber;
     }
@@ -352,7 +348,7 @@ public class SampleEditController extends BaseController {
         }
 
         form.setPossibleTests(possibleTestList);
-        form.setTestSectionList(DisplayListService.getInstance().getList(ListType.TEST_SECTION));
+        form.setTestSectionList(DisplayListService.getInstance().getList(ListType.TEST_SECTION_ACTIVE));
     }
 
     private void setAddableSampleTypes(SampleEditForm form, HttpServletRequest request)
@@ -390,7 +386,6 @@ public class SampleEditController extends BaseController {
 
             possibleTestList.addAll(typeOfTestSampleItemList);
         }
-
     }
 
     @RequestMapping(value = "/SampleEdit", method = RequestMethod.POST)
@@ -421,7 +416,7 @@ public class SampleEditController extends BaseController {
             sampleEditService.editSample(form, request, updatedSample, sampleChanged, getSysUserId(request));
 
         } catch (LIMSRuntimeException e) {
-            if (e.getException() instanceof StaleObjectStateException) {
+            if (e.getCause() instanceof StaleObjectStateException) {
                 result.reject("errors.OptimisticLockException", "errors.OptimisticLockException");
             } else {
                 LogEvent.logDebug(e);
@@ -429,7 +424,6 @@ public class SampleEditController extends BaseController {
             }
             saveErrors(result);
             return findForward(FWD_FAIL_INSERT, form);
-
         }
 
         String sampleEditWritable = (String) request.getSession().getAttribute(SAMPLE_EDIT_WRITABLE);
@@ -474,7 +468,6 @@ public class SampleEditController extends BaseController {
 
         return !GenericValidator.isBlankOrNull(newAccessionNumber)
                 && !newAccessionNumber.equals(form.getAccessionNumber());
-
     }
 
     @Override
@@ -523,6 +516,5 @@ public class SampleEditController extends BaseController {
                 return o1.getTestName().compareTo(o2.getTestName());
             }
         }
-
     }
 }

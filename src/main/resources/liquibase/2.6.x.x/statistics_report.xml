@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="moses_mutesa" id="1">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_reports_aggregate_statistics'</sqlCheck>
+        </preConditions>
+        <comment>Add Statistics report to the Aggregate Reports menu</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports_aggregate')"/>
+            <column name="presentation_order" value="3"/>
+            <column name="element_id" value="menu_reports_aggregate_statistics"/>
+            <column name="action_url" value="/Report?type=indicator&amp;report=statisticsReport"/>
+            <column name="display_key" value="openreports.stat.aggregate"/>
+            <column name="tool_tip_key" value="tooltip.openreports.stat.aggregate"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

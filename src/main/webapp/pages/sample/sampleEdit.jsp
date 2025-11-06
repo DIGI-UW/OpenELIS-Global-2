@@ -8,11 +8,10 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
-<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions"%>
-<%@ taglib prefix="tiles" uri="http://tiles.apache.org/tags-tiles"%>	 
+
+<%@ taglib prefix="fn" uri="jakarta.tags.functions"%>
 
 <c:set var="cancelableResults" value="${form.ableToCancelResults}"/>
 
@@ -339,10 +338,10 @@ function addSampleTable(){
 </c:if>
     <div id="sampleOrder" class="colorFill" >
 <%--     	<c:if test="${form.isConfirmationSample}"> --%>
-<%--         	<tiles:insertAttribute name="sampleConfirmationOrder" /> --%>
+<%--         	<jsp:include page="${sampleConfirmationOrderFragment}"/> --%>
 <%--         </c:if> --%>
     	<c:if test="${not form.isConfirmationSample}">
-        	<tiles:insertAttribute name="sampleOrder" />
+        	<jsp:include page="${sampleOrderFragment}"/>
         </c:if>
     </div>
 
@@ -499,7 +498,7 @@ function addSampleTable(){
 <h1><spring:message code="sample.entry.addSample" /></h1>
 
 <%-- <div id="samplesDisplay" class="colorFill" >
-	<tiles:insertAttribute name="addSample"/>
+	<jsp:include page="${addSampleFragment}"/>
 </div> --%>
 <table id = "addSampleTemplate"  style="display:none;">
      <tr>
@@ -509,7 +508,7 @@ function addSampleTable(){
             <span class="requiredlabel">*</span>
 
             <div id="samplesDisplay_0" class="colorFill" >
-                <tiles:insertAttribute name="addSample"/>
+                <jsp:include page="${addSampleFragment}"/>
             </div>
            <hr >
         </td>

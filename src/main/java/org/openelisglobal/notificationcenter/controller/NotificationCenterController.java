@@ -33,5 +33,4 @@ public class NotificationCenterController extends BaseController {
         // TODO Auto-generated method stub
         return null;
     }
-
 }

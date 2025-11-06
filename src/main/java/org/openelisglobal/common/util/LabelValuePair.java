@@ -6,7 +6,6 @@ public class LabelValuePair {
     private String value;
 
     public LabelValuePair() {
-
     }
 
     public LabelValuePair(String label, String value) {
@@ -29,5 +28,4 @@ public class LabelValuePair {
     public void setValue(String value) {
         this.value = value;
     }
-
 }

@@ -1,24 +1,21 @@
 package org.openelisglobal.common.provider.autocomplete;
 
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ */
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
-
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.resources.ResourceLocator;
@@ -29,9 +26,7 @@ import org.openelisglobal.common.util.resources.ResourceLocator;
  *
  * @version 1.0
  * @author diane benz
- *
  */
-
 public class AutocompleteProviderFactory {
 
     private static class SingletonHelper {
@@ -43,11 +38,7 @@ public class AutocompleteProviderFactory {
     // Properties object that holds validation provider mappings
     private Properties validationProviderClassMap = null;
 
-    /**
-     * Singleton global access for AutocompleteProviderFactory
-     *
-     */
-
+    /** Singleton global access for AutocompleteProviderFactory */
     public static AutocompleteProviderFactory getInstance() {
         return SingletonHelper.INSTANCE;
     }
@@ -65,8 +56,8 @@ public class AutocompleteProviderFactory {
             object = classDefinition.newInstance();
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
             // bugzilla 2154
-            LogEvent.logError(e.toString(), e);
-            throw new LIMSRuntimeException("Unable to create an object for " + className, e, true);
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Unable to create an object for " + className, e);
         }
         return object;
     }
@@ -94,15 +85,15 @@ public class AutocompleteProviderFactory {
                 validationProviderClassMap.load(propertyStream);
             } catch (IOException e) {
                 // bugzilla 2154
-                LogEvent.logError(e.toString(), e);
-                throw new LIMSRuntimeException("Unable to load validation provider class mappings.", e, true);
+                LogEvent.logError(e);
+                throw new LIMSRuntimeException("Unable to load validation provider class mappings.", e);
             } finally {
                 if (null != propertyStream) {
                     try {
                         propertyStream.close();
                     } catch (IOException e) {
                         // bugzilla 2154
-                        LogEvent.logError(e.toString(), e);
+                        LogEvent.logError(e);
                     }
                 }
             }
@@ -110,7 +101,8 @@ public class AutocompleteProviderFactory {
 
         String mapping = validationProviderClassMap.getProperty(validationProvidername);
         if (mapping == null) {
-//            LogEvent.logError(this.getClass().getName(), "getAutocompleteProviderClassName", validationProvidername);
+            // LogEvent.logError(this.getClass().getSimpleName(),
+            // "getAutocompleteProviderClassName", validationProvidername);
             throw new LIMSRuntimeException(
                     "getAutocompleteProviderClassName - Unable to find mapping for " + validationProvidername);
         }
@@ -122,7 +114,6 @@ public class AutocompleteProviderFactory {
      *
      * @param name
      * @return Autocomplete Provider object
-     *
      */
     public BaseAutocompleteProvider getAutocompleteProvider(String name) throws LIMSRuntimeException {
         BaseAutocompleteProvider provider = null;
@@ -133,5 +124,4 @@ public class AutocompleteProviderFactory {
 
         return provider;
     }
-
 }

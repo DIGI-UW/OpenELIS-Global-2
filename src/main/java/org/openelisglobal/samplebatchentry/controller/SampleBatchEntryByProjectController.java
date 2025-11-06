@@ -1,9 +1,7 @@
 package org.openelisglobal.samplebatchentry.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.validator.BaseErrors;
@@ -68,11 +66,10 @@ public class SampleBatchEntryByProjectController extends BaseSampleEntryControll
             setupCommonFields(form, request);
             return findForward(setForward(form), form);
         } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-//            Log.error(e.toString());
+            // Log.error(e.toString());
             LogEvent.logDebug(e);
             return findForward(FWD_FAIL, form);
         }
-
     }
 
     private void setupEID(SampleBatchEntryForm form, HttpServletRequest request)

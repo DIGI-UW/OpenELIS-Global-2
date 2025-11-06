@@ -368,7 +368,9 @@ Object.extend(String.prototype, {
     var json = this.unfilterJSON();
     try {
       if (!sanitize || (/^("(\\.|[^"\\\n\r])*?"|[,:{}\[\]0-9.\-+Eaeflnr-u \n\r\t])+?$/.test(json)))
-        return eval('(' + json + ')');
+     	console.log("call to eval disallowed");
+     	return '';
+//        return eval('(' + json + ')');
     } catch (e) { }
     throw new SyntaxError('Badly formed JSON string: ' + this.inspect());
   },
@@ -1147,7 +1149,9 @@ Ajax.Request.prototype = Object.extend(new Ajax.Base(), {
 
   evalResponse: function() {
     try {
-      return eval((this.transport.responseText || '').unfilterJSON());
+     	console.log("call to eval disallowed");
+     	return ''.unfilterJSON();
+//      return eval((this.transport.responseText || '').unfilterJSON());
     } catch (e) {
       this.dispatchException(e);
     }

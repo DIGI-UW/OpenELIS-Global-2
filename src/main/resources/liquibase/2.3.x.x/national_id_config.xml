@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-  	<property name="now" value="now()" dbms="postgresql"/>
+      <property name="now" value="now()" dbms="postgresql"/>
 
-	<changeSet author="csteele" id="1">
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.site_information WHERE name = 'National ID required'</sqlCheck> 
-		</preConditions>
-		<insert schemaName="clinlims" tableName="site_information">
-			<column name="id" valueSequenceNext="site_information_seq" />
-			<column name="name" value="National ID required" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="should national ID be required on the patient entry screen" />
-			<column name="value" value="true" />
-			<column name="encrypted" value="false" />
-			<column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'patientEntryConfig')" />
-			<column name="value_type" value="boolean" />
-			<column name="instruction_key" value="siteInfo.instruction.nationalID.req.i" />
-			<column name="group" value="0" />
-			<column name="description_key" value="siteInfo.instruction.nationalID.req.d" />
-		</insert>
-		<insert schemaName="clinlims" tableName="site_information">
-			<column name="id" valueSequenceNext="site_information_seq" />
-			<column name="name" value="Allow duplicate national ids" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="should national ID be allowed duplicate entries" />
-			<column name="value" value="true" />
-			<column name="encrypted" value="false" />
-			<column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'patientEntryConfig')" />
-			<column name="value_type" value="boolean" />
-			<column name="instruction_key" value="siteInfo.instruction.nationalID.dup.i" />
-			<column name="group" value="0" />
-			<column name="description_key" value="siteInfo.instruction.nationalID.dup.d" />
-		</insert>
-		</changeSet>
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.site_information WHERE name = 'National ID required'</sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="National ID required" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="should national ID be required on the patient entry screen" />
+            <column name="value" value="true" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'patientEntryConfig')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="siteInfo.instruction.nationalID.req.i" />
+            <column name="group" value="0" />
+            <column name="description_key" value="siteInfo.instruction.nationalID.req.d" />
+        </insert>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="Allow duplicate national ids" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="should national ID be allowed duplicate entries" />
+            <column name="value" value="true" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'patientEntryConfig')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="siteInfo.instruction.nationalID.dup.i" />
+            <column name="group" value="0" />
+            <column name="description_key" value="siteInfo.instruction.nationalID.dup.d" />
+        </insert>
+        </changeSet>
 
 </databaseChangeLog>

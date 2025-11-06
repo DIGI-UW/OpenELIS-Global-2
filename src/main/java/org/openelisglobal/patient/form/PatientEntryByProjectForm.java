@@ -1,15 +1,14 @@
 package org.openelisglobal.patient.form;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import java.util.Map;
-
-import javax.validation.Valid;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.Pattern;
-
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
+import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dictionary.ObservationHistoryList;
 import org.openelisglobal.organization.util.OrganizationTypeList;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
@@ -61,7 +60,10 @@ public class PatientEntryByProjectForm extends BaseForm implements IAccessionerF
     @Pattern(regexp = ValidationHelper.PATIENT_ID_REGEX)
     private String siteSubjectNumber = "";
 
-    @ValidAccessionNumber(format = AccessionFormat.PROGRAM)
+    @Pattern(regexp = ValidationHelper.PATIENT_ID_REGEX)
+    private String upidCode = "";
+
+    @ValidAccessionNumber(format = AccessionFormat.PROGRAMNUM)
     private String labNo = "";
 
     @Pattern(regexp = ValidationHelper.ID_REGEX)
@@ -87,6 +89,12 @@ public class PatientEntryByProjectForm extends BaseForm implements IAccessionerF
 
     @Valid
     private ProjectData projectData;
+
+    @Valid
+    private ElectronicOrder electronicOrder;
+
+    @Pattern(regexp = ValidationHelper.PATIENT_ID_REGEX)
+    private String patientFhirUuid;
 
     public PatientEntryByProjectForm() {
         setFormName("patientEntryByProjectForm");
@@ -270,5 +278,33 @@ public class PatientEntryByProjectForm extends BaseForm implements IAccessionerF
     @Override
     public void setProjectData(ProjectData projectData) {
         this.projectData = projectData;
+    }
+
+    @Override
+    public ElectronicOrder getElectronicOrder() {
+        return electronicOrder;
+    }
+
+    @Override
+    public void setElectronicOrder(ElectronicOrder electronicOrder) {
+        this.electronicOrder = electronicOrder;
+    }
+
+    @Override
+    public String getPatientFhirUuid() {
+        return patientFhirUuid;
+    }
+
+    @Override
+    public void setPatientFhirUuid(String patientFhirUuid) {
+        this.patientFhirUuid = patientFhirUuid;
+    }
+
+    public String getUpidCode() {
+        return upidCode;
+    }
+
+    public void setUpidCode(String upidCode) {
+        this.upidCode = upidCode;
     }
 }

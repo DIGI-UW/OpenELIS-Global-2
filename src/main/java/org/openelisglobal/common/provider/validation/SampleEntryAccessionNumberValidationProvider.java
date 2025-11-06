@@ -1,27 +1,22 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
-*
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
+ */
 package org.openelisglobal.common.provider.validation;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.openelisglobal.common.provider.validation.IAccessionNumberValidator.ValidationResults;
 import org.openelisglobal.common.servlet.validation.AjaxServlet;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
@@ -31,7 +26,6 @@ import org.owasp.encoder.Encode;
 /**
  * The QuickEntryAccessionNumberValidationProvider class is used to validate,
  * via AJAX.
- *
  */
 public class SampleEntryAccessionNumberValidationProvider extends BaseValidationProvider {
 
@@ -83,10 +77,10 @@ public class SampleEntryAccessionNumberValidationProvider extends BaseValidation
 
         String returnData;
 
-//       if( !Boolean.valueOf(ConfigurationProperties.getInstance()
-//                .getPropertyValue(Property.ACCESSION_NUMBER_VALIDATE))) {
-//            result = ValidationResults.SUCCESS;
-//        }
+        // if( !Boolean.valueOf(ConfigurationProperties.getInstance()
+        // .getPropertyValue(Property.ACCESSION_NUMBER_VALIDATE))) {
+        // result = ValidationResults.SUCCESS;
+        // }
 
         switch (result) {
         case SUCCESS:
@@ -102,8 +96,8 @@ public class SampleEntryAccessionNumberValidationProvider extends BaseValidation
                         : new ProgramAccessionValidator().getInvalidFormatMessage(result);
             } else {
                 returnData = !ignoreUsage ? altAccession //
-                                 ? AccessionNumberUtil.getAltAccessionNumberValidator().getInvalidMessage(result)
-                                 : AccessionNumberUtil.getMainAccessionNumberValidator().getInvalidMessage(result)
+                        ? AccessionNumberUtil.getAltAccessionNumberValidator().getInvalidMessage(result)
+                        : AccessionNumberUtil.getMainAccessionNumberValidator().getInvalidMessage(result)
                         : altAccession
                                 ? AccessionNumberUtil.getAltAccessionNumberValidator().getInvalidFormatMessage(result)
                                 : AccessionNumberUtil.getMainAccessionNumberValidator().getInvalidFormatMessage(result);

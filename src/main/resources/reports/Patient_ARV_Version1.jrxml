@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Patient_ARV_Version1" pageWidth="612" pageHeight="862" whenNoDataType="AllSectionsNoDetail" columnWidth="552" leftMargin="30" rightMargin="30" topMargin="20" bottomMargin="20">
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Patient_ARV_Version1" pageWidth="612" pageHeight="862" whenNoDataType="AllSectionsNoDetail" columnWidth="552" leftMargin="30" rightMargin="30" topMargin="20" bottomMargin="20" uuid="952695ac-eee9-41bd-bb21-62f2db0d719e">
 	<property name="ireport.scriptlethandling" value="0"/>
 	<property name="ireport.encoding" value="UTF-8"/>
-	<property name="ireport.zoom" value="1.5"/>
+	<property name="ireport.zoom" value="1.3636363636363635"/>
 	<property name="ireport.x" value="0"/>
-	<property name="ireport.y" value="336"/>
+	<property name="ireport.y" value="1261"/>
 	<import value="net.sf.jasperreports.engine.*"/>
-	<import value="java.util.*"/>
 	<import value="net.sf.jasperreports.engine.data.*"/>
+	<import value="java.util.*"/>
 	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
 		<defaultValueExpression><![CDATA["../reports/"]]></defaultValueExpression>
 	</parameter>
@@ -78,7 +78,7 @@
 	<pageHeader>
 		<band height="207" splitType="Stretch">
 			<subreport>
-				<reportElement x="0" y="135" width="552" height="69"/>
+				<reportElement x="0" y="135" width="552" height="69" uuid="c459851f-57c9-404a-9e35-339917112ea7"/>
 				<subreportParameter name="accession_number"/>
 				<subreportParameter name="subjectNumber">
 					<subreportParameterExpression><![CDATA[$F{subjectNumber}]]></subreportParameterExpression>
@@ -86,11 +86,11 @@
 				<subreportParameter name="birth_date">
 					<subreportParameterExpression><![CDATA[$F{birth_date}]]></subreportParameterExpression>
 				</subreportParameter>
-				<subreportParameter name="orgname">
-					<subreportParameterExpression><![CDATA[$F{orgname}]]></subreportParameterExpression>
-				</subreportParameter>
 				<subreportParameter name="compleationdate">
 					<subreportParameterExpression><![CDATA[$F{compleationdate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="orgname">
+					<subreportParameterExpression><![CDATA[$F{orgname}]]></subreportParameterExpression>
 				</subreportParameter>
 				<subreportParameter name="age">
 					<subreportParameterExpression><![CDATA[$F{age}]]></subreportParameterExpression>
@@ -111,28 +111,28 @@
 					<subreportParameterExpression><![CDATA[$F{doctor}]]></subreportParameterExpression>
 				</subreportParameter>
 				<dataSourceExpression><![CDATA[new net.sf.jasperreports.engine.JREmptyDataSource()]]></dataSourceExpression>
-				<subreportExpression class="java.lang.String"><![CDATA[$P{SUBREPORT_DIR} + "Patient_ARV_Followup_patient_info.jasper"]]></subreportExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "Patient_ARV_Followup_patient_info.jasper"]]></subreportExpression>
 			</subreport>
 			<line>
-				<reportElement x="0" y="134" width="552" height="1"/>
+				<reportElement x="0" y="134" width="552" height="1" uuid="cb624b39-5b93-4a56-8a72-ed719fb2b177"/>
 				<graphicElement>
 					<pen lineStyle="Dashed"/>
 				</graphicElement>
 			</line>
 			<subreport>
-				<reportElement x="0" y="0" width="552" height="134"/>
-				<subreportParameter name="SUBREPORT_DIR">
-					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
-				</subreportParameter>
+				<reportElement x="0" y="0" width="552" height="134" uuid="3f7ad144-fc87-4a83-afd8-1a71492c8abf"/>
 				<subreportParameter name="leftHeaderImage">
 					<subreportParameterExpression><![CDATA[$P{leftHeaderImage}]]></subreportParameterExpression>
 				</subreportParameter>
-				<subreportParameter name="OPENREPORTS_REPORT_DIR"/>
-				<subreportParameter name="status">
-					<subreportParameterExpression><![CDATA[$F{status}]]></subreportParameterExpression>
+				<subreportParameter name="SUBREPORT_DIR">
+					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
 				</subreportParameter>
+				<subreportParameter name="OPENREPORTS_REPORT_DIR"/>
 				<subreportParameter name="duplicateReport">
 					<subreportParameterExpression><![CDATA[$F{duplicateReport}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="status">
+					<subreportParameterExpression><![CDATA[$F{status}]]></subreportParameterExpression>
 				</subreportParameter>
 				<subreportParameter name="studyName">
 					<subreportParameterExpression><![CDATA[$P{studyName}]]></subreportParameterExpression>
@@ -147,10 +147,10 @@
 					<subreportParameterExpression><![CDATA[$P{imagesPath}]]></subreportParameterExpression>
 				</subreportParameter>
 				<dataSourceExpression><![CDATA[new net.sf.jasperreports.engine.JREmptyDataSource()]]></dataSourceExpression>
-				<subreportExpression class="java.lang.String"><![CDATA[$P{SUBREPORT_DIR} + "RetroCIHeader.jasper"]]></subreportExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "RetroCIHeader.jasper"]]></subreportExpression>
 			</subreport>
 			<line>
-				<reportElement x="0" y="205" width="552" height="1"/>
+				<reportElement x="0" y="205" width="552" height="1" uuid="4c5e8e64-b7ed-4a37-8c4e-8a7a1008956a"/>
 			</line>
 		</band>
 	</pageHeader>
@@ -160,7 +160,7 @@
 	<detail>
 		<band height="455" splitType="Stretch">
 			<staticText>
-				<reportElement key="staticText-1" x="0" y="19" width="78" height="18">
+				<reportElement key="staticText-1" x="0" y="14" width="78" height="18" uuid="43da64d7-e9fc-4717-a4e8-557c4964b7cd">
 					<printWhenExpression><![CDATA[$F{gb} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement verticalAlignment="Middle">
@@ -169,161 +169,150 @@
 				<text><![CDATA[Hématologie :]]></text>
 			</staticText>
 			<staticText>
-				<reportElement key="staticText-2" mode="Opaque" x="4" y="52" width="78" height="18">
+				<reportElement key="staticText-2" mode="Opaque" x="1" y="57" width="78" height="18" uuid="6c530926-ba9c-4443-8897-8e0b59e7e301">
 					<printWhenExpression><![CDATA[$F{gb} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[GB(10^3/ul)]]></text>
 			</staticText>
 			<staticText>
-				<reportElement key="staticText-3" mode="Opaque" x="81" y="52" width="78" height="18">
+				<reportElement key="staticText-3" mode="Opaque" x="81" y="57" width="78" height="18" uuid="01192dbe-666c-4cf9-a6a0-33d420449a31">
 					<printWhenExpression><![CDATA[$F{gr} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[GR(10^6/ul)]]></text>
 			</staticText>
 			<staticText>
-				<reportElement key="staticText-4" mode="Opaque" x="158" y="52" width="78" height="18">
+				<reportElement key="staticText-4" mode="Opaque" x="158" y="57" width="78" height="18" uuid="fb33ed12-b577-4ff2-a02b-ebb967cc049b">
 					<printWhenExpression><![CDATA[$F{hb} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[Hb(g/dl)]]></text>
 			</staticText>
 			<staticText>
-				<reportElement key="staticText-5" mode="Opaque" x="235" y="52" width="78" height="18">
+				<reportElement key="staticText-5" mode="Opaque" x="235" y="57" width="78" height="18" uuid="c7877ecf-21f5-45bc-919f-6d2bea9b934e">
 					<printWhenExpression><![CDATA[$F{hct} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[Hct(%)]]></text>
 			</staticText>
 			<staticText>
-				<reportElement key="staticText-7" mode="Opaque" x="312" y="52" width="78" height="18">
+				<reportElement key="staticText-7" mode="Opaque" x="312" y="57" width="78" height="18" uuid="739a2019-99d5-4c79-9fe8-2ecc5d9d8f75">
 					<printWhenExpression><![CDATA[$F{vgm} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[VGM(fl)]]></text>
 			</staticText>
 			<staticText>
-				<reportElement key="staticText-6" mode="Opaque" x="0" y="93" width="78" height="18">
+				<reportElement key="staticText-6" mode="Opaque" x="1" y="97" width="78" height="18" uuid="c6e03ec8-ddba-4b39-b364-baa8ebac890b">
 					<printWhenExpression><![CDATA[$F{plq} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[Plaq(10^3/ul)]]></text>
 			</staticText>
 			<staticText>
-				<reportElement key="staticText-8" mode="Opaque" x="372" y="93" width="78" height="18">
+				<reportElement key="staticText-8" mode="Opaque" x="372" y="97" width="78" height="18" uuid="5803ecd8-793b-4fcd-ace4-1152d26873a3">
 					<printWhenExpression><![CDATA[$F{eoper} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[Eo(%)]]></text>
 			</staticText>
 			<staticText>
-				<reportElement key="staticText-9" mode="Opaque" x="465" y="93" width="78" height="18">
+				<reportElement key="staticText-9" mode="Opaque" x="465" y="97" width="78" height="18" uuid="347fcda6-d1ca-408d-a0d1-194027633d49">
 					<printWhenExpression><![CDATA[$F{bper} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[Ba(%)]]></text>
 			</staticText>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-1" x="0" y="70" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-1" x="1" y="74" width="62" height="18" isRemoveLineWhenBlank="true" uuid="43aaa4e1-f57d-4a10-afe0-2c634c05d116">
 					<printWhenExpression><![CDATA[$F{gb} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Left"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{gb} == null ? "X" : $F{gb}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{gb} == null ? "X" : $F{gb}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-2" x="81" y="70" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-2" x="81" y="74" width="62" height="18" isRemoveLineWhenBlank="true" uuid="83c508e1-5b0e-488d-8c5c-b2fc7176e7c5">
 					<printWhenExpression><![CDATA[$F{gr} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Left"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{gr} == null ? "X" : $F{gr}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{gr} == null ? "X" : $F{gr}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-3" x="158" y="70" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-3" x="158" y="74" width="62" height="18" isRemoveLineWhenBlank="true" uuid="09765c35-f47a-4e7c-8597-513c51a7f5e2">
 					<printWhenExpression><![CDATA[$F{hb} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Left"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{hb} == null ? "X" : $F{hb}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{hb} == null ? "X" : $F{hb}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-4" x="235" y="70" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-4" x="235" y="74" width="62" height="18" isRemoveLineWhenBlank="true" uuid="6dbe9cae-0666-4b99-8846-5083902a5fc4">
 					<printWhenExpression><![CDATA[$F{hct} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Left"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{hct} == null ? "X" : $F{hct}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{hct} == null ? "X" : $F{hct}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-5" x="313" y="70" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-5" x="313" y="74" width="62" height="18" isRemoveLineWhenBlank="true" uuid="5d44e006-3bec-4d46-82f3-4a36c6475d98">
 					<printWhenExpression><![CDATA[$F{vgm} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Left"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{vgm} == null ? "X" : $F{vgm}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{vgm} == null ? "X" : $F{vgm}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-6" x="0" y="114" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-6" x="1" y="118" width="62" height="18" isRemoveLineWhenBlank="true" uuid="0e2484b3-f9ed-4883-b206-c61ef6afdef8">
 					<printWhenExpression><![CDATA[$F{plq} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Left"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{plq} == null ? "X" : $F{plq}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{plq} == null ? "X" : $F{plq}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-7" x="372" y="114" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-7" x="372" y="118" width="62" height="18" isRemoveLineWhenBlank="true" uuid="f9b9d47a-df73-434d-b030-c7a4a64f820f">
 					<printWhenExpression><![CDATA[$F{eoper} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Left"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{eoper} == null ? "X" : $F{eoper}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{eoper} == null ? "X" : $F{eoper}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-8" x="465" y="114" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-8" x="465" y="118" width="62" height="18" isRemoveLineWhenBlank="true" uuid="77c7cb92-caeb-419b-97d8-62c23967b62b">
 					<printWhenExpression><![CDATA[$F{bper} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Left"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{bper} == null ? "X" : $F{bper}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{bper} == null ? "X" : $F{bper}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement key="staticText-10" mode="Opaque" x="93" y="93" width="78" height="18">
+				<reportElement key="staticText-10" mode="Opaque" x="93" y="97" width="78" height="18" uuid="fea87a3b-2104-423f-a3b1-6aebd1461995">
 					<printWhenExpression><![CDATA[$F{nper} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[N(%)]]></text>
 			</staticText>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-9" x="93" y="114" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-9" x="93" y="118" width="62" height="18" isRemoveLineWhenBlank="true" uuid="35a17bb5-e574-4d4e-ac00-1d30213601d4">
 					<printWhenExpression><![CDATA[$F{nper} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Left"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{nper} == null ? "X" : $F{nper}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{nper} == null ? "X" : $F{nper}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement key="staticText-11" mode="Opaque" x="186" y="93" width="78" height="18">
+				<reportElement key="staticText-11" mode="Opaque" x="186" y="97" width="78" height="18" uuid="7b473c7e-9b58-4147-bb68-ccc28d8db3fd">
 					<printWhenExpression><![CDATA[$F{lper} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[L(%)]]></text>
 			</staticText>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-10" x="186" y="114" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-10" x="186" y="118" width="62" height="18" isRemoveLineWhenBlank="true" uuid="4a1a207b-6d0e-41cf-8b30-6d550002f8c7">
 					<printWhenExpression><![CDATA[$F{lper} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Left"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{lper} == null ? "X" : $F{lper}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{lper} == null ? "X" : $F{lper}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement key="staticText-12" mode="Opaque" x="279" y="93" width="78" height="18">
+				<reportElement key="staticText-12" mode="Opaque" x="279" y="97" width="78" height="18" uuid="7eb459eb-8b04-4cda-a336-9ce3918ce490">
 					<printWhenExpression><![CDATA[$F{mper} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[M(%)]]></text>
 			</staticText>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-11" x="279" y="114" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-11" x="279" y="118" width="62" height="18" isRemoveLineWhenBlank="true" uuid="cf208a67-bae6-482e-95f1-966c10a95aa7">
 					<printWhenExpression><![CDATA[$F{mper} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Left"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{mper} == null ? "X" : $F{mper}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{mper} == null ? "X" : $F{mper}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement key="staticText-13" x="0" y="206" width="62" height="18">
+				<reportElement key="staticText-13" x="0" y="206" width="62" height="18" uuid="7d6ed3c3-e765-47da-8fdc-18b2c50b5f8a">
 					<printWhenExpression><![CDATA[$F{creatininemie} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement verticalAlignment="Middle">
@@ -332,63 +321,55 @@
 				<text><![CDATA[Biochimie:]]></text>
 			</staticText>
 			<staticText>
-				<reportElement key="staticText-14" mode="Opaque" x="4" y="237" width="78" height="18">
+				<reportElement key="staticText-14" mode="Opaque" x="1" y="242" width="78" height="18" uuid="689571f3-235c-40df-b139-e0b0fd458e7a">
 					<printWhenExpression><![CDATA[$F{creatininemie} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[Créatinine(mg/l)]]></text>
 			</staticText>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-12" x="0" y="255" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-12" x="1" y="260" width="62" height="18" isRemoveLineWhenBlank="true" uuid="9c7a51cb-8ebe-413b-9cdb-96df97bd801b">
 					<printWhenExpression><![CDATA[$F{creatininemie} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement textAlignment="Center"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{creatininemie} == null ? "X" : $F{creatininemie}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{creatininemie} == null ? "X" : $F{creatininemie}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement key="staticText-19" mode="Opaque" x="101" y="237" width="78" height="18">
+				<reportElement key="staticText-19" mode="Opaque" x="101" y="242" width="78" height="18" uuid="55f96fd8-0d39-4fee-b71b-a7de1dd719ec">
 					<printWhenExpression><![CDATA[$F{sgpt} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[SGPT(UI/L)]]></text>
 			</staticText>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-15" x="99" y="255" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-15" x="101" y="260" width="62" height="18" isRemoveLineWhenBlank="true" uuid="0632c99e-7788-4b37-bde2-1ed7f7c0b9bb">
 					<printWhenExpression><![CDATA[$F{sgpt} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement textAlignment="Center"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{sgpt} == null ? "X" : $F{sgpt}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{sgpt} == null ? "X" : $F{sgpt}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement key="staticText-20" mode="Opaque" x="198" y="237" width="78" height="18">
+				<reportElement key="staticText-20" mode="Opaque" x="198" y="242" width="78" height="18" uuid="e80f9bb0-c911-4625-a14c-61d984a5f1df">
 					<printWhenExpression><![CDATA[$F{sgot} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[SGOT(UI/L)]]></text>
 			</staticText>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-16" x="198" y="255" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-16" x="198" y="260" width="62" height="18" isRemoveLineWhenBlank="true" uuid="a6e028fc-7267-4976-b351-2b9a7cb21c00">
 					<printWhenExpression><![CDATA[$F{sgot} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement textAlignment="Center"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{sgot} == null ? "X" : $F{sgot}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{sgot} == null ? "X" : $F{sgot}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement key="staticText-21" mode="Opaque" x="297" y="237" width="78" height="18">
+				<reportElement key="staticText-21" mode="Opaque" x="297" y="242" width="78" height="18" uuid="e0c80fab-e252-48b2-b4d8-d998ded1b13f">
 					<printWhenExpression><![CDATA[$F{glyc} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[Glycémie(g/l)]]></text>
 			</staticText>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-17" x="297" y="255" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-17" x="297" y="260" width="62" height="18" isRemoveLineWhenBlank="true" uuid="b7626af4-5581-40d2-83a5-26d805e1ff25">
 					<printWhenExpression><![CDATA[$F{glyc} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement textAlignment="Center"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{glyc} == null ? "X" : $F{glyc}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{glyc} == null ? "X" : $F{glyc}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement key="staticText-22" x="0" y="136" width="82" height="18">
+				<reportElement key="staticText-22" x="0" y="136" width="82" height="18" uuid="72d8062a-52c3-4daa-a9f7-3b516570b435">
 					<printWhenExpression><![CDATA[$F{cd4per} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement verticalAlignment="Middle">
@@ -397,64 +378,58 @@
 				<text><![CDATA[Immunologie :]]></text>
 			</staticText>
 			<staticText>
-				<reportElement key="staticText-23" mode="Opaque" x="0" y="169" width="62" height="18">
+				<reportElement key="staticText-23" mode="Opaque" x="0" y="169" width="62" height="18" uuid="43b9723d-3cab-4c10-8990-0ff3b2e7a46f">
 					<printWhenExpression><![CDATA[$F{cd4per} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[CD4(%)]]></text>
 			</staticText>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-18" x="0" y="187" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-18" x="-2" y="187" width="62" height="18" isRemoveLineWhenBlank="true" uuid="c1304c63-c25a-4f0b-baca-1d3d104d0552">
 					<printWhenExpression><![CDATA[$F{cd4per} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement textAlignment="Center"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{cd4per} == null ? "X" : $F{cd4per}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{cd4per} == null ? "X" : $F{cd4per}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement key="staticText-24" mode="Opaque" x="82" y="169" width="62" height="18">
+				<reportElement key="staticText-24" mode="Opaque" x="82" y="169" width="62" height="18" uuid="23de4113-52a2-4196-bad0-c9d02007985e">
 					<printWhenExpression><![CDATA[$F{cd4} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[CD4#(cell/µl)]]></text>
 			</staticText>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-19" x="81" y="187" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-19" x="81" y="187" width="62" height="18" isRemoveLineWhenBlank="true" uuid="906ef276-2956-4394-be09-b24739d280bd">
 					<printWhenExpression><![CDATA[$F{cd4} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement textAlignment="Center"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{cd4} == null ? "X" : $F{cd4}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{cd4} == null ? "X" : $F{cd4}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement key="staticText-7" mode="Opaque" x="389" y="52" width="78" height="18">
+				<reportElement key="staticText-7" mode="Opaque" x="389" y="57" width="78" height="18" uuid="8f462fb3-979f-423a-8a4c-f7add3f3685d">
 					<printWhenExpression><![CDATA[$F{ccmh} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[CCMH(fl)]]></text>
 			</staticText>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-5" x="389" y="70" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-5" x="389" y="74" width="62" height="18" isRemoveLineWhenBlank="true" uuid="68c12060-80f8-425b-977b-17cfb5a23604">
 					<printWhenExpression><![CDATA[$F{ccmh} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Left"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{ccmh} == null ? "X" : $F{ccmh}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{ccmh} == null ? "X" : $F{ccmh}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement key="staticText-7" mode="Opaque" x="465" y="52" width="78" height="18">
+				<reportElement key="staticText-7" mode="Opaque" x="465" y="57" width="78" height="18" uuid="b758f255-5f45-48a6-a1a1-b6af8ef4e867">
 					<printWhenExpression><![CDATA[$F{tcmh} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
 				<text><![CDATA[TCMH(pg)]]></text>
 			</staticText>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-5" x="467" y="70" width="62" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-5" x="467" y="74" width="62" height="18" isRemoveLineWhenBlank="true" uuid="283efe9b-93ce-4b48-8728-5f8d4a6879c6">
 					<printWhenExpression><![CDATA[$F{tcmh} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Left"/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{tcmh} == null ? "X" : $F{tcmh}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{tcmh} == null ? "X" : $F{tcmh}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement key="staticText-22" x="0" y="273" width="90" height="19" isRemoveLineWhenBlank="true">
-					<printWhenExpression><![CDATA[$F{vih} != null]]></printWhenExpression>
+				<reportElement key="staticText-22" x="0" y="273" width="90" height="19" isRemoveLineWhenBlank="true" uuid="68029481-e6a3-4cfb-b642-6403fca5d68c">
+					<printWhenExpression><![CDATA[$F{vih} != null && !$F{vih}.contains("En cours")]]></printWhenExpression>
 				</reportElement>
 				<textElement verticalAlignment="Middle">
 					<font size="12" isBold="true" isItalic="false" isUnderline="false"/>
@@ -462,8 +437,8 @@
 				<text><![CDATA[Sérologie]]></text>
 			</staticText>
 			<staticText>
-				<reportElement key="staticText-23" mode="Opaque" x="0" y="292" width="82" height="18" isRemoveLineWhenBlank="true">
-					<printWhenExpression><![CDATA[$F{vih} != null]]></printWhenExpression>
+				<reportElement key="staticText-23" mode="Opaque" x="0" y="292" width="82" height="18" isRemoveLineWhenBlank="true" uuid="35486b92-1e8a-4157-8f76-9e1b67542ef2">
+					<printWhenExpression><![CDATA[$F{vih} != null && !$F{vih}.contains("En cours")]]></printWhenExpression>
 				</reportElement>
 				<textElement>
 					<font isUnderline="true"/>
@@ -471,14 +446,13 @@
 				<text><![CDATA[Sérologie VIH :]]></text>
 			</staticText>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-8" x="6" y="309" width="62" height="18" isRemoveLineWhenBlank="true">
-					<printWhenExpression><![CDATA[$F{vih} != null]]></printWhenExpression>
+				<reportElement key="textField-8" mode="Transparent" x="6" y="309" width="62" height="18" isRemoveLineWhenBlank="true" forecolor="#000000" uuid="78460679-80dc-4628-bfe7-922df0fe8421">
+					<printWhenExpression><![CDATA[$F{vih} != null && !$F{vih}.contains("En cours")]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{vih} == null ? "X" : $F{vih}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{vih} == null ? "X" : $F{vih}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement x="71" y="16" width="79" height="18">
+				<reportElement x="71" y="14" width="79" height="15" uuid="77a91bc0-cc7a-4980-9673-b79e15d91015">
 					<printWhenExpression><![CDATA[$F{gb} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement verticalAlignment="Bottom">
@@ -487,16 +461,16 @@
 				<text><![CDATA[Hémogramme]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="150" y="16" width="402" height="18">
+				<reportElement x="150" y="17" width="356" height="12" uuid="d150df1a-75f9-4e23-9bcc-5259e17cbd0b">
 					<printWhenExpression><![CDATA[$F{gb} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement verticalAlignment="Bottom">
 					<font size="7" isItalic="true"/>
 				</textElement>
-				<text><![CDATA[(Analyseur : Sysmex XT 4000I/ Sysmex XT 2000I- Sysmex) Echantillon : Sang total/Tube EDTA)]]></text>
+				<text><![CDATA[(Analyseur : Sysmex XT 4000I/ Sysmex XT 2000I- Sysmex XN 1000) Echantillon : Sang total/Tube EDTA)]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="201" y="137" width="366" height="15">
+				<reportElement x="201" y="137" width="366" height="15" uuid="2dc6e401-80d6-4811-bcbc-cd05d7c79b16">
 					<printWhenExpression><![CDATA[$F{cd4per} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement verticalAlignment="Bottom">
@@ -505,7 +479,7 @@
 				<text><![CDATA[(Analyseur : BD FACSCanto II /BD FASCalibur- Becton Dickinson) Echantillon : Sang total/Tube EDTA)]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="62" y="211" width="359" height="12">
+				<reportElement x="62" y="211" width="359" height="12" uuid="3625d77b-cfdf-44e7-9044-17bf60302af1">
 					<printWhenExpression><![CDATA[$F{creatininemie} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement verticalAlignment="Top">
@@ -514,8 +488,8 @@
 				<text><![CDATA[(Analyseur : Cobas C311/ Cobas Intégra 400 plus- Roche) Echantillon : Sérum/Tube sec)]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="82" y="294" width="405" height="12">
-					<printWhenExpression><![CDATA[$F{vih} != null]]></printWhenExpression>
+				<reportElement x="82" y="294" width="405" height="12" uuid="d7a04117-2f92-412d-9bb4-753e2f334c29">
+					<printWhenExpression><![CDATA[$F{vih} != null && !$F{vih}.contains("En cours")]]></printWhenExpression>
 				</reportElement>
 				<textElement verticalAlignment="Top">
 					<font size="7" isItalic="true"/>
@@ -523,7 +497,7 @@
 				<text><![CDATA[(Analyseur : Evolis twin plus/PR3100-  Biorad) Echantillon : Sérum/Tube sec ou Plasma/Tube EDTA)]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="68" y="137" width="147" height="16">
+				<reportElement x="68" y="137" width="147" height="16" uuid="4223dcd7-bdad-4c22-92a1-4bc817834566">
 					<printWhenExpression><![CDATA[$F{cd4per} != null]]></printWhenExpression>
 				</reportElement>
 				<textElement verticalAlignment="Bottom">
@@ -532,129 +506,160 @@
 				<text><![CDATA[Phénotypage lymphocytaire]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="0" y="0" width="158" height="17"/>
+				<reportElement x="0" y="0" width="158" height="17" uuid="18e7c03d-ede3-4fe1-93d8-39625c5b4c1c"/>
 				<textElement>
 					<font size="12" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Diagnostic Clinique]]></text>
 			</staticText>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-40" x="136" y="36" width="370" height="17" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-40" x="136" y="40" width="370" height="17" isRemoveLineWhenBlank="true" uuid="023cf295-2e54-4269-b067-37318c765570">
 					<printWhenExpression><![CDATA[$F{gb} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{hematologyQaEvent} == null ? "Etat de l'échantillon:Normal" :  "Etat de l'échantillon:"+$F{hematologyQaEvent}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{hematologyQaEvent} == null ? "Etat de l'échantillon:Normal" :  "Etat de l'échantillon:"+$F{hematologyQaEvent}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-190" x="151" y="155" width="393" height="19" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-190" x="151" y="165" width="393" height="19" isRemoveLineWhenBlank="true" uuid="81d9a2d4-b14d-4497-a79d-fcff9c38c850">
 					<printWhenExpression><![CDATA[$F{cd4per} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{immunologyQaEvent} == null ? "Etat de l'échantillon:Normal" :  "Etat de l'échantillon:"+$F{immunologyQaEvent}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{immunologyQaEvent} == null ? "Etat de l'échantillon:Normal" :  "Etat de l'échantillon:"+$F{immunologyQaEvent}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-170" x="164" y="225" width="396" height="18" isRemoveLineWhenBlank="true">
+				<reportElement key="textField-170" x="164" y="230" width="403" height="13" isRemoveLineWhenBlank="true" uuid="734d8197-a763-4f84-bb2d-1afd88f8b879">
 					<printWhenExpression><![CDATA[$F{creatininemie} != null]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{biochemistryQaEvent} == null ? "Etat de l'échantillon:Normal" :  "Etat de l'échantillon:"+$F{biochemistryQaEvent}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{biochemistryQaEvent} == null ? "Etat de l'échantillon:Normal" :  "Etat de l'échantillon:"+$F{biochemistryQaEvent}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-80" x="154" y="307" width="387" height="18" isRemoveLineWhenBlank="true">
-					<printWhenExpression><![CDATA[$F{vih} != null]]></printWhenExpression>
+				<reportElement key="textField-80" x="144" y="318" width="387" height="18" isRemoveLineWhenBlank="true" uuid="7a24fc65-45f5-43a1-82b0-f39d91192e8e">
+					<printWhenExpression><![CDATA[$F{vih} != null && !$F{vih}.contains("En cours")]]></printWhenExpression>
 				</reportElement>
-				<textElement/>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{serologyQaEvent} == null ? "Etat de l'échantillon:Normal" :  "Etat de l'échantillon:"+$F{serologyQaEvent}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{serologyQaEvent} == null ? "Etat de l'échantillon:Normal" :  "Etat de l'échantillon:"+$F{serologyQaEvent}]]></textFieldExpression>
 			</textField>
 			<image>
-				<reportElement x="322" y="380" width="230" height="75"/>
-				<imageExpression class="java.lang.String"><![CDATA[$P{imagesPath}+ "ALLSign.jpg"]]></imageExpression>
+				<reportElement x="322" y="380" width="230" height="75" uuid="23208779-9b5d-4e0c-b558-64032d859467"/>
+				<imageExpression><![CDATA[$P{imagesPath}+ "ALLSign.jpg"]]></imageExpression>
 			</image>
 			<image isUsingCache="true" onErrorType="Blank">
-				<reportElement x="2" y="36" width="127" height="15"/>
-				<imageExpression class="java.lang.String"><![CDATA[$P{imagesPath}+ "HEMATO_LaboRef.jpg"]]></imageExpression>
+				<reportElement x="2" y="36" width="127" height="15" uuid="54f0ad45-7549-4dbe-8832-99e05640939f"/>
+				<imageExpression><![CDATA[$P{imagesPath}+ "HEMATO_LaboRef.jpg"]]></imageExpression>
 			</image>
 			<image>
-				<reportElement x="2" y="154" width="142" height="15">
+				<reportElement x="2" y="154" width="142" height="15" uuid="e33a1e8d-d6e9-4737-bcfc-fa6311e32d20">
 					<printWhenExpression><![CDATA[$F{cd4per} != null]]></printWhenExpression>
 				</reportElement>
-				<imageExpression class="java.lang.String"><![CDATA[$P{imagesPath}+ "IMMUNO_LaboRef.jpg"]]></imageExpression>
+				<imageExpression><![CDATA[$P{imagesPath}+ "IMMUNO_LaboRef.jpg"]]></imageExpression>
 			</image>
 			<image>
-				<reportElement x="2" y="223" width="158" height="15">
+				<reportElement x="2" y="223" width="158" height="15" uuid="d81830f2-4faa-434d-8c47-c3294445ced3">
 					<printWhenExpression><![CDATA[$F{creatininemie} != null]]></printWhenExpression>
 				</reportElement>
-				<imageExpression class="java.lang.String"><![CDATA[$P{imagesPath}+ "BIOCH_LaboRef.jpg"]]></imageExpression>
+				<imageExpression><![CDATA[$P{imagesPath}+ "BIOCH_LaboRef.jpg"]]></imageExpression>
 			</image>
 			<image onErrorType="Blank">
-				<reportElement x="94" y="277" width="260" height="15">
-					<printWhenExpression><![CDATA[$F{vih} != null]]></printWhenExpression>
+				<reportElement x="94" y="277" width="260" height="15" uuid="94062598-5782-46ec-a0cb-f3ef238a564c">
+					<printWhenExpression><![CDATA[$F{vih} != null && !$F{vih}.contains("En cours")]]></printWhenExpression>
 				</reportElement>
-				<imageExpression class="java.lang.String"><![CDATA[$P{imagesPath}+ "SERO_LaboRef.jpg"]]></imageExpression>
+				<imageExpression><![CDATA[$P{imagesPath}+ "SERO_LaboRef.jpg"]]></imageExpression>
 			</image>
+			<staticText>
+				<reportElement x="166" y="27" width="356" height="12" uuid="ae6cb54d-f9b0-442f-8ebb-14fef98c8205">
+					<printWhenExpression><![CDATA[$F{gb} != null]]></printWhenExpression>
+				</reportElement>
+				<textElement verticalAlignment="Bottom">
+					<font size="7" isItalic="true"/>
+				</textElement>
+				<text><![CDATA[Méthode: Impédance et cryométrie avec laser semi-conducteur]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="166" y="152" width="356" height="12" uuid="94dee710-4bc4-4252-a790-2da54852ad5e">
+					<printWhenExpression><![CDATA[$F{gb} != null]]></printWhenExpression>
+				</reportElement>
+				<textElement verticalAlignment="Bottom">
+					<font size="7" isItalic="true"/>
+				</textElement>
+				<text><![CDATA[Méthode: Cytométrie de flux]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="166" y="221" width="268" height="12" uuid="3cae5e20-0bd3-4434-84eb-54738f55107c">
+					<printWhenExpression><![CDATA[$F{creatininemie} != null]]></printWhenExpression>
+				</reportElement>
+				<textElement verticalAlignment="Top">
+					<font size="7" isItalic="true"/>
+				</textElement>
+				<text><![CDATA[Méthode: Jaffe sans compensation]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="166" y="306" width="252" height="12" uuid="9d4b64a5-830f-4b39-9412-37dbd2184003">
+					<printWhenExpression><![CDATA[$F{vih} != null && !$F{vih}.contains("En cours")]]></printWhenExpression>
+				</reportElement>
+				<textElement verticalAlignment="Top">
+					<font size="7" isItalic="true"/>
+				</textElement>
+				<text><![CDATA[Méthodes: ELISA, Test en ligne]]></text>
+			</staticText>
 		</band>
 		<band height="472">
 			<printWhenExpression><![CDATA[$F{allQaEvents}!=null]]></printWhenExpression>
 			<staticText>
-				<reportElement x="0" y="82" width="552" height="20"/>
+				<reportElement x="0" y="82" width="552" height="20" uuid="341d285a-909b-496b-99f4-56b5eb04a93a"/>
 				<textElement textAlignment="Center">
 					<font size="14" isBold="true"/>
 				</textElement>
 				<text><![CDATA[RAPPORT DE NON-CONFORMITE CLIENT]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="108" width="170" height="40"/>
+				<reportElement x="1" y="108" width="170" height="40" uuid="0b27755e-fc3a-4278-b121-5944a6661c8d"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="11" y="114" width="157" height="34"/>
+				<reportElement x="11" y="114" width="157" height="34" uuid="f9940556-8ec7-4285-87a1-723789accd52"/>
 				<textElement textAlignment="Center">
 					<font size="12" isBold="true"/>
 				</textElement>
 				<text><![CDATA[MOTIF DU REFUS]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="171" y="108" width="381" height="20"/>
+				<reportElement x="171" y="108" width="381" height="20" uuid="d728517d-08a9-4285-ade3-cf04a61a8c9c"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="179" y="107" width="118" height="20"/>
+				<reportElement x="179" y="107" width="118" height="20" uuid="c6385ab4-0189-4edc-bce0-9319597d22d8"/>
 				<textElement>
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Echantillon en tube : ]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="302" y="107" width="241" height="20"/>
-				<textElement/>
+				<reportElement x="302" y="107" width="241" height="20" uuid="071d15ef-9586-40f8-bda9-e371dc97698d"/>
 				<text><![CDATA[Type de tube/Type d’échantillon]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="171" y="128" width="188" height="20"/>
+				<reportElement x="171" y="128" width="188" height="20" uuid="34dcc132-1c4f-4177-a540-2fd8a90fbadb"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="171" y="129" width="186" height="19"/>
+				<reportElement x="171" y="129" width="186" height="19" uuid="4fbb772e-73a2-436b-8128-becf42b4e485"/>
 				<textElement textAlignment="Center"/>
 				<text><![CDATA[Tube EDTA/Sang total/Plasma]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="359" y="128" width="193" height="20"/>
+				<reportElement x="359" y="128" width="193" height="20" uuid="61142c07-3fe2-4f37-9564-4281d115f18d"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="359" y="129" width="191" height="20"/>
+				<reportElement x="359" y="129" width="191" height="20" uuid="6dd1b07f-e272-4797-8bc1-9501c5016811"/>
 				<textElement textAlignment="Center"/>
 				<text><![CDATA[Tube Sec/ Sérum ]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="148" width="551" height="13"/>
+				<reportElement x="1" y="148" width="551" height="13" uuid="d28fa8bf-f99e-4336-b584-592695ee213c"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="148" width="165" height="13"/>
+				<reportElement x="5" y="148" width="165" height="13" uuid="58b33f42-8b86-4c69-98a2-b4a3b0347b10"/>
 				<textElement>
 					<font fontName="Arial"/>
 				</textElement>
 				<text><![CDATA[Echantillon Coagulé]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="173" y="148" width="183" height="13">
+				<reportElement x="173" y="148" width="183" height="13" uuid="9afa12f4-c63f-4396-a2da-cf6141269882">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.edtaTube:qa_event.coagulated"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Sang:qa_event.coagulated"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Plasma:qa_event.coagulated"))]]></printWhenExpression>
@@ -665,7 +670,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="361" y="148" width="183" height="13">
+				<reportElement x="361" y="148" width="183" height="13" uuid="c01e1cd3-284a-4134-9f47-068c7b240742">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.dryTube:qa_event.coagulated"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Serum:qa_event.coagulated"))]]></printWhenExpression>
 				</reportElement>
@@ -675,15 +680,14 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="161" width="551" height="13"/>
+				<reportElement x="1" y="161" width="551" height="13" uuid="82d8887d-d2ab-4f8a-954c-ee4c06044509"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="161" width="165" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="161" width="165" height="13" uuid="9e1ce5f1-f5c9-494e-8cab-9277d98dafcc"/>
 				<text><![CDATA[Echantillon Insuffisant]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="173" y="161" width="183" height="13">
+				<reportElement x="173" y="161" width="183" height="13" uuid="89ef2183-51f3-441d-b359-bf82b3ef2fca">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.edtaTube:qa_event.insufficient"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Sang:qa_event.insufficient"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Plasma:qa_event.insufficient"))]]></printWhenExpression>
@@ -694,7 +698,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement mode="Transparent" x="361" y="161" width="183" height="13">
+				<reportElement mode="Transparent" x="361" y="161" width="183" height="13" uuid="dd3098ef-6540-4ddd-93b4-7f27ec98d930">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.dryTube:qa_event.insufficient"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Serum:qa_event.insufficient"))]]></printWhenExpression>
 				</reportElement>
@@ -704,15 +708,14 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="174" width="551" height="13"/>
+				<reportElement x="1" y="174" width="551" height="13" uuid="9c153108-3208-43f0-bd5c-1d52744f066a"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="174" width="165" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="174" width="165" height="13" uuid="b055b886-4fc7-4671-bb3c-e220bdb39729"/>
 				<text><![CDATA[Echantillon Hémolysé]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="173" y="174" width="183" height="13">
+				<reportElement x="173" y="174" width="183" height="13" uuid="2adf76e5-288e-445f-aef2-514dcac40b0a">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.edtaTube:qa_event.hemolytic"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Sang:qa_event.hemolytic"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Plasma:qa_event.hemolytic"))]]></printWhenExpression>
@@ -723,7 +726,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="361" y="174" width="183" height="13">
+				<reportElement x="361" y="174" width="183" height="13" uuid="4058e4dd-86ae-4aff-ab25-1245b14ef08a">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.dryTube:qa_event.hemolytic"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Serum:qa_event.hemolytic"))]]></printWhenExpression>
 				</reportElement>
@@ -733,15 +736,14 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="187" width="551" height="13"/>
+				<reportElement x="1" y="187" width="551" height="13" uuid="7a8c2f94-1c1d-4f11-8b2c-e4e4d579f18a"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="187" width="164" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="187" width="164" height="13" uuid="c57733fd-f730-474a-a625-4db5afddbf13"/>
 				<text><![CDATA[Echantillon lactescent]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="173" y="187" width="183" height="13">
+				<reportElement x="173" y="187" width="183" height="13" uuid="a6a95997-b88c-46cd-8a03-1beb97d85c66">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.edtaTube:qa_event.Sample_LA"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Sang:qa_event.Sample_LA"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Plasma:qa_event.Sample_LA"))]]></printWhenExpression>
@@ -752,7 +754,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="361" y="187" width="183" height="13">
+				<reportElement x="361" y="187" width="183" height="13" uuid="44ad77c5-d2e9-4936-8994-5405505d4e45">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.dryTube:qa_event.Sample_LA"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Serum:qa_event.Sample_LA"))]]></printWhenExpression>
 				</reportElement>
@@ -762,15 +764,14 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="200" width="551" height="13"/>
+				<reportElement x="1" y="200" width="551" height="13" uuid="6ce6a744-e09a-4a01-b326-a2c68e314230"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="200" width="164" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="200" width="164" height="13" uuid="78505f46-5207-466c-a3da-25b6f01beec6"/>
 				<text><![CDATA[Echantillon opalescent]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="173" y="200" width="183" height="13">
+				<reportElement x="173" y="200" width="183" height="13" uuid="b6cbad53-b513-4e2d-abf7-4e05724ba7b9">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.edtaTube:qa_event.Sample_OP"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Sang:qa_event.Sample_OP"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Plasma:qa_event.Sample_OP"))]]></printWhenExpression>
@@ -781,7 +782,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="361" y="200" width="183" height="13">
+				<reportElement x="361" y="200" width="183" height="13" uuid="84f11373-234b-438e-a86b-19303b930066">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.dryTube:qa_event.Sample_OP"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Serum:qa_event.Sample_OP"))]]></printWhenExpression>
 				</reportElement>
@@ -791,15 +792,14 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="213" width="551" height="13"/>
+				<reportElement x="1" y="213" width="551" height="13" uuid="f1e480b3-5332-47fa-a41c-94bf30171914"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="213" width="164" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="213" width="164" height="13" uuid="ef0f794f-3d89-49dd-9a8b-ae6c5d0fb6bc"/>
 				<text><![CDATA[Echantillon mal ou non étiqueté]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="173" y="213" width="183" height="13">
+				<reportElement x="173" y="213" width="183" height="13" uuid="c1a47017-f67e-4dec-8421-f0c2e5ce165f">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.edtaTube:qa_event.mislabled"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Sang:qa_event.mislabled"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Plasma:qa_event.mislabled"))]]></printWhenExpression>
@@ -810,7 +810,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="361" y="213" width="183" height="13">
+				<reportElement x="361" y="213" width="183" height="13" uuid="77f097ea-a804-4a59-8208-f92c6b24c629">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.dryTube:qa_event.mislabled"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Serum:qa_event.mislabled"))]]></printWhenExpression>
 				</reportElement>
@@ -820,15 +820,14 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="226" width="551" height="13"/>
+				<reportElement x="1" y="226" width="551" height="13" uuid="f4db7424-35b2-4fe6-81ea-fff8ed909fac"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="226" width="166" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="226" width="166" height="13" uuid="1883e735-eaf8-46a6-b862-e5f2f649f531"/>
 				<text><![CDATA[Elution du disque DBS impossible]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="173" y="226" width="183" height="13">
+				<reportElement x="173" y="226" width="183" height="13" uuid="3ad0b698-66fd-44f0-814a-5aacf163e904">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.edtaTube:qa_event.DBS_DI"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Sang:qa_event.DBS_DI"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Plasma:qa_event.DBS_DI"))]]></printWhenExpression>
@@ -839,7 +838,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="361" y="226" width="183" height="13">
+				<reportElement x="361" y="226" width="183" height="13" uuid="89102fd2-8bae-4bd0-9cbc-6d7d1cea5669">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.dryTube:qa_event.DBS_DI"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Serum:qa_event.DBS_DI"))]]></printWhenExpression>
 				</reportElement>
@@ -849,235 +848,216 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<line>
-				<reportElement x="171" y="149" width="1" height="90"/>
+				<reportElement x="171" y="149" width="1" height="90" uuid="ae5d3bb1-5c65-4c9a-be64-0f63b44e40b5"/>
 			</line>
 			<line>
-				<reportElement x="359" y="149" width="1" height="90"/>
+				<reportElement x="359" y="149" width="1" height="90" uuid="f7502950-fb62-4a84-8b87-5ed512200cd9"/>
 			</line>
 			<rectangle>
-				<reportElement x="1" y="239" width="551" height="32"/>
+				<reportElement x="1" y="239" width="551" height="32" uuid="bcfdcc3b-d3a9-441e-8918-e5da2d327dfe"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="242" width="296" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="242" width="296" height="13" uuid="41c95253-d826-4cac-b219-55462d3acbde"/>
 				<text><![CDATA[Fiche de prélèvement mal renseignée              ]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="5" y="256" width="439" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="256" width="439" height="13" uuid="877f5058-d453-4aed-84fd-92da2b4187ff"/>
 				<text><![CDATA[Discordance d’information entre Fiche de prélèvement et Fiche démographique]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="472" y="241" width="35" height="13"/>
+				<reportElement x="472" y="241" width="35" height="13" uuid="c81e05f4-dcd7-41cf-9612-f2351bdc8a7d"/>
 			</rectangle>
 			<rectangle>
-				<reportElement x="472" y="256" width="35" height="13"/>
+				<reportElement x="472" y="256" width="35" height="13" uuid="f54f95c0-8bd2-4b0b-93a9-bc5269ec5903"/>
 			</rectangle>
 			<rectangle>
-				<reportElement x="1" y="271" width="551" height="32"/>
+				<reportElement x="1" y="271" width="551" height="32" uuid="dc751615-5604-49ab-807f-c040bb40d438"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="274" width="150" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="274" width="150" height="13" uuid="9a31fae6-8325-4ff8-810b-b74d02129ba2"/>
 				<text><![CDATA[Fiche sans Echantillon]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="155" y="273" width="35" height="13"/>
+				<reportElement x="155" y="273" width="35" height="13" uuid="3e557b52-3d72-4896-845e-70e1499f958c"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="288" width="149" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="288" width="149" height="13" uuid="1ccb11bb-33b0-4ca9-a483-6a7a3515d425"/>
 				<text><![CDATA[Echantillon sans fiche ]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="155" y="288" width="35" height="13"/>
+				<reportElement x="155" y="288" width="35" height="13" uuid="94056245-054c-4430-90bf-b33fb3cb7964"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="235" y="274" width="235" height="13"/>
-				<textElement/>
+				<reportElement x="235" y="274" width="235" height="13" uuid="5af44fff-9f4d-4847-8a2b-0d822ed798c6"/>
 				<text><![CDATA[Absence de l’identité du préleveur]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="472" y="273" width="35" height="13"/>
+				<reportElement x="472" y="273" width="35" height="13" uuid="26e62832-c3f5-4665-b637-3fc049762976"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="235" y="288" width="234" height="13"/>
-				<textElement/>
+				<reportElement x="235" y="288" width="234" height="13" uuid="8c26cf89-578b-4803-915d-6f4c91e94348"/>
 				<text><![CDATA[Absence de l’heure du prélèvement]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="472" y="288" width="35" height="13"/>
+				<reportElement x="472" y="288" width="35" height="13" uuid="1d720d73-30af-4775-9d34-7d776f774e07"/>
 			</rectangle>
 			<rectangle>
-				<reportElement x="1" y="303" width="551" height="32"/>
+				<reportElement x="1" y="303" width="551" height="32" uuid="2ed2ca07-63a2-4a60-8204-08eb8f2c808b"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="306" width="150" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="306" width="150" height="13" uuid="c6b2e9d4-b40d-4c09-8998-345c2f4815ec"/>
 				<text><![CDATA[Tube maculé de sang]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="155" y="305" width="35" height="13"/>
+				<reportElement x="155" y="305" width="35" height="13" uuid="84790a03-80f3-48c8-a1d2-568f3b7747d5"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="320" width="149" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="320" width="149" height="13" uuid="86650097-b773-44d9-8a9b-c8c7f49d65c2"/>
 				<text><![CDATA[Fiche entachée de sang]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="155" y="320" width="35" height="13"/>
+				<reportElement x="155" y="320" width="35" height="13" uuid="b53bd863-0a32-4c52-af12-f4c1b2a42095"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="235" y="306" width="235" height="13"/>
-				<textElement/>
+				<reportElement x="235" y="306" width="235" height="13" uuid="f03e57fe-f8c5-42f0-8d29-7c0af4158fd1"/>
 				<text><![CDATA[Echantillon pour charge virale de plus de 6h]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="472" y="305" width="35" height="13"/>
+				<reportElement x="472" y="305" width="35" height="13" uuid="e12fa014-9ceb-4a79-8113-903d012e328f"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="235" y="320" width="234" height="13"/>
-				<textElement/>
+				<reportElement x="235" y="320" width="234" height="13" uuid="35b5aa04-782e-4001-89e6-7de63578e1c6"/>
 				<text><![CDATA[Erreur de tube de prélèvement]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="472" y="320" width="35" height="13"/>
+				<reportElement x="472" y="320" width="35" height="13" uuid="40776488-67db-4809-bd5c-db13db248fdb"/>
 			</rectangle>
 			<rectangle>
-				<reportElement x="1" y="335" width="551" height="22"/>
+				<reportElement x="1" y="335" width="551" height="22" uuid="57f41057-f767-4d50-bf16-cef5ee571dca"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="341" width="150" height="16"/>
+				<reportElement x="5" y="341" width="150" height="16" uuid="ec7c71b3-12a8-478d-812f-076c25fa274d"/>
 				<textElement>
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[DBS]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="155" y="340" width="35" height="13"/>
+				<reportElement x="155" y="340" width="35" height="13" uuid="8129d28c-c7ea-4568-9ec3-74d839205dcc"/>
 			</rectangle>
 			<rectangle>
-				<reportElement x="1" y="357" width="551" height="38"/>
+				<reportElement x="1" y="357" width="551" height="38" uuid="88f03fb6-17a0-4285-a983-d4f6a7ebfda5"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="363" width="150" height="16"/>
+				<reportElement x="5" y="363" width="150" height="16" uuid="15598706-1926-4d70-ad12-cd56c95004d5"/>
 				<textElement>
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[AUTRES MOTIFS]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="155" y="363" width="35" height="13"/>
+				<reportElement x="155" y="363" width="35" height="13" uuid="dab6596d-5fa4-41ed-8e9e-1a72378a86c1"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="7" y="381" width="543" height="13"/>
-				<textElement/>
+				<reportElement x="7" y="381" width="543" height="13" uuid="b25484c2-1b01-4747-9d44-7d0045b133a7"/>
 				<text><![CDATA[A décrire :…………………………………………………………………….................................................................………….]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="437" width="551" height="34"/>
+				<reportElement x="1" y="437" width="551" height="34" uuid="8a35a898-4c14-4fa9-81ff-abd9cc573af7"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="437" width="85" height="16"/>
+				<reportElement x="5" y="437" width="85" height="16" uuid="db466a96-7393-4453-8f99-8f3795ec686a"/>
 				<textElement>
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[CONCLUSION :]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="5" y="452" width="195" height="16"/>
+				<reportElement x="5" y="452" width="195" height="16" uuid="cc5564f3-b34d-47e5-a994-69a31208c0f1"/>
 				<textElement>
 					<font size="11" isBold="true" isItalic="true"/>
 				</textElement>
 				<text><![CDATA[Prière refaire le prélèvement sur :                      ]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="89" y="437" width="361" height="16"/>
+				<reportElement x="89" y="437" width="361" height="16" uuid="07cca869-87fa-4f69-865f-91cf2aff2f07"/>
 				<textElement>
 					<font size="11"/>
 				</textElement>
 				<text><![CDATA[L’échantillon ne peut être traité ou analysé ce jour. ]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="198" y="453" width="352" height="16"/>
+				<reportElement x="198" y="453" width="352" height="16" uuid="4ab937c8-b279-42b0-b1fe-e44355b40334"/>
 				<textElement>
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Tube EDTA                Tube sec          Carte DBS Whatman 903]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="15" y="398" width="57" height="16"/>
+				<reportElement x="15" y="398" width="57" height="16" uuid="49dce641-2c43-4dc1-ae98-6fceea5008a2"/>
 				<textElement>
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Section:]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="77" y="398" width="36" height="16"/>
-				<textElement/>
+				<reportElement x="77" y="398" width="36" height="16" uuid="9771b88a-25aa-4c13-a58a-8e28c878dd61"/>
 				<text><![CDATA[Saisie]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="115" y="399" width="14" height="14"/>
+				<reportElement x="115" y="399" width="14" height="14" uuid="eb16dc93-4c1d-43ab-8196-a3348f2a0406"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="147" y="398" width="62" height="16"/>
-				<textElement/>
+				<reportElement x="147" y="398" width="62" height="16" uuid="aeb25345-d250-4d8f-b8f1-857b07e9bd24"/>
 				<text><![CDATA[Réception]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="203" y="399" width="14" height="14"/>
+				<reportElement x="203" y="399" width="14" height="14" uuid="ea4535c8-1adb-4652-bc75-50e19535b55b"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="238" y="398" width="56" height="16"/>
-				<textElement/>
+				<reportElement x="238" y="398" width="56" height="16" uuid="ef6e4c89-e7df-4546-bce9-887bc589770b"/>
 				<text><![CDATA[Biochimie]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="292" y="399" width="14" height="14"/>
+				<reportElement x="292" y="399" width="14" height="14" uuid="5a57f70b-48d1-4a30-99ff-450af53e2be6"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="321" y="398" width="100" height="16"/>
-				<textElement/>
+				<reportElement x="321" y="398" width="100" height="16" uuid="4519c600-dcc9-47d7-9cf1-36223b28f7c3"/>
 				<text><![CDATA[Immunologie(CD4) ]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="426" y="399" width="14" height="14"/>
+				<reportElement x="426" y="399" width="14" height="14" uuid="cc2f2a58-1314-412d-bc45-f33820524317"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="456" y="399" width="66" height="16"/>
-				<textElement/>
+				<reportElement x="456" y="399" width="66" height="16" uuid="323f0d4c-d3ae-4c53-a000-525c0afee05a"/>
 				<text><![CDATA[Charge virale]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="527" y="399" width="14" height="14"/>
+				<reportElement x="527" y="399" width="14" height="14" uuid="32e9993b-18bf-4ab4-8e4b-59524289d999"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="78" y="418" width="123" height="16"/>
-				<textElement/>
+				<reportElement x="78" y="418" width="123" height="16" uuid="294c6334-3584-4e46-b008-e3dc470ca1a2"/>
 				<text><![CDATA[Diagnostic précoce (EID) ]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="203" y="419" width="14" height="14"/>
+				<reportElement x="203" y="419" width="14" height="14" uuid="8b8c284e-0840-445f-85f7-17ca4277b2b6"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="238" y="418" width="54" height="16"/>
-				<textElement/>
+				<reportElement x="238" y="418" width="54" height="16" uuid="d49bef5b-4547-47a1-b092-249a6748f0cb"/>
 				<text><![CDATA[Sérologie VIH]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="292" y="419" width="14" height="14"/>
+				<reportElement x="292" y="419" width="14" height="14" uuid="ea24ce80-8b52-4f0c-a8af-0de2d25c5bae"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="352" y="418" width="68" height="16"/>
-				<textElement/>
+				<reportElement x="352" y="418" width="68" height="16" uuid="2f4a134d-0d76-4a7d-b6dc-3b3916949a5e"/>
 				<text><![CDATA[Hématologie]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="426" y="419" width="14" height="14"/>
+				<reportElement x="426" y="419" width="14" height="14" uuid="874e3c3a-32ae-483b-9ff7-596f7e57e70f"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="473" y="241" width="34" height="15">
+				<reportElement x="473" y="241" width="34" height="15" uuid="e4696950-bfcf-4b03-97c5-3b16b1f88a3e">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.formNotCorrect")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -1086,7 +1066,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="473" y="256" width="34" height="15">
+				<reportElement x="473" y="256" width="34" height="15" uuid="328b86eb-e79b-41b3-9f98-6412f9801a7b">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.Error_Prev_Demo")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -1095,7 +1075,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="156" y="273" width="34" height="15">
+				<reportElement x="156" y="273" width="34" height="15" uuid="cb0011ab-0857-42a0-97ab-e3196bc11a21">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.noSample")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -1104,7 +1084,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="156" y="288" width="34" height="15">
+				<reportElement x="156" y="288" width="34" height="15" uuid="c3c36f4b-d7b5-4d69-be5c-8625e83dcd90">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.noForm")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -1113,7 +1093,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="473" y="274" width="34" height="15">
+				<reportElement x="473" y="274" width="34" height="15" uuid="bf361402-3208-482f-aea2-72a0b446797c">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.No_ID_Prev")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -1122,7 +1102,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="473" y="289" width="34" height="15">
+				<reportElement x="473" y="289" width="34" height="15" uuid="8fa16e81-933b-411f-bed8-5bb8f9339abf">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.No_HR_Prev")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -1131,7 +1111,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="156" y="306" width="34" height="15">
+				<reportElement x="156" y="306" width="34" height="15" uuid="16f4d1de-981e-46f3-a6f8-bd0f1b2d259e">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.bloodstained.tube")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -1140,7 +1120,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="156" y="320" width="34" height="15">
+				<reportElement x="156" y="320" width="34" height="15" uuid="77ff6b79-2768-439e-b137-98ffd3e5a818">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.bloodstained.form")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -1149,7 +1129,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="473" y="320" width="34" height="15">
+				<reportElement x="473" y="320" width="34" height="15" uuid="7cb7faa3-9915-4892-ad50-9558fb1bf3a2">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.Error_Sample")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -1158,7 +1138,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="473" y="305" width="34" height="15">
+				<reportElement x="473" y="305" width="34" height="15" uuid="6d765cab-06dd-4962-a0e4-fa77d76c1633">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.Sample_VL_Late")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -1167,7 +1147,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="292" y="401" width="14" height="12">
+				<reportElement x="292" y="401" width="14" height="12" uuid="505afe4d-ac40-435a-a9b3-c96e7f5b7134">
 					<printWhenExpression><![CDATA[$F{biochemistryQaEvent}!=null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -1176,7 +1156,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="426" y="401" width="14" height="12">
+				<reportElement x="426" y="401" width="14" height="12" uuid="b1757f51-be6b-4d09-9c01-6e9d973c0bf5">
 					<printWhenExpression><![CDATA[$F{immunologyQaEvent}!=null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -1185,7 +1165,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="527" y="401" width="14" height="12">
+				<reportElement x="527" y="401" width="14" height="12" uuid="32fbf17c-27ff-4d27-bd8a-b15e20b0f466">
 					<printWhenExpression><![CDATA[$F{virologyVlQaEvent}!=null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -1194,7 +1174,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="291" y="421" width="14" height="12">
+				<reportElement x="291" y="421" width="14" height="12" uuid="5249e201-7823-4456-8b83-743f01081c23">
 					<printWhenExpression><![CDATA[$F{serologyQaEvent}!=null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -1203,7 +1183,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="425" y="421" width="14" height="12">
+				<reportElement x="425" y="421" width="14" height="12" uuid="f4c0d3cb-d986-4141-83de-eaa7e1bd656d">
 					<printWhenExpression><![CDATA[$F{hematologyQaEvent}!=null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -1212,7 +1192,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="203" y="401" width="14" height="12">
+				<reportElement x="203" y="401" width="14" height="12" uuid="3574e177-2307-41c6-8628-430da4e3001e">
 					<printWhenExpression><![CDATA[$F{receptionQaEvent}!=null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -1228,79 +1208,75 @@
 	<pageFooter>
 		<band height="143" splitType="Prevent">
 			<rectangle>
-				<reportElement x="161" y="17" width="391" height="124"/>
+				<reportElement x="161" y="17" width="389" height="124" uuid="e01c4002-47de-4b28-85ef-943afc664109"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="0" y="1" width="372" height="16"/>
+				<reportElement x="0" y="1" width="372" height="16" uuid="a8363bdc-e57b-4755-924a-e46df863e037"/>
 				<textElement>
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Valeurs de Référence]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="163" y="17" width="343" height="12"/>
+				<reportElement x="163" y="17" width="309" height="12" uuid="3e6c9e9d-9217-4cd9-b905-b626f139ff55"/>
 				<textElement>
 					<font size="8" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Hématologie (Hémogramme : NFS)]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="171" y="29" width="343" height="11"/>
+				<reportElement x="171" y="29" width="343" height="11" uuid="6ac2b090-6ac5-4788-ae90-31831dd8760a"/>
 				<textElement>
 					<font size="8" isItalic="true"/>
 				</textElement>
 				<text><![CDATA[Homme/Femme]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="168" y="124" width="30" height="16"/>
+				<reportElement x="168" y="124" width="30" height="16" uuid="76d000e3-96c9-43f5-94e2-2b863e49a386"/>
 				<textElement>
 					<font size="8" isBold="false"/>
 				</textElement>
 				<text><![CDATA[Enfant:]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="198" y="124" width="220" height="16"/>
+				<reportElement x="198" y="124" width="220" height="16" uuid="3a34ac92-f824-4dcc-bd65-1faffb954670"/>
 				<textElement>
 					<font size="8"/>
 				</textElement>
 				<text><![CDATA[Se référer aux guides des valeurs de référence transmises]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="163" y="40" width="140" height="79"/>
+				<reportElement x="163" y="40" width="178" height="84" uuid="108c8e54-1c15-478f-a660-f2861a345053"/>
 				<textElement>
 					<font size="8"/>
 				</textElement>
-				<text><![CDATA[GB   4.23-9.07 10^3µl / 3.98-10.04 10^3µl
-GR 4.63-6.08 10^6µl / 3.93-5.22 10^6µl
-Hb 13.7-17.5g/dl   /  11.2-15.7g/dl
-Hct 40.1-51.0%   /   34.1-44.9%]]></text>
+				<text><![CDATA[GB = 3 – 15 .10^3/µl                                         
+LY =  20.0 – 50.0 (%)       1.0 – 3.70 (10^3/µl)
+Ne = 37.0 – 72.0 (%)       1.5 – 7.0 (10^3/µl)
+Mo = 0.0 – 14.0 (%)        0.0 – 0.7 (10^3/µl)
+Eo = 0.0 – 6.0 (%)            0.0 – 0.4 (10^3/µl) 
+Bo = 0.0 – 0.1 (%)            0.0 – 0.1 (10^3/µl)
+PLT = 50 - 400 (10^3/µl)
+]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="428" y="40" width="124" height="100"/>
+				<reportElement x="372" y="40" width="180" height="100" uuid="3597a55c-99cb-44fd-ad4e-f1add995b2d9"/>
 				<textElement>
 					<font size="8"/>
 				</textElement>
-				<text><![CDATA[N : 1.78-5.38 10^3µl  /1.56-6.13 10^3µl
-L : 1.32-3.57 10^3µl/1.18-3.7410^3µl
-M : 0.30-0.82 10^3µl /0.24-0.36 10^3µl
-Eo : 0.04-0.5410^3µl /0.04-0.36 10^3µl
-Ba : 0.01-0.08  10^3µl /0.01-0.08]]></text>
-			</staticText>
-			<staticText>
-				<reportElement x="301" y="40" width="127" height="79"/>
-				<textElement>
-					<font size="8"/>
-				</textElement>
-				<text><![CDATA[CCMH 32.3-36.5g/dl /32.2-35.5 g/dl
-VGM 79.0-92.2fl /79.4-94.8 fl
-TCMH 25.7-32.2 pg/25.6 – 32.2 pg
-PLQ 163-33710^3µl/ 182 – 369 10^3µl]]></text>
+				<text><![CDATA[GR = 2.5-5.5 (10^6/µl)
+HG = 8.0 -17.0 (g/dL)
+HCT = 26.0-50.0 (%)
+VGM = 86.0 -110.0 (fL)
+TCMH =26.0 – 38.0 (pg)
+CCMH = 31.0 – 37.0 (g/dL)
+]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="17" width="160" height="58"/>
+				<reportElement x="1" y="17" width="160" height="58" uuid="41ae3912-ab03-4aab-9fae-58f82d0b4363"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="3" y="17" width="160" height="53"/>
+				<reportElement x="3" y="17" width="160" height="53" uuid="4d34e882-a52a-46c3-b381-135e1b824269"/>
 				<textElement>
 					<font size="8"/>
 				</textElement>
@@ -1311,13 +1287,13 @@ ASTL: 7-32 UI/L (H) / 5-30 UI/L (F)
 Glycémie : 0.70-1.10 g/l (H) / 0.75-1.10 g/l (F)]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="70" width="160" height="40"/>
+				<reportElement x="1" y="70" width="160" height="40" uuid="16931805-d97b-4047-a5bb-018f9e7d12eb"/>
 			</rectangle>
 			<rectangle>
-				<reportElement x="1" y="106" width="160" height="35"/>
+				<reportElement x="1" y="106" width="160" height="35" uuid="7a1a73c8-bdf6-4681-8973-ec7c64f56943"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="4" y="74" width="160" height="32"/>
+				<reportElement x="4" y="74" width="160" height="32" uuid="4d08f7ff-eb44-450e-85dc-ce36b22e7c49"/>
 				<textElement>
 					<font size="8"/>
 				</textElement>
@@ -1326,13 +1302,13 @@ CD4% :33-58%
 CD4# : 404-1612 cellules/µl]]></text>
 			</staticText>
 			<line>
-				<reportElement key="line-3" x="0" y="0" width="550" height="1"/>
+				<reportElement key="line-3" x="0" y="0" width="550" height="1" uuid="d8a5b756-0de9-4a64-8e52-278f0d076571"/>
 				<graphicElement>
 					<pen lineWidth="0.75" lineStyle="Solid"/>
 				</graphicElement>
 			</line>
 			<staticText>
-				<reportElement x="4" y="108" width="160" height="32"/>
+				<reportElement x="4" y="108" width="160" height="32" uuid="47fe31a3-7646-4b13-a066-7d45c7eeab1b"/>
 				<textElement>
 					<font size="8"/>
 				</textElement>

@@ -1,136 +1,227 @@
 version: '3.6'
+
+x-logging:
+  &local-logging
+  driver: "local"
+  options:
+    max-size: "20m"
+    max-file: "50"
+
+x-loki-logging:
+  &loki-logging
+  driver: "loki"
+  options:
+    max-size: "20m"
+    max-file: "50"
+    loki-url: "[% loki_url %]"
+    loki-external-labels: "container_name={{.Name}},hostname=[% host_name %]"
+    loki-pipeline-stages: |
+          - multiline:
+              firstline: '^\d{4}-\d{2}-\d{2}[T ]?\d{2}:\d{2}:\d{2}.\d{3}'
+          - labeldrop:
+              - compose_project
+              - compose_service
+              - filename
+              - source
+              - stream
+              - swarm_service
+              - swarm_stack
+
 # lines starting with a #db and #port will be uncommented when setup with a docker database
 services:
-#db    db.openelis.org:
-#db        container_name: [% db_name %]
-#db        image: postgres:9.5
-#db        ports:
-#db            - "[% db_host_port %]:5432"
-#db        networks:
-#db            - openelis-network
-#db        restart: always
-#db        env_file:
-#db            - [% db_env_dir %]database.env
-#db        environment:
-#db            - TZ=[% timezone %]
-#db        volumes:
-#db              # preserves the database between containers
-#db            - [% db_data_dir %]:/var/lib/postgresql/data                
-#db              # files here will run on install
-#db            - [% db_init_dir %]:/docker-entrypoint-initdb.d    
-#db              # values must match values in DatabaseBackup.pl
-#db            - [% db_backups_dir %]:[% docker_backups_dir %] 
-#db        logging:
-#db            driver: "local"
-#db            options:
-#db              max-size: "20m"
-#db              max-file: "50"
-#db        healthcheck:
-#db            test: [ "CMD", "pg_isready" ]
-#db            timeout: 45s
-#db            interval: 10s
-#db            retries: 10 
-#db            start_period: 1m
-            
-    oe.openelis.org:
-        container_name: [% oe_name %]
-        image: openelisglobal
-#db        depends_on:
-#db            - db.openelis.org
-        ports:
-            - "8080:8080"
-            - "8443:8443"
-        networks:
-            openelis-network:
-                ipv4_address: 172.20.1.121
-#eh        extra_hosts: 
+#db  db.openelis.org:
+#db    container_name: [% db_name %]
+#db    image: postgres:14.4
+#db    ports:
+#db      - "[% db_host_port %]:5432"
+#db    networks:
+#db      - openelis-network
+#db    restart: always
+#db    env_file:
+#db      - [% db_env_dir %]database.env
+#db    environment:
+#db      - TZ=[% timezone %]
+#db    volumes:
+#db      # preserves the database between containers
+#db      - [% db_data_dir %]:/var/lib/postgresql/data        
+#db      # files here will run on install
+#db      - [% db_init_dir %]:/docker-entrypoint-initdb.d  
+#db      # values must match values in DatabaseBackup.pl
+#db      - [% db_backups_dir %]:[% docker_backups_dir %] 
+#db      - [% db_pgpass %]:/var/lib/postgresql/.pgpass
+#db    logging: *local-logging
+#db#    logging: *loki-logging
+#db    healthcheck:
+#db      test: [ "CMD" , "pg_isready", "-q", "-d", "postgres", "-U", "postgres"]
+#db      timeout: 45s
+#db      interval: 10s
+#db      retries: 10 
+#db      start_period: 1m
+      
+  oe.openelis.org:
+    container_name: [% oe_name %]
+    image: openelisglobal
+#db    depends_on:
+#db      - db.openelis.org
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    networks:
+      openelis-network:
+        ipv4_address: 172.20.1.121
+#eh    extra_hosts: 
 #eh[% extra_hosts %]
-        restart: always
-        environment:
-            - TZ=[% timezone %]
-              # context.xml doesn't seem to be able to pick up environment variables directly, so we are passing them in as CATALINA_OPTS
-            - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://[% db_host %]:[% db_port %]/clinlims -Ddatasource.username=clinlims
-        volumes:
-            - [% plugins_dir %]:/var/lib/openelis-global/plugins
-            - [% etc_dir %]oe_server.xml:/usr/local/tomcat/conf/server.xml
-            - [% logs_dir %]:/var/lib/openelis-global/logs
-            - [% tomcat_logs_dir %]:/usr/local/tomcat/logs
-        secrets:
-            - source: client_facing_keystore
-            - source: keystore
-            - source: truststore
-            - source: datasource.password
-            - source: common.properties
-            - source: extra.properties
-        logging:
-            driver: "local"
-            options:
-              max-size: "20m"
-              max-file: "50"
-        healthcheck:
-            test: ["CMD", "/healthcheck.sh"]
-            timeout: 10s
-            interval: 30s
-            retries: 3
-            start_period: 2m
+    restart: always
+    environment:
+      - TZ=[% timezone %]
+      # context.xml doesn't seem to be able to pick up environment variables directly, so we are passing them in as CATALINA_OPTS
+      - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://[% db_host %]:[% db_port %]/clinlims -Ddatasource.username=clinlims
+    volumes:
+      - [% plugins_dir %]:/var/lib/openelis-global/plugins
+      - [% etc_dir %]oe_server.xml:/usr/local/tomcat/conf/server.xml
+      - [% logs_dir %]:/var/lib/openelis-global/logs
+      - [% tomcat_logs_dir %]:/usr/local/tomcat/logs
+    secrets:
+      - source: client_facing_keystore
+      - source: keystore
+      - source: truststore
+      - source: datasource.password
+      - source: common.properties
+      - source: extra.properties
+    logging: *local-logging
+#    logging: *loki-logging
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      timeout: 10s
+      interval: 30s
+      retries: 3
+      start_period: 2m
 
-    fhir.openelis.org:
-        container_name: [% fhir_api_name %]
-        image: hapi-fhir-jpaserver
-#db        depends_on:
-#db            - db.openelis.org
-        ports:
-            - "8081:8080"
-            - "8444:8443"
-        networks:
-            - openelis-network
-        restart: always
-        environment:
-          SPRING_CONFIG_LOCATION: file:///run/secrets/hapi_application.yaml
-          TZ: [% timezone %]
-          JAVA_OPTS: "-Djavax.net.ssl.trustStore=/run/secrets/truststore 
-                      -Djavax.net.ssl.trustStorePassword=[% truststore_password %] 
-                      -Djavax.net.ssl.trustStoreType=pkcs12 
-                      -Djavax.net.ssl.keyStore=/run/secrets/keystore 
-                      -Djavax.net.ssl.keyStorePassword=[% keystore_password %] 
-                      -Djavax.net.ssl.keyStoreType=pkcs12"
-        volumes:
-            - [% etc_dir %]hapi_server.xml:/usr/local/tomcat/conf/server.xml
-            - [% etc_dir %]healthcheck.sh:/healthcheck.sh
-        secrets:
-            - source: hapi_application.yaml
-            - source: common.properties
-            - source: keystore
-            - source: truststore
-        logging:
-            driver: "local"
-            options:
-              max-size: "20m"
-              max-file: "50"
-        healthcheck:
-            test: ["CMD", "/healthcheck.sh"]
-            timeout: 10s
-            interval: 30s
-            retries: 3
-            start_period: 2m
+  fhir.openelis.org:
+    container_name: [% fhir_api_name %]
+    image: hapi-fhir-jpaserver
+#db    depends_on:
+#db      - db.openelis.org
+    ports:
+      - "8081:8080"
+      - "8444:8443"
+    networks:
+      - openelis-network
+    restart: always
+    environment:
+      SPRING_CONFIG_LOCATION: file:///run/secrets/hapi_application.yaml
+      TZ: [% timezone %]
+      JAVA_OPTS: "-Djavax.net.ssl.trustStore=/run/secrets/truststore 
+            -Djavax.net.ssl.trustStorePassword=[% truststore_password %] 
+            -Djavax.net.ssl.trustStoreType=pkcs12 
+            -Djavax.net.ssl.keyStore=/run/secrets/keystore 
+            -Djavax.net.ssl.keyStorePassword=[% keystore_password %] 
+            -Djavax.net.ssl.keyStoreType=pkcs12"
+    volumes:
+      - [% etc_dir %]hapi_server.xml:/opt/bitnami/tomcat/conf/server.xml
+      - [% etc_dir %]healthcheck.sh:/healthcheck.sh
+    secrets:
+      - source: hapi_application.yaml
+      - source: common.properties
+      - source: keystore
+      - source: truststore
+    logging: *local-logging
+#    logging: *loki-logging
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      timeout: 10s
+      interval: 30s
+      retries: 3
+      start_period: 2m
+        
+#astm  astm-http-bridge.openelis.org:
+#astm    container_name: astm-http-bridge 
+#astm    image: ctsteele/astm-http-bridge:latest
+#astm    ports:
+#astm      - "8442:8443"
+#astm      - "12000:12001"
+#astm    volumes:
+#astm      - /var/lib/openelis-global/astmbridge/configuration.yml:/app/configuration.yml
+#astm      - /home/caleb/projects/UW-Projects/OpenELIS-Global-2/dev/https/int.caleb.dev.openelisci.org.truststore.p12:/etc/truststore 
+#astm    secrets:
+#astm      - source: truststore
+#astm      - source: keystore
+#astm    environment:
+#astm      server.ssl.keyStorePath: /run/secrets/keystore
+#astm      server.ssl.keyStorePassword: [% keystore_password %] 
+#astm      server.ssl.keyStoreType: PKCS12
+#astm      TZ: [% timezone %]
+#astm      LOGGING_LEVEL_ORG_ITECH: DEBUG
+#astm      JAVA_OPTS: "-Djavax.net.ssl.trustStore=/run/secrets/truststore 
+#astm            -Djavax.net.ssl.trustStorePassword=[% truststore_password %] 
+#astm            -Djavax.net.ssl.trustStoreType=pkcs12 
+#astm            -Djavax.net.ssl.keyStore=/run/secrets/keystore 
+#astm            -Djavax.net.ssl.keyStorePassword=[% keystore_password %] 
+#astm            -Djavax.net.ssl.keyStoreType=pkcs12"
+#astm    networks:
+#astm      - openelis-network
+#astm    logging: *local-logging
+#astm#    logging: *loki-logging
+#astm    healthcheck:
+#astm      test: ["CMD", "/app/healthcheck.sh"]
+#astm      timeout: 10s
+#astm      interval: 30s
+#astm      retries: 3
+#astm      start_period: 2m
 
-    autoheal:
-        container_name: [% autoheal_name %]
-        image: willfarrell/autoheal:1.2.0
-        tty: true
-        restart: always
-        networks:
-          - openelis-network
-        environment:
-          - AUTOHEAL_CONTAINER_LABEL=all
-        volumes:
-          - /var/run/docker.sock:/var/run/docker.sock
-        logging:
-            driver: "local"
-            options:
-              max-size: "20m"
-              max-file: "50"
-            
+  proxy.openelis.org:
+    container_name: [% nginx_name %]
+    image: nginx-proxy
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - openelis-network
+    logging: *local-logging
+#    logging: *loki-logging
+    volumes:
+      - /var/lib/openelis-global/secrets/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /var/lib/openelis-global/config/KEYSTORE_PASSWORD:/etc/nginx/private/key_pass
+      - /etc/openelis-global/nginx.cert.pem:/etc/nginx/serverCerts/cert.crt
+      - /etc/openelis-global/nginx.key.pem:/etc/nginx/serverCerts/cert.key
+    restart: unless-stopped  
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      timeout: 10s
+      interval: 30s
+      retries: 3
+      start_period: 2m
+    
+  frontend.openelis.org:
+    container_name: [% frontend_name %]
+    image: openelisglobal-frontend
+    networks:
+      - openelis-network
+    restart: unless-stopped  
+    logging: *local-logging
+#    logging: *loki-logging
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      timeout: 10s
+      interval: 30s
+      retries: 3
+      start_period: 2m
+    
+  autoheal:
+    container_name: [% autoheal_name %]
+    image: willfarrell/autoheal:1.2.0
+    tty: true
+    restart: always
+    networks:
+      - openelis-network
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: all
+      TZ: [% timezone %]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    logging: *local-logging
+#    logging: *loki-logging
+          
 secrets:
   datasource.password:
     file: [% secrets_dir %]datasource.password  
@@ -141,16 +232,17 @@ secrets:
 #  hapi.properties:
 #    file: [% secrets_dir %]hapi.properties
   hapi_application.yaml:
-     file: [% secrets_dir %]hapi_application.yaml
+    file: [% secrets_dir %]hapi_application.yaml
   client_facing_keystore:
     file: [% etc_dir %]client_facing_keystore
   keystore:
     file: [% etc_dir %]keystore
   truststore:
     file: [% etc_dir %]truststore
-    
+  
 networks:
   openelis-network:
+    name: openelis-network
     driver: bridge
     ipam:
       config:

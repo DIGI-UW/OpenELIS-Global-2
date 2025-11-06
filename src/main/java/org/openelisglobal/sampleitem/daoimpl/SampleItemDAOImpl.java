@@ -1,35 +1,33 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*
-* Contributor(s): CIRG, University of Washington, Seattle WA.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ *
+ * <p>Contributor(s): CIRG, University of Washington, Seattle WA.
+ */
 package org.openelisglobal.sampleitem.daoimpl;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-
+import java.util.stream.Collectors;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.hibernate.HibernateException;
-import org.hibernate.Query;
 import org.hibernate.Session;
+import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.sourceofsample.valueholder.SourceOfSample;
@@ -48,111 +46,18 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
         super(SampleItem.class);
     }
 
-//	@Override
-//	public void deleteData(List<SampleItem> sampleItems) throws LIMSRuntimeException {
-//		// add to audit trail
-//		try {
-//
-//			for (int i = 0; i < sampleItems.size(); i++) {
-//				SampleItem data = sampleItems.get(i);
-//
-//				SampleItem oldData = readSampleItem(data.getId());
-//				SampleItem newData = new SampleItem();
-//
-//				String sysUserId = data.getSysUserId();
-//				String event = IActionConstants.AUDIT_TRAIL_DELETE;
-//				String tableName = "SAMPLE_ITEM";
-//				auditDAO.saveHistory(newData, oldData, sysUserId, event, tableName);
-//			}
-//		} catch (RuntimeException e) {
-//
-//			LogEvent.logError("SampleItemDAOImpl", "AuditTrail deleteData()", e.toString());
-//			throw new LIMSRuntimeException("Error in SampleItem AuditTrail deleteData()", e);
-//		}
-//
-//		try {
-//			for (int i = 0; i < sampleItems.size(); i++) {
-//				SampleItem data = sampleItems.get(i);
-//
-//				data = readSampleItem(data.getId());
-//				entityManager.unwrap(Session.class).delete(data);
-//				// entityManager.unwrap(Session.class).flush(); // CSL remove old
-//				// entityManager.unwrap(Session.class).clear(); // CSL remove old
-//			}
-//		} catch (RuntimeException e) {
-//			LogEvent.logError("SampleItemDAOImpl", "deleteData()", e.toString());
-//			throw new LIMSRuntimeException("Error in SampleItem deleteData()", e);
-//		}
-//	}
-
-//	@Override
-//	public boolean insertData(SampleItem sampleItem) throws LIMSRuntimeException {
-//		if (sampleItem == null) {
-//			return false;
-//		}
-//
-//		try {
-//			String id = (String) entityManager.unwrap(Session.class).save(sampleItem);
-//			sampleItem.setId(id);
-//
-//			String sysUserId = sampleItem.getSysUserId();
-//			String tableName = "SAMPLE_ITEM";
-//			auditDAO.saveNewHistory(sampleItem, sysUserId, tableName);
-//
-//			// entityManager.unwrap(Session.class).flush(); // CSL remove old
-//			// entityManager.unwrap(Session.class).clear(); // CSL remove old
-//
-//		} catch (RuntimeException e) {
-//			LogEvent.logError("SampleItemDAOImpl", "insertData()", e.toString());
-//			throw new LIMSRuntimeException("Error in SampleItem insertData()", e);
-//		}
-//
-//		return true;
-//	}
-
-//	@Override
-//	public void updateData(SampleItem sampleItem) throws LIMSRuntimeException {
-//
-//		SampleItem oldData = readSampleItem(sampleItem.getId());
-//		SampleItem newData = sampleItem;
-//
-//		try {
-//
-//			String sysUserId = sampleItem.getSysUserId();
-//			String event = IActionConstants.AUDIT_TRAIL_UPDATE;
-//			String tableName = "SAMPLE_ITEM";
-//			auditDAO.saveHistory(newData, oldData, sysUserId, event, tableName);
-//		} catch (RuntimeException e) {
-//			LogEvent.logError("SampleItemDAOImpl", "AuditTrail updateData()", e.toString());
-//			throw new LIMSRuntimeException("Error in SampleItem AuditTrail updateData()", e);
-//		}
-//
-//		try {
-//			entityManager.unwrap(Session.class).merge(sampleItem);
-//			// entityManager.unwrap(Session.class).flush(); // CSL remove old
-//			// entityManager.unwrap(Session.class).clear(); // CSL remove old
-//			// entityManager.unwrap(Session.class).evict // CSL remove old(sampleItem);
-//			// entityManager.unwrap(Session.class).refresh // CSL remove old(sampleItem);
-//		} catch (RuntimeException e) {
-//			LogEvent.logError("SampleItemDAOImpl", "updateData()", e.toString());
-//			throw new LIMSRuntimeException("Error in SampleItem updateData()", e);
-//		}
-//	}
-
     @Override
     @Transactional(readOnly = true)
     public void getData(SampleItem sampleItem) throws LIMSRuntimeException {
         try {
             SampleItem sampleIt = entityManager.unwrap(Session.class).get(SampleItem.class, sampleItem.getId());
-            // entityManager.unwrap(Session.class).flush(); // CSL remove old
-            // entityManager.unwrap(Session.class).clear(); // CSL remove old
             if (sampleIt != null) {
                 PropertyUtils.copyProperties(sampleItem, sampleIt);
             } else {
                 sampleItem.setId(null);
             }
         } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in SampleItem getData()", e);
         }
     }
@@ -162,7 +67,6 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
     public SampleItem getData(String sampleItemId) throws LIMSRuntimeException {
         try {
             SampleItem sampleItem = entityManager.unwrap(Session.class).get(SampleItem.class, sampleItemId);
-            // closeSession(); // CSL remove old
             return sampleItem;
         } catch (RuntimeException e) {
             handleException(e, "getData");
@@ -172,18 +76,15 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
     }
 
     @Override
-
     @Transactional(readOnly = true)
     public List<SampleItem> getAllSampleItems() throws LIMSRuntimeException {
         List<SampleItem> list;
         try {
             String sql = "from SampleItem";
-            org.hibernate.Query query = entityManager.unwrap(Session.class).createQuery(sql);
+            Query<SampleItem> query = entityManager.unwrap(Session.class).createQuery(sql, SampleItem.class);
             list = query.list();
-            // entityManager.unwrap(Session.class).flush(); // CSL remove old
-            // entityManager.unwrap(Session.class).clear(); // CSL remove old
         } catch (RuntimeException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in SampleItem getAllSampleItems()", e);
         }
 
@@ -191,25 +92,24 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
     }
 
     @Override
-
     @Transactional(readOnly = true)
     public List<SampleItem> getPageOfSampleItems(int startingRecNo) throws LIMSRuntimeException {
         List<SampleItem> list;
         try {
             // calculate maxRow to be one more than the page size
-            int endingRecNo = startingRecNo + (SystemConfiguration.getInstance().getDefaultPageSize() + 1);
+            int endingRecNo = startingRecNo
+                    + (Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
+                            + 1);
 
             String sql = "from SampleItem s order by s.id";
-            org.hibernate.Query query = entityManager.unwrap(Session.class).createQuery(sql);
+            Query<SampleItem> query = entityManager.unwrap(Session.class).createQuery(sql, SampleItem.class);
             query.setFirstResult(startingRecNo - 1);
             query.setMaxResults(endingRecNo - 1);
 
             list = query.list();
-            // entityManager.unwrap(Session.class).flush(); // CSL remove old
-            // entityManager.unwrap(Session.class).clear(); // CSL remove old
         } catch (RuntimeException e) {
 
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in SampleItem getPageOfSampleItems()", e);
         }
 
@@ -220,16 +120,13 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
         SampleItem samp = null;
         try {
             samp = entityManager.unwrap(Session.class).get(SampleItem.class, idString);
-            // entityManager.unwrap(Session.class).flush(); // CSL remove old
-            // entityManager.unwrap(Session.class).clear(); // CSL remove old
         } catch (RuntimeException e) {
 
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in SampleItem readSampleItem()", e);
         }
 
         return samp;
-
     }
 
     @Override
@@ -238,13 +135,11 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
         // Use an expression to read in the Sample_Item by SAMP_ID
         try {
             String sql = "from SampleItem si where samp_id = :param";
-            Query query = entityManager.unwrap(Session.class).createQuery(sql);
+            Query<SampleItem> query = entityManager.unwrap(Session.class).createQuery(sql, SampleItem.class);
 
-            query.setInteger("param", Integer.parseInt(sampleItem.getSample().getId()));
+            query.setParameter("param", Integer.parseInt(sampleItem.getSample().getId()));
 
             List<SampleItem> list = query.list();
-            // entityManager.unwrap(Session.class).flush(); // CSL remove old
-            // entityManager.unwrap(Session.class).clear(); // CSL remove old
             SampleItem si = null;
             if (!list.isEmpty()) {
                 si = list.get(0);
@@ -252,46 +147,38 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
                 TypeOfSample tos = null;
                 if (si.getTypeOfSampleId() != null) {
                     tos = entityManager.unwrap(Session.class).get(TypeOfSample.class, si.getTypeOfSampleId());
-                    // entityManager.unwrap(Session.class).flush(); // CSL remove old
-                    // entityManager.unwrap(Session.class).clear(); // CSL remove old
                     si.setTypeOfSample(tos);
                 }
                 SourceOfSample sos = null;
                 if (si.getSourceOfSampleId() != null) {
                     sos = entityManager.unwrap(Session.class).get(SourceOfSample.class, si.getSourceOfSampleId());
                     si.setSourceOfSample(sos);
-                    // entityManager.unwrap(Session.class).flush(); // CSL remove old
-                    // entityManager.unwrap(Session.class).clear(); // CSL remove old
                 }
                 PropertyUtils.copyProperties(sampleItem, si);
             }
         } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in SampleItem getDataBySample()", e);
         }
-
     }
 
     @Override
-
     @Transactional(readOnly = true)
     public List<SampleItem> getSampleItemsBySampleId(String id) throws LIMSRuntimeException {
 
         try {
-            String sql = "from SampleItem sampleItem where sampleItem.sample.id = :sampleId order by sampleItem.sortOrder";
-            Query query = entityManager.unwrap(Session.class).createQuery(sql);
-            query.setInteger("sampleId", Integer.parseInt(id));
+            String sql = "from SampleItem sampleItem where sampleItem.sample.id = :sampleId order by"
+                    + " sampleItem.sortOrder";
+            Query<SampleItem> query = entityManager.unwrap(Session.class).createQuery(sql, SampleItem.class);
+            query.setParameter("sampleId", Integer.parseInt(id));
             List<SampleItem> list = query.list();
-            // entityManager.unwrap(Session.class).flush(); // CSL remove old
-            // entityManager.unwrap(Session.class).clear(); // CSL remove old
 
             return list;
 
         } catch (HibernateException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in SampleItem getSampleItemsBySampleId()", e);
         }
-
     }
 
     /**
@@ -299,22 +186,20 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
      *      org.openelisglobal.typeofsample.valueholder.TypeOfSample)
      */
     @Override
-
     @Transactional(readOnly = true)
     public List<SampleItem> getSampleItemsBySampleIdAndType(String sampleId, TypeOfSample typeOfSample) {
         try {
-            String sql = "from SampleItem si where si.sample.id = :sampleId and si.typeOfSample.id = :typeOfSampleId";
-            Query query = entityManager.unwrap(Session.class).createQuery(sql);
-            query.setInteger("sampleId", Integer.parseInt(sampleId));
-            query.setInteger("typeOfSampleId", Integer.parseInt(typeOfSample.getId()));
+            String sql = "from SampleItem si where si.sample.id = :sampleId and si.typeOfSample.id ="
+                    + " :typeOfSampleId";
+            Query<SampleItem> query = entityManager.unwrap(Session.class).createQuery(sql, SampleItem.class);
+            query.setParameter("sampleId", Integer.parseInt(sampleId));
+            query.setParameter("typeOfSampleId", Integer.parseInt(typeOfSample.getId()));
             List<SampleItem> list = query.list();
-            // entityManager.unwrap(Session.class).flush(); // CSL remove old
-            // entityManager.unwrap(Session.class).clear(); // CSL remove old
 
             return list;
 
         } catch (HibernateException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in SampleItem getSampleItemsBySampleId()", e);
         }
     }
@@ -328,9 +213,10 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
         }
 
         try {
-            String sql = "from SampleItem sampleItem where sampleItem.sample.id = :sampleId and sampleItem.statusId in ( :statusIds ) order by sampleItem.sortOrder";
-            Query query = entityManager.unwrap(Session.class).createQuery(sql);
-            query.setInteger("sampleId", Integer.parseInt(id));
+            String sql = "from SampleItem sampleItem where sampleItem.sample.id = :sampleId and"
+                    + " sampleItem.statusId in ( :statusIds ) order by sampleItem.sortOrder";
+            Query<SampleItem> query = entityManager.unwrap(Session.class).createQuery(sql, SampleItem.class);
+            query.setParameter("sampleId", Integer.parseInt(id));
             query.setParameterList("statusIds", includedStatusList);
 
             List<SampleItem> list = query.list();
@@ -344,4 +230,89 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
         return null;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<SampleItem> getSampleItemsByExternalID(String externalId) throws LIMSRuntimeException {
+        List<SampleItem> sampleItems = null;
+        try {
+            String hql = "FROM SampleItem WHERE external_id = :externalId";
+            sampleItems = entityManager.unwrap(Session.class).createQuery(hql, SampleItem.class)
+                    .setParameter("externalId", externalId).getResultList();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in SampleItem readSampleItemsByExternalId()", e);
+        }
+
+        return sampleItems;
+    }
+
+    @Override
+    @Transactional
+    public boolean insertData(SampleItem sampleItem) throws LIMSRuntimeException {
+        try {
+            List<SampleItem> existingItems = getSampleItemsByExternalID(sampleItem.getExternalId());
+
+            if (existingItems.isEmpty()) {
+
+                entityManager.persist(sampleItem);
+            } else {
+                SampleItem existing = existingItems.getLast();
+
+                sampleItem.setId(existing.getId());
+                entityManager.merge(sampleItem);
+            }
+
+            return true;
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in SampleItem insertData()", e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public boolean insertAliquots(SampleItem lastSampleItem, List<SampleItem> sampleItemsToInsert,
+            List<List<String>> analysisGroups) throws LIMSRuntimeException {
+
+        try {
+            // 1. Update initial sample item
+            insertData(lastSampleItem);
+
+            // 2. Batch insert all aliquots first
+            for (SampleItem aliquot : sampleItemsToInsert) {
+                insertData(aliquot);
+            }
+
+            // 3. Flush to get IDs for all aliquots
+            entityManager.flush();
+
+            // 4. Batch update all analyses
+            for (int i = 0; i < sampleItemsToInsert.size(); i++) {
+                SampleItem aliquot = sampleItemsToInsert.get(i);
+                List<String> analysisIds = analysisGroups.get(i);
+
+                if (analysisIds != null && !analysisIds.isEmpty()) {
+                    updateAnalysesForAliquot(aliquot, analysisIds);
+                }
+            }
+
+            return true;
+
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in insertAliquots()", e);
+        }
+    }
+
+    @Transactional
+    protected void updateAnalysesForAliquot(SampleItem aliquot, List<String> analysisIds) {
+        if (analysisIds == null || analysisIds.isEmpty()) {
+            return;
+        }
+        List<Integer> analysisIdInts = analysisIds.stream().map(Integer::parseInt).collect(Collectors.toList());
+        Integer aliquotIdInt = Integer.parseInt(aliquot.getId().toString());
+        String updateQuery = "UPDATE analysis SET sampitem_id = :aliquotId WHERE id IN (:analysisIds)";
+        entityManager.createNativeQuery(updateQuery).setParameter("aliquotId", aliquotIdInt)
+                .setParameter("analysisIds", analysisIdInts).executeUpdate();
+    }
 }

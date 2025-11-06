@@ -22,6 +22,5 @@ public class OzekiMessageOutServiceImpl implements OzekiMessageOutService {
         messageOut.setReceiver(notification.getReceiverPhoneNumber());
         messageOut.setStatus("send");
         dao.save(messageOut);
-
     }
 }

@@ -1,0 +1,70 @@
+body {
+  font-family: sans-serif;
+}
+
+.autocomplete {
+  padding: 0.5rem;
+  width: 350px;
+  --cds-text-primary: black;
+  --cds-text-secondary: blue;
+  margin-top: -1%;
+}
+
+.no-suggestions {
+  color: #999;
+  padding: 0.5rem;
+  z-index: 10000;
+  position: absolute;
+}
+
+.suggestions {
+  border: 1px solid #999;
+  border-top-width: 0;
+  list-style: none;
+  margin-top: 0;
+  max-height: 495px;
+  margin-left: 0px;
+  overflow-y: auto;
+  padding-left: 0px;
+  width: 100%;
+  z-index: 10;
+  position: absolute;
+  background-color: #ffffff;
+}
+
+.suggestions-container {
+  position: relative;
+  width: 100%;
+}
+
+.suggestions li {
+  padding: 0.5rem;
+  z-index: 99 !important;
+}
+
+.suggestion-active,
+.suggestions li:hover {
+  background-color: #295785;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.suggestions li:not(:last-of-type) {
+  border-bottom: 1px solid #999;
+}
+
+.reflexInputText {
+  --cds-text-primary: black;
+  width: 100%;
+  --cds-text-secondary: blue;
+}
+
+.reflexInputSelect {
+  --cds-text-primary: black;
+  width: 100px;
+  --cds-text-secondary: blue;
+}
+
+.ruleFieldButton {
+  margin-top: 5px;
+}

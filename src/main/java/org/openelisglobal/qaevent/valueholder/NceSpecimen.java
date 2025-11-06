@@ -1,7 +1,6 @@
 package org.openelisglobal.qaevent.valueholder;
 
 import java.util.Objects;
-
 import org.openelisglobal.common.valueholder.BaseObject;
 
 public class NceSpecimen extends BaseObject<String> {
@@ -35,12 +34,12 @@ public class NceSpecimen extends BaseObject<String> {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         NceSpecimen that = (NceSpecimen) o;
-        return id == that.id &&
-                Objects.equals(nceId, that.nceId) &&
-                Objects.equals(sampleItemId, that.sampleItemId);
+        return id == that.id && Objects.equals(nceId, that.nceId) && Objects.equals(sampleItemId, that.sampleItemId);
     }
 
     @Override

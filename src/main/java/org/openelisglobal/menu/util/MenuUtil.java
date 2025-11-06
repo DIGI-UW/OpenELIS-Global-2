@@ -1,26 +1,22 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
-*
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
+ */
 package org.openelisglobal.menu.util;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.PluginMenuService;
@@ -43,7 +39,18 @@ public class MenuUtil {
      * @param menu The menu item to be added
      */
     public static void addMenu(Menu menu) {
+        menu.setIsActive(true);
         insertedMenus.add(menu);
+    }
+
+    // Update Menu items added outside the database
+    public static void updateMenu(Menu menu) {
+        insertedMenus.forEach(insertedMenu -> {
+            if (insertedMenu.getElementId().equals(menu.getElementId())) {
+                insertedMenu.setActionURL(menu.getActionURL());
+                insertedMenu.setIsActive(menu.getIsActive());
+            }
+        });
     }
 
     public static void forceRebuild() {
@@ -59,7 +66,7 @@ public class MenuUtil {
     }
 
     private static void createTree() {
-        List<Menu> menuList = menuService.getAllActiveMenus();
+        List<Menu> menuList = menuService.getAll();
 
         Map<String, Menu> idToMenuMap = new HashMap<>();
 
@@ -129,61 +136,61 @@ public class MenuUtil {
         int topLevelCount = 0;
         for (MenuItem menuItem : menuTree) {
             Menu menu = menuItem.getMenu();
+            if (menu.getIsActive() && !menu.isHideInOldUI()) {
+                if (topLevel) {
+                    if (topLevelCount == 0) {
+                        html.append("\t<li id=\"nav-first\" >\n");
+                    } else if (topLevelCount == menuTree.size() - 1) {
+                        html.append("\t<li id=\"nav-last\" >\n");
+                    } else {
+                        html.append("\t<li>\n");
+                    }
 
-            if (topLevel) {
-                if (topLevelCount == 0) {
-                    html.append("\t<li id=\"nav-first\" >\n");
-                } else if (topLevelCount == menuTree.size() - 1) {
-                    html.append("\t<li id=\"nav-last\" >\n");
+                    topLevelCount++;
                 } else {
                     html.append("\t<li>\n");
                 }
 
-                topLevelCount++;
-            } else {
-                html.append("\t<li>\n");
+                html.append("\t\t<a ");
+                html.append("id=\"");
+                html.append(menu.getElementId());
+                html.append("\" ");
+
+                // tooltips disabled as they were unnecessary and distracting in the menu
+                // if (!GenericValidator.isBlankOrNull(menu.getLocalizedTooltip())) {
+                // html.append(" title=\"");
+                // html.append(getTooltip(menu, locale));
+                // html.append("\" ");
+                // }
+
+                if (menu.isOpenInNewWindow()) {
+                    html.append(" target=\"_blank\" ");
+                }
+
+                if (GenericValidator.isBlankOrNull(menu.getActionURL())
+                        && GenericValidator.isBlankOrNull(menu.getClickAction())) {
+                    html.append(" class=\"no-link\" >");
+                } else {
+                    html.append(" href=\"");
+                    String url = menu.getActionURL().startsWith("/")
+                            ? menu.getActionURL().substring(1, menu.getActionURL().length())
+                            : menu.getActionURL();
+                    html.append(url);
+                    html.append("\" >");
+                }
+
+                html.append(getLabel(menu, locale));
+                html.append("</a>\n");
+
+                if (!menuItem.getChildMenus().isEmpty()) {
+                    html.append("<ul>\n");
+                    addChildMenuItems(html, menuItem.getChildMenus(), false);
+                    html.append("</ul>\n");
+                }
+
+                html.append("\t</li>\n");
             }
-
-            html.append("\t\t<a ");
-            html.append("id=\"");
-            html.append(menu.getElementId());
-            html.append("\" ");
-
-            // tooltips disabled as they were unnecessary and distracting in the menu
-//            if (!GenericValidator.isBlankOrNull(menu.getLocalizedTooltip())) {
-//                html.append(" title=\"");
-//                html.append(getTooltip(menu, locale));
-//                html.append("\" ");
-//            }
-
-            if (menu.isOpenInNewWindow()) {
-                html.append(" target=\"_blank\" ");
-            }
-
-            if (GenericValidator.isBlankOrNull(menu.getActionURL())
-                    && GenericValidator.isBlankOrNull(menu.getClickAction())) {
-                html.append(" class=\"no-link\" >");
-            } else {
-                html.append(" href=\"");
-                String url = menu.getActionURL().startsWith("/")
-                        ? menu.getActionURL().substring(1, menu.getActionURL().length())
-                        : menu.getActionURL();
-                html.append(url);
-                html.append("\" >");
-            }
-
-            html.append(getLabel(menu, locale));
-            html.append("</a>\n");
-
-            if (!menuItem.getChildMenus().isEmpty()) {
-                html.append("<ul>\n");
-                addChildMenuItems(html, menuItem.getChildMenus(), false);
-                html.append("</ul>\n");
-            }
-
-            html.append("\t</li>\n");
         }
-
     }
 
     @SuppressWarnings("unused")
@@ -213,6 +220,5 @@ public class MenuUtil {
         for (MenuItem child : menuItem.getChildMenus()) {
             sortChildren(child);
         }
-
     }
 }

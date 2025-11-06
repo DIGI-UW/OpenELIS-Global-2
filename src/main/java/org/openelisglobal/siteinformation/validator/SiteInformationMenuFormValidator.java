@@ -23,5 +23,4 @@ public class SiteInformationMenuFormValidator implements Validator {
                         "sampleEntryConfig", "ResultConfiguration", "MenuStatementConfig", "PaitientConfiguration",
                         "SiteInformation" });
     }
-
 }

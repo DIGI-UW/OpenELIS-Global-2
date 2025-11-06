@@ -1,12 +1,12 @@
 package org.openelisglobal.panelitem.service;
 
+import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.dao.PanelItemDAO;
@@ -17,7 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class PanelItemServiceImpl extends BaseObjectServiceImpl<PanelItem, String> implements PanelItemService {
+public class PanelItemServiceImpl extends AuditableBaseObjectServiceImpl<PanelItem, String>
+        implements PanelItemService {
     @Autowired
     protected PanelItemDAO baseObjectDAO;
     @Autowired
@@ -115,7 +116,7 @@ public class PanelItemServiceImpl extends BaseObjectServiceImpl<PanelItem, Strin
         try {
             pi = get(idString);
         } catch (RuntimeException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in PanelItem readPanelItem()", e);
         }
 
@@ -132,6 +133,7 @@ public class PanelItemServiceImpl extends BaseObjectServiceImpl<PanelItem, Strin
         }
         deleteAll(panelItems);
 
+        List<PanelItem> newPanelItems = new ArrayList<>();
         for (Test test : newTests) {
             PanelItem panelItem = new PanelItem();
             panelItem.setPanel(panel);
@@ -139,9 +141,11 @@ public class PanelItemServiceImpl extends BaseObjectServiceImpl<PanelItem, Strin
             panelItem.setLastupdatedFields();
             panelItem.setSysUserId(currentUser);
             insert(panelItem);
+
+            newPanelItems.add(panelItem);
         }
 
-        if ("N".equals(panel.getIsActive())) {
+        if (newPanelItems.size() > 0) {
             panel.setIsActive("Y");
             panel.setSysUserId(currentUser);
             panelService.update(panel);
@@ -165,8 +169,8 @@ public class PanelItemServiceImpl extends BaseObjectServiceImpl<PanelItem, Strin
         }
         for (PanelItem existingPanelItem : existingPanelItems) {
             if ((panelItem.getTest().getId().equals(existingPanelItem.getTest().getId()))
-                    || (panelItem.getTest().getName().equals(existingPanelItem.getTest().getName()))) {
-                return !panelItem.getId().equals(existingPanelItem.getId());
+                    || (panelItem.getTest().getDescription().equals(existingPanelItem.getTest().getDescription()))) {
+                return !existingPanelItem.getId().equals(panelItem.getId());
             }
         }
         return false;

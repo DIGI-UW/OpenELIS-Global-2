@@ -1,11 +1,10 @@
 package org.openelisglobal.testconfiguration.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Locale;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -81,7 +80,7 @@ public class SampleTypeCreateController extends BaseController {
 
     @RequestMapping(value = "/SampleTypeCreate", method = RequestMethod.POST)
     public ModelAndView postSampleTypeCreate(HttpServletRequest request,
-            @ModelAttribute("form") @Valid SampleTypeCreateForm form, BindingResult result)  {
+            @ModelAttribute("form") @Valid SampleTypeCreateForm form, BindingResult result) {
         if (result.hasErrors()) {
             saveErrors(result);
             setupDisplayItems(form);
@@ -98,8 +97,8 @@ public class SampleTypeCreateController extends BaseController {
         SystemModule resultModule = createSystemModule("LogbookResults", identifyingName, userId);
         SystemModule validationModule = createSystemModule("ResultValidation", identifyingName, userId);
 
-        Role resultsEntryRole = roleService.getRoleByName("Results entry");
-        Role validationRole = roleService.getRoleByName("Validator");
+        Role resultsEntryRole = roleService.getRoleByName(Constants.ROLE_RESULTS);
+        Role validationRole = roleService.getRoleByName(Constants.ROLE_VALIDATION);
 
         RoleModule workplanResultModule = createRoleModule(userId, workplanModule, resultsEntryRole);
         RoleModule resultResultModule = createRoleModule(userId, resultModule, resultsEntryRole);

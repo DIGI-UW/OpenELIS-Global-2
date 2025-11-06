@@ -1,25 +1,23 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
  *
- * Contributor(s): CIRG, University of Washington, Seattle WA.
+ * <p>Contributor(s): CIRG, University of Washington, Seattle WA.
  */
 package org.openelisglobal.organization.daoimpl;
 
 import java.util.List;
-
 import org.hibernate.Session;
+import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -37,21 +35,18 @@ public class OrganizationTypeDAOImpl extends BaseDAOImpl<OrganizationType, Strin
     }
 
     @Override
-    
     @Transactional(readOnly = true)
     public List<OrganizationType> getAllOrganizationTypes() throws LIMSRuntimeException {
         List<OrganizationType> list = null;
         try {
             String sql = "from OrganizationType";
-            org.hibernate.Query query = entityManager.unwrap(Session.class).createQuery(sql);
+            Query<OrganizationType> query = entityManager.unwrap(Session.class).createQuery(sql,
+                    OrganizationType.class);
             list = query.list();
-            // entityManager.unwrap(Session.class).flush(); // CSL remove old
-            // entityManager.unwrap(Session.class).clear(); // CSL remove old
         } catch (RuntimeException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in Organization getAllOrganizationTypes()", e);
         }
-
         return list;
     }
 
@@ -61,19 +56,15 @@ public class OrganizationTypeDAOImpl extends BaseDAOImpl<OrganizationType, Strin
         String sql = null;
         try {
             sql = "from OrganizationType o where o.name = :name";
-            org.hibernate.Query query = entityManager.unwrap(Session.class).createQuery(sql);
+            Query<OrganizationType> query = entityManager.unwrap(Session.class).createQuery(sql,
+                    OrganizationType.class);
 
-            query.setString("name", name);
+            query.setParameter("name", name);
 
-            
             List<OrganizationType> list = query.list();
-            // entityManager.unwrap(Session.class).flush(); // CSL remove old
-            // entityManager.unwrap(Session.class).clear(); // CSL remove old
-
             return list.size() > 0 ? list.get(0) : null;
-
         } catch (RuntimeException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in OrganizationType getOrganizationTypeByName()", e);
         }
     }

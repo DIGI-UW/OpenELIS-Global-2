@@ -23,5 +23,4 @@ public class ImmediateJobRunner implements IImmediateJobRunner {
             LogEvent.logDebug(e);
         }
     }
-
 }

@@ -1,14 +1,13 @@
 package org.openelisglobal.inventory.valueholder;
 
 import java.sql.Timestamp;
-
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.common.valueholder.ValueHolder;
 import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.organization.valueholder.Organization;
 
 /*
- * N.B.  This is a subset of the columns in the table.  
+ * N.B.  This is a subset of the columns in the table.
  * If you want more then add them here and in the mapping file
  */
 public class InventoryReceipt extends BaseObject<String> {

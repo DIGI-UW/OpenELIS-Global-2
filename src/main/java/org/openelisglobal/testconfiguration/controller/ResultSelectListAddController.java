@@ -1,7 +1,6 @@
 package org.openelisglobal.testconfiguration.controller;
 
-import javax.servlet.http.HttpServletRequest;
-
+import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
@@ -69,7 +68,6 @@ public class ResultSelectListAddController extends BaseController {
             return findForward(FWD_SUCCESS_INSERT, form);
         }
         return findForward(FWD_FAIL_INSERT, form);
-
     }
 
     @Override

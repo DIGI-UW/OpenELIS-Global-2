@@ -69,11 +69,11 @@ do
 done
 
 echo "" >> $INT_CA_DIR/${SERVER_NAME}_openssl_csr_san.cnf
-for i in "${!DNS_ENTRIES[@]}"; do 
+for i in "${!DNS_ENTRIES[@]}"; do
   position=$(( $i + 1 ))
   echo "DNS.$position = ${DNS_ENTRIES[$i]}" >> $INT_CA_DIR/${SERVER_NAME}_openssl_csr_san.cnf
 done
-for i in "${!IP_ENTRIES[@]}"; do 
+for i in "${!IP_ENTRIES[@]}"; do
   position=$(( $i + 1 ))
   echo "IP.$position  = ${IP_ENTRIES[$i]}" >> $INT_CA_DIR/${SERVER_NAME}_openssl_csr_san.cnf
 done
@@ -119,7 +119,7 @@ then
     -storepass $PASSWORD \
     -keystore $ROOT_CA_DIR/certs/ca.$SERVER_NAME.truststore.p12
   echo "made CA truststore for $SERVER_NAME using root CA"
-fi 
+fi
 
 if [[ ! -f "$INT_CA_DIR/certs/ca.$SERVER_NAME.truststore.p12" ]]
 then
@@ -162,5 +162,3 @@ mv $INT_CA_DIR/${SERVER_NAME}_openssl_csr_san.cnf $CERT_DIR/${SERVER_NAME}_opens
 
 cd $CERT_DIR/..
 tar -czf $CERT_DIR_NAME.tar.gz $CERT_DIR_NAME
-
-

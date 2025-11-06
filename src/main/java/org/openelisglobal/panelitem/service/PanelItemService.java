@@ -1,7 +1,6 @@
 package org.openelisglobal.panelitem.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.panel.valueholder.Panel;
@@ -31,5 +30,4 @@ public interface PanelItemService extends BaseObjectService<PanelItem, String> {
             List<Test> newTests);
 
     boolean duplicatePanelItemExists(PanelItem panelItem) throws LIMSRuntimeException;
-
 }

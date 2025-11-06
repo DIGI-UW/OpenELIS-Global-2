@@ -10,5 +10,4 @@ public interface TestSectionCreateService {
     void insertTestSection(Localization localization, TestSection testSection, SystemModule workplanModule,
             SystemModule resultModule, SystemModule validationModule, RoleModule workplanResultModule,
             RoleModule resultResultModule, RoleModule validationValidationModule);
-
 }

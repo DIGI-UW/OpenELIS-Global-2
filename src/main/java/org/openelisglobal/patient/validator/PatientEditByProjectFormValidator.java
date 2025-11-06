@@ -20,7 +20,5 @@ public class PatientEditByProjectFormValidator implements Validator {
     @Override
     public void validate(Object target, Errors errors) {
         subFormValidator.validate(target, errors);
-
     }
-
 }

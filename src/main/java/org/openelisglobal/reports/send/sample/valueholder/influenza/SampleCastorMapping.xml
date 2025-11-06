@@ -83,7 +83,7 @@
     </field>
     <field name="multipleUnit" type="java.lang.String">
        <bind-xml name="pt_multiple_unit" node="element" />
-    </field> 
+    </field>
     <field name="city" type="java.lang.String">
        <bind-xml name="pt_city" node="element" />
     </field>
@@ -104,7 +104,7 @@
     </field>
     <field name="lastName" type="java.lang.String">
        <bind-xml name="req_last_name" node="element" />
-    </field> 
+    </field>
     <field name="firstName" type="java.lang.String">
        <bind-xml name="req_first_name" node="element" />
     </field>
@@ -161,4 +161,3 @@
     </field>
   </class>
 </mapping>
-

@@ -1,7 +1,6 @@
 package org.openelisglobal.resultlimit.service;
 
 import java.util.List;
-
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectService;
@@ -27,6 +26,8 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
     String getDisplayValidRange(ResultLimit resultLimit, String significantDigits, String separator);
 
     String getDisplayReportingRange(ResultLimit resultLimit, String significantDigits, String separator);
+
+    String getDisplayCriticalRange(ResultLimit resultLimit, String significantDigits, String separator);
 
     String getDisplayReferenceRange(ResultLimit resultLimit, String significantDigits, String separator);
 

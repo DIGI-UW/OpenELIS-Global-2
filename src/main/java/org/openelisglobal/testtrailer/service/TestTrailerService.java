@@ -1,7 +1,6 @@
 package org.openelisglobal.testtrailer.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.testtrailer.valueholder.TestTrailer;
 

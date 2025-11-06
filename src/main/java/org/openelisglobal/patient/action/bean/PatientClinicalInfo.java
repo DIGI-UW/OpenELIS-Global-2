@@ -1,32 +1,27 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.patient.action.bean;
 
+import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.validation.constraints.Pattern;
-
-import org.hibernate.validator.constraints.SafeHtml;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.sample.form.SamplePatientEntryForm.SamplePatientEntryBatch;
 import org.openelisglobal.samplebatchentry.form.SampleBatchEntryForm;
+import org.openelisglobal.validation.annotations.SafeHtml;
 
 public class PatientClinicalInfo implements Serializable {
 
@@ -69,7 +64,8 @@ public class PatientClinicalInfo implements Serializable {
             SamplePatientEntryBatch.class })
     private String stdZona;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class, SamplePatientEntryBatch.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class,
+            SamplePatientEntryBatch.class })
     private String stdOther;
 
     @Pattern(regexp = YES_NO_UNKNOWN_REGEX, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class,
@@ -88,16 +84,20 @@ public class PatientClinicalInfo implements Serializable {
             SamplePatientEntryBatch.class })
     private String arvTreatmentRemembered;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class, SamplePatientEntryBatch.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class,
+            SamplePatientEntryBatch.class })
     private String arvTreatment1;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class, SamplePatientEntryBatch.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class,
+            SamplePatientEntryBatch.class })
     private String arvTreatment2;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class, SamplePatientEntryBatch.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class,
+            SamplePatientEntryBatch.class })
     private String arvTreatment3;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class, SamplePatientEntryBatch.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class,
+            SamplePatientEntryBatch.class })
     private String arvTreatment4;
 
     @Pattern(regexp = YES_NO_UNKNOWN_REGEX, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class,
@@ -124,7 +124,8 @@ public class PatientClinicalInfo implements Serializable {
             SamplePatientEntryBatch.class })
     private String infectionPrurigol;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class, SamplePatientEntryBatch.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class,
+            SamplePatientEntryBatch.class })
     private String infectionOther;
 
     @Pattern(regexp = YES_NO_UNKNOWN_REGEX, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class,
@@ -147,10 +148,12 @@ public class PatientClinicalInfo implements Serializable {
             SamplePatientEntryBatch.class })
     private String infectionUnderTreatment;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class, SamplePatientEntryBatch.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class,
+            SamplePatientEntryBatch.class })
     private String weight;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class, SamplePatientEntryBatch.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SampleBatchEntryForm.SampleBatchEntrySetup.class,
+            SamplePatientEntryBatch.class })
     private String karnofskyScore;
 
     // for display

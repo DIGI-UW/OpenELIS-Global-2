@@ -1,26 +1,24 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ */
 package org.openelisglobal.renamemethod.daoimpl;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
-
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
+import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -43,20 +41,18 @@ public class RenameMethodDAOImpl extends BaseDAOImpl<RenameMethod, String> imple
     public List<RenameMethod> getMethods(String filter) throws LIMSRuntimeException {
         List<RenameMethod> list = new Vector<>();
         try {
-            String sql = "from Method m where upper(m.methodName) like upper(:param) and m.isActive='Y' order by upper(m.methodName)";
-            org.hibernate.Query query = entityManager.unwrap(Session.class).createQuery(sql);
+            String sql = "from Method m where upper(m.methodName) like upper(:param) and m.isActive='Y' order by"
+                    + " upper(m.methodName)";
+            Query<RenameMethod> query = entityManager.unwrap(Session.class).createQuery(sql, RenameMethod.class);
             query.setParameter("param", filter + "%");
 
             list = query.list();
-            // entityManager.unwrap(Session.class).flush(); // CSL remove old
-            // entityManager.unwrap(Session.class).clear(); // CSL remove old
         } catch (RuntimeException e) {
             // bugzilla 2154
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in Method getMethods(String filter)", e);
         }
         return list;
-
     }
 
     @Override
@@ -65,9 +61,8 @@ public class RenameMethodDAOImpl extends BaseDAOImpl<RenameMethod, String> imple
         String sql = "from Method m where m.isActive = 'N'";
 
         try {
-            org.hibernate.Query query = entityManager.unwrap(Session.class).createQuery(sql);
+            Query<RenameMethod> query = entityManager.unwrap(Session.class).createQuery(sql, RenameMethod.class);
             List<RenameMethod> sections = query.list();
-            // closeSession(); // CSL remove old
             return sections;
         } catch (HibernateException e) {
             handleException(e, "getAllInActiveMethods");
@@ -85,7 +80,7 @@ public class RenameMethodDAOImpl extends BaseDAOImpl<RenameMethod, String> imple
             // not case sensitive hemolysis and Hemolysis are considered
             // duplicates
             String sql = "from Method t where trim(lower(t.methodName)) = :param and t.id != :param2";
-            org.hibernate.Query query = entityManager.unwrap(Session.class).createQuery(sql);
+            Query<RenameMethod> query = entityManager.unwrap(Session.class).createQuery(sql, RenameMethod.class);
             query.setParameter("param", method.getMethodName().toLowerCase().trim());
 
             // initialize with 0 (for new records where no id has been generated yet
@@ -96,8 +91,6 @@ public class RenameMethodDAOImpl extends BaseDAOImpl<RenameMethod, String> imple
             query.setParameter("param2", methodId);
 
             list = query.list();
-            // entityManager.unwrap(Session.class).flush(); // CSL remove old
-            // entityManager.unwrap(Session.class).clear(); // CSL remove old
 
             if (list.size() > 0) {
                 return true;
@@ -107,7 +100,7 @@ public class RenameMethodDAOImpl extends BaseDAOImpl<RenameMethod, String> imple
 
         } catch (RuntimeException e) {
             // bugzilla 2154
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in duplicateMethodExists()", e);
         }
     }

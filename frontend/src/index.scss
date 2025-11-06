@@ -1,0 +1,28 @@
+@use "@carbon/react/scss/themes";
+@use "@carbon/react/scss/theme" with (
+  $fallback: themes.$g100,
+  $theme: (
+    background: #295785,
+    text-primary: #ffffff,
+    text-secondary: #ffffff,
+    icon-primary: #ffffff,
+    icon-secondary: #ffffff,
+    background-hover: #072655,
+    layer-01: #295785,
+    layer-hover-01: #072655,
+  )
+);
+
+@use "@carbon/react";
+
+.cds--content {
+  margin-top: 3rem;
+  padding: 0;
+  background-color: #f5f6f8;
+}
+
+.loginPageContent,
+.changePasswordPage {
+  padding-top: 3rem;
+  background: var(--cds-background);
+}

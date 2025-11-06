@@ -1,31 +1,26 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
-*
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
+ */
 package org.openelisglobal.analyzerresults.action.beanitems;
 
+import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.sql.Timestamp;
 import java.util.List;
-
-import javax.validation.constraints.Pattern;
-
-import org.hibernate.validator.constraints.SafeHtml;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.result.form.AnalyzerResultsForm;
+import org.openelisglobal.validation.annotations.SafeHtml;
 import org.openelisglobal.validation.annotations.ValidDate;
 
 public class AnalyzerResultItem implements Serializable {
@@ -39,11 +34,11 @@ public class AnalyzerResultItem implements Serializable {
 
     // TODO move all accession number to the same format so they can be validated
     // properly
-//    @ValidAccessionNumber(groups = { AnalyzerResultsForm.AnalyzerResuts.class })
-    @Pattern(regexp = "^[0-9a-zA-Z -]*$", groups = { AnalyzerResultsForm.AnalyzerResuts.class })
+    // @ValidAccessionNumber(groups = { AnalyzerResultsForm.AnalyzerResuts.class })
+    @Pattern(regexp = "^[0-9a-zA-Z -:]*$", groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String accessionNumber;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String result;
 
     private boolean isControl = false;
@@ -58,8 +53,9 @@ public class AnalyzerResultItem implements Serializable {
 
     private String errorMessage;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String note;
+
     private String statusId;
     private String sampleId;
 
@@ -68,6 +64,7 @@ public class AnalyzerResultItem implements Serializable {
 
     @ValidDate(groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String completeDate;
+
     private boolean isPositive = false;
     private String duplicateAnalyzerResultId;
     private boolean isHighlighted = false;
@@ -79,14 +76,16 @@ public class AnalyzerResultItem implements Serializable {
 
     private boolean readOnly = false;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String testResultType = "N";
+
     private boolean userChoiceReflex;
     private boolean userChoicePending;
     private String siblingReflexKey;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String reflexSelectionId;
+
     private String selectionOneText = "";
     private String selectionOneValue = "";
     private String selectionTwoText = "";
@@ -105,7 +104,6 @@ public class AnalyzerResultItem implements Serializable {
     private List<Dictionary> dictionaryResultList;
 
     public AnalyzerResultItem() {
-
     }
 
     public void setId(String id) {
@@ -262,7 +260,6 @@ public class AnalyzerResultItem implements Serializable {
 
     public void setLastUpdated(Timestamp lastupdated) {
         lastUpdated = lastupdated;
-
     }
 
     public Timestamp getLastUpdated() {

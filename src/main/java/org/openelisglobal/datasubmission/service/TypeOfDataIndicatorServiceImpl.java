@@ -1,8 +1,7 @@
 package org.openelisglobal.datasubmission.service;
 
 import java.util.List;
-
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.datasubmission.dao.TypeOfDataIndicatorDAO;
 import org.openelisglobal.datasubmission.valueholder.TypeOfDataIndicator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class TypeOfDataIndicatorServiceImpl extends BaseObjectServiceImpl<TypeOfDataIndicator, String>
+public class TypeOfDataIndicatorServiceImpl extends AuditableBaseObjectServiceImpl<TypeOfDataIndicator, String>
         implements TypeOfDataIndicatorService {
     @Autowired
     protected TypeOfDataIndicatorDAO baseObjectDAO;
@@ -28,7 +27,6 @@ public class TypeOfDataIndicatorServiceImpl extends BaseObjectServiceImpl<TypeOf
     @Transactional(readOnly = true)
     public void getData(TypeOfDataIndicator typeOfIndicator) {
         getBaseObjectDAO().getData(typeOfIndicator);
-
     }
 
     @Override

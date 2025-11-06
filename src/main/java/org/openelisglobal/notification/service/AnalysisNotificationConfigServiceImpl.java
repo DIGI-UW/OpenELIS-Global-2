@@ -2,16 +2,16 @@ package org.openelisglobal.notification.service;
 
 import java.util.List;
 import java.util.Optional;
-
 import org.openelisglobal.common.dao.BaseDAO;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.notification.dao.AnalysisNotificationConfigDAO;
 import org.openelisglobal.notification.valueholder.AnalysisNotificationConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-public class AnalysisNotificationConfigServiceImpl extends BaseObjectServiceImpl<AnalysisNotificationConfig, Integer>
+public class AnalysisNotificationConfigServiceImpl
+        extends AuditableBaseObjectServiceImpl<AnalysisNotificationConfig, Integer>
         implements AnalysisNotificationConfigService {
 
     @Autowired
@@ -32,7 +32,6 @@ public class AnalysisNotificationConfigServiceImpl extends BaseObjectServiceImpl
         return baseDAO.getAnalysisNotificationConfigForAnalysisId(analysisId);
     }
 
-
     @Override
     public List<AnalysisNotificationConfig> getAnalysisNotificationConfigForAnalysisId(List<String> analysisIds) {
         return baseDAO.getAnalysisNotificationConfigsForAnalysisIds(analysisIds);
@@ -42,5 +41,4 @@ public class AnalysisNotificationConfigServiceImpl extends BaseObjectServiceImpl
     public AnalysisNotificationConfig getForConfigOption(Integer configOptionId) {
         return baseDAO.getForConfigOption(configOptionId);
     }
-
 }

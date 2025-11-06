@@ -5,24 +5,21 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-
 import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
+import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.plugin.AnalyzerImporterPlugin;
+import org.openelisglobal.spring.util.SpringContext;
 
 public class AnalyzerXLSLineReader extends AnalyzerReader {
 
     private List<String> lines;
     private AnalyzerLineInserter inserter;
     private String error;
-    private static ArrayList<AnalyzerImporterPlugin> analyzerPlugins = new ArrayList<>();
-
-    public static void registerAnalyzerPlugin(AnalyzerImporterPlugin plugin) {
-        analyzerPlugins.add(plugin);
-    }
 
     @Override
     public boolean readStream(InputStream stream) {
@@ -44,15 +41,14 @@ public class AnalyzerXLSLineReader extends AnalyzerReader {
                     Cell cell = cellIterator.next();
                     String value = "";
                     switch (cell.getCellType()) {
-                    case Cell.CELL_TYPE_BLANK:
-                    case Cell.CELL_TYPE_STRING:
+                    case BLANK:
+                    case STRING:
                         value = cell.getStringCellValue();
                         break;
-                    case Cell.CELL_TYPE_NUMERIC:
+                    case NUMERIC:
                         value = Double.toString(cell.getNumericCellValue());
                         break;
                     default:
-
                     }
                     line += value.replaceAll("\t", "\\t") + "\t";
                 }
@@ -77,14 +73,17 @@ public class AnalyzerXLSLineReader extends AnalyzerReader {
             error = "Empty file";
             return false;
         }
-
     }
 
     private void setInserter() {
-        for (AnalyzerImporterPlugin plugin : analyzerPlugins) {
-            if (plugin.isTargetAnalyzer(lines)) {
-                inserter = plugin.getAnalyzerLineInserter();
-                return;
+        for (AnalyzerImporterPlugin plugin : SpringContext.getBean(PluginAnalyzerService.class).getAnalyzerPlugins()) {
+            try {
+                if (plugin.isTargetAnalyzer(lines)) {
+                    inserter = plugin.getAnalyzerLineInserter();
+                    return;
+                }
+            } catch (RuntimeException e) {
+                LogEvent.logError(e);
             }
         }
     }
@@ -109,12 +108,10 @@ public class AnalyzerXLSLineReader extends AnalyzerReader {
 
             return success;
         }
-
     }
 
     @Override
     public String getError() {
         return error;
     }
-
 }

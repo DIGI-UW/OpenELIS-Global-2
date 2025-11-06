@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -87,7 +86,6 @@ public class SchedulerConfig implements SchedulingConfigurer {
         } catch (SchedulerException e) {
             LogEvent.logError(e);
         }
-
     }
 
     public synchronized void reloadSchedules() {
@@ -122,7 +120,7 @@ public class SchedulerConfig implements SchedulingConfigurer {
         }
 
         String jobName = cronScheduler.getJobName();
-        LogEvent.logInfo(this.getClass().getName(), "method unkown", "Adding cron job: " + jobName);
+        LogEvent.logInfo(this.getClass().getSimpleName(), "addOrRunSchedule", "Adding cron job: " + jobName);
 
         Class<? extends Job> targetJob = scheduleJobMap.get(jobName);
 
@@ -137,7 +135,6 @@ public class SchedulerConfig implements SchedulingConfigurer {
 
         reloadableScheduler.scheduleJob(job, trigger);
 
-
         String[] cronParts = cronScheduler.getCronStatement().split(" ");
 
         try {
@@ -149,9 +146,8 @@ public class SchedulerConfig implements SchedulingConfigurer {
                 runner.runNow(reloadableScheduler, jobName);
             }
         } catch (NumberFormatException e) {
-            LogEvent.logInfo(this.getClass().getName(), "method unkown",
+            LogEvent.logInfo(this.getClass().getSimpleName(), "addOrRunSchedule",
                     "Malformed cron statement." + cronScheduler.getCronStatement());
         }
     }
-
 }

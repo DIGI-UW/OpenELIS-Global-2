@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet author="CIV Developer Group" id="23102501"
+        context="ci_general,ci_regional,CDIRetroCI">
+        <preConditions onFail="CONTINUE">
+            <tableExists tableName="test"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                select count(*) from
+                clinlims.test
+                where name = 'Viral Load' limit 1;
+            </sqlCheck>
+        </preConditions>
+        <update tableName="test" schemaName="clinlims">
+            <column name="loinc" value="25836-8" />
+            <where>id=:value</where>
+            <whereParams>
+                <param
+                    valueComputed="(SELECT id FROM test WHERE name = 'Viral Load')" />
+            </whereParams>
+        </update>
+    </changeSet>
+</databaseChangeLog>

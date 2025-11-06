@@ -1,7 +1,6 @@
 package org.openelisglobal.systemuser.service;
 
 import java.util.List;
-
 import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -36,5 +35,4 @@ public class UnifiedSystemUserServiceImpl implements UnifiedSystemUserService {
 
         loginService.deleteAll(loginUsers);
     }
-
 }

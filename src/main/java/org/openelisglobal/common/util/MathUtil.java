@@ -9,5 +9,4 @@ public class MathUtil {
             return first == null && second == null;
         }
     }
-
 }

@@ -1,18 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.reports.action.implementation;
 
@@ -28,7 +25,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
-
+import net.sf.jasperreports.engine.JRDataSource;
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JRParameter;
+import net.sf.jasperreports.engine.JasperRunManager;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -44,11 +44,6 @@ import org.openelisglobal.reports.action.implementation.reportBeans.ErrorMessage
 import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.context.i18n.LocaleContextHolder;
 
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.JRException;
-import net.sf.jasperreports.engine.JRParameter;
-import net.sf.jasperreports.engine.JasperRunManager;
-
 public abstract class Report implements IReportCreator {
 
     private ImageService imageService = SpringContext.getBean(ImageService.class);
@@ -63,10 +58,16 @@ public abstract class Report implements IReportCreator {
     protected HashMap<String, Object> reportParameters = null;
     protected String requestedReport;
     private String fullReportFilename;
+    protected String systemUserId;
 
     @Override
     public void setRequestedReport(String report) {
         requestedReport = report;
+    }
+
+    @Override
+    public void setSystemUserId(String id) {
+        systemUserId = id;
     }
 
     protected void initializeReport() {
@@ -241,6 +242,8 @@ public abstract class Report implements IReportCreator {
         }
 
         /**
+         *
+         *
          * <ol>
          * <li>High date picks up low date if it ain't filled in,
          * <li>they can't both be empty
@@ -274,7 +277,7 @@ public abstract class Report implements IReportCreator {
                     range += "  -  " + highDateStr;
                 }
             } catch (RuntimeException e) {
-                LogEvent.logInfo(this.getClass().getName(), "persistPatientType", "ignoring exception");
+                LogEvent.logInfo(this.getClass().getSimpleName(), "persistPatientType", "ignoring exception");
             }
             return range;
         }

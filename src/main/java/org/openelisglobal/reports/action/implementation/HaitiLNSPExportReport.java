@@ -1,18 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.reports.action.implementation;
 
@@ -20,7 +17,6 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
@@ -131,7 +127,6 @@ public class HaitiLNSPExportReport extends CSVExportReport {
         for (Analysis analysis : analysisList) {
             getResultForAnalysis(requesterOrganization, patientService, patient, order, sampleItem, analysis);
         }
-
     }
 
     private void getResultForAnalysis(Organization requesterOrganization, PatientService patientService,
@@ -149,8 +144,8 @@ public class HaitiLNSPExportReport extends CSVExportReport {
         ts.setLastName(patientService.getLastName(patient));
         ts.setGender(patientService.getGender(patient));
         ts.setNationalId(patientService.getNationalId(patient));
-        ts.setStatus(SpringContext.getBean(IStatusService.class)
-                .getStatusName(SpringContext.getBean(IStatusService.class).getAnalysisStatusForID(analysis.getStatusId())));
+        ts.setStatus(SpringContext.getBean(IStatusService.class).getStatusName(
+                SpringContext.getBean(IStatusService.class).getAnalysisStatusForID(analysis.getStatusId())));
         ts.setSampleType(sampleItem.getTypeOfSample().getLocalizedName());
         ts.setTestBench(analysis.getTestSection() == null ? "" : analysis.getTestSection().getTestSectionName());
         ts.setTestName(TestServiceImpl.getUserLocalizedTestName(analysis.getTest()));
@@ -167,7 +162,8 @@ public class HaitiLNSPExportReport extends CSVExportReport {
             ts.setReferringSiteName(requesterOrganization.getOrganizationName());
         }
 
-        if (SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized).equals(analysis.getStatusId())) {
+        if (SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)
+                .equals(analysis.getStatusId())) {
             ts.setResultDate(DateUtil.convertSqlDateToStringDate(analysis.getCompletedDate()));
 
             List<Result> resultList = resultService.getResultsByAnalysis(analysis);
@@ -196,7 +192,7 @@ public class HaitiLNSPExportReport extends CSVExportReport {
     }
 
     @Override
-    public byte[] runReport()  {
+    public byte[] runReport() {
         StringBuilder builder = new StringBuilder();
         builder.append(TestSegmentedExportBean.getHeader());
         builder.append("\n");
@@ -219,9 +215,7 @@ public class HaitiLNSPExportReport extends CSVExportReport {
         return "attachment;filename=" + getReportFileName() + ".csv";
     }
 
-    /**
-     * check everything
-     */
+    /** check everything */
     private boolean validateSubmitParameters() {
         return dateRange.validateHighLowDate("report.error.message.date.received.missing");
     }
@@ -241,7 +235,6 @@ public class HaitiLNSPExportReport extends CSVExportReport {
             int days = DateUtil.getAgeInDays(dobDate, DateUtil.getNowAsSqlDate());
             return days + " J";
         }
-
     }
 
     private void setAppropriateResults(List<Result> resultList, Analysis analysis, TestSegmentedExportBean data) {
@@ -254,7 +247,5 @@ public class HaitiLNSPExportReport extends CSVExportReport {
         }
 
         data.setResult(reportResult.replace(",", ";"));
-
     }
-
 }

@@ -1,8 +1,7 @@
 package org.openelisglobal.testcodes.service;
 
 import java.util.ArrayList;
-
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.testcodes.dao.OrganizationHL7SchemaDAO;
 import org.openelisglobal.testcodes.valueholder.OrganizationHL7Schema;
 import org.openelisglobal.testcodes.valueholder.OrganizationSchemaPK;
@@ -10,7 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-public class OrganizationHL7SchemaServiceImpl extends BaseObjectServiceImpl<OrganizationHL7Schema, OrganizationSchemaPK>
+public class OrganizationHL7SchemaServiceImpl
+        extends AuditableBaseObjectServiceImpl<OrganizationHL7Schema, OrganizationSchemaPK>
         implements OrganizationHL7SchemaService {
     @Autowired
     protected OrganizationHL7SchemaDAO baseObjectDAO;

@@ -3,7 +3,6 @@ package org.openelisglobal.dataexchange.fhir.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Future;
-
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Practitioner;
@@ -11,6 +10,7 @@ import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.provider.query.PatientSearchResults;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
@@ -27,7 +27,10 @@ import org.openelisglobal.sample.valueholder.Sample;
 
 public interface FhirTransformService {
 
-    void transformPersistPatient(PatientManagementInfo patientInfo)
+    void transformPersistPatient(PatientManagementInfo patientInfo, boolean isCreate)
+            throws FhirTransformationException, FhirPersistanceException;
+
+    void transformPersistOrganization(Organization organization)
             throws FhirTransformationException, FhirPersistanceException;
 
     void transformPersistOrderEntryFhirObjects(SamplePatientUpdateData updateData, PatientManagementInfo patientInfo,
@@ -69,4 +72,5 @@ public interface FhirTransformService {
 
     Provider transformToProvider(Practitioner practitioner);
 
+    PatientSearchResults transformToOpenElisPatientSearchResults(org.hl7.fhir.r4.model.Patient externalPatient);
 }

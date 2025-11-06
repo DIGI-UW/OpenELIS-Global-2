@@ -5,15 +5,14 @@
 		    org.openelisglobal.common.util.DateUtil,
 			org.openelisglobal.internationalization.MessageUtil,
 			org.openelisglobal.common.util.Versioning,
+			org.openelisglobal.reports.form.ReportForm.DateType,
 			org.owasp.encoder.Encode" %>
 
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
-<%@ taglib prefix="tiles" uri="http://tiles.apache.org/tags-tiles" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
 
 <%-- Creates updated UI. Removing for current release 
 <link rel="stylesheet" media="screen" type="text/css" href="css/bootstrap.min.css?" />
@@ -189,6 +188,16 @@ function setSaveButton() {
 }
 
 </script>
+<script>
+   jQuery(document).ready( function() {
+      jQuery('#allLabUnits').click();
+    });
+
+   function selectAll(element) {
+	 var checkBoxes = jQuery('.' + element.id );
+	 checkBoxes.prop("checked", !checkBoxes.prop("checked"));
+  }
+</script>
 
 <h2><c:out value="${form.reportName}"/></h2>
 
@@ -234,11 +243,11 @@ function setSaveButton() {
   		<h3><spring:message code="report.enter.patient.headline"/></h3>
   		<spring:message code="report.enter.patient.headline.description"/>
  	
-	<tiles:insertAttribute name="patientEnhancedSearch" />
+	<jsp:include page="${patientEnhancedSearchFragment}"/>
   </c:if>
   <c:if test="${form.useSiteSearch}">
   		<h3><spring:message code="report.enter.site.headline"/></h3>
-		<tiles:insertAttribute name="siteSearch" />
+		<jsp:include page="${siteSearchFragment}"/>
   </c:if>
   <c:if test="${form.usePatientNumberDirect}">
   
@@ -280,6 +289,27 @@ function setSaveButton() {
    	<div>
 	  <spring:message code="report.select.project"/>
 	  <form:select path="projectCode" cssClass="text" >
+		<option value=""></option><form:options  items="${form.projectCodeList}" itemLabel="localizedName" itemValue="id" />
+	  </form:select>
+	</div>
+  	</c:if>
+	<c:if test="${form.useExportDateType}">
+	<div>
+  		<spring:message code="report.label.site.dateType"/>
+	    <form:select path="dateType" 
+	    		 id="dateTypeId" 
+	             >
+	    	<option value="<%= DateType.ORDER_DATE.toString() %>"><%= MessageUtil.getContextualMessage( DateType.ORDER_DATE.getMessageKey() ) %></option>
+	    	<option value="<%= DateType.RESULT_DATE.toString() %>"><%= MessageUtil.getContextualMessage( DateType.RESULT_DATE.getMessageKey() ) %></option>
+	    	<option value="<%= DateType.PRINT_DATE.toString() %>"><%= MessageUtil.getContextualMessage( DateType.PRINT_DATE.getMessageKey() ) %></option>
+	    </form:select>
+	</div>
+  </c:if>
+  
+  <c:if test="${form.useDashboard}">
+   	<div>
+	  <spring:message code="report.select.project"/>
+	  <form:select path="vlStudyType" cssClass="text" >
 		<option value=""></option><form:options  items="${form.projectCodeList}" itemLabel="localizedName" itemValue="id" />
 	  </form:select>
 	</div>
@@ -330,7 +360,7 @@ function setSaveButton() {
   			<div id="dateWarning" ></div>
 	</div>
   </c:if>
-    <c:if test="${not empty form.selectList}">
+    <c:if test="${not empty form.selectList && form.useStatisticsParams == false}">
    	<div>
        <c:set var="selectList" value="${form.selectList}" />
        <span style="padding-left: 10px"><label for="selectList">
@@ -341,6 +371,89 @@ function setSaveButton() {
 	</div>
     </c:if>
 </c:if>
+ <c:if test="${form.useStatisticsParams}">
+	<div>
+	        <b><spring:message code="report.select.labUnit"/></b><br>
+			<table>
+			  <tr>
+					<td>
+						<input type="checkbox" id="allLabUnits" onClick="selectAll(this);"/>
+					</td>
+					<td>
+						<spring:message code="report.all"/> 
+					</td>
+				</tr>
+			    <c:forEach items="${form.selectList.list}" var="labUnit" varStatus="iter">
+				<tr>
+					<td>
+						<form:checkbox class="allLabUnits" path="labSections" value="${labUnit.id}"/>
+					</td>
+					<td>
+						<c:out value="${labUnit.value}"/>
+					</td>
+				</tr>
+			   </c:forEach>
+		   </table>	
+			<br>
+	</div>
+	<div>
+	       <b><spring:message code="report.select.priority"/></b><br>
+	 <table>
+	       <tr>
+				<td>
+					<input type="checkbox" id="allPriorities" onClick="selectAll(this);"/>
+				</td>
+				<td>
+					<spring:message code="report.all"/> 
+				</td>
+			</tr>
+		<c:forEach items="${form.priorityList}" var="oderPriority" varStatus="iter">
+		    <tr>
+				<td>
+					<form:checkbox class="allPriorities" path="priority" value="${oderPriority.id}"/>
+				</td>
+				<td>
+					<c:out value="${oderPriority.value}"/>
+				</td>
+			</tr>
+		</c:forEach>
+	  </table>	
+	  <br>
+	</div>
+	<div>
+	           <b><spring:message code="report.select.timeFrame"/></b><br>
+			   <spring:message code="report.select.timeFrame.note"/>
+			   <br>
+		<table>
+		<tr>
+				<td>
+					<input type="checkbox" id="allTimes" onClick="selectAll(this);"/>
+				</td>
+				<td>
+					<spring:message code="report.all"/> 
+				</td>
+			</tr>
+		<c:forEach items="${form.receptionTimeList}" var="time" varStatus="iter">
+		    <tr>
+				<td>
+					<form:checkbox class="allTimes" path="receptionTime" value="${time.id}" />
+				</td>
+				<td>
+					<c:out value="${time.value}"/>
+				</td>
+			</tr>
+		</c:forEach>
+	  </table>	
+	  <br>
+	</div>
+	<div>
+	    <spring:message code="report.select.year"/><br> 
+		<form:select path="upperYear" cssClass="text" id="upperYear" >
+			<form:options items="${form.yearList}" itemLabel="value" itemValue="id" />
+		</form:select>
+	</div>
+
+ </c:if>
 
 <br/>
 <div align="left" style="width:80%" >

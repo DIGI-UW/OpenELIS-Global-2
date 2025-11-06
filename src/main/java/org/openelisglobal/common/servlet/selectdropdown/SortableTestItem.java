@@ -1,25 +1,23 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/ 
-* 
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-* 
-* The Original Code is OpenELIS code.
-* 
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ */
 package org.openelisglobal.common.servlet.selectdropdown;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 
 /**
  * @author benzd1
- * 
+ *         <p>
  *         bugzilla 1844: extending AjaxXmlBuilder for testsection->test select
  *         making extended version of AjaxJspTag.Select sortable (toggle between
  *         sorting by 2 different properties, toggling label value between 2
@@ -39,9 +37,7 @@ class SortableTestItem {
 
     protected boolean asData;
 
-    /**
-     * Constructor for Item.
-     */
+    /** Constructor for Item. */
     public SortableTestItem() {
         super();
     }
@@ -136,5 +132,4 @@ class SortableTestItem {
     public void setAlternateLabel(String alternateLabel) {
         this.alternateLabel = alternateLabel;
     }
-
 }

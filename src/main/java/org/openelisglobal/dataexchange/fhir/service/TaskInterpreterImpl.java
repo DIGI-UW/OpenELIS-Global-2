@@ -1,8 +1,9 @@
 package org.openelisglobal.dataexchange.fhir.service;
 
+import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.hl7v2.HL7Exception;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.Address;
 import org.hl7.fhir.r4.model.ContactPoint;
@@ -11,8 +12,8 @@ import org.hl7.fhir.r4.model.Enumerations.AdministrativeGender;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Patient.ContactComponent;
-import org.hl7.fhir.r4.model.ServiceRequest.ServiceRequestPriority;
 import org.hl7.fhir.r4.model.ServiceRequest;
+import org.hl7.fhir.r4.model.ServiceRequest.ServiceRequestPriority;
 import org.hl7.fhir.r4.model.StringType;
 import org.hl7.fhir.r4.model.Task;
 import org.openelisglobal.common.log.LogEvent;
@@ -22,17 +23,15 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.order.action.IOrderInterpreter.InterpreterResults;
 import org.openelisglobal.dataexchange.order.action.IOrderInterpreter.OrderType;
-import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.dataexchange.order.action.MessagePatient;
+import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panel.valueholder.Panel;
+import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
-
-import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.hl7v2.HL7Exception;
-import ca.uhn.hl7v2.model.v251.segment.OBR;
 
 @Service
 @Scope("prototype")
@@ -69,7 +68,6 @@ public class TaskInterpreterImpl implements TaskInterpreter {
         public String getIdentifier() {
             return tag;
         }
-
     }
 
     public enum ServiceIdentifier {
@@ -87,7 +85,9 @@ public class TaskInterpreterImpl implements TaskInterpreter {
     }
 
     @Autowired
-    TestService testService;
+    private TestService testService;
+    @Autowired
+    private PanelService panelService;
 
     private String labOrderNumber;
     private OrderPriority priority;
@@ -98,6 +98,7 @@ public class TaskInterpreterImpl implements TaskInterpreter {
     private ServiceRequest serviceRequest;
     private MessagePatient messagePatient;
     private Test test;
+    private Panel panel;
     private List<InterpreterResults> results = new ArrayList<>();
     private List<String> unsupportedTests = new ArrayList<>();
     private List<String> unsupportedPanels = new ArrayList<>();
@@ -116,6 +117,9 @@ public class TaskInterpreterImpl implements TaskInterpreter {
         try {
             messagePatient = createPatientFromFHIR();
             test = createTestFromFHIR(serviceRequest);
+            if (test == null) {
+                panel = createPanelFromFHIR(serviceRequest);
+            }
             extractOrderInformation(serviceRequest);
         } catch (HL7Exception e) {
             LogEvent.logDebug(e);
@@ -131,7 +135,7 @@ public class TaskInterpreterImpl implements TaskInterpreter {
         } else {
             priority = OrderPriority.ROUTINE;
         }
-       
+
         // gnr: make electronic_order.external_id longer
         if (labOrderNumber != null && labOrderNumber.length() > 60) {
             labOrderNumber = labOrderNumber.substring(labOrderNumber.length() - 60);
@@ -140,7 +144,7 @@ public class TaskInterpreterImpl implements TaskInterpreter {
     }
 
     private Test createTestFromFHIR(ServiceRequest serviceRequest) throws HL7Exception {
-        LogEvent.logDebug(this.getClass().getName(), "createTestFromFHIR", "start");
+        LogEvent.logDebug(this.getClass().getSimpleName(), "createTestFromFHIR", "start");
 
         String loincCode = "";
         String system = "";
@@ -150,17 +154,49 @@ public class TaskInterpreterImpl implements TaskInterpreter {
             system = serviceRequest.getCode().getCoding().get(i).getSystemElement().toString();
             if (system.equalsIgnoreCase("UriType[http://loinc.org]")) {
                 loincCode = serviceRequest.getCode().getCoding().get(i).getCodeElement().toString();
+                if (!GenericValidator.isBlankOrNull(loincCode)) {
+                    tests = testService.getTestsByLoincCode(loincCode);
+                    if (tests.size() != 0) {
+                        return tests.get(0);
+                    }
+                } else {
 
-                tests = testService.getTestsByLoincCode(loincCode);
-                if (tests.size() != 0) {
-                    return tests.get(0);
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "createTestFromFHIR",
+                            "loinc code is missing a value in SR: " + serviceRequest.getIdElement().getIdPart());
                 }
             }
             i++;
         }
 
-        LogEvent.logError(this.getClass().getName(), "createTestFromFHIR",
+        LogEvent.logDebug(this.getClass().getSimpleName(), "createTestFromFHIR",
                 "no test found for SR: " + serviceRequest.getIdElement().getIdPart());
+        return null;
+    }
+
+    private Panel createPanelFromFHIR(ServiceRequest serviceRequest) throws HL7Exception {
+        LogEvent.logDebug(this.getClass().getSimpleName(), "createTestFromFHIR", "start");
+
+        String loincCode = "";
+        String system = "";
+        Integer i = 0;
+        Panel panel = null;
+        while (i < serviceRequest.getCode().getCoding().size()) {
+            system = serviceRequest.getCode().getCoding().get(i).getSystemElement().toString();
+            if (system.equalsIgnoreCase("UriType[http://loinc.org]")) {
+                loincCode = serviceRequest.getCode().getCoding().get(i).getCodeElement().toString();
+                if (!GenericValidator.isBlankOrNull(loincCode)) {
+                    panel = panelService.getPanelByLoincCode(loincCode);
+                    return panel;
+                } else {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "createTestFromFHIR",
+                            "loinc code is missing a value in SR: " + serviceRequest.getIdElement().getIdPart());
+                }
+            }
+            i++;
+        }
+
+        LogEvent.logDebug(this.getClass().getSimpleName(), "createTestFromFHIR",
+                "no panel found for SR: " + serviceRequest.getIdElement().getIdPart());
         return null;
     }
 
@@ -240,7 +276,6 @@ public class TaskInterpreterImpl implements TaskInterpreter {
                     } else {
                         messagePatient.setAddressStreet(messagePatient.getAddressStreet() + ", " + lineValue);
                     }
-
                 }
             }
 
@@ -259,16 +294,17 @@ public class TaskInterpreterImpl implements TaskInterpreter {
             if (ContactPoint.ContactPointSystem.SMS.equals(contactTelecom.getSystem())) {
                 messagePatient.setContactPhone(contactTelecom.getValue());
             }
-//            if (ContactPoint.ContactPointSystem.PHONE.equals(contactTelecom.getSystem())) {
-//                messagePatient.setContactPhone(contactTelecom.getValue());
-//            }
+            // if (ContactPoint.ContactPointSystem.PHONE.equals(contactTelecom.getSystem()))
+            // {
+            // messagePatient.setContactPhone(contactTelecom.getValue());
+            // }
         }
 
         return messagePatient;
     }
 
     private List<InterpreterResults> buildResultList(boolean exceptionThrown) {
-        LogEvent.logDebug(this.getClass().getName(), "buildResultList", "buildResultList: " + exceptionThrown);
+        LogEvent.logDebug(this.getClass().getSimpleName(), "buildResultList", "buildResultList: " + exceptionThrown);
         results = new ArrayList<>();
 
         if (exceptionThrown) {
@@ -290,8 +326,11 @@ public class TaskInterpreterImpl implements TaskInterpreter {
                  * results.add(InterpreterResults.MISSING_PATIENT_GUID); }
                  */
 
-//These are being commented out until we get confirmation on the desired policy.  Either the request should be rejected or the user should be required to
-// fill the missing information in at the time of sample entry.  Commenting these out supports the latter
+                // These are being commented out until we get confirmation on the desired
+                // policy. Either the request should be rejected or the user should be required
+                // to
+                // fill the missing information in at the time of sample entry. Commenting these
+                // out supports the latter
                 if (GenericValidator.isBlankOrNull(getMessagePatient().getGender())) {
                     results.add(InterpreterResults.MISSING_PATIENT_GENDER);
                 }
@@ -306,23 +345,11 @@ public class TaskInterpreterImpl implements TaskInterpreter {
                     results.add(InterpreterResults.MISSING_PATIENT_IDENTIFIER);
                 }
 
-                if (test == null || !getTestIdentityService().doesActiveTestExistForLoinc(test.getLoinc())) {
+                if ((test == null || !getTestIdentityService().doesActiveTestExistForLoinc(test.getLoinc()))
+                        && (panel == null
+                                || !getTestIdentityService().doesActivePanelExistForLoinc(panel.getLoinc()))) {
                     results.add(InterpreterResults.UNSUPPORTED_TESTS);
                 }
-
-//                try {
-//                    OML_O21_OBSERVATION_REQUEST orderRequest = orderMessage.getORDERAll().get(0)
-//                            .getOBSERVATION_REQUEST();
-//                    checkOBR(orderRequest.getOBR());
-//                    List<OML_O21_ORDER_PRIOR> priorOrders = orderRequest.getPRIOR_RESULT().getORDER_PRIORAll();
-//                    for (OML_O21_ORDER_PRIOR priorOrder : priorOrders) {
-//                        checkOBR(priorOrder.getOBR());
-//                    }
-//
-//                } catch (HL7Exception e) {
-//                    LogEvent.logDebug(e);
-//                    results.add(InterpreterResults.INTERPRET_ERROR);
-//                }
             }
         }
 
@@ -333,30 +360,6 @@ public class TaskInterpreterImpl implements TaskInterpreter {
         return results;
     }
 
-    private void checkOBR(OBR obr) throws HL7Exception {
-        if (obr.isEmpty()) {
-            results.add(InterpreterResults.MISSING_TESTS);
-        }
-        // moving away from name based testrequet to LOINC based test requests
-        // test request no longer in obr, now appears in orc
-        /*
-         * else{ String name = obr.getUniversalServiceIdentifier().getText().getValue();
-         * String identifier =
-         * obr.getUniversalServiceIdentifier().getIdentifier().getValue(); if(
-         * identifier.startsWith(ServiceIdentifier.TEST.getIdentifier() + "-")){
-         * if(!getTestIdentityService().doesActiveTestExist(name)){ if(
-         * !results.contains(InterpreterResults.UNSUPPORTED_TESTS)){
-         * results.add(InterpreterResults.UNSUPPORTED_TESTS); } unsupportedTests.add(
-         * name ); } }else if(
-         * identifier.startsWith(ServiceIdentifier.PANEL.getIdentifier() + "-")){
-         * if(!getTestIdentityService().doesPanelExist(name)){ if(
-         * !results.contains(InterpreterResults.UNSUPPORTED_PANELS)){
-         * results.add(InterpreterResults.UNSUPPORTED_PANELS); } unsupportedPanels.add(
-         * name ); } }else{
-         * results.add(InterpreterResults.OTHER_THAN_PANEL_OR_TEST_REQUESTED); } }
-         */
-    }
-    
     @Override
     public OrderPriority getOrderPriority() {
         return priority;
@@ -414,25 +417,30 @@ public class TaskInterpreterImpl implements TaskInterpreter {
 
     private void getOrderPriorityFromIncomingOrder(ServiceRequestPriority serviceRequestPriority) {
         switch (serviceRequestPriority) {
-            case ROUTINE: {
-                priority = OrderPriority.ROUTINE;
-                break;
-            }
-            case ASAP: {
-                priority = OrderPriority.ASAP;
-                break;
-            }
-            case STAT: {
-                priority = OrderPriority.STAT;
-                break;
-            }
-            default:
-                priority = OrderPriority.ROUTINE;
+        case ROUTINE: {
+            priority = OrderPriority.ROUTINE;
+            break;
+        }
+        case ASAP: {
+            priority = OrderPriority.ASAP;
+            break;
+        }
+        case STAT: {
+            priority = OrderPriority.STAT;
+            break;
+        }
+        default:
+            priority = OrderPriority.ROUTINE;
         }
     }
 
     @Override
     public Test getTest() {
         return test;
+    }
+
+    @Override
+    public Panel getPanel() {
+        return panel;
     }
 }

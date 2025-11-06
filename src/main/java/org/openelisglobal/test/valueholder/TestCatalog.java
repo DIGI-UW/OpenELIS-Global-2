@@ -1,7 +1,6 @@
 package org.openelisglobal.test.valueholder;
 
 import java.util.List;
-
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.testconfiguration.beans.ResultLimitBean;
 

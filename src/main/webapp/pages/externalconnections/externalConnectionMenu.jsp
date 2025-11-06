@@ -8,11 +8,10 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
 
-<script type="text/javascript" src="scripts/externalConnections.js"></script>
+
 <script>
 
 function editConnection(id) {
@@ -49,13 +48,6 @@ function editConnection(id) {
 	   	    </td>
    	  	 	<td class="textcontent">
    	  	 		<button type="button" onClick="editConnection(${externalConnection.id})">Edit</button>
-	   	    </td>
-   	  	 	<td class="textcontent">
-				<button type="button" onClick="testConnectionById(${externalConnection.id})"><spring:message code="externalConnections.test"/></button>
-				<span id="connect-wait-${externalConnection.id}" hidden="hidden"><i class="fas fa-spinner" style="color:Blue;" ></i></span>
-				<span id="connect-success-${externalConnection.id}" hidden="hidden"><i class="fas fa-check-double" style="color:Green;" ></i></span>
-				<span id="connect-partial-${externalConnection.id}" hidden="hidden"><i class="fas fa-check" style="color:Goldenrod;"></i></span>
-				<span id="connect-fail-${externalConnection.id}" hidden="hidden"><i class="fas fa-times" style="color:DarkRed;"></i></span>
 	   	    </td>
      	</tr>
 	</c:forEach>

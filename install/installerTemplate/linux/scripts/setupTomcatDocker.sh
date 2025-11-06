@@ -2,7 +2,7 @@
 
 #
 # This file exists because we must partially setup the host so docker is able to read the
-# certificates used for ssl. By default these are the snakeoil certs, but replacing these files in 
+# certificates used for ssl. By default these are the snakeoil certs, but replacing these files in
 # /etc/tomcat/ssl/ will let us use any certificates we can drop in there
 #
 

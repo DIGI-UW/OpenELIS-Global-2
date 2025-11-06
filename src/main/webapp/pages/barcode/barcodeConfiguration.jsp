@@ -6,15 +6,14 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
-<%@ taglib prefix="tiles" uri="http://tiles.apache.org/tags-tiles" %>
+
 
 <script type="text/javascript" src="scripts/utilities.js?" ></script>
 <script type="text/javascript">
 var validator = new FieldValidator();
-validator.setRequiredFields( new Array("heightOrderLabels", "widthOrderLabels", "heightSpecimenLabels", "widthSpecimenLabels", "numMaxOrderLabels", "numMaxSpecimenLabels", "numDefaultOrderLabels", "numDefaultSpecimenLabels") );
+validator.setRequiredFields( new Array("heightBlockLabels", "widthBlockLabels", "heightSlideLabels", "widthSlideLabels","heightOrderLabels", "widthOrderLabels", "heightSpecimenLabels", "widthSpecimenLabels", "numMaxOrderLabels", "numMaxSpecimenLabels", "numDefaultOrderLabels", "numDefaultSpecimenLabels") );
 
 function savePage() {
 	document.getElementById("mainForm").action = "BarcodeConfiguration"
@@ -34,7 +33,7 @@ function enableSave() {
 }
 </script>
 
-<tiles:insertAttribute name="numberBarCodes"/>
-<tiles:insertAttribute name="elementsBarCodes"/>
-<tiles:insertAttribute name="alternateAccession"/>
-<tiles:insertAttribute name="sizeBarCodes"/>
+<jsp:include page="${numberBarCodesFragment}"/>
+<jsp:include page="${elementsBarCodesFragment}"/>
+<jsp:include page="${alternateAccessionFragment}"/>
+<jsp:include page="${sizeBarCodesFragment}"/>

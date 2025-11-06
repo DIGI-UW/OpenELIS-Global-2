@@ -1,11 +1,9 @@
 package org.openelisglobal.login.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Optional;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -64,9 +62,9 @@ public class ChangePasswordLoginController extends BaseController {
             return findForward(FWD_FAIL_INSERT, form);
         }
 
-//		Login newLogin = new Login();
-//		// populate valueholder from form
-//		PropertyUtils.copyProperties(newLogin, form);
+        // Login newLogin = new Login();
+        // // populate valueholder from form
+        // PropertyUtils.copyProperties(newLogin, form);
         try {
             LoginUser login;
             // get user information if password correct
@@ -89,7 +87,7 @@ public class ChangePasswordLoginController extends BaseController {
 
         } catch (LIMSRuntimeException e) {
             // bugzilla 2154
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             result.reject("login.error.message");
         }
         if (result.hasErrors()) {

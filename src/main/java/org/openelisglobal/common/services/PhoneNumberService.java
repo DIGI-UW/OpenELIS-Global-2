@@ -20,8 +20,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.springframework.stereotype.Service;
 
-/**
- */
+/** */
 @Service
 public class PhoneNumberService {
     private static final Object lock = new Object();
@@ -36,7 +35,7 @@ public class PhoneNumberService {
     /**
      * Validates a phone number according to the given format but allows for an
      * arbitrary extension
-     * 
+     *
      * @param number to be validated
      * @return true if valid false otherwise
      */

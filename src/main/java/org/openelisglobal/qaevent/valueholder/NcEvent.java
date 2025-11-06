@@ -1,12 +1,10 @@
 package org.openelisglobal.qaevent.valueholder;
 
+import jakarta.persistence.Basic;
+import jakarta.persistence.Column;
+import jakarta.persistence.Id;
 import java.sql.Date;
 import java.util.Objects;
-
-import javax.persistence.Basic;
-import javax.persistence.Column;
-import javax.persistence.Id;
-
 import org.openelisglobal.common.valueholder.BaseObject;
 
 public class NcEvent extends BaseObject<String> {
@@ -46,7 +44,6 @@ public class NcEvent extends BaseObject<String> {
     public String getId() {
         return id;
     }
-
 
     @Override
     public void setId(String id) {
@@ -292,35 +289,31 @@ public class NcEvent extends BaseObject<String> {
             return false;
         }
         NcEvent ncEvent = (NcEvent) o;
-        return id == ncEvent.id &&
-                Objects.equals(reportDate, ncEvent.reportDate) &&
-                Objects.equals(name, ncEvent.name) &&
-                Objects.equals(nameOfReporter, ncEvent.nameOfReporter) &&
-                Objects.equals(nceNumber, ncEvent.nceNumber) &&
-                Objects.equals(dateOfEvent, ncEvent.dateOfEvent) &&
-                Objects.equals(labOrderNumber, ncEvent.labOrderNumber) &&
-                Objects.equals(prescriberName, ncEvent.prescriberName) &&
-                Objects.equals(site, ncEvent.site) &&
-                Objects.equals(reportingUnitId, ncEvent.reportingUnitId) &&
-                Objects.equals(description, ncEvent.description) &&
-                Objects.equals(suspectedCauses, ncEvent.suspectedCauses) &&
-                Objects.equals(proposedAction, ncEvent.proposedAction) &&
-                Objects.equals(laboratoryComponent, ncEvent.laboratoryComponent) &&
-                Objects.equals(consequenceId, ncEvent.consequenceId) &&
-                Objects.equals(recurrenceId, ncEvent.recurrenceId) &&
-                Objects.equals(severityScore, ncEvent.severityScore) &&
-                Objects.equals(colorCode, ncEvent.colorCode) &&
-                Objects.equals(correctiveAction, ncEvent.correctiveAction) &&
-                Objects.equals(controlAction, ncEvent.controlAction) &&
-                Objects.equals(comments, ncEvent.comments) &&
-                Objects.equals(effective, ncEvent.effective) &&
-                Objects.equals(signature, ncEvent.signature) &&
-                Objects.equals(dateCompleted, ncEvent.dateCompleted);
+        return id == ncEvent.id && Objects.equals(reportDate, ncEvent.reportDate) && Objects.equals(name, ncEvent.name)
+                && Objects.equals(nameOfReporter, ncEvent.nameOfReporter)
+                && Objects.equals(nceNumber, ncEvent.nceNumber) && Objects.equals(dateOfEvent, ncEvent.dateOfEvent)
+                && Objects.equals(labOrderNumber, ncEvent.labOrderNumber)
+                && Objects.equals(prescriberName, ncEvent.prescriberName) && Objects.equals(site, ncEvent.site)
+                && Objects.equals(reportingUnitId, ncEvent.reportingUnitId)
+                && Objects.equals(description, ncEvent.description)
+                && Objects.equals(suspectedCauses, ncEvent.suspectedCauses)
+                && Objects.equals(proposedAction, ncEvent.proposedAction)
+                && Objects.equals(laboratoryComponent, ncEvent.laboratoryComponent)
+                && Objects.equals(consequenceId, ncEvent.consequenceId)
+                && Objects.equals(recurrenceId, ncEvent.recurrenceId)
+                && Objects.equals(severityScore, ncEvent.severityScore) && Objects.equals(colorCode, ncEvent.colorCode)
+                && Objects.equals(correctiveAction, ncEvent.correctiveAction)
+                && Objects.equals(controlAction, ncEvent.controlAction) && Objects.equals(comments, ncEvent.comments)
+                && Objects.equals(effective, ncEvent.effective) && Objects.equals(signature, ncEvent.signature)
+                && Objects.equals(dateCompleted, ncEvent.dateCompleted);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, reportDate, name, nameOfReporter, nceNumber, dateOfEvent, labOrderNumber, prescriberName, site, reportingUnitId, description, suspectedCauses, proposedAction, laboratoryComponent, consequenceId, recurrenceId, severityScore, colorCode, correctiveAction, controlAction, comments, effective, signature, dateCompleted);
+        return Objects.hash(id, reportDate, name, nameOfReporter, nceNumber, dateOfEvent, labOrderNumber,
+                prescriberName, site, reportingUnitId, description, suspectedCauses, proposedAction,
+                laboratoryComponent, consequenceId, recurrenceId, severityScore, colorCode, correctiveAction,
+                controlAction, comments, effective, signature, dateCompleted);
     }
 
     @Basic

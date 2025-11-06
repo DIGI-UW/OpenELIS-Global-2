@@ -1,7 +1,6 @@
 package org.openelisglobal.analyzerimport.validator;
 
 import java.util.List;
-
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.common.validator.ValidationHelper;
@@ -31,7 +30,6 @@ public class AnalyzerTestMappingValidator implements Validator {
                 true, 30, " a-zA-Z0-9�������������������������Ԍ��ܟ�\\\\\\-%#\\(\\)\\^_");
 
         ValidationHelper.validateIdField(analyzerTestMapping.getTestId(), "testId", errors, true);
-
     }
 
     public void preInsertValidate(AnalyzerTestMapping analyzerTestMapping, Errors errors) {
@@ -49,9 +47,8 @@ public class AnalyzerTestMappingValidator implements Validator {
     public void preUpdateValidate(AnalyzerTestMapping analyzerTestMapping, Errors errors) {
         validate(analyzerTestMapping, errors);
 
-//		ValidationHelper.validateIdField(analyzerTestMapping.getId(), "id", errors, true);
+        // ValidationHelper.validateIdField(analyzerTestMapping.getId(), "id", errors,
+        // true);
         ValidationHelper.validateIdField(analyzerTestMapping.getStringId(), "id", errors, true);
-
     }
-
 }

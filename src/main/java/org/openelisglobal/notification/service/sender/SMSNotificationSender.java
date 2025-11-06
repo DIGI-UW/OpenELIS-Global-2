@@ -40,5 +40,4 @@ public class SMSNotificationSender implements ClientNotificationSender<SMSNotifi
             bmpSMSNotificationSender.send(notification);
         }
     }
-
 }

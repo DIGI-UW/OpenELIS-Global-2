@@ -47,5 +47,4 @@ public class TypeOfSampleLink extends Beans {
     public void setLinkDescription(String linkDescription) {
         this.linkDescription = linkDescription;
     }
-
 }

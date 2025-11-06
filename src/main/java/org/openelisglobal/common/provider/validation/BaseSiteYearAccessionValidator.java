@@ -1,24 +1,20 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
-*
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
+ */
 package org.openelisglobal.common.provider.validation;
 
 import java.util.Calendar;
 import java.util.GregorianCalendar;
-
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.IAccessionNumberValidator.ValidationResults;
 import org.openelisglobal.common.service.AccessionService;
@@ -55,7 +51,6 @@ public abstract class BaseSiteYearAccessionValidator {
 
         return MessageUtil.getMessage("sample.entry.invalid.accession.number.suggestion") + " "
                 + suggestedAccessionNumber;
-
     }
 
     // input parameter is not used in this case
@@ -171,7 +166,7 @@ public abstract class BaseSiteYearAccessionValidator {
         return format.toString();
     }
 
-//    protected abstract Set<String> getReservedNumbers();
+    // protected abstract Set<String> getReservedNumbers();
 
     protected abstract String getPrefix();
 
@@ -188,5 +183,4 @@ public abstract class BaseSiteYearAccessionValidator {
     protected abstract int getMinAccessionLength();
 
     protected abstract int getChangeableLength();
-
 }

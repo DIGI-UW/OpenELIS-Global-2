@@ -1,7 +1,6 @@
 package org.openelisglobal.panel.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.valueholder.Panel;
@@ -33,5 +32,7 @@ public interface PanelService extends BaseObjectService<Panel, String> {
     List<Panel> getAllPanels();
 
     Localization getLocalizationForPanel(String id);
+
+    Panel getPanelByLoincCode(String loincCode);
 
 }

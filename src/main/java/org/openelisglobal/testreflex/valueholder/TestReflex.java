@@ -1,20 +1,18 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*
-* Contributor(s): CIRG, University of Washington, Seattle WA.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ *
+ * <p>Contributor(s): CIRG, University of Washington, Seattle WA.
+ */
 package org.openelisglobal.testreflex.valueholder;
 
 import org.openelisglobal.common.valueholder.EnumValueItemImpl;
@@ -23,6 +21,7 @@ import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.scriptlet.valueholder.Scriptlet;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testreflex.action.bean.ReflexRuleOptions;
 import org.openelisglobal.testresult.valueholder.TestResult;
 
 public class TestReflex extends EnumValueItemImpl {
@@ -57,6 +56,14 @@ public class TestReflex extends EnumValueItemImpl {
 
     // This is solely for display and a different approach should be used
     private boolean passiveSibling;
+
+    private String nonDictionaryValue;
+
+    private ReflexRuleOptions.NumericRelationOptions relation;
+
+    private String internalNote;
+
+    private String externalNote;
 
     public TestReflex() {
         super();
@@ -244,4 +251,35 @@ public class TestReflex extends EnumValueItemImpl {
         return passiveSibling;
     }
 
+    public String getNonDictionaryValue() {
+        return nonDictionaryValue;
+    }
+
+    public void setNonDictionaryValue(String nonDictionaryValue) {
+        this.nonDictionaryValue = nonDictionaryValue;
+    }
+
+    public ReflexRuleOptions.NumericRelationOptions getRelation() {
+        return relation;
+    }
+
+    public void setRelation(ReflexRuleOptions.NumericRelationOptions relation) {
+        this.relation = relation;
+    }
+
+    public String getInternalNote() {
+        return internalNote;
+    }
+
+    public void setInternalNote(String internalNote) {
+        this.internalNote = internalNote;
+    }
+
+    public String getExternalNote() {
+        return externalNote;
+    }
+
+    public void setExternalNote(String externalNote) {
+        this.externalNote = externalNote;
+    }
 }

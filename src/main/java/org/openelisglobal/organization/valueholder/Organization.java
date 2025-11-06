@@ -1,74 +1,92 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ */
 package org.openelisglobal.organization.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.constraints.Pattern;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
-
-import javax.validation.constraints.Pattern;
-
-import org.hibernate.validator.constraints.SafeHtml;
 import org.hibernate.validator.constraints.URL;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.common.valueholder.EnumValueItemImpl;
 import org.openelisglobal.common.valueholder.SimpleBaseEntity;
 import org.openelisglobal.common.valueholder.ValueHolder;
 import org.openelisglobal.common.valueholder.ValueHolderInterface;
+import org.openelisglobal.validation.annotations.SafeHtml;
 
 public class Organization extends EnumValueItemImpl implements SimpleBaseEntity<String> {
     private static final long serialVersionUID = 1L;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String city;
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String cliaNum;
+
     @Pattern(regexp = ValidationHelper.ID_REGEX)
     private String id;
+
     @URL
     private String internetAddress;
+
     @Pattern(regexp = ValidationHelper.YES_NO_REGEX)
     private String isActive;
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String mlsLabFlag;
+
     @Pattern(regexp = ValidationHelper.YES_NO_REGEX)
     private String mlsSentinelLabFlag;
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String multipleUnit;
+
+    @JsonIgnoreProperties({ "organization" })
     private ValueHolderInterface organization;
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String organizationName;
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String orgMltOrgMltId;
+
     @Pattern(regexp = ValidationHelper.ID_REGEX)
     private String pwsId;
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String shortName;
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String state;
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String streetAddress;
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String zipCode;
+
     @Pattern(regexp = ValidationHelper.ID_REGEX)
     private String selectedOrgId;
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String organizationLocalAbbreviation;
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String code;
+
     private Set<OrganizationType> organizationTypes;
     private UUID fhirUuid;
 
@@ -90,6 +108,7 @@ public class Organization extends EnumValueItemImpl implements SimpleBaseEntity<
         return id;
     }
 
+    @JsonIgnore
     public String getConcatOrganizationLocalAbbreviationName() {
         return organizationLocalAbbreviation + "-" + organizationName;
     }
@@ -239,6 +258,7 @@ public class Organization extends EnumValueItemImpl implements SimpleBaseEntity<
         this.organizationLocalAbbreviation = organizationLocalAbbreviation;
     }
 
+    @JsonIgnore
     public String getDoubleName() {
         return shortName + " = " + organizationName;
     }
@@ -273,6 +293,7 @@ public class Organization extends EnumValueItemImpl implements SimpleBaseEntity<
         this.fhirUuid = fhirUuid;
     }
 
+    @JsonIgnore
     public String getFhirUuidAsString() {
         return fhirUuid == null ? "" : fhirUuid.toString();
     }

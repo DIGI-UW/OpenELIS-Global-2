@@ -1,9 +1,7 @@
 package org.openelisglobal.common.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.hibernate.HibernateException;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -52,7 +50,7 @@ public class DeletePatientTestDataController extends BaseController {
 
             PatientUtil.invalidateUnknownPatients();
         } catch (HibernateException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in DeletePatientTestData performAction()", e);
         }
 
@@ -81,5 +79,4 @@ public class DeletePatientTestDataController extends BaseController {
         // TODO Auto-generated method stub
         return null;
     }
-
 }

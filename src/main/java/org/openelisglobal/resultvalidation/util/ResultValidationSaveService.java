@@ -2,7 +2,6 @@ package org.openelisglobal.resultvalidation.util;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.openelisglobal.common.services.IResultSaveService;
 import org.openelisglobal.result.action.util.ResultSet;
 
@@ -41,7 +40,5 @@ public class ResultValidationSaveService implements IResultSaveService {
 
     public void addModifiedResultSet(ResultSet resultSet) {
         modifiedResults.add(resultSet);
-
     }
-
 }

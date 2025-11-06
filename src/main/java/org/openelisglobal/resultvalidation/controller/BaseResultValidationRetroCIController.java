@@ -2,7 +2,6 @@ package org.openelisglobal.resultvalidation.controller;
 
 import java.util.HashMap;
 import java.util.Map;
-
 import org.openelisglobal.common.controller.BaseController;
 
 public abstract class BaseResultValidationRetroCIController extends BaseController {
@@ -63,5 +62,4 @@ public abstract class BaseResultValidationRetroCIController extends BaseControll
         String name = validationGroupToSection.get(section);
         return name == null ? section : name;
     }
-
 }

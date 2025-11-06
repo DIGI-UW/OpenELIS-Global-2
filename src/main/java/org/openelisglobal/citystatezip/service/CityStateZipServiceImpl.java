@@ -1,16 +1,15 @@
 package org.openelisglobal.citystatezip.service;
 
 import java.util.List;
-
 import org.openelisglobal.citystatezip.dao.CityStateZipDAO;
 import org.openelisglobal.citystatezip.valueholder.CityStateZip;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class CityStateZipServiceImpl extends BaseObjectServiceImpl<CityStateZip, String>
+public class CityStateZipServiceImpl extends AuditableBaseObjectServiceImpl<CityStateZip, String>
         implements CityStateZipService {
     @Autowired
     protected CityStateZipDAO baseObjectDAO;

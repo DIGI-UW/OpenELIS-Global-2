@@ -1,7 +1,6 @@
 package org.openelisglobal.samplebatchentry.validator;
 
 import java.util.Iterator;
-
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
@@ -31,7 +30,6 @@ public class SampleBatchEntryFormValidator implements Validator {
         ValidationHelper.validateOptionField(form.getProgramCode(), "programCode", errors,
                 new String[] { MessageUtil.getMessage("sample.entry.project.LDBS"),
                         MessageUtil.getMessage("sample.entry.project.LART"), "", null });
-
     }
 
     @SuppressWarnings("unchecked")
@@ -58,7 +56,6 @@ public class SampleBatchEntryFormValidator implements Validator {
             if (errors.hasErrors()) {
                 return;
             }
-
         } // validate panel ids
         String[] panelIDs = sampleItem.attributeValue("panels").split(",");
         for (int j = 0; j < panelIDs.length; ++j) {
@@ -85,7 +82,5 @@ public class SampleBatchEntryFormValidator implements Validator {
         // validate sample id
         String sampleId = sampleItem.attributeValue("sampleID");
         ValidationHelper.validateIdField(sampleId, "sampleXML", "sampleXML sampleID", errors, true);
-
     }
-
 }

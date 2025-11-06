@@ -9,7 +9,6 @@ import org.openelisglobal.common.valueholder.EnumValueItemImpl;
  *
  * @hibernate.class table="patient_type"
  */
-
 public abstract class BasePatientType extends EnumValueItemImpl {
 
     private static final long serialVersionUID = -7636195859201443397L;
@@ -24,9 +23,7 @@ public abstract class BasePatientType extends EnumValueItemImpl {
         initialize();
     }
 
-    /**
-     * Constructor for primary key
-     */
+    /** Constructor for primary key */
     public BasePatientType(String id) {
         this.setId(id);
         initialize();
@@ -65,9 +62,7 @@ public abstract class BasePatientType extends EnumValueItemImpl {
         this.hashCodeValue = Integer.MIN_VALUE;
     }
 
-    /**
-     * Return the value associated with the column: type
-     */
+    /** Return the value associated with the column: type */
     public String getType() {
         return type;
     }
@@ -81,9 +76,7 @@ public abstract class BasePatientType extends EnumValueItemImpl {
         this.type = type;
     }
 
-    /**
-     * Return the value associated with the column: description
-     */
+    /** Return the value associated with the column: description */
     public String getDescription() {
         return description;
     }
@@ -122,7 +115,7 @@ public abstract class BasePatientType extends EnumValueItemImpl {
             if (null == this.getId()) {
                 return super.hashCode();
             } else {
-                String hashStr = this.getClass().getName() + ":" + this.getId().hashCode();
+                String hashStr = this.getClass().getSimpleName() + ":" + this.getId().hashCode();
                 this.hashCodeValue = hashStr.hashCode();
             }
         }
@@ -133,5 +126,4 @@ public abstract class BasePatientType extends EnumValueItemImpl {
     public String toString() {
         return super.toString();
     }
-
 }

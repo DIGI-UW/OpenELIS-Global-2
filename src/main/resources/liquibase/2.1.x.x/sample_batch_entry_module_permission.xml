@@ -1,25 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-	  
-	  
-	<changeSet author="csteele" id="1">
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.system_module_url WHERE url_path = '/SamplePatientEntryBatch'</sqlCheck> 
-		</preConditions>
-		<insert schemaName="clinlims" tableName="system_module_url">
-			<column name="id" valueSequenceNext="system_module_url_seq" />
-			<column name="url_path" value="/SamplePatientEntryBatch" />
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SampleBatchEntry')" />
-		</insert>
-		<rollback>
-			<delete schemaName="clinlims" tableName="system_module_url">
-				<where>url_path='/SamplePatientEntryBatch'</where>
-			</delete>
-		</rollback>
-	</changeSet>
-	
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.system_module_url WHERE url_path = '/SamplePatientEntryBatch'</sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="system_module_url">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/SamplePatientEntryBatch" />
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SampleBatchEntry')" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="system_module_url">
+                <where>url_path='/SamplePatientEntryBatch'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

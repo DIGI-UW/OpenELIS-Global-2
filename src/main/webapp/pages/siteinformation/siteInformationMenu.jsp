@@ -8,11 +8,28 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
 
- 
+
+ <script>
+
+	document.addEventListener("DOMContentLoaded", function() {
+        var imageNames = ["headerRightImage", "labDirectorSignature", "headerLeftImage"]
+        imageNames.forEach(imageName => {
+            fetch('./dbImage/siteInformation/' + imageName)
+                .then(response => response.json())
+                .then(data => {
+                    var imageElement = document.getElementById(imageName);
+                    imageElement.src = data.value;
+                })
+                .catch(error => {
+                    console.log('Error fetching image data:', error);
+                });
+
+        })
+    });
+ </script>
 
 
 <table width="80%" border="2">
@@ -44,18 +61,21 @@
 	   	    <c:when test="${site.valueType == 'logoUpload'}">
 	   			<c:choose>
 	   			<c:when test="${site.name == 'headerLeftImage'}">
-                <img src="./dbImage/siteInformation/headerLeftImage"  
+                <img src=""  
                 	 height="42" 
-	   		         width="42"  />
+	   		         width="42" 
+					 id="headerLeftImage" /> 
                 </c:when>
 	   			<c:when test="${site.name == 'labDirectorSignature'}">
-                <img src="./dbImage/siteInformation/labDirectorSignature"  
+                <img src=""  
                 	 height="42" 
-	   		         width="42"  />
+	   		         width="42" 
+					 id="labDirectorSignature" />
                 </c:when><c:otherwise>
-                <img src="./dbImage/siteInformation/headerRightImage"  
+                <img src=""  
                 	 height="42" 
-	   		         width="42"  />
+	   		         width="42" 
+					 id="headerRightImage" />
                 </c:otherwise>
                 </c:choose>
 	   		</c:when><c:when test="${site.tag == 'localization'}">

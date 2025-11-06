@@ -6,5 +6,4 @@ import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
 public interface DictionaryCategoryService extends BaseObjectService<DictionaryCategory, String> {
 
     DictionaryCategory getDictionaryCategoryByName(String name);
-
 }

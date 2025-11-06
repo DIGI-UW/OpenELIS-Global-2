@@ -1,118 +1,118 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<changeSet author="csteele" id="1">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<tableExists tableName="external_connection" />
-			</not>
-		</preConditions>
-		<createTable schemaName="clinlims"
-			tableName="external_connection">
-			<column name="id" type="INTEGER" valueSequenceNext="external_connection_seq" >
-				<constraints primaryKey="true" />
-			</column>
-			<column name="active" type="BOOLEAN" />
-			<column name="uri" type="VARCHAR(255)" />
-			<column name="programmed_connection" type="VARCHAR(255)" />
-			<column name="name_localization_id" type="NUMERIC(10)" >
-				<constraints
-					foreignKeyName="fk_external_connection_name_localization"
-					references="localization(id)"/>
-			</column>
-			<column name="description_localization_id" type="NUMERIC(10)" >
-				<constraints
-					foreignKeyName="fk_external_connection_description_localization"
-					references="localization(id)"/>
-			</column>
-			<column name="active_authentication_type" type="VARCHAR(255)" />
-			<column name="last_updated" type="DATE" />
-		</createTable>
-		<createSequence incrementBy="1" schemaName="clinlims"
-			sequenceName="external_connection_seq" startValue="1" />
-	</changeSet>
-	
-	<changeSet author="csteele" id="2">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<tableExists tableName="external_connection_contact" />
-			</not>
-		</preConditions>
-		<createTable schemaName="clinlims"
-			tableName="external_connection_contact">
-			<column name="id" type="INTEGER" valueSequenceNext="external_connection_contact_seq" >
-				<constraints primaryKey="true" />
-			</column>
-			<column name="external_connection_id" type="INTEGER" >
-				<constraints
-					foreignKeyName="fk_external_connection_contact_external_connection"
-					references="external_connection(id)"/>
-			</column>
-			<column name="person_id" type="NUMERIC(10)" >
-				<constraints
-					foreignKeyName="fk_external_connection_contact_person"
-					references="person(id)"/>
-			</column>
-			<column name="last_updated" type="DATE" />
-		</createTable>
-		<createSequence incrementBy="1" schemaName="clinlims"
-			sequenceName="external_connection_contact_seq" startValue="1" />
-	</changeSet>
-	
-	<changeSet author="csteele" id="3">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<tableExists tableName="certificate_authentication_data" />
-			</not>
-		</preConditions>
-		<createTable schemaName="clinlims"
-			tableName="certificate_authentication_data">
-			<column name="id" type="INTEGER" valueSequenceNext="external_connection_authentication_data_seq" >
-				<constraints primaryKey="true" />
-			</column>
-			<column name="external_connection_id" type="INTEGER" >
-				<constraints
-					foreignKeyName="fk_certificate_authentication_data_external_connection"
-					references="external_connection(id)"/>
-			</column>
-			<column name="last_updated" type="DATE" />
-		</createTable>
-		<createSequence incrementBy="1" schemaName="clinlims"
-			sequenceName="external_connection_authentication_data_seq" startValue="1" />
-	</changeSet>
-	
-	<changeSet author="csteele" id="4">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<tableExists tableName="basic_authentication_data" />
-			</not>
-		</preConditions>
-		<createTable schemaName="clinlims"
-			tableName="basic_authentication_data">
-			<column name="id" type="INTEGER" valueSequenceNext="external_connection_authentication_data_seq" >
-				<constraints primaryKey="true" />
-			</column>
-			<column name="external_connection_id" type="INTEGER" >
-				<constraints
-					foreignKeyName="fk_basic_authentication_data_external_connection"
-					references="external_connection(id)"/>
-			</column>
-			<column name="username" type="VARCHAR(255)" />
-			<column name="password" type="VARCHAR(255)" />
-			<column name="last_updated" type="DATE" />
-		</createTable>
-	</changeSet>
-	
-	<changeSet author="csteele" id="5">
-		<preConditions onFail="WARN">
-			<tableExists tableName="basic_authentication_data" />
-		</preConditions>
-		<addUniqueConstraint schemaName="clinlims"
-			tableName="basic_authentication_data" columnNames="external_connection_id" constraintName="unique_basic_authentication_data_external_connection_id"/>
-	</changeSet>
-	
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="external_connection" />
+            </not>
+        </preConditions>
+        <createTable schemaName="clinlims"
+            tableName="external_connection">
+            <column name="id" type="INTEGER" valueSequenceNext="external_connection_seq" >
+                <constraints primaryKey="true" />
+            </column>
+            <column name="active" type="BOOLEAN" />
+            <column name="uri" type="VARCHAR(255)" />
+            <column name="programmed_connection" type="VARCHAR(255)" />
+            <column name="name_localization_id" type="NUMERIC(10)" >
+                <constraints
+                    foreignKeyName="fk_external_connection_name_localization"
+                    references="localization(id)"/>
+            </column>
+            <column name="description_localization_id" type="NUMERIC(10)" >
+                <constraints
+                    foreignKeyName="fk_external_connection_description_localization"
+                    references="localization(id)"/>
+            </column>
+            <column name="active_authentication_type" type="VARCHAR(255)" />
+            <column name="last_updated" type="DATE" />
+        </createTable>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="external_connection_seq" startValue="1" />
+    </changeSet>
+
+    <changeSet author="csteele" id="2">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="external_connection_contact" />
+            </not>
+        </preConditions>
+        <createTable schemaName="clinlims"
+            tableName="external_connection_contact">
+            <column name="id" type="INTEGER" valueSequenceNext="external_connection_contact_seq" >
+                <constraints primaryKey="true" />
+            </column>
+            <column name="external_connection_id" type="INTEGER" >
+                <constraints
+                    foreignKeyName="fk_external_connection_contact_external_connection"
+                    references="external_connection(id)"/>
+            </column>
+            <column name="person_id" type="NUMERIC(10)" >
+                <constraints
+                    foreignKeyName="fk_external_connection_contact_person"
+                    references="person(id)"/>
+            </column>
+            <column name="last_updated" type="DATE" />
+        </createTable>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="external_connection_contact_seq" startValue="1" />
+    </changeSet>
+
+    <changeSet author="csteele" id="3">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="certificate_authentication_data" />
+            </not>
+        </preConditions>
+        <createTable schemaName="clinlims"
+            tableName="certificate_authentication_data">
+            <column name="id" type="INTEGER" valueSequenceNext="external_connection_authentication_data_seq" >
+                <constraints primaryKey="true" />
+            </column>
+            <column name="external_connection_id" type="INTEGER" >
+                <constraints
+                    foreignKeyName="fk_certificate_authentication_data_external_connection"
+                    references="external_connection(id)"/>
+            </column>
+            <column name="last_updated" type="DATE" />
+        </createTable>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="external_connection_authentication_data_seq" startValue="1" />
+    </changeSet>
+
+    <changeSet author="csteele" id="4">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="basic_authentication_data" />
+            </not>
+        </preConditions>
+        <createTable schemaName="clinlims"
+            tableName="basic_authentication_data">
+            <column name="id" type="INTEGER" valueSequenceNext="external_connection_authentication_data_seq" >
+                <constraints primaryKey="true" />
+            </column>
+            <column name="external_connection_id" type="INTEGER" >
+                <constraints
+                    foreignKeyName="fk_basic_authentication_data_external_connection"
+                    references="external_connection(id)"/>
+            </column>
+            <column name="username" type="VARCHAR(255)" />
+            <column name="password" type="VARCHAR(255)" />
+            <column name="last_updated" type="DATE" />
+        </createTable>
+    </changeSet>
+
+    <changeSet author="csteele" id="5">
+        <preConditions onFail="WARN">
+            <tableExists tableName="basic_authentication_data" />
+        </preConditions>
+        <addUniqueConstraint schemaName="clinlims"
+            tableName="basic_authentication_data" columnNames="external_connection_id" constraintName="unique_basic_authentication_data_external_connection_id"/>
+    </changeSet>
+
 </databaseChangeLog>

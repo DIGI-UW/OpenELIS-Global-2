@@ -1,27 +1,22 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.dataexchange.malariareporting;
 
+import jakarta.servlet.http.HttpServletResponse;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.servlet.http.HttpServletResponse;
-
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.DateUtil;
@@ -69,7 +64,6 @@ public class MalariaReportingTransfer {
         if (queueType != null) {
             QUEUE_TYPE_ID = queueType.getId();
         }
-
     }
 
     public void sendResults(ResultReportXmit resultReport, List<Result> reportingResult, String url) {
@@ -83,7 +77,6 @@ public class MalariaReportingTransfer {
         ITransmissionResponseHandler responseHandler = new ResultFailHandler(reportingResult);
 
         new ReportTransmission().sendReport(resultReport, castorPropertyName, url, sendAsychronously, responseHandler);
-
     }
 
     class ResultFailHandler implements ITransmissionResponseHandler {
@@ -117,7 +110,7 @@ public class MalariaReportingTransfer {
             try {
                 reportExternalExportService.insert(report);
             } catch (LIMSRuntimeException e) {
-                LogEvent.logErrorStack(e);
+                LogEvent.logError(e);
             }
         }
 
@@ -153,11 +146,11 @@ public class MalariaReportingTransfer {
 
             try {
                 trackService.insertAll(documents);
-//				for (DocumentTrack document : documents) {
-//					trackService.insert(document);
-//				}
+                // for (DocumentTrack document : documents) {
+                // trackService.insert(document);
+                // }
             } catch (LIMSRuntimeException e) {
-                LogEvent.logErrorStack(e);
+                LogEvent.logError(e);
             }
         }
     }

@@ -1,18 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.qaevent.worker;
 
@@ -20,7 +17,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.address.service.PersonAddressService;
@@ -117,7 +113,7 @@ public class NonConformityUpdateWorker implements INonConformityUpdateWorker {
     private boolean updateSampleHuman;
 
     public static final String NOTE_SUBJECT = "QaEvent Note";
-    private final static boolean REJECT_IF_EMPTY = true;
+    private static final boolean REJECT_IF_EMPTY = true;
 
     @Autowired
     private ObservationHistoryService observationService;
@@ -172,7 +168,6 @@ public class NonConformityUpdateWorker implements INonConformityUpdateWorker {
     }
 
     public NonConformityUpdateWorker() {
-
     }
 
     @Override
@@ -314,14 +309,13 @@ public class NonConformityUpdateWorker implements INonConformityUpdateWorker {
             }
 
         } catch (LIMSRuntimeException e) {
-            if (e.getException() instanceof StaleObjectStateException) {
+            if (e.getCause() instanceof StaleObjectStateException) {
                 errors.reject("errors.OptimisticLockException", "errors.OptimisticLockException");
             } else {
                 LogEvent.logDebug(e);
                 errors.reject("errors.UpdateException", "errors.UpdateException");
             }
             throw e;
-
         }
 
         return IActionConstants.FWD_SUCCESS_INSERT;
@@ -506,9 +500,7 @@ public class NonConformityUpdateWorker implements INonConformityUpdateWorker {
         }
     }
 
-    /**
-     * This is for when patients can not be added through the form
-     */
+    /** This is for when patients can not be added through the form */
     private void setPatient() {
 
         if (!GenericValidator.isBlankOrNull(webData.getPatientId())) {
@@ -595,7 +587,6 @@ public class NonConformityUpdateWorker implements INonConformityUpdateWorker {
             addAddressPart(webData.getRequesterDepartment(), TableIdService.getInstance().ADDRESS_DEPARTMENT_ID,
                     addressPartList, "D");
         }
-
     }
 
     private void addAddressPart(String value, String partId, List<PersonAddress> addressPartList, String type) {
@@ -697,7 +688,7 @@ public class NonConformityUpdateWorker implements INonConformityUpdateWorker {
     }
 
     private void addNoteToSampleIfNeeded() {
-        String noteText = webData.getNoteText();// newOrBlankFieldValue(webData.getNewNoteText(),
+        String noteText = webData.getNoteText(); // newOrBlankFieldValue(webData.getNewNoteText(),
         // webData.getNoteText());
         if (!GenericValidator.isBlankOrNull(noteText)) {
             Note note = findExistingSampleNote();
@@ -717,7 +708,6 @@ public class NonConformityUpdateWorker implements INonConformityUpdateWorker {
                 insertableNotes.add(noteSet);
             }
         }
-
     }
 
     private SampleQaEvent addSampleQaEvent(QaEventItem item, SampleItem sampleItem) {
@@ -744,7 +734,6 @@ public class NonConformityUpdateWorker implements INonConformityUpdateWorker {
     }
 
     /**
-     *
      * @param item         The Item to be evaluated
      * @param sampleItem   The item being checked for existence
      * @param sampleTypeId The type of the sample item
@@ -833,7 +822,6 @@ public class NonConformityUpdateWorker implements INonConformityUpdateWorker {
     }
 
     /**
-     *
      * @param item The Item to be evaluated
      * @return TRUE if is new, contains some reason and isn't marked for delete
      */

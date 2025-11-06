@@ -5,9 +5,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
 <%--
   ~ The contents of this file are subject to the Mozilla Public License
@@ -120,6 +120,7 @@
                    class="textButton"/><br>
             &nbsp;&nbsp;&nbsp;&nbsp;<%=MessageUtil.getMessage("configuration.selectList.add.explain")%><br />
             &nbsp;&nbsp;&nbsp;&nbsp;<%=MessageUtil.getMessage("configuration.selectList.add.alert")%></li>
+         <li><a href="http://localhost:3000/admin"  target="_blank"><u>Manage Testing Algorithms and Reflex tests</u></a></li>    
 
     </ul>
 

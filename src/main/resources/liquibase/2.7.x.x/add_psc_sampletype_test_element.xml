@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="CIV developer Group" id="202305021" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="localization" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.localization WHERE description = 'PSC'</sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value ="PSC"/>
+            <column name="english" value ="PSC"/>
+            <column name="french" value ="PSC"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="CIV developer Group" id="202305022" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="type_of_sample" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'PSC'</sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value ="PSC"/>
+            <column name="domain" value ="H"/>
+            <column name="local_abbrev" value ="PSC"/>
+            <column name="is_active" valueBoolean ="true"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE description = 'PSC')"/>
+            <column name="display_key" value ="sample.type.PSC"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202305023" context="ci_regional,ci_general,CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sampletype_test" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'PSC'</sqlCheck>
+        </preConditions>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'PSC')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Viral Load')"/>
+        </insert>
+    </changeSet>
+    </databaseChangeLog>

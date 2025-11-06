@@ -28,5 +28,4 @@ public abstract class LogbookResultsBaseController extends BaseController {
             titleKey = section;
         }
     }
-
 }

@@ -1,20 +1,22 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
  */
 package org.openelisglobal.common.provider.reports;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,12 +29,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
-
-import javax.servlet.ServletException;
-import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JRParameter;
+import net.sf.jasperreports.engine.JasperReport;
+import net.sf.jasperreports.engine.JasperRunManager;
+import net.sf.jasperreports.engine.util.JRLoader;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.valueholder.Analyte;
@@ -41,9 +42,9 @@ import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSResultsReportHasNoDataException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
@@ -85,19 +86,14 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import org.springframework.validation.Errors;
 
-import net.sf.jasperreports.engine.JRException;
-import net.sf.jasperreports.engine.JRParameter;
-import net.sf.jasperreports.engine.JasperReport;
-import net.sf.jasperreports.engine.JasperRunManager;
-import net.sf.jasperreports.engine.util.JRLoader;
-
 /**
  * @author benzd1 bugzilla 2264 bugzilla 1856 move pending tests to top section
  *         sort tests (parent/child recursive by sort order of test) add section
  *         previously reported tests
  */
-//TODO csl - this class is the only one that uses TransactionTemplate,
-//this should be changed so it uses @Transactional  for transaction management like every other class
+// TODO csl - this class is the only one that uses TransactionTemplate,
+// this should be changed so it uses @Transactional  for transaction management like every other
+// class
 public class ResultsReportProvider extends BaseReportsProvider {
 
     private final TransactionTemplate transactionTemplate;
@@ -125,8 +121,8 @@ public class ResultsReportProvider extends BaseReportsProvider {
     String testingPendingMessage;
     private String resultsReportType;
     private ResultsReportAnalyteResult reportAnalyteResult;
-    private final static int CURRENT_SECTION = 1;
-    private final static int PREVIOUS_SECTION = 2;
+    private static final int CURRENT_SECTION = 1;
+    private static final int PREVIOUS_SECTION = 2;
 
     public ResultsReportProvider() {
         PlatformTransactionManager transactionManager = SpringContext.getBean(PlatformTransactionManager.class);
@@ -138,8 +134,8 @@ public class ResultsReportProvider extends BaseReportsProvider {
      * (non-Javadoc)
      *
      * @see org.openelisglobal.common.provider.reports.BaseReportsProvider#
-     * processRequest(java.util.Map, javax.servlet.http.HttpServletRequest,
-     * javax.servlet.http.HttpServletResponse)
+     * processRequest(java.util.Map, jakarta.servlet.http.HttpServletRequest,
+     * jakarta.servlet.http.HttpServletResponse)
      */
     @Override
     public boolean processRequest(Map parameters, HttpServletRequest request, HttpServletResponse response)
@@ -245,11 +241,11 @@ public class ResultsReportProvider extends BaseReportsProvider {
                     HashMap samples = new HashMap();
                     ResultsReportSample reportSample = new ResultsReportSample();
                     List currentTests = new ArrayList();
-//                    List previousTests = new ArrayList();
+                    // List previousTests = new ArrayList();
                     List currentTestsToReport = new ArrayList();
-//                    List previousTestsToReport = new ArrayList();
-//                    List currentAnalyteResults = new ArrayList();
-//                    List previousAnalyteResults = new ArrayList();
+                    // List previousTestsToReport = new ArrayList();
+                    // List currentAnalyteResults = new ArrayList();
+                    // List previousAnalyteResults = new ArrayList();
                     reportAnalyteResult = new ResultsReportAnalyteResult();
 
                     amendedMessage = getMessageForKey(request, "label.jasper.results.report.amended");
@@ -439,7 +435,6 @@ public class ResultsReportProvider extends BaseReportsProvider {
                         currentTests.add(reportTest);
                         reportSample.setTests(currentTests);
                         samples.put(accessionNumber, reportSample);
-
                     }
 
                     // JRBeanCollectionDataSource ds = new JRBeanCollectionDataSource(samples);
@@ -532,7 +527,6 @@ public class ResultsReportProvider extends BaseReportsProvider {
                         samp.setResultsReportTests(testsDS);
 
                         samplesList.add(samp);
-
                     }
 
                     // sort samples by organization id and accessionNumber
@@ -576,11 +570,11 @@ public class ResultsReportProvider extends BaseReportsProvider {
                 } catch (JRException e) {
                     errors.reject("errors.jasperreport.general");
                     // bugzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     // rethrow an exception so transaction management detects it and rolls back
                     throw new LIMSRuntimeException(e);
                 } catch (LIMSResultsReportHasNoDataException e) {
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     if (accessionNumbers.size() > 1) {
                         // message if report is for several samples
                         errors.reject("errors.jasperreport.resultsreports.nodata");
@@ -591,12 +585,12 @@ public class ResultsReportProvider extends BaseReportsProvider {
                     // rethrow an exception so transaction management detects it and rolls back
                     throw new LIMSRuntimeException(e);
                 } catch (org.hibernate.StaleObjectStateException e) {
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     errors.reject("errors.OptimisticLockException");
                     // rethrow an exception so transaction management detects it and rolls back
                     throw new LIMSRuntimeException(e);
                 } catch (IOException | RuntimeException e) {
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     errors.reject("errors.jasperreport.general");
                     // rethrow an exception so transaction management detects it and rolls back
                     throw new LIMSRuntimeException(e);
@@ -647,7 +641,6 @@ public class ResultsReportProvider extends BaseReportsProvider {
             reportTest.setAnalysisId(analysis.getId());
 
             testsToReport.add(reportTest);
-
         }
         return testsToReport;
     }
@@ -672,10 +665,8 @@ public class ResultsReportProvider extends BaseReportsProvider {
             reportTest.setAnalysisId(pendingAnalysis.getId());
             reportTest.setTestDescription(TestServiceImpl.getLocalizedTestNameWithType(pendingAnalysis.getTest()));
             pendingReportTests.add(reportTest);
-
         }
         return pendingReportTests;
-
     }
 
     // bugzilla 1856
@@ -741,7 +732,8 @@ public class ResultsReportProvider extends BaseReportsProvider {
                 reportAnalyteResult.setAnalyte(analyte);
                 reportAnalyteResult.setComponentName(analyte.getAnalyteName());
                 String resultValue = "";
-                if (result.getResultType().equals(SystemConfiguration.getInstance().getDictionaryType())) {
+                if (result.getResultType()
+                        .equals(ConfigurationProperties.getInstance().getPropertyValue("dictionaryType"))) {
                     Dictionary dictionary = new Dictionary();
                     dictionary.setId(result.getValue());
                     dictionaryService.getData(dictionary);

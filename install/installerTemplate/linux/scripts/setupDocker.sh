@@ -16,15 +16,21 @@ if [ -x "$(command -v docker)" ]; then
     echo "docker already installed. Continuing"
 else
     echo "Installing docker"
-    bash ${scriptDir}/get-docker.sh
+    sudo apt update
+    sudo apt install -y ca-certificates curl gnupg lsb-release
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    sudo apt update
+    sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 fi
 
-if [ -x "$(command -v docker-compose)" ]; then
-    echo "docker-compose already installed. Continuing"
+sudo docker compose version
+status=$?
+if [ $status -eq 0 ]; then
+    echo "docker already installed. Continuing"
 else
-    echo "Installing docker-compose"
-    cp ${scriptDir}/../bin/docker-compose /usr/local/bin/docker-compose
-    chmod +x /usr/local/bin/docker-compose
+    echo "Installing docker"
+    sudo apt update
+    sudo apt install docker-compose-plugin
 fi
-
-

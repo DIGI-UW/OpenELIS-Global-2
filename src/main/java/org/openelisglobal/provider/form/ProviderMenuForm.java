@@ -1,13 +1,11 @@
 package org.openelisglobal.provider.form;
 
+import jakarta.validation.constraints.Pattern;
 import java.util.List;
-
-import javax.validation.constraints.Pattern;
-
-import org.hibernate.validator.constraints.SafeHtml;
 import org.openelisglobal.common.form.AdminOptionMenuForm;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.provider.valueholder.Provider;
+import org.openelisglobal.validation.annotations.SafeHtml;
 
 public class ProviderMenuForm extends AdminOptionMenuForm<Provider> {
 
@@ -16,7 +14,7 @@ public class ProviderMenuForm extends AdminOptionMenuForm<Provider> {
 
     private List<@Pattern(regexp = ValidationHelper.ID_REGEX) String> selectedIDs;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String searchString = "";
 
     public ProviderMenuForm() {
@@ -51,4 +49,13 @@ public class ProviderMenuForm extends AdminOptionMenuForm<Provider> {
         this.searchString = searchString;
     }
 
+    private List<Provider> providers;
+
+    public List<Provider> getProviders() {
+        return providers;
+    }
+
+    public void setProviders(List<Provider> providers) {
+        this.providers = providers;
+    }
 }

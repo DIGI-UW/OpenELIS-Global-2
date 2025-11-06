@@ -1,9 +1,7 @@
 package org.openelisglobal.qaevent.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
@@ -67,7 +65,6 @@ public class CorrectiveActionController extends BaseController {
         } else {
             return findForward(FWD_FAIL_INSERT, form);
         }
-
     }
 
     @RequestMapping(value = "/ResolveNonConformingEvent", method = RequestMethod.POST)
@@ -81,7 +78,6 @@ public class CorrectiveActionController extends BaseController {
         } else {
             return findForward(FWD_FAIL_INSERT, form);
         }
-
     }
 
     @Override

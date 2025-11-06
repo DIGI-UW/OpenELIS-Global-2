@@ -1,18 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.dataexchange.resultreporting;
 
@@ -23,7 +20,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
@@ -289,7 +285,7 @@ public class ResultReportingCollator {
                 || (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType()) && "0".equals(
                         result.getValue()) /*
                                             * || !VALIDATED_RESULT_STATUS_ID.equals(result.getAnalysis().getStatusId())
-                                            */ );
+                                            */);
     }
 
     public ResultReportXmit getResultReport() {
@@ -351,16 +347,6 @@ public class ResultReportingCollator {
                 patientIdentity = patientIdentityService.getPatitentIdentityForPatientAndType(patientId,
                         GUID_IDENTITY_TYPE);
             }
-
-            // Everything between these comments are for testing only and should be remove
-            // beforE they go into production
-//			if (SystemConfiguration.getInstance().useTestPatientGUID() &&  patientIdentity == null) {
-//				patientIdentity = new PatientIdentity();
-//				patientIdentity.setIdentityData(UUID.randomUUID().toString());
-//				patientIdentity.setIdentityTypeId(GUID_IDENTITY_TYPE);
-//				patientIdentity.setPatientId(patientId);
-//			}
-            // End of testing comment
 
             if (patientIdentity == null) {
                 noGUIDPatients.add(patientId);

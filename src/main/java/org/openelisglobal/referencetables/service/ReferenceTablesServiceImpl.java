@@ -1,7 +1,6 @@
 package org.openelisglobal.referencetables.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.referencetables.dao.ReferenceTablesDAO;
@@ -13,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ReferenceTablesServiceImpl extends BaseObjectServiceImpl<ReferenceTables, String>
         implements ReferenceTablesService {
+
     @Autowired
     protected ReferenceTablesDAO baseObjectDAO;
 
@@ -35,7 +35,6 @@ public class ReferenceTablesServiceImpl extends BaseObjectServiceImpl<ReferenceT
     @Transactional(readOnly = true)
     public void getData(ReferenceTables referenceTables) {
         getBaseObjectDAO().getData(referenceTables);
-
     }
 
     @Override

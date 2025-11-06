@@ -1,26 +1,24 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
-*
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
+ */
 package org.openelisglobal.reports.action.implementation;
 
 import java.sql.Timestamp;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-
+import net.sf.jasperreports.engine.JRDataSource;
+import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -40,14 +38,10 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
-
 /**
  * @author Paul A. Hill (pahill@uw.edu)
  * @since Feb 18, 2011
  */
-
 public class ReferredOutReport extends PatientReport implements IReportParameterSetter, IReportCreator {
 
     private String lowDateStr;
@@ -138,9 +132,7 @@ public class ReferredOutReport extends PatientReport implements IReportParameter
         }
     }
 
-    /**
-     * check everything
-     */
+    /** check everything */
     private boolean validateSubmitParameters() {
         return (dateRange.validateHighLowDate("report.error.message.date.received.missing") && reportLocation != null);
     }
@@ -219,9 +211,7 @@ public class ReferredOutReport extends PatientReport implements IReportParameter
             Timestamp referralReportDate = referralResult.getReferralReportDate();
             data.setReferralResultReportDate(
                     (referralReportDate == null) ? null : DateUtil.formatDateAsText(referralReportDate));
-            ReferralReason reason = new ReferralReason();
-            reason.setId(referral.getReferralReasonId());
-            referralReasonService.getData(reason);
+            ReferralReason reason = referralReasonService.get(referral.getReferralReasonId());
             data.setReferralReason(reason.getLocalizedName());
 
             reportItems.add(data);

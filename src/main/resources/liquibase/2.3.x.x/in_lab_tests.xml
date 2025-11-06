@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<property name="now" value="now()" dbms="postgresql" />
+    <property name="now" value="now()" dbms="postgresql" />
 
-	<changeSet author="csteele" id="1">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<columnExists tableName="test" columnName="in_lab_only" />
-			</not>
-		</preConditions>
-		<addColumn schemaName="clinlims" tableName="test">
-			<column name="in_lab_only" type="boolean" defaultValueBoolean="false"/>
-		</addColumn>
-	</changeSet>
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="test" columnName="in_lab_only" />
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="test">
+            <column name="in_lab_only" type="boolean" defaultValueBoolean="false"/>
+        </addColumn>
+    </changeSet>
 
 </databaseChangeLog>

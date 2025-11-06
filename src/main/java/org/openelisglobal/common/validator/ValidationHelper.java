@@ -1,7 +1,6 @@
 package org.openelisglobal.common.validator;
 
 import java.util.regex.Pattern;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.util.validator.CustomDateValidator;

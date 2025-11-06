@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+<!-- TB observation history type -->
+<changeSet author="CIV developer Group" id="2023092301"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.observation_history_type WHERE type_name = 'TbOrderReason'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.observation_history_type(id, type_name, description,lastupdated) VALUES
+            (nextval('observation_history_type_seq'),'TbOrderReason','Reason for TB order',now()),
+            (nextval('observation_history_type_seq'),'TbDiagnosticReason','Reason for a TB Patient Diagnostic',now()),
+            (nextval('observation_history_type_seq'),'TbFollowupReason','Reason for a TB Patient Followup',now()),
+            (nextval('observation_history_type_seq'),'TbAnalysisMethod','Method for TB Analysis',now()),
+            (nextval('observation_history_type_seq'),'TbSampleAspects','Aspects for a TB sample',now()),
+            (nextval('observation_history_type_seq'),'TbFollowupReasonPeriodLine1','Period for a the TB Patient followup 1st Line',now()),
+            (nextval('observation_history_type_seq'),'TbFollowupReasonPeriodLine2','Period for a the TB Patient followup 2nd Line',now());
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

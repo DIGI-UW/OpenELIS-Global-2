@@ -1,17 +1,13 @@
 package org.openelisglobal.externalconnections.form;
 
+import jakarta.validation.constraints.Pattern;
 import java.util.List;
-
-import javax.validation.constraints.Pattern;
-
 import org.openelisglobal.common.form.AdminOptionMenuForm;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.externalconnections.valueholder.ExternalConnection;
 
 public class ExternalConnectionMenuForm extends AdminOptionMenuForm<ExternalConnection> {
-    /**
-     *
-     */
+    /** */
     private static final long serialVersionUID = -5867483862656304158L;
 
     private String lastupdated;

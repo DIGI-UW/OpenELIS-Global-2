@@ -1,12 +1,10 @@
 package org.openelisglobal.systemmodule.daoimpl;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.apache.commons.validator.GenericValidator;
-import org.hibernate.Query;
 import org.hibernate.Session;
+import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -40,17 +38,15 @@ public class SystemModuleUrlDAOImpl extends BaseDAOImpl<SystemModuleUrl, String>
         List<SystemModuleUrl> list;
         try {
             String sql = "From SystemModuleUrl smu where smu.urlPath = :urlPath";
-            Query query = entityManager.unwrap(Session.class).createQuery(sql);
-            query.setString("urlPath", urlPath);
+            Query<SystemModuleUrl> query = entityManager.unwrap(Session.class).createQuery(sql, SystemModuleUrl.class);
+            query.setParameter("urlPath", urlPath);
             list = query.list();
         } catch (RuntimeException e) {
-            LogEvent.logDebug(e);
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in SystemModuleUrl getByUrlPath()", e);
         }
 
         return list;
-
     }
 
     @Override
@@ -60,39 +56,17 @@ public class SystemModuleUrlDAOImpl extends BaseDAOImpl<SystemModuleUrl, String>
             return moduleUrl;
         }
         try {
-            String sql = "From SystemModuleUrl smu where smu.urlPath = :urlPath AND smu.systemModule = :systemModuleId";
-            Query query = entityManager.unwrap(Session.class).createQuery(sql);
-            query.setString("urlPath", urlPath);
-            query.setInteger("systemModuleId", Integer.parseInt(moduleId));
-            moduleUrl = (SystemModuleUrl) query.getResultStream().findFirst().orElse(null);
+            String sql = "From SystemModuleUrl smu where smu.urlPath = :urlPath AND smu.systemModule ="
+                    + " :systemModuleId";
+            Query<SystemModuleUrl> query = entityManager.unwrap(Session.class).createQuery(sql, SystemModuleUrl.class);
+            query.setParameter("urlPath", urlPath);
+            query.setParameter("systemModuleId", Integer.parseInt(moduleId));
+            moduleUrl = query.getResultStream().findFirst().orElse(null);
         } catch (RuntimeException e) {
-            LogEvent.logDebug(e);
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in SystemModuleUrl getByUrlPath()", e);
         }
 
         return moduleUrl;
     }
-
-//	@Override
-//	public boolean insertData(SystemModuleUrl systemModuleUrl) throws LIMSRuntimeException {
-//
-//		try {
-//
-//			String id = (String) entityManager.unwrap(Session.class).save(systemModuleUrl);
-//			systemModuleUrl.setId(id);
-//
-//			// entityManager.unwrap(Session.class).flush(); // CSL remove old
-//			// entityManager.unwrap(Session.class).clear(); // CSL remove old
-//			// closeSession(); // CSL remove old
-//		} catch (RuntimeException e) {
-//			// bugzilla 2154
-//			LogEvent.logDebug(e);
-//			LogEvent.logError("SystemModuleDAOImpl", "insertData()", e.toString());
-//			throw new LIMSRuntimeException("Error in SystemModule insertData()", e);
-//		}
-//
-//	return true;
-//}
-
 }

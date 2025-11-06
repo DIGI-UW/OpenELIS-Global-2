@@ -1,5 +1,6 @@
 package org.openelisglobal.test.validator;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.ParseException;
@@ -38,9 +39,11 @@ public class BatchTestReassignmentFormValidator implements Validator {
                 // true);
 
                 JSONArray replacements = JSONUtils.getAsArray(batchTest.get("replace"));
-                for (int i = 0; i < replacements.size(); ++i) {
-                    ValidationHelper.validateIdField(StringUtil.nullSafeToString(replacements.get(i)), "JsonWad",
-                            "replace[" + i + "]", errors, true);
+                if (ObjectUtils.isNotEmpty(replacements)) {
+                    for (int i = 0; i < replacements.size(); ++i) {
+                        ValidationHelper.validateIdField(StringUtil.nullSafeToString(replacements.get(i)), "JsonWad",
+                                "replace[" + i + "]", errors, true);
+                    }
                 }
 
                 JSONArray changesNotStarted = JSONUtils.getAsArray(batchTest.get("changeNotStarted"));
@@ -96,5 +99,4 @@ public class BatchTestReassignmentFormValidator implements Validator {
             errors.rejectValue("jsonWad", "error.field.json.format.invalid");
         }
     }
-
 }

@@ -1,18 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.testreflex.action.util;
 
@@ -21,7 +18,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.service.AnalyteService;
@@ -151,7 +147,6 @@ public class RetroCIReflexActions extends ReflexAction {
                 createReflexedAnalysis(test);
             }
         }
-
     }
 
     public Result getCD4CalculationResult(Sample sample) {
@@ -172,8 +167,9 @@ public class RetroCIReflexActions extends ReflexAction {
 
         if (CD4Result != null && GBResult != null && LymphResult != null) {
             try {
-                double result = Double.parseDouble(CD4Result.getValue()) * Double.parseDouble(GBResult.getValue())
-                        * Double.parseDouble(LymphResult.getValue()) * 0.1;
+                double result = Double.parseDouble(CD4Result.getValue(true))
+                        * Double.parseDouble(GBResult.getValue(true)) * Double.parseDouble(LymphResult.getValue(true))
+                        * 0.1;
                 result = Math.rint(result);
 
                 calculatedResult = resultService.getResultForAnalyteInAnalysisSet(ANALYTE_CD4_CT_GENERATED.getId(),
@@ -191,7 +187,7 @@ public class RetroCIReflexActions extends ReflexAction {
                 calculatedResult.setValue(String.valueOf(result));
 
             } catch (NumberFormatException e) {
-                LogEvent.logInfo(this.getClass().getName(), "getCD4CalculationResult", e.getMessage());
+                LogEvent.logInfo(this.getClass().getSimpleName(), "getCD4CalculationResult", e.getMessage());
                 // no op final result should be null. Handles the case of "XXXX"
             }
         }

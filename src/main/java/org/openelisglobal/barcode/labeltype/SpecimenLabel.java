@@ -1,10 +1,11 @@
 package org.openelisglobal.barcode.labeltype;
 
+import com.itextpdf.text.Font;
+import com.itextpdf.text.Font.FontFamily;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.barcode.LabelField;
@@ -28,7 +29,6 @@ import org.openelisglobal.test.valueholder.Test;
  * Stores values and formatting for Specimen Labels
  *
  * @author Caleb
- *
  */
 public class SpecimenLabel extends Label {
 
@@ -39,18 +39,18 @@ public class SpecimenLabel extends Label {
         aboveFields = new ArrayList<>();
 
         LabelField field;
-        field = new LabelField(MessageUtil.getMessage("barcode.label.info.patientname"), "", 6);
+        field = new LabelField(MessageUtil.getMessage("barcode.label.info.patientname"), "", 12);
         field.setDisplayFieldName(true);
         field.setUnderline(true);
         aboveFields.add(field);
 
-        field = new LabelField(MessageUtil.getMessage("barcode.label.info.patientdob"), "", 4);
+        field = new LabelField(MessageUtil.getMessage("barcode.label.info.patientdob"), "", 8);
         field.setDisplayFieldName(true);
         field.setUnderline(true);
         aboveFields.add(field);
 
         LabelField siteField = new LabelField(MessageUtil.getMessage("barcode.label.info.site"),
-                StringUtils.substring(facilityName, 0, 20), 4);
+                StringUtils.substring(facilityName, 0, 20), 8);
         siteField.setDisplayFieldName(true);
         aboveFields.add(siteField);
 
@@ -66,40 +66,46 @@ public class SpecimenLabel extends Label {
         // adding fields below bar code
         belowFields = new ArrayList<>();
         String useDateTime = ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_FIELD_DATE);
+        String useCollectedBy = ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.SPECIMEN_FIELD_COLLECTED_BY);
         String useSex = ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_FIELD_SEX);
         String useTests = ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_FIELD_TESTS);
         if ("true".equals(useSex)) {
-            LabelField sexField = new LabelField(MessageUtil.getMessage("barcode.label.info.patientsex"), "", 2);
+            LabelField sexField = new LabelField(MessageUtil.getMessage("barcode.label.info.patientsex"), "", 4);
             sexField.setDisplayFieldName(true);
             sexField.setUnderline(true);
             belowFields.add(sexField);
         }
         if ("true".equals(useDateTime)) {
-            LabelField dateField = new LabelField(MessageUtil.getMessage("barcode.label.info.collectiondate"), "",
-                    3);
+            LabelField dateField = new LabelField(MessageUtil.getMessage("barcode.label.info.collectiondate"), "", 6);
             dateField.setDisplayFieldName(true);
             dateField.setUnderline(true);
             belowFields.add(dateField);
-            dateField = new LabelField(MessageUtil.getMessage("barcode.label.info.collectiontime"), "", 2);
+            dateField = new LabelField(MessageUtil.getMessage("barcode.label.info.collectiontime"), "", 4);
             dateField.setUnderline(true);
             belowFields.add(dateField);
         }
-        LabelField collectorField = new LabelField(MessageUtil.getMessage("barcode.label.info.collectorid"),
-                StringUtils.substring("", 0, 15), 3);
-        collectorField.setDisplayFieldName(true);
-        collectorField.setUnderline(true);
-        belowFields.add(collectorField);
+        if ("true".equals(useCollectedBy)) {
+            LabelField collectorField = new LabelField(MessageUtil.getMessage("barcode.label.info.collectorid"),
+                    StringUtils.substring("", 0, 15), 6);
+            collectorField.setDisplayFieldName(true);
+            collectorField.setUnderline(true);
+            belowFields.add(collectorField);
+        }
         if ("true".equals(useTests)) {
             LabelField testsField = new LabelField(MessageUtil.getMessage("barcode.label.info.tests"),
-                    StringUtil.replaceNullWithEmptyString(tests.toString()), 10);
+                    StringUtil.replaceNullWithEmptyString(tests.toString()), 20);
             testsField.setStartNewline(true);
             belowFields.add(testsField);
         }
 
         // add code
-//      String sampleCode = sampleItem.getSortOrder();
-//      setCode(labNo + "." + sampleCode);
+        // String sampleCode = sampleItem.getSortOrder();
+        // setCode(labNo + "." + sampleCode);
         setCode(labNumber);
+
+        setValueFont(new Font(FontFamily.HELVETICA, 7, Font.NORMAL));
+        setNameFont(new Font(FontFamily.HELVETICA, 7, Font.BOLD));
     }
 
     /**
@@ -110,10 +116,10 @@ public class SpecimenLabel extends Label {
      */
     public SpecimenLabel(Patient patient, Sample sample, SampleItem sampleItem, String labNo) {
         // set dimensions
-            width = Float.parseFloat(
-                    ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_BARCODE_WIDTH));
-            height = Float.parseFloat(
-                    ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_BARCODE_HEIGHT));
+        width = Float
+                .parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_BARCODE_WIDTH));
+        height = Float
+                .parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_BARCODE_HEIGHT));
         // get information for displaying above bar code
         SampleOrderService sampleOrderService = new SampleOrderService(sample);
         Person person = patient.getPerson();
@@ -129,11 +135,11 @@ public class SpecimenLabel extends Label {
 
         // adding fields above bar code
         aboveFields = new ArrayList<>();
-        aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientname"), patientName, 6));
-        aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientdob"), dob, 4));
+        aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientname"), patientName, 12));
+        aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientdob"), dob, 8));
         aboveFields.add(getAvailableIdField(patient));
         LabelField siteField = new LabelField(MessageUtil.getMessage("barcode.label.info.site"),
-                StringUtils.substring(referringFacility, 0, 20), 4);
+                StringUtils.substring(referringFacility, 0, 20), 8);
         siteField.setDisplayFieldName(true);
         aboveFields.add(siteField);
 
@@ -155,30 +161,34 @@ public class SpecimenLabel extends Label {
         // adding fields below bar code
         belowFields = new ArrayList<>();
         String useDateTime = ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_FIELD_DATE);
+        String useCollectedBy = ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.SPECIMEN_FIELD_COLLECTED_BY);
         String useSex = ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_FIELD_SEX);
         String useTests = ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_FIELD_TESTS);
         if ("true".equals(useSex)) {
             LabelField sexField = new LabelField(MessageUtil.getMessage("barcode.label.info.patientsex"),
-                    StringUtil.replaceNullWithEmptyString(patient.getGender()), 2);
+                    StringUtil.replaceNullWithEmptyString(patient.getGender()), 4);
             sexField.setDisplayFieldName(true);
             belowFields.add(sexField);
         }
         if ("true".equals(useDateTime)) {
             LabelField dateField = new LabelField(MessageUtil.getMessage("barcode.label.info.collectiondate"),
-                    collectionDate, 3);
+                    collectionDate, 6);
             dateField.setDisplayFieldName(true);
             belowFields.add(dateField);
             dateField = new LabelField(MessageUtil.getMessage("barcode.label.info.collectiontime"),
-                    StringUtil.replaceNullWithEmptyString(collectionTime), 2);
+                    StringUtil.replaceNullWithEmptyString(collectionTime), 4);
             belowFields.add(dateField);
         }
-        LabelField collectorField = new LabelField(MessageUtil.getMessage("barcode.label.info.collectorid"),
-                StringUtils.substring(StringUtil.replaceNullWithEmptyString(collector), 0, 15), 3);
-        collectorField.setDisplayFieldName(true);
-        belowFields.add(collectorField);
+        if ("true".equals(useCollectedBy)) {
+            LabelField collectorField = new LabelField(MessageUtil.getMessage("barcode.label.info.collectorid"),
+                    StringUtils.substring(StringUtil.replaceNullWithEmptyString(collector), 0, 15), 6);
+            collectorField.setDisplayFieldName(true);
+            belowFields.add(collectorField);
+        }
         if ("true".equals(useTests)) {
             LabelField testsField = new LabelField(MessageUtil.getMessage("barcode.label.info.tests"),
-                    StringUtil.replaceNullWithEmptyString(tests.toString()), 10);
+                    StringUtil.replaceNullWithEmptyString(tests.toString()), 20);
             testsField.setStartNewline(true);
             belowFields.add(testsField);
         }
@@ -186,6 +196,9 @@ public class SpecimenLabel extends Label {
         // add code
         String sampleCode = sampleItem.getSortOrder();
         setCode(labNo + "." + sampleCode);
+
+        setValueFont(new Font(FontFamily.HELVETICA, 7, Font.NORMAL));
+        setNameFont(new Font(FontFamily.HELVETICA, 7, Font.BOLD));
     }
 
     /**
@@ -201,14 +214,14 @@ public class SpecimenLabel extends Label {
         String patientId = patientPatientService.getSubjectNumber(patient);
         if (!StringUtil.isNullorNill(patientId)) {
             return new LabelField(MessageUtil.getMessage("barcode.label.info.patientid"),
-                    StringUtils.substring(patientId, 0, 25), 6);
+                    StringUtils.substring(patientId, 0, 25), 12);
         }
         patientId = patientPatientService.getNationalId(patient);
         if (!StringUtil.isNullorNill(patientId)) {
             return new LabelField(MessageUtil.getMessage("barcode.label.info.patientid"),
-                    StringUtils.substring(patientId, 0, 25), 6);
+                    StringUtils.substring(patientId, 0, 25), 12);
         }
-        return new LabelField(MessageUtil.getMessage("barcode.label.info.patientid"), "", 6);
+        return new LabelField(MessageUtil.getMessage("barcode.label.info.patientid"), "", 12);
     }
 
     /*
@@ -241,9 +254,7 @@ public class SpecimenLabel extends Label {
     @Override
     public int getMaxNumLabels() {
         int max = 0;
-            max = Integer
-                    .parseInt(ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_SPECIMEN_PRINTED));
+        max = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_SPECIMEN_PRINTED));
         return max;
     }
-
 }

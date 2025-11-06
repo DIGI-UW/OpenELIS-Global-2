@@ -1,33 +1,28 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
-*
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
+ */
 package org.openelisglobal.referral.action.beanitems;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.validation.Valid;
-import javax.validation.constraints.Pattern;
-
-import org.hibernate.validator.constraints.SafeHtml;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.referral.form.ReferredOutTestsForm;
 import org.openelisglobal.referral.valueholder.ReferralStatus;
+import org.openelisglobal.validation.annotations.SafeHtml;
 import org.openelisglobal.validation.annotations.ValidDate;
 
 public class ReferralItem implements IReferralResultTest, Serializable {
@@ -36,6 +31,7 @@ public class ReferralItem implements IReferralResultTest, Serializable {
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { ReferredOutTestsForm.ReferredOut.class })
     private String referralId;
+
     private String accessionNumber;
     private String sampleType;
     private String referringTestName = "";
@@ -45,7 +41,7 @@ public class ReferralItem implements IReferralResultTest, Serializable {
     @ValidDate(groups = { ReferredOutTestsForm.ReferredOut.class })
     private String referralDate;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
     private String referrer;
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { ReferredOutTestsForm.ReferredOut.class })
@@ -57,16 +53,16 @@ public class ReferralItem implements IReferralResultTest, Serializable {
     private String referredTestIdShadow;
     private List<IdValuePair> testSelectionList;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
     private String referredResult = "";
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { ReferredOutTestsForm.ReferredOut.class })
     private String referredDictionaryResult;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
     private String referredMultiDictionaryResult = "";
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
     private String referredResultType = "";
 
     private List<IdValuePair> dictionaryResults = new ArrayList<>();
@@ -76,12 +72,14 @@ public class ReferralItem implements IReferralResultTest, Serializable {
 
     @ValidDate(groups = { ReferredOutTestsForm.ReferredOut.class })
     private String referredReportDate;
+
     private String pastNotes;
     private String note;
 
     // can't be used as this is an xml wad, but it should be safe since this field
     // is meant to be parsed
-    // @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
+    // @CustomSafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = {
+    // ReferredOutTestsForm.ReferredOut.class })
     private String additionalTestsXMLWad;
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { ReferredOutTestsForm.ReferredOut.class })
@@ -95,13 +93,13 @@ public class ReferralItem implements IReferralResultTest, Serializable {
     @Valid
     private List<ReferredTest> additionalTests;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
     private String inLabResultId;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
     private String multiSelectResultValues;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
     private String qualifiedResultValue;
 
     @Override

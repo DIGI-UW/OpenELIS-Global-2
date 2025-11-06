@@ -1,12 +1,10 @@
 package org.openelisglobal.workplan.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -14,8 +12,8 @@ import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.services.DisplayListService;
-import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
+import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.QAService.QAObservationType;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -29,8 +27,8 @@ import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
 import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.systemuser.service.UserService;
-import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.beanItems.TestResultItem;
+import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.workplan.form.WorkplanForm;
 import org.openelisglobal.workplan.form.WorkplanForm.PrintWorkplan;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,7 +54,7 @@ public class WorkPlanByPriorityController extends BaseWorkplanController {
     @Autowired
     private UserService userService;
     @Autowired
-    private SampleService sampleService ;
+    private SampleService sampleService;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -65,8 +63,7 @@ public class WorkPlanByPriorityController extends BaseWorkplanController {
 
     @RequestMapping(value = "/WorkPlanByPriority", method = RequestMethod.GET)
     public ModelAndView showWorkPlanByPriority(HttpServletRequest request,
-            @ModelAttribute("form") @Validated(PrintWorkplan.class) WorkplanForm oldForm,
-            BindingResult result)
+            @ModelAttribute("form") @Validated(PrintWorkplan.class) WorkplanForm oldForm, BindingResult result)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
         WorkplanForm form = new WorkplanForm();
 
@@ -75,14 +72,15 @@ public class WorkPlanByPriorityController extends BaseWorkplanController {
         List<TestResultItem> workplanTests;
         List<TestResultItem> filteredTests;
 
-        OrderPriority priority = null ;
+        OrderPriority priority = null;
         if (!result.hasFieldErrors("priority")) {
             priority = oldForm.getPriority();
         }
 
         if (priority != null) {
-            workplanTests = getWorkplanByPriority(priority);   
-            filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), workplanTests, Constants.ROLE_RESULTS);
+            workplanTests = getWorkplanByPriority(priority);
+            filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), workplanTests,
+                    Constants.ROLE_RESULTS);
 
             ResultsLoadUtility resultsLoadUtility = new ResultsLoadUtility();
             resultsLoadUtility.sortByAccessionAndSequence(filteredTests);
@@ -109,7 +107,6 @@ public class WorkPlanByPriorityController extends BaseWorkplanController {
         return findForward(FWD_SUCCESS, form);
     }
 
-
     @SuppressWarnings("unchecked")
     private List<TestResultItem> getWorkplanByPriority(OrderPriority priority) {
 
@@ -121,45 +118,39 @@ public class WorkPlanByPriorityController extends BaseWorkplanController {
         int sampleGroupingNumber = 0;
 
         if (priority != null) {
-            List<Sample> samples = sampleService.getSamplesByPriority(priority);
-            for (Sample s : samples) {
-                List<Analysis> analysisList = sampleService.getAnalysis(s);
-                if (analysisList.isEmpty()) {
-                    return new ArrayList<>();
+            List<Analysis> analysisList = analysisService.getAnalysesByPriorityAndStatusId(priority, statusList);
+            for (Analysis analysis : analysisList) {
+                TestResultItem testResultItem = new TestResultItem();
+                testResultItem.setTestId(analysis.getTest().getId());
+                Sample sample = analysis.getSampleItem().getSample();
+                testResultItem.setAccessionNumber(sample.getAccessionNumber());
+                testResultItem.setReceivedDate(getReceivedDateDisplay(sample));
+                testResultItem.setTestName(TestServiceImpl.getUserLocalizedTestName(analysis.getTest()));
+                boolean nonConforming = QAService.isAnalysisParentNonConforming(analysis);
+                if (FormFields.getInstance().useField(Field.QaEventsBySection)) {
+                    nonConforming = nonConforming || getQaEventByTestSection(analysis);
                 }
-                for (Analysis analysis : analysisList) {
-                    TestResultItem testResultItem = new TestResultItem();
-                    testResultItem.setTestId(analysis.getTest().getId());
-                    Sample sample = analysis.getSampleItem().getSample();
-                    testResultItem.setAccessionNumber(sample.getAccessionNumber());
-                    testResultItem.setReceivedDate(getReceivedDateDisplay(sample));
-                    testResultItem.setTestName(TestServiceImpl.getUserLocalizedTestName(analysis.getTest()));
-                    boolean nonConforming = QAService.isAnalysisParentNonConforming(analysis);
-                    if (FormFields.getInstance().useField(Field.QaEventsBySection)) {
-                        nonConforming = nonConforming || getQaEventByTestSection(analysis);
-                    }
-                    testResultItem.setNonconforming(nonConforming);
+                testResultItem.setNonconforming(nonConforming);
 
-                    if (!testResultItem.getAccessionNumber().equals(currentAccessionNumber)) {
-                        sampleGroupingNumber++;
-                        currentAccessionNumber = testResultItem.getAccessionNumber();
-                        subjectNumber = getSubjectNumber(analysis);
-                        patientName = getPatientName(analysis);
-                        nextVisit = SpringContext.getBean(ObservationHistoryService.class)
-                                .getValueForSample(ObservationType.NEXT_VISIT_DATE, sample.getId());
-                    }
-                    testResultItem.setSampleGroupingNumber(sampleGroupingNumber);
-                    testResultItem.setPatientInfo(subjectNumber);
-                    testResultItem.setPatientName(patientName);
-                    testResultItem.setNextVisitDate(nextVisit);
-
-                    workplanTestList.add(testResultItem);
+                if (!testResultItem.getAccessionNumber().equals(currentAccessionNumber)) {
+                    sampleGroupingNumber++;
+                    currentAccessionNumber = testResultItem.getAccessionNumber();
+                    subjectNumber = getSubjectNumber(analysis);
+                    patientName = getPatientName(analysis);
+                    nextVisit = SpringContext.getBean(ObservationHistoryService.class)
+                            .getValueForSample(ObservationType.NEXT_VISIT_DATE, sample.getId());
                 }
+                testResultItem.setSampleGroupingNumber(sampleGroupingNumber);
+                testResultItem.setPatientInfo(subjectNumber);
+                testResultItem.setPatientName(patientName);
+                testResultItem.setNextVisitDate(nextVisit);
+
+                workplanTestList.add(testResultItem);
             }
         }
         return workplanTestList;
     }
-    
+
     private boolean getQaEventByTestSection(Analysis analysis) {
 
         if (analysis.getTestSection() != null && analysis.getSampleItem().getSample() != null) {
@@ -180,7 +171,6 @@ public class WorkPlanByPriorityController extends BaseWorkplanController {
     public List<SampleQaEvent> getSampleQaEvents(Sample sample) {
         return sampleQaEventService.getSampleQaEventsBySample(sample);
     }
-   
 
     @Override
     protected String findLocalForward(String forward) {
@@ -199,7 +189,6 @@ public class WorkPlanByPriorityController extends BaseWorkplanController {
         public int compare(IdValuePair p1, IdValuePair p2) {
             return p1.getValue().toUpperCase().compareTo(p2.getValue().toUpperCase());
         }
-
     }
 
     @Override

@@ -2,7 +2,6 @@ package org.openelisglobal.systemusermodule.service;
 
 import java.util.List;
 import java.util.Set;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.systemusermodule.valueholder.PermissionModule;
 

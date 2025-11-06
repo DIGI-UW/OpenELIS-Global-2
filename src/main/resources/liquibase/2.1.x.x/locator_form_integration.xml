@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-	  
-	  
-  	<property name="now" value="now()" dbms="postgresql"/>
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<changeSet author="csteele" id="1">
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.status_of_sample WHERE status_type = 'EXTERNAL_ORDER' AND name = 'NonConforming'</sqlCheck> 
-		</preConditions>
-		<insert schemaName="clinlims" tableName="status_of_sample">
-			<column name="id" valueSequenceNext="status_of_sample_seq" />
-			<column name="description" value="This order is non-conforming" />
-			<column name="code" value="1" />
-			<column name="status_type" value="EXTERNAL_ORDER" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="name" value="NonConforming" />
-			<column name="display_key" value="status.order.nonConforming" />
-			<column name="is_active" value="Y" />
-		</insert>
-		<rollback>
-			<delete schemaName="clinlims" tableName="status_of_sample">
-				<where>status_type = 'EXTERNAL_ORDER' AND name = 'NonConforming'</where>
-			</delete>
-		</rollback>
-	</changeSet>
-	
+
+      <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.status_of_sample WHERE status_type = 'EXTERNAL_ORDER' AND name = 'NonConforming'</sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="status_of_sample">
+            <column name="id" valueSequenceNext="status_of_sample_seq" />
+            <column name="description" value="This order is non-conforming" />
+            <column name="code" value="1" />
+            <column name="status_type" value="EXTERNAL_ORDER" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="name" value="NonConforming" />
+            <column name="display_key" value="status.order.nonConforming" />
+            <column name="is_active" value="Y" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="status_of_sample">
+                <where>status_type = 'EXTERNAL_ORDER' AND name = 'NonConforming'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

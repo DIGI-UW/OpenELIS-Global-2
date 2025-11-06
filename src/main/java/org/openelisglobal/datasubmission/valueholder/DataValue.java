@@ -1,11 +1,10 @@
 package org.openelisglobal.datasubmission.valueholder;
 
-import javax.validation.constraints.Pattern;
-import javax.validation.groups.Default;
-
-import org.hibernate.validator.constraints.SafeHtml;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.groups.Default;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.datasubmission.form.DataSubmissionForm;
+import org.openelisglobal.validation.annotations.SafeHtml;
 
 public class DataValue extends BaseObject<String> {
     private static final long serialVersionUID = -2843847589920119564L;
@@ -15,8 +14,9 @@ public class DataValue extends BaseObject<String> {
     @Pattern(regexp = "^[a-z0-9_]*$", groups = { Default.class, DataSubmissionForm.DataSubmission.class })
     private String columnName;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { Default.class, DataSubmissionForm.DataSubmission.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { Default.class, DataSubmissionForm.DataSubmission.class })
     private String value;
+
     private String displayKey;
     private boolean visible;
 

@@ -1,5 +1,6 @@
 package org.openelisglobal.testconfiguration.service;
 
+import java.util.List;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
@@ -18,11 +19,13 @@ public class SampleTypeTestAssignServiceImpl implements SampleTypeTestAssignServ
 
     @Override
     @Transactional
-    public void update(TypeOfSample typeOfSample, String testId, String typeOfSamplesTestID, String sampleTypeId,
+    public void update(TypeOfSample typeOfSample, String testId, List<String> typeOfSamplesTestIDs, String sampleTypeId,
             boolean deleteExistingTypeOfSampleTest, boolean updateTypeOfSample, TypeOfSample deActivateTypeOfSample,
             String systemUserId) {
         if (deleteExistingTypeOfSampleTest) {
-            typeOfSampleTestService.delete(typeOfSamplesTestID, systemUserId);
+            for (String typeOfSamplesTestID : typeOfSamplesTestIDs) {
+                typeOfSampleTestService.delete(typeOfSamplesTestID, systemUserId);
+            }
         }
 
         if (updateTypeOfSample) {
@@ -41,5 +44,4 @@ public class SampleTypeTestAssignServiceImpl implements SampleTypeTestAssignServ
             typeOfSampleService.update(deActivateTypeOfSample);
         }
     }
-
 }

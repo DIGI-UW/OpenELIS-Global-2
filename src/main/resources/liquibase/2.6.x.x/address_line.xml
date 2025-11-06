@@ -1,57 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-	  
-	  
-  	<property name="now" value="now()" dbms="postgresql"/>
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<changeSet author="cliff" id="1">
-	    <validCheckSum>8:f0a5a2d50b1a1db52b1ee22e9165294a</validCheckSum>
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.site_information WHERE name = 'Address line 1 label'</sqlCheck> 
-		</preConditions>
-		<insert schemaName="clinlims" tableName="site_information">
-			<column name="id" valueSequenceNext="site_information_seq" />
-			<column name="name" value="Address line 1 label" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="label name for a place" />
-			<column name="value" value="Street" />
-			<column name="encrypted" value="false" />
-			<column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')" />
-			<column name="value_type" value="text" />
-			<column name="instruction_key" value="siteInfo.instruction.label.one" />
-			<column name="group" value="0" />
-			<column name="description_key" value="siteInfo.label.one" />
-		</insert>
-		<insert schemaName="clinlims" tableName="site_information">
-			<column name="id" valueSequenceNext="site_information_seq" />
-			<column name="name" value="Address line 2 label" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="label name for a place" />
-			<column name="value" value="Camp/Commune" />
-			<column name="encrypted" value="false" />
-			<column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')" />
-			<column name="value_type" value="text" />
-			<column name="instruction_key" value="siteInfo.instruction.label.two" />
-			<column name="group" value="0" />
-			<column name="description_key" value="siteInfo.label.two" />
-		</insert>
-		<insert schemaName="clinlims" tableName="site_information">
-			<column name="id" valueSequenceNext="site_information_seq" />
-			<column name="name" value="Address line 3 label" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="label name for a place" />
-			<column name="value" value="Town" />
-			<column name="encrypted" value="false" />
-			<column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')" />
-			<column name="value_type" value="text" />
-			<column name="instruction_key" value="siteInfo.instruction.label.three" />
-			<column name="group" value="0" />
-			<column name="description_key" value="siteInfo.label.three" />
-		</insert>
-	</changeSet>
-	
+
+      <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet author="cliff" id="1">
+        <validCheckSum>8:f0a5a2d50b1a1db52b1ee22e9165294a</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.site_information WHERE name = 'Address line 1 label'</sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="Address line 1 label" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="label name for a place" />
+            <column name="value" value="Street" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')" />
+            <column name="value_type" value="text" />
+            <column name="instruction_key" value="siteInfo.instruction.label.one" />
+            <column name="group" value="0" />
+            <column name="description_key" value="siteInfo.label.one" />
+        </insert>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="Address line 2 label" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="label name for a place" />
+            <column name="value" value="Camp/Commune" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')" />
+            <column name="value_type" value="text" />
+            <column name="instruction_key" value="siteInfo.instruction.label.two" />
+            <column name="group" value="0" />
+            <column name="description_key" value="siteInfo.label.two" />
+        </insert>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="Address line 3 label" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="label name for a place" />
+            <column name="value" value="Town" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')" />
+            <column name="value_type" value="text" />
+            <column name="instruction_key" value="siteInfo.instruction.label.three" />
+            <column name="group" value="0" />
+            <column name="description_key" value="siteInfo.label.three" />
+        </insert>
+    </changeSet>
+
 </databaseChangeLog>

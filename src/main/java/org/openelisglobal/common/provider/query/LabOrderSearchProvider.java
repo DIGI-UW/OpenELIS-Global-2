@@ -1,33 +1,31 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.common.provider.query;
 
+import ca.uhn.fhir.rest.client.api.IGenericClient;
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
@@ -71,18 +69,16 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 
-import ca.uhn.fhir.rest.client.api.IGenericClient;
-
 public class LabOrderSearchProvider extends BaseQueryProvider {
-//	private TestDAO testDAO = new TestDAOImpl();
-//	private PanelDAO panelDAO = new PanelDAOImpl();
-//	private PanelItemDAO panelItemDAO = new PanelItemDAOImpl();
-//	private TypeOfSampleTestDAO typeOfSampleTest = new TypeOfSampleTestDAOImpl();
+    // private TestDAO testDAO = new TestDAOImpl();
+    // private PanelDAO panelDAO = new PanelDAOImpl();
+    // private PanelItemDAO panelItemDAO = new PanelItemDAOImpl();
+    // private TypeOfSampleTestDAO typeOfSampleTest = new TypeOfSampleTestDAOImpl();
 
-//    @Value("${org.openelisglobal.fhirstore.uri.from.eclipse_common.properties}")
-//    private String localFhirStorePath;
-//    @Value("${org.openelisglobal.task.useBasedOn}")
-//    private Boolean useBasedOn;
+    // @Value("${org.openelisglobal.fhirstore.uri.from.eclipse_common.properties}")
+    // private String localFhirStorePath;
+    // @Value("${org.openelisglobal.task.useBasedOn}")
+    // private Boolean useBasedOn;
 
     private FhirConfig fhirConfig = SpringContext.getBean(FhirConfig.class);
     private FhirUtil fhirUtil = SpringContext.getBean(FhirUtil.class);
@@ -123,6 +119,8 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
     private static final String PROVIDER_FIRST_NAME = "firstName";
     private static final String PROVIDER_LAST_NAME = "lastName";
     private static final String PROVIDER_PHONE = "phone";
+    private static final String PROVIDER_EMAIL = "email";
+    private static final String PROVIDER_FAX = "fax";
 
     @Override
     public void processRequest(HttpServletRequest request, HttpServletResponse response)
@@ -131,9 +129,10 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
         String orderNumber = request.getParameter("orderNumber");
         eOrders = electronicOrderService.getElectronicOrdersByExternalId(orderNumber);
 
-//        if (eOrders.isEmpty()) {
-//            eOrders = fhirTransformService.getElectronicOrdersOrdersByServiceRequestId(orderNumber);
-//        }
+        // if (eOrders.isEmpty()) {
+        // eOrders =
+        // fhirTransformService.getElectronicOrdersOrdersByServiceRequestId(orderNumber);
+        // }
         if (!eOrders.isEmpty()) {
             eOrder = eOrders.get(eOrders.size() - 1);
             eOrderStatus = SpringContext.getBean(IStatusService.class)
@@ -149,12 +148,10 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                     if (bundleComponent.hasResource()
                             && ResourceType.ServiceRequest.equals(bundleComponent.getResource().getResourceType())) {
                         serviceRequest = (ServiceRequest) bundleComponent.getResource();
-
                     }
                     if (bundleComponent.hasResource()
                             && ResourceType.Specimen.equals(bundleComponent.getResource().getResourceType())) {
                         specimen = (Specimen) bundleComponent.getResource();
-
                     }
                 }
                 srBundle = (Bundle) localFhirClient.search().forResource(ServiceRequest.class)
@@ -164,107 +161,119 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                     if (bundleComponent.hasResource()
                             && ResourceType.ServiceRequest.equals(bundleComponent.getResource().getResourceType())) {
                         serviceRequest = (ServiceRequest) bundleComponent.getResource();
-
                     }
                     if (bundleComponent.hasResource()
                             && ResourceType.Specimen.equals(bundleComponent.getResource().getResourceType())) {
                         specimen = (Specimen) bundleComponent.getResource();
-
                     }
                 }
             }
             if (serviceRequest != null) {
-                LogEvent.logDebug(this.getClass().getName(), "processRequest",
+                LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest",
                         "found matching serviceRequest " + serviceRequest.getIdElement().getIdPart());
             } else {
-                LogEvent.logDebug(this.getClass().getName(), "processRequest", "no matching serviceRequest");
+                LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest", "no matching serviceRequest");
             }
 
-            patient = localFhirClient.read()//
-                    .resource(Patient.class)//
-                    .withId(serviceRequest.getSubject().getReferenceElement().getIdPart())//
+            patient = localFhirClient.read() //
+                    .resource(Patient.class) //
+                    .withId(serviceRequest.getSubject().getReferenceElement().getIdPart()) //
                     .execute();
 
             if (patient != null) {
-                LogEvent.logDebug(this.getClass().getName(), "processRequest",
+                LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest",
                         "found matching patient " + patient.getIdElement().getIdPart());
             } else {
-                LogEvent.logDebug(this.getClass().getName(), "processRequest", "no matching patient");
+                LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest", "no matching patient");
             }
 
-//            task = fhirUtil.getFhirParser().parseResource(Task.class, eOrder.getData());
+            // task = fhirUtil.getFhirParser().parseResource(Task.class, eOrder.getData());
 
-//          task = (Task) localFhirClient.search()//
-//                  .forResource(Task.class)//
-//                  .where(Task.BASED_ON.hasAnyOfIds(serviceRequest.getId()))//
-//                  .returnBundle(Bundle.class)//
-//                  .execute().getEntryFirstRep().getResource();
+            // task = (Task) localFhirClient.search()//
+            // .forResource(Task.class)//
+            // .where(Task.BASED_ON.hasAnyOfIds(serviceRequest.getId()))//
+            // .returnBundle(Bundle.class)//
+            // .execute().getEntryFirstRep().getResource();
             task = fhirPersistanceService.getTaskBasedOnServiceRequest(orderNumber).orElseThrow();
 
             if (task != null) {
-                LogEvent.logDebug(this.getClass().getName(), "processRequest",
+                LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest",
                         "found matching task " + task.getIdElement().getIdPart());
             } else {
-                LogEvent.logDebug(this.getClass().getName(), "processRequest", "no matching task");
+                LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest", "no matching task");
             }
 
             if (!GenericValidator
                     .isBlankOrNull(task.getRestriction().getRecipientFirstRep().getReferenceElement().getIdPart())) {
-                referringOrganization = localFhirClient.read()//
-                        .resource(Organization.class)//
-                        .withId(task.getRestriction().getRecipientFirstRep().getReferenceElement().getIdPart())//
-                        .execute();
-
-                if (referringOrganization != null) {
-                    LogEvent.logDebug(this.getClass().getName(), "processRequest",
+                try {
+                    referringOrganization = localFhirClient.read() //
+                            .resource(Organization.class) //
+                            .withId(task.getRestriction().getRecipientFirstRep().getReferenceElement().getIdPart()) //
+                            .execute();
+                    LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest",
                             "found matching organization " + referringOrganization.getIdElement().getIdPart());
-                } else {
-                    LogEvent.logDebug(this.getClass().getName(), "processRequest", "no matching organization");
+                } catch (ResourceNotFoundException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "processRequest", "no matching organization");
                 }
             }
 
             if (!GenericValidator
                     .isBlankOrNull(serviceRequest.getLocationReferenceFirstRep().getReferenceElement().getIdPart())) {
-                location = localFhirClient.read()//
-                        .resource(Location.class)//
-                        .withId(serviceRequest.getLocationReferenceFirstRep().getReferenceElement().getIdPart())//
-                        .execute();
-
-                if (location != null) {
-                    LogEvent.logDebug(this.getClass().getName(), "processRequest",
-                            "found matching location " + location.getIdElement().getIdPart());
-                } else {
-                    LogEvent.logDebug(this.getClass().getName(), "processRequest", "no matching location");
+                try {
+                    location = localFhirClient.read() //
+                            .resource(Location.class) //
+                            .withId(serviceRequest.getLocationReferenceFirstRep().getReferenceElement().getIdPart()) //
+                            .execute();
+                    LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest",
+                            "found matching location " + referringOrganization.getIdElement().getIdPart());
+                } catch (ResourceNotFoundException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "processRequest", "no matching location");
                 }
             }
 
-            if (!GenericValidator.isBlankOrNull(serviceRequest.getRequester().getReferenceElement().getIdPart())
-                    && serviceRequest.getRequester().getReference().contains(ResourceType.Practitioner.toString())) {
-                requesterPerson = localFhirClient.read()//
-                        .resource(Practitioner.class)//
-                        .withId(serviceRequest.getRequester().getReferenceElement().getIdPart())//
-                        .execute();
-
-                if (requesterPerson != null) {
-                    LogEvent.logDebug(this.getClass().getName(), "processRequest",
+            if (!GenericValidator.isBlankOrNull(task.getOwner().getReferenceElement().getIdPart())
+                    && task.getOwner().getReference().contains(ResourceType.Practitioner.toString())) {
+                try {
+                    requesterPerson = localFhirClient.read() //
+                            .resource(Practitioner.class) //
+                            .withId(task.getOwner().getReferenceElement().getIdPart()) //
+                            .execute();
+                    LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest",
                             "found matching requester " + requesterPerson.getIdElement().getIdPart());
-                } else {
-                    LogEvent.logDebug(this.getClass().getName(), "processRequest", "no matching requester");
+                } catch (ResourceNotFoundException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "processRequest", "no matching requester");
                 }
+            }
+
+            if (requesterPerson == null) {
+                if (!GenericValidator.isBlankOrNull(serviceRequest.getRequester().getReferenceElement().getIdPart())
+                        && serviceRequest.getRequester().getReference()
+                                .contains(ResourceType.Practitioner.toString())) {
+                    try {
+                        requesterPerson = localFhirClient.read() //
+                                .resource(Practitioner.class) //
+                                .withId(serviceRequest.getRequester().getReferenceElement().getIdPart()) //
+                                .execute();
+                        LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest",
+                                "found matching requester " + requesterPerson.getIdElement().getIdPart());
+                    } catch (ResourceNotFoundException e) {
+                        LogEvent.logWarn(this.getClass().getSimpleName(), "processRequest", "no matching requester");
+                    }
+                }
+
             }
 
             if (specimen != null && !GenericValidator
                     .isBlankOrNull(specimen.getCollection().getCollector().getReferenceElement().getIdPart())) {
-                collector = localFhirClient.read()//
-                        .resource(Practitioner.class)//
-                        .withId(specimen.getCollection().getCollector().getReferenceElement().getIdPart())//
-                        .execute();
-
-                if (collector != null) {
-                    LogEvent.logDebug(this.getClass().getName(), "processRequest",
-                            "found matching collector " + collector.getIdElement().getIdPart());
-                } else {
-                    LogEvent.logDebug(this.getClass().getName(), "processRequest", "no matching collector");
+                try {
+                    collector = localFhirClient.read() //
+                            .resource(Practitioner.class) //
+                            .withId(specimen.getCollection().getCollector().getReferenceElement().getIdPart()) //
+                            .execute();
+                    LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest",
+                            "found matching collector " + requesterPerson.getIdElement().getIdPart());
+                } catch (ResourceNotFoundException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "processRequest", "no matching collector");
                 }
             }
         }
@@ -302,7 +311,9 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
         patientGuid = getPatientGuid(eOrder);
         for (Identifier identifier : patient.getIdentifier()) {
             if (identifier.hasSystem()) {
-//            if (identifier.getSystem().equalsIgnoreCase("https://isanteplusdemo.com/openmrs/ws/fhir2/")) {
+                // if
+                // (identifier.getSystem().equalsIgnoreCase("https://isanteplusdemo.com/openmrs/ws/fhir2/"))
+                // {
                 if (identifier.getSystem().equalsIgnoreCase("iSantePlus ID")
                         || identifier.getSystem().equalsIgnoreCase("https://host.openelis.org/locator-form")) {
                     patientGuid = identifier.getId();
@@ -311,7 +322,8 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                 }
             }
         }
-        LogEvent.logDebug(this.getClass().getName(), "createSearchResultXML", "using patient guid " + patientGuid);
+        LogEvent.logDebug(this.getClass().getSimpleName(), "createSearchResultXML",
+                "using patient guid " + patientGuid);
 
         createOrderXML(eOrder.getData(), patientGuid, xml);
 
@@ -344,14 +356,22 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
 
     private void addRequestingOrg(StringBuilder xml) {
         xml.append("<requestingOrg>");
+        org.openelisglobal.organization.valueholder.Organization organization = null;
         if (referringOrganization != null) {
-            org.openelisglobal.organization.valueholder.Organization organization = organizationService
+            organization = organizationService
                     .getOrganizationByFhirId(referringOrganization.getIdElement().getIdPart());
-            XMLUtil.appendKeyValue("fhir-id", referringOrganization.getIdElement().getIdPart(), xml);
+        }
+        if (organization == null && task.getLocation() != null) {
+            organization = organizationService
+                    .getOrganizationByFhirId(task.getLocation().getReferenceElement().getIdPart());
+        }
+
+        if (organization != null) {
+            XMLUtil.appendKeyValue("fhir-id", organization.getFhirUuidAsString(), xml);
             XMLUtil.appendKeyValue("id", organization.getId(), xml);
+            XMLUtil.appendKeyValue("name", organization.getOrganizationName(), xml);
         }
         xml.append("</requestingOrg>");
-
     }
 
     private void addLocation(StringBuilder xml) {
@@ -363,7 +383,6 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
             XMLUtil.appendKeyValue("id", organization.getId(), xml);
         }
         xml.append("</location>");
-
     }
 
     private void addRequester(StringBuilder xml) {
@@ -374,22 +393,37 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
             for (ContactPoint contact : requesterPerson.getTelecom()) {
                 if (ContactPointSystem.PHONE.equals(contact.getSystem())) {
                     requesterValuesMap.put(PROVIDER_PHONE, contact.getValue());
+                } else if (ContactPointSystem.EMAIL.equals(contact.getSystem())) {
+                    requesterValuesMap.put(PROVIDER_EMAIL, contact.getValue());
+                } else if (ContactPointSystem.FAX.equals(contact.getSystem())) {
+                    requesterValuesMap.put(PROVIDER_FAX, contact.getValue());
                 }
             }
             Provider provider = providerService
                     .getProviderByFhirId(UUID.fromString(requesterPerson.getIdElement().getIdPart()));
-            requesterValuesMap.put(PROVIDER_ID, provider.getId());
-            requesterValuesMap.put(PROVIDER_PERSON_ID, provider.getPerson().getId());
+            if (provider != null) {
+                requesterValuesMap.put(PROVIDER_ID, provider.getId());
+                requesterValuesMap.put(PROVIDER_PERSON_ID, provider.getPerson().getId());
+            }
             requesterValuesMap.put(PROVIDER_LAST_NAME, requesterPerson.getNameFirstRep().getFamily());
             requesterValuesMap.put(PROVIDER_FIRST_NAME, requesterPerson.getNameFirstRep().getGivenAsSingleString());
+        } else {
+            Provider provider = providerService
+                    .getProviderByFhirId(UUID.fromString(task.getOwner().getReferenceElement().getIdPart()));
+            if (provider != null) {
+                requesterValuesMap.put(PROVIDER_ID, provider.getId());
+                requesterValuesMap.put(PROVIDER_PERSON_ID, provider.getPerson().getId());
+            }
 
         }
         xml.append("<requester>");
         XMLUtil.appendKeyValue(PROVIDER_ID, requesterValuesMap.get(PROVIDER_ID), xml);
-        XMLUtil.appendKeyValue(PROVIDER_PERSON_ID, requesterValuesMap.get(PROVIDER_ID), xml);
+        XMLUtil.appendKeyValue(PROVIDER_PERSON_ID, requesterValuesMap.get(PROVIDER_PERSON_ID), xml);
         XMLUtil.appendKeyValue(PROVIDER_FIRST_NAME, requesterValuesMap.get(PROVIDER_FIRST_NAME), xml);
         XMLUtil.appendKeyValue(PROVIDER_LAST_NAME, requesterValuesMap.get(PROVIDER_LAST_NAME), xml);
         XMLUtil.appendKeyValue(PROVIDER_PHONE, requesterValuesMap.get(PROVIDER_PHONE), xml);
+        XMLUtil.appendKeyValue(PROVIDER_EMAIL, requesterValuesMap.get(PROVIDER_EMAIL), xml);
+        XMLUtil.appendKeyValue(PROVIDER_FAX, requesterValuesMap.get(PROVIDER_FAX), xml);
         xml.append("</requester>");
     }
 
@@ -418,34 +452,38 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
             }
         }
 
-        addToTestOrPanel(tests, loinc, sampleTypeAbbreviation);
-
+        addToTestOrPanel(tests, panels, loinc, sampleTypeAbbreviation);
     }
 
-//    private List<ServiceRequest> getBasedOnServiceRequestFromBundle(Bundle bundle, Task task) {
-//        List<ServiceRequest> basedOn = new ArrayList<>();
-//        for (Reference reference : task.getBasedOn()) {
-//            basedOn.add((ServiceRequest) findResourceInBundle(bundle, reference.getReference()));
-//        }
-//        return basedOn;
-//    }
-//
-//    private Patient getForPatientFromBundle(Bundle bundle, Task task) {
-//        return (Patient) findResourceInBundle(bundle, task.getFor().getReference());
-//    }
-//
-//    private IBaseResource findResourceInBundle(Bundle bundle, String reference) {
-//        for (BundleEntryComponent bundleComponent : bundle.getEntry()) {
-//            if (bundleComponent.hasResource() && bundleComponent.getFullUrl().endsWith(reference)) {
-//                return bundleComponent.getResource();
-//            }
-//        }
-//        return null;
-//
-//    }
+    // private List<ServiceRequest> getBasedOnServiceRequestFromBundle(Bundle
+    // bundle, Task task) {
+    // List<ServiceRequest> basedOn = new ArrayList<>();
+    // for (Reference reference : task.getBasedOn()) {
+    // basedOn.add((ServiceRequest) findResourceInBundle(bundle,
+    // reference.getReference()));
+    // }
+    // return basedOn;
+    // }
+    //
+    // private Patient getForPatientFromBundle(Bundle bundle, Task task) {
+    // return (Patient) findResourceInBundle(bundle, task.getFor().getReference());
+    // }
+    //
+    // private IBaseResource findResourceInBundle(Bundle bundle, String reference) {
+    // for (BundleEntryComponent bundleComponent : bundle.getEntry()) {
+    // if (bundleComponent.hasResource() &&
+    // bundleComponent.getFullUrl().endsWith(reference)) {
+    // return bundleComponent.getResource();
+    // }
+    // }
+    // return null;
+    //
+    // }
 
-    private void addToTestOrPanel(List<Request> tests, String loinc, String sampleTypeAbbreviation) {
+    private void addToTestOrPanel(List<Request> tests, List<Request> panels, String loinc,
+            String sampleTypeAbbreviation) {
         Test test = null;
+        Panel panel = null;
         TypeOfSample typeOfSample = null;
         if (!GenericValidator.isBlankOrNull(sampleTypeAbbreviation)) {
             String typeOfSampleId = typeOfSampleService.getTypeOfSampleIdForLocalAbbreviation(sampleTypeAbbreviation);
@@ -457,12 +495,32 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
             }
         }
         if (test == null) {
-            test = testService.getActiveTestsByLoinc(loinc).get(0);
+            List<Test> alltests = testService.getActiveTestsByLoinc(loinc);
+            if (alltests != null && alltests.size() > 0) {
+                test = alltests.get(0);
+            }
         }
-        if (typeOfSample == null) {
-            typeOfSample = typeOfSampleService.getTypeOfSampleForTest(test.getId());
+        if (test != null) {
+            if (typeOfSample == null) {
+                typeOfSample = typeOfSampleService.getTypeOfSampleForTest(test.getId()).get(0);
+            }
+            tests.add(new Request(test.getName(), loinc, typeOfSample.getLocalizedName()));
+            return;
         }
-        tests.add(new Request(test.getName(), loinc, typeOfSample.getLocalizedName()));
+        panel = panelService.getPanelByLoincCode(loinc);
+        if (panel != null) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), "addToTestOrPanel",
+                    "panel matching loinc is: " + panel.getDescription());
+
+            if (typeOfSample == null) {
+                typeOfSample = typeOfSampleService.getTypeOfSampleForPanelId(panel.getId()).get(0);
+                LogEvent.logDebug(this.getClass().getSimpleName(), "addToTestOrPanel",
+                        "typeOfSample matching for panel is: " + typeOfSample.getDescription());
+
+            }
+            panels.add(new Request(panel.getPanelName(), loinc, typeOfSample.getLocalizedName()));
+        }
+
     }
 
     private void createMaps(List<Request> testRequests, List<Request> panelNames) {
@@ -486,16 +544,19 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
             List<Test> tests = testService.getActiveTestsByLoinc(testRequest.getLoinc());
 
             Test singleTest = tests.get(0);
-            TypeOfSample singleSampleType = typeOfSampleService.getTypeOfSampleForTest(singleTest.getId());
-            boolean hasSingleSampleType = tests.size() == 1;
+            List<TypeOfSample> sampleTypes = typeOfSampleService.getTypeOfSampleForTest(singleTest.getId());
+            TypeOfSample singleSampleType = sampleTypes.get(0);
+            boolean hasSingleSampleType = sampleTypes.size() == 1 && tests.size() == 1;
 
             if (tests.size() > 1) {
                 if (!GenericValidator.isBlankOrNull(testRequest.getSampleType())) {
                     for (Test test : tests) {
-                        TypeOfSample typeOfSample = typeOfSampleService.getTypeOfSampleForTest(test.getId());
-                        if (typeOfSample.getDescription().equals(testRequest.getSampleType())) {
+                        List<TypeOfSample> typeOfSamples = typeOfSampleService.getTypeOfSampleForTest(test.getId());
+                        Optional<TypeOfSample> matchingSampleType = typeOfSamples.stream()
+                                .filter(e -> e.getDescription().equals(testRequest.getSampleType())).findFirst();
+                        if (matchingSampleType.isPresent()) {
                             hasSingleSampleType = true;
-                            singleSampleType = typeOfSample;
+                            singleSampleType = matchingSampleType.get();
                             singleTest = test;
                             break;
                         }
@@ -511,8 +572,10 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                     }
 
                     for (Test test : tests) {
-                        testSampleTypeList.add(
-                                new TestSampleType(test, typeOfSampleService.getTypeOfSampleForTest(test.getId())));
+                        sampleTypes = typeOfSampleService.getTypeOfSampleForTest(test.getId());
+                        for (TypeOfSample sampleType : sampleTypes) {
+                            testSampleTypeList.add(new TestSampleType(test, sampleType));
+                        }
                     }
                 }
             }
@@ -531,7 +594,13 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
 
     private void createMapsForPanels(List<Request> panelRequests) {
         for (Request panelRequest : panelRequests) {
-            Panel panel = panelService.getPanelByName(panelRequest.getName());
+            Panel panel = null;
+            if (!GenericValidator.isBlankOrNull(panelRequest.getLoinc())) {
+                panel = panelService.getPanelByLoincCode(panelRequest.getLoinc());
+            }
+            if (panel == null && !GenericValidator.isBlankOrNull(panelRequest.getName())) {
+                panel = panelService.getPanelByName(panelRequest.getName());
+            }
 
             if (panel != null) {
                 List<TypeOfSample> typeOfSamples = typeOfSampleService.getTypeOfSampleForPanelId(panel.getId());
@@ -602,7 +671,6 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                     xml);
         }
         xml.append(XMLUtil.makeEndTag(parent));
-
     }
 
     private void addPanels(StringBuilder xml, List<Panel> panels, String sampleTypeId) {
@@ -688,7 +756,6 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
             addCrosstestForTestName(xml, testName, testNameTestSampleTypeMap.get(testName));
         }
         xml.append("</crosstests>");
-
     }
 
     private void addCrosstestForTestName(StringBuilder xml, String testName, List<TestSampleType> list) {
@@ -764,7 +831,6 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
         public void setCollector(String collector) {
             this.collector = collector;
         }
-
     }
 
     public class TestSampleType {
@@ -807,6 +873,5 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
         public String getName() {
             return name;
         }
-
     }
 }

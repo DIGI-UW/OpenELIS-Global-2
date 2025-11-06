@@ -5,9 +5,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
 	
 <script type="text/javascript">
@@ -118,6 +118,7 @@ rtn = new RtnProjectChecker();
 				<option value=""></option>
 				<form:options items="${form.organizationTypeLists.RTN_HOSPITALS.list}" itemLabel="doubleName" itemValue="id" />
 			</form:select>
+			<div id="rtn.centerCodeMessage" class="blank"></div>
 		</td>
 	</tr>
 	<tr>
@@ -135,6 +136,7 @@ rtn = new RtnProjectChecker();
 				<option value=""></option>
 				<form:options items="${form.organizationTypeLists.RTN_SERVICES.list}" itemLabel="doubleName" itemValue="id" />
 			</form:select>
+			<div id="rtn.serviceMessage" class="blank"></div>
 		</td>
 	</tr>
 	<tr>
@@ -232,9 +234,9 @@ rtn = new RtnProjectChecker();
 				onchange="rtn.checkGender(true)">
 				<option value=""></option>
 				<form:options items="${form.formLists.GENDERS}" itemLabel="localizedName"
-					itemValue="genderType" />
+					itemValue="id" />
 			</form:select>
-			<div id="genderMessage" class="blank"></div>
+			<div id="rtn.genderMessage" class="blank"></div>
 		</td>
 	</tr>
 	<tr>
@@ -324,8 +326,9 @@ rtn = new RtnProjectChecker();
 					onchange="makeDirty();compareAllObservationHistoryFields(true)"
 					id='rtn.${disease.name}'>
 					<option value=""></option>
-					<form:options items="${form.dictionaryLists['NotSpeced'].list}" itemLabel="localizedName" itemValue="id" />
+					<form:options items="${form.dictionaryLists['YES_NO_UNKNOWN_NA_NOTSPEC'].list}" itemLabel="localizedName" itemValue="id" />
 				</form:select>
+				<div id='rtn.${disease.name}.Message' class="blank"></div>
 			</td>
 		</tr>
 	</c:forEach>
@@ -342,8 +345,9 @@ rtn = new RtnProjectChecker();
 					onchange="makeDirty();compareAllObservationHistoryFields(true)"
 					id='rtn.${disease.name}'>
 					<option value=""></option>
-					<form:options items="${form.dictionaryLists['NotSpeced'].list}" itemLabel="localizedName" itemValue="id" />
+					<form:options items="${form.dictionaryLists['YES_NO_UNKNOWN_NA_NOTSPEC'].list}" itemLabel="localizedName" itemValue="id" />
 				</form:select>
+				<div id='rtn.${disease.name}.Message' class="blank"></div>
 			</td>
 		</tr>
 	</c:forEach>
@@ -416,6 +420,7 @@ rtn = new RtnProjectChecker();
 				<option value=""></option>
 				<form:options items="${form.dictionaryLists.YES_NO.list}" itemLabel="localizedName" itemValue="id" />
 			</form:select>
+			<div id="rtn.underInvestigationMessage" class="blank"></div>
 		</td>
 	</tr>
 	<tr id="rtn.underInvestigationCommentRow">
@@ -424,9 +429,10 @@ rtn = new RtnProjectChecker();
 			<spring:message code="patient.project.underInvestigationComment" />
 		</td>
 		<td colspan="3">
-			<form:input path="ProjectData.underInvestigationNote" maxlength="1000"
+			<form:input path="projectData.underInvestigationNote" maxlength="1000"
 				size="80" onchange="makeDirty();"
 				id="rtn.underInvestigationComment" />
+				<div id="rtn.underInvestigationCommentMessage" class="blank"></div>
 		</td>
 	</tr>
 </table>

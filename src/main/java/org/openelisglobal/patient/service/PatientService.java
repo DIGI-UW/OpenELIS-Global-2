@@ -3,7 +3,6 @@ package org.openelisglobal.patient.service;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -109,5 +108,4 @@ public interface PatientService extends BaseObjectService<Patient, String> {
     List<Patient> getAllMissingFhirUuid();
 
     Patient getByExternalId(String idPart);
-
 }

@@ -1,6 +1,6 @@
 package org.openelisglobal.observationhistorytype.service;
 
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.observationhistorytype.dao.ObservationHistoryTypeDAO;
 import org.openelisglobal.observationhistorytype.valueholder.ObservationHistoryType;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class ObservationHistoryTypeServiceImpl extends BaseObjectServiceImpl<ObservationHistoryType, String>
+public class ObservationHistoryTypeServiceImpl extends AuditableBaseObjectServiceImpl<ObservationHistoryType, String>
         implements ObservationHistoryTypeService {
     @Autowired
     protected ObservationHistoryTypeDAO baseObjectDAO;

@@ -1,12 +1,9 @@
 package org.openelisglobal.patient.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.apache.commons.beanutils.PropertyUtils;
 import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.address.service.AddressPartService;
@@ -14,8 +11,6 @@ import org.openelisglobal.address.service.PersonAddressService;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.provider.query.PatientSearchResults;
-import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
@@ -23,6 +18,7 @@ import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patientidentity.service.PatientIdentityService;
 import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
@@ -56,9 +52,7 @@ public class PatientManagementController extends BaseController {
             "patientProperties.aka", "patientProperties.mothersName", "patientProperties.mothersInitial",
             "patientProperties.streetAddress", "patientProperties.commune", "patientProperties.city",
             "patientProperties.addressDepartment", "patientProperties.addressDepartment",
-
             "patientProperties.primaryPhone", "patientProperties.email", "patientProperties.healthRegion",
-
             "patientProperties.healthDistrict", "patientProperties.birthDateForDisplay", "patientProperties.age",
             "patientProperties.gender", "patientProperties.patientType", "patientProperties.insuranceNumber",
             "patientProperties.occupation", "patientProperties.education", "patientProperties.maritialStatus",
@@ -69,10 +63,6 @@ public class PatientManagementController extends BaseController {
 
     @Autowired
     SamplePatientEntryFormValidator formValidator;
-
-    private static final String AMBIGUOUS_DATE_CHAR = ConfigurationProperties.getInstance()
-            .getPropertyValue(ConfigurationProperties.Property.AmbiguousDateHolder);
-    private static final String AMBIGUOUS_DATE_HOLDER = AMBIGUOUS_DATE_CHAR + AMBIGUOUS_DATE_CHAR;
 
     @Autowired
     AddressPartService addressPartService;
@@ -133,10 +123,11 @@ public class PatientManagementController extends BaseController {
             }
             try {
                 patientService.persistPatientData(patientInfo, patient, getSysUserId(request));
-                fhirTransformService.transformPersistPatient(patientInfo);
+                fhirTransformService.transformPersistPatient(patientInfo,
+                        (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD));
             } catch (LIMSRuntimeException e) {
 
-                if (e.getException() instanceof StaleObjectStateException) {
+                if (e.getCause() instanceof StaleObjectStateException) {
                     result.reject("errors.OptimisticLockException", "errors.OptimisticLockException");
                 } else {
                     LogEvent.logDebug(e);
@@ -151,7 +142,6 @@ public class PatientManagementController extends BaseController {
             } catch (FhirTransformationException | FhirPersistanceException e) {
                 LogEvent.logError(e);
             }
-
         }
         redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
         return findForward(FWD_SUCCESS_INSERT, form);
@@ -167,7 +157,7 @@ public class PatientManagementController extends BaseController {
     public void preparePatientData(Errors errors, HttpServletRequest request, PatientManagementInfo patientInfo,
             Patient patient) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
-        validatePatientInfo(errors, patientInfo);
+        ValidatePatientInfo.validatePatientInfo(errors, patientInfo);
         if (errors.hasErrors()) {
             return;
         }
@@ -185,61 +175,6 @@ public class PatientManagementController extends BaseController {
         setSystemUserID(patientInfo, patient);
 
         setLastUpdatedTimeStamps(patientInfo, patient);
-
-    }
-
-    private void validatePatientInfo(Errors errors, PatientManagementInfo patientInfo) {
-        if (ConfigurationProperties.getInstance()
-                .isPropertyValueEqual(ConfigurationProperties.Property.ALLOW_DUPLICATE_SUBJECT_NUMBERS, "false")) {
-            String newSTNumber = org.apache.commons.validator.GenericValidator.isBlankOrNull(patientInfo.getSTnumber())
-                    ? null
-                    : patientInfo.getSTnumber();
-            String newSubjectNumber = org.apache.commons.validator.GenericValidator
-                    .isBlankOrNull(patientInfo.getSubjectNumber()) ? null : patientInfo.getSubjectNumber();
-            String newNationalId = org.apache.commons.validator.GenericValidator
-                    .isBlankOrNull(patientInfo.getNationalId()) ? null : patientInfo.getNationalId();
-
-            List<PatientSearchResults> results = searchService.getSearchResults(null, null, newSTNumber,
-                    newSubjectNumber, newNationalId, null, null, null, null, null);
-
-            if (!results.isEmpty()) {
-                for (PatientSearchResults result : results) {
-                    if (!result.getPatientID().equals(patientInfo.getPatientPK())) {
-                        if (newSTNumber != null && newSTNumber.equals(result.getSTNumber())) {
-                            errors.reject("error.duplicate.STNumber", "error.duplicate.STNumber");
-                        }
-                        if (newSubjectNumber != null && newSubjectNumber.equals(result.getSubjectNumber())) {
-                            errors.reject("error.duplicate.subjectNumber", "error.duplicate.subjectNumber");
-                        }
-                        if (newNationalId != null && newNationalId.equals(result.getNationalId())) {
-                            errors.reject("error.duplicate.nationalId", "error.duplicate.nationalId");
-                        }
-                    }
-                }
-            }
-        }
-
-        validateBirthdateFormat(patientInfo, errors);
-
-    }
-
-    private void validateBirthdateFormat(PatientManagementInfo patientInfo, Errors errors) {
-        String birthDate = patientInfo.getBirthDateForDisplay();
-        boolean validBirthDateFormat = true;
-
-        if (!org.apache.commons.validator.GenericValidator.isBlankOrNull(birthDate)) {
-            validBirthDateFormat = birthDate.length() == 10;
-            // the regex matches ambiguous day and month or ambiguous day or completely
-            // formed date
-            if (validBirthDateFormat) {
-                validBirthDateFormat = birthDate.matches("(((" + AMBIGUOUS_DATE_HOLDER + "|\\d{2})/\\d{2})|"
-                        + AMBIGUOUS_DATE_HOLDER + "/(" + AMBIGUOUS_DATE_HOLDER + "|\\d{2}))/\\d{4}");
-            }
-
-            if (!validBirthDateFormat) {
-                errors.reject("error.birthdate.format", "error.birthdate.format");
-            }
-        }
     }
 
     private void setLastUpdatedTimeStamps(PatientManagementInfo patientInfo, Patient patient) {

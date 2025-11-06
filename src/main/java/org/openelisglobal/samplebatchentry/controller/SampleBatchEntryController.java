@@ -1,11 +1,9 @@
 package org.openelisglobal.samplebatchentry.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.StringTokenizer;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
@@ -66,8 +64,9 @@ public class SampleBatchEntryController extends BaseController {
             "sampleOrderItems.labNo",
             //
             "sampleOrderItems.newRequesterName", "sampleOrderItems.referringSiteId",
-            "form.sampleOrderItems.referringSiteName", "patientProperties.patientUpdateStatus", "currentDate",
-            "currentTime", "sampleOrderItems.receivedDateForDisplay", "sampleOrderItems.receivedTime", "sampleXML",
+            "sampleOrderItems.referringSiteDepartmentId", "form.sampleOrderItems.referringSiteName",
+            "patientProperties.patientUpdateStatus", "currentDate", "currentTime",
+            "sampleOrderItems.receivedDateForDisplay", "sampleOrderItems.receivedTime", "sampleXML",
             "sampleOrderItems.referringSiteId", "sampleOrderItems.referringSiteId",
             //
             "method", "facilityIDCheck", "facilityID", "patientInfoCheck" };
@@ -112,6 +111,8 @@ public class SampleBatchEntryController extends BaseController {
         soi.setReceivedDateForDisplay(form.getSampleOrderItems().getReceivedDateForDisplay());
         soi.setNewRequesterName(form.getSampleOrderItems().getNewRequesterName());
         soi.setReferringSiteId(form.getFacilityID());
+        soi.setReferringSiteDepartmentId(form.getSampleOrderItems().getReferringSiteDepartmentId());
+
         form.setSampleOrderItems(soi);
 
         form.setLocalDBOnly(ConfigurationProperties.getInstance()
@@ -147,7 +148,14 @@ public class SampleBatchEntryController extends BaseController {
         } else if (!StringUtil.isNullorNill(form.getSampleOrderItems().getNewRequesterName())) {
             facilityName = form.getSampleOrderItems().getNewRequesterName();
         }
+        String departmentName = "";
+        if (!StringUtil.isNullorNill(form.getSampleOrderItems().getReferringSiteDepartmentId())) {
+            Organization organization = organizationService
+                    .get(form.getSampleOrderItems().getReferringSiteDepartmentId());
+            departmentName = organization.getOrganizationName();
+        }
         request.setAttribute("facilityName", facilityName);
+        request.setAttribute("departmentName", departmentName);
         form.setPatientSearch(new PatientSearch());
 
         return findForward(form.getMethod(), form);
@@ -205,10 +213,11 @@ public class SampleBatchEntryController extends BaseController {
             } catch (FhirTransformationException | FhirPersistanceException e) {
                 LogEvent.logError(e);
             }
-//            String fhir_json = fhirTransformService.CreateFhirFromOESample(updateData, patientUpdate, patientInfo, form, request);
+            // String fhir_json = fhirTransformService.CreateFhirFromOESample(updateData,
+            // patientUpdate, patientInfo, form, request);
         } catch (LIMSRuntimeException e) {
             // ActionError error;
-            if (e.getException() instanceof StaleObjectStateException) {
+            if (e.getCause() instanceof StaleObjectStateException) {
                 // error = new ActionError("errors.OptimisticLockException", null, null);
                 result.reject("errors.OptimisticLockException", "errors.OptimisticLockException");
             } else {
@@ -216,13 +225,12 @@ public class SampleBatchEntryController extends BaseController {
                 // error = new ActionError("errors.UpdateException", null, null);
                 result.reject("errors.UpdateException", "errors.UpdateException");
             }
-            LogEvent.logInfo(this.getClass().getName(), "method unkown", result.toString());
+            LogEvent.logInfo(this.getClass().getSimpleName(), "showSamplePatientEntrySave", result.toString());
 
             // errors.add(ActionMessages.GLOBAL_MESSAGE, error);
             saveErrors(result);
             request.setAttribute(ALLOW_EDITS_KEY, "false");
             return findForward(FWD_FAIL_INSERT, form);
-
         }
 
         redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);

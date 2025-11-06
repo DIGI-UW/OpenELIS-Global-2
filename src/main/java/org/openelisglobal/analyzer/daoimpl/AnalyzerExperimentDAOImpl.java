@@ -12,5 +12,4 @@ public class AnalyzerExperimentDAOImpl extends BaseDAOImpl<AnalyzerExperiment, I
     public AnalyzerExperimentDAOImpl() {
         super(AnalyzerExperiment.class);
     }
-
 }

@@ -112,5 +112,4 @@ public class ReferralDisplayItem {
     public void setAnalysisId(String analysisId) {
         this.analysisId = analysisId;
     }
-
 }

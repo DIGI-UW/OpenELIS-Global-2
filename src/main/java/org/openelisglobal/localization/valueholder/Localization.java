@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.localization.service.LocalizationService;
@@ -173,5 +172,4 @@ public class Localization extends BaseObject<String> {
         };
         Collections.sort(locales, comparator);
     }
-
 }

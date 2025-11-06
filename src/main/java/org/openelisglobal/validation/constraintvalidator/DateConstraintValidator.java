@@ -1,8 +1,7 @@
 package org.openelisglobal.validation.constraintvalidator;
 
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
-
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.validator.CustomDateValidator;
@@ -37,9 +36,7 @@ public class DateConstraintValidator implements ConstraintValidator<ValidDate, S
                         .validate24HourTime(value.substring(value.indexOf(separator) + 1))) {
                     return false;
                 }
-
             }
-
         }
         datePortion = datePortion.replaceAll(DateUtil.AMBIGUOUS_DATE_SEGMENT, "01");
         String result = CustomDateValidator.getInstance().validateDate(
@@ -48,6 +45,5 @@ public class DateConstraintValidator implements ConstraintValidator<ValidDate, S
             return false;
         }
         return true;
-
     }
 }

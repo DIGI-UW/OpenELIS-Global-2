@@ -1,26 +1,21 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
-*
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
+ */
 package org.openelisglobal.dataexchange.aggregatereporting;
 
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.servlet.http.HttpServletResponse;
-
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -63,7 +58,6 @@ public class AggregateReportJob implements Job {
 
     @Override
     public void execute(JobExecutionContext arg0) throws JobExecutionException {
-        LogEvent.logInfo(this.getClass().getName(), "method unkown", "Reporting triggered: " + DateUtil.getCurrentDateAsText("dd-MM-yyyy hh:mm"));
         LogEvent.logInfo("AggregateReportJob", "execute()",
                 "Reporting triggered: " + DateUtil.getCurrentDateAsText("dd-MM-yyyy hh:mm"));
 
@@ -92,7 +86,7 @@ public class AggregateReportJob implements Job {
             String castorPropertyName = "AggregateReportingMapping";
 
             String url = ConfigurationProperties.getInstance().getPropertyValue(Property.testUsageReportingURL)
-                    + "/IndicatorAggregation";//
+                    + "/IndicatorAggregation"; //
 
             boolean sendAsychronously = false;
             ResponseHandler responseHandler = (ResponseHandler) SpringContext.getBean("aggregateResponseHandler");
@@ -140,7 +134,7 @@ public class AggregateReportJob implements Job {
         try {
             cronSchedulerService.update(reportScheduler);
         } catch (LIMSRuntimeException e) {
-            LogEvent.logErrorStack(e);
+            LogEvent.logError(e);
         }
     }
 
@@ -149,8 +143,8 @@ public class AggregateReportJob implements Job {
     class ResponseHandler implements ITransmissionResponseHandler {
 
         private static final long MAX_DELAY = 256; // Anything past this will be
-                                                   // a cumulative time of over
-                                                   // 8 hours
+        // a cumulative time of over
+        // 8 hours
         private List<ReportExternalExport> sendableReports;
         private ReportExternalExportService reportExternalExportService = SpringContext
                 .getBean(ReportExternalExportService.class);
@@ -214,10 +208,9 @@ public class AggregateReportJob implements Job {
                 }
 
             } catch (LIMSRuntimeException e) {
-                LogEvent.logErrorStack(e);
+                LogEvent.logError(e);
                 throw e;
             }
-
         }
 
         private void handleUnknownFailure(List<String> errors) {
@@ -248,24 +241,26 @@ public class AggregateReportJob implements Job {
         private void retry() {
             delayInMin = delayInMin * 2L;
             if (delayInMin < MAX_DELAY) {
-//                new Thread() {
-//                    @Override
-//                    public void run() {
-//                        LogEvent.logInfo(this.getClass().getName(), "method unkown",
-//                                "Aggregate Report: Will attempt to resend report in " + delayInMin + " minutes.");
-//                        LogEvent.logInfo("AggregateReportJob", "retry()",
-//                                "Will attempt to resend report in " + delayInMin + " minutes.");
-//                        try {
-//                            sleep(delayInMin * MILLI_SEC_PER_MIN);
-//                        } catch (InterruptedException e) {
-//                            LogEvent.logDebug(e);
-//                        }
-                        new ReportTransmission().sendReport(wrapper, castorPropertyName, url, false, instance);
-//                    }
-//                }.start();
+                // new Thread() {
+                // @Override
+                // public void run() {
+                // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown",
+                // "Aggregate Report: Will attempt to resend report in " +
+                // delayInMin + " minutes.");
+                // LogEvent.logInfo("AggregateReportJob", "retry()",
+                // "Will attempt to resend report in " + delayInMin + "
+                // minutes.");
+                // try {
+                // sleep(delayInMin * MILLI_SEC_PER_MIN);
+                // } catch (InterruptedException e) {
+                // LogEvent.logDebug(e);
+                // }
+                new ReportTransmission().sendReport(wrapper, castorPropertyName, url, false, instance);
+                // }
+                // }.start();
             } else {
-                LogEvent.logInfo(this.getClass().getName(), "method unkown", "Aggregate report: Giving up trying to connect");
-                LogEvent.logInfo("AggregateReportJob", "retry()", "Giving up trying to connect");
+                LogEvent.logInfo(this.getClass().getSimpleName(), "retry",
+                        "Aggregate report: Giving up trying to connect");
             }
         }
 
@@ -278,10 +273,8 @@ public class AggregateReportJob implements Job {
                     siteInfoService.update(sendInfo);
                 }
             } catch (LIMSRuntimeException e) {
-                LogEvent.logErrorStack(e);
+                LogEvent.logError(e);
             }
         }
-
     }
-
 }

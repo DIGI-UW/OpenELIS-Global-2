@@ -11,9 +11,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 <c:set var="type" value="${form.type}" />
 <c:set var="pagingSearch" value="${form.paging.searchTermToPage}" />
 
@@ -145,7 +145,61 @@ function /*void*/ markUpdated(){
 	makeDirty();
 }
 
+function toggleSelectAll( element ) {
+    var index, item, checkboxes,matchedCheckboxes;
+
+	if (element.id == "selectAllAccept" ) {
+		checkboxes = jQuery(".accepted");
+		matchedCheckboxes = jQuery(".rejected");
+	} else if (element.id == "selectAllReject" ) {
+		checkboxes = jQuery(".rejected");
+		matchedCheckboxes = jQuery(".accepted");
+	} else if (element.id == "selectNormalAccept" ) {
+		checkboxes = jQuery(".normalAccepted");
+		matchedCheckboxes = jQuery(".rejected");
+	}
+	else if (element.id == "selectAllIgnore" ) {
+		checkboxes = jQuery(".ignored");
+		matchedCheckboxes = jQuery(".rejected");
+	}
+
+	if (element.checked == true ) {
+		for (index = 0; index < checkboxes.length; ++index) {
+			  item = checkboxes[index];
+			  item.checked = true;
+		}
+		for (index = 0; index < matchedCheckboxes.length; ++index) {
+			  item = matchedCheckboxes[index];
+			  item.checked = false;
+		}
+	} else if (element.checked == false ) {
+		for (index = 0; index < checkboxes.length; ++index) {
+			  item = checkboxes[index];
+			  item.checked = false;
+		}
+	}
+
+}
+
+function onLISSuccess(xhr) {
+	if (xhr.status == '200') {
+		alert("action ran successfully")
+	}
+}
+
 </script>
+
+<select id="lisAction" onChange="document.getElementById('lisRunButton').disabled = false;">
+	<option disabled selected value=""><spring:message code="analyzer.runlisaction.default" text="--- supported actions ---"/></option>
+<c:forEach items="${form.supportedLISActions}" var="action" varStatus="action_iter">
+	<option value="${action.actionName}">${action.actionName}</option>
+</c:forEach>
+</select>
+<button id="lisRunButton" type="button" disabled onClick="runLIStoAnalyzerAction('Aquios', jQuery('#lisAction').val(), onLISSuccess)">
+<spring:message code="analyzer.runlisaction.button" text="Run Action"/>
+</button>
+
+
 <form:hidden path="type"/>
 <c:if test="${form.displayNotFoundMsg}">
 	 <div class="indented-important-message"><spring:message code="result.noResultsFound"/></div>
@@ -183,8 +237,55 @@ function /*void*/ markUpdated(){
 	       maxlength='<%=Integer.toString(AccessionNumberUtil.getMaxAccessionLength())%>' />
 	<input type="button" onclick="pageSearch.doLabNoSearch(document.getElementById('labnoSearch'))" value='<%= MessageUtil.getMessage("label.button.search") %>'>
 	</div>
+	<Table style="width:80%" >
+    <tr>
+		<th colspan="2" style="background-color: white;width:15%;">
+			<img src="./images/nonconforming.gif" /> = <%= MessageUtil.getContextualMessage("result.nonconforming.item")%>
+		</th>
+		<%-- <th style="text-align:center;width:3%;" style="background-color: white">&nbsp;
+				<spring:message code="validation.accept.normal" />
+			<input type="checkbox"
+				name="selectNormalAccept"
+				value="on"
+				onclick="toggleSelectAll(this);"
+				onchange="markUpdated(); makeDirty();"
+				id="selectNormalAccept"
+				class="acceptNormal">
+		</th> --%>
+		<th style="text-align:center;width:4%;" style="background-color: white">&nbsp;
+				<spring:message code="validation.accept.all" />
+			<input type="checkbox"
+				name="selectAllAccept"
+				value="on"
+				onclick="toggleSelectAll(this);"
+				onchange="markUpdated(); makeDirty();"
+				id="selectAllAccept"
+				class="accepted acceptAll">
+		</th>
+		<th  style="text-align:center;width:4%;" style="background-color: white">&nbsp;
+		<spring:message code="validation.reject.all" />
+			<input type="checkbox"
+					name="selectAllReject"
+					value="on"
+					onclick="toggleSelectAll(this);"
+					onchange="markUpdated(); makeDirty();"
+					id="selectAllReject"
+					class="rejected rejectAll">
+		</th>
+		<th  style="text-align:center;width:4%;" style="background-color: white">&nbsp;
+		<spring:message code="Ignore All Results" />
+			<input type="checkbox"
+					name="selectAllIgnore"
+					value="on"
+					onclick="toggleSelectAll(this);"
+					onchange="markUpdated(); makeDirty();"
+					id="selectAllIgnore"
+					class="ignored ignoreAll">
+		</th>
+		<th style="background-color: white;width:5%;">&nbsp;</th>
+  	</tr>
+</Table>
 </c:if>
-<br/><br/><img src="./images/nonconforming.gif" /> = <spring:message code="result.nonconforming.item"/>
 <table id="importDataTable" width="85%" border="0" cellspacing="0" >
 	<tr><td><b><spring:message code="analyzer.results.results"/></b></td></tr>
 	<tr>
@@ -224,6 +325,7 @@ function /*void*/ markUpdated(){
 				<form:checkbox path="resultList[${iter.index}].isAccepted"
 							   id='accepted_${iter.index}'
 							   onchange="markUpdated();"
+							   cssClass="accepted"
 							   onclick='enableDisableCheckboxes(this, ${iter.index} );' />
 			 </c:if>
 			</td>
@@ -232,6 +334,7 @@ function /*void*/ markUpdated(){
 				<form:checkbox path="resultList[${iter.index}].isRejected"
 							   id='rejected_"${iter.index}'
 							   onchange="markUpdated();"
+							   cssClass="rejected"
 							   onclick='enableDisableCheckboxes(this, ${iter.index} );' />
 			</c:if>
 			</td>
@@ -239,6 +342,7 @@ function /*void*/ markUpdated(){
 			 <c:if test="${showAccessionNumber}">
 				<form:checkbox path="resultList[${iter.index}].isDeleted"
 							   id='deleted_${iter.index}'
+							   cssClass="ignored"
 							   onchange="markUpdated();"
 							   onclick='enableDisableCheckboxes(this, ${iter.index} );' />
 			 </c:if>

@@ -1,42 +1,48 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
  */
 package org.openelisglobal.patient.valueholder;
 
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.UUID;
-
+import org.hibernate.search.engine.backend.types.ObjectStructure;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericField;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.IndexedEmbedded;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.common.valueholder.ValueHolder;
 import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.person.valueholder.Person;
 
+@Indexed
 public class Patient extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
+    @GenericField
     private String id;
 
     private String race;
 
+    @GenericField
     private String gender;
 
     private Timestamp birthDate;
 
+    @GenericField
     private String birthDateForDisplay;
 
     private String epiFirstName;
@@ -53,6 +59,7 @@ public class Patient extends BaseObject<String> {
 
     private String deathDateForDisplay;
 
+    @KeywordField(normalizer = "lowercase")
     private String nationalId;
 
     private String ethnicity;
@@ -65,9 +72,13 @@ public class Patient extends BaseObject<String> {
 
     private String birthPlace;
 
+    @IndexedEmbedded(structure = ObjectStructure.NESTED)
     private ValueHolderInterface person;
 
+    @KeywordField(normalizer = "lowercase")
     private String externalId;
+
+    private String upidCode;
 
     private String selectedPersonId;
 
@@ -86,7 +97,6 @@ public class Patient extends BaseObject<String> {
     public Patient() {
         super();
         person = new ValueHolder();
-
     }
 
     @Override
@@ -286,5 +296,13 @@ public class Patient extends BaseObject<String> {
 
     public void setFhirUuid(UUID fhirUuid) {
         this.fhirUuid = fhirUuid;
+    }
+
+    public String getUpidCode() {
+        return upidCode;
+    }
+
+    public void setUpidCode(String upidCode) {
+        this.upidCode = upidCode;
     }
 }

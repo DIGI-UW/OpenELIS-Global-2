@@ -1,19 +1,17 @@
 package org.openelisglobal.organization.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-import javax.validation.constraints.Pattern;
-
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseMenuController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.form.AdminOptionMenuForm;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.organization.form.OrganizationMenuForm;
@@ -71,15 +69,15 @@ public class OrganizationMenuController extends BaseMenuController<Organization>
     }
 
     @GetMapping(value = "/OrganizationExport", produces = MediaType.APPLICATION_JSON_VALUE)
-    public @ResponseBody byte[] exportOrganizations(
-            @RequestParam(name = "active", defaultValue = "true") String active) throws FhirTransformationException {
+    public @ResponseBody byte[] exportOrganizations(@RequestParam(name = "active", defaultValue = "true") String active)
+            throws FhirTransformationException {
         return organizationExportService.exportFhirOrganizationsFromOrganizations(Boolean.valueOf(active)).getBytes();
     }
 
     @Override
     protected List<Organization> createMenuList(AdminOptionMenuForm<Organization> form, HttpServletRequest request) {
 
-        // LogEvent.logInfo(this.getClass().getName(), "method unkown", "I am in
+        // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown", "I am in
         // OrganizationMenuAction createMenuList()");
 
         List<Organization> organizations = new ArrayList<>();
@@ -98,10 +96,9 @@ public class OrganizationMenuController extends BaseMenuController<Organization>
         // bugzilla 1411 set pagination variables
         // bugzilla 2372 set pagination variables for searched results
         if (YES.equals(request.getParameter("search"))) {
-            request.setAttribute(MENU_TOTAL_RECORDS,
-                    String.valueOf(organizationService
-                            .getTotalSearchedOrganizationCount(request.getParameter("searchString"))));
-            request.setAttribute(SEARCHED_STRING, request.getParameter("searchString"));                
+            request.setAttribute(MENU_TOTAL_RECORDS, String.valueOf(
+                    organizationService.getTotalSearchedOrganizationCount(request.getParameter("searchString"))));
+            request.setAttribute(SEARCHED_STRING, request.getParameter("searchString"));
         } else {
             request.setAttribute(MENU_TOTAL_RECORDS, String.valueOf(organizationService.getCount()));
         }
@@ -109,8 +106,10 @@ public class OrganizationMenuController extends BaseMenuController<Organization>
         request.setAttribute(MENU_FROM_RECORD, String.valueOf(startingRecNo));
         int numOfRecs = 0;
         if (organizations != null) {
-            if (organizations.size() > SystemConfiguration.getInstance().getDefaultPageSize()) {
-                numOfRecs = SystemConfiguration.getInstance().getDefaultPageSize();
+            if (organizations.size() > Integer
+                    .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))) {
+                numOfRecs = Integer
+                        .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
             } else {
                 numOfRecs = organizations.size();
             }
@@ -141,7 +140,7 @@ public class OrganizationMenuController extends BaseMenuController<Organization>
 
     @Override
     protected int getPageSize() {
-        return SystemConfiguration.getInstance().getDefaultPageSize();
+        return Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
     }
 
     // gnr: Deactivate not Delete
@@ -160,7 +159,7 @@ public class OrganizationMenuController extends BaseMenuController<Organization>
         for (int i = 0; i < IDs.length; i++) {
             selectedIDs.add(IDs[i]);
         }
-//        List<String> selectedIDs = form.getSelectedIDs;
+        // List<String> selectedIDs = form.getSelectedIDs;
         List<Organization> organizations = new ArrayList<>();
         for (int i = 0; i < selectedIDs.size(); i++) {
             Organization organization = new Organization();
@@ -170,17 +169,19 @@ public class OrganizationMenuController extends BaseMenuController<Organization>
         }
 
         try {
-            // LogEvent.logInfo(this.getClass().getName(), "method unkown", "Going to delete
+            // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown", "Going to
+            // delete
             // Organization");
             organizationService.deactivateOrganizations(organizations);
-            // LogEvent.logInfo(this.getClass().getName(), "method unkown", "Just deleted
+            // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown", "Just
+            // deleted
             // Organization");
         } catch (LIMSRuntimeException e) {
             // bugzilla 2154
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
 
             String errorMsg;
-            if (e.getException() instanceof org.hibernate.StaleObjectStateException) {
+            if (e.getCause() instanceof org.hibernate.StaleObjectStateException) {
                 errorMsg = "errors.OptimisticLockException";
             } else {
                 errorMsg = "errors.DeleteException";
@@ -188,7 +189,6 @@ public class OrganizationMenuController extends BaseMenuController<Organization>
             result.reject(errorMsg);
             redirectAttributes.addFlashAttribute(Constants.REQUEST_ERRORS, result);
             return findForward(FWD_FAIL_DELETE, form);
-
         }
         redirectAttributes.addAttribute(FWD_SUCCESS, true);
         return findForward(FWD_SUCCESS_DELETE, form);
@@ -197,7 +197,7 @@ public class OrganizationMenuController extends BaseMenuController<Organization>
     @Override
     protected String findLocalForward(String forward) {
         if (FWD_SUCCESS.equals(forward)) {
-            return "masterListsPageDefinition";
+            return "orgMasterListsPageDefinition";
         } else if (FWD_FAIL.equals(forward)) {
             return "redirect:/MasterListsPage";
         } else if (FWD_SUCCESS_DELETE.equals(forward)) {
@@ -218,5 +218,4 @@ public class OrganizationMenuController extends BaseMenuController<Organization>
     protected String getPageSubtitleKey() {
         return "organization.browse.title";
     }
-
 }

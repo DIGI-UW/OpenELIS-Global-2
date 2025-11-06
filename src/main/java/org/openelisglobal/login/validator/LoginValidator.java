@@ -57,5 +57,4 @@ public class LoginValidator implements Validator {
             errors.reject("login.error.account.disable");
         }
     }
-
 }

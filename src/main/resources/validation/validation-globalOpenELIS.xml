@@ -6,98 +6,97 @@
 
 <form-validation>
 
-	<formset>
-		<form name="sampleEntryForm">
-			<field property="labNo" depends="required">
-				<arg key="labID" resource="false" />
-			</field>
-		</form>
-	</formset>
-	<formset>
-		<form name="InventoryForm">
-			<field property="kitName" indexedListProperty="inventoryItems"
-				depends="required">
-				<arg position="0" key="Name" resource="false" />
-			</field>
-			<field property="type" indexedListProperty="inventoryItems"
-				depends="required">
-				<arg position="0" key="Type" resource="false" />
-			</field>
-			<field property="source" indexedListProperty="inventoryItems"
-				depends="required">
-				<arg position="0" key="Source" resource="false" />
-			</field>
-		</form>
+    <formset>
+        <form name="sampleEntryForm">
+            <field property="labNo" depends="required">
+                <arg key="labID" resource="false" />
+            </field>
+        </form>
+    </formset>
+    <formset>
+        <form name="InventoryForm">
+            <field property="kitName" indexedListProperty="inventoryItems"
+                depends="required">
+                <arg position="0" key="Name" resource="false" />
+            </field>
+            <field property="type" indexedListProperty="inventoryItems"
+                depends="required">
+                <arg position="0" key="Type" resource="false" />
+            </field>
+            <field property="source" indexedListProperty="inventoryItems"
+                depends="required">
+                <arg position="0" key="Source" resource="false" />
+            </field>
+        </form>
 
-		<form name="organizationForm">
-			<field property="organizationName" depends="required,maxlength">
-				<arg0 key="organization.organizationName" />
-				<arg1 name="maxlength" key="${var:maxlength}" resource="false" />
-				<var>
-					<var-name>maxlength</var-name>
-					<var-value>80</var-value>
-				</var>
-			</field>
-			<field property="shortName" depends="maxlength">
-				<arg0 key="organization.short" />
-				<arg1 name="maxlength" key="${var:maxlength}" resource="false" />
-				<var>
-					<var-name>maxlength</var-name>
-					<var-value>15</var-value>
-				</var>
-			</field>
-			<field property="streetAddress" depends="maxlength">
-				<arg0 key="organization.streetAddress" />
-				<arg1 name="maxlength" key="${var:maxlength}" resource="false" />
-				<var>
-					<var-name>maxlength</var-name>
-					<var-value>30</var-value>
-				</var>
-			</field>
-			<field property="city" depends="maxlength">
-				<arg0 key="organization.city" />
-				<arg1 name="maxlength" key="${var:maxlength}" resource="false" />
-				<var>
-					<var-name>maxlength</var-name>
-					<var-value>30</var-value>
-				</var>
-			</field>
-			<field property="internetAddress" depends="maxlength">
-				<arg0 key="organization.internetAddress" />
-				<arg1 name="maxlength" key="${var:maxlength}" resource="false" />
-				<var>
-					<var-name>maxlength</var-name>
-					<var-value>40</var-value>
-				</var>
-			</field>
-			<field property="isActive" depends="required,mask">
-				<arg0 key="organization.isActive" />
-				<var>
-					<var-name>mask</var-name>
-					<var-value>${yesORno}</var-value>
-				</var>
-			</field>
-			<field property="multipleUnit" depends="maxlength">
-				<arg0 key="organization.multipleUnit" />
-				<arg1 name="maxlength" key="${var:maxlength}" resource="false" />
-				<var>
-					<var-name>maxlength</var-name>
-					<var-value>30</var-value>
-				</var>
-			</field>
+        <form name="organizationForm">
+            <field property="organizationName" depends="required,maxlength">
+                <arg0 key="organization.organizationName" />
+                <arg1 name="maxlength" key="${var:maxlength}" resource="false" />
+                <var>
+                    <var-name>maxlength</var-name>
+                    <var-value>80</var-value>
+                </var>
+            </field>
+            <field property="shortName" depends="maxlength">
+                <arg0 key="organization.short" />
+                <arg1 name="maxlength" key="${var:maxlength}" resource="false" />
+                <var>
+                    <var-name>maxlength</var-name>
+                    <var-value>15</var-value>
+                </var>
+            </field>
+            <field property="streetAddress" depends="maxlength">
+                <arg0 key="organization.streetAddress" />
+                <arg1 name="maxlength" key="${var:maxlength}" resource="false" />
+                <var>
+                    <var-name>maxlength</var-name>
+                    <var-value>30</var-value>
+                </var>
+            </field>
+            <field property="city" depends="maxlength">
+                <arg0 key="organization.city" />
+                <arg1 name="maxlength" key="${var:maxlength}" resource="false" />
+                <var>
+                    <var-name>maxlength</var-name>
+                    <var-value>30</var-value>
+                </var>
+            </field>
+            <field property="internetAddress" depends="maxlength">
+                <arg0 key="organization.internetAddress" />
+                <arg1 name="maxlength" key="${var:maxlength}" resource="false" />
+                <var>
+                    <var-name>maxlength</var-name>
+                    <var-value>40</var-value>
+                </var>
+            </field>
+            <field property="isActive" depends="required,mask">
+                <arg0 key="organization.isActive" />
+                <var>
+                    <var-name>mask</var-name>
+                    <var-value>${yesORno}</var-value>
+                </var>
+            </field>
+            <field property="multipleUnit" depends="maxlength">
+                <arg0 key="organization.multipleUnit" />
+                <arg1 name="maxlength" key="${var:maxlength}" resource="false" />
+                <var>
+                    <var-name>maxlength</var-name>
+                    <var-value>30</var-value>
+                </var>
+            </field>
 
-			<field property="cliaNum" depends="maxlength">
-				<arg0 key="organization.clia.number" />
-				<arg1 name="maxlength" key="${var:maxlength}" resource="false" />
-				<var>
-					<var-name>maxlength</var-name>
-					<var-value>12</var-value>
-				</var>
-			</field>
-		</form>
+            <field property="cliaNum" depends="maxlength">
+                <arg0 key="organization.clia.number" />
+                <arg1 name="maxlength" key="${var:maxlength}" resource="false" />
+                <var>
+                    <var-name>maxlength</var-name>
+                    <var-value>12</var-value>
+                </var>
+            </field>
+        </form>
 
 
-	</formset>
+    </formset>
 
 </form-validation>
-

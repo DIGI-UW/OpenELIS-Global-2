@@ -1,6 +1,5 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" %>
 <%@ page import="org.openelisglobal.common.action.IActionConstants,
-                 org.openelisglobal.common.util.SystemConfiguration,
                  org.openelisglobal.common.util.ConfigurationProperties,
                  org.openelisglobal.common.util.ConfigurationProperties.Property,
                  org.openelisglobal.common.formfields.FormFields,
@@ -12,10 +11,8 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
-<%@ taglib uri="http://tiles.apache.org/tags-tiles" prefix="tiles"%>
 
 
 <c:set var="formName" value="${form.formName}" />
@@ -31,6 +28,8 @@
     boolean trackPayment = ConfigurationProperties.getInstance().isPropertyValueEqual(Property.TRACK_PATIENT_PAYMENT, "true");
     boolean requesterPersonRequired = FormFields.getInstance().useField(Field.SampleEntryRequesterPersonRequired);
 	boolean acceptExternalOrders = ConfigurationProperties.getInstance().isPropertyValueEqual(Property.ACCEPT_EXTERNAL_ORDERS, "true");
+    boolean restrictNewProviderEntries = ConfigurationProperties.getInstance().isPropertyValueEqual(Property.restrictFreeTextProviderEntry, "true");
+    boolean restrictNewReferringSiteEntries = ConfigurationProperties.getInstance().isPropertyValueEqual(Property.restrictFreeTextRefSiteEntry, "true");
 %>
 
 
@@ -56,6 +55,7 @@ var useSTNumber = <%= useSTNumber %>;
 var useMothersName = <%= useMothersName %>;
 var requesterPersonRequired = <%= requesterPersonRequired %>;
 var acceptExternalOrders = <%= acceptExternalOrders %>;
+var restrictNewReferringSiteEntries = <%= restrictNewReferringSiteEntries %>;
 var dirty = false;
 var invalidSampleElements = [];
 var requiredFields = new Array("labNo", "receivedDateForDisplay" );
@@ -63,7 +63,18 @@ var currentReferalDiv ;
 var currentReferalDivSelector ;
 
 if( requesterPersonRequired ){
-    requiredFields.push("providerLastNameID");
+	if (<%=restrictNewProviderEntries%>) {
+		requiredFields.push("providerPersonId");
+	} else {
+		requiredFields.push("providerLastNameID");
+	}
+    
+}
+
+if (<%=restrictNewReferringSiteEntries%>) {
+		requiredFields.push("requesterId");
+} else {
+		requiredFields.push("requesterName");
 }
 
 <% if( FormFields.getInstance().useField(Field.SampleEntryUseRequestDate)){ %>
@@ -340,7 +351,7 @@ function processLabOrderSuccess(xhr){
     <c:if test="${param.attemptAutoSave}">
 	<c:choose>
 	<c:when test="${not empty param.labNumber}">
-		jQuery('#labNo').val('${param.labNumber}');
+		jQuery('#labNo').val('<spring:escapeBody javaScriptEscape="true">${param.labNumber}</spring:escapeBody>');
 		setOrderModified();
 	</c:when>
 	<c:otherwise>
@@ -372,15 +383,17 @@ function processLabOrderSuccess(xhr){
         }
 
         var requestingOrg = order.getElementsByTagName('requestingOrg');
-        if (requestingOrg) {
-            parseRequestingOrg(requestingOrg);
-        }
-
         var location = order.getElementsByTagName('location');
-        if (location && !jQuery("#requesterId").val()) {
-            parseLocation(location);
+        
+       if (restrictNewReferringSiteEntries) {
+            if (requestingOrg) {
+                parseRequestingOrg(requestingOrg);
+            }
+            if (location && !jQuery("#requesterId").val()) {
+                parseLocation(location);
+            }
         }
-
+        
         var useralert = order.getElementsByTagName("user_alert");
         var alertMessage = "";
         if (useralert) {
@@ -448,12 +461,7 @@ function clearRequester() {
 }
 
 function clearProvider() {
-	$("providerFirstNameID").value = '';
-	$("providerLastNameID").value = '';
-	$("providerPersonId").value = '';
-	$("providerWorkPhoneID").value = '';
-	$("providerEmailID").value = '';
-	$("providerFaxID").value = '';
+	setSelectComboboxToId('providerPersonId', '');
 }
 
 function parseRequester(requester) {
@@ -461,7 +469,8 @@ function parseRequester(requester) {
     var requesterId = "";
     if (requesterIdElement.length > 0) {
     	requesterId = requesterIdElement[0].firstChild.nodeValue;
-             jQuery("#providerPersonId").val(requesterId);
+
+        setSelectComboboxToId("providerPersonId", requesterId);
     }
     
     var firstName = requester.item(0).getElementsByTagName("firstName");
@@ -493,7 +502,7 @@ function parseRequestingOrg(requestingOrg) {
     if (requestingOrgId.length > 0) {
             id = requestingOrgId[0].firstChild.nodeValue;
     }
-	jQuery("#requesterId").val(id).change();
+    setSelectComboboxToId("requesterId", id);
 }
 
 function parseLocation(location) {
@@ -502,7 +511,7 @@ function parseLocation(location) {
     if (locationId.length > 0) {
             id = locationId[0].firstChild.nodeValue;
     }
-	jQuery("#requesterId").val(id).change();
+    setSelectComboboxToId("requesterId", id);
 }
 
 function parseSampletypes(sampletypes, SampleTypes) {
@@ -686,13 +695,19 @@ function addSampleTable(){
 <hr style="width:100%;height:5px"/>
 
 <% } %>
+       
+<form:checkbox id="rememberSiteAndRequester" path="rememberSiteAndRequester"/><spring:message code="label.rememberSiteRequester"/>
+<%-- <form:checkbox id="rememberSamplePanelTest" path="rememberSamplePanelTest"/> <spring:message code="label.remembersamplepaneltest"/>--%>
+       
+<br>
+<br>
             
 <div id=sampleEntryPage >
 <input type="button" name="showHide" value='-' onclick="showHideSection(this, 'orderDisplay');" id="orderSectionId">
 <%= MessageUtil.getContextualMessage("sample.entry.order.label") %>
 <span class="requiredlabel">*</span>
 
-<tiles:insertAttribute name="sampleOrder" />
+<jsp:include page="${sampleOrderFragment}"/>
 
 <hr style="width:100%;height:5px" />
 
@@ -711,12 +726,12 @@ function addSampleTable(){
             <span class="requiredlabel">*</span>
 
             <div id="samplesDisplay_0" class="colorFill" >
-                <tiles:insertAttribute name="addSample"/>
+                <jsp:include page="${addSampleFragment}"/>
                 <form:checkbox path="useReferral" id="useReferral" onclick="toggleReferral(this);referralTestSelected();" value="true"/> <spring:message code="sample.entry.referral.toggle" />
             </div>
 
             <div id="referTestSection" class ="referTestSection" style="display:none;">
-                <tiles:insertAttribute name="referralInfo" />
+                <jsp:include page="${referralInfoFragment}"/>
             </div>        
            <hr >
         </td>
@@ -766,8 +781,8 @@ function addSampleTable(){
 </table>
 
 <div id="patientInfo"  >
-    <tiles:insertAttribute name="patientInfo" />
-    <tiles:insertAttribute name="patientClinicalInfo" />
+    <jsp:include page="${patientInfoFragment}"/>
+    <jsp:include page="${patientClinicalInfoFragment}"/>
 </div>
 </div>
 

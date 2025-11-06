@@ -1,0 +1,22 @@
+{
+  "pageTitle": "Results",
+  "resultNo": "9",
+  "startDate": "01/01/2020",
+  "endDate": "01/01/2030",
+  "referTests": "Refer test to a reference lab",
+  "referrals": "Referrals",
+  "referalReason": "Reagent expired",
+  "pcrTestMethod": "PCR",
+  "stainTestMethod": "STAIN",
+  "positiveResult": "Positive HIV1",
+  "negativeResult": "Negative",
+  "invalidResult": "Invalid",
+  "referralPageTitle": "Referrals",
+  "westernBlotHiv": "Western blot HIV",
+  "analysisStatus": "Accepted by technician",
+  "eiaTestMethod": "EIA",
+  "invalidTestMethod": "Invalid",
+  "testNotPerformed": "Test not performed",
+  "cedres": "CEDRES",
+  "sample": "Some tests have been run on this sample"
+}

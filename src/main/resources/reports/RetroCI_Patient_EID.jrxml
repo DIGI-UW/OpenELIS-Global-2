@@ -2,9 +2,9 @@
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="RetroCI_Patient_EID" pageWidth="612" pageHeight="862" columnWidth="552" leftMargin="30" rightMargin="30" topMargin="20" bottomMargin="20">
 	<property name="ireport.scriptlethandling" value="0"/>
 	<property name="ireport.encoding" value="UTF-8"/>
-	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.zoom" value="1.5"/>
 	<property name="ireport.x" value="0"/>
-	<property name="ireport.y" value="205"/>
+	<property name="ireport.y" value="1425"/>
 	<import value="net.sf.jasperreports.engine.*"/>
 	<import value="java.util.*"/>
 	<import value="net.sf.jasperreports.engine.data.*"/>
@@ -300,17 +300,17 @@ b.	Si l’enfant est sous allaitement maternel, répéter la PCR  6 semaines apr
 		<band height="448">
 			<printWhenExpression><![CDATA[$F{virologyEidQaEvent}!=null]]></printWhenExpression>
 			<rectangle>
-				<reportElement x="0" y="102" width="551" height="13"/>
+				<reportElement x="0" y="74" width="551" height="13"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="4" y="102" width="165" height="13"/>
+				<reportElement x="4" y="74" width="165" height="13"/>
 				<textElement>
 					<font fontName="Arial"/>
 				</textElement>
 				<text><![CDATA[ Age de l’enfant > 18 mois]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="425" y="102" width="115" height="13">
+				<reportElement x="425" y="74" width="115" height="13">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.adult")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -319,15 +319,15 @@ b.	Si l’enfant est sous allaitement maternel, répéter la PCR  6 semaines apr
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="0" y="115" width="551" height="13"/>
+				<reportElement x="0" y="87" width="551" height="13"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="4" y="115" width="230" height="13"/>
+				<reportElement x="4" y="87" width="230" height="13"/>
 				<textElement/>
 				<text><![CDATA[ Date de prélèvement au-delà d’un (1) mois]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="425" y="115" width="115" height="13">
+				<reportElement x="425" y="87" width="115" height="13">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.Date_1")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -336,15 +336,15 @@ b.	Si l’enfant est sous allaitement maternel, répéter la PCR  6 semaines apr
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="0" y="128" width="551" height="13"/>
+				<reportElement x="0" y="100" width="551" height="13"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="4" y="128" width="204" height="13"/>
+				<reportElement x="4" y="100" width="204" height="13"/>
 				<textElement/>
 				<text><![CDATA[ DBS: Nombre de spot rempli  < 3]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="425" y="128" width="115" height="13">
+				<reportElement x="425" y="100" width="115" height="13">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.DBS_3")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -353,15 +353,15 @@ b.	Si l’enfant est sous allaitement maternel, répéter la PCR  6 semaines apr
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="0" y="141" width="551" height="13"/>
+				<reportElement x="0" y="113" width="551" height="13"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="4" y="141" width="164" height="13"/>
+				<reportElement x="4" y="113" width="164" height="13"/>
 				<textElement/>
 				<text><![CDATA[ Diamètre des spots < 5mm]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="425" y="141" width="115" height="13">
+				<reportElement x="425" y="113" width="115" height="13">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.Diametre")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -370,15 +370,15 @@ b.	Si l’enfant est sous allaitement maternel, répéter la PCR  6 semaines apr
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="0" y="154" width="551" height="13"/>
+				<reportElement x="0" y="126" width="551" height="13"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="4" y="154" width="164" height="13"/>
+				<reportElement x="4" y="126" width="164" height="13"/>
 				<textElement/>
 				<text><![CDATA[ DBS spot de sang coagulé]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="425" y="154" width="115" height="13">
+				<reportElement x="425" y="126" width="115" height="13">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.DBS_C")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -387,15 +387,15 @@ b.	Si l’enfant est sous allaitement maternel, répéter la PCR  6 semaines apr
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="0" y="167" width="551" height="13"/>
+				<reportElement x="0" y="139" width="551" height="13"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="4" y="167" width="164" height="13"/>
+				<reportElement x="4" y="139" width="164" height="13"/>
 				<textElement/>
 				<text><![CDATA[ DBS spot de sang insuffisant]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="425" y="167" width="115" height="13">
+				<reportElement x="425" y="139" width="115" height="13">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.DBS_I")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -404,15 +404,15 @@ b.	Si l’enfant est sous allaitement maternel, répéter la PCR  6 semaines apr
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="0" y="180" width="551" height="13"/>
+				<reportElement x="0" y="152" width="551" height="13"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="4" y="180" width="166" height="13"/>
+				<reportElement x="4" y="152" width="166" height="13"/>
 				<textElement/>
 				<text><![CDATA[ Elution du disque DBS impossible]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="425" y="180" width="115" height="13">
+				<reportElement x="425" y="152" width="115" height="13">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.DBS_DI")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -421,15 +421,15 @@ b.	Si l’enfant est sous allaitement maternel, répéter la PCR  6 semaines apr
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="0" y="193" width="551" height="13"/>
+				<reportElement x="0" y="165" width="551" height="13"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="3" y="193" width="166" height="13"/>
+				<reportElement x="3" y="165" width="166" height="13"/>
 				<textElement/>
 				<text><![CDATA[ DBS spot de sang dilué par l’alcool]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="424" y="193" width="115" height="13">
+				<reportElement x="424" y="165" width="115" height="13">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.DBS_D")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -438,15 +438,15 @@ b.	Si l’enfant est sous allaitement maternel, répéter la PCR  6 semaines apr
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="0" y="206" width="551" height="13"/>
+				<reportElement x="0" y="178" width="551" height="13"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="3" y="207" width="372" height="13"/>
+				<reportElement x="3" y="179" width="372" height="13"/>
 				<textElement/>
 				<text><![CDATA[ Carte DBS sans enveloppe glassine (si plusieurs DBS dans un sachet Ziplock)]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="425" y="207" width="114" height="13">
+				<reportElement x="425" y="179" width="114" height="13">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.DBS_E")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -455,15 +455,15 @@ b.	Si l’enfant est sous allaitement maternel, répéter la PCR  6 semaines apr
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="0" y="219" width="551" height="13"/>
+				<reportElement x="0" y="191" width="551" height="13"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="3" y="219" width="347" height="13"/>
+				<reportElement x="3" y="191" width="347" height="13"/>
 				<textElement/>
 				<text><![CDATA[ Carte DBS non conforme (différente du Whatman 903)]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="424" y="219" width="115" height="13">
+				<reportElement x="424" y="191" width="115" height="13">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.DBS_NC")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -472,15 +472,15 @@ b.	Si l’enfant est sous allaitement maternel, répéter la PCR  6 semaines apr
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="0" y="232" width="551" height="13"/>
+				<reportElement x="0" y="204" width="551" height="13"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="3" y="232" width="166" height="13"/>
+				<reportElement x="3" y="204" width="166" height="13"/>
 				<textElement/>
 				<text><![CDATA[ DBS non identifié]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="424" y="232" width="115" height="13">
+				<reportElement x="424" y="204" width="115" height="13">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.DBS_NI")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -489,15 +489,15 @@ b.	Si l’enfant est sous allaitement maternel, répéter la PCR  6 semaines apr
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="0" y="245" width="551" height="13"/>
+				<reportElement x="0" y="217" width="551" height="13"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="3" y="245" width="372" height="13"/>
+				<reportElement x="3" y="217" width="372" height="13"/>
 				<textElement/>
 				<text><![CDATA[ DBS mal identifié (Identité discordante sur DBS et fiche)]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="424" y="245" width="115" height="13">
+				<reportElement x="424" y="217" width="115" height="13">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.DBS_MI")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -506,15 +506,15 @@ b.	Si l’enfant est sous allaitement maternel, répéter la PCR  6 semaines apr
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="0" y="258" width="551" height="13"/>
+				<reportElement x="0" y="230" width="551" height="13"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="3" y="258" width="166" height="13"/>
+				<reportElement x="3" y="230" width="166" height="13"/>
 				<textElement/>
 				<text><![CDATA[ DBS sans fiche]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="424" y="258" width="115" height="13">
+				<reportElement x="424" y="230" width="115" height="13">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.DBS_SF")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -523,15 +523,15 @@ b.	Si l’enfant est sous allaitement maternel, répéter la PCR  6 semaines apr
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="0" y="271" width="551" height="13"/>
+				<reportElement x="0" y="243" width="551" height="13"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="3" y="271" width="288" height="13"/>
+				<reportElement x="3" y="243" width="288" height="13"/>
 				<textElement/>
 				<text><![CDATA[ Fiche de prélèvement entachée de sang]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="424" y="271" width="115" height="13">
+				<reportElement x="424" y="243" width="115" height="13">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.bloodstained.form")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -540,15 +540,15 @@ b.	Si l’enfant est sous allaitement maternel, répéter la PCR  6 semaines apr
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="0" y="284" width="551" height="13"/>
+				<reportElement x="0" y="256" width="551" height="13"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="3" y="284" width="331" height="13"/>
+				<reportElement x="3" y="256" width="331" height="13"/>
 				<textElement/>
 				<text><![CDATA[ Fiche de prélèvement sans échantillon DBS]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="424" y="284" width="115" height="13">
+				<reportElement x="424" y="256" width="115" height="13">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.Fiche_no_DBS")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -557,204 +557,208 @@ b.	Si l’enfant est sous allaitement maternel, répéter la PCR  6 semaines apr
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<line>
-				<reportElement x="391" y="103" width="1" height="194"/>
+				<reportElement x="391" y="75" width="1" height="194"/>
 			</line>
 			<rectangle>
-				<reportElement x="0" y="332" width="551" height="38"/>
+				<reportElement x="0" y="278" width="551" height="38"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="4" y="338" width="150" height="16"/>
+				<reportElement x="4" y="284" width="150" height="16"/>
 				<textElement>
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[AUTRES MOTIFS]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="154" y="338" width="35" height="13"/>
+				<reportElement x="154" y="284" width="35" height="13"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="6" y="356" width="543" height="13"/>
+				<reportElement x="6" y="302" width="543" height="13"/>
 				<textElement/>
 				<text><![CDATA[A décrire :…………………………………………………………………….................................................................………….]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="0" y="412" width="551" height="34"/>
+				<reportElement x="0" y="358" width="551" height="34"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="4" y="412" width="85" height="16"/>
+				<reportElement x="4" y="358" width="85" height="16"/>
 				<textElement>
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[CONCLUSION :]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="4" y="427" width="195" height="16"/>
+				<reportElement x="4" y="373" width="195" height="16"/>
 				<textElement>
 					<font size="11" isBold="true" isItalic="true"/>
 				</textElement>
 				<text><![CDATA[Prière refaire le prélèvement sur :                      ]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="88" y="412" width="361" height="16"/>
+				<reportElement x="88" y="358" width="361" height="16"/>
 				<textElement>
 					<font size="11"/>
 				</textElement>
 				<text><![CDATA[L’échantillon ne peut être traité ou analysé ce jour. ]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="197" y="428" width="352" height="16"/>
+				<reportElement x="197" y="374" width="352" height="16"/>
 				<textElement>
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Tube EDTA                Tube sec          Carte DBS Whatman 903]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="14" y="373" width="57" height="16"/>
+				<reportElement x="14" y="319" width="57" height="16"/>
 				<textElement>
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Section:]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="76" y="373" width="36" height="16"/>
+				<reportElement x="76" y="319" width="36" height="16"/>
 				<textElement/>
 				<text><![CDATA[Saisie]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="114" y="374" width="14" height="14"/>
+				<reportElement x="114" y="320" width="14" height="14"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="146" y="373" width="62" height="16"/>
+				<reportElement x="146" y="319" width="62" height="16"/>
 				<textElement/>
 				<text><![CDATA[Réception]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="202" y="374" width="14" height="14"/>
+				<reportElement x="202" y="320" width="14" height="14"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="237" y="373" width="56" height="16"/>
+				<reportElement x="237" y="319" width="56" height="16"/>
 				<textElement/>
 				<text><![CDATA[Biochimie]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="291" y="374" width="14" height="14"/>
+				<reportElement x="291" y="320" width="14" height="14"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="320" y="373" width="100" height="16"/>
+				<reportElement x="320" y="319" width="100" height="16"/>
 				<textElement/>
 				<text><![CDATA[Immunologie(CD4) ]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="425" y="374" width="14" height="14"/>
+				<reportElement x="425" y="320" width="14" height="14"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="455" y="374" width="66" height="16"/>
+				<reportElement x="455" y="320" width="66" height="16"/>
 				<textElement/>
 				<text><![CDATA[Charge virale]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="526" y="374" width="14" height="14"/>
+				<reportElement x="526" y="320" width="14" height="14"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="77" y="393" width="123" height="16"/>
+				<reportElement x="77" y="339" width="123" height="16"/>
 				<textElement/>
 				<text><![CDATA[Diagnostic précoce (EID) ]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="202" y="394" width="14" height="14"/>
+				<reportElement x="202" y="340" width="14" height="14"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="204" y="395" width="11" height="13">
+				<reportElement x="204" y="341" width="11" height="13">
 					<printWhenExpression><![CDATA[$F{virologyEidQaEvent}!=null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center"/>
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="237" y="393" width="54" height="16"/>
+				<reportElement x="237" y="339" width="54" height="16"/>
 				<textElement/>
 				<text><![CDATA[Sérologie VIH]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="291" y="394" width="14" height="14"/>
+				<reportElement x="291" y="340" width="14" height="14"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="351" y="393" width="68" height="16"/>
+				<reportElement x="351" y="339" width="68" height="16"/>
 				<textElement/>
 				<text><![CDATA[Hématologie]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="425" y="394" width="14" height="14"/>
+				<reportElement x="425" y="340" width="14" height="14"/>
 			</rectangle>
 			<rectangle>
-				<reportElement x="0" y="62" width="170" height="40"/>
+				<reportElement x="0" y="34" width="170" height="40"/>
 			</rectangle>
 			<rectangle>
-				<reportElement x="170" y="62" width="381" height="20"/>
+				<reportElement x="170" y="34" width="381" height="20"/>
 			</rectangle>
 			<rectangle>
-				<reportElement x="170" y="82" width="381" height="20"/>
+				<reportElement x="170" y="54" width="381" height="20"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="178" y="61" width="118" height="20"/>
+				<reportElement x="178" y="33" width="118" height="20"/>
 				<textElement>
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Echantillon en tube : ]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="-1" y="36" width="552" height="20"/>
+				<reportElement x="-1" y="8" width="552" height="20"/>
 				<textElement textAlignment="Center">
 					<font size="14" isBold="true"/>
 				</textElement>
 				<text><![CDATA[RAPPORT DE NON-CONFORMITE CLIENT]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="301" y="61" width="241" height="20"/>
+				<reportElement x="301" y="33" width="241" height="20"/>
 				<textElement/>
 				<text><![CDATA[Type de tube/Type d’échantillon]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="10" y="68" width="157" height="34"/>
+				<reportElement x="10" y="40" width="157" height="34"/>
 				<textElement textAlignment="Center">
 					<font size="12" isBold="true"/>
 				</textElement>
 				<text><![CDATA[MOTIF DU REFUS]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="178" y="83" width="361" height="19"/>
+				<reportElement x="178" y="55" width="361" height="19"/>
 				<textElement textAlignment="Center">
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Carte DBS Whatman 903]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="265" y="427" width="14" height="14"/>
+				<reportElement x="265" y="373" width="14" height="14"/>
 			</rectangle>
 			<rectangle>
-				<reportElement x="359" y="427" width="14" height="14"/>
+				<reportElement x="359" y="373" width="14" height="14"/>
 			</rectangle>
 			<rectangle>
-				<reportElement x="521" y="427" width="14" height="14"/>
+				<reportElement x="521" y="373" width="14" height="14"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="523" y="428" width="11" height="13"/>
+				<reportElement x="523" y="374" width="11" height="13"/>
 				<textElement textAlignment="Center"/>
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="204" y="375" width="11" height="13">
+				<reportElement x="204" y="321" width="11" height="13">
 					<printWhenExpression><![CDATA[$F{receptionQaEvent}!=null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center"/>
 				<text><![CDATA[X]]></text>
 			</staticText>
+			<image onErrorType="Blank">
+				<reportElement x="4" y="5" width="337" height="12"/>
+				<imageExpression class="java.lang.String"><![CDATA[$P{imagesPath}+"PRECAUTIONS.jpg"]]></imageExpression>
+			</image>
 		</band>
 	</detail>
 	<columnFooter>
-		<band height="100" splitType="Stretch">
+		<band height="90" splitType="Stretch">
 			<staticText>
-				<reportElement key="staticText-2" x="4" y="23" width="551" height="77"/>
+				<reportElement key="staticText-2" x="2" y="22" width="551" height="59"/>
 				<textElement>
 					<font isBold="true"/>
 				</textElement>
@@ -773,24 +777,24 @@ La performance de ce test a été évaluée uniquement sur HIV-1 group O et N, e
 					<pen lineStyle="Dashed"/>
 				</graphicElement>
 			</line>
-			<image onErrorType="Blank">
-				<reportElement x="4" y="5" width="337" height="12"/>
-				<imageExpression class="java.lang.String"><![CDATA[$P{imagesPath}+"PRECAUTIONS.jpg"]]></imageExpression>
-			</image>
 		</band>
 	</columnFooter>
 	<pageFooter>
-		<band height="20" splitType="Stretch">
+		<band height="30" splitType="Stretch">
 			<textField pattern="dd/MM/yyyy">
-				<reportElement x="451" y="0" width="100" height="20"/>
+				<reportElement x="452" y="14" width="100" height="16"/>
 				<textElement/>
 				<textFieldExpression class="java.util.Date"><![CDATA[new java.util.Date()]]></textFieldExpression>
 			</textField>
+			<textField>
+				<reportElement x="7" y="14" width="112" height="16" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="9"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Page 1 sur 1"]]></textFieldExpression>
+			</textField>
 		</band>
 	</pageFooter>
-	<lastPageFooter>
-		<band height="5" splitType="Prevent"/>
-	</lastPageFooter>
 	<summary>
 		<band splitType="Stretch"/>
 	</summary>

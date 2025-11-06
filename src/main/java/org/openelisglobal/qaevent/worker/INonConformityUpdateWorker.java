@@ -9,5 +9,4 @@ public interface INonConformityUpdateWorker {
     String update();
 
     Errors getErrors();
-
 }

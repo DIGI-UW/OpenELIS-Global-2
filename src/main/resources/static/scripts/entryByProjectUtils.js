@@ -137,6 +137,19 @@ function /*void*/ synchronizeCheckBoxes(){
 	}
 }
 
+	function validateSiteSubjectNumber(field){
+		 const siteSubjectNumber = /^([0-9A-Za-z]{5}\/[0-9A-Za-z]{2})\/[\d]{2}\/[\d]{5}[Ee]?$/g;
+		 if(field.value){
+			  if(siteSubjectNumber.test(field.value)){
+				  field.classList.remove("error");
+			  }
+			  else{
+				  field.classList.add("error");
+			  }
+		 }
+	}
+
+
 function  /*void*/ savePage() {
 	if ( projectChecker != null && projectChecker.checkAllFields != undefined) {
 		projectChecker.checkAllFields(false);
@@ -211,6 +224,7 @@ function BaseLoader() {
 		clearField(document.getElementById("farv." + fieldId));
 		clearField(document.getElementById("eid." + fieldId));
 		clearField(document.getElementById("vl." + fieldId));
+		clearField(document.getElementById("rt." + fieldId));
 		clearField(document.getElementById("rtn." + fieldId));
 	}
 
@@ -230,6 +244,7 @@ function BaseLoader() {
 		this.setField("rtn." + fieldId, value);
 		this.setField("eid." + fieldId, value);
 		this.setField("vl." + fieldId, value);
+		this.setField("rt." + fieldId, value);
 	};
 
 	/**
@@ -259,6 +274,7 @@ function BaseLoader() {
  */
 function PatientLoader() {
 	this.url = "provider=PatientSearchPopulateProvider";
+
 	this.existing = null;
 	/**
 	 * This member indicates that value of the subjectNumber loaded from a sampleNumber
@@ -358,6 +374,7 @@ function PatientLoader() {
 			handlePatientBirthDateChange($("farv.dateOfBirth"), $("farv.interviewDate"), false, $("farv.age"));
 			handlePatientBirthDateChange($("eid.dateOfBirth"),  $("eid.interviewDate"), false, null, $('eid.month'), $('eid.ageWeek'));
 			handlePatientBirthDateChange($("vl.dateOfBirth"),  $("vl.interviewDate"), false, $("vl.age"));
+			handlePatientBirthDateChange($("rt.dateOfBirth"),  $("rt.interviewDate"), false, $("rt.age"));
 			handlePatientBirthDateChange($("rtn.dateOfBirth"),  $("rtn.interviewDate"), false, $("rtn.age"), $("rtn.month"));
 		}
 
@@ -729,6 +746,7 @@ function ObservationHistoryLoader() {
 	    farv.refresh();
 	    eid.refresh();
 	    vl.refresh();
+	    rt.refresh();
 	    if (rtn != null) {
 		    rtn.refresh();
 	    }
@@ -914,10 +932,34 @@ function BaseProjectChecker() {
 		comparePatientField( this.idPre + "patientFirstNames", false, blanksAllowed, "firstName");
 	}
 
+	this.checkGenderForVlPregnancyOrSuckle = function () {
+		//Observation[YES_NO] set No option selected by default when selected gender = "F"
+		if($(this.idPre+"gender").value === 'F'){
+			$(this.idPre+"vlPregnancy").value=1251; //1251 is th dictionary ID for "No" response 
+			$(this.idPre+"vlSuckle").value=1251;
+		}
+	}
+
 	this.checkGender = function (blanksAllowed) {
 		makeDirty();
+		if(this.idPre === 'hpv.'){
+			return; //don't check gender for HPV project
+		}
 		checkRequiredField($(this.idPre + "gender"), blanksAllowed);
 		comparePatientField( this.idPre + "gender", false, blanksAllowed);
+		var selectedValue = $(this.idPre + "gender").value;
+		if(this.idPre === 'vl.' || this.idPre === 'rt.'){// do it only for viral load form
+			if(selectedValue==='F'){
+				$(this.idPre + "vlPregnancyRow").show();
+				$(this.idPre + "vlSuckleRow").show();
+			}
+			else{
+				$(this.idPre + "vlPregnancyRow").hide();
+				$(this.idPre + "vlSuckleRow").hide();
+				$(this.idPre + "vlPregnancy").clear();
+				$(this.idPre + "vlSuckle").clear();		
+			}
+		}
 	}
 	
 	/**

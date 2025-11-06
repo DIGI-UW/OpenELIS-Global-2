@@ -1,0 +1,122 @@
+.dashboard-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 50px;
+  padding: 50px;
+}
+
+.dashboard-tile {
+  border-radius: 3px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background-color: #f4f4f4;
+}
+
+.tile-title {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.tile-subtitle {
+  margin-top: 5px;
+  color: #666;
+}
+
+.tile-value {
+  margin-top: 10px;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.patient-header {
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  /* padding: 20px; */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  text-align: left;
+  margin-top: 20px;
+}
+
+/* .patient-name {
+  font-size: 20px;
+  margin-bottom: 5px;
+  font-weight: bold;
+} */
+
+/* .patient-dob {
+  font-size: 20px;
+  color: #666;
+  margin-bottom: 5px;
+} */
+
+/* .patient-id {
+  font-size: 14px;
+  color: #888;
+} */
+
+.file-container {
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  padding: 20px;
+  width: 500px;
+  /* display: flex;
+  flex-direction: column; */
+  align-items: flex-start;
+  justify-content: center;
+  /* text-align: left; */
+  margin-top: 20px;
+}
+
+@media screen and (max-width: 450px) {
+  .dashboard-container {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    padding: 20px;
+  }
+  .tile-title {
+    font-size: 0.9rem;
+  }
+  .tile-title-Immuno {
+    font-size: 0.6rem;
+  }
+}
+
+@media screen and (max-width: 1150px) and (min-width: 700px) {
+  .dashboard-container {
+    gap: 40px;
+    padding: 30px;
+  }
+  .dashboard-tile {
+    min-width: 175px;
+  }
+  .tile-title-Immuno {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 925px) {
+  .dashboard-container {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+    padding: 22px;
+  }
+}
+
+@media (max-width: 500px) {
+  .dashboard-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media screen and (max-width: 700px) and (min-width: 450px) {
+  .dashboard-container {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 40px;
+    padding: 30px;
+  }
+  .tile-title-Immuno {
+    font-size: 0.9rem;
+  }
+}

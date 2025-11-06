@@ -3,7 +3,6 @@ package org.openelisglobal.common.provider.validation;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
@@ -111,7 +110,8 @@ public class GeneralAccessionNumberValidator implements IAccessionNumberValidato
             return activeValidators.get(0).getInvarientLength();
         }
         throw new UnsupportedOperationException(
-                "GeneralAccessionNumberValidator cannot give an invariant length when multiple validators are active");
+                "GeneralAccessionNumberValidator cannot give an invariant length when multiple validators"
+                        + " are active");
     }
 
     @Override
@@ -120,7 +120,8 @@ public class GeneralAccessionNumberValidator implements IAccessionNumberValidato
             return activeValidators.get(0).getChangeableLength();
         }
         throw new UnsupportedOperationException(
-                "GeneralAccessionNumberValidator annot give a changeable length when multiple validators are active");
+                "GeneralAccessionNumberValidator annot give a changeable length when multiple validators"
+                        + " are active");
     }
 
     @Override
@@ -131,5 +132,4 @@ public class GeneralAccessionNumberValidator implements IAccessionNumberValidato
         throw new UnsupportedOperationException(
                 "GeneralAccessionNumberValidator cannot give a prefix when multiple validators are active");
     }
-
 }

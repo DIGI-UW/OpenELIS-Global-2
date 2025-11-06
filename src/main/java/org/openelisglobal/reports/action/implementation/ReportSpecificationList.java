@@ -16,19 +16,15 @@
 
 package org.openelisglobal.reports.action.implementation;
 
+import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.validation.constraints.Pattern;
-
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.reports.form.ReportForm;
 
-/**
- * Represents a list for report specification
- */
+/** Represents a list for report specification */
 public class ReportSpecificationList implements Serializable {
 
     private final String label;

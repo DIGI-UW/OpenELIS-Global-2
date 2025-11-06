@@ -2,7 +2,7 @@ package org.openelisglobal.systemmodule.valueholder;
 
 import org.openelisglobal.common.valueholder.BaseObject;
 
-//This class defines the urls that correspond to the different modules
+// This class defines the urls that correspond to the different modules
 public class SystemModuleUrl extends BaseObject<String> {
 
     private String id;

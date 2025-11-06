@@ -1,28 +1,25 @@
 package org.openelisglobal.method.service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
-
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.method.dao.MethodDAO;
 import org.openelisglobal.method.valueholder.Method;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.context.annotation.DependsOn;
-
 
 @Service
 @DependsOn({ "springContext" })
-public class MethodServiceImpl extends BaseObjectServiceImpl<Method, String> implements MethodService {
+public class MethodServiceImpl extends AuditableBaseObjectServiceImpl<Method, String> implements MethodService {
     @Autowired
     protected MethodDAO baseObjectDAO;
 
     private Map<String, String> methodUnitIdToNameMap;
-
 
     MethodServiceImpl() {
         super(Method.class);
@@ -102,9 +99,11 @@ public class MethodServiceImpl extends BaseObjectServiceImpl<Method, String> imp
         }
     }
 
+    public Map<String, String> getMethodUnitIdToNameMap() {
+        return methodUnitIdToNameMap;
+    }
+
     private String buildMethodName(Method method) {
         return method.getLocalization().getLocalizedValue();
     }
-
-
 }

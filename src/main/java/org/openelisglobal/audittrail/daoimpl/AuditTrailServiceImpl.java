@@ -1,17 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
  */
 package org.openelisglobal.audittrail.daoimpl;
 
@@ -21,13 +19,13 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.sql.Timestamp;
 import java.util.Vector;
-
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.LabelValuePair;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.util.XMLUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.history.service.HistoryService;
@@ -43,6 +41,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
     @Autowired
     private ReferenceTablesService referenceTablesService;
+
     @Autowired
     private HistoryService historyService;
 
@@ -65,17 +64,18 @@ public class AuditTrailServiceImpl implements AuditTrailService {
         // if logging failes an exception should be thrown so that INSERT/UPDATE is
         // rolled back
         if (referenceTable == null) {
-            LogEvent.logDebug("AuditTrailDAOImpl", "saveNewHistory()", "NO CHANGES: REF TABLE IS NULL");
+            LogEvent.logError("AuditTrailDAOImpl", "saveNewHistory()",
+                    "NO CHANGES: REF TABLE IS NULL tableName: " + tableName);
             throw new LIMSRuntimeException("Reference Table is null in AuditTrailDAOImpl saveNewHistory()");
         }
 
         if ((sysUserId == null) || (sysUserId.length() == 0)) {
-            LogEvent.logDebug("AuditTrailDAOImpl", "saveNewHistory()", "NO CHANGES: SYS_USER_ID IS NULL");
+            LogEvent.logError("AuditTrailDAOImpl", "saveNewHistory()", "NO CHANGES: SYS_USER_ID IS NULL");
             throw new LIMSRuntimeException("System User ID is null in AuditTrailDAOImpl saveNewHistory()");
         }
 
         if (newObject == null || tableName == null) {
-            LogEvent.logDebug("AuditTrailDAOImpl", "saveNewHistory()",
+            LogEvent.logError("AuditTrailDAOImpl", "saveNewHistory()",
                     "NO CHANGES: EITHER OBJECT or TABLE NAME IS NULL");
             throw new LIMSRuntimeException(
                     "Either new object or table name is null in AuditTrailDAOImpl saveNewHistory()");
@@ -98,10 +98,9 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             hist.setReferenceTable(referenceTable.getId());
             insertData(hist);
         } catch (RuntimeException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error occurred logging INSERT", e);
         }
-
     }
 
     @Override
@@ -121,14 +120,15 @@ public class AuditTrailServiceImpl implements AuditTrailService {
         }
         if (rt == null) {
             // bugzilla 2154
-            LogEvent.logDebug("AuditTrailDAOImpl", "saveHistory()", "NO CHANGES: REF TABLE IS NULL");
+            LogEvent.logError("AuditTrailDAOImpl", "saveHistory()",
+                    "NO CHANGES: REF TABLE IS NULL" + "tableName: " + tableName);
             // bugzilla 1926
             throw new LIMSRuntimeException("Reference Table is null in AuditTrailDAOImpl saveHistory()");
         }
 
         if ((sysUserId == null) || (sysUserId.length() == 0)) {
             // bugzilla 2154
-            LogEvent.logDebug("AuditTrailDAOImpl", "saveHistory()", "NO CHANGES: SYS_USER_ID IS NULL");
+            LogEvent.logError("AuditTrailDAOImpl", "saveHistory()", "NO CHANGES: SYS_USER_ID IS NULL");
             // bugzilla 1926
             throw new LIMSRuntimeException(
                     "System User ID is null in AuditTrailDAOImpl saveHistory() for table " + tableName);
@@ -137,11 +137,11 @@ public class AuditTrailServiceImpl implements AuditTrailService {
         if ((newObject == null && IActionConstants.AUDIT_TRAIL_UPDATE.equals(event)) || existingObject == null
                 || event == null || tableName == null) {
             // bugzilla 2154
-            LogEvent.logDebug("AuditTrailDAOImpl", "saveHistory()",
+            LogEvent.logError("AuditTrailDAOImpl", "saveHistory()",
                     "NO CHANGES: EITHER OBJECTS or EVENT or TABLE NAME IS NULL");
             // bugzilla 1926
             throw new LIMSRuntimeException(
-                    "New object, existing object, table name or event is null in AuditTrailDAOImpl saveHistory()");
+                    "New object, existing object, table name or event is null in AuditTrailDAOImpl" + " saveHistory()");
         }
 
         try {
@@ -162,7 +162,8 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                 byte[] bytes = xml.getBytes();
                 hist.setChanges(bytes);
 
-//                Method m3 = existingObject.getClass().getMethod("getLastupdated", new Class[0]);
+                // Method m3 = existingObject.getClass().getMethod("getLastupdated", new
+                // Class[0]);
                 // java.sql.Timestamp ts = (java.sql.Timestamp)m3.invoke(existingObject,
                 // (Object[])new Class[0]);
                 // if ( ts == null )
@@ -176,7 +177,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             }
         } catch (RuntimeException e) {
             // buzilla 2154
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in AuditTrail saveHistory()", e);
         }
     }
@@ -249,6 +250,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
         // Iterate through all the fields in the object
         fieldIteration: for (int ii = 0; ii < fields.length; ii++) {
+            LogEvent.logTrace(this.getClass().getName(), "getChanges", "field: " + fields[ii].getName());
 
             // make private fields accessible so we can access their values.
             // This is discouraged as it can introduce security vulnerabilities so care
@@ -260,6 +262,12 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             // these modifiers are v.unlikely to be part of the data model.
             if (Modifier.isTransient(fields[ii].getModifiers()) || Modifier.isFinal(fields[ii].getModifiers())
                     || Modifier.isStatic(fields[ii].getModifiers())) {
+                LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                        fields[ii].getName() + " transient: " + Modifier.isTransient(fields[ii].getModifiers()));
+                LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                        fields[ii].getName() + " final: " + Modifier.isFinal(fields[ii].getModifiers()));
+                LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                        fields[ii].getName() + " static: " + Modifier.isStatic(fields[ii].getModifiers()));
                 continue fieldIteration;
             }
 
@@ -273,9 +281,12 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                 // && (!fieldName.equals("collectionDateForDisplay"))
                 // && (!fieldName.equals("collectionTimeForDisplay")) ) {
                 Class interfaces[] = fields[ii].getType().getInterfaces();
+                String auditFunctionName = "get" + StringUtil.capitalize(fieldName) + "_Audit";
                 for (int i = 0; i < interfaces.length;) {
                     if (interfaces[i].equals(java.util.Collection.class)) {
-                        continue fieldIteration;
+                        if (!methodExists(objectClass, auditFunctionName)) { // check if separate audit field exists
+                            continue fieldIteration;
+                        }
                     }
                     i++;
                 }
@@ -292,31 +303,91 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                         } else {
                             propertyNewState = "";
                         }
+
+                        try {
+                            LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                                    "does " + auditFunctionName + " exist in newObject");
+
+                            if (methodExists(newObject.getClass(), auditFunctionName)) {
+                                LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                                        auditFunctionName + " exists in newObject");
+
+                                Method m2 = newObject.getClass().getMethod(auditFunctionName, new Class[0]);
+                                Object o2 = m2.invoke(newObject, (Object[]) new Class[0]);
+
+                                String o2Value;
+
+                                if (o2 != null) {
+                                    o2Value = o2.toString();
+                                } else {
+                                    o2Value = "";
+                                }
+
+                                propertyNewState = o2Value;
+                            }
+                        } catch (RuntimeException | NoSuchMethodException | IllegalAccessException
+                                | InvocationTargetException e) {
+                            // buzilla 2154
+                            LogEvent.logError(e);
+                            throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
+                        }
                     } else {
                         propertyNewState = "";
                     }
                 } catch (IllegalAccessException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
-                    LogEvent.logDebug(e);
+                    LogEvent.logError(e);
                     propertyNewState = "";
                 }
+                LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                        "field: " + fields[ii].getName() + " propertyNewState: " + propertyNewState);
 
                 try {
                     Object objPreUpdateState = fields[ii].get(existingObject);
                     if (objPreUpdateState != null) {
                         propertyPreUpdateState = objPreUpdateState.toString();
+
                     } else {
                         propertyPreUpdateState = "";
                     }
+
+                    try {
+                        LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                                "does " + auditFunctionName + " exists in existingObject");
+
+                        if (methodExists(existingObject.getClass(), auditFunctionName)) {
+                            LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                                    auditFunctionName + " exists in existingObject");
+                            Method m2 = existingObject.getClass().getMethod(auditFunctionName, new Class[0]);
+                            Object o2 = m2.invoke(existingObject, (Object[]) new Class[0]);
+
+                            String o2Value;
+
+                            if (o2 != null) {
+                                o2Value = o2.toString();
+                            } else {
+                                o2Value = "";
+                            }
+
+                            propertyPreUpdateState = o2Value;
+
+                        }
+                    } catch (RuntimeException | NoSuchMethodException | IllegalAccessException
+                            | InvocationTargetException e) {
+                        // buzilla 2154
+                        LogEvent.logError(e);
+                        throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
+                    }
                 } catch (IllegalArgumentException e) {
+                    LogEvent.logError(e);
                     propertyPreUpdateState = "";
                 } catch (IllegalAccessException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
-                    LogEvent.logDebug(e);
+                    LogEvent.logError(e);
                     propertyPreUpdateState = "";
                 }
+                LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                        "field: " + fields[ii].getName() + " propertyPreUpdateState: " + propertyPreUpdateState);
 
                 // bugzilla 2134 fixed the analysis_qaevent completed date problem
                 // bugzilla 2122 fixed the sample collection date problem
@@ -346,6 +417,11 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     // LogEvent.logInfo("AuditTrailDAOImpl","getChanges","NEW UPDATE: " +
                     // propertyNewState);
                     // LogEvent.logInfo("","","\n");
+
+                    LogEvent.logTrace(this.getClass().getName(), "getChanges",
+                            "field compare: " + fields[ii].getName() + " propertyNewState: " + propertyNewState);
+                    LogEvent.logTrace(this.getClass().getName(), "getChanges", "field compare: " + fields[ii].getName()
+                            + " propertyPreUpdateState: " + propertyPreUpdateState);
 
                     // Now we have the two property values - compare them
                     if (propertyNewState.equals(propertyPreUpdateState)) {
@@ -396,7 +472,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
                 m2 = newObject.getClass().getMethod("getCompletedDate", new Class[0]);
                 o2 = m2.invoke(newObject, (Object[]) new Class[0]);
-
             }
             if (fieldName.equals("sample")) {
                 fieldName = "collectionDate";
@@ -407,7 +482,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     m2 = newObject.getClass().getMethod("getCollectionDate", new Class[0]);
                     o2 = m2.invoke(newObject, (Object[]) new Class[0]);
                 } catch (NoSuchMethodException e) {
-                    LogEvent.logInfo(this.getClass().getName(), "processLabelValueFixes",
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "processLabelValueFixes",
                             "ignoring NoSuchMethodException getCollectionDate() for object of type: "
                                     + existingObject.getClass().getName());
                     // ignore for SampleItem (which does not have getCollectionDate method
@@ -434,7 +509,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
         } catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException
                 | InvocationTargetException e) {
             // buzilla 2154
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in AuditTrail processLabelValueFixes()", e);
         }
 
@@ -454,6 +529,17 @@ public class AuditTrailServiceImpl implements AuditTrailService {
         return lvb;
     }
 
+    public static boolean methodExists(Class clazz, String methodName) {
+        boolean result = false;
+        for (Method method : clazz.getDeclaredMethods()) {
+            if (method.getName().equals(methodName)) {
+                result = true;
+                break;
+            }
+        }
+        return result;
+    }
+
     /**
      * Process and compare the child value objects using java reflection
      *
@@ -467,7 +553,8 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             Object newObject) {
 
         LabelValuePair lvb = null;
-        if (propertyPreUpdateState.startsWith("{org.openelisglobal")) {
+        if (propertyPreUpdateState != null && fieldName != null
+                && propertyPreUpdateState.startsWith("{org.openelisglobal")) {
             if (fieldName.equals("test")) {
                 try {
                     Method m1 = existingObject.getClass().getMethod("getTest", new Class[0]);
@@ -497,7 +584,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("testSection")) {
@@ -530,7 +617,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                 } catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException
                         | InvocationTargetException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("county")) {
@@ -563,7 +650,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                 } catch (RuntimeException | NoSuchMethodException | IllegalAccessException
                         | InvocationTargetException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("region")) {
@@ -596,7 +683,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException
                         | SecurityException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("scriptlet")) {
@@ -629,7 +716,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                 } catch (RuntimeException | NoSuchMethodException | IllegalAccessException
                         | InvocationTargetException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("organization")) {
@@ -661,7 +748,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("panel")) {
@@ -693,7 +780,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("person")) {
@@ -725,7 +812,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("testResult")) {
@@ -757,7 +844,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("analysis")) {
@@ -790,7 +877,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                 } catch (RuntimeException | NoSuchMethodException | IllegalAccessException
                         | InvocationTargetException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("analyte")) {
@@ -822,7 +909,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("sampleItem")) {
@@ -854,7 +941,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("parentAnalysis")) {
@@ -886,7 +973,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("parentResult")) {
@@ -918,7 +1005,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("sample")) {
@@ -950,7 +1037,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("method")) {
@@ -982,7 +1069,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("testTrailer")) {
@@ -1014,7 +1101,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("unitOfMeasure")) {
@@ -1046,7 +1133,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("testAnalyte")) {
@@ -1078,7 +1165,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("label")) {
@@ -1110,7 +1197,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("city")) {
@@ -1142,7 +1229,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             } else if (fieldName.equals("addedTest")) {
@@ -1171,7 +1258,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
                 } catch (RuntimeException e) {
                     // buzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                     throw new LIMSRuntimeException("Error in AuditTrail processLabelValue()", e);
                 }
             }
@@ -1188,6 +1275,9 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                 lvb = new LabelValuePair();
                 lvb.setLabel(fieldName);
                 lvb.setValue(propertyPreUpdateState);
+                LogEvent.logTrace(this.getClass().getName(), "processLabelValue",
+                        "lvb field: " + fieldName + " propertyPreUpdateState: " + propertyPreUpdateState);
+
             }
         }
 
@@ -1281,196 +1371,11 @@ public class AuditTrailServiceImpl implements AuditTrailService {
     }
 
     /**
-     * bugzilla 2569 Get list of history records by referenceId and referenceTableId
-     *
-     * @param history valueholder
-     * @return list of history objects
-     */
-    // @Override
-    // @Transactional(readOnly = true)
-    // public List getHistoryByRefIdAndRefTableId(History history) throws
-    // LIMSRuntimeException {
-    // return getHistoryByRefIdAndRefTableId(history.getReferenceId(),
-    // history.getReferenceTable());
-    // }
-
-    // @Override
-    // @Transactional(readOnly = true)
-    // public List getHistoryByRefIdAndRefTableId(String refId, String tableId)
-    // throws LIMSRuntimeException {
-    // List list;
-    //
-    // try {
-    //
-    // String sql = "from History h where h.referenceId = :refId and
-    // h.referenceTable = :tableId order by h.timestamp desc, h.activity desc";
-    // org.hibernate.Query query =
-    // sessionFactory.getCurrentSession().createQuery(sql);
-    // query.setInteger("refId", Integer.parseInt(refId));
-    // query.setInteger("tableId", Integer.parseInt(tableId));
-    //
-    // list = query.list();
-    // // sessionFactory.getCurrentSession().flush(); // CSL remove old
-    // // sessionFactory.getCurrentSession().clear(); // CSL remove old
-    // } catch (HibernateException e) {
-    // LogEvent.logError("AuditTrailDAOImpl", "getHistoryByRefIdAndRefTableId()",
-    // e.toString());
-    // throw new LIMSRuntimeException("Error in AuditTrail
-    // getHistoryByRefIdAndRefTableId()", e);
-    // }
-    // return list;
-    // }
-
-    // @SuppressWarnings("unchecked")
-    // @Override
-    // @Transactional(readOnly = true)
-    // public List<History> getHistoryByRefTableIdAndDateRange(String
-    // referenceTableId, Date start, Date end)
-    // throws LIMSRuntimeException {
-    // String sql = "from History h where h.referenceTable = :tableId and
-    // (h.timestamp between :start and :end) order by h.referenceId, h.timestamp
-    // desc";
-    //
-    // try {
-    //
-    // org.hibernate.Query query =
-    // sessionFactory.getCurrentSession().createQuery(sql);
-    // query.setInteger("tableId", Integer.parseInt(referenceTableId));
-    // query.setTimestamp("start", start);
-    // query.setTimestamp("end", end);
-    //
-    // List<History> list = query.list();
-    // // closeSession(); // CSL remove old
-    // return list;
-    // } catch (RuntimeException e) {
-    // handleException(e, "getHistoryByRefTableIdAndDateRange");
-    // }
-    //
-    // return null;
-    // }
-
-    /**
-     * Get list of history records by systemUser, date and referenceTableId
-     *
-     * @param history valueholder
-     * @return list of history objects
-     */
-    // @Override
-    // @Transactional(readOnly = true)
-    // public List getHistoryBySystemUserAndDateAndRefTableId(History history)
-    // throws LIMSRuntimeException {
-    // List list;
-    //
-    // try {
-    //
-    // String sql;
-    // if (!StringUtil.isNullorNill(history.getReferenceTable())) {
-    // if (!StringUtil.isNullorNill(history.getSysUserId())) {
-    // if (history.getTimestamp() != null) {
-    // sql = "from History h where h.referenceTable = :param1 and h.sysUserId =
-    // :param2 and trunc(h.timestamp) = TO_DATE(:param3, 'MM-DD-YYYY') order by
-    // h.sysUserId asc, h.timestamp desc";
-    // } else {
-    // sql = "from History h where h.referenceTable = :param1 and h.sysUserId =
-    // :param2 order by h.sysUserId asc, h.timestamp desc";
-    // }
-    // } else {
-    // if (history.getTimestamp() != null) {
-    // sql = "from History h where h.referenceTable = :param1 and trunc(h.timestamp)
-    // = TO_DATE(:param3, 'MM-DD-YYYY')order by h.sysUserId asc, h.timestamp desc";
-    // } else {
-    // sql = "from History h where h.referenceTable = :param1 order by h.sysUserId
-    // asc, h.timestamp desc";
-    // }
-    // }
-    // } else {
-    // if (!StringUtil.isNullorNill(history.getSysUserId())) {
-    // if (history.getTimestamp() != null) {
-    // sql = "from History h where h.sysUserId = :param2 and trunc(h.timestamp) =
-    // TO_DATE(:param3, 'MM-DD-YYYY') order by h.sysUserId asc, h.timestamp desc";
-    // } else {
-    // sql = "from History h where h.sysUserId = :param2 order by h.sysUserId asc,
-    // h.timestamp desc";
-    // }
-    // } else {
-    // if (history.getTimestamp() != null) {
-    // sql = "from History h where trunc(h.timestamp) = TO_DATE(:param3,
-    // 'MM-DD-YYYY') order by h.sysUserId asc, h.timestamp desc";
-    // } else {
-    // sql = "from History h order by h.sysUserId asc, h.timestamp desc";
-    // }
-    // }
-    // }
-    // org.hibernate.Query query =
-    // sessionFactory.getCurrentSession().createQuery(sql);
-    //
-    // if (!StringUtil.isNullorNill(history.getReferenceTable())) {
-    // query.setParameter("param1", history.getReferenceTable());
-    // }
-    // if (!StringUtil.isNullorNill(history.getSysUserId())) {
-    // query.setParameter("param2", history.getSysUserId());
-    // }
-    //
-    // if (history.getTimestamp() != null) {
-    // query.setParameter("param3",
-    // DateUtil.convertTimestampToStringDate(history.getTimestamp()));
-    // }
-    //
-    // list = query.list();
-    // // sessionFactory.getCurrentSession().flush(); // CSL remove old
-    // // sessionFactory.getCurrentSession().clear(); // CSL remove old
-    // LogEvent.logDebug("AuditTrailDAOImpl",
-    // "getHistoryBySystemUserAndDateAndRefTableId()",
-    // "getting History List");
-    //
-    // } catch (RuntimeException e) {
-    // LogEvent.logError("AuditTrailDAOImpl",
-    // "getHistoryBySystemUserAndDateAndRefTableId()", e.toString());
-    // throw new LIMSRuntimeException("Error in AuditTrail
-    // getHistoryByRefIdAndRefTableId()", e);
-    // }
-    // return list;
-    // }
-
-    /**
-     * Read the blob and convert to xml string
-     *
-     * @param id the primary id
-     * @return a string
-     */
-    // @Override
-    // public String retrieveBlobData(String id) throws LIMSRuntimeException {
-    // byte[] bindata = new byte[1024];
-    // try {
-    // History history = sessionFactory.getCurrentSession().get(History.class, id);
-    // if (history != null) {
-    // bindata = history.getChanges();
-    // }
-    // } catch (RuntimeException e) {
-    // // buzilla 2154
-    // LogEvent.logError("AuditTrailDAOImpl", "retrieveBlobData()", e.toString());
-    // throw new LIMSRuntimeException("Error in AuditTrail retrieveBlobData()", e);
-    // }
-    // return new String(bindata);
-    // }
-
-    /**
      * Save the object into history table
      *
      * @param history the history object being saved
      */
     private void insertData(History history) throws LIMSRuntimeException {
         historyService.insert(history);
-        // try {
-        // String id = (String) sessionFactory.getCurrentSession().save(history);
-        // history.setId(id);
-        // // sessionFactory.getCurrentSession().flush(); // CSL remove old
-        // // sessionFactory.getCurrentSession().clear(); // CSL remove old
-        // } catch (RuntimeException e) {
-        // // buzilla 2154
-        // LogEvent.logError("AuditTrailDAOImpl", "insertData()", e.toString());
-        // throw new LIMSRuntimeException("Error in AuditTrail insertData()", e);
-        // }
     }
-
 }

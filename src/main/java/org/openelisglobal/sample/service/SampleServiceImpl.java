@@ -1,17 +1,15 @@
 package org.openelisglobal.sample.service;
 
+import jakarta.annotation.PostConstruct;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
-import javax.annotation.PostConstruct;
-
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
@@ -50,7 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @DependsOn({ "springContext" })
-public class SampleServiceImpl extends BaseObjectServiceImpl<Sample, String> implements SampleService {
+public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, String> implements SampleService {
 
     private static String TABLE_REFERENCE_ID;
 
@@ -373,7 +371,6 @@ public class SampleServiceImpl extends BaseObjectServiceImpl<Sample, String> imp
                     .equals(analysisList.get(j).getSampleItem().getSample().getAccessionNumber())) {
                 previousSample = analysisList.get(j + 1).getSampleItem().getSample();
             }
-
         }
 
         /*
@@ -387,14 +384,12 @@ public class SampleServiceImpl extends BaseObjectServiceImpl<Sample, String> imp
          * }
          */
         return previousSample;
-
     }
 
     @Override
     @Transactional(readOnly = true)
     public void getData(Sample sample) {
         getBaseObjectDAO().getData(sample);
-
     }
 
     @Override
@@ -507,7 +502,6 @@ public class SampleServiceImpl extends BaseObjectServiceImpl<Sample, String> imp
                     sample.getAccessionNumber().substring(0, sample.getAccessionNumber().indexOf('.')));
         }
         getBaseObjectDAO().getSampleByAccessionNumber(sample);
-
     }
 
     @Override
@@ -587,9 +581,14 @@ public class SampleServiceImpl extends BaseObjectServiceImpl<Sample, String> imp
     }
 
     @Override
+    public List<Sample> getStudySamplesForSiteBetweenOrderDates(String referringSiteId, LocalDate lowerDate,
+            LocalDate upperDate) {
+        return sampleDAO.getStudySamplesForSiteBetweenOrderDates(referringSiteId, lowerDate, upperDate);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<Sample> getSamplesByPriority(OrderPriority priority) {
         return sampleDAO.getSamplesByPriority(priority);
     }
-
 }

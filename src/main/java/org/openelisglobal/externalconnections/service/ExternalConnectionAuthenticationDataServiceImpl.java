@@ -3,7 +3,6 @@ package org.openelisglobal.externalconnections.service;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-
 import org.openelisglobal.externalconnections.valueholder.BasicAuthenticationData;
 import org.openelisglobal.externalconnections.valueholder.CertificateAuthenticationData;
 import org.openelisglobal.externalconnections.valueholder.ExternalConnection.AuthType;
@@ -46,7 +45,6 @@ public class ExternalConnectionAuthenticationDataServiceImpl implements External
         default:
             throw new RuntimeException();
         }
-
     }
 
     @Override

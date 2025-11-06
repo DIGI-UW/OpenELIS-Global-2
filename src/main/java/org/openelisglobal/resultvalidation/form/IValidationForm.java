@@ -1,7 +1,6 @@
 package org.openelisglobal.resultvalidation.form;
 
 import java.util.List;
-
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 
 public interface IValidationForm {

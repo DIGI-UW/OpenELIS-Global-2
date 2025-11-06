@@ -1,39 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	 http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-	<changeSet author="moses_mutesa" id="1">
-		<preConditions onFail="MARK_RAN">
-			<tableExists tableName="system_role_module" schemaName="clinlims" />
-			<sqlCheck expectedResult="0">
-				SELECT COUNT(*) FROM clinlims.system_role_module srm WHERE srm.system_role_id = (select sr.id  FROM clinlims.system_role sr WHERE sr.name = 'Validation') AND srm.system_module_id = (SELECT sm.id FROM clinlims.system_module sm WHERE sm.name = 'NonConformity')
-			</sqlCheck>
-		</preConditions>
-		<comment>update Validation, Results and Reception Roles to have Acces to Non Conformity Tab </comment>
-		<insert tableName="system_role_module" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_module_seq"/>
-			<column name="has_select" value="Y"/>
-			<column name="has_add" value="Y"/>
-			<column name="has_update" value="Y"/>
-			<column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Validation')"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'NonConformity')"/>
-		</insert>
-		<insert tableName="system_module_url" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_module_url_seq"/>
-			<column name="url_path" value="/ReportNonConformingEvent"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'NonConformity')"/>
-		</insert>
-		<insert tableName="system_module_url" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_module_url_seq"/>
-			<column name="url_path" value="/ViewNonConformingEvent"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'NonConformity')"/>
-		</insert>
-		<insert tableName="system_module_url" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_module_url_seq"/>
-			<column name="url_path" value="/NCECorrectiveAction"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'NonConformity')"/>
-		</insert>
-	</changeSet>
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet author="moses_mutesa" id="1">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role_module srm WHERE srm.system_role_id = (select sr.id  FROM clinlims.system_role sr WHERE sr.name = 'Validation') AND srm.system_module_id = (SELECT sm.id FROM clinlims.system_module sm WHERE sm.name = 'NonConformity')
+            </sqlCheck>
+        </preConditions>
+        <comment>update Validation, Results and Reception Roles to have Acces to Non Conformity Tab </comment>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Validation')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'NonConformity')"/>
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/ReportNonConformingEvent"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'NonConformity')"/>
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/ViewNonConformingEvent"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'NonConformity')"/>
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/NCECorrectiveAction"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'NonConformity')"/>
+        </insert>
+    </changeSet>
 </databaseChangeLog>

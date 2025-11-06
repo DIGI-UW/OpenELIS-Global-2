@@ -18,8 +18,7 @@ package org.openelisglobal.image.valueholder;
 
 import org.openelisglobal.common.valueholder.BaseObject;
 
-/**
- */
+/** */
 public class Image extends BaseObject<String> {
     public static final int MAX_MEMORY_SIZE = 1024 * 1024 * 2;
     private String id;

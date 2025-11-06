@@ -5,5 +5,4 @@ public interface CovidResultsBuilder {
     void buildDataSource();
 
     byte[] getDataSourceAsByteArray();
-
 }

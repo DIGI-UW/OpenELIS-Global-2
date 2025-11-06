@@ -269,8 +269,7 @@ a:focus>.sf-sub-indicator, a:hover>.sf-sub-indicator, a:active>.sf-sub-indicator
 
 /*** home menu item with icon ***/
 #menu_home {
-	background: url('../images/home.png') no-repeat center center;
-	width: 14px;
+	width: 70px;
 	height: 13px
 }
 /* Fixes problem w/ enlargement on hover */

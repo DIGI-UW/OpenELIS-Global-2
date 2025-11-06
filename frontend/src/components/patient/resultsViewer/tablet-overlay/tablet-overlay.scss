@@ -1,0 +1,52 @@
+@use "@carbon/styles/scss/spacing";
+@use "@carbon/styles/scss/type";
+//@import '~@openmrs/esm-styleguide/src/vars';
+@import "../commons/scss/vars.scss";
+
+.tabletOverlay {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background-color: $ui-02;
+  overflow: hidden;
+  padding-top: spacing.$spacing-09;
+  display: grid;
+  grid-template-rows: 1fr auto;
+}
+
+.tabletOverlayHeader {
+  button {
+    background-color: $brand-01;
+  }
+  .headerContent {
+    color: $ui-02;
+  }
+}
+
+.headerContent {
+  @include type.type-style("heading-compact-02");
+  padding: 0 spacing.$spacing-05;
+  color: $ui-05;
+}
+
+.overlayContent {
+  padding: spacing.$spacing-05;
+  overflow-y: auto;
+}
+
+.buttonsGroup {
+  width: 100%;
+  align-self: end;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.buttonsGroup {
+  button {
+    max-width: unset;
+    width: 100%;
+  }
+}

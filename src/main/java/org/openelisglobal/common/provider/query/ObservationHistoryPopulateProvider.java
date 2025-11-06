@@ -1,22 +1,25 @@
 /*
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*
-* Contributor(s): CIRG, University of Washington, Seattle WA.
-*/
+ * The contents of this file are subject to the Mozilla Public License
+ * Version 1.1 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
+ * License for the specific language governing rights and limitations under
+ * the License.
+ *
+ * The Original Code is OpenELIS code.
+ *
+ * Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
+ *
+ * Contributor(s): CIRG, University of Washington, Seattle WA.
+ */
 package org.openelisglobal.common.provider.query;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Comparator;
@@ -25,11 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.openelisglobal.common.util.XMLUtil;
 import org.openelisglobal.dictionary.ObservationHistoryList;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
@@ -50,18 +48,18 @@ public class ObservationHistoryPopulateProvider extends BaseQueryProvider {
      * "nationality" one is stored as D and the "other" L
      */
     private static final String NATIONALITY_OBSERVATION_HISTORY = "nationality";
+
     private static final String NATIONALITY_SUFFIX = "Other";
     /**
      * priorDiseases and currentDiseases both have an additional field
      * xDiseasesValue
      */
     public static final String[] DISEASES_OTHER = { "priorDiseases", "currentDiseases", };
+
     private static final String DISEASES_SUFFIX = "Value";
 
     private ObservationHistoryTypeMap ohTypeMap = ObservationHistoryTypeMap.getInstance();
-    /**
-     * All of the following occur multiple time in observation history
-     */
+    /** All of the following occur multiple time in observation history */
     public static final String[] MULTI_LISTS = { "priorARVTreatmentINNs", "futureARVTreatmentINNs",
             "arvTreatmentAdvEffGrd", "arvTreatmentAdvEffType", "cotrimoxazoleTreatAdvEffGrd",
             "cotrimoxazoleTreatAdvEffType", "currentARVTreatmentINNs"
@@ -73,8 +71,8 @@ public class ObservationHistoryPopulateProvider extends BaseQueryProvider {
     private Patient patient = new Patient();
     private Sample sample = new Sample();
     Map<String, String> historyMap = new LinkedHashMap<>();
-//    private String projectFormName;
-//    private RequestType requestType = RequestType.UNKNOWN;
+    // private String projectFormName;
+    // private RequestType requestType = RequestType.UNKNOWN;
 
     @Override
     public void processRequest(HttpServletRequest request, HttpServletResponse response)
@@ -84,8 +82,8 @@ public class ObservationHistoryPopulateProvider extends BaseQueryProvider {
         String sampleKey = request.getParameter("sampleKey");
         patient.setId(patientKey);
         sample.setId(sampleKey);
-//        String s = (String) request.getSession().getAttribute("type");
-//        requestType = RequestType.valueOfAsUpperCase(s);
+        // String s = (String) request.getSession().getAttribute("type");
+        // requestType = RequestType.valueOfAsUpperCase(s);
 
         String result = createSearchResultXML();
         ajaxServlet.sendData(xml.toString(), result, request, response);
@@ -96,7 +94,7 @@ public class ObservationHistoryPopulateProvider extends BaseQueryProvider {
 
         buildSingleObservationHistories();
         addMultiHistories();
-//		projectFormName = historyMap.get("projectFormName");
+        // projectFormName = historyMap.get("projectFormName");
         addDoubleHistories(NATIONALITY_OBSERVATION_HISTORY, NATIONALITY_SUFFIX);
         for (String disease : DISEASES_OTHER) {
             addDoubleHistories(disease, DISEASES_SUFFIX);
@@ -113,7 +111,7 @@ public class ObservationHistoryPopulateProvider extends BaseQueryProvider {
         for (ObservationHistory history : histories) {
             String ohTypeName = ohTypeMap.getTypeFromId(history.getObservationHistoryTypeId());
             if (ohTypeName.contains("RecordStatus")) { // sample and patient record status get mapped to their localized
-                                                       // strings.
+                // strings.
                 List<Dictionary> list = ObservationHistoryList.REC_STATUS.getList();
                 for (Dictionary d : list) {
                     if (d.getId().equals(history.getValue())) {

@@ -1,11 +1,9 @@
 package org.openelisglobal.test.service;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.method.valueholder.Method;
@@ -28,6 +26,8 @@ public interface TestService extends BaseObjectService<Test, String> {
     List<Test> getTestsByTestSectionAndMethod(String filter, String filter2);
 
     List<Test> getTestsByTestSectionId(String id);
+
+    List<Test> getTestsByTestSectionIds(List<Integer> ids);
 
     List<Test> getPageOfTestsBySysUserId(int startingRecNo, int sysUserId);
 
@@ -107,6 +107,8 @@ public interface TestService extends BaseObjectService<Test, String> {
 
     List<Test> getActiveTestsByName(String testName) throws LIMSRuntimeException;
 
+    List<Test> getActiveTestsByPanel(String panelName);
+
     Test getActiveTestByLocalizedName(String testName, Locale locale) throws LIMSRuntimeException;
 
     List<Test> getTestsByName(String testName) throws LIMSRuntimeException;
@@ -117,6 +119,12 @@ public interface TestService extends BaseObjectService<Test, String> {
 
     List<Test> getActiveTestByName(String testName);
 
+    List<Test> getTbTestByMethod(String method);
+
+    List<Test> getTbTest();
+
+    List<Panel> getTbPanelsByMethod(String method);
+
     Optional<Test> getActiveTestByLoincCodeAndSampleType(String loincCode, String sampleTypeId);
 
     void deactivateAllTests();
@@ -125,4 +133,5 @@ public interface TestService extends BaseObjectService<Test, String> {
 
     void activateTestsAndDeactivateOthers(List<String> asList);
 
+    List<Test> getTriggeringAntimicrobialResistanceTests();
 }

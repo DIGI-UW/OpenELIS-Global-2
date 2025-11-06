@@ -18,12 +18,14 @@ package org.openelisglobal.common.services;
 
 import java.util.ArrayList;
 import java.util.List;
-
+import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
+import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
@@ -31,8 +33,12 @@ import org.openelisglobal.observationhistory.valueholder.ObservationHistory.Valu
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.program.service.ProgramSampleService;
+import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.provider.service.ProviderService;
+import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.requester.valueholder.SampleRequester;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.service.SampleService;
@@ -43,13 +49,14 @@ import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
-/**
- */
+/** */
 @Service
 @Scope("prototype")
 @DependsOn({ "springContext" })
 public class SampleOrderService {
 
+    private ProgramSampleService programSampleService = SpringContext.getBean(ProgramSampleService.class);
+    private FhirUtil fhirUtil = SpringContext.getBean(FhirUtil.class);
     private static SampleService sampleService = SpringContext.getBean(SampleService.class);
     private static OrganizationService orgService = SpringContext.getBean(OrganizationService.class);
     private ObservationHistoryService observationHistoryService = SpringContext
@@ -80,6 +87,10 @@ public class SampleOrderService {
         this.readOnly = readOnly;
     }
 
+    public void setSample(Sample sample) {
+        this.sample = sample;
+    }
+
     private SampleOrderItem getBaseSampleOrderItem() {
         SampleOrderItem orderItems = new SampleOrderItem();
 
@@ -92,7 +103,7 @@ public class SampleOrderService {
                 DisplayListService.getInstance().getFreshList(DisplayListService.ListType.PRACTITIONER_PERSONS));
 
         orderItems.setPriorityList(
-            DisplayListService.getInstance().getFreshList(DisplayListService.ListType.ORDER_PRIORITY));    
+                DisplayListService.getInstance().getFreshList(DisplayListService.ListType.ORDER_PRIORITY));
 
         if (needRequesterList) {
             orderItems.setReferringSiteList(DisplayListService.getInstance()
@@ -111,7 +122,8 @@ public class SampleOrderService {
 
         if (ConfigurationProperties.getInstance().isPropertyValueEqual(ConfigurationProperties.Property.ORDER_PROGRAM,
                 "true")) {
-            orderItems.setProgramList(DisplayListService.getInstance().getList(DisplayListService.ListType.PROGRAM));
+            orderItems.setProgramList(
+                    DisplayListService.getInstance().getList(DisplayListService.ListType.DICTIONARY_PROGRAM));
         }
 
         return orderItems;
@@ -151,18 +163,35 @@ public class SampleOrderService {
                     .getValueForSample(ObservationType.BILLING_REFERENCE_NUMBER, sample.getId()));
             sampleOrder.setProgram(
                     observationHistoryService.getRawValueForSample(ObservationType.PROGRAM, sample.getId()));
+            String programName = observationHistoryService.getRawValueForSample(ObservationType.PROGRAM,
+                    sample.getId());
+            ProgramSample programSample = programSampleService
+                    .getProgrammeSampleBySample(Integer.valueOf(sample.getId()), programName);
+            if (programSample != null) {
+                sampleOrder.setProgramId(programSample.getProgram().getId());
+                if (programSample.getQuestionnaireResponseUuid() != null) {
+                    sampleOrder.setAdditionalQuestions(
+                            fhirUtil.getLocalFhirClient().read().resource(QuestionnaireResponse.class)
+                                    .withId(programSample.getQuestionnaireResponseUuid().toString()).execute());
+                }
+            }
 
             RequesterService requesterService = new RequesterService(sample.getId());
             sampleOrder.setProviderPersonId(requesterService.getRequesterPersonId());
-            sampleOrder.setProviderId(
-                    SpringContext.getBean(ProviderService.class).getProviderByPerson(requesterService.getPerson())
-                            .getId());
+            if (requesterService.getPerson() != null) {
+                Provider provider = SpringContext.getBean(ProviderService.class)
+                        .getProviderByPerson(requesterService.getPerson());
+                if (provider != null) {
+                    sampleOrder.setProviderId(provider.getId());
+                }
+            }
             sampleOrder.setProviderFirstName(requesterService.getRequesterFirstName());
             sampleOrder.setProviderLastName(requesterService.getRequesterLastName());
             sampleOrder.setProviderWorkPhone(requesterService.getWorkPhone());
             sampleOrder.setProviderFax(requesterService.getFax());
             sampleOrder.setProviderEmail(requesterService.getEmail());
             sampleOrder.setReferringSiteId(requesterService.getReferringSiteId());
+            sampleOrder.setReferringSiteDepartmentId(requesterService.getReferringDepartmentId());
             sampleOrder.setReferringSiteCode(requesterService.getReferringSiteCode());
             sampleOrder.setReferringSiteName(requesterService.getReferringSiteName());
 
@@ -220,41 +249,63 @@ public class SampleOrderService {
         createPersonProviderArtifacts(sampleOrder, currentUserId, artifacts, requesterService);
         createObservationHistoryArtifacts(sampleOrder, currentUserId, artifacts);
         createOrganizationProviderArtifacts(sampleOrder, currentUserId, artifacts, requesterService);
+        createOrganizationDepartProviderArtifacts(sampleOrder, currentUserId, artifacts, requesterService);
     }
 
     private void createPersonProviderArtifacts(SampleOrderItem sampleOrder, String currentUserId,
             SampleOrderPersistenceArtifacts artifacts, RequesterService requesterService) {
-        Person providerPerson = requesterService.getPerson();
+        Person providerPerson = null;
+        Provider provider = null;
 
-        if (namesDiffer(providerPerson, sampleOrder)) {
-            providerPerson = null;
+        if (!namesDiffer(requesterService.getPerson(), sampleOrder)) {
+            if (!GenericValidator.isBlankOrNull(sampleOrder.getProviderPersonId())) {
+                provider = SpringContext.getBean(ProviderService.class).getProviderByPerson(
+                        SpringContext.getBean(PersonService.class).get(sampleOrder.getProviderPersonId()));
+                providerPerson = provider.getPerson();
+                providerPerson.setSysUserId(currentUserId);
+            }
         }
 
         if (providerPerson == null) {
+            provider = new Provider();
+            provider.setFhirUuid(UUID.randomUUID());
+            provider.setActive(true);
+            provider.setExternalId(sampleOrder.getRequesterSampleID());
+
             providerPerson = new Person();
-            List<SampleRequester> personSampleRequesters = requesterService
-                    .getSampleRequestersByType(RequesterService.Requester.PERSON, true);
-            SampleRequester samplePersonRequester = personSampleRequesters.size() > 0 ? personSampleRequesters.get(0)
-                    : null;
+            providerPerson.setFirstName(sampleOrder.getProviderFirstName());
+            providerPerson.setLastName(sampleOrder.getProviderLastName());
+            providerPerson.setWorkPhone(sampleOrder.getProviderWorkPhone());
+            providerPerson.setFax(sampleOrder.getProviderFax());
+            providerPerson.setEmail(sampleOrder.getProviderEmail());
+        }
+
+        List<SampleRequester> personSampleRequesters = requesterService
+                .getSampleRequestersByType(RequesterService.Requester.PERSON, true);
+        SampleRequester samplePersonRequester = personSampleRequesters.size() > 0 ? personSampleRequesters.get(0)
+                : null;
+        if (samplePersonRequester != null) {
             samplePersonRequester.setSysUserId(currentUserId);
             artifacts.setSamplePersonRequester(samplePersonRequester);
         }
-
-        providerPerson.setFirstName(sampleOrder.getProviderFirstName());
-        providerPerson.setLastName(sampleOrder.getProviderLastName());
-        providerPerson.setWorkPhone(sampleOrder.getProviderWorkPhone());
-        providerPerson.setFax(sampleOrder.getProviderFax());
-        providerPerson.setEmail(sampleOrder.getProviderEmail());
         providerPerson.setSysUserId(currentUserId);
+        provider.setSysUserId(currentUserId);
 
         artifacts.setProviderPerson(providerPerson);
+        artifacts.setProvider(provider);
     }
 
     private boolean namesDiffer(Person providerPerson, SampleOrderItem sampleOrder) {
-        return providerPerson == null
-                || StringUtil.compareWithNulls(providerPerson.getFirstName(), sampleOrder.getProviderFirstName()) != 0
-                || StringUtil.compareWithNulls(providerPerson.getLastName(), sampleOrder.getProviderLastName()) != 0;
-
+        if (providerPerson == null || sampleOrder.getProviderPersonId() == null) {
+            return true;
+        }
+        if (providerPerson.getId().trim().equals(sampleOrder.getProviderPersonId().trim())) {
+            return StringUtil.compareWithNulls(providerPerson.getFirstName(), sampleOrder.getProviderFirstName()) != 0
+                    || StringUtil.compareWithNulls(providerPerson.getLastName(),
+                            sampleOrder.getProviderLastName()) != 0;
+        } else {
+            return false;
+        }
     }
 
     private void createObservationHistoryArtifacts(SampleOrderItem sampleOrder, String currentUserId,
@@ -329,8 +380,8 @@ public class SampleOrderService {
         SampleRequester orgRequester = sampleService.getOrganizationSampleRequester(sample,
                 TableIdService.getInstance().REFERRING_ORG_TYPE_ID);
 
-//        SampleRequester orgRequester = requesterService
-//                .getSampleRequesterByType(RequesterService.Requester.ORGANIZATION, false);
+        // SampleRequester orgRequester = requesterService
+        // .getSampleRequesterByType(RequesterService.Requester.ORGANIZATION, false);
 
         if (orgRequester == null) {
             handleNoExistingOrganizationRequester(sampleOrder, currentUserId, artifacts);
@@ -339,11 +390,24 @@ public class SampleOrderService {
         }
     }
 
+    private void createOrganizationDepartProviderArtifacts(SampleOrderItem sampleOrder, String currentUserId,
+            SampleOrderPersistenceArtifacts artifacts, RequesterService requesterService) {
+
+        SampleRequester orgDepartRequester = sampleService.getOrganizationSampleRequester(sample,
+                TableIdService.getInstance().REFERRING_ORG_DEPARTMENT_TYPE_ID);
+
+        if (orgDepartRequester == null) {
+            handleNoExistingOrganizationDepartRequester(sampleOrder, currentUserId, artifacts);
+        } else {
+            handleExistingOrganizationDepartRequester(sampleOrder, currentUserId, artifacts, orgDepartRequester);
+        }
+    }
+
     private void handleNoExistingOrganizationRequester(SampleOrderItem sampleOrder, String currentUserId,
             SampleOrderPersistenceArtifacts artifacts) {
         SampleRequester orgRequester;
         if (GenericValidator.isBlankOrNull(sampleOrder.getReferringSiteId())
-                && GenericValidator.isBlankOrNull(sampleOrder.getNewRequesterName())) {
+                && GenericValidator.isBlankOrNull(sampleOrder.getReferringSiteName())) {
             return;
         }
 
@@ -356,7 +420,7 @@ public class SampleOrderService {
 
         // Either there is an existing org else a new org
         Organization org;
-        if (GenericValidator.isBlankOrNull(sampleOrder.getNewRequesterName())) {
+        if (GenericValidator.isBlankOrNull(sampleOrder.getReferringSiteName())) {
             org = orgService.getOrganizationById(sampleOrder.getReferringSiteId());
             // all of these are reasons to have nothing to do with the organization
             if (GenericValidator.isBlankOrNull(sampleOrder.getReferringSiteCode()) || org == null
@@ -369,47 +433,93 @@ public class SampleOrderService {
             org.setMlsSentinelLabFlag("N");
         }
 
-        org.setOrganizationName(sampleOrder.getNewRequesterName());
+        org.setOrganizationName(sampleOrder.getReferringSiteName());
         org.setCode(sampleOrder.getReferringSiteCode());
         org.setSysUserId(currentUserId);
         artifacts.setProviderOrganization(org);
     }
 
+    private void handleNoExistingOrganizationDepartRequester(SampleOrderItem sampleOrder, String currentUserId,
+            SampleOrderPersistenceArtifacts artifacts) {
+
+        if (!GenericValidator.isBlankOrNull(sampleOrder.getReferringSiteDepartmentId())) {
+            Organization org = orgService.getOrganizationById(sampleOrder.getReferringSiteDepartmentId());
+            if (org != null) {
+                org.setSysUserId(currentUserId);
+                artifacts.setProviderDepartmentOrganization(org);
+
+                SampleRequester orgRequester = new SampleRequester();
+                orgRequester.setRequesterId(Long.parseLong(sampleOrder.getReferringSiteDepartmentId()));
+                orgRequester.setSampleId(Long.parseLong(sampleOrder.getSampleId()));
+                orgRequester.setRequesterTypeId(RequesterService.Requester.ORGANIZATION.getId());
+                orgRequester.setSysUserId(currentUserId);
+                artifacts.setSampleOrganizationDepartRequester(orgRequester);
+            }
+        }
+    }
+
     private void handleExistingOrganizationRequester(SampleOrderItem sampleOrder, String currentUserId,
             SampleOrderPersistenceArtifacts artifacts, SampleRequester orgRequester) {
         if (GenericValidator.isBlankOrNull(sampleOrder.getReferringSiteId())
-                && GenericValidator.isBlankOrNull(sampleOrder.getNewRequesterName())) {
+                && GenericValidator.isBlankOrNull(sampleOrder.getReferringSiteName())) {
             artifacts.setDeletableSampleOrganizationRequester(orgRequester);
             return;
         }
 
-        Organization org;
-        if (!GenericValidator.isBlankOrNull(sampleOrder.getNewRequesterName())) {
+        Organization org = null;
+        if (!GenericValidator.isBlankOrNull(sampleOrder.getReferringSiteName())) {
             org = new Organization();
             org.setIsActive("Y");
             org.setMlsSentinelLabFlag("N");
-            org.setOrganizationName(sampleOrder.getNewRequesterName());
+            org.setOrganizationName(sampleOrder.getReferringSiteName());
             org.setCode(sampleOrder.getReferringSiteCode());
             org.setSysUserId(currentUserId);
             artifacts.setProviderOrganization(org);
-            orgRequester.setSysUserId(currentUserId);
-            artifacts.setSampleOrganizationRequester(orgRequester);
         } else {
-            org = orgService.getOrganizationById(String.valueOf(orgRequester.getRequesterId()));
             if (String.valueOf(orgRequester.getRequesterId()).equals(sampleOrder.getReferringSiteId())) {
-                if (org == null || sampleOrder.getReferringSiteCode() == null
-                        || sampleOrder.getReferringSiteCode().equals(org.getCode())) {
-                    return;
+                org = orgService.getOrganizationById(String.valueOf(orgRequester.getRequesterId()));
+                // if (org == null || sampleOrder.getReferringSiteCode() == null
+                // || sampleOrder.getReferringSiteCode().equals(org.getCode())) {
+                // return;
+                // }
+                if (org != null) {
+                    orgRequester.setRequesterId(orgRequester.getRequesterId());
+                    updateExistingOrganizationCode(sampleOrder, currentUserId, artifacts, org);
                 }
 
-                updateExistingOrganizationCode(sampleOrder, currentUserId, artifacts, org);
             } else {
-                orgRequester.setRequesterId(sampleOrder.getReferringSiteId());
-                orgRequester.setSysUserId(currentUserId);
-                artifacts.setSampleOrganizationRequester(orgRequester);
-
-                updateExistingOrganizationCode(sampleOrder, currentUserId, artifacts, org);
+                org = orgService.getOrganizationById(String.valueOf(sampleOrder.getReferringSiteId()));
+                if (org != null) {
+                    orgRequester.setRequesterId(sampleOrder.getReferringSiteId());
+                    updateExistingOrganizationCode(sampleOrder, currentUserId, artifacts, org);
+                }
             }
+        }
+        if (org != null) {
+            orgRequester.setSysUserId(currentUserId);
+            artifacts.setSampleOrganizationRequester(orgRequester);
+        }
+    }
+
+    private void handleExistingOrganizationDepartRequester(SampleOrderItem sampleOrder, String currentUserId,
+            SampleOrderPersistenceArtifacts artifacts, SampleRequester orgRequester) {
+        if (GenericValidator.isBlankOrNull(sampleOrder.getReferringSiteDepartmentId())) {
+            return;
+        }
+
+        Organization org;
+
+        if (String.valueOf(orgRequester.getRequesterId()).equals(sampleOrder.getReferringSiteDepartmentId())) {
+            org = orgService.getOrganizationById(String.valueOf(orgRequester.getRequesterId()));
+
+        } else {
+            org = orgService.getOrganizationById(String.valueOf(sampleOrder.getReferringSiteDepartmentId()));
+        }
+        if (org != null) {
+            org.setSysUserId(currentUserId);
+            artifacts.setProviderDepartmentOrganization(org);
+            orgRequester.setSysUserId(currentUserId);
+            artifacts.setSampleOrganizationDepartRequester(orgRequester);
         }
     }
 
@@ -418,18 +528,21 @@ public class SampleOrderService {
         if (sampleOrder.getReferringSiteCode() != null && !sampleOrder.getReferringSiteCode().equals(org.getCode())) {
             org.setCode(sampleOrder.getReferringSiteCode());
             org.setSysUserId(currentUserId);
-            artifacts.setProviderOrganization(org);
         }
+        artifacts.setProviderOrganization(org);
     }
 
     public class SampleOrderPersistenceArtifacts {
         private Sample sample;
         private Person providerPerson;
+        private Provider provider;
         private Organization providerOrganization;
+        private Organization providerDepartmentOrganization;
         private SampleRequester deletableSampleOrganizationRequester;
         private List<ObservationHistory> observations = new ArrayList<>();
         private SampleRequester sampleOrganizationRequester;
         private SampleRequester samplePersonRequester;
+        private SampleRequester sampleOrganizationDepartRequester;
 
         public Sample getSample() {
             return sample;
@@ -485,6 +598,30 @@ public class SampleOrderService {
 
         public void setSamplePersonRequester(SampleRequester samplePersonRequester) {
             this.samplePersonRequester = samplePersonRequester;
+        }
+
+        public Provider getProvider() {
+            return provider;
+        }
+
+        public void setProvider(Provider provider) {
+            this.provider = provider;
+        }
+
+        public Organization getProviderDepartmentOrganization() {
+            return providerDepartmentOrganization;
+        }
+
+        public void setProviderDepartmentOrganization(Organization providerDepartmentOrganization) {
+            this.providerDepartmentOrganization = providerDepartmentOrganization;
+        }
+
+        public SampleRequester getSampleOrganizationDepartRequester() {
+            return sampleOrganizationDepartRequester;
+        }
+
+        public void setSampleOrganizationDepartRequester(SampleRequester sampleOrganizationDepartRequester) {
+            this.sampleOrganizationDepartRequester = sampleOrganizationDepartRequester;
         }
     }
 }

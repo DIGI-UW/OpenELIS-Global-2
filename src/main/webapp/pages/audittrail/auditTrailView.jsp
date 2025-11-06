@@ -9,10 +9,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
-<%@ taglib prefix="tiles" uri="http://tiles.apache.org/tags-tiles" %>
+
 
 <link rel="stylesheet" media="screen" type="text/css" href="css/bootstrap.css?" />
 <link rel="stylesheet" media="screen" type="text/css" href="css/openElisCore.css?" />
@@ -72,8 +71,8 @@ function search(){
 		</div>
 	    <div class="current" >
             <h2><spring:message code="order.information" /></h2>
-            <tiles:insertAttribute name="orderInfo" />
-            <tiles:insertAttribute name="patientInfo" />
+            <jsp:include page="${orderInfoFragment}"/>
+            <jsp:include page="${patientInfoFragment}"/>
         </div>
 		<div class="row-fluid">
 			<div class="span12">		

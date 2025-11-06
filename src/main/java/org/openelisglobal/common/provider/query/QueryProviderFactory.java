@@ -3,7 +3,6 @@ package org.openelisglobal.common.provider.query;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
-
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.resources.ResourceLocator;
@@ -14,9 +13,7 @@ import org.openelisglobal.common.util.resources.ResourceLocator;
  *
  * @version 1.0
  * @author diane benz
- *
  */
-
 public class QueryProviderFactory {
 
     private static class SingletonHelper {
@@ -28,11 +25,7 @@ public class QueryProviderFactory {
     // Properties object that holds validation provider mappings
     private Properties queryProviderClassMap = null;
 
-    /**
-     * Singleton global access for ValidationProviderFactory
-     *
-     */
-
+    /** Singleton global access for ValidationProviderFactory */
     public static QueryProviderFactory getInstance() {
         return SingletonHelper.INSTANCE;
     }
@@ -49,7 +42,8 @@ public class QueryProviderFactory {
             Class classDefinition = Class.forName(className);
             object = classDefinition.newInstance();
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
-            throw new LIMSRuntimeException("Unable to create an object for " + className, e, true);
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Unable to create an object for " + className, e);
         }
         return object;
     }
@@ -76,7 +70,8 @@ public class QueryProviderFactory {
 
                 queryProviderClassMap.load(propertyStream);
             } catch (IOException e) {
-                throw new LIMSRuntimeException("Unable to load validation provider class mappings.", e, true);
+                LogEvent.logError(e);
+                throw new LIMSRuntimeException("Unable to load validation provider class mappings.", e);
             } finally {
                 if (null != propertyStream) {
                     try {
@@ -90,7 +85,7 @@ public class QueryProviderFactory {
 
         String mapping = queryProviderClassMap.getProperty(queryProvidername);
         if (mapping == null) {
-            LogEvent.logError(this.getClass().getName(), "getQueryProviderClassName",
+            LogEvent.logError(this.getClass().getSimpleName(), "getQueryProviderClassName",
                     "getQueryProviderClassName - Unable to find mapping for " + queryProvidername);
             throw new LIMSRuntimeException(
                     "getQueryProviderClassName - Unable to find mapping for " + queryProvidername);
@@ -108,5 +103,4 @@ public class QueryProviderFactory {
 
         return provider;
     }
-
 }

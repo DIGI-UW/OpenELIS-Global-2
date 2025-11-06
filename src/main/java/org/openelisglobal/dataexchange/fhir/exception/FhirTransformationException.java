@@ -13,5 +13,4 @@ public class FhirTransformationException extends FhirGeneralException {
     public FhirTransformationException(Exception e) {
         super(e);
     }
-
 }

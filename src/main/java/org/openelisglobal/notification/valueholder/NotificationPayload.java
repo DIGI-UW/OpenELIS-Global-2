@@ -5,5 +5,4 @@ public interface NotificationPayload {
     public String getMessage();
 
     public String getSubject();
-
 }

@@ -1,0 +1,34 @@
+tr.evenRow {
+  background-color: #c8dada;
+}
+
+tr.evenRowHead {
+  background-color: #b8caca;
+  padding: 20px;
+}
+tr.oddRow {
+  background-color: #f0f3f3;
+}
+
+tr.oddRowHead {
+  background-color: #e0e3e3;
+}
+
+.contentHeader1 {
+  margin-top: 5px;
+  font-weight: bold;
+  font-size: 23px;
+  line-height: normal;
+  color: #235689;
+  background-color: #dadddd;
+  width: 100%;
+  border: none;
+}
+
+.contentHeader2 {
+  margin-top: 2px;
+  border: none;
+  font-size: 17px;
+  background-color: #e0e3e3;
+  line-height: normal;
+}

@@ -1,18 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.reports.action.implementation;
 
@@ -22,9 +19,11 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
+import net.sf.jasperreports.engine.JRDataSource;
+import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -42,9 +41,6 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
-
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 
 public class PatientCILNSPClinical extends PatientReport implements IReportCreator, IReportParameterSetter {
 
@@ -67,7 +63,6 @@ public class PatientCILNSPClinical extends PatientReport implements IReportCreat
                 Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)));
         analysisStatusIds.add(Integer
                 .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
-
     }
 
     static final String configName = ConfigurationProperties.getInstance().getPropertyValue(Property.configurationName);
@@ -111,9 +106,11 @@ public class PatientCILNSPClinical extends PatientReport implements IReportCreat
         boolean isConfirmationSample = sampleService.isConfirmationSample(currentSample);
         List<Analysis> analysisList = analysisService
                 .getAnalysesBySampleIdAndStatusId(sampleService.getId(currentSample), analysisStatusIds);
-        List<ClinicalPatientData> currentSampleReportItems = new ArrayList<>(analysisList.size());
+        List<Analysis> filteredAnalysisList = userService.filterAnalysesByLabUnitRoles(systemUserId, analysisList,
+                Constants.ROLE_REPORTS);
+        List<ClinicalPatientData> currentSampleReportItems = new ArrayList<>(filteredAnalysisList.size());
         currentConclusion = null;
-        for (Analysis analysis : analysisList) {
+        for (Analysis analysis : filteredAnalysisList) {
             if (!analysis.getTest().isInLabOnly()) {
                 boolean hasParentResult = analysis.getParentResult() != null;
                 sampleSet.add(analysis.getSampleItem());
@@ -187,7 +184,7 @@ public class PatientCILNSPClinical extends PatientReport implements IReportCreat
         }
         for (int i = 0; i < referralResults.size(); i++) {
             if (referralResults.get(i).getResult() == null) {
-                sampleCompleteMap.put(sampleService.getAccessionNumber(currentSample), Boolean.FALSE);
+                sampleCompleteMap.put(convertToAlphaNumericDisplay(currentSample), Boolean.FALSE);
             } else {
 
                 i = lastUsedReportReferralResultValue(referralResults, i);
@@ -219,7 +216,7 @@ public class PatientCILNSPClinical extends PatientReport implements IReportCreat
                 }
 
                 if (GenericValidator.isBlankOrNull(reportReferralResultValue)) {
-                    sampleCompleteMap.put(sampleService.getAccessionNumber(currentSample), Boolean.FALSE);
+                    sampleCompleteMap.put(convertToAlphaNumericDisplay(currentSample), Boolean.FALSE);
                     data.setAnalysisStatus(MessageUtil.getMessage("report.test.status.inProgress"));
                 } else {
                     data.setResult(reportReferralResultValue);
@@ -263,7 +260,6 @@ public class PatientCILNSPClinical extends PatientReport implements IReportCreat
         } else {
             buildReport();
         }
-
     }
 
     private void buildReport() {
@@ -350,7 +346,6 @@ public class PatientCILNSPClinical extends PatientReport implements IReportCreat
                 } else {
                     reportItem.setNote(MessageUtil.getMessage("result.corrected"));
                 }
-
             }
 
             reportItem

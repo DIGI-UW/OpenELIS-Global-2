@@ -3,7 +3,6 @@ package org.openelisglobal.result.action.util;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-
 import org.apache.commons.validator.GenericValidator;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -14,9 +13,9 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.ConfigurationListener;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.util.validator.CustomDateValidator;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.BaseErrors;
@@ -29,22 +28,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.validation.Errors;
 
 @Service
-public class ResultsValidation implements ConfigurationListener {
+public class ResultsValidation {
 
     private static final String SPECIAL_CASE = "XXXX";
-    private boolean supportReferrals;
-    private boolean useTechnicianName;
-    private boolean noteRequiredForChangedResults;
-    private boolean useRejected;
 
     @Autowired
     private ResultService resultService;
     @Autowired
     private AnalysisService analysisService;
-
-    public ResultsValidation() {
-        refreshConfiguration();
-    }
 
     public Errors validateItem(TestResultItem item) {
         Errors errors = new BaseErrors();
@@ -55,17 +46,18 @@ public class ResultsValidation implements ConfigurationListener {
             validateResult(item, errors);
         }
 
-        if (noteRequiredForChangedResults && !item.isRejected()) {
+        if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.notesRequiredForModifyResults, "true")
+                && !item.isRejected()) {
             validateRequiredNote(item, errors);
         }
 
-        if (supportReferrals) {
+        if (FormFields.getInstance().useField(Field.ResultsReferral)) {
             validateReferral(item, errors);
         }
-        if (useTechnicianName) {
+        if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.resultTechnicianName, "true")) {
             validateTesterSignature(item, errors);
         }
-        if (useRejected) {
+        if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.allowResultRejection, "true")) {
             validateRejection(item, errors);
         }
 
@@ -114,7 +106,8 @@ public class ResultsValidation implements ConfigurationListener {
             return;
         }
 
-        if (!(ResultUtil.areNotes(testResultItem) || (supportReferrals && ResultUtil.isReferred(testResultItem))
+        if (!(ResultUtil.areNotes(testResultItem)
+                || (FormFields.getInstance().useField(Field.ResultsReferral) && ResultUtil.isReferred(testResultItem))
                 || ResultUtil.areResults(testResultItem) || ResultUtil.isForcedToAcceptance(testResultItem))) {
             errors.reject("errors.result.required");
         }
@@ -124,7 +117,7 @@ public class ResultsValidation implements ConfigurationListener {
                 return;
             }
             try {
-                Double.parseDouble(resultValue);
+                Double.parseDouble(StringUtil.getActualNumericValue(resultValue));
             } catch (NumberFormatException e) {
                 // errors.add(new ActionError("errors.number.format", new
                 // StringBuilder("Result")));
@@ -152,9 +145,7 @@ public class ResultsValidation implements ConfigurationListener {
             if (resultHasChanged(item)) {
                 errors.reject("error.requiredNote.missing");
             }
-
         }
-
     }
 
     private boolean resultHasChanged(TestResultItem item) {
@@ -222,16 +213,5 @@ public class ResultsValidation implements ConfigurationListener {
         if (item.isRejected() && "0".equals(item.getRejectReasonId())) {
             errors.reject("error.reject.noReason");
         }
-    }
-
-    @Override
-    public void refreshConfiguration() {
-        supportReferrals = FormFields.getInstance().useField(Field.ResultsReferral);
-        useTechnicianName = ConfigurationProperties.getInstance().isPropertyValueEqual(Property.resultTechnicianName,
-                "true");
-        noteRequiredForChangedResults = "true"
-                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.notesRequiredForModifyResults));
-        useRejected = ConfigurationProperties.getInstance().isPropertyValueEqual(Property.allowResultRejection, "true");
-
     }
 }

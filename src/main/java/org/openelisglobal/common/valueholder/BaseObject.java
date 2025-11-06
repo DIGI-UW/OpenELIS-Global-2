@@ -1,32 +1,29 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
  */
 package org.openelisglobal.common.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.Column;
+import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.Transient;
+import jakarta.persistence.Version;
 import java.io.Serializable;
 import java.sql.Timestamp;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Scanner;
-
-import javax.persistence.Column;
-import javax.persistence.MappedSuperclass;
-import javax.persistence.Transient;
-import javax.persistence.Version;
-
 import org.openelisglobal.internationalization.MessageUtil;
 
 @MappedSuperclass
@@ -53,6 +50,7 @@ public abstract class BaseObject<PK extends Serializable> implements Serializabl
     public abstract void setId(PK id);
 
     // used for audittrail
+    @JsonIgnore
     public String getStringId() {
         if (getId() == null) {
             return null;
@@ -92,9 +90,7 @@ public abstract class BaseObject<PK extends Serializable> implements Serializabl
         this.lastupdated = lastupdated;
     }
 
-    /**
-     * Convienence method to set the last updated fields.
-     */
+    /** Convienence method to set the last updated fields. */
     public void setLastupdatedFields() {
 
         Timestamp ts = new Timestamp(System.currentTimeMillis());
@@ -102,15 +98,15 @@ public abstract class BaseObject<PK extends Serializable> implements Serializabl
         if (ts.getNanos() == 0) {
             ts.setNanos(1);
             // unsure why we need this, but this is an unnecessary way to get non 0
-//            try {
-//                // a little past 0 millisecs
-//                Thread.sleep(100);
-//            } catch (InterruptedException e) {
-//                // bugzilla 2154
-//                LogEvent.logError(e.toString(), e);
-//            }
-//
-//            ts = new Timestamp(System.currentTimeMillis());
+            // try {
+            // // a little past 0 millisecs
+            // Thread.sleep(100);
+            // } catch (InterruptedException e) {
+            // // bugzilla 2154
+            // LogEvent.logError(e);
+            // }
+            //
+            // ts = new Timestamp(System.currentTimeMillis());
         }
         setLastupdated(ts);
         // setLastupdatedBy( getSessionContext().getUsername() );
@@ -162,6 +158,7 @@ public abstract class BaseObject<PK extends Serializable> implements Serializabl
      * derived class will be asked to supply the name via the protected method
      * getDefaultLocaledName()
      */
+    @JsonIgnore
     public String getLocalizedName() {
         if (nameKey != null) {
             String localizedName = MessageUtil.getContextualMessage(nameKey.trim());
@@ -176,7 +173,6 @@ public abstract class BaseObject<PK extends Serializable> implements Serializabl
             return getDefaultLocalizedName();
             // return "bo:gln:149:name:" + nameKey;
         }
-
     }
 
     /*

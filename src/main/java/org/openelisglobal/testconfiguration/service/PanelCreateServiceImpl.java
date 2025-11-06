@@ -56,5 +56,4 @@ public class PanelCreateServiceImpl implements PanelCreateService {
         sampleTypePanel.setSysUserId(userId);
         return sampleTypePanel;
     }
-
 }

@@ -17,8 +17,8 @@
 package org.openelisglobal.testdictionary.daoimpl;
 
 import org.hibernate.HibernateException;
-import org.hibernate.Query;
 import org.hibernate.Session;
+import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.testdictionary.dao.TestDictionaryDAO;
@@ -39,10 +39,9 @@ public class TestDictionaryDAOImpl extends BaseDAOImpl<TestDictionary, String> i
     public TestDictionary getTestDictionaryForTestId(String testId) throws LIMSRuntimeException {
         String sql = "FROM TestDictionary td where td.testId = :testId";
         try {
-            Query query = entityManager.unwrap(Session.class).createQuery(sql);
-            query.setInteger("testId", Integer.parseInt(testId));
-            TestDictionary testDictionary = (TestDictionary) query.uniqueResult();
-            // closeSession(); // CSL remove old
+            Query<TestDictionary> query = entityManager.unwrap(Session.class).createQuery(sql, TestDictionary.class);
+            query.setParameter("testId", Integer.parseInt(testId));
+            TestDictionary testDictionary = query.uniqueResult();
             return testDictionary;
         } catch (HibernateException e) {
             handleException(e, "getTestDictionaryForTestId");

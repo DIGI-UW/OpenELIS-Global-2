@@ -4,9 +4,8 @@ package org.openelisglobal.barcode;
  * Stores information about a field that appears on a bar code label examples of
  * how it appears on labels: name: value (displayFieldName = true) value
  * (displayFieldName = false)
- * 
- * @author Caleb
  *
+ * @author Caleb
  */
 public class LabelField {
 
@@ -79,5 +78,4 @@ public class LabelField {
     public void setUnderline(boolean underline) {
         this.underline = underline;
     }
-
 }

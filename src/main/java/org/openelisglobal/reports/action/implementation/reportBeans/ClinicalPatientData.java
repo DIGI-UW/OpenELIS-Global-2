@@ -1,19 +1,16 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
-*
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
+ */
 package org.openelisglobal.reports.action.implementation.reportBeans;
 
 import org.openelisglobal.panel.valueholder.Panel;
@@ -78,6 +75,14 @@ public final class ClinicalPatientData {
     private String analysisStatus;
     private String contactTracingIndexName;
     private String contactTracingIndexRecordNumber;
+    private String prescriber;
+    private String tbOrderReason;
+    private String tbDiagnosticReason;
+    private String tbFollowupReason;
+    private String tbAnalysisMethod;
+    private String tbSampleAspect;
+    private String tbFollowupPeriodLine1;
+    private String tbFollowupPeriodLine2;
 
     public ClinicalPatientData() {
     }
@@ -599,5 +604,69 @@ public final class ClinicalPatientData {
 
     public void setContactTracingIndexRecordNumber(String contactTracingIndexRecordNumber) {
         this.contactTracingIndexRecordNumber = contactTracingIndexRecordNumber;
+    }
+
+    public String getTbOrderReason() {
+        return tbOrderReason;
+    }
+
+    public void setTbOrderReason(String tbOrderReason) {
+        this.tbOrderReason = tbOrderReason;
+    }
+
+    public String getTbDiagnosticReason() {
+        return tbDiagnosticReason;
+    }
+
+    public void setTbDiagnosticReason(String tbDiagnosticReason) {
+        this.tbDiagnosticReason = tbDiagnosticReason;
+    }
+
+    public String getTbFollowupReason() {
+        return tbFollowupReason;
+    }
+
+    public void setTbFollowupReason(String tbFollowupReason) {
+        this.tbFollowupReason = tbFollowupReason;
+    }
+
+    public String getTbAnalysisMethod() {
+        return tbAnalysisMethod;
+    }
+
+    public void setTbAnalysisMethod(String tbAnalysisMethod) {
+        this.tbAnalysisMethod = tbAnalysisMethod;
+    }
+
+    public String getTbSampleAspect() {
+        return tbSampleAspect;
+    }
+
+    public void setTbSampleAspect(String tbSampleAspect) {
+        this.tbSampleAspect = tbSampleAspect;
+    }
+
+    public String getTbFollowupPeriodLine1() {
+        return tbFollowupPeriodLine1;
+    }
+
+    public void setTbFollowupPeriodLine1(String tbFollowupPeriodLine1) {
+        this.tbFollowupPeriodLine1 = tbFollowupPeriodLine1;
+    }
+
+    public String getTbFollowupPeriodLine2() {
+        return tbFollowupPeriodLine2;
+    }
+
+    public void setTbFollowupPeriodLine2(String tbFollowupPeriodLine2) {
+        this.tbFollowupPeriodLine2 = tbFollowupPeriodLine2;
+    }
+
+    public String getPrescriber() {
+        return prescriber;
+    }
+
+    public void setPrescriber(String prescriber) {
+        this.prescriber = prescriber;
     }
 }

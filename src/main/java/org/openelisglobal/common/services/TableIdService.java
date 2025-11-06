@@ -16,8 +16,7 @@
 
 package org.openelisglobal.common.services;
 
-import javax.annotation.PostConstruct;
-
+import jakarta.annotation.PostConstruct;
 import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
@@ -31,8 +30,7 @@ import org.openelisglobal.requester.valueholder.RequesterType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-/**
- */
+/** */
 @Service
 public class TableIdService {
 
@@ -121,7 +119,6 @@ public class TableIdService {
 
         DOCTOR_OBSERVATION_TYPE_ID = getOHTypeIdByName("nameOfDoctor");
         SERVICE_OBSERVATION_TYPE_ID = getOHTypeIdByName("service");
-
     }
 
     public static TableIdService getInstance() {
@@ -132,5 +129,4 @@ public class TableIdService {
         ObservationHistoryType oht = observationHistoryTypeService.getByName(name);
         return (oht == null) ? null : oht.getId();
     }
-
 }

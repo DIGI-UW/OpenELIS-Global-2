@@ -12,9 +12,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
 <%--
   ~ The contents of this file are subject to the Mozilla Public License
@@ -217,6 +217,7 @@ which closes it the last time through--%>
             <td><span class="catalog-label"><spring:message code="configuration.test.catalog.normal.range" /></span></td>
             <td><span class="catalog-label"><spring:message code="configuration.test.catalog.valid.range" /></span></td>
             <td><span class="catalog-label"><spring:message code="configuration.test.catalog.reporting.range" /></span></td>
+            <td><span class="catalog-label"><spring:message code="configuration.test.catalog.critical.range" /></span></td>
         </tr>
         <% for (ResultLimitBean limitBean : bean.getResultLimits()) {%>
         <tr>
@@ -229,6 +230,8 @@ which closes it the last time through--%>
             <td><b><%=limitBean.getValidRange()%></b>
             </td>
             <td><b><%=limitBean.getReportingRange()%></b>
+            </td>
+            <td><b><%=limitBean.getCriticalRange()%></b>
             </td>
         </tr>
         <% } %>

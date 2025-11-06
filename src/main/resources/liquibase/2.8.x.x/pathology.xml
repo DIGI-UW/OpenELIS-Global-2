@@ -1,0 +1,633 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+      <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet author="csteele" id="1">
+        <validCheckSum>8:eac63071615be9c32c03b86d7581a724</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Pathologist'
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Pathologist Role and permission for pages</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq" />
+            <column name="name" value="Pathologist" />
+            <column name="description" value="Access to Pathology Page" />
+            <column name="is_grouping_role" value="false" />
+            <column name="grouping_parent"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Global Roles')" />
+            <column name="display_key" value="role.pathologist" />
+            <column name="active" value="true" />
+            <column name="editable" value="false" />
+        </insert>
+        <insert schemaName="clinlims" tableName="system_module">
+            <column name="id" valueSequenceNext="system_module_seq" />
+            <column name="name" value="Pathology" />
+            <column name="description" value="pathology pages" />
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Pathologist')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'Pathology')" />
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/PathologyOrderEntry" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'Pathology')" />
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/PathologyDashboard" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'Pathology')" />
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/PathologyCaseView" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'Pathology')" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="csteele" id="2">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims"
+                    tableName="program" columnName="questionnaire_fhir_uuid" />
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="program">
+            <column name="questionnaire_fhir_uuid" type="uuid" />
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="csteele" id="2.1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims"
+                    tableName="program" columnName="manually_changed" />
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="program">
+            <column name="manually_changed" type="boolean" defaultValueBoolean="false" />
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="csteele" id="3">
+    <validCheckSum>8:ab895f74386ecc421575297f4641e78b</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="pathology_sample" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create pathology_sample table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="program_sample_seq" startValue="1" />
+
+
+        <createTable tableName="program_sample">
+            <column name="id" type="INTEGER" valueSequenceNext="program_sample_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="program_id" type="NUMERIC(10)"/>
+            <column name="sample_id" type="NUMERIC(10)"/>
+            <column name="questionnaire_response_uuid" type="uuid" />
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="program_sample_program_id_fk"
+                                 baseTableName="program_sample" baseColumnNames="program_id"
+                                 referencedTableName="program" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="program_sample_sample_id_fk"
+                                 baseTableName="program_sample" baseColumnNames="sample_id"
+                                 referencedTableName="sample" referencedColumnNames="id"/>
+
+        <createTable tableName="pathology_sample">
+            <column name="id" type="INTEGER" valueSequenceNext="program_sample_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="technician_id" type="NUMERIC(10)"/>
+            <column name="pathologist_id" type="NUMERIC(10)"/>
+            <column name="program_id" type="NUMERIC(10)"/>
+            <column name="sample_id" type="NUMERIC(10)"/>
+            <column name="status" type="VARCHAR(255)"/>
+            <column name="questionnaire_response_uuid" type="uuid" />
+            <column name="gross_exam" type="VARCHAR(255)"/>
+            <column name="microscopy_exam" type="VARCHAR(255)"/>
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="pathology_sample_program_id_fk"
+                                 baseTableName="pathology_sample" baseColumnNames="program_id"
+                                 referencedTableName="program" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="pathology_sample_sample_id_fk"
+                                 baseTableName="pathology_sample" baseColumnNames="sample_id"
+                                 referencedTableName="sample" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet author="csteele" id="4">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="pathology_slide" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create pathology_slide table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="pathology_slide_seq" startValue="1" />
+        <createTable tableName="pathology_slide">
+            <column name="id" type="INTEGER" valueSequenceNext="pathology_slide_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="pathology_sample_id" type="int"/>
+            <column name="slide_number" type="int"/>
+            <column name="image" type="bytea"/>
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="pathology_sample_pathology_slide_id_fk"
+                                 baseTableName="pathology_slide" baseColumnNames="pathology_sample_id"
+                                 referencedTableName="pathology_sample" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet author="csteele" id="5">
+    <validCheckSum>8:db30ce3786f7fe7b51dbe0a521add066</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="pathology_block" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create pathology_block table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="pathology_block_seq" startValue="1" />
+        <createTable tableName="pathology_block">
+            <column name="id" type="INTEGER" valueSequenceNext="pathology_block_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="pathology_sample_id" type="int"/>
+            <column name="block_number" type="int"/>
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="pathology_sample_pathology_block_id_fk"
+                                 baseTableName="pathology_block" baseColumnNames="pathology_sample_id"
+                                 referencedTableName="pathology_sample" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet author="csteele" id="6">
+    <validCheckSum>8:22d5e9de87e5470c6339d61a9d3dbbb2</validCheckSum>
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">select count(*) from clinlims.dictionary_category where description = 'Pathology - Techniques';
+            </sqlCheck>
+    </preConditions>
+    <comment>adds in dictionary_type</comment>
+
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq" />
+            <column name="description" value="Pathology - Techniques" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="PathTech" />
+            <column name="name" value="pathology_techniques" />
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq" />
+            <column name="description" value="Pathology - Pathologist Requests" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="PathReq" />
+            <column name="name" value="pathologist_requests" />
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq" />
+            <column name="description" value="Pathology - Conclusions" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="PathCon" />
+            <column name="name" value="pathologist_conclusions" />
+        </insert>
+  </changeSet>
+
+    <changeSet author="csteele" id="6.1">
+    <validCheckSum>8:dcab853f5da450cfcf7bbf2d73b32e61</validCheckSum>
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">select count(*) from clinlims.dictionary where dict_entry = 'Haematoxylin and Eosin';
+        </sqlCheck>
+    </preConditions>
+    <comment>adds in dictionary</comment>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain Haematoxylin and Eosin" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain A/Blue" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain Congo Red" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain Giemsa" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain Gordon &amp; Sweet" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain Gram" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain Grimelius" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain Grocott" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain Luxol fast blue" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain Masson trichrome" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain Masson Fontana" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain MGP" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain MSB" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain PAS" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain PAS D" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain Perls" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain PTAH" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain Rhodamine" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain Verhoeff" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain Weigert Van G" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain ZN Lepra" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Stain ZN TB" />
+            <column name="dictionary_category_id" valueComputed="(select id from dictionary_category where name = 'pathologist_requests' limit 1)" />
+        </insert>
+  </changeSet>
+
+    <changeSet author="csteele" id="7">
+    <validCheckSum>8:0338784daadfe387c31f8908862f6527</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="pathology_conclusion" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create pathology_conclusion table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="pathology_conclusion_seq" startValue="1" />
+        <createTable tableName="pathology_conclusion">
+            <column name="id" type="INTEGER" valueSequenceNext="pathology_conclusion_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="pathology_sample_id" type="int"/>
+            <column name="value" type="varchar(255)"/>
+            <column name="type" type="VARCHAR(255)" defaultValue="T"/>
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="pathology_sample_pathology_conclusion_id_fk"
+                                 baseTableName="pathology_conclusion" baseColumnNames="pathology_sample_id"
+                                 referencedTableName="pathology_sample" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet author="csteele" id="8">
+    <validCheckSum>8:070091f25271aea6e563021fe959ec91</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="pathology_request" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create pathology_request table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="pathology_request_seq" startValue="1" />
+        <createTable tableName="pathology_request">
+            <column name="id" type="INTEGER" valueSequenceNext="pathology_request_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="pathology_sample_id" type="int"/>
+            <column name="status" type="VARCHAR(255)"/>
+            <column name="value" type="VARCHAR(255)"/>
+            <column name="type" type="VARCHAR(255)" defaultValue="T"/>
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="pathology_sample_pathology_request_id_fk"
+                                 baseTableName="pathology_request" baseColumnNames="pathology_sample_id"
+                                 referencedTableName="pathology_sample" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet author="csteele" id="9">
+    <validCheckSum>8:07fddd977980ec9ef2cdc6ca5b834c76</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="pathology_technique" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create pathology_technique table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="pathology_technique_seq" startValue="1" />
+        <createTable tableName="pathology_technique">
+            <column name="id" type="INTEGER" valueSequenceNext="pathology_technique_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="pathology_sample_id" type="int"/>
+            <column name="value" type="VARCHAR(255)"/>
+            <column name="type" type="VARCHAR(255)" defaultValue="T"/>
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="pathology_sample_pathology_technique_id_fk"
+                                 baseTableName="pathology_technique" baseColumnNames="pathology_sample_id"
+                                 referencedTableName="pathology_sample" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet author="csteele" id="10">
+    <validCheckSum>8:6a0c6def79318d1db9029350ac199aa8</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="pathology_slide" columnName="type" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <addColumn tableName="pathology_slide">
+            <column name="file_type" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="csteele" id="11">
+    <validCheckSum>8:6f6b101b0516d89666917fbddca40094</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="pathology_slide" columnName="location" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <addColumn tableName="pathology_slide">
+            <column name="location" type="VARCHAR(255)"/>
+        </addColumn>
+        <addColumn tableName="pathology_block">
+            <column name="location" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="csteele" id="12">
+    <validCheckSum>8:6ea7ba511bcc261dc818d7fa2a2e57b8</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+        <sqlCheck expectedResult="0">select count(*) from clinlims.test_section where name = 'Pathology'; </sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="pathology test section" />
+            <column name="english" value="Pathology" />
+            <column name="french" value="Pathology"/>
+        </insert>
+        <insert tableName="test_section" schemaName="clinlims">
+            <column name="id" valueSequenceNext="test_section_seq" />
+            <column name="name" value="Pathology" />
+            <column name="description" value="Pathology Department" />
+            <column name="is_external" value="N" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="sort_order" value="2147483647" />
+            <column name="is_active" value="Y" />
+            <column name="name_localization_id" valueComputed="(select id from localization where description = 'pathology test section' and english = 'Pathology' limit 1)" />
+            <column name="display_key" value="testsection.Pathology" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="csteele" id="13">
+    <validCheckSum>8:0f7785e668a69e7676ec4c50ec2c7f91</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+        <sqlCheck expectedResult="0">select count(*) from clinlims.program where name = 'Routine Testing'; </sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="program">
+            <column name="id" valueSequenceNext="program_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="code" value="ROUTINE" />
+            <column name="name" value="Routine Testing" />
+        </insert>
+        <insert schemaName="clinlims" tableName="program">
+            <column name="id" valueSequenceNext="program_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="code" value="HIV_INIT" />
+            <column name="name" value="People living with HIV Program - Initial Visit" />
+        </insert>
+        <insert schemaName="clinlims" tableName="program">
+            <column name="id" valueSequenceNext="program_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="code" value="HIV_FOLLOW" />
+            <column name="name" value="People living with HIV Program - Follow-up Visit" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="mozzymutesa" id="14">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims"
+                    tableName="program" columnName="test_section_id" />
+            </not>
+        </preConditions>
+        <comment>add test_section_id column to the program table</comment>
+        <addColumn schemaName="clinlims" tableName="program">
+            <column name="test_section_id" type="INTEGER" />
+        </addColumn>
+        <addForeignKeyConstraint constraintName="test_section_id_program_fk"
+                                 baseTableName="program" baseColumnNames="test_section_id"
+                                 referencedTableName="test_section" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet author="mozzymutesa" id="15">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="pathology_report" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create pathology_report table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="pathology_report_seq" startValue="1" />
+        <createTable tableName="pathology_report">
+            <column name="id" type="INTEGER" valueSequenceNext="pathology_report_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="pathology_sample_id" type="int"/>
+            <column name="report_type" type="VARCHAR(255)"/>
+            <column name="image" type="bytea"/>
+            <column name="file_type" type="VARCHAR(255)"/>
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="pathology_report_pathology_sample_id_fk"
+                                 baseTableName="pathology_report" baseColumnNames="pathology_sample_id"
+                                 referencedTableName="pathology_sample" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet author="csteele" id="16">
+    <validCheckSum>8:0f174323c09cd2b45a5fc041d18f9c1f</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.test where description = 'Histopathology examination'; </sqlCheck>
+        </preConditions>
+        <comment>add pathology test info</comment>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test name" />
+            <column name="english" value="Histopathology examination" />
+            <column name="french" value="Histopathology examination"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="test reporting name" />
+            <column name="english" value="Histopathology examination" />
+            <column name="french" value="Histopathology examination"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="test">
+            <column name="id" valueNumeric="nextval('test_seq') "/>
+            <column name="description" value="Histopathology examination"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="is_active" value='Y' />
+            <column name="is_reportable" value='N' />
+            <column name="test_section_id" valueComputed="(select id from test_section where name = 'Pathology' limit 1)" />
+            <column name="name" value="Histopathology examination" />
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Histopathology examination' and description = 'test name' limit 1)" />
+            <column name="reporting_name_localization_id" valueComputed="(select id from localization where english = 'Histopathology examination' and description = 'test reporting name' limit 1)" />
+            <column name="guid" value="fe92e08b-43ad-444e-9256-4ababc287560"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="csteele" id="16.1">
+    <validCheckSum>8:0f174323c09cd2b45a5fc041d18f9c1f</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.type_of_sample where description = 'Histopathology specimen'; </sqlCheck>
+        </preConditions>
+        <comment>add pathology test info</comment>
+        <insert schemaName="clinlims" tableName="localization">
+            <column name="id" valueSequenceNext="localization_seq" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="sampleType name" />
+            <column name="english" value="Histopathology specimen" />
+            <column name="french" value="Histopathology specimen"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="type_of_sample">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Histopathology specimen"/>
+            <column name="lastupdated" valueDate="now()" />
+            <column name="domain" value="H" />
+            <column name="local_abbrev" value="HPS" />
+            <column name="is_active" value="t" />
+            <column name="display_key" value="sample.type.HPSsampleType"/>
+            <column name="name_localization_id" valueComputed="(select id from localization where english = 'Histopathology specimen' and description = 'sampleType name' limit 1)"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="sampletype_test">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueNumeric="(select id from clinlims.type_of_sample where description = 'Histopathology specimen' )"/>
+            <column name="test_id" valueNumeric="(select id from clinlims.test where description = 'Histopathology examination' )" />
+        </insert>
+    </changeSet>
+</databaseChangeLog>

@@ -1,7 +1,6 @@
 package org.openelisglobal.samplehuman.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.provider.valueholder.Provider;

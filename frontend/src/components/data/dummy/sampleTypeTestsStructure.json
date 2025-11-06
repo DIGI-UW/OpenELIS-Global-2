@@ -1,0 +1,216 @@
+{
+  "sampleTypeId": "2",
+  "panels": [
+    {
+      "name": "Bilan Biochimique",
+      "testIds": "7",
+      "panelId": "1",
+      "panelOrder": 0
+    },
+    {
+      "name": "Serologie VIH",
+      "testIds": "9,9",
+      "panelId": "4",
+      "panelOrder": 0
+    },
+    {
+      "name": "Bilan Biochimique",
+      "testIds": "7,8,9,10,11,12,13",
+      "panelId": "1",
+      "panelOrder": 0
+    },
+    {
+      "name": "Serologie VIH",
+      "testIds": "16,16",
+      "panelId": "4",
+      "panelOrder": 0
+    }
+  ],
+  "tests": [
+    {
+      "id": "306",
+      "name": "COVID-19 ANTIBODY IgG",
+      "userBenchChoice": false
+    },
+    {
+      "id": "304",
+      "name": "COVID-19 ANTIBODY IgM",
+      "userBenchChoice": false
+    },
+    {
+      "id": "308",
+      "name": "DENGUE PCR",
+      "userBenchChoice": false
+    },
+    {
+      "id": "319",
+      "name": "HEPATITIS B VIRAL LOAD",
+      "userBenchChoice": false
+    },
+    {
+      "id": "317",
+      "name": "HEPATITIS C VIRAL LOAD",
+      "userBenchChoice": false
+    },
+    {
+      "id": "311",
+      "name": "HIV INFANT VIRAL LOAD",
+      "userBenchChoice": false
+    },
+    {
+      "id": "314",
+      "name": "HIV VIRAL LOAD",
+      "userBenchChoice": false
+    },
+    {
+      "id": "3",
+      "name": "Glucose",
+      "userBenchChoice": false
+    },
+    {
+      "id": "32",
+      "name": "HIV rapid test HIV",
+      "userBenchChoice": false
+    },
+    {
+      "id": "40",
+      "name": "Western blot HIV",
+      "userBenchChoice": false
+    },
+    {
+      "id": "41",
+      "name": "Bioline",
+      "userBenchChoice": false
+    },
+    {
+      "id": "56",
+      "name": "Determine",
+      "userBenchChoice": false
+    },
+    {
+      "id": "47",
+      "name": "Murex",
+      "userBenchChoice": false
+    },
+    {
+      "id": "49",
+      "name": "Vironostika",
+      "userBenchChoice": false
+    },
+    {
+      "id": "51",
+      "name": "P24 Ag",
+      "userBenchChoice": false
+    },
+    {
+      "id": "305",
+      "name": "COVID-19 ANTIBODY IgG",
+      "userBenchChoice": false
+    },
+    {
+      "id": "303",
+      "name": "COVID-19 ANTIBODY IgM",
+      "userBenchChoice": false
+    },
+    {
+      "id": "307",
+      "name": "DENGUE PCR",
+      "userBenchChoice": false
+    },
+    {
+      "id": "318",
+      "name": "HEPATITIS B VIRAL LOAD",
+      "userBenchChoice": false
+    },
+    {
+      "id": "316",
+      "name": "HEPATITIS C VIRAL LOAD",
+      "userBenchChoice": false
+    },
+    {
+      "id": "310",
+      "name": "HIV INFANT VIRAL LOAD",
+      "userBenchChoice": false
+    },
+    {
+      "id": "313",
+      "name": "HIV VIRAL LOAD",
+      "userBenchChoice": false
+    },
+    {
+      "id": "1",
+      "name": "GPT/ALAT",
+      "userBenchChoice": false
+    },
+    {
+      "id": "2",
+      "name": "GOT/ASAT",
+      "userBenchChoice": false
+    },
+    {
+      "id": "4",
+      "name": "Creatinine",
+      "userBenchChoice": false
+    },
+    {
+      "id": "5",
+      "name": "Amylase",
+      "userBenchChoice": false
+    },
+    {
+      "id": "7",
+      "name": "Total cholesterol",
+      "userBenchChoice": false
+    },
+    {
+      "id": "8",
+      "name": "HDL cholesterol",
+      "userBenchChoice": false
+    },
+    {
+      "id": "9",
+      "name": "Triglicerides",
+      "userBenchChoice": false
+    },
+    {
+      "id": "31",
+      "name": "HIV rapid test HIV",
+      "userBenchChoice": false
+    },
+    {
+      "id": "36",
+      "name": "HBsAg (Hepatitis B surface antigen)",
+      "userBenchChoice": false
+    },
+    {
+      "id": "39",
+      "name": "Western blot HIV",
+      "userBenchChoice": false
+    },
+    {
+      "id": "42",
+      "name": "Bioline",
+      "userBenchChoice": false
+    },
+    {
+      "id": "48",
+      "name": "Murex",
+      "userBenchChoice": false
+    },
+    {
+      "id": "57",
+      "name": "Murex",
+      "userBenchChoice": false
+    },
+    {
+      "id": "50",
+      "name": "Vironostika",
+      "userBenchChoice": false
+    },
+    {
+      "id": "52",
+      "name": "P24 Ag",
+      "userBenchChoice": false
+    }
+  ]
+}

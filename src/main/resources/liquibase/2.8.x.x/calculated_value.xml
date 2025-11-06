@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet author="moses_mutesa" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="calculation" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>create calculation table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="calculation_seq" startValue="1" />
+        <createTable tableName="calculation">
+            <column name="id" type="INTEGER" valueSequenceNext="calculation_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sample_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="test_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="result" type="varchar(64)"/>
+            <column name="toggled" type="boolean"/>
+            <column name="active" type="boolean"/>
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="2">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="calculation_operation" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create calculation_operation table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="calculation_operation_seq" startValue="1" />
+        <createTable tableName="calculation_operation">
+            <column name="id" type="INTEGER" valueSequenceNext="calculation_operation_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="type" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sample_id" type="int"/>
+            <column name="operation_order" type="int"/>
+            <column name="value" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="calculation_id" type="int"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="calculation_operation_calculation_id_fk"
+                                 baseTableName="calculation_operation" baseColumnNames="calculation_id"
+                                 referencedTableName="calculation" referencedColumnNames="id"/>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="3">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="result_calculation" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create result_calculation table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims"
+            sequenceName="result_calculation_seq" startValue="1" />
+        <createTable tableName="result_calculation">
+            <column name="id" type="INTEGER" valueSequenceNext="result_calculation_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="calculation_id" type="int"/>
+            <column name="patient_id" type="int"/>
+            <column name="result_id" type="int"/>
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="result_calculation_calculation_id_fk"
+                                 baseTableName="result_calculation" baseColumnNames="calculation_id"
+                                 referencedTableName="calculation" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="result_calculation_patient_id_fk"
+                                 baseTableName="result_calculation" baseColumnNames="patient_id"
+                                 referencedTableName="patient" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="result_calculation_result_id_fk"
+                                 baseTableName="result_calculation" baseColumnNames="result_id"
+                                 referencedTableName="result" referencedColumnNames="id"/>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="4">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="test_operations" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create test_operations table</comment>
+        <createTable tableName="test_operations">
+            <column name="result_calculation_id" type="int"/>
+            <column name="test_id" type="int"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="test_opeartions_result_calculation_id_fk"
+                                 baseTableName="test_operations" baseColumnNames="result_calculation_id"
+                                 referencedTableName="result_calculation" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="test_opeartions_test_id_fk"
+                                 baseTableName="test_operations" baseColumnNames="test_id"
+                                 referencedTableName="test" referencedColumnNames="id"/>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="5">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="test_result_map" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create test_result_map table</comment>
+        <createTable tableName="test_result_map">
+            <column name="result_calculation_id" type="int"/>
+            <column name="test_id" type="int"/>
+            <column name="result_id" type="int"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="test_result_map_result_calculation_id_fk"
+                                 baseTableName="test_result_map" baseColumnNames="result_calculation_id"
+                                 referencedTableName="result_calculation" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="test_result_map_test_id_fk"
+                                 baseTableName="test_result_map" baseColumnNames="test_id"
+                                 referencedTableName="test" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="test_result_map_result_id_fk"
+                                 baseTableName="test_result_map" baseColumnNames="result_id"
+                                 referencedTableName="result" referencedColumnNames="id"/>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="6">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="analysis" schemaName="clinlims" />
+            <not>
+                <columnExists tableName="analysis" columnName="result_calculated" />
+            </not>
+        </preConditions>
+        <comment>add result_calculated  Column to analysis table</comment>
+        <addColumn schemaName="clinlims" tableName="analysis">
+            <column name="result_calculated" type="boolean"  />
+        </addColumn>
+    </changeSet>
+    <changeSet  author="mozzymutesa" id="7">
+      <preConditions onFail="MARK_RAN">
+            <columnExists tableName="calculation" columnName="name"/>
+        </preConditions>
+        <addUniqueConstraint tableName="calculation"
+                             columnNames="name"
+                             constraintName="calculation_name_unique_constraint"/>
+    </changeSet>
+        <changeSet author="moses_mutesa" id="8">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="calculation" schemaName="clinlims" />
+            <not>
+                <columnExists tableName="calculation" columnName="note" />
+            </not>
+        </preConditions>
+        <comment>add note column to calculation table</comment>
+        <addColumn schemaName="clinlims" tableName="calculation">
+            <column name="note" type="varchar(64)"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

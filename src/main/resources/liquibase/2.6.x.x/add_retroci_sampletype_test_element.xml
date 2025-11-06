@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="CIV developer Group" id="202208312" context="ci_regional,ci_general">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sampletype_test" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'Dry Tube'</sqlCheck>
+        </preConditions>
+        <comment>Add elements to map retroci tests to sampletype 'Dry Tube'</comment>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Dry Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Glycémie')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Dry Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Créatininémie')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Dry Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Transaminases ALTL')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Dry Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'p24 Ag')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Dry Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Western Blot 2')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Dry Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Western Blot 1')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Dry Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Genie II 10')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Dry Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Genie II 100')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Dry Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Genie II')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Dry Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Vironostika')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Dry Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Murex')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Dry Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Integral')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Dry Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Transaminases ASTL')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Dry Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Bioline')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'Dry Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Innolia')"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202208313" context="ci_regional,ci_general">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sampletype_test" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM clinlims.type_of_sample WHERE description = 'EDTA Tube'</sqlCheck>
+        </preConditions>
+        <comment>Add elements to map retroci tests to sampletype 'EDTA Tube'</comment>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'CD4')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Génotypage')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Viral Load')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'DNA PCR')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'GB')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'PLQ')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Neut %')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Lymph %')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Mono %')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Eo %')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Baso %')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'HCT')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'CCMH')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'GR')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'Hb')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'VGM')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'TCMH')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'CD3 percentage count')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'CD4 percentage count')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'CD4 absolute count')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'NE#')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'MO#')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'BA#')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'LY#')"/>
+        </insert>
+        <insert tableName="sampletype_test" schemaName="clinlims">
+            <column name="id" valueSequenceNext="sample_type_test_seq"/>
+            <column name="sample_type_id" valueComputed="(SELECT id FROM clinlims.type_of_sample WHERE description = 'EDTA Tube')"/>
+            <column name="test_id" valueComputed="(SELECT id FROM clinlims.test WHERE description = 'EO#')"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

@@ -1,47 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<changeSet author="caleb" id="1">
-		<comment>modify login_user as an example</comment>
-		
-		<modifyDataType columnName="id" newDataType="INTEGER"
-			schemaName="clinlims" tableName="login_user" />
-		<dropPrimaryKey schemaName="clinlims"
-			tableName="login_user" />
-		<addPrimaryKey schemaName="clinlims"
-			tableName="login_user" columnNames="id" />
-		<addColumn schemaName="clinlims" tableName="login_user">
-			<column name="last_updated" type="TIMESTAMP WITH TIME ZONE" />
-		</addColumn>
-		
-		<rollback>
-			<modifyDataType columnName="id" newDataType="numeric"
-				schemaName="clinlims" tableName="login_user" />
-			<dropPrimaryKey schemaName="clinlims"
-				tableName="login_user" />
-			<addPrimaryKey schemaName="clinlims"
-				tableName="login_user" columnNames="login_name" />
-		</rollback>
-	</changeSet>
+    <changeSet author="caleb" id="1">
+        <comment>modify login_user as an example</comment>
 
-	<changeSet author="caleb" id="2">
-		<comment>modify gender as a second example</comment>
-		
-		<modifyDataType columnName="id" newDataType="INTEGER"
-			schemaName="clinlims" tableName="gender" />
-		<renameColumn oldColumnName="lastupdated"
-			newColumnName="last_updated" columnName="id" schemaName="clinlims"
-			tableName="gender"></renameColumn>
-			
-		<rollback>
-			<modifyDataType columnName="id" newDataType="numeric"
-				schemaName="clinlims" tableName="gender" />
-		</rollback>
+        <modifyDataType columnName="id" newDataType="INTEGER"
+            schemaName="clinlims" tableName="login_user" />
+        <dropPrimaryKey schemaName="clinlims"
+            tableName="login_user" />
+        <addPrimaryKey schemaName="clinlims"
+            tableName="login_user" columnNames="id" />
+        <addColumn schemaName="clinlims" tableName="login_user">
+            <column name="last_updated" type="TIMESTAMP WITH TIME ZONE" />
+        </addColumn>
 
-	</changeSet>
+        <rollback>
+            <modifyDataType columnName="id" newDataType="numeric"
+                schemaName="clinlims" tableName="login_user" />
+            <dropPrimaryKey schemaName="clinlims"
+                tableName="login_user" />
+            <addPrimaryKey schemaName="clinlims"
+                tableName="login_user" columnNames="login_name" />
+        </rollback>
+    </changeSet>
+
+    <changeSet author="caleb" id="2">
+        <comment>modify gender as a second example</comment>
+
+        <modifyDataType columnName="id" newDataType="INTEGER"
+            schemaName="clinlims" tableName="gender" />
+        <renameColumn oldColumnName="lastupdated"
+            newColumnName="last_updated" columnName="id" schemaName="clinlims"
+            tableName="gender"></renameColumn>
+
+        <rollback>
+            <modifyDataType columnName="id" newDataType="numeric"
+                schemaName="clinlims" tableName="gender" />
+        </rollback>
+
+    </changeSet>
 
 </databaseChangeLog>

@@ -1,8 +1,7 @@
 package org.openelisglobal.samplehuman.service;
 
 import java.util.List;
-
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -13,7 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class SampleHumanServiceImpl extends BaseObjectServiceImpl<SampleHuman, String> implements SampleHumanService {
+public class SampleHumanServiceImpl extends AuditableBaseObjectServiceImpl<SampleHuman, String>
+        implements SampleHumanService {
     @Autowired
     protected SampleHumanDAO baseObjectDAO;
 
@@ -42,7 +42,6 @@ public class SampleHumanServiceImpl extends BaseObjectServiceImpl<SampleHuman, S
     @Transactional(readOnly = true)
     public void getData(SampleHuman sampleHuman) {
         getBaseObjectDAO().getData(sampleHuman);
-
     }
 
     @Override
@@ -66,5 +65,4 @@ public class SampleHumanServiceImpl extends BaseObjectServiceImpl<SampleHuman, S
     public List<Patient> getAllPatientsWithSampleEnteredMissingFhirUuid() {
         return baseObjectDAO.getAllPatientsWithSampleEnteredMissingFhirUuid();
     }
-
 }

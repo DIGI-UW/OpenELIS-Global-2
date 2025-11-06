@@ -4,7 +4,6 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.UUID;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.referral.action.beanitems.ReferralDisplayItem;
 import org.openelisglobal.referral.form.ReferredOutTestsForm;

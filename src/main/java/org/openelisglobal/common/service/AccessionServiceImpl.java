@@ -37,7 +37,6 @@ public class AccessionServiceImpl implements AccessionService {
         return value;
     }
 
-
     @Override
     public long getNextNumberIncrement(AccessionIdentity accessionIdentity) {
         long value;
@@ -66,7 +65,6 @@ public class AccessionServiceImpl implements AccessionService {
         info.setCurVal(value);
 
         return accessionDAO.save(info);
-
     }
 
     @Override
@@ -75,5 +73,4 @@ public class AccessionServiceImpl implements AccessionService {
         info.setCurVal(curVal);
         accessionDAO.save(info);
     }
-
 }

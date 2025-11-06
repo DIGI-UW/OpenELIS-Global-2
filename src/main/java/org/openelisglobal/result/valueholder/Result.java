@@ -1,29 +1,30 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ */
 package org.openelisglobal.result.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.util.Objects;
 import java.util.UUID;
-
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.valueholder.Analyte;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.valueholder.EnumValueItemImpl;
 import org.openelisglobal.common.valueholder.ValueHolder;
 import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.dataexchange.orderresult.OrderResponseWorker.Event;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.springframework.beans.factory.annotation.Value;
 
 public class Result extends EnumValueItemImpl {
 
@@ -43,6 +44,9 @@ public class Result extends EnumValueItemImpl {
     private int significantDigits;
     private ValueHolder parentResult;
     private int grouping;
+
+    @Value("${viralload.limit.low:49}")
+    private Integer virralloadLowLimit;
 
     private Event resultEvent;
 
@@ -106,6 +110,34 @@ public class Result extends EnumValueItemImpl {
 
     public String getValue() {
         return value;
+    }
+
+    public String getValue(Boolean getActualNumericValue) {
+        if (getActualNumericValue) {
+            if ((this.resultType.equals("N")) && this.value != null) {
+                return StringUtil.getActualNumericValue(value);
+            }
+        }
+        return value;
+    }
+
+    @JsonIgnore
+    public long getVLValueAsNumber() {
+        long finalResult = 0;
+        String workingResult = value.split("\\(")[0].trim();
+        if (workingResult.toLowerCase().contains("log7") || workingResult.contains(">")) {
+            finalResult = 10000000;
+        } else if (workingResult.toUpperCase().contains("LL") || workingResult.contains("<")) {
+            finalResult = virralloadLowLimit;
+        } else {
+            try {
+                finalResult = Long.parseLong(workingResult.replaceAll("[^0-9]", ""));
+            } catch (Exception e) {
+                finalResult = -1;
+            }
+        }
+
+        return finalResult;
     }
 
     public void setValue(String value) {
@@ -180,5 +212,28 @@ public class Result extends EnumValueItemImpl {
 
     public String getFhirUuidAsString() {
         return fhirUuid == null ? "" : fhirUuid.toString();
+    }
+
+    public Integer getVirralloadLowLimit() {
+        return virralloadLowLimit;
+    }
+
+    public void setVirralloadLowLimit(Integer virralloadLowLimit) {
+        this.virralloadLowLimit = virralloadLowLimit;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
+        Result that = (Result) o;
+        return Objects.equals(this.id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }

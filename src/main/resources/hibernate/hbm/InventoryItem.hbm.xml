@@ -1,30 +1,30 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class
-		name="org.openelisglobal.inventory.valueholder.InventoryItem"
-		table="inventory_item" optimistic-lock="version" dynamic-update="true">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<param name="sequence_name">inventory_item_seq</param>
-			</generator>
-		</id>
+    <class
+        name="org.openelisglobal.inventory.valueholder.InventoryItem"
+        table="inventory_item" optimistic-lock="version" dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">inventory_item_seq</param>
+            </generator>
+        </id>
 
-		<property name="name" type="java.lang.String">
-			<column name="name" length="20" />
-		</property>
+        <property name="name" type="java.lang.String">
+            <column name="name" length="20" />
+        </property>
 
-		<property name="description" type="java.lang.String">
-			<column name="description" length="60" />
-		</property>
+        <property name="description" type="java.lang.String">
+            <column name="description" length="60" />
+        </property>
 
-		<property name="isActive" type="java.lang.String">
-			<column name="is_active" length="1" />
-		</property>
-	</class>
+        <property name="isActive" type="java.lang.String">
+            <column name="is_active" length="1" />
+        </property>
+    </class>
 </hibernate-mapping>

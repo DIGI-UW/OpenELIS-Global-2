@@ -5,7 +5,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 public class ProfileForm extends BaseForm {
 
-
     private MultipartFile file;
 
     public MultipartFile getFile() {
@@ -15,6 +14,4 @@ public class ProfileForm extends BaseForm {
     public void setFile(MultipartFile file) {
         this.file = file;
     }
-
-
 }

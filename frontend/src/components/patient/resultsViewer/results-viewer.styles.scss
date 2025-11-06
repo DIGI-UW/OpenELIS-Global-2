@@ -1,0 +1,222 @@
+@use "@carbon/styles/scss/grid/_flexbox";
+@use "@carbon/styles/scss/spacing";
+@use "@carbon/styles/scss/type";
+@use "carbon-components/scss/globals/scss/typography.scss";
+@import "./commons/scss/vars.scss";
+
+.resultsContainer {
+  padding: 0;
+  width: 100%;
+  position: relative;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  background-color: $ui-01;
+}
+
+.flex {
+  display: flex;
+  flex: 1;
+}
+
+.resultsHeaderTablet {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.resultsHeader {
+  padding: 0.5rem 0;
+  z-index: 10;
+  background-color: $openmrs-background-grey;
+  position: sticky;
+  top: 3rem;
+  display: flex;
+}
+
+.leftHeaderSection {
+  display: flex;
+  align-items: center;
+}
+
+.viewOptsContentSwitcherContainer {
+  margin-left: auto;
+}
+
+.leftSection {
+  width: 30%;
+  margin-right: spacing.$spacing-05;
+}
+
+.rightSection,
+.rightSectionHeader {
+  width: 70%;
+}
+
+.rightSectionHeader {
+  display: flex;
+}
+
+.rightSection :global(.cds--skeleton) {
+  width: 100%;
+}
+
+.leftHeaderActions {
+  display: flex;
+  min-width: 2.5rem;
+}
+
+.leftHeaderActions > :global(.cds--content-switcher),
+.viewOptsContentSwitcherContainer :global(.cds--content-switcher) {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: max-content;
+  justify-content: flex-start;
+}
+
+.trendlineOverlayHeader {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+
+  .trendlineOverlayHeaderTitle {
+    @include type.type-style("heading-compact-02");
+    margin-right: 4px;
+  }
+
+  .trendlineOverlayHeaderReferenceRange {
+    @include type.type-style("helper-text-01");
+  }
+}
+
+.filterSetHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: spacing.$spacing-03;
+  background-color: $openmrs-background-grey;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+
+  h4 {
+    @include type.type-style("heading-compact-02");
+    color: $text-02;
+  }
+
+  .filterSetActions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+  }
+}
+
+.floatingTreeButton {
+  position: fixed;
+  bottom: 5rem;
+  right: spacing.$spacing-05;
+  z-index: 99;
+
+  button {
+    background-color: $brand-01 !important;
+    padding: spacing.$spacing-05;
+    border-radius: 50%;
+  }
+
+  svg {
+    fill: $ui-01 !important;
+  }
+}
+
+// patient header
+.patient-header {
+  //background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  text-align: left;
+  margin-top: 20px;
+  background-color: #ffffff;
+  border-radius: 5px;
+  margin: 2%;
+  padding: 1%;
+}
+.patient-header2 {
+  //background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  // padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  text-align: left;
+  margin-top: 20px;
+  background-color: #ffffff;
+  border-radius: 5px;
+  margin-top: 1%;
+  padding: 1%;
+}
+
+.patient-header3 {
+  //background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  // padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  text-align: left;
+  background-color: #ffffff;
+  border-radius: 5px;
+  margin-top: 2%;
+  margin-left: 6%;
+  margin-right: 6%;
+  padding: 1%;
+}
+
+.patient-name {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+.patient-dob {
+  font-size: 18px;
+  color: #666;
+  margin-top: 5px;
+}
+
+.patient-id {
+  font-size: 14px;
+  color: #888;
+  margin-top: 5px;
+}
+
+.patientAvatar {
+  width: 5rem;
+  height: 5rem;
+  border-radius: 1px;
+}
+.patientAvatar2 {
+  padding-right: 140px;
+  width: 5rem;
+  height: 5rem;
+  border-radius: 1px;
+}
+@media screen and (max-width: 673px) {
+  .patient-name {
+    font-size: 16px;
+    margin-left: 5%;
+  }
+
+  .patient-dob {
+    font-size: 14px;
+    margin-left: 5%;
+  }
+
+  .patient-id {
+    font-size: 12px;
+    margin-left: 5%;
+  }
+}

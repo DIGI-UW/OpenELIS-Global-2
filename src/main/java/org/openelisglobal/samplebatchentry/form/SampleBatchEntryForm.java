@@ -1,11 +1,10 @@
 package org.openelisglobal.samplebatchentry.form;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import java.util.List;
 import java.util.Map;
-
-import javax.validation.Valid;
-import javax.validation.constraints.Pattern;
-
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
@@ -21,6 +20,7 @@ import org.openelisglobal.validation.annotations.ValidAccessionNumber;
 import org.openelisglobal.validation.annotations.ValidDate;
 import org.openelisglobal.validation.annotations.ValidTime;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class SampleBatchEntryForm extends SamplePatientEntryForm {
 
     public interface SampleBatchEntrySetup {
@@ -344,5 +344,4 @@ public class SampleBatchEntryForm extends SamplePatientEntryForm {
     public void setWarning(boolean warning) {
         this.warning = warning;
     }
-
 }

@@ -36,6 +36,8 @@ echo "This is technically secure, but it is recommended to change the password o
 
 echo "Output location: ${resourcesDir}"
 
+mkdir -p  ${resourcesDir};
+
 if [ $cli_flag == true ]
 then
   htpasswd -bcBC 12 ${resourcesDir}/adminPassword.txt admin ${pw}
@@ -49,9 +51,9 @@ echo "Result (for debugging): ${result}"
 
 while [ $result != 0 ]; do
   if [ $result == 3 ]
-  then 
+  then
     echo "passwords did not match"
-  else 
+  else
     echo "an error occured creating the password"
   fi
   while [ $cli_flag == false ]; do
@@ -67,7 +69,6 @@ while [ $result != 0 ]; do
     htpasswd -bcBC 12 ${resourcesDir}/adminPassword.txt admin ${pw}
   else
     htpasswd -cBC 12 ${resourcesDir}/adminPassword.txt admin
-  fi  
+  fi
   result=$?
 done
-	

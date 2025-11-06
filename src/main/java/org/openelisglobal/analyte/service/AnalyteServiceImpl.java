@@ -4,13 +4,13 @@ import org.openelisglobal.analyte.dao.AnalyteDAO;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class AnalyteServiceImpl extends BaseObjectServiceImpl<Analyte, String> implements AnalyteService {
+public class AnalyteServiceImpl extends AuditableBaseObjectServiceImpl<Analyte, String> implements AnalyteService {
     @Autowired
     protected AnalyteDAO baseObjectDAO;
 
@@ -54,7 +54,7 @@ public class AnalyteServiceImpl extends BaseObjectServiceImpl<Analyte, String> i
     }
 
     private boolean duplicateAnalyteExists(Analyte analyte) {
-        return duplicateAnalyteExists(analyte);
+        return baseObjectDAO.duplicateAnalyteExists(analyte);
     }
 
     @Override
@@ -64,5 +64,4 @@ public class AnalyteServiceImpl extends BaseObjectServiceImpl<Analyte, String> i
         oldData.setSysUserId(analyte.getSysUserId());
         updateDelete(oldData);
     }
-
 }

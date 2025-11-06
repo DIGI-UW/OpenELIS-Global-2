@@ -2,7 +2,6 @@ package org.openelisglobal.testconfiguration.service;
 
 import java.util.List;
 import java.util.Locale;
-
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -87,6 +86,13 @@ public class TestModifyServiceImpl implements TestModifyService {
             set.test.setLocalizedTestName(nameLocalization);
             set.test.setLocalizedReportingName(reportingNameLocalization);
 
+            TestSection testSection = set.test.getTestSection();
+            if ("N".equals(testSection.getIsActive())) {
+                testSection.setIsActive("Y");
+                testSection.setSysUserId(currentUserId);
+                testSectionService.update(testSection);
+            }
+
             // gnr: based on testAddUpdate,
             // added existing testId to process in createTestSets using
             // testAddParams.testId, delete then insert to modify for most elements
@@ -96,8 +102,9 @@ public class TestModifyServiceImpl implements TestModifyService {
             }
 
             updateTestNames(testAddParams.testId, nameLocalization, reportingNameLocalization, currentUserId);
-            updateTestEntities(testAddParams.testId, testAddParams.loinc, currentUserId, testAddParams.uomId, testAddParams.testSectionId ,
-                    set.test.isNotifyResults(), set.test.isInLabOnly());
+            updateTestEntities(testAddParams.testId, testAddParams.loinc, currentUserId, testAddParams.uomId,
+                    testAddParams.testSectionId, set.test.isNotifyResults(), set.test.isInLabOnly(),
+                    set.test.getAntimicrobialResistance(), set.test.getIsActive(), set.test.getOrderable());
 
             set.sampleTypeTest.setSysUserId(currentUserId);
             set.sampleTypeTest.setTestId(set.test.getId());
@@ -152,7 +159,6 @@ public class TestModifyServiceImpl implements TestModifyService {
             test.setSortOrder(sortOrder);
             testService.update(test);
         }
-
     }
 
     private void updateTestDefault(String testId, TestResult testResult, String currentUserId) {
@@ -163,11 +169,11 @@ public class TestModifyServiceImpl implements TestModifyService {
             test.setDefaultTestResult(testResult);
             testService.update(test);
         }
-
     }
 
-    private void updateTestEntities(String testId, String loinc, String userId, String uomId, String testSectionId , boolean notifyResults,
-            boolean inLabOnly) {
+    private void updateTestEntities(String testId, String loinc, String userId, String uomId, String testSectionId,
+            boolean notifyResults, boolean inLabOnly, boolean antimicrobialResistance, String isActive,
+            Boolean orderable) {
         Test test = testService.get(testId);
         TestSection testSection = testSectionService.get(testSectionId);
 
@@ -177,7 +183,10 @@ public class TestModifyServiceImpl implements TestModifyService {
             test.setUnitOfMeasure(unitOfMeasureService.getUnitOfMeasureById(uomId));
             test.setNotifyResults(notifyResults);
             test.setInLabOnly(inLabOnly);
+            test.setAntimicrobialResistance(antimicrobialResistance);
             test.setTestSection(testSection);
+            test.setIsActive(isActive);
+            test.setOrderable(orderable);
             testService.update(test);
         }
     }
@@ -198,12 +207,10 @@ public class TestModifyServiceImpl implements TestModifyService {
 
             localizationService.update(name);
             localizationService.update(reportingName);
-
         }
 
         // Refresh test names
         DisplayListService.getInstance().getFreshList(DisplayListService.ListType.ALL_TESTS);
         DisplayListService.getInstance().getFreshList(DisplayListService.ListType.ORDERABLE_TESTS);
     }
-
 }

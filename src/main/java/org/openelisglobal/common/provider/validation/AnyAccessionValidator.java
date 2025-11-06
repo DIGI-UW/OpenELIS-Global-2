@@ -80,5 +80,4 @@ public class AnyAccessionValidator implements IAccessionNumberGenerator {
         // TODO Auto-generated method stub
         return null;
     }
-
 }

@@ -9,5 +9,4 @@ public interface NotificationPayloadTemplateService extends BaseObjectService<No
     public NotificationPayloadTemplate getSystemDefaultPayloadTemplateForType(NotificationPayloadType type);
 
     void updatePayloadTemplateMessagesAndSubject(NotificationPayloadTemplate newPayloadTemplate, String sysUserId);
-
 }

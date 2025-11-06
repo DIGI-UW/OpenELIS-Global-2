@@ -32,7 +32,7 @@ function getProviderInfo( providerId, success, failure){
 		return;
 	}
 
-	new Ajax.Request('Provider/' + providerId,
+	new Ajax.Request('rest/Provider/raw/' + providerId,
 			{
 				method : 'get', 
 			    //indicator: 'throbbing',
@@ -53,7 +53,7 @@ function getProviderInfoByPersonId( personId, success, failure){
 		return;
 	}
 
-	new Ajax.Request('Provider/Person/' + personId,
+	new Ajax.Request('rest/Provider/Person/' + personId,
 			{
 				method : 'get', 
 			    //indicator: 'throbbing',
@@ -278,26 +278,6 @@ function getTestsForSampleType(sampleTypeId, success, failure) {
 	{// options
 		method : 'get', // http method
 		parameters : "provider=SampleEntryTestsForTypeProvider" + request,
-		// indicator: 'throbbing'
-		requestHeaders : {
-			"X-CSRF-Token" : getCsrfToken()
-		},
-		onSuccess : success,
-		onFailure : failure
-	});
-}
-
-//sensitive data is being transmitted, therefore a token check should be done even on GET. 
-//Otherwise this should be moved to a POST request and rely on regular csrf functionality
-function testConnectionOnServer(connectionId, url, success, failure) {
-	var request = "&connectionId=" + connectionId + "&url=" + url;
-	
-	if( !failure ){	failure = defaultFailure;}
-	
-	new Ajax.Request('ajaxQueryXML', // url
-	{// options
-		method : 'get', // http method
-		parameters : "provider=ConnectionTestProvider" + request,
 		// indicator: 'throbbing'
 		requestHeaders : {
 			"X-CSRF-Token" : getCsrfToken()
@@ -600,6 +580,22 @@ function getPreviousExperimentSetup(id, success, failure) {
     		"AnalyzerSetup/" + id,  //url
     		{//options
     			method: 'GET', //http method
+    		    onSuccess: success,
+    		    onFailure: failure
+    		}
+    	);
+}
+
+function runLIStoAnalyzerAction(analyzerType, action, success, failure) {
+    if( !failure){failure = defaultFailure;	}
+    new Ajax.Request(
+    		"analyzer/runAction",  //url
+    		{//options
+    			method: 'POST', //http method
+                parameters : "analyzerType=" + analyzerType + "&actionName=" + action,
+				requestHeaders : {
+					"X-CSRF-Token" : getCsrfToken()
+				},
     		    onSuccess: success,
     		    onFailure: failure
     		}

@@ -1,18 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.dataexchange.malariareporting;
 
@@ -20,7 +17,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -56,7 +52,8 @@ public class MalariaReportingUpdate implements IResultUpdate {
 
     public MalariaReportingUpdate() {
         REPORTABLE_STATUS_IDS = new HashSet<>();
-        REPORTABLE_STATUS_IDS.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)));
+        REPORTABLE_STATUS_IDS.add(
+                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)));
 
         // N.B. This should be discoverable from the DB, not hard coded by name
         MALARIA_TEST_IDS = new HashSet<>();
@@ -71,7 +68,7 @@ public class MalariaReportingUpdate implements IResultUpdate {
         addMalariaTest(testService, "Malaria(Sang)");
         addMalariaTest(testService, "Malaria"); // Old malaria test which may still exist in some older installations
         addMalariaTest(testService, "Recherche de Plasmodium"); // Old malaria test which may still exist in some older
-                                                                // installations
+        // installations
 
     }
 
@@ -127,7 +124,7 @@ public class MalariaReportingUpdate implements IResultUpdate {
             }
             for (Result result : malariaResults) {
                 if (!collator.addResult(result, patient, false, true)) {
-                    LogEvent.logError(this.getClass().getName(), "postTransactionalCommitUpdate",
+                    LogEvent.logError(this.getClass().getSimpleName(), "postTransactionalCommitUpdate",
                             "Unable to add malaria result to ResultReportingCollator.");
                 }
             }
@@ -164,5 +161,4 @@ public class MalariaReportingUpdate implements IResultUpdate {
 
         return results;
     }
-
 }

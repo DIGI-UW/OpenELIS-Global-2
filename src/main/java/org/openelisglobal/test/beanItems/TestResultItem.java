@@ -1,29 +1,28 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*
-* Contributor(s): CIRG, University of Washington, Seattle WA.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ *
+ * <p>Contributor(s): CIRG, University of Washington, Seattle WA.
+ */
 package org.openelisglobal.test.beanItems;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.validation.constraints.Pattern;
-
-import org.hibernate.validator.constraints.SafeHtml;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
@@ -32,19 +31,22 @@ import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.result.action.util.ResultItem;
 import org.openelisglobal.result.form.LogbookResultsForm;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.validation.annotations.SafeHtml;
 import org.openelisglobal.validation.annotations.ValidAccessionNumber;
 import org.openelisglobal.validation.annotations.ValidDate;
 import org.openelisglobal.validation.annotations.ValidName;
 import org.openelisglobal.validation.constraintvalidator.NameValidator.NameType;
 import org.openelisglobal.workplan.form.WorkplanForm;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class TestResultItem implements ResultItem, Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    @ValidAccessionNumber(format = AccessionFormat.ALPHANUM_DASH, groups = { WorkplanForm.PrintWorkplan.class,
+    @ValidAccessionNumber(format = AccessionFormat.UNFORMATTED, groups = { WorkplanForm.PrintWorkplan.class,
             LogbookResultsForm.LogbookResults.class })
     private String accessionNumber;
+
     private String sequenceNumber;
     private boolean showSampleDetails = true;
     /*
@@ -63,6 +65,7 @@ public class TestResultItem implements ResultItem, Serializable {
     private boolean isServingAsTestGroupIdentifier = false;
 
     private static String NO = "no";
+
     @SuppressWarnings("unused")
     private static String YES = "yes";
 
@@ -85,62 +88,72 @@ public class TestResultItem implements ResultItem, Serializable {
      * N.B. test method is the type of test it is (HIV etc). analysisMethod is the
      * way the analysis is done automatic or manual
      */
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { LogbookResultsForm.LogbookResults.class,
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class,
             LogbookResultsForm.LogbookResults.class })
     private String testMethod;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { LogbookResultsForm.LogbookResults.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String analysisMethod;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { WorkplanForm.PrintWorkplan.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { WorkplanForm.PrintWorkplan.class })
     private String testName;
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
     private String testId;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { LogbookResultsForm.LogbookResults.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String testKit1InventoryId;
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
     private String testKitId;
+
     private boolean testKitInactive = false;
     private double upperNormalRange = 0;
     private double lowerNormalRange = 0;
     private double upperAbnormalRange;
     private double lowerAbnormalRange;
     private String normalRange = "";
+    private double lowerCritical;
+    private double higherCritical;
 
-    private int significantDigits = -1;
+    private int significantDigits = 0;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { LogbookResultsForm.LogbookResults.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String shadowResultValue;
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { LogbookResultsForm.LogbookResults.class })
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String resultValue;
+
     private String remarks;
 
     @ValidName(nameType = NameType.FULL_NAME)
     private String technician;
+
     private boolean reportable;
     private String patientName;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { WorkplanForm.PrintWorkplan.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { WorkplanForm.PrintWorkplan.class })
     private String patientInfo;
+
     private String nationalId;
     private String unitsOfMeasure = "";
 
-//	private String testSortNumber;
+    // private String testSortNumber;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { LogbookResultsForm.LogbookResults.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String resultType;
+
     private ResultDisplayType resultDisplayType = ResultDisplayType.TEXT;
     private boolean isModified = false;
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
     private String analysisId;
+
     private String analysisStatusId;
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
     private String resultId;
+
     private Result result;
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
@@ -148,11 +161,16 @@ public class TestResultItem implements ResultItem, Serializable {
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
     private String resultLimitId;
+
     private List<IdValuePair> dictionaryResults;
+    private List<IdValuePair> methods;
+    private List<IdValuePair> referralOrganizations;
+    private List<IdValuePair> referralReasons;
     private String remove = NO;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { LogbookResultsForm.LogbookResults.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String note;
+
     private String pastNotes;
     private boolean valid = true;
     private boolean normal = true;
@@ -174,8 +192,9 @@ public class TestResultItem implements ResultItem, Serializable {
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
     private String referralReasonId = "";
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { LogbookResultsForm.LogbookResults.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String multiSelectResultValues;
+
     private String initialSampleCondition;
     private String sampleType;
     private boolean failedValidation = false;
@@ -187,23 +206,25 @@ public class TestResultItem implements ResultItem, Serializable {
     private boolean displayResultAsLog = false;
     private String qualifiedDictionaryId = null;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { LogbookResultsForm.LogbookResults.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String qualifiedResultValue = "";
+
     private String qualifiedResultId;
     private boolean hasQualifiedResult = false;
     private String nextVisitDate;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { LogbookResultsForm.LogbookResults.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String forceTechApproval;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { LogbookResultsForm.LogbookResults.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String reflexJSONResult;
+
     private boolean rejected = false;
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
     private String rejectReasonId;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { LogbookResultsForm.LogbookResults.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String considerRejectReason;
 
     private boolean refer;
@@ -358,6 +379,7 @@ public class TestResultItem implements ResultItem, Serializable {
         return resultDisplayType.toString();
     }
 
+    @JsonIgnore()
     public ResultDisplayType getRawResultDisplayType() {
         return resultDisplayType;
     }
@@ -366,6 +388,7 @@ public class TestResultItem implements ResultItem, Serializable {
         resultDisplayType = resultType;
     }
 
+    @JsonIgnore()
     public ResultDisplayType getEnumResultType() {
         return resultDisplayType;
     }
@@ -410,8 +433,24 @@ public class TestResultItem implements ResultItem, Serializable {
         this.lowerAbnormalRange = lowerAbnormalRange;
     }
 
+    public double getLowerCritical() {
+        return lowerCritical;
+    }
+
+    public void setLowerCritical(double lowerCritical) {
+        this.lowerCritical = lowerCritical;
+    }
+
+    public double getHigherCritical() {
+        return higherCritical;
+    }
+
+    public void setHigherCritical(double higherCritical) {
+        this.higherCritical = higherCritical;
+    }
+
     public String getReportable() {
-        return reportable ? "Y" : "N";
+        return reportable ? IActionConstants.YES : IActionConstants.NO;
     }
 
     public void setReportable(boolean reportable) {
@@ -438,6 +477,22 @@ public class TestResultItem implements ResultItem, Serializable {
         this.testMethod = testMethod;
     }
 
+    public List<IdValuePair> getReferralOrganizations() {
+        return referralOrganizations;
+    }
+
+    public void setReferralOrganizations(List<IdValuePair> referralOrganizations) {
+        this.referralOrganizations = referralOrganizations;
+    }
+
+    public List<IdValuePair> getReferralReasons() {
+        return referralReasons;
+    }
+
+    public void setReferralReasons(List<IdValuePair> referralReasons) {
+        this.referralReasons = referralReasons;
+    }
+
     public String getRemove() {
         return remove;
     }
@@ -446,6 +501,7 @@ public class TestResultItem implements ResultItem, Serializable {
         this.remove = remove;
     }
 
+    @JsonIgnore()
     public boolean isRemoved() {
         return NO.equals(remove);
     }
@@ -502,6 +558,16 @@ public class TestResultItem implements ResultItem, Serializable {
     public void setResultValue(String results) {
         resultValue = results;
         setShadowResultValue(results);
+    }
+
+    public String getResultValueLog() {
+        try {
+            DecimalFormat df = new DecimalFormat("###.##");
+            double val = Double.parseDouble(this.resultValue);
+            return df.format(Math.log10(val));
+        } catch (Exception e) {
+            return "--";
+        }
     }
 
     public String getShadowResultValue() {
@@ -574,6 +640,14 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public List<IdValuePair> getDictionaryResults() {
         return dictionaryResults == null ? new ArrayList<>() : dictionaryResults;
+    }
+
+    public void setMethods(List<IdValuePair> methods) {
+        this.methods = methods;
+    }
+
+    public List<IdValuePair> getMethods() {
+        return methods == null ? new ArrayList<>() : methods;
     }
 
     public String getResultLimitId() {
@@ -902,5 +976,4 @@ public class TestResultItem implements ResultItem, Serializable {
     public void setReferralItem(ReferralItem referralItem) {
         this.referralItem = referralItem;
     }
-
 }

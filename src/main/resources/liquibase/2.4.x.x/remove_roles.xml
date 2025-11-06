@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<changeSet author="csteele" id="1">
-		<comment>remove 'automatic' roles</comment>
-		<delete schemaName="clinlims" tableName="system_role">
-			<where>name LIKE '%automatic%'</where>
-		</delete>
-	</changeSet>
+    <changeSet author="csteele" id="1">
+        <comment>remove 'automatic' roles</comment>
+        <delete schemaName="clinlims" tableName="system_role">
+            <where>name LIKE '%automatic%'</where>
+        </delete>
+    </changeSet>
 
 </databaseChangeLog>

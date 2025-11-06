@@ -10,7 +10,6 @@ import org.openelisglobal.common.log.LogEvent;
 public class JSONUtils {
 
     private JSONUtils() {
-
     }
 
     /**
@@ -64,5 +63,4 @@ public class JSONUtils {
     public static boolean isEmpty(JSONObject obj) {
         return obj.isEmpty();
     }
-
 }

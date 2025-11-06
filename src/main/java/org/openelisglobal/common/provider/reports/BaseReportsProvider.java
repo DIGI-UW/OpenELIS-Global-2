@@ -1,31 +1,27 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ */
 package org.openelisglobal.common.provider.reports;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.action.IActionConstants;
@@ -125,7 +121,7 @@ public abstract class BaseReportsProvider implements IActionConstants {
      * @param request    the HttpServletRequest
      * @param messageKey the message key to look up bugzilla 2264
      */
-    protected String getMessageForKey(HttpServletRequest request, String messageKey)  {
+    protected String getMessageForKey(HttpServletRequest request, String messageKey) {
         if (null == messageKey) {
             return null;
         }
@@ -136,7 +132,7 @@ public abstract class BaseReportsProvider implements IActionConstants {
     }
 
     // bugzilla 2264
-    protected String getMessageForKey(HttpServletRequest request, String messageKey, String arg0)  {
+    protected String getMessageForKey(HttpServletRequest request, String messageKey, String arg0) {
         if (null == messageKey) {
             return null;
         }
@@ -240,7 +236,5 @@ public abstract class BaseReportsProvider implements IActionConstants {
                 recursiveHierarchyBuild(test, tests, newTests);
             }
         }
-
     }
-
 }

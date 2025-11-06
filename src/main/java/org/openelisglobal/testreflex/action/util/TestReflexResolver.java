@@ -1,29 +1,28 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
  *
- * Contributor(s): CIRG, University of Washington, Seattle WA.
+ * <p>Contributor(s): CIRG, University of Washington, Seattle WA.
  */
 package org.openelisglobal.testreflex.action.util;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.result.action.util.ResultUtil;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -74,6 +73,38 @@ public class TestReflexResolver {
 
         List<TestReflex> reflexes = testReflexService.getTestReflexsByTestResultAnalyteTest(testResultId, analyteId,
                 testId);
+        // try to check if there other analyte macthicng for this result
+        List<Analyte> otherMatchingAnalyte = ResultUtil.getOtherAnalyteForResult(result);
+        if (otherMatchingAnalyte != null) {
+            if (!otherMatchingAnalyte.isEmpty()) {
+                for (Analyte otherAnalyte : otherMatchingAnalyte) {
+                    reflexes.addAll(testReflexService.getTestReflexsByTestResultAnalyteTest(testResultId,
+                            otherAnalyte.getId(), testId));
+                }
+            }
+        }
+
+        return reflexes != null ? reflexes : new ArrayList<>();
+    }
+
+    public List<TestReflex> getTestReflexsByAnalyteAndTest(Result result) {
+        String testId = null;
+        String analyteId = result.getAnalyte() == null ? null : result.getAnalyte().getId();
+
+        if (result.getTestResult() != null) {
+            testId = result.getTestResult().getTest() == null ? null : result.getTestResult().getTest().getId();
+        }
+
+        List<TestReflex> reflexes = testReflexService.getTestReflexsByAnalyteAndTest(analyteId, testId);
+        // try to check if there other analyte macthicng for this result
+        List<Analyte> otherMatchingAnalyte = ResultUtil.getOtherAnalyteForResult(result);
+        if (otherMatchingAnalyte != null) {
+            if (!otherMatchingAnalyte.isEmpty()) {
+                for (Analyte otherAnalyte : otherMatchingAnalyte) {
+                    reflexes.addAll(testReflexService.getTestReflexsByAnalyteAndTest(otherAnalyte.getId(), testId));
+                }
+            }
+        }
         return reflexes != null ? reflexes : new ArrayList<>();
     }
 
@@ -100,7 +131,6 @@ public class TestReflexResolver {
                         lastValidAnalysis = analysis;
                         return true;
                     }
-
                 }
             }
         }
@@ -108,5 +138,4 @@ public class TestReflexResolver {
         lastValidAnalysis = null;
         return false;
     }
-
 }

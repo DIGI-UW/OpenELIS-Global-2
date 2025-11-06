@@ -1,0 +1,86 @@
+@use "@carbon/styles/scss/spacing";
+@use "@carbon/styles/scss/type";
+@import "~@carbon/charts/styles.css";
+//@import '~@openmrs/esm-styleguide/src/vars';
+@import "../commons/scss/vars.scss";
+
+.ui-shell-header-modal-bar-default {
+  height: 3rem;
+  object-fit: contain;
+  background-color: #005d5d;
+  color: white;
+  padding-top: 1rem;
+  padding-left: 0.938rem;
+  display: flex;
+}
+
+.content {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  flex-grow: 1;
+}
+
+.title {
+  @include type.type-style("heading-compact-02");
+  color: $text-02;
+  margin-right: 4px;
+}
+
+.reference-range {
+  @include type.type-style("helper-text-01");
+  //  color: $text-05; // WIP
+}
+
+:global(.cds--cc--area path.area) {
+  stroke: none;
+  fill: #a7f0ba;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: center;
+  background: white;
+  border-bottom: 1px solid $ui-03;
+}
+
+.backButton {
+  align-items: center;
+  display: flex;
+  justify-content: flex-start;
+
+  a {
+    text-decoration: none;
+  }
+
+  button {
+    display: flex;
+
+    svg {
+      order: 1;
+      margin-right: 0.5rem;
+    }
+
+    span {
+      order: 2;
+    }
+  }
+}
+
+.inlineLoader {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding-right: spacing.$spacing-05;
+}
+
+.background {
+  width: 100%;
+  padding: 2.375rem 5.688rem 2.188rem 1rem;
+  background: white;
+}
+
+.range-tabs :global(.cds--tabs--scrollable__nav-link) {
+  width: 7rem;
+}

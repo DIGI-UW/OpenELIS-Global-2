@@ -1,26 +1,24 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*
-* Contributor(s): CIRG, University of Washington, Seattle WA.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ *
+ * <p>Contributor(s): CIRG, University of Washington, Seattle WA.
+ */
 package org.openelisglobal.workplan.reports;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-
+import net.sf.jasperreports.engine.JRParameter;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
@@ -28,8 +26,6 @@ import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.workplan.form.WorkplanForm;
-
-import net.sf.jasperreports.engine.JRParameter;
 
 public class TestSectionWorkplanReport implements IWorkplanReport {
     private static int PREFIX_LENGTH = AccessionNumberUtil.getMainAccessionNumberGenerator().getInvarientLength();
@@ -41,8 +37,8 @@ public class TestSectionWorkplanReport implements IWorkplanReport {
     protected String reportPath = "";
 
     public TestSectionWorkplanReport(String testSection) {
-        //messageKey = messageKey + testSection.replace(' ', '-');
-        //this.testSection = MessageUtil.getContextualMessage(messageKey);
+        // messageKey = messageKey + testSection.replace(' ', '-');
+        // this.testSection = MessageUtil.getContextualMessage(messageKey);
 
         if (GenericValidator.isBlankOrNull(this.testSection)) {
             this.testSection = testSection;
@@ -82,7 +78,6 @@ public class TestSectionWorkplanReport implements IWorkplanReport {
         parameterMap.put(JRParameter.REPORT_RESOURCE_BUNDLE, MessageUtil.getMessageSourceAsResourceBundle());
 
         return parameterMap;
-
     }
 
     @Override
@@ -106,7 +101,6 @@ public class TestSectionWorkplanReport implements IWorkplanReport {
     @Override
     public void setReportPath(String reportPath) {
         this.reportPath = reportPath;
-
     }
 
     protected String getNameOfTest() {
@@ -124,5 +118,4 @@ public class TestSectionWorkplanReport implements IWorkplanReport {
             return null;
         }
     }
-
 }

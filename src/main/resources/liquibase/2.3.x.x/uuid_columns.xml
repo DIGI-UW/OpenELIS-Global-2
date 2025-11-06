@@ -1,105 +1,74 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<changeSet author="csteele" id="1">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<columnExists schemaName="clinlims"
-					tableName="analysis" columnName="fhir_uuid" />
-			</not>
-		</preConditions>
-		<addColumn schemaName="clinlims" tableName="analysis">
-			<column name="fhir_uuid" position="2" type="uuid" />
-		</addColumn>
-		<addColumn schemaName="clinlims" tableName="result">
-			<column name="fhir_uuid" position="2" type="uuid" />
-		</addColumn>
-		<addColumn schemaName="clinlims" tableName="sample_item">
-			<column name="fhir_uuid" position="2" type="uuid" />
-		</addColumn>
-		<addColumn schemaName="clinlims" tableName="organization">
-			<column name="fhir_uuid" position="2" type="uuid" />
-		</addColumn>
-		<addColumn schemaName="clinlims" tableName="patient">
-			<column name="fhir_uuid" position="2" type="uuid" />
-		</addColumn>
-		<addColumn schemaName="clinlims" tableName="sample">
-			<column name="fhir_uuid" position="2" type="uuid" />
-		</addColumn>
-	</changeSet>
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims"
+                    tableName="analysis" columnName="fhir_uuid" />
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="analysis">
+            <column name="fhir_uuid" position="2" type="uuid" />
+        </addColumn>
+        <addColumn schemaName="clinlims" tableName="result">
+            <column name="fhir_uuid" position="2" type="uuid" />
+        </addColumn>
+        <addColumn schemaName="clinlims" tableName="sample_item">
+            <column name="fhir_uuid" position="2" type="uuid" />
+        </addColumn>
+        <addColumn schemaName="clinlims" tableName="organization">
+            <column name="fhir_uuid" position="2" type="uuid" />
+        </addColumn>
+        <addColumn schemaName="clinlims" tableName="patient">
+            <column name="fhir_uuid" position="2" type="uuid" />
+        </addColumn>
+        <addColumn schemaName="clinlims" tableName="sample">
+            <column name="fhir_uuid" position="2" type="uuid" />
+        </addColumn>
+    </changeSet>
 
-	<changeSet author="csteele" id="2">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<indexExists schemaName="clinlims" tableName="analysis"
-					indexName="analysis_fhir_uuid_index" />
-			</not>
-		</preConditions>
-		<createIndex indexName="analysis_fhir_uuid_index"
-			tableName="analysis">
-			<column name="fhir_uuid" />
-		</createIndex>
-		<createIndex indexName="result_fhir_uuid_index"
-			tableName="result">
-			<column name="fhir_uuid" />
-		</createIndex>
-		<createIndex indexName="sample_item_fhir_uuid_index"
-			tableName="sample_item">
-			<column name="fhir_uuid" />
-		</createIndex>
-		<createIndex indexName="organization_fhir_uuid_index"
-			tableName="organization">
-			<column name="fhir_uuid" />
-		</createIndex>
-		<createIndex indexName="patient_fhir_uuid_index"
-			tableName="patient">
-			<column name="fhir_uuid" />
-		</createIndex>
-		<createIndex indexName="sample_fhir_uuid_index"
-			tableName="sample">
-			<column name="fhir_uuid"/>
-		</createIndex>
-	</changeSet>
 
-	<changeSet author="csteele" id="3">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<columnExists schemaName="clinlims"
-					tableName="electronic_order" columnName="type" />
-			</not>
-		</preConditions>
-		<addColumn schemaName="clinlims"
-			tableName="electronic_order">
-			<column name="type" type="VARCHAR(255)" />
-		</addColumn>
-	</changeSet>
 
-	<changeSet author="csteele" id="4">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<columnExists schemaName="clinlims"
-					tableName="provider" columnName="fhir_uuid" />
-			</not>
-		</preConditions>
-		<addColumn schemaName="clinlims" tableName="provider">
-			<column name="fhir_uuid" position="2" type="uuid" />
-		</addColumn>
-		<createIndex indexName="provider_fhir_uuid_index"
-			tableName="provider">
-			<column name="fhir_uuid"/>
-		</createIndex>
-		
-		<addColumn schemaName="clinlims" tableName="referral">
-			<column name="fhir_uuid" position="2" type="uuid" />
-		</addColumn>
-		<createIndex indexName="referral_fhir_uuid_index"
-			tableName="referral">
-			<column name="fhir_uuid"/>
-		</createIndex>
-	</changeSet>
+    <changeSet author="csteele" id="3">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims"
+                    tableName="electronic_order" columnName="type" />
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims"
+            tableName="electronic_order">
+            <column name="type" type="VARCHAR(255)" />
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="csteele" id="4">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims"
+                    tableName="provider" columnName="fhir_uuid" />
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="provider">
+            <column name="fhir_uuid" position="2" type="uuid" />
+        </addColumn>
+        <createIndex indexName="provider_fhir_uuid_index"
+            tableName="provider">
+            <column name="fhir_uuid"/>
+        </createIndex>
+
+        <addColumn schemaName="clinlims" tableName="referral">
+            <column name="fhir_uuid" position="2" type="uuid" />
+        </addColumn>
+        <createIndex indexName="referral_fhir_uuid_index"
+            tableName="referral">
+            <column name="fhir_uuid"/>
+        </createIndex>
+    </changeSet>
 
 </databaseChangeLog>

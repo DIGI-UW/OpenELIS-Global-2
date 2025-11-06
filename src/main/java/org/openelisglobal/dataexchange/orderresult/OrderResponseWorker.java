@@ -1,19 +1,5 @@
 package org.openelisglobal.dataexchange.orderresult;
 
-import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-
-import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
-import org.openelisglobal.dataexchange.resultreporting.beans.ResultReportXmit;
-import org.openelisglobal.dataexchange.resultreporting.beans.ResultXmit;
-import org.openelisglobal.dataexchange.resultreporting.beans.TestResultsXmit;
-import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Scope;
-import org.springframework.stereotype.Service;
-
 import ca.uhn.hl7v2.HL7Exception;
 import ca.uhn.hl7v2.model.v251.message.OML_O21;
 import ca.uhn.hl7v2.model.v251.message.ORU_R01;
@@ -22,6 +8,18 @@ import ca.uhn.hl7v2.model.v251.segment.OBR;
 import ca.uhn.hl7v2.model.v251.segment.OBX;
 import ca.uhn.hl7v2.model.v251.segment.ORC;
 import ca.uhn.hl7v2.model.v251.segment.PID;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
+import org.openelisglobal.dataexchange.resultreporting.beans.ResultReportXmit;
+import org.openelisglobal.dataexchange.resultreporting.beans.ResultXmit;
+import org.openelisglobal.dataexchange.resultreporting.beans.TestResultsXmit;
+import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Service;
 
 @Service
 @Scope("prototype")
@@ -58,8 +56,9 @@ public class OrderResponseWorker {
             event = testResults.getResultsEvent();
             List<ElectronicOrder> eOrders = eOrderService
                     .getElectronicOrdersByExternalId(testResults.getReferringOrderNumber());
-            eOrder = eOrders.size() > 0 ? eOrders.get(eOrders.size()-1) : null;
-            if (eOrder != null) originalMessage.parse(eOrder.getData());
+            eOrder = eOrders.size() > 0 ? eOrders.get(eOrders.size() - 1) : null;
+            if (eOrder != null)
+                originalMessage.parse(eOrder.getData());
             createPIDSegment(testResults);
             createORCSegment(testResults);
             createOBRSegment(testResults);
@@ -72,7 +71,7 @@ public class OrderResponseWorker {
             }
         }
 
-        // LogEvent.logInfo(this.getClass().getName(), "method unkown",
+        // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown",
         // hl7Message.encode());
     }
 
@@ -125,7 +124,6 @@ public class OrderResponseWorker {
         OBR obrSegment = hl7Message.getPATIENT_RESULT().getORDER_OBSERVATION().getOBR();
         obrSegment.parse(originalObrSegment.encode());
         obrSegment.getObr25_ResultStatus().setValue(obr25);
-
     }
 
     private void createOBXSegment(TestResultsXmit testResults, ResultXmit testResult) throws HL7Exception {
@@ -146,7 +144,6 @@ public class OrderResponseWorker {
         } else {
             obxSegment.getObx5_ObservationValue(0).getData().parse(testResult.getResult().getText());
         }
-
     }
 
     private void createNTESegment(TestResultsXmit testResults, ResultXmit testResult) throws HL7Exception {
@@ -161,5 +158,4 @@ public class OrderResponseWorker {
         }
         return timestamp + String.format("%05d", sequenceNum);
     }
-
 }

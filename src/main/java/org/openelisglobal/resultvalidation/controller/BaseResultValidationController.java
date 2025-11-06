@@ -28,5 +28,4 @@ public abstract class BaseResultValidationController extends BaseController {
             titleKey = section;
         }
     }
-
 }

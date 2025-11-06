@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<changeSet author="rossumg" id="1">
-		<comment>increase barcode_label_info.code length to handle code.x</comment>
-		<modifyDataType schemaName="clinlims"
-			tableName="barcode_label_info" columnName="code" 
-			newDataType="CHARACTER VARYING(25)" />
-	</changeSet>
+    <changeSet author="rossumg" id="1">
+        <comment>increase barcode_label_info.code length to handle code.x</comment>
+        <modifyDataType schemaName="clinlims"
+            tableName="barcode_label_info" columnName="code"
+            newDataType="CHARACTER VARYING(25)" />
+    </changeSet>
 
 </databaseChangeLog>

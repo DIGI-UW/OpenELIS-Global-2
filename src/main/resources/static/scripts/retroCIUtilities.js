@@ -67,7 +67,7 @@ simpleComparator =  new function SimpleComparator () {
  *
  * @return  true => it matches, false => it doesn't match
  */
-function /* boolean */ compareFieldToExisting(fieldId, crossCheckField, loader, isBlankAllowed, tagName, comparator, existingVal) {
+function /* boolean */ compareFieldToExisting(fieldId, crossCheckField, loader, isBlankAllowed, isBlankAllowed, comparator, existingVal) {
     if (comparator == undefined) {
         comparator = simpleComparator;
     }
@@ -169,7 +169,7 @@ function /* boolean */ updateFieldConflict(good, fieldId, message) {
  */
 function processAccessionFailure(xhr)
 {
-    alert("processAccessionFailure");
+    //alert("processAccessionFailure");
 }
 
 function handleLabNoChange( displayField, prefix, isWanted ) {

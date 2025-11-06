@@ -1,19 +1,17 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
  *
- * Contributor(s): CIRG, University of Washington, Seattle WA.
+ * <p>Contributor(s): CIRG, University of Washington, Seattle WA.
  */
 package org.openelisglobal.common.provider.query.workerObjects;
 
@@ -23,7 +21,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.service.PersonAddressService;
@@ -121,18 +118,18 @@ public class PatientSearchLocalAndExternalWorker extends PatientSearchWorker {
         for (IExternalPatientSearch externalSearch : externalSearches) {
             try {
                 Future<Integer> futureExternalSearchResult = externalSearch.runExternalSearch();
-                Integer externalSearchResult = futureExternalSearchResult
-                        .get(externalSearch.getTimeout(), TimeUnit.MILLISECONDS);
+                Integer externalSearchResult = futureExternalSearchResult.get(externalSearch.getTimeout(),
+                        TimeUnit.MILLISECONDS);
 
                 if (externalSearchResult == 200) {
                     externalResults = externalSearch.getSearchResults();
                 } else {
-                    LogEvent.logWarn(this.getClass().getName(), "createSearchResultXML",
+                    LogEvent.logError(this.getClass().getSimpleName(), "createSearchResultXML",
                             "could not get external search results from " + externalSearch.getConnectionString()
                                     + " - failed response");
                 }
             } catch (InterruptedException | ExecutionException | TimeoutException | IllegalStateException e) {
-                LogEvent.logErrorStack(e);
+                LogEvent.logError(e);
             }
 
             findNewPatients(localResults, externalResults, newPatientsFromExternalSearch);
@@ -154,6 +151,89 @@ public class PatientSearchLocalAndExternalWorker extends PatientSearchWorker {
         }
 
         return success;
+    }
+
+    /**
+     * @see org.openelisglobal.common.provider.query.workerObjects.PatientSearchWorker#createSearchResultXML(java.lang.String,
+     *      java.lang.String, java.lang.String, java.lang.String, java.lang.String,
+     *      java.lang.String, java.lang.StringBuilder)
+     */
+    @Override
+    public List<PatientSearchResults> getPatientSearchResults(String lastName, String firstName, String STNumber,
+            String subjectNumber, String nationalID, String patientID, String guid, String dateOfBirth, String gender) {
+
+        // just to make the name shorter
+        ConfigurationProperties config = ConfigurationProperties.getInstance();
+
+        String success = IActionConstants.VALID;
+
+        if (GenericValidator.isBlankOrNull(lastName) && GenericValidator.isBlankOrNull(firstName)
+                && GenericValidator.isBlankOrNull(STNumber) && GenericValidator.isBlankOrNull(subjectNumber)
+                && GenericValidator.isBlankOrNull(nationalID) && GenericValidator.isBlankOrNull(patientID)
+                && GenericValidator.isBlankOrNull(guid)) {
+
+            return new ArrayList<>();
+        }
+
+        List<PatientSearchResults> allResults = new ArrayList<>();
+
+        List<IExternalPatientSearch> externalSearches = new ArrayList<>();
+
+        List<PatientSearchResults> localResults = new ArrayList<>();
+        localResults = searchResultsService.getSearchResults(lastName, firstName, STNumber, subjectNumber, nationalID,
+                guid, patientID, guid, "", "");
+        localResults.forEach(e -> e.setDataSourceName(MessageUtil.getMessage("patient.local.source")));
+        allResults.addAll(localResults);
+
+        if (config.getPropertyValue(Property.INFO_HIGHWAY_ENABLED).equals("true")) {
+            IExternalPatientSearch externalSearch = (IExternalPatientSearch) SpringContext.getBean("InfoHighwaySearch");
+            externalSearch.setSearchCriteria(lastName, firstName, STNumber, subjectNumber, nationalID, guid);
+            externalSearch.setConnectionCredentials(config.getPropertyValue(Property.INFO_HIGHWAY_ADDRESS),
+                    config.getPropertyValue(Property.INFO_HIGHWAY_USERNAME),
+                    config.getPropertyValue(Property.INFO_HIGHWAY_PASSWORD));
+
+            externalSearches.add(externalSearch);
+        }
+
+        if (config.getPropertyValue(Property.PatientSearchEnabled).equals("true")) {
+            IExternalPatientSearch externalSearch = SpringContext.getBean(IExternalPatientSearch.class);
+            externalSearch.setSearchCriteria(lastName, firstName, STNumber, subjectNumber, nationalID, guid);
+            externalSearch.setConnectionCredentials(config.getPropertyValue(Property.PatientSearchURL),
+                    config.getPropertyValue(Property.PatientSearchUserName),
+                    config.getPropertyValue(Property.PatientSearchPassword));
+
+            externalSearches.add(externalSearch);
+        }
+
+        List<ExtendedPatientSearchResults> externalResults = null;
+        List<ExtendedPatientSearchResults> newPatientsFromExternalSearch = new ArrayList<>();
+
+        for (IExternalPatientSearch externalSearch : externalSearches) {
+            try {
+                Future<Integer> futureExternalSearchResult = externalSearch.runExternalSearch();
+                Integer externalSearchResult = futureExternalSearchResult.get(externalSearch.getTimeout(),
+                        TimeUnit.MILLISECONDS);
+
+                if (externalSearchResult == 200) {
+                    externalResults = externalSearch.getSearchResults();
+                } else {
+                    LogEvent.logError(this.getClass().getSimpleName(), "createSearchResultXML",
+                            "could not get external search results from " + externalSearch.getConnectionString()
+                                    + " - failed response");
+                }
+            } catch (InterruptedException | ExecutionException | TimeoutException | IllegalStateException e) {
+                LogEvent.logError(e);
+            }
+
+            findNewPatients(localResults, externalResults, newPatientsFromExternalSearch);
+            insertNewPatients(newPatientsFromExternalSearch);
+            newPatientsFromExternalSearch
+                    .forEach(e -> e.setDataSourceName(MessageUtil.getMessage("patient.imported.source")));
+            allResults.addAll(newPatientsFromExternalSearch);
+        }
+        sortPatients(allResults);
+
+        return allResults;
     }
 
     private void insertNewPatients(List<ExtendedPatientSearchResults> newPatientsFromClinic) {

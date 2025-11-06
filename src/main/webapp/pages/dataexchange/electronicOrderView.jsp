@@ -1,14 +1,15 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8"%>
+<%@ page import="org.openelisglobal.common.util.DateUtil" %>
 
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
-<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %> 
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
+<%@ taglib prefix="fmt" uri="jakarta.tags.fmt" %>
+ 
 
 <link href="select2/css/select2.min.css" rel="stylesheet" />
-<script src="select2/js/select2.min.js"></script>
+<script type="text/javascript" src="select2/js/select2.min.js"></script>
 <script type="text/javascript" src="scripts/tableSort.js"></script>
 <script type="text/javascript" src="scripts/utilities.js"></script>
 <script type="text/javascript" src="scripts/ajaxCalls.js"></script>
@@ -164,9 +165,9 @@ Test Requests by Date, and Status
 Enter the date range for test requests. This will search by the date of the referral, or the order date of the electronic request
 
 <br> 
-Start Date (dd/mm/yyyy)
+Start Date <%=DateUtil.getDateUserPrompt()%>
 <form:input path="startDate" onkeyup="addDateSlashes(this,event); "/>
-End Date (dd/mm/yyyy)
+End Date <%=DateUtil.getDateUserPrompt()%>
 <form:input path="endDate"	onkeyup="addDateSlashes(this,event); "/>
 Status
 <form:select path="statusId">

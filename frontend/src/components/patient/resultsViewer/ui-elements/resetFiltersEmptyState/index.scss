@@ -1,0 +1,29 @@
+@use "@carbon/styles/scss/spacing";
+@use "@carbon/styles/scss/type";
+//@import '~@openmrs/esm-styleguide/src/vars';
+@import "../../commons/scss/vars.scss";
+
+.action {
+  @include type.type-style("body-long-01");
+  span.link {
+    cursor: pointer;
+    color: $interactive-01;
+    text-decoration: underline;
+  }
+}
+
+.content {
+  @include type.type-style("heading-compact-01");
+  color: $text-02;
+  margin-top: spacing.$spacing-05;
+  margin-bottom: spacing.$spacing-05;
+}
+
+.tile {
+  border: 1px solid $ui-03;
+  padding: spacing.$spacing-09 spacing.$spacing-05;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}

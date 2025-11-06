@@ -20,7 +20,7 @@ import org.openelisglobal.reports.action.implementation.reportBeans.TestSegmente
 public class HaitiLnspEpiExportReport extends HaitiLNSPExportReport {
 
     @Override
-    public byte[] runReport()  {
+    public byte[] runReport() {
         StringBuilder builder = new StringBuilder();
         builder.append(TestSegmentedExportBean.getHeader());
         builder.append("\n");

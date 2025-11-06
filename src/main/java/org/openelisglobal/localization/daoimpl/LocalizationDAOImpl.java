@@ -22,8 +22,7 @@ import org.openelisglobal.localization.valueholder.Localization;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- */
+/** */
 @Component
 @Transactional
 public class LocalizationDAOImpl extends BaseDAOImpl<Localization, String> implements LocalizationDAO {
@@ -32,52 +31,58 @@ public class LocalizationDAOImpl extends BaseDAOImpl<Localization, String> imple
         super(Localization.class);
     }
 
-//	@Override
-//	public Localization getLocalizationById(String id) throws LIMSRuntimeException {
-//		try {
-//			Localization localization = entityManager.unwrap(Session.class).get(Localization.class, id);
-//			// closeSession(); // CSL remove old
-//			return localization;
-//		} catch (HibernateException e) {
-//			handleException(e, "getLocalizationById");
-//		}
-//		return null;
-//	}
+    // @Override
+    // public Localization getLocalizationById(String id) throws
+    // LIMSRuntimeException {
+    // try {
+    // Localization localization =
+    // entityManager.unwrap(Session.class).get(Localization.class, id);
+    // // closeSession(); // CSL remove old
+    // return localization;
+    // } catch (HibernateException e) {
+    // handleException(e, "getLocalizationById");
+    // }
+    // return null;
+    // }
 
-//	@Override
-//	public void updateData(Localization localization) throws LIMSRuntimeException {
-//		Localization oldData = readLocalization(localization.getId());
-//
-//		try {
-//
-//			auditDAO.saveHistory(localization, oldData, localization.getSysUserId(),
-//					IActionConstants.AUDIT_TRAIL_UPDATE, "LOCALIZATION");
-//		} catch (RuntimeException e) {
-//			handleException(e, "Error in Localization AuditTrail updateData()");
-//		}
-//
-//		try {
-//			entityManager.unwrap(Session.class).merge(localization);
-//			// entityManager.unwrap(Session.class).flush(); // CSL remove old
-//			// entityManager.unwrap(Session.class).clear(); // CSL remove old
-//			// entityManager.unwrap(Session.class).evict // CSL remove old(localization);
-//			// entityManager.unwrap(Session.class).refresh // CSL remove old(localization);
-//		} catch (HibernateException e) {
-//			handleException(e, "updateData");
-//		}
-//	}
+    // @Override
+    // public void updateData(Localization localization) throws LIMSRuntimeException
+    // {
+    // Localization oldData = readLocalization(localization.getId());
+    //
+    // try {
+    //
+    // auditDAO.saveHistory(localization, oldData, localization.getSysUserId(),
+    // IActionConstants.AUDIT_TRAIL_UPDATE, "LOCALIZATION");
+    // } catch (RuntimeException e) {
+    // handleException(e, "Error in Localization AuditTrail updateData()");
+    // }
+    //
+    // try {
+    // entityManager.unwrap(Session.class).merge(localization);
+    // // entityManager.unwrap(Session.class).flush(); // CSL remove old
+    // // entityManager.unwrap(Session.class).clear(); // CSL remove old
+    // // entityManager.unwrap(Session.class).evict // CSL remove old(localization);
+    // // entityManager.unwrap(Session.class).refresh // CSL remove
+    // old(localization);
+    // } catch (HibernateException e) {
+    // handleException(e, "updateData");
+    // }
+    // }
 
-//	public Localization readLocalization(String idString) {
-//		try {
-//			Localization localization = entityManager.unwrap(Session.class).get(Localization.class, idString);
-//			// entityManager.unwrap(Session.class).flush(); // CSL remove old
-//			// entityManager.unwrap(Session.class).clear(); // CSL remove old
-//			return localization;
-//		} catch (RuntimeException e) {
-//			handleException(e, "readLocalization");
-//		}
-//
-//		return null;
-//	}
+    // public Localization readLocalization(String idString) {
+    // try {
+    // Localization localization =
+    // entityManager.unwrap(Session.class).get(Localization.class,
+    // idString);
+    // // entityManager.unwrap(Session.class).flush(); // CSL remove old
+    // // entityManager.unwrap(Session.class).clear(); // CSL remove old
+    // return localization;
+    // } catch (RuntimeException e) {
+    // handleException(e, "readLocalization");
+    // }
+    //
+    // return null;
+    // }
 
 }

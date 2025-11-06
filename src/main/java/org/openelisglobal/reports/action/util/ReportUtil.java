@@ -1,18 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.reports.action.util;
 
@@ -20,7 +17,6 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.DateUtil;
@@ -91,7 +87,6 @@ public class ReportUtil {
         SampleItem sampleItem = event.getSampleItem();
         return (sampleItem == null) ? MessageUtil.getContextualMessage("nonConformant.allSampleTypesText")
                 : findTypeOfSample(sampleItem.getTypeOfSampleId());
-
     }
 
     private static String findTypeOfSample(String typeOfSampleId) {
@@ -102,7 +97,6 @@ public class ReportUtil {
         ObservationHistory oh = observationService.getObservationHistoriesBySampleIdAndType(sample.getId(),
                 DOCTOR_OBSERVATION_ID);
         return oh == null ? "" : oh.getValue();
-
     }
 
     public static void markDocumentsAsPrinted(DocumentTypes docType, List<String> recordIds, String currentUserId,
@@ -145,12 +139,12 @@ public class ReportUtil {
 
         try {
             documentTrackService.insertAll(documents);
-//			for (DocumentTrack document : documents) {
-//				documentTrackService.insert(document);
-//			}
+            // for (DocumentTrack document : documents) {
+            // documentTrackService.insert(document);
+            // }
 
         } catch (LIMSRuntimeException e) {
-            LogEvent.logErrorStack(e);
+            LogEvent.logError(e);
         }
     }
 

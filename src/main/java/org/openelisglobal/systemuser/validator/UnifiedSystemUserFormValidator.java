@@ -29,7 +29,5 @@ public class UnifiedSystemUserFormValidator implements Validator {
                 errors.reject("login.error.message");
             }
         }
-
     }
-
 }

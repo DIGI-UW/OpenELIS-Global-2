@@ -1,32 +1,26 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/ 
-* 
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-* 
-* The Original Code is OpenELIS code.
-* 
-* Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
-*
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
+ */
 package org.openelisglobal.dataexchange.resultreporting.beans;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-
 import org.openelisglobal.dataexchange.orderresult.OrderResponseWorker.Event;
 
 public class TestResultsXmit {
 
-    /**
-     * A String representing the patientId whom the analysis has been done for.
-     */
+    /** A String representing the patientId whom the analysis has been done for. */
     private String patientGUID;
 
     private CodedValueXmit test;
@@ -36,7 +30,7 @@ public class TestResultsXmit {
     private TestRangeXmit normalRange;
 
     private String status;
-    
+
     private String unitOfMeasure;
 
     public CodedValueXmit getTest() {
@@ -55,18 +49,14 @@ public class TestResultsXmit {
         this.sampleType = sampleType;
     }
 
-    /**
-     * The date representing when the test has been done
-     */
+    /** The date representing when the test has been done */
     private Date testDate;
 
     private String accessionNumber;
 
     private String referringOrderNumber;
 
-    /**
-     * A List representing all results for the given test and analysis.
-     */
+    /** A List representing all results for the given test and analysis. */
     private List<ResultXmit> results;
 
     public TestResultsXmit() {
@@ -135,9 +125,7 @@ public class TestResultsXmit {
         return normalRange;
     }
 
-    /**
-     * The section for the test
-     */
+    /** The section for the test */
     private String testSection;
 
     public void setTestSection(String section) {
@@ -148,9 +136,7 @@ public class TestResultsXmit {
         return testSection;
     }
 
-    /**
-     * Valid range min/max
-     */
+    /** Valid range min/max */
     private TestRangeXmit validRange;
 
     public void setValidRange(TestRangeXmit validRange) {
@@ -161,9 +147,7 @@ public class TestResultsXmit {
         return validRange;
     }
 
-    /**
-     * The notes for the test, concatenated into one string
-     */
+    /** The notes for the test, concatenated into one string */
     private String testNotes;
 
     public void setTestNotes(String notes) {
@@ -174,9 +158,7 @@ public class TestResultsXmit {
         return testNotes;
     }
 
-    /**
-     * Following elements are for malaria case reports only
-     */
+    /** Following elements are for malaria case reports only */
     private String patientFirstName;
 
     public void setPatientFirstName(String fname) {
@@ -287,10 +269,7 @@ public class TestResultsXmit {
         return patientTelephone;
     }
 
-    /**
-     * End malaria case report elements
-     */
-
+    /** End malaria case report elements */
     private Event resultsEvent;
 
     public void setResultsEvent(Event resultsEvent) {
@@ -300,13 +279,12 @@ public class TestResultsXmit {
     public Event getResultsEvent() {
         return resultsEvent;
     }
-    
+
     public String getUnits() {
         return unitOfMeasure;
     }
 
     public void setUnits(String unitOfMeasure) {
         this.unitOfMeasure = unitOfMeasure;
-        
     }
 }

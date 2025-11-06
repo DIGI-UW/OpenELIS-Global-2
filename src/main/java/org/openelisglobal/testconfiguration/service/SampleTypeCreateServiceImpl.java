@@ -39,5 +39,4 @@ public class SampleTypeCreateServiceImpl implements SampleTypeCreateService {
         roleModuleService.insert(resultResultModule);
         roleModuleService.insert(validationValidationModule);
     }
-
 }

@@ -1,7 +1,6 @@
 package org.openelisglobal.common.management.controller;
 
-import javax.servlet.http.HttpServletRequest;
-
+import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.management.form.MethodManagementForm;
 import org.springframework.stereotype.Controller;
@@ -36,5 +35,4 @@ public class MethodManagementController extends BaseController {
     protected String getPageSubtitleKey() {
         return null;
     }
-    
 }

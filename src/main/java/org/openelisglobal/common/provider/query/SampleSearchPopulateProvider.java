@@ -17,17 +17,15 @@
  */
 package org.openelisglobal.common.provider.query;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -42,7 +40,6 @@ import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
-import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
 import org.openelisglobal.spring.util.SpringContext;
 
 /**
@@ -60,8 +57,8 @@ public class SampleSearchPopulateProvider extends BaseQueryProvider {
 
     /**
      * @throws LIMSInvalidConfigurationException
-     * @see org.openelisglobal.common.provider.query.BaseQueryProvider#processRequest(javax.servlet.http.HttpServletRequest,
-     *      javax.servlet.http.HttpServletResponse)
+     * @see org.openelisglobal.common.provider.query.BaseQueryProvider#processRequest(jakarta.servlet.http.HttpServletRequest,
+     *      jakarta.servlet.http.HttpServletResponse)
      */
     @Override
     public void processRequest(HttpServletRequest request, HttpServletResponse response)
@@ -103,7 +100,6 @@ public class SampleSearchPopulateProvider extends BaseQueryProvider {
         }
 
         ajaxServlet.sendData(xml.toString(), result, request, response);
-
     }
 
     private Sample getSampleByAccessionNumberAndTestId(String accessionNo, String testId, boolean unvalidatedTestOnly) {
@@ -198,10 +194,7 @@ public class SampleSearchPopulateProvider extends BaseQueryProvider {
      * @return first organization, if any of this sample
      */
     private Organization getOrganizationForSample(Sample sample) {
-        SampleOrganization so = new SampleOrganization();
-        so.setSample(sample);
-        sampleOrganizationService.getDataBySample(so);
-        return so.getOrganization();
+        return sampleOrganizationService.getDataBySample(sample).getOrganization();
     }
 
     private Sample getSampleForPatientIdAndLoinc(String patientId, String loinc, boolean unvalidatedTestOnly) {
@@ -262,5 +255,4 @@ public class SampleSearchPopulateProvider extends BaseQueryProvider {
         }
         return best;
     }
-
 }

@@ -2,10 +2,8 @@ package org.openelisglobal.inventory.validation;
 
 import java.io.IOException;
 import java.io.StringReader;
-
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
@@ -66,5 +64,4 @@ public class InventoryFormValidator implements Validator {
             LogEvent.logDebug(e);
         }
     }
-
 }

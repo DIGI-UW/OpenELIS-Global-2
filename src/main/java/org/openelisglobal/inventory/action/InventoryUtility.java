@@ -2,7 +2,6 @@ package org.openelisglobal.inventory.action;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.inventory.form.InventoryKitItem;
 import org.openelisglobal.inventory.service.InventoryLocationService;
@@ -36,7 +35,6 @@ public class InventoryUtility {
         } finally {
             onlyActiveInventory = false;
         }
-
     }
 
     public List<InventoryKitItem> getExistingInventory() {
@@ -81,5 +79,4 @@ public class InventoryUtility {
     private boolean isActive(InventoryItem inventoryItem) {
         return "Y".equals(inventoryItem.getIsActive());
     }
-
 }

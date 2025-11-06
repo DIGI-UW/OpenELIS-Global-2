@@ -4,11 +4,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.exception.LIMSFrozenRecordException;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.dictionary.dao.DictionaryDAO;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +15,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class DictionaryServiceImpl extends BaseObjectServiceImpl<Dictionary, String> implements DictionaryService {
+public class DictionaryServiceImpl extends AuditableBaseObjectServiceImpl<Dictionary, String>
+        implements DictionaryService {
+
     @Autowired
     protected DictionaryDAO baseObjectDAO;
 
@@ -118,7 +119,6 @@ public class DictionaryServiceImpl extends BaseObjectServiceImpl<Dictionary, Str
     @Transactional(readOnly = true)
     public void getData(Dictionary dictionary) {
         getBaseObjectDAO().getData(dictionary);
-
     }
 
     @Override
@@ -126,6 +126,15 @@ public class DictionaryServiceImpl extends BaseObjectServiceImpl<Dictionary, Str
     public Dictionary getDictionaryByLocalAbbrev(Dictionary dictionary) {
         Map<String, Object> properties = new HashMap<>();
         properties.put("localAbbreviation", dictionary.getLocalAbbreviation());
+        properties.put("isActive", IActionConstants.YES);
+        return getMatch(properties).orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Dictionary getDictionaryByDictEntry(String dictEntry) {
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("dictEntry", dictEntry);
         properties.put("isActive", IActionConstants.YES);
         return getMatch(properties).orElse(null);
     }

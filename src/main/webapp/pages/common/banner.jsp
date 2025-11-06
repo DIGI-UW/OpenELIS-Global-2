@@ -2,9 +2,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
 
 <%@ page import="org.openelisglobal.common.action.IActionConstants,
@@ -58,6 +58,13 @@ function getCsrfToken() {
 	}
 }
 
+jQuery(document).ready(function() {
+	let homeMenuLink = document.getElementById("menu_home");
+	if (homeMenuLink !==null){
+		homeMenuLink.href = window.location.origin
+	}
+});
+
 </script>
 
 <%-- New additions below by mark47 --%>
@@ -95,12 +102,36 @@ function getCsrfToken() {
 				if (request.getSession().getAttribute(IActionConstants.USER_SESSION_DATA) != null) {
 					usd = (UserSessionData) request.getSession().getAttribute(IActionConstants.USER_SESSION_DATA);
 			%>
+			
 			<spring:url value="/Logout" var="loginurl"/>
+			<spring:message code="homePage.menu.logOut.toolTip" var="localLogout"/>
+			<c:if test="${sessionScope.samlSession}">
+				<spring:message code="homePage.menu.logOut.local" var="localLogout"/>
+			</c:if>
+			<div id="user-info" style="text-align: right;">
 			<form id="logout-form" method="post" action="${loginurl}">
-			<div id="user-info"><div><%=usd.getElisUserName()%> - 
-			<input type="submit" value="<spring:message code="homePage.menu.logOut.toolTip"/>" class="btn-link"/>
+			<div><%=usd.getElisUserName()%> - 
+			<input type="submit" value="${localLogout}" class="btn-link"/>
 			<input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/> 
-			</div></div></form>
+			</div></form>
+			<c:if test="${sessionScope.samlSession}">
+				<spring:url value="/Logout?useSAML=true" var="logoutSAMLUrl"/>
+				</br>
+				<form id="logout-form-saml" method="post" action="${logoutSAMLUrl}">
+				<input type="submit" value="<spring:message code="homePage.menu.logOut.saml"/>" class="btn-link"/>
+				<input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/> 
+				</form>
+			</c:if>
+			<c:if test="${sessionScope.oauthSession}">
+				<spring:url value="/logout?useOAUTH=true" var="logoutOAUTHUrl"/>
+				</br>
+				<form id="logout-form-oauth" method="post" action="${logoutOAUTHUrl}">
+				<input type="submit" value="<spring:message code="homePage.menu.logOut.oauth"/>" class="btn-link"/>
+				<input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/> 
+				</form>
+			</c:if>
+			</div>
+			
 			<%
 				}
 			%>

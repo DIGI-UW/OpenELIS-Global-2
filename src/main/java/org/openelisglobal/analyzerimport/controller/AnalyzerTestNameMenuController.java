@@ -1,13 +1,11 @@
 package org.openelisglobal.analyzerimport.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.action.beans.NamedAnalyzerTestMapping;
@@ -190,13 +188,13 @@ public class AnalyzerTestNameMenuController extends BaseMenuController<NamedAnal
     @Override
     protected String findLocalForward(String forward) {
         if (FWD_SUCCESS.equals(forward)) {
-            return "haitiMasterListsPageDefinition";
+            return "analyzerMasterListsPageDefinition";
         } else if (FWD_FAIL.equals(forward)) {
             return "redirect:/MasterListsPage";
         } else if (FWD_SUCCESS_DELETE.equals(forward)) {
             return "redirect:/AnalyzerTestNameMenu";
         } else if (FWD_FAIL_DELETE.equals(forward)) {
-            return "haitiMasterListsPageDefinition";
+            return "analyzerMasterListsPageDefinition";
         } else {
             return "PageNotFound";
         }

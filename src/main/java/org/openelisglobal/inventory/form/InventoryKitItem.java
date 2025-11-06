@@ -1,14 +1,12 @@
 package org.openelisglobal.inventory.form;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.groups.Default;
 import java.io.Serializable;
-
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Pattern;
-import javax.validation.groups.Default;
-
-import org.hibernate.validator.constraints.SafeHtml;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
+import org.openelisglobal.validation.annotations.SafeHtml;
 import org.openelisglobal.validation.annotations.ValidDate;
 
 public class InventoryKitItem implements Serializable {
@@ -31,7 +29,7 @@ public class InventoryKitItem implements Serializable {
     private String type;
 
     @NotBlank(groups = { Default.class, InventoryForm.ManageInventory.class })
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { Default.class, InventoryForm.ManageInventory.class })
+    @SafeHtml(groups = { Default.class, InventoryForm.ManageInventory.class })
     private String kitName;
 
     @ValidDate(relative = DateRelation.ANY, groups = { Default.class, InventoryForm.ManageInventory.class })
@@ -43,7 +41,7 @@ public class InventoryKitItem implements Serializable {
     @Pattern(regexp = "^[0-9]*$", groups = { Default.class, InventoryForm.ManageInventory.class })
     private String lotNumber;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { Default.class, InventoryForm.ManageInventory.class })
+    @SafeHtml(groups = { Default.class, InventoryForm.ManageInventory.class })
     private String source;
 
     private boolean isActive = false;

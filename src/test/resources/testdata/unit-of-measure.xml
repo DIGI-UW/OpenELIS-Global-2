@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Unit of Measure entries -->
+    <unit_of_measure id="1" name="mg/dL"
+        description="Milligrams per deciliter" />
+    <unit_of_measure id="2" name="g/L"
+        description="Grams per liter" />
+    <unit_of_measure id="3" name="mmol/L"
+        description="Millimoles per liter" />
+    <unit_of_measure id="4" name="U/L"
+        description="Units per liter" />
+    <unit_of_measure id="5" name="mEq/L"
+        description="Milliequivalents per liter" />
+    <unit_of_measure id="6" name="cells/µL"
+        description="Cells per microliter" />
+    <unit_of_measure id="7" name="mm/hr"
+        description="Millimeters per hour" />
+    <unit_of_measure id="8" name="%"
+        description="Percentage" />
+    <unit_of_measure id="9" name="µg/mL"
+        description="Micrograms per milliliter" />
+    <unit_of_measure id="10" name="ng/mL"
+        description="Nanograms per milliliter" />
+
+    <!-- Localization entries for Unit of Measure -->
+    <localization id="1"
+        description="Milligrams per deciliter" english="mg/dL" french="mg/dL" />
+    <localization id="2" description="Grams per liter"
+        english="g/L" french="g/L" />
+    <localization id="3" description="Millimoles per liter"
+        english="mmol/L" french="mmol/L" />
+    <localization id="4" description="Units per liter"
+        english="U/L" french="U/L" />
+    <localization id="5"
+        description="Milliequivalents per liter" english="mEq/L"
+        french="mEq/L" />
+    <localization id="6" description="Cells per microliter"
+        english="cells/µL" french="cellules/µL" />
+    <localization id="7" description="Millimeters per hour"
+        english="mm/hr" french="mm/h" />
+    <localization id="8" description="Percentage" english="%"
+        french="%" />
+    <localization id="9"
+        description="Micrograms per milliliter" english="µg/mL" french="µg/mL" />
+    <localization id="10"
+        description="Nanograms per milliliter" english="ng/mL" french="ng/mL" />
+</dataset>

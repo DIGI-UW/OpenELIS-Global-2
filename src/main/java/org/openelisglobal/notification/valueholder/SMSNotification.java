@@ -27,5 +27,4 @@ public class SMSNotification implements RemoteNotification {
     public void setReceiverPhoneNumber(String receiverPhoneNumber) {
         this.receiverPhoneNumber = receiverPhoneNumber;
     }
-
 }

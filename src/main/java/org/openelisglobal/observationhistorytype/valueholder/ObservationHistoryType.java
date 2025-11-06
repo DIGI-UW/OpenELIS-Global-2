@@ -1,7 +1,6 @@
 package org.openelisglobal.observationhistorytype.valueholder;
 
 import java.sql.Timestamp;
-
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.common.valueholder.SimpleBaseEntity;
 
@@ -12,7 +11,6 @@ import org.openelisglobal.common.valueholder.SimpleBaseEntity;
  * @author pahill
  * @since 2010-04-09
  */
-
 public class ObservationHistoryType extends BaseObject<String> implements SimpleBaseEntity<String> {
     private static final long serialVersionUID = 1L;
 

@@ -18,7 +18,6 @@ package org.openelisglobal.testconfiguration.action;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.openelisglobal.panel.valueholder.Panel;
 
 public class SampleTypePanel {

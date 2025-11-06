@@ -19,7 +19,6 @@ package org.openelisglobal.patient.action.bean;
 import java.time.Period;
 import java.util.List;
 import java.util.Map;
-
 import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.common.util.DateUtil;
@@ -29,8 +28,7 @@ import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.spring.util.SpringContext;
 
-/**
- */
+/** */
 public class PatientManagementBridge {
 
     public String ADDRESS_PART_VILLAGE_ID;

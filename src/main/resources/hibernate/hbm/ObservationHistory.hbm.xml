@@ -1,56 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
-<!-- The contents of this file are subject to the Mozilla Public License 
-	Version 1.1 (the "License"); you may not use this file except in compliance 
-	with the License. You may obtain a copy of the License at http://www.mozilla.org/MPL/ 
-	Software distributed under the License is distributed on an "AS IS" basis, 
-	WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License 
-	for the specific language governing rights and limitations under the License. 
-	The Original Code is OpenELIS code. Copyright (C) The Minnesota Department 
-	of Health. All Rights Reserved. Contributor(s): CIRG, University of Washington, 
-	Seattle WA. -->
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<!-- The contents of this file are subject to the Mozilla Public License
+    Version 1.1 (the "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at http://www.mozilla.org/MPL/
+    Software distributed under the License is distributed on an "AS IS" basis,
+    WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+    for the specific language governing rights and limitations under the License.
+    The Original Code is OpenELIS code. Copyright (C) The Minnesota Department
+    of Health. All Rights Reserved. Contributor(s): CIRG, University of Washington,
+    Seattle WA. -->
 <hibernate-mapping>
-	<class
-		name="org.openelisglobal.observationhistory.valueholder.ObservationHistory"
-		table="observation_history">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<param name="sequence_name">observation_history_seq</param>
-			</generator>
-		</id>
-		<version name="lastupdated" column="LASTUPDATED"
-			type="timestamp" access="field" />
-		<property name="observationHistoryTypeId"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="observation_history_type_id" precision="10"
-				scale="0" />
-		</property>
-		<property name="patientId"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="patient_id" precision="10" scale="0"
-				not-null="true" />
-		</property>
-		<property name="sampleId"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="sample_id" precision="10" scale="0"
-				not-null="true" />
-		</property>
-		<property name="sampleItemId"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="sample_item_id" precision="10" scale="0"
-				not-null="false" />
-		</property>
-		<property name="value" type="java.lang.String">
-			<column name="VALUE" length="40" />
-		</property>
-		<property name="valueType" type="java.lang.String">
-			<!-- value type indicates whether the value is a literal ("L") or the 
-				value is the ID of a fixed value in Dictionary ("D") -->
-			<column name="VALUE_TYPE" length="1" />
-		</property>
-	</class>
+    <class
+        name="org.openelisglobal.observationhistory.valueholder.ObservationHistory"
+        table="observation_history">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">observation_history_seq</param>
+            </generator>
+        </id>
+        <version name="lastupdated" column="LASTUPDATED"
+            type="timestamp" access="field" />
+        <property name="observationHistoryTypeId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="observation_history_type_id" precision="10"
+                scale="0" />
+        </property>
+        <property name="patientId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="patient_id" precision="10" scale="0"
+                not-null="true" />
+        </property>
+        <property name="sampleId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="sample_id" precision="10" scale="0"
+                not-null="true" />
+        </property>
+        <property name="sampleItemId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="sample_item_id" precision="10" scale="0"
+                not-null="false" />
+        </property>
+        <property name="value" type="java.lang.String">
+            <column name="VALUE" length="40" />
+        </property>
+        <property name="valueType" type="java.lang.String">
+            <!-- value type indicates whether the value is a literal ("L") or the
+                value is the ID of a fixed value in Dictionary ("D") -->
+            <column name="VALUE_TYPE" length="1" />
+        </property>
+    </class>
 </hibernate-mapping>

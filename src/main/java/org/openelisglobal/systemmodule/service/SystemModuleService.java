@@ -1,7 +1,6 @@
 package org.openelisglobal.systemmodule.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.systemmodule.valueholder.SystemModule;
 
@@ -16,5 +15,4 @@ public interface SystemModuleService extends BaseObjectService<SystemModule, Str
     List<SystemModule> getAllSystemModules();
 
     SystemModule getSystemModuleByName(String name);
-
 }

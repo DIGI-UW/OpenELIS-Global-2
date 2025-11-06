@@ -1,11 +1,9 @@
 package org.openelisglobal.common.provider.query;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.servlet.validation.AjaxServlet;
 
@@ -23,5 +21,4 @@ public abstract class BaseQueryProvider implements IActionConstants {
     public AjaxServlet getServlet() {
         return this.ajaxServlet;
     }
-
 }

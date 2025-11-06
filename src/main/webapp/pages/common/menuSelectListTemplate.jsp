@@ -5,8 +5,7 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
-<%@ taglib prefix="tiles" uri="http://tiles.apache.org/tags-tiles"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
 <%-- place form definition here for menuforms --%>
 	<table cellpadding="0" cellspacing="1" width="100%" height="100%" border="0">
@@ -18,22 +17,22 @@
 			</tr>
 			<tr valign="top">
 				<td>
-					<tiles:insertAttribute name="preSelectionHeader"/>
+					<jsp:include page="${preSelectionHeaderMenuFragment}"/>
 				</td>
 			</tr>
 			<tr valign="top">
 				<td>
-					<tiles:insertAttribute name="header"/>
+					<jsp:include page="${headerMenuFragment}"/>
 				</td>
 			</tr>
 			<tr valign="top">
 				<td>
-					<tiles:insertAttribute name="body"/>
+					<jsp:include page="${bodyMenuFragment}"/>
 				</td>
 			</tr>
 			<tr valign="bottom">
 				<td>
-					<tiles:insertAttribute name="footer"/>
+					<jsp:include page="${footerMenuFragment}"/>
 				</td>
 			</tr>
 

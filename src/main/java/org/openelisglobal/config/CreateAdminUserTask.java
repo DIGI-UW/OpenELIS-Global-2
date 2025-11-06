@@ -1,5 +1,6 @@
 package org.openelisglobal.config;
 
+import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -7,9 +8,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Date;
 import java.util.Calendar;
-
-import javax.annotation.PostConstruct;
-
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSException;
 import org.openelisglobal.common.log.LogEvent;
@@ -101,5 +99,4 @@ public class CreateAdminUserTask {
     private byte[] getAdminUserInfo() throws IOException, URISyntaxException {
         return Files.readAllBytes(Paths.get(getClass().getClassLoader().getResource(PASSWORD_FILEPATH).toURI()));
     }
-
 }

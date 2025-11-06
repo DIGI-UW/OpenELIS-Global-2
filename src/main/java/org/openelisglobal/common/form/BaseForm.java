@@ -1,15 +1,12 @@
 package org.openelisglobal.common.form;
 
 import java.io.Serializable;
-
 import org.springframework.web.bind.annotation.RequestMethod;
 
-//a bean object to hold all objects to be passed between the server and the client and vice versa
+// a bean object to hold all objects to be passed between the server and the client and vice versa
 public class BaseForm implements Serializable {
 
-    /**
-     *
-     */
+    /** */
     private static final long serialVersionUID = 2614369858245937250L;
 
     private String formName;
@@ -67,5 +64,4 @@ public class BaseForm implements Serializable {
     public void setCancelMethod(RequestMethod cancelMethod) {
         this.cancelMethod = cancelMethod;
     }
-
 }

@@ -1,7 +1,6 @@
 package org.openelisglobal.referral.fhir.form;
 
 import java.util.List;
-
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
 
 public class FhirReferralItem extends ReferralItem {
@@ -35,5 +34,4 @@ public class FhirReferralItem extends ReferralItem {
     public void setAnalysisIds(List<String> analysisIds) {
         this.analysisIds = analysisIds;
     }
-
 }

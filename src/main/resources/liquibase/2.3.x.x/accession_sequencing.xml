@@ -1,30 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<changeSet author="csteele" id="10">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<tableExists tableName="accession_number_info"
-					schemaName="clinlims" />
-			</not>
-		</preConditions>
-		<comment>table for tracking accession number generation</comment>
-		<createTable schemaName="clinlims"
-			tableName="accession_number_info">
-			<column name="prefix" type="VARCHAR(255)">
-				<constraints nullable="false" primaryKey="true"
-					primaryKeyName="pk_accession_number_info"></constraints>
-			</column>
-			<column name="type" type="VARCHAR(255)">
-				<constraints nullable="false" primaryKey="true"
-					primaryKeyName="pk_accession_number_info"></constraints>
-			</column>
-			<column name="cur_val" type="BIGINT" defaultValueNumeric="1" />
-		</createTable>
-	</changeSet>
+    <changeSet author="csteele" id="10">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="accession_number_info"
+                    schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>table for tracking accession number generation</comment>
+        <createTable schemaName="clinlims"
+            tableName="accession_number_info">
+            <column name="prefix" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true"
+                    primaryKeyName="pk_accession_number_info"></constraints>
+            </column>
+            <column name="type" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true"
+                    primaryKeyName="pk_accession_number_info"></constraints>
+            </column>
+            <column name="cur_val" type="BIGINT" defaultValueNumeric="1" />
+        </createTable>
+    </changeSet>
 
 </databaseChangeLog>

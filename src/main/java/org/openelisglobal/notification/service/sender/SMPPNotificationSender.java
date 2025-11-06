@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Date;
-
 import org.jsmpp.InvalidResponseException;
 import org.jsmpp.PDUException;
 import org.jsmpp.bean.Alphabet;
@@ -48,23 +47,22 @@ public class SMPPNotificationSender {
             try {
                 String messageId = session.submitShortMessage(serviceType, TypeOfNumber.UNKNOWN,
                         NumberingPlanIndicator.UNKNOWN, "OpenELIS", TypeOfNumber.UNKNOWN,
-                        NumberingPlanIndicator.UNKNOWN,
-                        notification.getReceiverPhoneNumber(), new ESMClass(), (byte) 0, (byte) 1,
-                        TIME_FORMATTER.format(new Date()), null, new RegisteredDelivery(SMSCDeliveryReceipt.DEFAULT),
-                        (byte) 0, new GeneralDataCoding(Alphabet.ALPHA_DEFAULT, MessageClass.CLASS1, false), (byte) 0,
+                        NumberingPlanIndicator.UNKNOWN, notification.getReceiverPhoneNumber(), new ESMClass(), (byte) 0,
+                        (byte) 1, TIME_FORMATTER.format(new Date()), null,
+                        new RegisteredDelivery(SMSCDeliveryReceipt.DEFAULT), (byte) 0,
+                        new GeneralDataCoding(Alphabet.ALPHA_DEFAULT, MessageClass.CLASS1, false), (byte) 0,
                         notification.getMessage().getBytes());
 
-                LogEvent.logDebug(this.getClass().getName(), "send", "sms messageId: " + messageId);
+                LogEvent.logDebug(this.getClass().getSimpleName(), "send", "sms messageId: " + messageId);
             } catch (IllegalArgumentException | PDUException | ResponseTimeoutException | InvalidResponseException
                     | NegativeResponseException | IOException e) {
-                LogEvent.logErrorStack(e);
+                LogEvent.logError(e);
             }
 
             session.unbindAndClose();
         } catch (IOException | URISyntaxException e) {
-            LogEvent.logErrorStack(e);
+            LogEvent.logError(e);
         }
-
     }
 
     private SMPPSession initSession() throws IOException, URISyntaxException {
@@ -77,9 +75,8 @@ public class SMPPNotificationSender {
         URI uri = new URI(address);
         String systemId = session.connectAndBind(uri.getHost(), uri.getPort(), new BindParameter(BindType.BIND_TX,
                 username, password, bindParamSystemType, TypeOfNumber.UNKNOWN, NumberingPlanIndicator.UNKNOWN, null));
-        LogEvent.logDebug(this.getClass().getName(), "initSession",
+        LogEvent.logDebug(this.getClass().getSimpleName(), "initSession",
                 "Connected with SMPP with system id {" + systemId + "}");
         return session;
     }
-
 }

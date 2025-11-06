@@ -1,6 +1,6 @@
 package org.openelisglobal.testcodes.service;
 
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.testcodes.dao.TestCodeTypeDAO;
 import org.openelisglobal.testcodes.valueholder.TestCodeType;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class TestCodeTypeServiceImpl extends BaseObjectServiceImpl<TestCodeType, String>
+public class TestCodeTypeServiceImpl extends AuditableBaseObjectServiceImpl<TestCodeType, String>
         implements TestCodeTypeService {
     @Autowired
     protected TestCodeTypeDAO baseObjectDAO;

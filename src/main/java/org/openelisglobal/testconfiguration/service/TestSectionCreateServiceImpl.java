@@ -39,5 +39,4 @@ public class TestSectionCreateServiceImpl implements TestSectionCreateService {
         roleModuleService.insert(resultResultModule);
         roleModuleService.insert(validationValidationModule);
     }
-
 }

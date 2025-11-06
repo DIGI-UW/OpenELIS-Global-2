@@ -1,15 +1,13 @@
 package org.openelisglobal.result.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -69,7 +67,10 @@ public class StatusResultsController extends BaseController {
         // currently this is the only one being excluded for Haiti_LNSP. If it
         // gets more complicate use the status sets
         excludedStatusIds = new HashSet<>();
-        excludedStatusIds.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)));
+        excludedStatusIds.add(
+                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)));
+        excludedStatusIds.add(Integer
+                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.SampleRejected)));
     }
 
     @InitBinder
@@ -82,7 +83,7 @@ public class StatusResultsController extends BaseController {
             BindingResult result) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
         if (result.hasErrors()) {
             saveErrors(result);
-            setSelectionLists(form ,request);
+            setSelectionLists(form, request);
             return findForward(FWD_FAIL, form);
         }
 
@@ -107,7 +108,8 @@ public class StatusResultsController extends BaseController {
             List<TestResultItem> filteredTests = new ArrayList();
             if (GenericValidator.isBlankOrNull(newRequest) || newRequest.equals("false")) {
                 tests = setSearchResults(form, resultsUtility);
-                filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests ,Constants.ROLE_RESULTS);
+                filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
+                        Constants.ROLE_RESULTS);
 
                 if (configProperties.isPropertyValueEqual(Property.PATIENT_DATA_ON_RESULTS_BY_ROLE, "true")
                         && !userHasPermissionForModule(request, "PatientResults")) {
@@ -121,7 +123,7 @@ public class StatusResultsController extends BaseController {
                 setEmptyResults(form);
             }
 
-            setSelectionLists(form ,request);
+            setSelectionLists(form, request);
         } else {
             paging.page(request, form, Integer.parseInt(newPage));
         }
@@ -168,17 +170,17 @@ public class StatusResultsController extends BaseController {
         form.setInventoryItems(new ArrayList<InventoryKitItem>());
     }
 
-    private void setSelectionLists(StatusResultsForm form ,HttpServletRequest request)
+    private void setSelectionLists(StatusResultsForm form, HttpServletRequest request)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
         List<DropPair> analysisStatusList = getAnalysisStatusTypes();
 
         form.setAnalysisStatusSelections(analysisStatusList);
-        form.setTestSelections(userService.getAllDisplayUserTestsByLabUnit(getSysUserId(request) , Constants.ROLE_RESULTS));
+        form.setTestSelections(
+                userService.getAllDisplayUserTestsByLabUnit(getSysUserId(request), Constants.ROLE_RESULTS));
 
         List<DropPair> sampleStatusList = getSampleStatusTypes();
         form.setSampleStatusSelections(sampleStatusList);
-
     }
 
     private List<TestResultItem> getSelectedTests(StatusResultsForm form, ResultsLoadUtility resultsUtility) {
@@ -241,7 +243,6 @@ public class StatusResultsController extends BaseController {
                 }
             }
             return blendedList;
-
         }
     }
 
@@ -305,7 +306,8 @@ public class StatusResultsController extends BaseController {
                 SpringContext.getBean(IStatusService.class).getStatusName(AnalysisStatus.NotStarted)));
         list.add(new DropPair(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled),
                 SpringContext.getBean(IStatusService.class).getStatusName(AnalysisStatus.Canceled)));
-        list.add(new DropPair(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance),
+        list.add(new DropPair(
+                SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance),
                 SpringContext.getBean(IStatusService.class).getStatusName(AnalysisStatus.TechnicalAcceptance)));
         list.add(new DropPair(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected),
                 SpringContext.getBean(IStatusService.class).getStatusName(AnalysisStatus.TechnicalRejected)));
@@ -342,7 +344,6 @@ public class StatusResultsController extends BaseController {
     @Override
     protected String getPageTitleKey() {
         return "banner.menu.results";
-
     }
 
     @Override

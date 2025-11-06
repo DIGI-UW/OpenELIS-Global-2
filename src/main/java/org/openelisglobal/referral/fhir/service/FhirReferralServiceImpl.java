@@ -1,5 +1,6 @@
 package org.openelisglobal.referral.fhir.service;
 
+import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -9,10 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-
-import javax.annotation.PostConstruct;
-import javax.transaction.Transactional;
-
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.Bundle;
@@ -43,6 +40,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
+import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirApiWorkFlowServiceImpl.ReferralResultsImportObjects;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
@@ -79,8 +77,8 @@ import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class FhirReferralServiceImpl implements FhirReferralService {
@@ -121,8 +119,6 @@ public class FhirReferralServiceImpl implements FhirReferralService {
     private TestService testService;
     @Autowired
     private FhirConfig fhirConfig;
-    @Value("${org.openelisglobal.remote.source.identifier:}#{T(java.util.Collections).emptyList()}")
-    private List<String> remoteStoreIdentifier;
 
     private final String RESULT_SUBJECT = "Result Note";
     private String RESULT_TABLE_ID;
@@ -134,30 +130,36 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         RESULT_REPORT_ID = documentTypeService.getDocumentTypeByName("resultExport").getId();
     }
 
-//    @Override
-//    @Transactional
-//    public Bundle cancelReferralToOrganization(String referralOrganizationId, String sampleId,
-//            List<String> analysisIds) throws FhirLocalPersistingException {
-//        org.openelisglobal.organization.valueholder.Organization referralOrganization = organizationService
-//                .get(referralOrganizationId);
-//        Organization fhirOrg = getFhirOrganization(referralOrganization);
-//        if (fhirOrg == null) {
-//            // organization doesn't exist as fhir organization, cannot cancel automatically
-//            return new Bundle();
-//        }
-//        Sample sample = sampleService.get(sampleId);
-//        List<Analysis> analysises = analysisService.get(analysisIds);
-//
-//        List<ServiceRequest> serviceRequests = new ArrayList<>();
-//        for (Analysis analysis : analysises) {
-//            serviceRequests.add(fhirPersistanceService.getServiceRequestByAnalysisUuid(analysis.getFhirUuidAsString())
-//                    .orElseThrow());
-//        }
-//
-//        Task task = this.fhirPersistanceService.getTaskBasedOnServiceRequests(serviceRequests).orElseThrow();
-//        task.setStatus(TaskStatus.CANCELLED);
-//        return fhirPersistanceService.updateFhirResourceInFhirStore(task);
-//    }
+    // @Override
+    // @Transactional
+    // public Bundle cancelReferralToOrganization(String referralOrganizationId,
+    // String sampleId,
+    // List<String> analysisIds) throws FhirLocalPersistingException {
+    // org.openelisglobal.organization.valueholder.Organization referralOrganization
+    // =
+    // organizationService
+    // .get(referralOrganizationId);
+    // Organization fhirOrg = getFhirOrganization(referralOrganization);
+    // if (fhirOrg == null) {
+    // // organization doesn't exist as fhir organization, cannot cancel
+    // automatically
+    // return new Bundle();
+    // }
+    // Sample sample = sampleService.get(sampleId);
+    // List<Analysis> analysises = analysisService.get(analysisIds);
+    //
+    // List<ServiceRequest> serviceRequests = new ArrayList<>();
+    // for (Analysis analysis : analysises) {
+    //
+    // serviceRequests.add(fhirPersistanceService.getServiceRequestByAnalysisUuid(analysis.getFhirUuidAsString())
+    // .orElseThrow());
+    // }
+    //
+    // Task task =
+    // this.fhirPersistanceService.getTaskBasedOnServiceRequests(serviceRequests).orElseThrow();
+    // task.setStatus(TaskStatus.CANCELLED);
+    // return fhirPersistanceService.updateFhirResourceInFhirStore(task);
+    // }
 
     @Override
     @Transactional
@@ -170,7 +172,7 @@ public class FhirReferralServiceImpl implements FhirReferralService {
                 .get(referralOrganizationId);
         Organization fhirOrg = getFhirOrganization(referralOrganization);
         if (fhirOrg == null) {
-            LogEvent.logError(this.getClass().getName(), "referAnalysisesToOrganization",
+            LogEvent.logError(this.getClass().getSimpleName(), "referAnalysisesToOrganization",
                     "no fhir organization provided");
             // organization doesn't exist as fhir organization, cannot refer automatically
             return new Bundle();
@@ -206,6 +208,23 @@ public class FhirReferralServiceImpl implements FhirReferralService {
     }
 
     private Organization getFhirOrganization(org.openelisglobal.organization.valueholder.Organization organization) {
+        Optional<Organization> fhiOrganization = fhirPersistanceService
+                .getFhirOrganizationByName(organization.getOrganizationName());
+        if (fhiOrganization.isPresent()) {
+            return fhiOrganization.get();
+        } else {
+            try {
+                Organization fhirOrg = fhirTransformService.transformToFhirOrganization(organization);
+                fhirPersistanceService.createFhirResourceInFhirStore(fhirOrg);
+            } catch (FhirTransformationException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            } catch (FhirPersistanceException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+
         return fhirPersistanceService.getFhirOrganizationByName(organization.getOrganizationName()).orElseThrow();
     }
 
@@ -213,8 +232,9 @@ public class FhirReferralServiceImpl implements FhirReferralService {
             Optional<Practitioner> requester, Sample sample) {
         Bundle bundle = new Bundle();
         Task task = new Task();
-//        task.setGroupIdentifier(
-//                new Identifier().setValue(labNumber).setSystem(fhirConfig.getOeFhirSystem() + "/samp_labNumber"));
+        // task.setGroupIdentifier(
+        // new Identifier().setValue(labNumber).setSystem(fhirConfig.getOeFhirSystem() +
+        // "/samp_labNumber"));
         // TODO put the referral reason into the code
         task.setReasonCode(new CodeableConcept()
                 .addCoding(new Coding().setSystem(fhirConfig.getOeFhirSystem() + "/refer_reason")));
@@ -222,9 +242,9 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         if (requester.isPresent()) {
             task.setRequester(fhirTransformService.createReferenceFor(requester.get()));
         }
-        if (!remoteStoreIdentifier.isEmpty()) {
+        if (!fhirConfig.getRemoteStoreIdentifier().isEmpty()) {
             task.setRestriction(new TaskRestrictionComponent()
-                    .setRecipient(Arrays.asList(new Reference(remoteStoreIdentifier.get(0)))));
+                    .setRecipient(Arrays.asList(new Reference(fhirConfig.getRemoteStoreIdentifier().get(0)))));
         }
         task.setAuthoredOn(new Date());
         task.setStatus(TaskStatus.REQUESTED);
@@ -276,7 +296,7 @@ public class FhirReferralServiceImpl implements FhirReferralService {
 
         analysisUpdateList.add(analysis);
 
-//        createNeededNotes(analysisItem, analysis, noteUpdateList);
+        // createNeededNotes(analysisItem, analysis, noteUpdateList);
 
         for (Observation observation : resultsImport.observations) {
             Result result = getResultFromObservation(observation, currentResults, analysis);
@@ -288,35 +308,37 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         }
 
         try {
-            LogEvent.logDebug(this.getClass().getName(), "setReferralResult", "referralSetService.updateReferralSets");
+            LogEvent.logDebug(this.getClass().getSimpleName(), "setReferralResult",
+                    "referralSetService.updateReferralSets");
             referralSetService.updateReferralSets(referralSets, new ArrayList<>(), new HashSet<>(), new ArrayList<>(),
                     "1");
-            LogEvent.logDebug(this.getClass().getName(), "setReferralResult", "resultValidationService.persistdata");
+            LogEvent.logDebug(this.getClass().getSimpleName(), "setReferralResult",
+                    "resultValidationService.persistdata");
             resultValidationService.persistdata(new ArrayList<>(), analysisUpdateList, resultUpdateList, resultItemList,
                     sampleUpdateList, noteUpdateList, resultSaveService, new ArrayList<>(), "1");
-            LogEvent.logDebug(this.getClass().getName(), "setReferralResult",
+            LogEvent.logDebug(this.getClass().getSimpleName(), "setReferralResult",
                     "fhirTransformService.transformPersistResultValidationFhirObjects");
             fhirTransformService.transformPersistResultValidationFhirObjects(deletableList, analysisUpdateList,
                     resultUpdateList, resultItemList, sampleUpdateList, noteUpdateList);
             resultsImport.originalReferralObjects.task.setStatus(TaskStatus.COMPLETED);
-            LogEvent.logDebug(this.getClass().getName(), "setReferralResult",
+            LogEvent.logDebug(this.getClass().getSimpleName(), "setReferralResult",
                     "fhirPersistanceService.updateFhirResourceInFhirStore");
             fhirPersistanceService.updateFhirResourceInFhirStore(resultsImport.originalReferralObjects.task);
         } catch (FhirPersistanceException e) {
             LogEvent.logError(e);
         }
-
     }
 
     private Result getResultFromObservation(Observation observation, List<Result> currentResults, Analysis analysis) {
         Result result;
-        LogEvent.logDebug(this.getClass().getName(), "getResultFromObservation", "creating result from observation");
+        LogEvent.logDebug(this.getClass().getSimpleName(), "getResultFromObservation",
+                "creating result from observation");
         if (currentResults.size() == 1) {
-            LogEvent.logDebug(this.getClass().getName(), "getResultFromObservation",
+            LogEvent.logDebug(this.getClass().getSimpleName(), "getResultFromObservation",
                     "previous result found, writing new result to result");
             result = currentResults.get(0);
         } else {
-            LogEvent.logDebug(this.getClass().getName(), "getResultFromObservation",
+            LogEvent.logDebug(this.getClass().getSimpleName(), "getResultFromObservation",
                     "creating new result from observation");
             result = new Result();
             String testResultType = testService.getResultType(analysis.getTest());
@@ -329,57 +351,58 @@ public class FhirReferralServiceImpl implements FhirReferralService {
 
         if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(result.getResultType())
                 || TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())) {
-            LogEvent.logDebug(this.getClass().getName(), "getResultFromObservation", "multi/dictionary result type");
+            LogEvent.logDebug(this.getClass().getSimpleName(), "getResultFromObservation",
+                    "multi/dictionary result type");
 
             String inferredValue = ((CodeableConcept) observation.getValue()).getCodingFirstRep().getCode();
             List<TestResult> testResults = testResultService
                     .getAllActiveTestResultsPerTest(analysisService.getTest(analysis));
             String resultValue = null;
-            LogEvent.logDebug(this.getClass().getName(), "getResultFromObservation",
+            LogEvent.logDebug(this.getClass().getSimpleName(), "getResultFromObservation",
                     "matching result to dictionary entry");
             for (TestResult testResult : testResults) {
                 if (StringUtils.equals(inferredValue, dictionaryService.get(testResult.getValue()).getDictEntry())) {
-                    LogEvent.logDebug(this.getClass().getName(), "setReferralResult",
+                    LogEvent.logDebug(this.getClass().getSimpleName(), "setReferralResult",
                             "found a matching dictionary value for: " + inferredValue + "");
                     resultValue = dictionaryService.get(testResult.getValue()).getId();
                     result.setValue(resultValue);
-                    LogEvent.logDebug(this.getClass().getName(), "setReferralResult",
+                    LogEvent.logDebug(this.getClass().getSimpleName(), "setReferralResult",
                             "value set as: " + resultValue + "");
                 }
             }
             if (resultValue == null) {
-                LogEvent.logDebug(this.getClass().getName(), "setReferralResult",
+                LogEvent.logDebug(this.getClass().getSimpleName(), "setReferralResult",
                         "no matching dictionary value for '" + inferredValue + "'");
             }
         } else if (TypeOfTestResultServiceImpl.ResultType.isNumeric(result.getResultType())) {
-            LogEvent.logDebug(this.getClass().getName(), "getResultFromObservation", "numeric result type");
+            LogEvent.logDebug(this.getClass().getSimpleName(), "getResultFromObservation", "numeric result type");
             result.setValue(((Quantity) observation.getValue()).getValue().toPlainString());
         } else if (TypeOfTestResultServiceImpl.ResultType.isTextOnlyVariant(result.getResultType())) {
-            LogEvent.logDebug(this.getClass().getName(), "getResultFromObservation", "text result type");
+            LogEvent.logDebug(this.getClass().getSimpleName(), "getResultFromObservation", "text result type");
             result.setValue(((StringType) observation.getValue()).getValueAsString());
         }
 
         result.setSysUserId("1");
-        LogEvent.logDebug(this.getClass().getName(), "getResultFromObservation", "result made from observation");
+        LogEvent.logDebug(this.getClass().getSimpleName(), "getResultFromObservation", "result made from observation");
         return result;
     }
 
     private void addResultSets(Analysis analysis, Result result, IResultSaveService resultValidationSave) {
-        LogEvent.logDebug(this.getClass().getName(), "addResultSets", "creating resultSet for referral");
+        LogEvent.logDebug(this.getClass().getSimpleName(), "addResultSets", "creating resultSet for referral");
         Sample sample = analysis.getSampleItem().getSample();
         org.openelisglobal.patient.valueholder.Patient patient = sampleHumanService.getPatientForSample(sample);
-        LogEvent.logDebug(this.getClass().getName(), "addResultSets", "got patient for referral");
+        LogEvent.logDebug(this.getClass().getSimpleName(), "addResultSets", "got patient for referral");
         if (finalResultAlreadySent(result)) {
-            LogEvent.logDebug(this.getClass().getName(), "addResultSets", "final results already sent");
+            LogEvent.logDebug(this.getClass().getSimpleName(), "addResultSets", "final results already sent");
             result.setResultEvent(Event.CORRECTION);
             resultValidationSave.getModifiedResults()
                     .add(new ResultSet(result, null, null, patient, sample, null, false));
         } else {
-            LogEvent.logDebug(this.getClass().getName(), "addResultSets", "final results not already sent");
+            LogEvent.logDebug(this.getClass().getSimpleName(), "addResultSets", "final results not already sent");
             result.setResultEvent(Event.FINAL_RESULT);
             resultValidationSave.getNewResults().add(new ResultSet(result, null, null, patient, sample, null, false));
         }
-        LogEvent.logDebug(this.getClass().getName(), "addResultSets", "referral result added to set");
+        LogEvent.logDebug(this.getClass().getSimpleName(), "addResultSets", "referral result added to set");
     }
 
     // TO DO bug falsely triggered when preliminary result is sent, fails, retries
@@ -395,15 +418,16 @@ public class FhirReferralServiceImpl implements FhirReferralService {
 
     private void recordResultForReferral(ReferralResultsImportObjects resultsImport, Analysis analysis, Result result,
             List<ReferralSet> referralSets) {
-        LogEvent.logDebug(this.getClass().getName(), "recordResultForReferral", "recording result for referral");
+        LogEvent.logDebug(this.getClass().getSimpleName(), "recordResultForReferral", "recording result for referral");
 
         ReferralSet referralSet = new ReferralSet();
 
         Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
-        LogEvent.logDebug(this.getClass().getName(), "recordResultForReferral", "got referral for analysis");
+        LogEvent.logDebug(this.getClass().getSimpleName(), "recordResultForReferral", "got referral for analysis");
         referral.setStatus(ReferralStatus.RECEIVED);
         List<ReferralResult> referralResults = referralResultService.getReferralResultsForReferral(referral.getId());
-        LogEvent.logDebug(this.getClass().getName(), "recordResultForReferral", "got referralresults for referral");
+        LogEvent.logDebug(this.getClass().getSimpleName(), "recordResultForReferral",
+                "got referralresults for referral");
         referralSet.setExistingReferralResults(referralResults == null ? new ArrayList<>() : referralResults);
         ReferralResult referralResult = referralSet.getNextReferralResult();
         referralResult.setSysUserId("1");
@@ -415,11 +439,12 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         NoteService noteService = SpringContext.getBean(NoteService.class);
         referralSet.setNote(noteService.createSavableNote(referral.getAnalysis(), NoteServiceImpl.NoteType.INTERNAL,
                 "referral result imported automatically", RESULT_SUBJECT, "1"));
-        LogEvent.logDebug(this.getClass().getName(), "recordResultForReferral", "created referral result import note");
+        LogEvent.logDebug(this.getClass().getSimpleName(), "recordResultForReferral",
+                "created referral result import note");
         referralSet.setReferral(referral);
 
         referralSets.add(referralSet);
-        LogEvent.logDebug(this.getClass().getName(), "recordResultForReferral", "referral result added for referral");
+        LogEvent.logDebug(this.getClass().getSimpleName(), "recordResultForReferral",
+                "referral result added for referral");
     }
-
 }

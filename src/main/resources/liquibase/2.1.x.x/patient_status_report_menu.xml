@@ -1,27 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-	  
-	  
-	<changeSet author="rossumg" id="1">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+
+    <changeSet author="rossumg" id="1">
+        <validCheckSum>8:cb336fddcbe6d69638ab52fccc2b510b</validCheckSum>
 <!-- 		no precondition needed, always delete the option -->
-		<delete schemaName="clinlims" tableName="menu">
-			<where>id in (60,61)</where>
-		</delete>
-		<!-- no rollback as these options were never needed -->
-	</changeSet>
-	
-	<changeSet author="ctsteele" id="2">
+        <delete schemaName="clinlims" tableName="menu">
+            <where>element_id in ('menu_reports_status_patient.vreduit','menu_reports_status_patient.classique')</where>
+        </delete>
+        <!-- no rollback as these options were never needed -->
+    </changeSet>
+
+    <changeSet author="ctsteele" id="2">
 <!-- 		no precondition needed-->
       <update schemaName="clinlims"
       tableName="menu">
       <column name="action_url" value="/Report.do?type=patient&amp;report=patientCILNSP_vreduit"/>
       <where>element_id='menu_reports_status_patient'</where>
       </update>
-		<!-- no rollback as these options were never needed -->
+        <!-- no rollback as these options were never needed -->
 </changeSet>
-	
+
 </databaseChangeLog>

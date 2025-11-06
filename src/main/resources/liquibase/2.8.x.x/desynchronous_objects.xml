@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists columnName="desynchronized" tableName="provider" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>create desynchronized column for provider</comment>
+        <addColumn schemaName="clinlims" tableName="provider">
+            <column
+                name="desynchronized"
+                type="boolean"
+                defaultValueBoolean="false"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

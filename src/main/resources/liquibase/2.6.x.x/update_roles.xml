@@ -1,91 +1,231 @@
 <?xml version="1.0" encoding="utf-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	 http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-	<changeSet author="moses_mutesa" id="1">
-		<preConditions onFail="MARK_RAN">
-			<tableExists tableName="system_role" schemaName="clinlims" />
-			<not>
-				<sqlCheck expectedResult="0">
-					SELECT COUNT(*) FROM clinlims.system_role
-				</sqlCheck>
-			</not>
-		</preConditions>
-		<comment>update existing roles and Create new ones</comment>
-		<insert tableName="system_role" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_seq"/>
-			<column name="name" value="Global Roles"/>
-			<column name="description" value="Grouping Role for all Global Roles"/>
-			<column name="is_grouping_role" value="true"/>
-			<!-- <column name="grouping_parent" value=""/> -->
-			<column name="display_key" value="global"/>
-			<column name="active" value="true"/>
-			<column name="editable" value="false"/>
-		</insert>
-		<insert tableName="system_role" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_role_seq"/>
-			<column name="name" value="Lab Unit Roles"/>
-			<column name="description" value="Grouping Role for all Lab Unit Roles"/>
-			<column name="is_grouping_role" value="true"/>
-			<!-- <column name="grouping_parent" value=""/> -->
-			<column name="display_key" value="lab.unit"/>
-			<column name="active" value="true"/>
-			<column name="editable" value="false"/>
-		</insert>
-		<update tableName="system_role" schemaName="clinlims" >
-			<column name="name" value="Global Administrator"/>
-			<column name="grouping_parent" valueComputed="(SELECT id FROM system_role WHERE name = 'Global Roles')"/>
-			<where>id=1</where>
-		</update>
-		<update tableName="system_role" schemaName="clinlims" >
-			<column name="name" value="User Account Administrator"/>
-			<column name="grouping_parent" valueComputed="(SELECT id FROM system_role WHERE name = 'Global Roles')"/>
-			<where>id=2</where>
-		</update>
-		<update tableName="system_role" schemaName="clinlims" >
-			<column name="grouping_parent" valueComputed="(SELECT id FROM system_role WHERE name = 'Global Roles')"/>
-			<where>id=11</where>
-		</update>
-		<update tableName="system_role" schemaName="clinlims" >
-			<column name="name" value="Reception"/>
-			<column name="grouping_parent" valueComputed="(SELECT id FROM system_role WHERE name = 'Lab Unit Roles')"/>
-			<where>id=4</where>
-		</update>
-		<update tableName="system_role" schemaName="clinlims" >
-			<column name="name" value="Results"/>
-			<column name="grouping_parent" valueComputed="(SELECT id FROM system_role WHERE name = 'Lab Unit Roles')"/>
-			<where>id=5</where>
-		</update>
-		<update tableName="system_role" schemaName="clinlims" >
-			<column name="name" value="Validation"/>
-			<column name="grouping_parent" valueComputed="(SELECT id FROM system_role WHERE name = 'Lab Unit Roles')"/>
-			<where>id=10</where>
-		</update>
-		<update tableName="system_role" schemaName="clinlims" >
-			<column name="grouping_parent" valueComputed="(SELECT id FROM system_role WHERE name = 'Lab Unit Roles')"/>
-			<where>id=7</where>
-		</update>
-		<update tableName="system_role" schemaName="clinlims" >
-			<column name="active" value="false"/>
-			<where>id=6</where>
-		</update>
-		<update tableName="system_role" schemaName="clinlims" >
-			<column name="active" value="false"/>
-			<where>id=9</where>
-		</update>
-		<update tableName="system_role" schemaName="clinlims" >
-			<column name="active" value="false"/>
-			<where>id=12</where>
-		</update>
-		<update tableName="system_role" schemaName="clinlims" >
-			<column name="active" value="false"/>
-			<where>id=66</where>
-		</update>
-		<update tableName="system_role" schemaName="clinlims" >
-			<column name="active" value="false"/>
-			<where>id=67</where>
-		</update>
-	</changeSet>
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet author="moses_mutesa" id="1">
+        <validCheckSum>8:a977b14a1ce877e468544e1fd2976968</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <not>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM
+                    clinlims.system_role
+                </sqlCheck>
+            </not>
+        </preConditions>
+        <comment>update existing roles and Create new ones</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq" />
+            <column name="name" value="Global Roles" />
+            <column name="description"
+                value="Grouping Role for all Global Roles" />
+            <column name="is_grouping_role" value="true" />
+            <!-- <column name="grouping_parent" value=""/> -->
+            <column name="display_key" value="global" />
+            <column name="active" value="true" />
+            <column name="editable" value="false" />
+        </insert>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq" />
+            <column name="name" value="Lab Unit Roles" />
+            <column name="description"
+                value="Grouping Role for all Lab Unit Roles" />
+            <column name="is_grouping_role" value="true" />
+            <!-- <column name="grouping_parent" value=""/> -->
+            <column name="display_key" value="lab.unit" />
+            <column name="active" value="true" />
+            <column name="editable" value="false" />
+        </insert>
+        <update tableName="system_role" schemaName="clinlims">
+            <column name="name" value="Global Administrator" />
+            <column name="grouping_parent"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Global Roles')" />
+            <where>id=1</where>
+        </update>
+        <update tableName="system_role" schemaName="clinlims">
+            <column name="name" value="User Account Administrator" />
+            <column name="grouping_parent"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Global Roles')" />
+            <where>id=2</where>
+        </update>
+        <update tableName="system_role" schemaName="clinlims">
+            <column name="grouping_parent"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Global Roles')" />
+            <where>id=:value</where>
+            <whereParams>
+                <param
+                    valueComputed="(SELECT id FROM system_role WHERE name = 'Audit Trail')" />
+            </whereParams>
+        </update>
+        <update tableName="system_role" schemaName="clinlims">
+            <column name="name" value="Reception" />
+            <column name="grouping_parent"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Lab Unit Roles')" />
+            <where>id=:value</where>
+            <whereParams>
+                <param
+                    valueComputed="(SELECT id FROM system_role WHERE name = 'Reception')" />
+            </whereParams>
+        </update>
+        <update tableName="system_role" schemaName="clinlims">
+            <column name="name" value="Results" />
+            <column name="grouping_parent"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Lab Unit Roles')" />
+            <where>id=:value</where>
+            <whereParams>
+                <param
+                    valueComputed="(SELECT id FROM system_role WHERE name = 'Results' or name = 'Results entry' limit 1)" />
+            </whereParams>
+        </update>
+        <update tableName="system_role" schemaName="clinlims">
+            <column name="name" value="Validation" />
+            <column name="grouping_parent"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Lab Unit Roles')" />
+            <where>id=:value</where>
+            <whereParams>
+                <param
+                    valueComputed="(SELECT id FROM system_role WHERE name = 'Validation' or name='Validator' limit 1)" />
+            </whereParams>
+        </update>
+        <update tableName="system_role" schemaName="clinlims">
+            <column name="grouping_parent"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Lab Unit Roles')" />
+            <where>id=:value</where>
+            <whereParams>
+                <param
+                    valueComputed="(SELECT id FROM system_role WHERE name = 'Reports')" />
+            </whereParams>
+        </update>
+        <update tableName="system_role" schemaName="clinlims">
+            <column name="active" value="false" />
+            <where>id=:value</where>
+            <whereParams>
+                <param
+                    valueComputed="(SELECT id FROM system_role WHERE name = 'Inventory mgr')" />
+            </whereParams>
+        </update>
+        <update tableName="system_role" schemaName="clinlims">
+            <column name="active" value="false" />
+            <where>id=:value</where>
+            <whereParams>
+                <param
+                    valueComputed="(SELECT id FROM system_role WHERE name = 'Results modifier')" />
+            </whereParams>
+        </update>
+        <update tableName="system_role" schemaName="clinlims">
+            <column name="active" value="false" />
+            <where>id=:value</where>
+            <whereParams>
+                <param
+                    valueComputed="(SELECT id FROM system_role WHERE name = 'Test Management')" />
+            </whereParams>
+        </update>
+        <update tableName="system_role" schemaName="clinlims">
+            <column name="active" value="false" />
+            <where>id=:value</where>
+            <whereParams>
+                <param
+                    valueComputed="(SELECT id FROM system_role WHERE name = 'Results Admin')" />
+            </whereParams>
+        </update>
+        <update tableName="system_role" schemaName="clinlims">
+            <column name="active" value="false" />
+            <where>id=:value</where>
+            <whereParams>
+                <param
+                    valueComputed="(SELECT id FROM system_role WHERE name = 'Identifying Information Edit')" />
+            </whereParams>
+        </update>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="2">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM
+                    clinlims.system_role WHERE name = 'Reception'
+                </sqlCheck>
+        </preConditions>
+        <comment>update Recetion Role</comment>
+        <update tableName="system_role" schemaName="clinlims">
+            <column name="name" value="Reception" />
+            <column name="grouping_parent"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Lab Unit Roles')" />
+            <where>id=:value</where>
+            <whereParams>
+                <param
+                    valueComputed="(SELECT id FROM system_role WHERE name = 'Intake')" />
+            </whereParams>
+        </update>
+    </changeSet>
+    <changeSet author="CIV Developer Group" id="202303247"
+        context="CDIRetroCI">
+        <preConditions onFail="CONTINUE">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="0">
+                select count(*) from
+                clinlims.system_role
+                where name = 'Reception';
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                select count(*) from
+                clinlims.system_role
+                where name = 'Lab Unit Roles' limit 1;
+            </sqlCheck>
+        </preConditions>
+        <comment>update roles for RetroCI context </comment>
+        <sql>
+            insert into clinlims.system_role
+            values(nextval('clinlims.system_role_seq'),'Reception','Sample entry
+            and patient management.',FALSE,(select id from clinlims.system_role
+            where name = 'Lab Unit Roles'),'role.intake',TRUE,FALSE);
+
+            update
+            clinlims.system_role set active = TRUE where name in ('Global
+            Roles','Lab Unit Roles');
+
+            update clinlims.system_role set
+            grouping_parent = (select id from
+            clinlims.system_role where name =
+            'Global Roles') where name = 'Audit
+            Trail';
+        </sql>
+    </changeSet>
+    <changeSet author="CIV Developer Group" id="202303248">
+        <preConditions onFail="CONTINUE">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="0">
+                select count(*) from
+                clinlims.system_role
+                where name = 'Reception';
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                select count(*) from
+                clinlims.system_role
+                where name = 'Lab Unit Roles' limit 1;
+            </sqlCheck>
+        </preConditions>
+        <comment>Add role Reception if missing </comment>
+        <sql>
+            insert into clinlims.system_role
+            values(nextval('clinlims.system_role_seq'),'Reception','Sample entry
+            and patient management.',FALSE,(select id from clinlims.system_role
+            where name = 'Lab Unit Roles'),'role.intake',TRUE,FALSE);
+
+            update
+            clinlims.system_role set active = TRUE where name in ('Global
+            Roles','Lab Unit Roles');
+
+            update clinlims.system_role set
+            grouping_parent = (select id from
+            clinlims.system_role where name =
+            'Global Roles') where name = 'Audit
+            Trail';
+        </sql>
+    </changeSet>
 </databaseChangeLog>

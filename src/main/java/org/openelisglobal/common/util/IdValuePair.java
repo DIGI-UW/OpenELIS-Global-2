@@ -1,5 +1,7 @@
 package org.openelisglobal.common.util;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Comparator;
@@ -11,13 +13,15 @@ import java.util.List;
  * N.B. This is very light weight, if you want to stick it in a hash and want to use something
  * other than identity of equals then over-ride equals and hash.
  */
+
 public class IdValuePair implements Serializable {
 
-    private static final long serialVersionUID = 1L;
     private String id;
     private String value;
+    private static final long serialVersionUID = 1L;
 
-    public IdValuePair(String id, String value) {
+    @JsonCreator
+    public IdValuePair(@JsonProperty("id") String id, @JsonProperty("value") String value) {
         this.setId(id);
         this.setValue(value);
     }

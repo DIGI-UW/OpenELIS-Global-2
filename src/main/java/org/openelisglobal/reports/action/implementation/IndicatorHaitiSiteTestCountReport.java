@@ -1,19 +1,16 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
-*
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
+ */
 package org.openelisglobal.reports.action.implementation;
 
 import java.io.ByteArrayOutputStream;
@@ -27,7 +24,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+import net.sf.jasperreports.engine.JRException;
 import org.apache.commons.validator.GenericValidator;
 import org.json.simple.parser.ContainerFactory;
 import org.json.simple.parser.JSONParser;
@@ -43,8 +40,6 @@ import org.openelisglobal.reports.action.implementation.reportBeans.TestSiteYear
 import org.openelisglobal.reports.action.implementation.reportBeans.TestSiteYearReport.Months;
 import org.openelisglobal.reports.form.ReportForm;
 import org.openelisglobal.spring.util.SpringContext;
-
-import net.sf.jasperreports.engine.JRException;
 
 public class IndicatorHaitiSiteTestCountReport extends CSVExportReport
         implements IReportCreator, IReportParameterSetter {
@@ -63,7 +58,6 @@ public class IndicatorHaitiSiteTestCountReport extends CSVExportReport
         public Map<String, Integer> createObjectContainer() {
             return new HashMap<>();
         }
-
     };
 
     private List<TestSiteYearReport> reportList = new ArrayList<>();
@@ -102,7 +96,6 @@ public class IndicatorHaitiSiteTestCountReport extends CSVExportReport
         } catch (RuntimeException e) {
             LogEvent.logDebug(e);
         }
-
     }
 
     private List<IdValuePair> getYearList() {
@@ -212,9 +205,8 @@ public class IndicatorHaitiSiteTestCountReport extends CSVExportReport
                 }
 
             } catch (ParseException e) {
-                LogEvent.logInfo(this.getClass().getName(), "method unkown", e.toString());
+                LogEvent.logInfo(this.getClass().getSimpleName(), "createResults", e.toString());
             }
-
         }
 
         createReportLinesForSite(currentSite, monthlyTestCount);
@@ -333,5 +325,4 @@ public class IndicatorHaitiSiteTestCountReport extends CSVExportReport
         line.append(EOL);
         return line.toString();
     }
-
 }

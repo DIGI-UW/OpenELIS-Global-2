@@ -1,23 +1,20 @@
 package org.openelisglobal.metricservice.action;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.util.List;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 public class MetricServicesServlet extends HttpServlet {
 
     private static final long serialVersionUID = 947483610606055973L;
 
-    /**
-     * Constructor of the object.
-     */
+    /** Constructor of the object. */
     public MetricServicesServlet() {
         super();
     }
@@ -32,7 +29,6 @@ public class MetricServicesServlet extends HttpServlet {
 
     /**
      * The doGet method of the servlet. <br>
-     *
      * This method is called when a form has its tag value method equals to get.
      *
      * @param request  the request send by the client to the server
@@ -71,7 +67,6 @@ public class MetricServicesServlet extends HttpServlet {
 
     /**
      * The doPost method of the servlet. <br>
-     *
      * This method is called when a form has its tag value method equals to post.
      *
      * @param request  the request send by the client to the server
@@ -95,5 +90,4 @@ public class MetricServicesServlet extends HttpServlet {
     public void init() throws ServletException {
         // Put your code here
     }
-
 }

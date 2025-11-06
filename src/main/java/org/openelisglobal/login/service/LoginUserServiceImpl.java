@@ -6,13 +6,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
-
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.login.dao.LoginUserDAO;
 import org.openelisglobal.login.valueholder.LoginUser;
 import org.openelisglobal.security.PasswordUtil;
@@ -23,7 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class LoginUserServiceImpl extends BaseObjectServiceImpl<LoginUser, Integer> implements LoginUserService {
+public class LoginUserServiceImpl extends AuditableBaseObjectServiceImpl<LoginUser, Integer>
+        implements LoginUserService {
 
     @Autowired
     protected LoginUserDAO baseObjectDAO;
@@ -31,7 +31,8 @@ public class LoginUserServiceImpl extends BaseObjectServiceImpl<LoginUser, Integ
     private PasswordEncoder passwordEncoder;
 
     private Pattern BCRYPT_PATTERN = Pattern.compile("\\A\\$2[ya]?\\$\\d\\d\\$[./0-9A-Za-z]{53}"); // make sure this
-                                                                                                // variable is current
+    // variable is
+    // current
 
     LoginUserServiceImpl() {
         super(LoginUser.class);
@@ -54,7 +55,6 @@ public class LoginUserServiceImpl extends BaseObjectServiceImpl<LoginUser, Integ
         LoginUser login = super.get(id);
         inferExtraData(login);
         return login;
-
     }
 
     @Override
@@ -103,10 +103,9 @@ public class LoginUserServiceImpl extends BaseObjectServiceImpl<LoginUser, Integ
         login.setPassword(PasswordUtil.hashPassword(newPassword));
         Calendar passwordExpiredDate = Calendar.getInstance();
         passwordExpiredDate.add(Calendar.MONTH,
-                Integer.parseInt(SystemConfiguration.getInstance().getLoginUserChangePasswordExpiredMonth()));
+                Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("login.user.expired.month")));
         login.setPasswordExpiredDate(new Date(passwordExpiredDate.getTimeInMillis()));
         login.setPasswordExpiredDayNo(baseObjectDAO.getPasswordExpiredDayNo(login));
-
     }
 
     @Override
@@ -191,5 +190,4 @@ public class LoginUserServiceImpl extends BaseObjectServiceImpl<LoginUser, Integ
         }
         return false;
     }
-
 }

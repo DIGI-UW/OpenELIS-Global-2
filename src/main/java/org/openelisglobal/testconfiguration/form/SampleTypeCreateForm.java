@@ -1,11 +1,9 @@
 package org.openelisglobal.testconfiguration.form;
 
+import jakarta.validation.constraints.NotBlank;
 import java.util.List;
-
-import javax.validation.constraints.NotBlank;
-
-import org.hibernate.validator.constraints.SafeHtml;
 import org.openelisglobal.common.form.BaseForm;
+import org.openelisglobal.validation.annotations.SafeHtml;
 
 public class SampleTypeCreateForm extends BaseForm {
     // for display
@@ -21,11 +19,11 @@ public class SampleTypeCreateForm extends BaseForm {
     private String existingFrenchNames;
 
     @NotBlank
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String sampleTypeEnglishName;
 
     @NotBlank
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String sampleTypeFrenchName;
 
     public SampleTypeCreateForm() {

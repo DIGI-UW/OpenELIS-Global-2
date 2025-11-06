@@ -1,7 +1,6 @@
 package org.openelisglobal.sample.validator;
 
 import java.util.Iterator;
-
 import org.apache.commons.validator.GenericValidator;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -10,7 +9,6 @@ import org.dom4j.Element;
 import org.openelisglobal.common.provider.validation.IAccessionNumberValidator.ValidationResults;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.sample.form.SampleEditForm;
@@ -42,7 +40,7 @@ public class SampleEditFormValidator implements Validator {
         validateSampleXML(form.getSampleXML(), errors);
 
         ValidationHelper.validateOptionField(form.getIdSeparator(), "idSeperator", errors,
-                new String[] { SystemConfiguration.getInstance().getDefaultIdSeparator() });
+                new String[] { ConfigurationProperties.getInstance().getPropertyValue("default.idSeparator") });
 
         ValidationHelper.validateOptionField(form.getAccessionFormat(), "accessionFormat", errors,
                 new String[] { ConfigurationProperties.getInstance().getPropertyValue(Property.AccessionFormat) });
@@ -57,7 +55,6 @@ public class SampleEditFormValidator implements Validator {
 
         ValidationHelper.validateFieldMinMax(form.getMaxAccessionLength(), "maxAccessionLength", errors,
                 changeableLength + invariantLength, changeableLength + invariantLength);
-
     }
 
     @SuppressWarnings("unchecked")
@@ -84,7 +81,6 @@ public class SampleEditFormValidator implements Validator {
             if (errors.hasErrors()) {
                 return;
             }
-
         } // validate panel ids
         String[] panelIDs = sampleItem.attributeValue("panels").split(",");
         for (int j = 0; j < panelIDs.length; ++j) {
@@ -111,7 +107,5 @@ public class SampleEditFormValidator implements Validator {
         // validate sample id
         String sampleId = sampleItem.attributeValue("sampleID");
         ValidationHelper.validateIdField(sampleId, "sampleXML", "sampleXML sampleID", errors, true);
-
     }
-
 }

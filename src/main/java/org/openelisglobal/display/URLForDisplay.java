@@ -29,5 +29,4 @@ public class URLForDisplay {
     public void setUrlAddress(String urlAddress) {
         this.urlAddress = urlAddress;
     }
-
 }

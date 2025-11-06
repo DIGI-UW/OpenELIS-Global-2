@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+      <property name="now" value="now()" dbms="postgresql"/>
+    <changeSet author="moses_mutesa" id="1">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="organization_type" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.organization_type WHERE short_name = 'dept'</sqlCheck>
+        </preConditions>
+        <comment>Add dept as one of the default Organization Types</comment>
+        <insert tableName="organization_type" schemaName="clinlims">
+            <column name="id" valueSequenceNext="organization_type_seq"/>
+            <column name="short_name" value="dept"/>
+            <column name="description" value="Organisation department"/>
+            <column name="name_display_key" value="sample.entry.project.siteDepartmentName"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

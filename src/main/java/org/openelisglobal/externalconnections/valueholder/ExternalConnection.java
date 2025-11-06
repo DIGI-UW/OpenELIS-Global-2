@@ -1,22 +1,20 @@
 package org.openelisglobal.externalconnections.valueholder;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
+import jakarta.validation.Valid;
 import java.net.URI;
-
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Convert;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.OneToOne;
-import javax.persistence.SequenceGenerator;
-import javax.persistence.Table;
-import javax.validation.Valid;
-
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.hibernate.converter.URIConverter;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -29,7 +27,7 @@ public class ExternalConnection extends BaseObject<Integer> {
     public enum AuthType {
         CERTIFICATE("certificate", "externalconnections.authtype.cert"),
         BASIC("basic", "externalconnections.authtype.basic"),
-//        BEARER("bearer", "externalconnections.authtype.bearer"),
+        // BEARER("bearer", "externalconnections.authtype.bearer"),
         NONE("none", "externalconnections.authtype.none");
 
         private String value;
@@ -47,11 +45,10 @@ public class ExternalConnection extends BaseObject<Integer> {
         public String getMessage() {
             return MessageUtil.getMessage(messageKey);
         }
-
     }
 
     public enum ProgrammedConnection {
-//        CLINIC_SEARCH("clinlic_search", "externalconnections.clinicsearch"),
+        // CLINIC_SEARCH("clinlic_search", "externalconnections.clinicsearch"),
         SMPP_SERVER("smpp_server", "externalconnections.smppserver"),
         BMP_SMS_SERVER("bmp_sms_server", "externalconnections.bmpsms"),
         INFO_HIGHWAY("info_highway", "externalconnections.infohighway"),
@@ -163,5 +160,4 @@ public class ExternalConnection extends BaseObject<Integer> {
     public void setActive(Boolean active) {
         this.active = active;
     }
-
 }

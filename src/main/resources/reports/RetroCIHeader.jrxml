@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Created with Jaspersoft Studio version 6.12.2.final using JasperReports Library version 6.12.0  -->
-<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="RetroCIHeader" pageWidth="550" pageHeight="134" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="550" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="cab50532-7c59-4986-993e-4ab7d1a6765f">
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="RetroCIHeader" pageWidth="550" pageHeight="134" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="550" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0">
 	<property name="ireport.scriptlethandling" value="0"/>
 	<property name="ireport.encoding" value="UTF-8"/>
 	<property name="ireport.zoom" value="2.0"/>
-	<property name="ireport.x" value="0"/>
+	<property name="ireport.x" value="230"/>
 	<property name="ireport.y" value="0"/>
 	<import value="net.sf.jasperreports.engine.*"/>
 	<import value="java.util.*"/>
@@ -43,14 +42,14 @@
 	<detail>
 		<band height="120" splitType="Prevent">
 			<staticText>
-				<reportElement x="102" y="19" width="347" height="20" uuid="26f21f00-a2eb-4f45-ae10-a4baf2803ef4"/>
+				<reportElement x="102" y="19" width="347" height="20"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font size="9" isBold="true"/>
 				</textElement>
 				<text><![CDATA[LABORATOIRE DE BIOLOGIE MOLECULAIRE]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="2" y="77" width="63" height="20" uuid="2ae494f3-5688-42fe-93c4-9238f03295b9">
+				<reportElement x="2" y="77" width="63" height="20">
 					<printWhenExpression><![CDATA[$P{duplicateReport}]]></printWhenExpression>
 				</reportElement>
 				<textElement verticalAlignment="Middle">
@@ -59,45 +58,45 @@
 				<text><![CDATA[Duplicata]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="102" y="58" width="347" height="20" uuid="dd51bbe6-1f82-4098-9143-9baa4916bede"/>
+				<reportElement x="102" y="58" width="347" height="20"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font size="9" isBold="false"/>
 				</textElement>
 				<text><![CDATA[TEL: 21 24 09 24 / email: cirba@aviso.ci]]></text>
 			</staticText>
 			<textField isBlankWhenNull="true">
-				<reportElement key="textField-2" x="441" y="81" width="109" height="17" uuid="b9d2012d-9b69-48a2-a4ad-670bec96a84d"/>
+				<reportElement key="textField-2" x="441" y="81" width="109" height="17"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle"/>
-				<textFieldExpression><![CDATA[$P{studyName}]]></textFieldExpression>
+				<textFieldExpression class="java.lang.String"><![CDATA[$P{studyName}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement x="102" y="37" width="347" height="20" uuid="e6aeac33-698c-45ca-a4f8-98633b722570"/>
+				<reportElement x="102" y="37" width="347" height="20"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font size="9" isBold="true"/>
 				</textElement>
 				<text><![CDATA[CENTRE INTEGRE DE RECHERCHES BIOCLINIQUES D'ABIDJAN (CIRBA)]]></text>
 			</staticText>
 			<textField pattern="dd/MM/yyyy">
-				<reportElement x="102" y="0" width="347" height="20" uuid="cabacda2-d4b6-4880-a89e-eb29af9560af"/>
+				<reportElement x="102" y="0" width="347" height="20"/>
 				<textElement textAlignment="Center">
 					<font size="9"/>
 				</textElement>
-				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+				<textFieldExpression class="java.util.Date"><![CDATA[new java.util.Date()]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement x="0" y="78" width="548" height="20" uuid="43cbce32-9735-4761-bc24-8956a70da1a8"/>
+				<reportElement x="0" y="78" width="548" height="20"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font size="9" isBold="false"/>
 				</textElement>
 				<text><![CDATA[Responsable: Dr TONI]]></text>
 			</staticText>
 			<image isUsingCache="true">
-				<reportElement x="2" y="0" width="100" height="80" uuid="aaeb5de5-faff-486b-9802-a74a1cf967cb"/>
-				<imageExpression><![CDATA[$P{leftHeaderImage}]]></imageExpression>
+				<reportElement x="2" y="0" width="100" height="80"/>
+				<imageExpression class="java.io.InputStream"><![CDATA[$P{leftHeaderImage}]]></imageExpression>
 			</image>
 			<image hAlign="Right" isUsingCache="true">
-				<reportElement x="449" y="1" width="100" height="80" uuid="17f9cb89-c9ff-4f09-9d94-d0fd01ba6c0d"/>
-				<imageExpression><![CDATA[$P{rightHeaderImage}]]></imageExpression>
+				<reportElement x="449" y="1" width="100" height="80"/>
+				<imageExpression class="java.io.InputStream"><![CDATA[$P{rightHeaderImage}]]></imageExpression>
 			</image>
 		</band>
 	</detail>

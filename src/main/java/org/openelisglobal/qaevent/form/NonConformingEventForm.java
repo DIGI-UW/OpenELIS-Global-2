@@ -1,20 +1,18 @@
 package org.openelisglobal.qaevent.form;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import java.util.List;
-
-import javax.validation.Valid;
-import javax.validation.constraints.Pattern;
-
-import org.hibernate.validator.constraints.SafeHtml;
-import org.hibernate.validator.constraints.SafeHtml.WhiteListType;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.patient.action.bean.PatientSearch;
+import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.openelisglobal.qaevent.valueholder.NceActionLog;
 import org.openelisglobal.qaevent.valueholder.NceCategory;
 import org.openelisglobal.qaevent.valueholder.NceType;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.validation.annotations.SafeHtml;
 import org.openelisglobal.validation.annotations.ValidAccessionNumber;
 
 public class NonConformingEventForm extends BaseForm {
@@ -25,22 +23,22 @@ public class NonConformingEventForm extends BaseForm {
     @Pattern(regexp = ValidationHelper.ID_REGEX)
     private String currentUserId;
 
-    @SafeHtml(whitelistType = WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String status;
 
-    @SafeHtml(whitelistType = WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String reportDate;
 
-    @SafeHtml(whitelistType = WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String name;
 
-    @SafeHtml(whitelistType = WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String reporterName;
 
-    @SafeHtml(whitelistType = WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String nceNumber;
 
-    @SafeHtml(whitelistType = WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String dateOfEvent;
 
     @ValidAccessionNumber
@@ -49,21 +47,21 @@ public class NonConformingEventForm extends BaseForm {
     @Pattern(regexp = ValidationHelper.ID_REGEX)
     private String specimen; // FK
 
-    @SafeHtml(whitelistType = WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String prescriberName;
 
-    @SafeHtml(whitelistType = WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String site;
 
     private Integer reportingUnit;
 
-    @SafeHtml(whitelistType = WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String description;
 
-    @SafeHtml(whitelistType = WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String suspectedCauses;
 
-    @SafeHtml(whitelistType = WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String proposedAction;
 
     @Valid
@@ -72,7 +70,7 @@ public class NonConformingEventForm extends BaseForm {
     @Pattern(regexp = ValidationHelper.ID_REGEX)
     private String specimenId;
 
-    /// for display
+    /// for displayNcEvent
     private PatientSearch patientSearch;
 
     private String laboratoryComponent;
@@ -118,6 +116,8 @@ public class NonConformingEventForm extends BaseForm {
     private List<IdValuePair> severityRecurrenceList;
 
     private List<IdValuePair> actionTypeList;
+
+    private List<NcEvent> nceEventsSearchResults;
 
     public String getId() {
         return id;
@@ -445,5 +445,13 @@ public class NonConformingEventForm extends BaseForm {
 
     public void setSpecimenId(String specimenId) {
         this.specimenId = specimenId;
+    }
+
+    public List<NcEvent> getnceEventsSearchResults() {
+        return nceEventsSearchResults;
+    }
+
+    public void setnceEventsSearchResults(List<NcEvent> nceEventsSearchResults) {
+        this.nceEventsSearchResults = nceEventsSearchResults;
     }
 }

@@ -1,7 +1,6 @@
 package org.openelisglobal.reports.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.reports.valueholder.DocumentTrack;
 
@@ -10,5 +9,4 @@ public interface DocumentTrackService extends BaseObjectService<DocumentTrack, S
             String name);
 
     List<DocumentTrack> getByTypeRecordAndTable(String typeId, String tableId, String recordId);
-
 }

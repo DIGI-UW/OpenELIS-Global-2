@@ -1,28 +1,23 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
-*
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
+ */
 package org.openelisglobal.patient.saving;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSException;
@@ -84,7 +79,6 @@ public class SampleEntry extends Accessioner implements ISampleEntry {
         projectFormMapper.setPatientForm(false);
         projectForm = projectFormMapper.getProjectForm();
         findStatusSet();
-
     }
 
     @Override
@@ -228,7 +222,8 @@ public class SampleEntry extends Accessioner implements ISampleEntry {
             sampleItemsToDelete.put(sampleItem.getId(), sampleItem);
         }
         for (Analysis analysis : analysisList) {
-            AnalysisStatus analysisStatus = SpringContext.getBean(IStatusService.class).getAnalysisStatusForID(analysis.getStatusId());
+            AnalysisStatus analysisStatus = SpringContext.getBean(IStatusService.class)
+                    .getAnalysisStatusForID(analysis.getStatusId());
             switch (analysisStatus) {
             case NotStarted:
                 // deletable => leave sampleItem in the Delete list

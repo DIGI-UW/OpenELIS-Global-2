@@ -1,25 +1,23 @@
 package org.openelisglobal.testconfiguration.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Locale;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
-import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.method.service.MethodService;
+import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
-import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.systemmodule.valueholder.SystemModule;
 import org.openelisglobal.systemusermodule.valueholder.RoleModule;
 import org.openelisglobal.testconfiguration.form.MethodCreateForm;
 import org.openelisglobal.testconfiguration.service.MethodCreateService;
-import org.openelisglobal.method.service.MethodService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
@@ -42,12 +40,11 @@ public class MethodCreateController extends BaseController {
     private RoleService roleService;
     @Autowired
     private MethodCreateService methodCreateService;
-   
+
     @InitBinder
     public void initBinder(WebDataBinder binder) {
         binder.setAllowedFields(ALLOWED_FIELDS);
     }
-
 
     @RequestMapping(value = "/MethodCreate", method = RequestMethod.GET)
     public ModelAndView showMethodCreate(HttpServletRequest request) {
@@ -59,22 +56,19 @@ public class MethodCreateController extends BaseController {
     }
 
     private void setupDisplayMethods(MethodCreateForm form) {
-        form.setExistingMethodList(
-                 DisplayListService.getInstance().getList(DisplayListService.ListType.METHODS));
-        form.setExistingMethodList(
-                    DisplayListService.getInstance().getList(DisplayListService.ListType.METHODS));         
+        form.setExistingMethodList(DisplayListService.getInstance().getList(DisplayListService.ListType.METHODS));
+        form.setExistingMethodList(DisplayListService.getInstance().getList(DisplayListService.ListType.METHODS));
         form.setInactiveMethodList(
                 DisplayListService.getInstance().getList(DisplayListService.ListType.METHODS_INACTIVE));
-       
-        form.setExistingEnglishNames(getExistingMethodNames( Locale.ENGLISH));
 
-        form.setExistingFrenchNames(getExistingMethodNames( Locale.FRENCH));
+        form.setExistingEnglishNames(getExistingMethodNames(Locale.ENGLISH));
+
+        form.setExistingFrenchNames(getExistingMethodNames(Locale.FRENCH));
     }
 
-    private String getExistingMethodNames( Locale locale) {
+    private String getExistingMethodNames(Locale locale) {
         StringBuilder builder = new StringBuilder(NAME_SEPARATOR);
         List<Method> methods = methodService.getAll();
-
 
         for (Method method : methods) {
             builder.append(method.getLocalization().getLocalizedValue(locale));
@@ -86,7 +80,7 @@ public class MethodCreateController extends BaseController {
 
     @RequestMapping(value = "/MethodCreate", method = RequestMethod.POST)
     public ModelAndView postMethodCreate(HttpServletRequest request,
-            @ModelAttribute("form") @Valid MethodCreateForm form, BindingResult result)  {
+            @ModelAttribute("form") @Valid MethodCreateForm form, BindingResult result) {
         if (result.hasErrors()) {
             saveErrors(result);
             setupDisplayMethods(form);
@@ -104,16 +98,16 @@ public class MethodCreateController extends BaseController {
         SystemModule resultModule = createSystemModule("LogbookResults", identifyingName, userId);
         SystemModule validationModule = createSystemModule("ResultValidation", identifyingName, userId);
 
-        Role resultsEntryRole = roleService.getRoleByName("Results entry");
-        Role validationRole = roleService.getRoleByName("Validator");
+        Role resultsEntryRole = roleService.getRoleByName(Constants.ROLE_RESULTS);
+        Role validationRole = roleService.getRoleByName(Constants.ROLE_VALIDATION);
 
         RoleModule workplanResultModule = createRoleModule(userId, workplanModule, resultsEntryRole);
         RoleModule resultResultModule = createRoleModule(userId, resultModule, resultsEntryRole);
         RoleModule validationValidationModule = createRoleModule(userId, validationModule, validationRole);
 
         try {
-            methodCreateService.insertMethod(localization, method, workplanModule, resultModule,
-                    validationModule, workplanResultModule, resultResultModule, validationValidationModule);
+            methodCreateService.insertMethod(localization, method, workplanModule, resultModule, validationModule,
+                    workplanResultModule, resultResultModule, validationValidationModule);
         } catch (LIMSRuntimeException e) {
             LogEvent.logDebug(e);
         }
@@ -191,6 +185,4 @@ public class MethodCreateController extends BaseController {
     protected String getPageSubtitleKey() {
         return null;
     }
-
-    
 }

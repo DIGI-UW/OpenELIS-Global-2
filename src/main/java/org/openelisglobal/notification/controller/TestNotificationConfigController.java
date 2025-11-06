@@ -1,10 +1,8 @@
 package org.openelisglobal.notification.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.notification.form.TestNotificationConfigForm;
@@ -72,8 +70,8 @@ public class TestNotificationConfigController extends BaseController {
 
     @PostMapping("/TestNotificationConfig")
     public ModelAndView updateNotificationConfig(HttpServletRequest request,
-            @ModelAttribute("form") @Valid TestNotificationConfigForm form,
-            BindingResult result, RedirectAttributes redirectAttributes) {
+            @ModelAttribute("form") @Valid TestNotificationConfigForm form, BindingResult result,
+            RedirectAttributes redirectAttributes) {
         if (result.hasErrors()) {
             saveErrors(result);
             return displayNotificationConfig(form.getConfig().getTest().getId());
@@ -114,5 +112,4 @@ public class TestNotificationConfigController extends BaseController {
     protected String getPageSubtitleKey() {
         return "testnotificationconfig.browse.title";
     }
-
 }

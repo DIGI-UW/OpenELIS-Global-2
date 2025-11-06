@@ -1,31 +1,27 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ */
 package org.openelisglobal.common.provider.validation;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.servlet.validation.AjaxServlet;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.spring.util.SpringContext;
@@ -79,8 +75,8 @@ public class AccessionNumberValidationProvider extends BaseValidationProvider {
                     if (form.equalsIgnoreCase("humanSampleOneForm")) {
                         // bugzilla 1581 handle null status
                         if (!StringUtil.isNullorNill(sample.getStatus())) {
-                            if (!sample.getStatus()
-                                    .equals(SystemConfiguration.getInstance().getSampleStatusQuickEntryComplete())) {
+                            if (!sample.getStatus().equals(ConfigurationProperties.getInstance()
+                                    .getPropertyValue("sample.status.quick.entry.complete"))) {
                                 retVal = INVALID;
                             }
                         } else {
@@ -89,8 +85,8 @@ public class AccessionNumberValidationProvider extends BaseValidationProvider {
                     } else if (form.equalsIgnoreCase("humanSampleTwoForm")) {
                         // bugzilla 1581 handle null status
                         if (!StringUtil.isNullorNill(sample.getStatus())) {
-                            if (!sample.getStatus()
-                                    .equals(SystemConfiguration.getInstance().getSampleStatusEntry1Complete())) {
+                            if (!sample.getStatus().equals(ConfigurationProperties.getInstance()
+                                    .getPropertyValue("sample.status.entry.1.complete"))) {
                                 retVal = INVALID;
                             }
                         } else {
@@ -101,9 +97,10 @@ public class AccessionNumberValidationProvider extends BaseValidationProvider {
                     } else if (form.equalsIgnoreCase("influenzaSampleXMLBySampleForm")) {
                         if (!StringUtil.isNullorNill(sample.getStatus())) {
                             if (!sample.getStatus()
-                                    .equals(SystemConfiguration.getInstance().getSampleStatusEntry2Complete())
-                                    && !sample.getStatus()
-                                            .equals(SystemConfiguration.getInstance().getSampleStatusReleased())) {
+                                    .equals(ConfigurationProperties.getInstance()
+                                            .getPropertyValue("sample.status.entry.2.complete"))
+                                    && !sample.getStatus().equals(ConfigurationProperties.getInstance()
+                                            .getPropertyValue("sample.status.released"))) {
                                 retVal = INVALIDSTATUS;
                             }
 
@@ -112,8 +109,8 @@ public class AccessionNumberValidationProvider extends BaseValidationProvider {
                         }
                     } else if (form.equalsIgnoreCase("testManagementForm")) {
                         if (!StringUtil.isNullorNill(sample.getStatus())) {
-                            if (sample.getStatus()
-                                    .equals(SystemConfiguration.getInstance().getSampleStatusLabelPrinted())) {
+                            if (sample.getStatus().equals(ConfigurationProperties.getInstance()
+                                    .getPropertyValue("sample.status.label.printed"))) {
                                 retVal = INVALIDSTATUS;
                             }
                         } else {
@@ -123,8 +120,8 @@ public class AccessionNumberValidationProvider extends BaseValidationProvider {
                         // bugzilla 2513
                     } else if (form.equalsIgnoreCase("resultsEntryForm")) {
                         if (!StringUtil.isNullorNill(sample.getStatus())) {
-                            if (sample.getStatus()
-                                    .equals(SystemConfiguration.getInstance().getSampleStatusLabelPrinted())) {
+                            if (sample.getStatus().equals(ConfigurationProperties.getInstance()
+                                    .getPropertyValue("sample.status.label.printed"))) {
                                 retVal = INVALIDSTATUS;
                             }
 
@@ -138,17 +135,19 @@ public class AccessionNumberValidationProvider extends BaseValidationProvider {
                             // for human (clinical) we require demographics to be available at time of
                             // results verification
                             if (sample.getDomain() != null
-                                    && sample.getDomain().equals(SystemConfiguration.getInstance().getHumanDomain())
-                                    && !sample.getStatus().equals(
-                                            SystemConfiguration.getInstance().getSampleStatusEntry2Complete())) {
+                                    && sample.getDomain().equals(
+                                            ConfigurationProperties.getInstance().getPropertyValue("domain.human"))
+                                    && !sample.getStatus().equals(ConfigurationProperties.getInstance()
+                                            .getPropertyValue("sample.status.entry.2.complete"))) {
                                 retVal = INVALIDSTATUS;
                             }
                             // for newborn (and possibly other domains) allow verification of sample results
                             // even after quick entry
                             if (sample.getDomain() != null
-                                    && !sample.getDomain().equals(SystemConfiguration.getInstance().getHumanDomain())
-                                    && sample.getStatus()
-                                            .equals(SystemConfiguration.getInstance().getSampleStatusLabelPrinted())) {
+                                    && !sample.getDomain().equals(
+                                            ConfigurationProperties.getInstance().getPropertyValue("domain.human"))
+                                    && sample.getStatus().equals(ConfigurationProperties.getInstance()
+                                            .getPropertyValue("sample.status.label.printed"))) {
                                 retVal = INVALIDSTATUS;
                             }
                         } else {
@@ -157,18 +156,17 @@ public class AccessionNumberValidationProvider extends BaseValidationProvider {
                         // bugzilla 2028
                     } else if (form.equalsIgnoreCase("qaEventsEntryForm")) {
                         if (!StringUtil.isNullorNill(sample.getStatus())) {
-                            if (sample.getStatus()
-                                    .equals(SystemConfiguration.getInstance().getSampleStatusLabelPrinted())) {
+                            if (sample.getStatus().equals(ConfigurationProperties.getInstance()
+                                    .getPropertyValue("sample.status.label.printed"))) {
                                 retVal = INVALIDSTATUS;
                                 // bugzilla 2029
                             }
                         } else if (form.equalsIgnoreCase("batchQaEventsEntryForm")) {
                             if (!StringUtil.isNullorNill(sample.getStatus())) {
-                                if (sample.getStatus()
-                                        .equals(SystemConfiguration.getInstance().getSampleStatusLabelPrinted())) {
+                                if (sample.getStatus().equals(ConfigurationProperties.getInstance()
+                                        .getPropertyValue("sample.status.label.printed"))) {
                                     retVal = INVALIDSTATUS;
                                 }
-
                             }
                         } else {
                             retVal = INVALID;
@@ -176,8 +174,8 @@ public class AccessionNumberValidationProvider extends BaseValidationProvider {
                         // bugzilla 2529
                     } else if (form.equalsIgnoreCase("newbornSampleOneForm")) {
                         if (!StringUtil.isNullorNill(sample.getStatus())) {
-                            if (!sample.getStatus()
-                                    .equals(SystemConfiguration.getInstance().getSampleStatusQuickEntryComplete())) {
+                            if (!sample.getStatus().equals(ConfigurationProperties.getInstance()
+                                    .getPropertyValue("sample.status.quick.entry.complete"))) {
                                 retVal = INVALIDSTATUS;
                             }
                         } else {
@@ -186,8 +184,8 @@ public class AccessionNumberValidationProvider extends BaseValidationProvider {
                         // bugzilla 2530
                     } else if (form.equalsIgnoreCase("newbornSampleTwoForm")) {
                         if (!StringUtil.isNullorNill(sample.getStatus())) {
-                            if (!sample.getStatus()
-                                    .equals(SystemConfiguration.getInstance().getSampleStatusEntry1Complete())) {
+                            if (!sample.getStatus().equals(ConfigurationProperties.getInstance()
+                                    .getPropertyValue("sample.status.entry.1.complete"))) {
                                 retVal = INVALIDSTATUS;
                             }
                         } else {
@@ -196,8 +194,8 @@ public class AccessionNumberValidationProvider extends BaseValidationProvider {
                         // bugzilla 2531
                     } else if (form.equalsIgnoreCase("newbornSampleFullForm")) {
                         if (!StringUtil.isNullorNill(sample.getStatus())) {
-                            if (!sample.getStatus()
-                                    .equals(SystemConfiguration.getInstance().getSampleStatusEntry2Complete())) {
+                            if (!sample.getStatus().equals(ConfigurationProperties.getInstance()
+                                    .getPropertyValue("sample.status.entry.2.complete"))) {
                                 retVal = INVALIDSTATUS;
                             }
                         } else {
@@ -206,8 +204,8 @@ public class AccessionNumberValidationProvider extends BaseValidationProvider {
                         // bugzilla 2564
                     } else if (form.equalsIgnoreCase("testManagementNewbornForm")) {
                         if (!StringUtil.isNullorNill(sample.getStatus())) {
-                            if (!sample.getStatus()
-                                    .equals(SystemConfiguration.getInstance().getSampleStatusEntry2Complete())) {
+                            if (!sample.getStatus().equals(ConfigurationProperties.getInstance()
+                                    .getPropertyValue("sample.status.entry.2.complete"))) {
                                 retVal = INVALIDSTATUS;
                             }
                         } else {
@@ -220,7 +218,7 @@ public class AccessionNumberValidationProvider extends BaseValidationProvider {
 
             } catch (NumberFormatException e) {
                 // bugzilla 2154
-                LogEvent.logError(e.toString(), e);
+                LogEvent.logError(e);
                 retVal = INVALID;
             }
 
@@ -230,5 +228,4 @@ public class AccessionNumberValidationProvider extends BaseValidationProvider {
 
         return retVal;
     }
-
 }

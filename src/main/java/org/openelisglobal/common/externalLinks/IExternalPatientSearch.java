@@ -2,7 +2,6 @@ package org.openelisglobal.common.externalLinks;
 
 import java.util.List;
 import java.util.concurrent.Future;
-
 import org.openelisglobal.common.provider.query.ExtendedPatientSearchResults;
 
 public interface IExternalPatientSearch {

@@ -1,10 +1,9 @@
 package org.openelisglobal;
 
+import jakarta.persistence.EntityManagerFactory;
 import java.io.IOException;
-
-import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
-
+import liquibase.integration.spring.SpringLiquibase;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,8 +18,6 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
-import liquibase.integration.spring.SpringLiquibase;
-
 @Configuration
 @EnableTransactionManagement
 public class BaseTestConfig {
@@ -30,19 +27,20 @@ public class BaseTestConfig {
     static LocalContainerEntityManagerFactoryBean emf;
     static JpaTransactionManager transactionManager;
 
-    private static final String PASSWORD = "admin";
+    private static final String PASSWORD = "clinlims";
 
-    private static final String USER = "postgres";
+    private static final String USER = "clinlims";
 
     private static final String DB_NAME = "clinlims";
 
-    private static PostgreSQLContainer postgreSqlContainer = new PostgreSQLContainer("postgres:9.5");
+    @SuppressWarnings("rawtypes")
+    private static PostgreSQLContainer postgreSqlContainer = new PostgreSQLContainer("postgres:14.4");
 
     @Bean("liquibase")
     @Profile("test")
     public SpringLiquibase testLiquibase() {
         SpringLiquibase liquibase = new SpringLiquibase();
-        liquibase.setChangeLog("classpath:liquibase/base-test-changelog.xml");
+        liquibase.setChangeLog("classpath:liquibase/base-changelog.xml");
         liquibase.setDataSource(dataSource);
         return liquibase;
     }
@@ -86,7 +84,7 @@ public class BaseTestConfig {
 
     private void startPostgreSql() {
         postgreSqlContainer.withCopyFileToContainer(MountableFile.forClasspathResource("postgre-db-init"),
-                 "/docker-entrypoint-initdb.d");
+                "/docker-entrypoint-initdb.d");
         postgreSqlContainer.withEnv("POSTGRES_INITDB_ARGS", "--auth-host=md5");
         postgreSqlContainer.withDatabaseName(DB_NAME);
         postgreSqlContainer.withUsername(USER);

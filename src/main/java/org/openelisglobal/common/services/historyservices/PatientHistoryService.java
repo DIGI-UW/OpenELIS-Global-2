@@ -1,25 +1,21 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/ 
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
- * 
- * The Original Code is OpenELIS code.
- * 
- * Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.common.services.historyservices;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.openelisglobal.audittrail.action.workers.AuditTrailItem;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.history.service.HistoryService;
@@ -91,12 +87,11 @@ public class PatientHistoryService extends AbstractHistoryService {
         setAndAddIfValueNotNull(items, history, EXTERNAL_ID_ATTRIBUTE);
         setAndAddIfValueNotNull(items, history, FIRST_NAME_ATTRIBUTE);
         setAndAddIfValueNotNull(items, history, LAST_NAME_ATTRIBUTE);
-
     }
 
     @Override
     protected void getObservableChanges(History history, Map<String, String> changeMap, String changes) {
-        // LogEvent.logInfo(this.getClass().getName(), "method unkown",  changes );
+        // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown", changes );
         // this may get more complicated
 
         simpleChange(changeMap, changes, DOB_ATTRIBUTE);
@@ -104,12 +99,10 @@ public class PatientHistoryService extends AbstractHistoryService {
         simpleChange(changeMap, changes, NATIONAL_ID_ATTRIBUTE);
         simpleChange(changeMap, changes, FIRST_NAME_ATTRIBUTE);
         simpleChange(changeMap, changes, LAST_NAME_ATTRIBUTE);
-
     }
 
     @Override
     protected String getObjectName() {
         return MessageUtil.getMessage("sample.entry.patient");
     }
-
 }

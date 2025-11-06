@@ -40,9 +40,8 @@ public class TestSectionOrderFormValidator implements Validator {
                 }
             }
         } catch (ParseException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             errors.rejectValue("jsonChangeList", "error.field.format.json");
         }
     }
-
 }

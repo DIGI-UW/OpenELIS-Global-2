@@ -1,84 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-	  
-	  
-  	<property name="now" value="now()" dbms="postgresql"/>
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<changeSet author="csteele" id="1">
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.dictionary_category WHERE name = 'specimen nature'</sqlCheck> 
-		</preConditions>
-		<insert schemaName="clinlims" tableName="dictionary_category">
-			<column name="id" valueSequenceNext="dictionary_category_seq" />
-			<column name="description" value="specimen nature" />
-			<column name="name" value="specimen nature" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="local_abbrev" value="natureSamp" />
-		</insert>
-		<insert schemaName="clinlims" tableName="observation_history_type">
-			<column name="id" valueSequenceNext="observation_history_type_seq" />
-			<column name="description" value="the nature of the sample that was extracted" />
-			<column name="type_name" value="sampleNature" />
-			<column name="lastupdated" valueComputed="${now}" />
-		</insert>
-		<rollback>
-			<delete schemaName="clinlims" tableName="dictionary_category">
-				<where>name='specimen nature'</where>
-			</delete>
-			<delete schemaName="clinlims" tableName="observation_history_type">
-				<where>type_name='sampleNature'</where>
-			</delete>
-		</rollback>
-	</changeSet>
-	<changeSet author="csteele" id="2">
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.dictionary WHERE dict_entry = 'Ante mortum'</sqlCheck> 
-		</preConditions>
-		<insert schemaName="clinlims" tableName="dictionary">
-			<column name="id" valueSequenceNext="dictionary_seq" />
-			<column name="is_active" value="Y" />
-			<column name="dict_entry" value="Ante mortum" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="local_abbrev" value="AnteMorte" />
-			<column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'specimen nature')" />
-			<column name="display_key" value="dictionary.sampleNature.antemortum" />
-			<column name="sort_order" value="10" />
-		</insert>
-		<insert schemaName="clinlims" tableName="dictionary">
-			<column name="id" valueSequenceNext="dictionary_seq" />
-			<column name="is_active" value="Y" />
-			<column name="dict_entry" value="Post mortum" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="local_abbrev" value="PostMorte" />
-			<column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'specimen nature')" />
-			<column name="display_key" value="dictionary.sampleNature.postmortum" />
-			<column name="sort_order" value="20" />
-		</insert>
-		<insert schemaName="clinlims" tableName="dictionary">
-			<column name="id" valueSequenceNext="dictionary_seq" />
-			<column name="is_active" value="Y" />
-			<column name="dict_entry" value="Environmental" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="local_abbrev" value="Environmental" />
-			<column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'specimen nature')" />
-			<column name="display_key" value="dictionary.sampleNature.Environmental" />
-			<column name="sort_order" value="30" />
-		</insert>
-		<rollback>
-			<delete schemaName="clinlims" tableName="dictionary">
-				<where>dict_entry='Ante mortum'</where>
-			</delete>
-			<delete schemaName="clinlims" tableName="dictionary">
-				<where>dict_entry='Post mortum'</where>
-			</delete>
-			<delete schemaName="clinlims" tableName="dictionary">
-				<where>dict_entry='Environmental'</where>
-			</delete>
-		</rollback>
-	</changeSet>
-	
+
+      <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.dictionary_category WHERE name = 'specimen nature'</sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="dictionary_category">
+            <column name="id" valueSequenceNext="dictionary_category_seq" />
+            <column name="description" value="specimen nature" />
+            <column name="name" value="specimen nature" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="local_abbrev" value="natureSamp" />
+        </insert>
+        <insert schemaName="clinlims" tableName="observation_history_type">
+            <column name="id" valueSequenceNext="observation_history_type_seq" />
+            <column name="description" value="the nature of the sample that was extracted" />
+            <column name="type_name" value="sampleNature" />
+            <column name="lastupdated" valueComputed="${now}" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="dictionary_category">
+                <where>name='specimen nature'</where>
+            </delete>
+            <delete schemaName="clinlims" tableName="observation_history_type">
+                <where>type_name='sampleNature'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+    <changeSet author="csteele" id="2">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.dictionary WHERE dict_entry = 'Ante mortum'</sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="dictionary">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="dict_entry" value="Ante mortum" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="local_abbrev" value="AnteMorte" />
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'specimen nature')" />
+            <column name="display_key" value="dictionary.sampleNature.antemortum" />
+            <column name="sort_order" value="10" />
+        </insert>
+        <insert schemaName="clinlims" tableName="dictionary">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="dict_entry" value="Post mortum" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="local_abbrev" value="PostMorte" />
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'specimen nature')" />
+            <column name="display_key" value="dictionary.sampleNature.postmortum" />
+            <column name="sort_order" value="20" />
+        </insert>
+        <insert schemaName="clinlims" tableName="dictionary">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="dict_entry" value="Environmental" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="local_abbrev" value="Environmental" />
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM dictionary_category WHERE name = 'specimen nature')" />
+            <column name="display_key" value="dictionary.sampleNature.Environmental" />
+            <column name="sort_order" value="30" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="dictionary">
+                <where>dict_entry='Ante mortum'</where>
+            </delete>
+            <delete schemaName="clinlims" tableName="dictionary">
+                <where>dict_entry='Post mortum'</where>
+            </delete>
+            <delete schemaName="clinlims" tableName="dictionary">
+                <where>dict_entry='Environmental'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

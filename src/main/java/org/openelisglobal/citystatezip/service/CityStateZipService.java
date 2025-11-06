@@ -1,7 +1,6 @@
 package org.openelisglobal.citystatezip.service;
 
 import java.util.List;
-
 import org.openelisglobal.citystatezip.valueholder.CityStateZip;
 import org.openelisglobal.common.service.BaseObjectService;
 

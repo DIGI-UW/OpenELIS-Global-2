@@ -1,8 +1,8 @@
 package org.openelisglobal.reports.action.implementation.reportBeans;
 
+import ca.uhn.hl7v2.hoh.util.repackage.Base64.Charsets;
 import java.util.List;
 import java.util.Optional;
-
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.Task;
 import org.json.JSONArray;
@@ -13,8 +13,6 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.reports.action.implementation.Report.DateRange;
 import org.openelisglobal.result.valueholder.Result;
-
-import ca.uhn.hl7v2.hoh.util.repackage.Base64.Charsets;
 
 public class CovidResultsJSONBuilder extends CovidResultsBuilderImpl {
 
@@ -30,7 +28,6 @@ public class CovidResultsJSONBuilder extends CovidResultsBuilderImpl {
         for (Analysis analysis : analysises) {
             dataSource.put(getResultJSON(analysis));
         }
-
     }
 
     private JSONObject getResultJSON(Analysis analysis) {
@@ -52,7 +49,7 @@ public class CovidResultsJSONBuilder extends CovidResultsBuilderImpl {
             try {
                 resultJSON.append(LOCATOR_FORM_PROPERTY_NAME, new JSONObject(task.get().getDescription()));
             } catch (JSONException e) {
-                LogEvent.logError(this.getClass().getName(), "getResultJSON",
+                LogEvent.logError(this.getClass().getSimpleName(), "getResultJSON",
                         "could not make json from task description");
                 LogEvent.logError(e);
             }
@@ -64,5 +61,4 @@ public class CovidResultsJSONBuilder extends CovidResultsBuilderImpl {
     public byte[] getDataSourceAsByteArray() {
         return dataSource.toString(1).getBytes(Charsets.UTF_8);
     }
-
 }

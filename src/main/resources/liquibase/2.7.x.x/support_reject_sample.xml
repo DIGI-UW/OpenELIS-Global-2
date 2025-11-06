@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet author="moses_mutesa" id="1">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_item" schemaName="clinlims" />
+            <not>
+                <columnExists tableName="sample_item" columnName="rejected" />
+            </not>
+            <not>
+                <columnExists tableName="sample_item" columnName="reject_reason_id" />
+            </not>
+        </preConditions>
+        <comment>add rejected column to sample_item table</comment>
+        <addColumn schemaName="clinlims" tableName="sample_item">
+            <column name="rejected" type="boolean" defaultValueBoolean="false"/>
+        </addColumn>
+        <addColumn schemaName="clinlims" tableName="sample_item">
+            <column name="reject_reason_id" type="NUMERIC(10)"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="2">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="status_of_sample" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.status_of_sample WHERE name = 'Sample Rejected' and status_type = 'ANALYSIS'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.status_of_sample WHERE name = 'Sample Rejected' and status_type = 'SAMPLE'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add sample rejected Analysis status </comment>
+        <insert tableName="status_of_sample" schemaName="clinlims">
+            <column name="id" valueNumeric=" nextval( 'status_of_sample_seq' ) "/>
+            <column name="code" value="1"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="status_type" value="ANALYSIS"/>
+            <column name="name" value="Sample Rejected"/>
+            <column name="description" value="The sample has been rejected"/>
+            <column name="display_key" value="status.sample.rejected"/>
+        </insert>
+        <insert tableName="status_of_sample" schemaName="clinlims">
+            <column name="id" valueNumeric=" nextval( 'status_of_sample_seq' ) "/>
+            <column name="code" value="1"/>
+            <column name="lastupdated" valueDate='now()' />
+            <column name="status_type" value="SAMPLE"/>
+            <column name="name" value="Sample Rejected"/>
+            <column name="description" value="The sample has been rejected"/>
+            <column name="display_key" value="status.sample.rejected"/>
+        </insert>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="3">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_reports_management_rejection'</sqlCheck>
+        </preConditions>
+        <comment>Add Rejection report to the Reports Management menu</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports_management')"/>
+            <column name="presentation_order" value="3"/>
+            <column name="element_id" value="menu_reports_management_rejection"/>
+            <column name="action_url" value="/Report?type=indicator&amp;report=sampleRejectionReport"/>
+            <column name="display_key" value="openreports.mgt.rejection"/>
+            <column name="tool_tip_key" value="tooltip.openreports.stat.aggregate"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="4">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="dictionary" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM clinlims.dictionary WHERE dict_entry='Please submit another sample. Need to re-test .' AND dictionary_category_id = (SELECT dc.id FROM dictionary_category dc WHERE dc.name = 'resultRejectionReasons')</sqlCheck>
+        </preConditions>
+        <comment>Remove 'Please submit another sample. Need to re-test .' From the rejection Reasons</comment>
+        <update tableName="dictionary" schemaName="clinlims" >
+            <column name="dictionary_category_id" value="null"/>
+            <where>dict_entry='Please submit another sample. Need to re-test .'</where>
+        </update>
+    </changeSet>
+</databaseChangeLog>

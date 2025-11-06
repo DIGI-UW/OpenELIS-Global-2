@@ -3,30 +3,29 @@
                          "http://castor.org/mapping.dtd">
 
 <mapping>
-	<description>Mapping file for sending aggregate data from clinical labs</description>
+    <description>Mapping file for sending aggregate data from clinical labs</description>
 
-	<class
-		name="org.openelisglobal.dataexchange.aggregatereporting.SendingAggregateReportWrapper"
-		auto-complete="true">
-		<map-to xml="aggregate-reports" />
-		<field name="version" type="string" required="true" />
-		<field name="password" type="string">
-			<bind-xml name="drowssap" type="string" />
-		</field>
-		<field name="user" type="string" />
-	</class>
-	<class
-		name="org.openelisglobal.dataexchange.aggregatereporting.AggregateReportXmit"
-		auto-complete="true">
-		<map-to xml="report" />
-		<field name="data" type="string">
-			<bind-xml name="data" type="string">
-				<property>
-					<name>xml:space</name>
-					<value>preserve</value>
-				</property>
-			</bind-xml>
-		</field>
-	</class>
+    <class
+        name="org.openelisglobal.dataexchange.aggregatereporting.SendingAggregateReportWrapper"
+        auto-complete="true">
+        <map-to xml="aggregate-reports" />
+        <field name="version" type="string" required="true" />
+        <field name="password" type="string">
+            <bind-xml name="drowssap" type="string" />
+        </field>
+        <field name="user" type="string" />
+    </class>
+    <class
+        name="org.openelisglobal.dataexchange.aggregatereporting.AggregateReportXmit"
+        auto-complete="true">
+        <map-to xml="report" />
+        <field name="data" type="string">
+            <bind-xml name="data" type="string">
+                <property>
+                    <name>xml:space</name>
+                    <value>preserve</value>
+                </property>
+            </bind-xml>
+        </field>
+    </class>
 </mapping>
-

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Patient_VL_Version_Nationale" pageWidth="612" pageHeight="862" whenNoDataType="AllSectionsNoDetail" columnWidth="552" leftMargin="30" rightMargin="30" topMargin="20" bottomMargin="20">
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Patient_VL_Version_Nationale" pageWidth="612" pageHeight="862" whenNoDataType="AllSectionsNoDetail" columnWidth="552" leftMargin="30" rightMargin="30" topMargin="20" bottomMargin="20" uuid="646bd21b-e007-4c57-b51d-b568f02b8eed">
 	<property name="ireport.scriptlethandling" value="0"/>
 	<property name="ireport.encoding" value="UTF-8"/>
 	<property name="ireport.zoom" value="1.5"/>
 	<property name="ireport.x" value="0"/>
-	<property name="ireport.y" value="162"/>
+	<property name="ireport.y" value="1479"/>
 	<import value="net.sf.jasperreports.engine.*"/>
 	<import value="java.util.*"/>
 	<import value="net.sf.jasperreports.engine.data.*"/>
@@ -23,6 +23,8 @@
 	<parameter name="rightHeaderImage" class="java.io.InputStream" isForPrompting="false"/>
 	<parameter name="imagesPath" class="java.lang.String" isForPrompting="false"/>
 	<parameter name="vlPregnancy" class="java.lang.String"/>
+	<parameter name="vlSuckle" class="java.lang.String"/>
+	<parameter name="releasedate" class="java.lang.String"/>
 	<queryString>
 		<![CDATA[]]>
 	</queryString>
@@ -46,6 +48,9 @@
 	<field name="compleationdate" class="java.lang.String"/>
 	<field name="vih" class="java.lang.String"/>
 	<field name="vlPregnancy" class="java.lang.String"/>
+	<field name="sampleTypeName" class="java.lang.String"/>
+	<field name="vlSuckle" class="java.lang.String"/>
+	<field name="releasedate" class="java.lang.String"/>
 	<background>
 		<band splitType="Stretch"/>
 	</background>
@@ -55,7 +60,7 @@
 	<pageHeader>
 		<band height="207" splitType="Stretch">
 			<subreport>
-				<reportElement x="0" y="135" width="552" height="69"/>
+				<reportElement x="0" y="135" width="552" height="69" uuid="36ed7880-d1ab-466b-b5c1-61aad4f7b21a"/>
 				<subreportParameter name="accession_number"/>
 				<subreportParameter name="subjectNumber">
 					<subreportParameterExpression><![CDATA[$F{subjectno}==null ? $F{sitesubjectno}:$F{subjectno}]]></subreportParameterExpression>
@@ -63,11 +68,11 @@
 				<subreportParameter name="birth_date">
 					<subreportParameterExpression><![CDATA[$F{birth_date}]]></subreportParameterExpression>
 				</subreportParameter>
-				<subreportParameter name="compleationdate">
-					<subreportParameterExpression><![CDATA[$F{compleationdate}]]></subreportParameterExpression>
-				</subreportParameter>
 				<subreportParameter name="orgname">
 					<subreportParameterExpression><![CDATA[$F{servicename}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="compleationdate">
+					<subreportParameterExpression><![CDATA[$F{compleationdate}]]></subreportParameterExpression>
 				</subreportParameter>
 				<subreportParameter name="age">
 					<subreportParameterExpression><![CDATA[$F{age}]]></subreportParameterExpression>
@@ -75,8 +80,14 @@
 				<subreportParameter name="labNo">
 					<subreportParameterExpression><![CDATA[$F{accession_number}]]></subreportParameterExpression>
 				</subreportParameter>
+				<subreportParameter name="vlPregnancy">
+					<subreportParameterExpression><![CDATA[$F{vlPregnancy}]]></subreportParameterExpression>
+				</subreportParameter>
 				<subreportParameter name="gender">
 					<subreportParameterExpression><![CDATA[$F{gender}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="releasedate">
+					<subreportParameterExpression><![CDATA[$F{releasedate}]]></subreportParameterExpression>
 				</subreportParameter>
 				<subreportParameter name="collectiondate">
 					<subreportParameterExpression><![CDATA[$F{collectiondate}]]></subreportParameterExpression>
@@ -84,20 +95,23 @@
 				<subreportParameter name="receptiondate">
 					<subreportParameterExpression><![CDATA[$F{receptiondate}]]></subreportParameterExpression>
 				</subreportParameter>
+				<subreportParameter name="vlSuckle">
+					<subreportParameterExpression><![CDATA[$F{vlSuckle}]]></subreportParameterExpression>
+				</subreportParameter>
 				<subreportParameter name="doctor">
 					<subreportParameterExpression><![CDATA[$F{doctor}]]></subreportParameterExpression>
 				</subreportParameter>
 				<dataSourceExpression><![CDATA[new net.sf.jasperreports.engine.JREmptyDataSource()]]></dataSourceExpression>
-				<subreportExpression class="java.lang.String"><![CDATA[$P{SUBREPORT_DIR} + "Patient_ARV_Followup_patient_info.jasper"]]></subreportExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "Patient_ARV_Followup_patient_info.jasper"]]></subreportExpression>
 			</subreport>
 			<line>
-				<reportElement x="0" y="134" width="552" height="1"/>
+				<reportElement x="0" y="134" width="552" height="1" uuid="a5866634-e37d-4b10-9b77-6a409663d27f"/>
 				<graphicElement>
 					<pen lineStyle="Dashed"/>
 				</graphicElement>
 			</line>
 			<subreport>
-				<reportElement x="0" y="0" width="552" height="134"/>
+				<reportElement x="0" y="0" width="552" height="134" uuid="5a2b9b45-c827-4fff-856e-b0ad9c5f34e5"/>
 				<subreportParameter name="leftHeaderImage">
 					<subreportParameterExpression><![CDATA[$P{leftHeaderImage}]]></subreportParameterExpression>
 				</subreportParameter>
@@ -124,10 +138,10 @@
 					<subreportParameterExpression><![CDATA[$P{imagesPath}]]></subreportParameterExpression>
 				</subreportParameter>
 				<dataSourceExpression><![CDATA[new net.sf.jasperreports.engine.JREmptyDataSource()]]></dataSourceExpression>
-				<subreportExpression class="java.lang.String"><![CDATA[$P{SUBREPORT_DIR} + "RetroCIHeader.jasper"]]></subreportExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "RetroCIHeader.jasper"]]></subreportExpression>
 			</subreport>
 			<line>
-				<reportElement x="0" y="205" width="552" height="1"/>
+				<reportElement x="0" y="205" width="552" height="1" uuid="e58a4cf9-0a7b-42ec-9384-5cf70654baf7"/>
 			</line>
 		</band>
 	</pageHeader>
@@ -137,237 +151,232 @@
 	<detail>
 		<band height="423" splitType="Stretch">
 			<rectangle>
-				<reportElement x="156" y="223" width="196" height="20"/>
+				<reportElement x="156" y="223" width="196" height="20" uuid="44b6f367-5c9c-4335-9d00-c6748ecd90dc"/>
 			</rectangle>
 			<rectangle>
-				<reportElement x="352" y="223" width="155" height="20"/>
+				<reportElement x="352" y="223" width="155" height="20" uuid="33cd7cc7-d598-4ed9-a024-ff097ea42028"/>
 			</rectangle>
 			<textField isBlankWhenNull="false">
-				<reportElement key="textField-20" x="129" y="113" width="351" height="15" isRemoveLineWhenBlank="true" isPrintInFirstWholeBand="true"/>
+				<reportElement key="textField-20" x="129" y="113" width="351" height="15" isRemoveLineWhenBlank="true" isPrintInFirstWholeBand="true" uuid="fe43c859-66e1-4d45-9153-fb2349a0c5e0"/>
 				<textElement>
 					<font size="9"/>
 				</textElement>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{virologyVlQaEvent} == null ? "Normal" :  $F{virologyVlQaEvent}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{virologyVlQaEvent} == null ? "Normal" :  $F{virologyVlQaEvent}]]></textFieldExpression>
 			</textField>
 			<image onErrorType="Blank">
-				<reportElement x="297" y="316" width="210" height="84" isPrintInFirstWholeBand="true"/>
-				<imageExpression class="java.lang.String"><![CDATA[$P{imagesPath}+ "VLSign.jpg"]]></imageExpression>
+				<reportElement x="297" y="316" width="210" height="84" isPrintInFirstWholeBand="true" uuid="a2de8557-9bee-48f0-9b96-02b20d7b5860"/>
+				<imageExpression><![CDATA[$P{imagesPath}+ "VLSign.jpg"]]></imageExpression>
 			</image>
 			<image onErrorType="Blank">
-				<reportElement x="6" y="-1" width="229" height="62"/>
-				<imageExpression class="java.lang.String"><![CDATA[$P{imagesPath}+ "ciphiaLogo.jpg"]]></imageExpression>
+				<reportElement x="6" y="-1" width="229" height="62" uuid="e5fd560c-715f-4de8-9c8e-495790269e9b"/>
+				<imageExpression><![CDATA[$P{imagesPath}+ "ciphiaLogo.jpg"]]></imageExpression>
 			</image>
 			<staticText>
-				<reportElement x="7" y="81" width="122" height="15"/>
+				<reportElement x="7" y="81" width="122" height="15" uuid="4594f09b-5c40-4d28-9562-f6b03e923c4f"/>
 				<textElement>
 					<font isUnderline="true"/>
 				</textElement>
 				<text><![CDATA[Type d’Examen : ]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="7" y="97" width="122" height="15"/>
+				<reportElement x="7" y="97" width="122" height="15" uuid="09ae0bf0-6402-4b76-89b3-45200487cac8"/>
 				<textElement>
 					<font isUnderline="true"/>
 				</textElement>
 				<text><![CDATA[Type de prélèvement :]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="15" y="315" width="282" height="106"/>
-				<textElement/>
+				<reportElement x="15" y="315" width="282" height="106" uuid="1a06e366-3dab-42ce-9502-c7875bbac539"/>
 				<text><![CDATA[1-Si le titre HIV-1<=1000 copies/mL, suppression virale selon les directives nationales de suivi biologique des patients sous traitement antiretroviral
 
 2-Si le titre HIV-1>1000 copies/mL, le virus est détectable au niveau du sang périphérique et le patient est dit en échec virologique. Refaire un autre prélèvement trois mois après le conseil à l’observance, pour un autre examen de charge virale pour confirmer et infirmer l’échec virologique
 ]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="7" y="113" width="122" height="15"/>
+				<reportElement x="7" y="113" width="122" height="15" uuid="25e471b1-c16e-40b5-b6fe-6e627175807d"/>
 				<textElement>
 					<font isUnderline="true"/>
 				</textElement>
 				<text><![CDATA[Etat de l’échantillon :]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="7" y="129" width="122" height="15"/>
+				<reportElement x="7" y="129" width="122" height="15" uuid="892e2115-40e2-4b53-b62a-b754dfd02f29"/>
 				<textElement>
 					<font isUnderline="true"/>
 				</textElement>
-				<text><![CDATA[Analyseur :]]></text>
+				<text><![CDATA[Automate :]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="7" y="148" width="122" height="15"/>
+				<reportElement x="7" y="148" width="122" height="15" uuid="3efc2192-3d47-44c2-9aac-337c5556e5cd"/>
 				<textElement>
 					<font isUnderline="true"/>
 				</textElement>
 				<text><![CDATA[Trousse commerciale:]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="129" y="148" width="423" height="15"/>
+				<reportElement x="129" y="148" width="423" height="15" isPrintWhenDetailOverflows="true" uuid="fa89e5e3-9cae-4db8-878d-26a28dbe6227"/>
 				<textElement>
 					<font size="9" isItalic="false" isStrikeThrough="false"/>
 				</textElement>
-				<text><![CDATA[COBAS Taqman / Ampliprep  HIV-1 tests,V2.0 Quantitative  (HI2CAP) / ]]></text>
+				<text><![CDATA[COBAS Taqman/Ampliprep  HIV-1 tests,V2.0 Quantitative  (HI2CAP) / C4800 HIV-1 AMP/DET]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="129" y="129" width="339" height="15"/>
+				<reportElement x="129" y="129" width="421" height="15" isPrintWhenDetailOverflows="true" uuid="61815090-2efd-486d-9466-162c3cc85012"/>
 				<textElement>
 					<font size="9"/>
 				</textElement>
-				<text><![CDATA[Cobas Ampliprep / Cobas Taqman Series / Cobas 6800 Roche Diagnostic]]></text>
+				<text><![CDATA[COBAS Ampliprep / Cobas Taqman Series / Cobas 6800 Roche Diagnostic / Cobas 4800]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="129" y="97" width="284" height="15"/>
-				<textElement>
-					<font size="9"/>
-				</textElement>
-				<text><![CDATA[Sang total (plasma/EDTA) ; (Papier Buvard WHATMAN 903)]]></text>
-			</staticText>
-			<staticText>
-				<reportElement x="129" y="81" width="423" height="15"/>
+				<reportElement x="129" y="81" width="423" height="15" uuid="ad016800-a5f2-41c8-b2ba-fc245757db3f"/>
 				<textElement>
 					<font size="9"/>
 				</textElement>
 				<text><![CDATA[Recherche de l’ARN du virus HIV-1 par amplification génétique (PCR) et par quantification ]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="5" y="223" width="157" height="20"/>
+				<reportElement x="5" y="223" width="157" height="20" uuid="fe618937-837c-4ff8-84d0-8e47f56b971a"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="377" y="225" width="110" height="17"/>
+				<reportElement x="377" y="225" width="110" height="17" uuid="e5d08d15-7ebc-45af-be50-cfd31093b169"/>
 				<textElement>
 					<font size="12"/>
 				</textElement>
 				<text><![CDATA[Résultats Log /mL]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="167" y="225" width="179" height="17"/>
+				<reportElement x="167" y="225" width="179" height="17" uuid="9c7827b5-18cd-42c6-9068-200254d12bc9"/>
 				<textElement>
 					<font size="12"/>
 				</textElement>
 				<text><![CDATA[Résultats nombre de copies /mL]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="352" y="243" width="155" height="20"/>
+				<reportElement x="352" y="243" width="155" height="20" uuid="c7209a13-128c-4e7e-9025-5dfaf5ffcb63"/>
 			</rectangle>
 			<rectangle>
-				<reportElement x="162" y="243" width="190" height="20"/>
+				<reportElement x="162" y="243" width="190" height="20" uuid="645320b8-555d-4805-9816-588002701073"/>
 			</rectangle>
 			<textField>
-				<reportElement x="377" y="244" width="110" height="18"/>
+				<reportElement x="377" y="244" width="110" height="18" uuid="3760faa7-5c1e-4204-9ac1-00949c7fddec"/>
 				<textElement verticalAlignment="Top">
 					<font size="12"/>
 				</textElement>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{ampli2lo}==null ? "X" : $F{ampli2lo}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{ampli2lo}==null ? "X" : $F{ampli2lo}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement x="19" y="225" width="100" height="18"/>
+				<reportElement x="19" y="225" width="100" height="18" uuid="564dda6b-2bd5-4dc6-9675-a667059b80c1"/>
 				<textElement>
 					<font size="12"/>
 				</textElement>
 				<text><![CDATA[Virologie]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="5" y="243" width="157" height="20"/>
+				<reportElement x="5" y="243" width="157" height="20" uuid="41789650-078a-425d-aedd-e9b6a7f1cd4f"/>
 			</rectangle>
-			<staticText>
-				<reportElement x="19" y="245" width="100" height="18"/>
-				<textElement>
-					<font size="12"/>
-				</textElement>
-				<text><![CDATA[HIV-1]]></text>
-			</staticText>
 			<textField>
-				<reportElement x="167" y="244" width="179" height="18"/>
+				<reportElement x="167" y="244" width="179" height="18" uuid="7158ffb6-ee79-4ef9-94f8-0a8cbf293a46"/>
 				<textElement textAlignment="Center" verticalAlignment="Top">
 					<font size="12"/>
 				</textElement>
-				<textFieldExpression class="java.lang.String"><![CDATA[$F{ampli2}==null ? "X" : $F{ampli2}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{ampli2}==null ? "X" : $F{ampli2}]]></textFieldExpression>
 			</textField>
 			<image onErrorType="Blank">
-				<reportElement x="247" y="0" width="260" height="24"/>
-				<imageExpression class="java.lang.String"><![CDATA[$P{imagesPath}+ "VL_LaboRef.jpg"]]></imageExpression>
+				<reportElement x="247" y="0" width="260" height="24" uuid="f86bf41d-3c3b-4588-856b-bdbffafb5bdd"/>
+				<imageExpression><![CDATA[$P{imagesPath}+ "VL_LaboRef.jpg"]]></imageExpression>
 			</image>
 			<image>
-				<reportElement x="5" y="56" width="271" height="20"/>
-				<imageExpression class="java.lang.String"><![CDATA[$P{imagesPath}+ "EXAMEN_VL.jpg"]]></imageExpression>
+				<reportElement x="5" y="56" width="271" height="20" uuid="73b2a83d-3f87-4bb9-846e-47a3d98af781"/>
+				<imageExpression><![CDATA[$P{imagesPath}+ "EXAMEN_VL.jpg"]]></imageExpression>
 			</image>
 			<image>
-				<reportElement x="5" y="201" width="114" height="20"/>
-				<imageExpression class="java.lang.String"><![CDATA[$P{imagesPath}+ "RESULTATS.jpg"]]></imageExpression>
+				<reportElement x="5" y="201" width="114" height="20" uuid="2f6dacdd-1c7d-47d4-8605-338ac14f1622"/>
+				<imageExpression><![CDATA[$P{imagesPath}+ "RESULTATS.jpg"]]></imageExpression>
 			</image>
 			<image>
-				<reportElement x="5" y="293" width="189" height="20"/>
-				<imageExpression class="java.lang.String"><![CDATA[$P{imagesPath}+ "INTERPRETATIONS.jpg"]]></imageExpression>
+				<reportElement x="5" y="293" width="189" height="20" uuid="379b1764-0572-4467-9cf4-8aed32cc3446"/>
+				<imageExpression><![CDATA[$P{imagesPath}+ "INTERPRETATIONS.jpg"]]></imageExpression>
 			</image>
 			<staticText>
-				<reportElement x="129" y="163" width="423" height="13"/>
+				<reportElement x="129" y="163" width="423" height="13" isPrintWhenDetailOverflows="true" uuid="7c54781d-65ef-442e-bbdb-75a092189adf"/>
 				<textElement>
 					<font size="9" isItalic="false" isStrikeThrough="false"/>
 				</textElement>
 				<text><![CDATA[COBAS 6800/8800 HIV-1 P/N]]></text>
 			</staticText>
+			<textField>
+				<reportElement x="18" y="245" width="100" height="18" uuid="b721c16a-eaef-4657-bf8f-7cc8bd360113"/>
+				<textElement>
+					<font size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{vih}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="130" y="96" width="354" height="15" uuid="b14c2c29-949b-4f15-84be-c7c6b1b78b00"/>
+				<textFieldExpression><![CDATA[$F{sampleTypeName}]]></textFieldExpression>
+			</textField>
 		</band>
 		<band height="472">
 			<printWhenExpression><![CDATA[$F{virologyVlQaEvent}!=null]]></printWhenExpression>
 			<staticText>
-				<reportElement x="0" y="80" width="552" height="20"/>
+				<reportElement x="0" y="80" width="552" height="20" uuid="26550431-fcdf-465e-af13-6cfee8071cc4"/>
 				<textElement textAlignment="Center">
 					<font size="14" isBold="true"/>
 				</textElement>
 				<text><![CDATA[RAPPORT DE NON-CONFORMITE CLIENT]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="106" width="170" height="40"/>
+				<reportElement x="1" y="106" width="170" height="40" uuid="2a012b58-6fac-429a-bbf4-497608eaed26"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="11" y="112" width="157" height="34"/>
+				<reportElement x="11" y="112" width="157" height="34" uuid="34ed2871-892f-404d-baa8-d69b3305819b"/>
 				<textElement textAlignment="Center">
 					<font size="12" isBold="true"/>
 				</textElement>
 				<text><![CDATA[MOTIF DU REFUS]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="171" y="106" width="381" height="20"/>
+				<reportElement x="171" y="106" width="381" height="20" uuid="2cc890d5-551c-4c4a-ab1d-18b33a3494ce"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="179" y="105" width="118" height="20"/>
+				<reportElement x="179" y="105" width="118" height="20" uuid="c1dffa7f-73a8-434b-86b0-f34ccbcf074f"/>
 				<textElement>
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Echantillon en tube : ]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="302" y="105" width="241" height="20"/>
-				<textElement/>
+				<reportElement x="302" y="105" width="241" height="20" uuid="963c8414-f450-4e20-b6e4-342c0bc68e66"/>
 				<text><![CDATA[Type de tube/Type d’échantillon]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="171" y="126" width="188" height="20"/>
+				<reportElement x="171" y="126" width="188" height="20" uuid="70ad1b89-c66e-47f7-a901-54ace3a01bdb"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="171" y="127" width="186" height="19"/>
+				<reportElement x="171" y="127" width="186" height="19" uuid="4d617341-7df8-44ee-93a7-412378918953"/>
 				<textElement textAlignment="Center"/>
 				<text><![CDATA[Tube EDTA/Sang total/Plasma]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="359" y="126" width="193" height="20"/>
+				<reportElement x="359" y="126" width="193" height="20" uuid="721e11c7-7268-42f5-be27-0c8ad5f4466f"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="359" y="127" width="191" height="20"/>
+				<reportElement x="359" y="127" width="191" height="20" uuid="220dad3c-b403-4cb8-9de7-ca65edefbb9c"/>
 				<textElement textAlignment="Center"/>
 				<text><![CDATA[Tube Sec/ Sérum ]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="146" width="551" height="13"/>
+				<reportElement x="1" y="146" width="551" height="13" uuid="26eb1345-523e-4ad6-a1e8-9a363407ce1e"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="146" width="165" height="13"/>
+				<reportElement x="5" y="146" width="165" height="13" uuid="b20c0a85-8b10-40cd-a00b-9c01bad8411d"/>
 				<textElement>
 					<font fontName="Arial"/>
 				</textElement>
 				<text><![CDATA[Echantillon Coagulé]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="173" y="146" width="183" height="13">
+				<reportElement x="173" y="146" width="183" height="13" uuid="ec76e216-eac0-446e-8c32-9d08262d6b0a">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.edtaTube:qa_event.coagulated"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Sang:qa_event.coagulated"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Plasma:qa_event.coagulated"))]]></printWhenExpression>
@@ -378,7 +387,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="361" y="146" width="183" height="13">
+				<reportElement x="361" y="146" width="183" height="13" uuid="cdd04f1d-30df-4fcf-b503-c989a49ba67e">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.dryTube:qa_event.coagulated"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Serum:qa_event.coagulated"))]]></printWhenExpression>
 				</reportElement>
@@ -388,15 +397,14 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="159" width="551" height="13"/>
+				<reportElement x="1" y="159" width="551" height="13" uuid="34bd8972-0f70-4e48-85bb-8fdbf550bb11"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="159" width="165" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="159" width="165" height="13" uuid="53d1c863-cc7e-46f9-a0f1-71d6a6fbc9fa"/>
 				<text><![CDATA[Echantillon Insuffisant]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="173" y="159" width="183" height="13">
+				<reportElement x="173" y="159" width="183" height="13" uuid="a59052f3-5fc8-40ba-b149-43fa2d5b43dc">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.edtaTube:qa_event.insufficient"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Sang:qa_event.insufficient"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Plasma:qa_event.insufficient"))]]></printWhenExpression>
@@ -407,7 +415,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement mode="Transparent" x="361" y="159" width="183" height="13">
+				<reportElement mode="Transparent" x="361" y="159" width="183" height="13" uuid="9444f686-70a9-43d4-a4d7-371ef12e4018">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.dryTube:qa_event.insufficient"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Serum:qa_event.insufficient"))]]></printWhenExpression>
 				</reportElement>
@@ -417,15 +425,14 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="172" width="551" height="13"/>
+				<reportElement x="1" y="172" width="551" height="13" uuid="dbec1fab-c4ca-4e1f-88a7-a292a789aaba"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="172" width="165" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="172" width="165" height="13" uuid="25ae7a24-481e-4ca8-97c8-6ebbb94e5d14"/>
 				<text><![CDATA[Echantillon Hémolysé]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="173" y="172" width="183" height="13">
+				<reportElement x="173" y="172" width="183" height="13" uuid="9792c9c3-1f94-40ce-9f90-b89a908f3106">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.edtaTube:qa_event.hemolytic"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Sang:qa_event.hemolytic"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Plasma:qa_event.hemolytic"))]]></printWhenExpression>
@@ -436,7 +443,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="361" y="172" width="183" height="13">
+				<reportElement x="361" y="172" width="183" height="13" uuid="4551ba74-a6c9-4f11-aff7-f74b4634503e">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.dryTube:qa_event.hemolytic"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Serum:qa_event.hemolytic"))]]></printWhenExpression>
 				</reportElement>
@@ -446,15 +453,14 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="185" width="551" height="13"/>
+				<reportElement x="1" y="185" width="551" height="13" uuid="795aa6b9-1379-46ff-8fd8-f3493b5e33e4"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="185" width="164" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="185" width="164" height="13" uuid="e0c7cec9-ece5-43a0-a4e5-7949e519b7ec"/>
 				<text><![CDATA[Echantillon lactescent]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="173" y="185" width="183" height="13">
+				<reportElement x="173" y="185" width="183" height="13" uuid="712d96d5-0c83-4bf9-9f62-c9159587126f">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.edtaTube:qa_event.Sample_LA"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Sang:qa_event.Sample_LA"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Plasma:qa_event.Sample_LA"))]]></printWhenExpression>
@@ -465,7 +471,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="361" y="185" width="183" height="13">
+				<reportElement x="361" y="185" width="183" height="13" uuid="1cb5e066-0a6a-47cc-87a0-7f0336a56010">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.dryTube:qa_event.Sample_LA"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Serum:qa_event.Sample_LA"))]]></printWhenExpression>
 				</reportElement>
@@ -475,15 +481,14 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="198" width="551" height="13"/>
+				<reportElement x="1" y="198" width="551" height="13" uuid="9b49f2c9-3459-4483-8b20-dec08dce15db"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="198" width="164" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="198" width="164" height="13" uuid="1cbda379-46a0-4354-86bb-3988e80bdfdf"/>
 				<text><![CDATA[Echantillon opalescent]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="173" y="198" width="183" height="13">
+				<reportElement x="173" y="198" width="183" height="13" uuid="6696152e-85e7-4e56-ae03-87dd62f29628">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.edtaTube:qa_event.Sample_OP"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Sang:qa_event.Sample_OP"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Plasma:qa_event.Sample_OP"))]]></printWhenExpression>
@@ -494,7 +499,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="361" y="198" width="183" height="13">
+				<reportElement x="361" y="198" width="183" height="13" uuid="aff54b23-df4c-45b6-91df-429962f518ee">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.dryTube:qa_event.Sample_OP"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Serum:qa_event.Sample_OP"))]]></printWhenExpression>
 				</reportElement>
@@ -504,15 +509,14 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="211" width="551" height="13"/>
+				<reportElement x="1" y="211" width="551" height="13" uuid="8757b13f-8872-493d-a579-17e69725e09e"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="211" width="164" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="211" width="164" height="13" uuid="1a0c8adf-81e6-4f8c-96ed-6855490c60cc"/>
 				<text><![CDATA[Echantillon mal ou non étiqueté]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="173" y="211" width="183" height="13">
+				<reportElement x="173" y="211" width="183" height="13" uuid="c2357798-427b-4d82-9096-cec7b4321bf2">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.edtaTube:qa_event.mislabled"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Sang:qa_event.mislabled"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Plasma:qa_event.mislabled"))]]></printWhenExpression>
@@ -523,7 +527,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="361" y="211" width="183" height="13">
+				<reportElement x="361" y="211" width="183" height="13" uuid="a53e86a0-8bfa-491b-a982-050a1e1309e7">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.dryTube:qa_event.mislabled"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Serum:qa_event.mislabled"))]]></printWhenExpression>
 				</reportElement>
@@ -533,15 +537,14 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="224" width="551" height="13"/>
+				<reportElement x="1" y="224" width="551" height="13" uuid="ce3a7268-a730-4714-a52c-630634e7eafa"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="224" width="166" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="224" width="166" height="13" uuid="51334d98-3a4c-452c-938b-9455946d36ba"/>
 				<text><![CDATA[Elution du disque DBS impossible]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="173" y="224" width="183" height="13">
+				<reportElement x="173" y="224" width="183" height="13" uuid="d13d018b-c425-47e8-899d-ec2932623a33">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.edtaTube:qa_event.DBS_DI"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Sang:qa_event.DBS_DI"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Plasma:qa_event.DBS_DI"))]]></printWhenExpression>
@@ -552,7 +555,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="361" y="224" width="183" height="13">
+				<reportElement x="361" y="224" width="183" height="13" uuid="b196cf24-7288-48c5-99ec-c044355a8246">
 					<printWhenExpression><![CDATA[($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.dryTube:qa_event.DBS_DI"))||
 ($F{allQaEvents}!=null && $F{allQaEvents}.contains("sample.type.Serum:qa_event.DBS_DI"))]]></printWhenExpression>
 				</reportElement>
@@ -562,235 +565,216 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<line>
-				<reportElement x="171" y="147" width="1" height="90"/>
+				<reportElement x="171" y="147" width="1" height="90" uuid="a6604df1-4d1e-4058-824d-027af2cbfc83"/>
 			</line>
 			<line>
-				<reportElement x="359" y="147" width="1" height="90"/>
+				<reportElement x="359" y="147" width="1" height="90" uuid="a1ced2af-661b-4c9d-80d9-8f564f4b356b"/>
 			</line>
 			<rectangle>
-				<reportElement x="1" y="237" width="551" height="32"/>
+				<reportElement x="1" y="237" width="551" height="32" uuid="e035fed8-f00b-41c8-a180-c65290a245b2"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="240" width="296" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="240" width="296" height="13" uuid="a95379e3-2aa5-42dd-99b2-a4132187fd14"/>
 				<text><![CDATA[Fiche de prélèvement mal renseignée              ]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="5" y="254" width="439" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="254" width="439" height="13" uuid="9c779842-5f4e-45e1-bd84-20bedfe2088f"/>
 				<text><![CDATA[Discordance d’information entre Fiche de prélèvement et Fiche démographique]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="472" y="239" width="35" height="13"/>
+				<reportElement x="472" y="239" width="35" height="13" uuid="11ae0ec8-9e76-48d4-9b26-16795e231d61"/>
 			</rectangle>
 			<rectangle>
-				<reportElement x="472" y="254" width="35" height="13"/>
+				<reportElement x="472" y="254" width="35" height="13" uuid="de9439fb-31ca-47dd-a065-591433f1c5fa"/>
 			</rectangle>
 			<rectangle>
-				<reportElement x="1" y="269" width="551" height="32"/>
+				<reportElement x="1" y="269" width="551" height="32" uuid="fe0a2e85-9482-4835-87fe-8238c87551a4"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="272" width="150" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="272" width="150" height="13" uuid="574f9f0d-1839-4745-9b88-d01b09c85555"/>
 				<text><![CDATA[Fiche sans Echantillon]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="155" y="271" width="35" height="13"/>
+				<reportElement x="155" y="271" width="35" height="13" uuid="75120c71-8705-42d9-88dc-8aa3b5de2dc6"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="286" width="149" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="286" width="149" height="13" uuid="418ee7d0-0a82-45ab-8726-47278cf3018e"/>
 				<text><![CDATA[Echantillon sans fiche ]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="155" y="286" width="35" height="13"/>
+				<reportElement x="155" y="286" width="35" height="13" uuid="ffaf0e0c-b278-47f2-826d-675538e88f48"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="235" y="272" width="235" height="13"/>
-				<textElement/>
+				<reportElement x="235" y="272" width="235" height="13" uuid="3a00587e-63ee-448b-836a-a9a4a016abe9"/>
 				<text><![CDATA[Absence de l’identité du préleveur]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="472" y="271" width="35" height="13"/>
+				<reportElement x="472" y="271" width="35" height="13" uuid="318e07f4-752b-432b-b708-577685ea53ec"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="235" y="286" width="234" height="13"/>
-				<textElement/>
+				<reportElement x="235" y="286" width="234" height="13" uuid="11415887-d37d-4b76-8f5e-e1f360da3863"/>
 				<text><![CDATA[Absence de l’heure du prélèvement]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="472" y="286" width="35" height="13"/>
+				<reportElement x="472" y="286" width="35" height="13" uuid="f2f10863-edf7-4486-97ac-49e7fbae788f"/>
 			</rectangle>
 			<rectangle>
-				<reportElement x="1" y="301" width="551" height="32"/>
+				<reportElement x="1" y="301" width="551" height="32" uuid="8061631d-1fcb-40eb-88d5-6186b64e1c2f"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="304" width="150" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="304" width="150" height="13" uuid="e28036c6-dd89-4d29-b2d3-abbaceb23725"/>
 				<text><![CDATA[Tube maculé de sang]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="155" y="303" width="35" height="13"/>
+				<reportElement x="155" y="303" width="35" height="13" uuid="8561974e-0a60-4485-8e63-d0510adae8bb"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="318" width="149" height="13"/>
-				<textElement/>
+				<reportElement x="5" y="318" width="149" height="13" uuid="a3ce97d6-fc80-4d01-ade6-a39d1e35fad8"/>
 				<text><![CDATA[Fiche entachée de sang]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="155" y="318" width="35" height="13"/>
+				<reportElement x="155" y="318" width="35" height="13" uuid="c67b8937-956d-4ea5-bfa9-d699c32224a0"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="235" y="304" width="235" height="13"/>
-				<textElement/>
+				<reportElement x="235" y="304" width="235" height="13" uuid="095aae07-26ef-4853-bacf-61f15d7f4ada"/>
 				<text><![CDATA[Echantillon pour charge virale de plus de 6h]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="472" y="303" width="35" height="13"/>
+				<reportElement x="472" y="303" width="35" height="13" uuid="3efb1718-501a-43c3-9a91-60189edcac2b"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="235" y="318" width="234" height="13"/>
-				<textElement/>
+				<reportElement x="235" y="318" width="234" height="13" uuid="7b46fca1-6315-43cb-a0fb-f180f5c2b5cc"/>
 				<text><![CDATA[Erreur de tube de prélèvement]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="472" y="318" width="35" height="13"/>
+				<reportElement x="472" y="318" width="35" height="13" uuid="86d1f354-aaf9-4f6a-b4b4-eed16fcf2914"/>
 			</rectangle>
 			<rectangle>
-				<reportElement x="1" y="333" width="551" height="22"/>
+				<reportElement x="1" y="333" width="551" height="22" uuid="b10da94f-dcba-4763-ba46-26b7a8d08b1d"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="339" width="150" height="16"/>
+				<reportElement x="5" y="339" width="150" height="16" uuid="af78cabd-3561-456a-a588-3aaa00501074"/>
 				<textElement>
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[DBS]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="155" y="338" width="35" height="13"/>
+				<reportElement x="155" y="338" width="35" height="13" uuid="a1b89f89-2252-4f3d-bf00-8e7f93a9e906"/>
 			</rectangle>
 			<rectangle>
-				<reportElement x="1" y="355" width="551" height="38"/>
+				<reportElement x="1" y="355" width="551" height="38" uuid="6b4cc158-a4b1-482f-8973-870425563138"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="361" width="150" height="16"/>
+				<reportElement x="5" y="361" width="150" height="16" uuid="76a97a68-177c-445c-97a2-7c3f29f2379c"/>
 				<textElement>
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[AUTRES MOTIFS]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="155" y="361" width="35" height="13"/>
+				<reportElement x="155" y="361" width="35" height="13" uuid="aa2869e1-4c3e-426b-809b-c9ed93f616ce"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="7" y="379" width="543" height="13"/>
-				<textElement/>
+				<reportElement x="7" y="379" width="543" height="13" uuid="4c525974-5baf-422f-8d13-f1e6923a694d"/>
 				<text><![CDATA[A décrire :…………………………………………………………………….................................................................………….]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="1" y="435" width="551" height="34"/>
+				<reportElement x="1" y="435" width="551" height="34" uuid="31a2152e-38e0-4c05-bc38-8bc85ddf21c8"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="5" y="435" width="85" height="16"/>
+				<reportElement x="5" y="435" width="85" height="16" uuid="e0e652b6-50c6-4fb5-9515-0fdafd5c1835"/>
 				<textElement>
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[CONCLUSION :]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="5" y="450" width="195" height="16"/>
+				<reportElement x="5" y="450" width="195" height="16" uuid="860ac303-42bd-459c-80b6-deea9ba2c9e9"/>
 				<textElement>
 					<font size="11" isBold="true" isItalic="true"/>
 				</textElement>
 				<text><![CDATA[Prière refaire le prélèvement sur :                      ]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="89" y="435" width="361" height="16"/>
+				<reportElement x="89" y="435" width="361" height="16" uuid="fa4bce6e-d407-47d9-9467-d81fec9001af"/>
 				<textElement>
 					<font size="11"/>
 				</textElement>
 				<text><![CDATA[L’échantillon ne peut être traité ou analysé ce jour. ]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="198" y="451" width="352" height="16"/>
+				<reportElement x="198" y="451" width="352" height="16" uuid="902a9929-fbb1-47a9-baad-3d91fe3e427a"/>
 				<textElement>
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Tube EDTA                Tube sec          Carte DBS Whatman 903]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="15" y="396" width="57" height="16"/>
+				<reportElement x="15" y="396" width="57" height="16" uuid="05633e9d-6d0e-45c5-affe-40e9b7861b1e"/>
 				<textElement>
 					<font size="11" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Section:]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="77" y="396" width="36" height="16"/>
-				<textElement/>
+				<reportElement x="77" y="396" width="36" height="16" uuid="0b1b3630-5fd1-4f4d-8ad6-9f61d71a6fdf"/>
 				<text><![CDATA[Saisie]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="115" y="397" width="14" height="14"/>
+				<reportElement x="115" y="397" width="14" height="14" uuid="a651c007-3cea-4817-a8b1-980a791b1644"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="147" y="396" width="62" height="16"/>
-				<textElement/>
+				<reportElement x="147" y="396" width="62" height="16" uuid="78a49747-0579-4e9d-b6ef-eb75fb38807a"/>
 				<text><![CDATA[Réception]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="203" y="397" width="14" height="14"/>
+				<reportElement x="203" y="397" width="14" height="14" uuid="e9a1acd7-de98-4ec7-b1fc-da0aff1cbac9"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="238" y="396" width="56" height="16"/>
-				<textElement/>
+				<reportElement x="238" y="396" width="56" height="16" uuid="b5075746-f766-42f6-a626-ea6dab1254d2"/>
 				<text><![CDATA[Biochimie]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="292" y="397" width="14" height="14"/>
+				<reportElement x="292" y="397" width="14" height="14" uuid="d5fc8fd1-f6aa-4b2a-a0d7-2ee49e40dfec"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="321" y="396" width="100" height="16"/>
-				<textElement/>
+				<reportElement x="321" y="396" width="100" height="16" uuid="14b23751-35b6-46b6-be1b-88c02936204f"/>
 				<text><![CDATA[Immunologie(CD4) ]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="426" y="397" width="14" height="14"/>
+				<reportElement x="426" y="397" width="14" height="14" uuid="bec7ab7a-0e71-4ac9-95a3-4cc086355777"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="456" y="397" width="66" height="16"/>
-				<textElement/>
+				<reportElement x="456" y="397" width="66" height="16" uuid="325010b6-e5c0-4e32-a682-8d891103fb48"/>
 				<text><![CDATA[Charge virale]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="527" y="397" width="14" height="14"/>
+				<reportElement x="527" y="397" width="14" height="14" uuid="fe159ec0-d81e-4dd0-ae3b-b24f0d4ef609"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="78" y="416" width="123" height="16"/>
-				<textElement/>
+				<reportElement x="78" y="416" width="123" height="16" uuid="501620dc-2f62-4d3c-a588-7a7798c06d3d"/>
 				<text><![CDATA[Diagnostic précoce (EID) ]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="203" y="417" width="14" height="14"/>
+				<reportElement x="203" y="417" width="14" height="14" uuid="f68673dc-909e-4813-95f5-72a31be2b1b6"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="238" y="416" width="54" height="16"/>
-				<textElement/>
+				<reportElement x="238" y="416" width="54" height="16" uuid="9ea49ed4-da75-4b7e-8067-ebfcc9160d03"/>
 				<text><![CDATA[Sérologie VIH]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="292" y="417" width="14" height="14"/>
+				<reportElement x="292" y="417" width="14" height="14" uuid="ff58b8fe-3bcb-4067-bba5-fd283bfbd4ac"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="352" y="416" width="68" height="16"/>
-				<textElement/>
+				<reportElement x="352" y="416" width="68" height="16" uuid="e716afef-160c-4968-a306-2698105877c7"/>
 				<text><![CDATA[Hématologie]]></text>
 			</staticText>
 			<rectangle>
-				<reportElement x="426" y="417" width="14" height="14"/>
+				<reportElement x="426" y="417" width="14" height="14" uuid="c109c534-23c2-408b-9f09-1d7b9a7555e2"/>
 			</rectangle>
 			<staticText>
-				<reportElement x="473" y="239" width="34" height="15">
+				<reportElement x="473" y="239" width="34" height="15" uuid="91184b41-140d-4c63-a309-432b2c9fe749">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.formNotCorrect")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -799,7 +783,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="473" y="254" width="34" height="15">
+				<reportElement x="473" y="254" width="34" height="15" uuid="ad55303b-8980-4398-8ab1-76a51fbf3e1d">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.Error_Prev_Demo")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -808,7 +792,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="156" y="271" width="34" height="15">
+				<reportElement x="156" y="271" width="34" height="15" uuid="cf80b4c5-009f-4877-be24-9fec84dca65c">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.noSample")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -817,7 +801,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="156" y="286" width="34" height="15">
+				<reportElement x="156" y="286" width="34" height="15" uuid="fba1be4e-dd6a-47a7-8242-bdf78b6e8cbc">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.noForm")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -826,7 +810,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="473" y="272" width="34" height="15">
+				<reportElement x="473" y="272" width="34" height="15" uuid="8652468d-f5c2-4b2e-92d1-dd51345db0f9">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.No_ID_Prev")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -835,7 +819,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="473" y="287" width="34" height="15">
+				<reportElement x="473" y="287" width="34" height="15" uuid="b35b9966-ecf2-4535-9080-14cfd7447f12">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.No_HR_Prev")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -844,7 +828,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="156" y="304" width="34" height="15">
+				<reportElement x="156" y="304" width="34" height="15" uuid="c7ca1842-daf7-4641-b6b5-74f3ab2c5adb">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.bloodstained.tube")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -853,7 +837,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="156" y="318" width="34" height="15">
+				<reportElement x="156" y="318" width="34" height="15" uuid="59e2dad4-4f46-4158-9527-e54a6bc48255">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.bloodstained.form")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -862,7 +846,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="473" y="318" width="34" height="15">
+				<reportElement x="473" y="318" width="34" height="15" uuid="d8121803-a0db-4cc0-abb4-a7fa59a94276">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.Error_Sample")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -871,7 +855,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="473" y="303" width="34" height="15">
+				<reportElement x="473" y="303" width="34" height="15" uuid="8e7fbbfb-20cf-4359-9a90-8fc011632e74">
 					<printWhenExpression><![CDATA[$F{allQaEvents}!=null && $F{allQaEvents}.contains("qa_event.Sample_VL_Late")]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -880,7 +864,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="527" y="399" width="14" height="12">
+				<reportElement x="527" y="399" width="14" height="12" uuid="7837ff65-3ce9-42ad-8b06-519e4e96f54f">
 					<printWhenExpression><![CDATA[$F{virologyVlQaEvent}!=null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -889,7 +873,7 @@
 				<text><![CDATA[X]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="203" y="399" width="14" height="12">
+				<reportElement x="203" y="399" width="14" height="12" uuid="e9fbb895-9c08-48d3-83bd-888e0d2cb0f9">
 					<printWhenExpression><![CDATA[$F{receptionQaEvent}!=null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -905,36 +889,48 @@
 	<pageFooter>
 		<band height="143" splitType="Prevent">
 			<line>
-				<reportElement key="line-3" x="0" y="0" width="550" height="1"/>
+				<reportElement key="line-3" x="0" y="0" width="550" height="1" uuid="fc09d8f6-6853-4869-8663-5bef081e0b9e"/>
 				<graphicElement>
 					<pen lineWidth="0.75" lineStyle="Solid"/>
 				</graphicElement>
 			</line>
+			<image>
+				<reportElement x="12" y="6" width="317" height="12" uuid="67a730c5-3d1b-4019-9f7e-a8ac55d0740b"/>
+				<imageExpression><![CDATA[$P{imagesPath}+ "RefVal.jpg"]]></imageExpression>
+			</image>
 			<staticText>
-				<reportElement x="12" y="23" width="534" height="19"/>
-				<textElement>
-					<font size="10"/>
-				</textElement>
-				<text><![CDATA[Seuil de détection de la technique (Tube EDTA): 20 copies /mL]]></text>
-			</staticText>
-			<staticText>
-				<reportElement x="12" y="60" width="534" height="19"/>
+				<reportElement x="10" y="88" width="534" height="19" uuid="3e429c79-24d0-47f7-a944-c10389504948"/>
 				<textElement>
 					<font size="10"/>
 				</textElement>
 				<text><![CDATA[Valeur charge virale : < LL=virus HIV-1 indétectable dans le sang périphérique]]></text>
 			</staticText>
-			<image>
-				<reportElement x="12" y="5" width="317" height="12"/>
-				<imageExpression class="java.lang.String"><![CDATA[$P{imagesPath}+ "RefVal.jpg"]]></imageExpression>
-			</image>
 			<staticText>
-				<reportElement x="12" y="42" width="534" height="19"/>
+				<reportElement x="12" y="65" width="408" height="19" uuid="6ef822fb-4b30-4b3d-bd19-a7e5aededda0"/>
 				<textElement>
 					<font size="10"/>
 				</textElement>
-				<text><![CDATA[Seuil de détection de la technique (Papier Buvard WHATMAN 903): 400 copies /mL]]></text>
+				<text><![CDATA[Seuil de détection de la technique CV/PSC : 599 copies/mL]]></text>
 			</staticText>
+			<staticText>
+				<reportElement x="10" y="21" width="408" height="19" uuid="0e4e96a8-5fa8-45b1-ab65-384fcc9d9c5e"/>
+				<textElement>
+					<font size="10"/>
+				</textElement>
+				<text><![CDATA[Seuil de détection de la technique CV/PL : 20 copies /mL]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="10" y="43" width="408" height="19" uuid="9ec062e1-8409-4d70-a08d-a742a8728efe"/>
+				<textElement>
+					<font size="10"/>
+				</textElement>
+				<text><![CDATA[Seuil de détection de la technique CV/DBS : 400 copies /mL]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="439" y="127" width="112" height="16" isPrintWhenDetailOverflows="true" uuid="e9ccc6cc-58c2-4f88-9a5b-54397150dae9"/>
+				<textElement textAlignment="Right"/>
+				<textFieldExpression><![CDATA["Page 1 sur 1"]]></textFieldExpression>
+			</textField>
 		</band>
 	</pageFooter>
 	<summary>

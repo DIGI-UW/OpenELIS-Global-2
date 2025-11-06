@@ -2,7 +2,6 @@ package org.openelisglobal.person.service;
 
 import java.util.List;
 import java.util.Map;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.person.valueholder.Person;
 
@@ -34,5 +33,4 @@ public interface PersonService extends BaseObjectService<Person, String> {
     String getFax(Person person);
 
     String getEmail(Person person);
-
 }

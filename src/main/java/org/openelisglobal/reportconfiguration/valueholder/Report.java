@@ -1,12 +1,10 @@
 package org.openelisglobal.reportconfiguration.valueholder;
 
+import jakarta.persistence.Basic;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import java.util.Objects;
-
-import javax.persistence.Basic;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-
 import org.openelisglobal.common.valueholder.BaseObject;
 
 @Entity
@@ -100,12 +98,9 @@ public class Report extends BaseObject<String> {
             return false;
         }
         Report report = (Report) o;
-        return id == report.id &&
-                Objects.equals(category, report.category) &&
-                Objects.equals(sortOrder, report.sortOrder) &&
-                Objects.equals(isVisible, report.isVisible) &&
-                Objects.equals(menuElementId, report.menuElementId) &&
-                Objects.equals(displayKey, report.displayKey);
+        return id == report.id && Objects.equals(category, report.category)
+                && Objects.equals(sortOrder, report.sortOrder) && Objects.equals(isVisible, report.isVisible)
+                && Objects.equals(menuElementId, report.menuElementId) && Objects.equals(displayKey, report.displayKey);
     }
 
     @Override

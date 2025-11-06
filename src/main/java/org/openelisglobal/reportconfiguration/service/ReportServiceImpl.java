@@ -5,9 +5,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.menu.service.MenuService;
 import org.openelisglobal.menu.valueholder.Menu;
@@ -21,7 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-public class ReportServiceImpl extends BaseObjectServiceImpl<Report, String> implements ReportService {
+public class ReportServiceImpl extends AuditableBaseObjectServiceImpl<Report, String> implements ReportService {
 
     @Autowired
     protected ReportDAO baseObjectDAO;

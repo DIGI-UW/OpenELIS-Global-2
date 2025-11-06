@@ -1,15 +1,13 @@
 package org.openelisglobal.barcode.labeltype;
 
 import java.util.ArrayList;
-
 import org.openelisglobal.barcode.LabelField;
 import org.openelisglobal.internationalization.MessageUtil;
 
 /**
  * Stores Formatting for a Blank Order label
- * 
- * @author Caleb
  *
+ * @author Caleb
  */
 public class BlankLabel extends Label {
 
@@ -17,19 +15,19 @@ public class BlankLabel extends Label {
         aboveFields = new ArrayList<LabelField>();
         LabelField field;
 
-        field = new LabelField(MessageUtil.getMessage("barcode.label.info.patientname"), "", 6);
+        field = new LabelField(MessageUtil.getMessage("barcode.label.info.patientname"), "", 12);
         field.setDisplayFieldName(true);
         field.setUnderline(true);
         aboveFields.add(field);
-        field = new LabelField(MessageUtil.getMessage("barcode.label.info.patientdob"), "", 4);
+        field = new LabelField(MessageUtil.getMessage("barcode.label.info.patientdob"), "", 8);
         field.setDisplayFieldName(true);
         field.setUnderline(true);
         aboveFields.add(field);
-        field = new LabelField(MessageUtil.getMessage("barcode.label.info.patientid"), "", 5);
+        field = new LabelField(MessageUtil.getMessage("barcode.label.info.patientid"), "", 10);
         field.setDisplayFieldName(true);
         field.setUnderline(true);
         aboveFields.add(field);
-        field = new LabelField(MessageUtil.getMessage("barcode.label.info.site"), "", 5);
+        field = new LabelField(MessageUtil.getMessage("barcode.label.info.site"), "", 10);
         field.setDisplayFieldName(true);
         field.setUnderline(true);
         aboveFields.add(field);
@@ -52,5 +50,4 @@ public class BlankLabel extends Label {
     public int getMaxNumLabels() {
         return 10;
     }
-
 }

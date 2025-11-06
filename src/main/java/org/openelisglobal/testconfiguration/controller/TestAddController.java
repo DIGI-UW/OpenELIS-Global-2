@@ -1,15 +1,13 @@
 package org.openelisglobal.testconfiguration.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.HibernateException;
 import org.json.simple.JSONArray;
@@ -91,8 +89,7 @@ public class TestAddController extends BaseController {
 
     @RequestMapping(value = "/TestAdd", method = RequestMethod.GET)
     public ModelAndView showTestAdd(HttpServletRequest request) {
-
-        LogEvent.logInfo(this.getClass().getName(), "method unkown",
+        LogEvent.logTrace(this.getClass().getSimpleName(), "showTestAdd",
                 "Hibernate Version: " + org.hibernate.Version.getVersionString());
 
         TestAddForm form = new TestAddForm();
@@ -106,7 +103,11 @@ public class TestAddController extends BaseController {
         form.setPanelList(DisplayListService.getInstance().getList(ListType.PANELS));
         form.setResultTypeList(DisplayListService.getInstance().getList(ListType.RESULT_TYPE_LOCALIZED));
         form.setUomList(DisplayListService.getInstance().getList(ListType.UNIT_OF_MEASURE));
-        form.setLabUnitList(DisplayListService.getInstance().getList(ListType.TEST_SECTION));
+
+        List<IdValuePair> allLabUnitsList = new ArrayList<>();
+        allLabUnitsList.addAll(DisplayListService.getInstance().getList(ListType.TEST_SECTION_ACTIVE));
+        allLabUnitsList.addAll(DisplayListService.getInstance().getList(ListType.TEST_SECTION_INACTIVE));
+        form.setLabUnitList(allLabUnitsList);
         form.setAgeRangeList(SpringContext.getBean(ResultLimitService.class).getPredefinedAgeRanges());
         form.setDictionaryList(DisplayListService.getInstance().getList(ListType.DICTIONARY_TEST_RESULTS));
         form.setGroupedDictionaryList(createGroupedDictionaryList());
@@ -150,6 +151,12 @@ public class TestAddController extends BaseController {
         testService.refreshTestNames();
         displayListService.refreshList(DisplayListService.ListType.SAMPLE_TYPE_ACTIVE);
         displayListService.refreshList(DisplayListService.ListType.SAMPLE_TYPE_INACTIVE);
+        displayListService.refreshList(DisplayListService.ListType.PANELS_ACTIVE);
+        displayListService.refreshList(DisplayListService.ListType.PANELS_INACTIVE);
+        displayListService.refreshList(DisplayListService.ListType.PANELS);
+        displayListService.refreshList(DisplayListService.ListType.TEST_SECTION_ACTIVE);
+        displayListService.refreshList(DisplayListService.ListType.TEST_SECTION_BY_NAME);
+        displayListService.refreshList(DisplayListService.ListType.TEST_SECTION_INACTIVE);
         SpringContext.getBean(TypeOfSampleService.class).clearCache();
 
         return findForward(FWD_SUCCESS_INSERT, form);
@@ -158,14 +165,12 @@ public class TestAddController extends BaseController {
     private Errors validateLoinc(String loincCode, Errors errors) {
         List<Test> tests = testService.getTestsByLoincCode(loincCode);
         for (Test test : tests) {
-            if(test.getLoinc().equals(loincCode)){
-                errors.reject("entry.invalid.loinc.number.used", 
-                "entry.invalid.loinc.number.used");
+            if (test.getLoinc().equals(loincCode)) {
+                errors.reject("entry.invalid.loinc.number.used", "entry.invalid.loinc.number.used");
             }
         }
-        return errors;  
+        return errors;
     }
-
 
     private Localization createNameLocalization(TestAddParams testAddParams) {
         return LocalizationServiceImpl.createNewLocalization(testAddParams.testNameEnglish,
@@ -182,6 +187,8 @@ public class TestAddController extends BaseController {
         Double highValid = null;
         Double lowReportingRange = null;
         Double highReportingRange = null;
+        Double lowCritical = null;
+        Double highCritical = null;
         String significantDigits = testAddParams.significantDigits;
         boolean numericResults = TypeOfTestResultServiceImpl.ResultType.isNumericById(testAddParams.resultTypeId);
         boolean dictionaryResults = TypeOfTestResultServiceImpl.ResultType
@@ -198,6 +205,8 @@ public class TestAddController extends BaseController {
             highValid = StringUtil.doubleWithInfinity(testAddParams.highValid);
             lowReportingRange = StringUtil.doubleWithInfinity(testAddParams.lowReportingRange);
             highReportingRange = StringUtil.doubleWithInfinity(testAddParams.highReportingRange);
+            lowCritical = StringUtil.doubleWithInfinity(testAddParams.lowCritical);
+            highCritical = StringUtil.doubleWithInfinity(testAddParams.highCritical);
         }
         // The number of test sets depend on the number of sampleTypes
         for (int i = 0; i < testAddParams.sampleList.size(); i++) {
@@ -222,6 +231,7 @@ public class TestAddController extends BaseController {
             test.setOrderable("Y".equals(testAddParams.orderable));
             test.setNotifyResults("Y".equals(testAddParams.notifyResults));
             test.setInLabOnly("Y".equals(testAddParams.inLabOnly));
+            test.setAntimicrobialResistance("Y".equals(testAddParams.antimicrobialResistance));
             test.setIsReportable("N");
             test.setTestSection(testSection);
             test.setGuid(String.valueOf(UUID.randomUUID()));
@@ -245,7 +255,8 @@ public class TestAddController extends BaseController {
             createPanelItems(testSet.panelItems, testAddParams);
             createTestResults(testSet.testResults, significantDigits, testAddParams);
             if (numericResults) {
-                testSet.resultLimits = createResultLimits(lowValid, highValid, highReportingRange, highReportingRange, testAddParams);
+                testSet.resultLimits = createResultLimits(lowValid, highValid, lowReportingRange, highReportingRange,
+                        testAddParams, highCritical, lowCritical);
             } else if (dictionaryResults) {
                 testSet.resultLimits = createDictionaryResultLimit(testAddParams);
             }
@@ -268,7 +279,8 @@ public class TestAddController extends BaseController {
         return resultLimits;
     }
 
-    private ArrayList<ResultLimit> createResultLimits(Double lowValid, Double highValid,Double highReportingRange,Double lowReportingRange, TestAddParams testAddParams) {
+    private ArrayList<ResultLimit> createResultLimits(Double lowValid, Double highValid, Double lowReportingRange,
+            Double highReportingRange, TestAddParams testAddParams, Double highCritical, Double lowCritical) {
         ArrayList<ResultLimit> resultLimits = new ArrayList<>();
         for (ResultLimitParams params : testAddParams.limits) {
             ResultLimit limit = new ResultLimit();
@@ -276,13 +288,15 @@ public class TestAddController extends BaseController {
             limit.setGender(params.gender);
             limit.setMinAge(StringUtil.doubleWithInfinity(params.lowAge));
             limit.setMaxAge(StringUtil.doubleWithInfinity(params.highAge));
-            limit.setLowNormal(StringUtil.doubleWithInfinity(params.lowLimit));
-            limit.setHighNormal(StringUtil.doubleWithInfinity(params.highLimit));
+            limit.setLowNormal(StringUtil.doubleWithInfinity(params.lowNormalLimit));
+            limit.setHighNormal(StringUtil.doubleWithInfinity(params.highNormalLimit));
             limit.setLowValid(lowValid);
             limit.setHighValid(highValid);
-            if(lowReportingRange != null && highReportingRange != null ){
-            limit.setLowReportingRange(lowReportingRange);
-            limit.setHighReportingRange(highReportingRange);
+            if (lowCritical != null && highCritical != null) {
+                limit.setLowReportingRange(lowReportingRange);
+                limit.setHighReportingRange(highReportingRange);
+                limit.setLowCritical(lowCritical);
+                limit.setHighCritical(highCritical);
             }
             resultLimits.add(limit);
         }
@@ -346,11 +360,14 @@ public class TestAddController extends BaseController {
             testAddParams.orderable = (String) obj.get("orderable");
             testAddParams.notifyResults = (String) obj.get("notifyResults");
             testAddParams.inLabOnly = (String) obj.get("inLabOnly");
+            testAddParams.antimicrobialResistance = (String) obj.get("antimicrobialResistance");
             if (TypeOfTestResultServiceImpl.ResultType.isNumericById(testAddParams.resultTypeId)) {
                 testAddParams.lowValid = (String) obj.get("lowValid");
                 testAddParams.highValid = (String) obj.get("highValid");
                 testAddParams.lowReportingRange = (String) obj.get("lowReportingRange");
                 testAddParams.highReportingRange = (String) obj.get("highReportingRange");
+                testAddParams.lowCritical = (String) obj.get("lowCritical");
+                testAddParams.highCritical = (String) obj.get("highCritical");
                 testAddParams.significantDigits = (String) obj.get("significantDigits");
                 extractLimits(obj, parser, testAddParams);
             } else if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVarientById(testAddParams.resultTypeId)) {
@@ -384,8 +401,10 @@ public class TestAddController extends BaseController {
             }
             String highAge = (String) (((JSONObject) limitArray.get(i)).get("highAgeRange"));
             params.displayRange = (String) (((JSONObject) limitArray.get(i)).get("reportingRange"));
-            params.lowLimit = (String) (((JSONObject) limitArray.get(i)).get("lowNormal"));
-            params.highLimit = (String) (((JSONObject) limitArray.get(i)).get("highNormal"));
+            params.lowNormalLimit = (String) (((JSONObject) limitArray.get(i)).get("lowNormal"));
+            params.highNormalLimit = (String) (((JSONObject) limitArray.get(i)).get("highNormal"));
+            params.lowCritical = (String) (((JSONObject) limitArray.get(i)).get("lowCritical"));
+            params.highCritical = (String) (((JSONObject) limitArray.get(i)).get("highCritical"));
             params.lowAge = lowAge;
             params.highAge = highAge;
             testAddParams.limits.add(params);
@@ -393,9 +412,8 @@ public class TestAddController extends BaseController {
             if (gender) {
                 params = new ResultLimitParams();
                 params.gender = "F";
-                params.displayRange = (String) (((JSONObject) limitArray.get(i)).get("reportingRangeFemale"));
-                params.lowLimit = (String) (((JSONObject) limitArray.get(i)).get("lowNormalFemale"));
-                params.highLimit = (String) (((JSONObject) limitArray.get(i)).get("highNormalFemale"));
+                params.lowNormalLimit = (String) (((JSONObject) limitArray.get(i)).get("lowNormalFemale"));
+                params.highNormalLimit = (String) (((JSONObject) limitArray.get(i)).get("highNormalFemale"));
                 params.lowAge = lowAge;
                 params.highAge = highAge;
                 testAddParams.limits.add(params);
@@ -412,7 +430,6 @@ public class TestAddController extends BaseController {
         for (int i = 0; i < panelArray.size(); i++) {
             testAddParams.panelList.add((String) (((JSONObject) panelArray.get(i)).get("id")));
         }
-
     }
 
     private void extractSampleTypes(JSONObject obj, JSONParser parser, TestAddParams testAddParams)
@@ -545,10 +562,13 @@ public class TestAddController extends BaseController {
         String orderable;
         String notifyResults;
         String inLabOnly;
+        String antimicrobialResistance;
         String lowValid;
         String highValid;
         String lowReportingRange;
         String highReportingRange;
+        String lowCritical;
+        String highCritical;
         public String significantDigits;
         String dictionaryReferenceId;
         ArrayList<ResultLimitParams> limits = new ArrayList<>();
@@ -574,9 +594,11 @@ public class TestAddController extends BaseController {
         String gender;
         String lowAge;
         String highAge;
-        String lowLimit;
-        String highLimit;
+        String lowNormalLimit;
+        String highNormalLimit;
         String displayRange;
+        String lowCritical;
+        String highCritical;
     }
 
     public class DictionaryParams {

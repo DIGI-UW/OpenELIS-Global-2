@@ -4,14 +4,19 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-
+import net.sf.jasperreports.engine.JRDataSource;
+import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
+import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.services.IReportTrackingService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.ReportTrackingService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
@@ -23,9 +28,6 @@ import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
 import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestServiceImpl;
-
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 
 public abstract class PatientEIDReport extends RetroCIPatientReport {
 
@@ -68,7 +70,6 @@ public abstract class PatientEIDReport extends RetroCIPatientReport {
         setPatientInfo(data);
         setTestInfo(data);
         reportItems.add(data);
-
     }
 
     protected void setTestInfo(EIDReportData data) {
@@ -89,7 +90,6 @@ public abstract class PatientEIDReport extends RetroCIPatientReport {
                     maxCompleationDate = analysis.getCompletedDate();
                     maxCompleationTime = maxCompleationDate.getTime();
                 }
-
             }
 
             String testName = TestServiceImpl.getUserLocalizedTestName(analysis.getTest());
@@ -115,7 +115,9 @@ public abstract class PatientEIDReport extends RetroCIPatientReport {
                     data.setHiv_status(invalidValue);
                 }
             }
-            if (mayBeDuplicate && SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(), AnalysisStatus.Finalized)
+            if (mayBeDuplicate
+                    && SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(),
+                            AnalysisStatus.Finalized)
                     && lastReport != null && lastReport.before(analysis.getLastupdated())) {
                 mayBeDuplicate = false;
             }
@@ -149,7 +151,13 @@ public abstract class PatientEIDReport extends RetroCIPatientReport {
         orgService.getDataBySample(sampleOrg);
         data.setServicename(sampleOrg.getId() == null ? "" : sampleOrg.getOrganization().getOrganizationName());
         data.setDoctor(getObservationValues(OBSERVATION_REQUESTOR_ID));
-        data.setAccession_number(reportSample.getAccessionNumber());
+        if (AccessionFormat.ALPHANUM.toString()
+                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.AccessionFormat))) {
+            data.setAccessionNumber(
+                    AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(reportSample.getAccessionNumber()));
+        } else {
+            data.setAccessionNumber(reportSample.getAccessionNumber());
+        }
         data.setReceptiondate(DateUtil.convertTimestampToStringDateAndTime(reportSample.getReceivedTimestamp()));
 
         Timestamp collectionDate = reportSample.getCollectionDate();
@@ -162,7 +170,6 @@ public abstract class PatientEIDReport extends RetroCIPatientReport {
             } else {
                 data.setAgeMonth(String.valueOf((int) Math.floor(collectionTime / MONTH)));
             }
-
         }
         data.getSampleQaEventItems(reportSample);
     }
@@ -171,5 +178,4 @@ public abstract class PatientEIDReport extends RetroCIPatientReport {
     protected String getProjectId() {
         return EID_STUDY_ID;
     }
-
 }

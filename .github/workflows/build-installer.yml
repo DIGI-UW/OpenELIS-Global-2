@@ -1,0 +1,50 @@
+name: Build OpenELIS-Global-2 Installer
+on:
+  workflow_call: 
+
+    
+jobs:
+  build-installer-and-upload-installer:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout OpenELIS-Global2
+        uses: actions/checkout@v2
+        with:
+          repository: ${{github.repository}}
+          submodules: recursive
+
+      - name: Build installer
+        run: ./build.sh -ib develop
+
+      - name: check installer
+        run: ls OEInstaller/linux  
+
+
+      - name: Find installer file
+        id: find_file
+        run: |
+          # Find the file in OEInstaller/linux with .tar.gz extension
+          FILE_PATH=$(find OEInstaller/linux -name "*.tar.gz" -print -quit)
+          if [ -z "$FILE_PATH" ]; then
+            echo "No .tar.gz file found in OEInstaller/linux directory."
+            exit 1
+          fi
+          echo "File path: $FILE_PATH"
+          # Extract the file name from the path
+          FILE_NAME=$(basename "$FILE_PATH")
+          echo "File name: $FILE_NAME"
+          # Pass the file path and name to outputs
+          echo "FILE_PATH=$FILE_PATH" >> $GITHUB_ENV
+          echo "FILE_NAME=$FILE_NAME" >> $GITHUB_ENV
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ${{ env.FILE_PATH }}
+          asset_name: ${{ env.FILE_NAME }}
+          asset_content_type: application/gzip  
+ 

@@ -1,11 +1,9 @@
 package org.openelisglobal.patient.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Date;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.patient.form.PatientEntryByProjectForm;
 import org.openelisglobal.patient.saving.Accessioner;
@@ -76,6 +74,7 @@ public class PatientEntryByProjectController extends BasePatientEntryByProject {
             @ModelAttribute("form") @Valid PatientEntryByProjectForm form, BindingResult result,
             RedirectAttributes redirectAttributes)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+
         formValidator.validate(form, result);
         if (result.hasErrors()) {
             saveErrors(result);
@@ -140,8 +139,7 @@ public class PatientEntryByProjectController extends BasePatientEntryByProject {
         } else if (FWD_FAIL.equals(forward)) {
             return "homePageDefinition";
         } else if (FWD_SUCCESS_INSERT.equals(forward)) {
-            String redirectURL = "/PatientEntryByProject?type="
-                    + Encode.forUriComponent(request.getParameter("type"));
+            String redirectURL = "/PatientEntryByProject?type=" + Encode.forUriComponent(request.getParameter("type"));
             return "redirect:" + redirectURL;
         } else if (FWD_FAIL_INSERT.equals(forward)) {
             return "patientEntryByProjectDefinition";

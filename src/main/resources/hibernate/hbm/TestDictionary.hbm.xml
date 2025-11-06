@@ -1,43 +1,43 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class
-		name="org.openelisglobal.testdictionary.valueholder.TestDictionary"
-		table="TEST_DICTIONARY" optimistic-lock="version"
-		dynamic-update="true">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="22" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<param name="sequence_name">test_dictionary_seq</param>
-			</generator>
-		</id>
-		<version name="lastupdated" column="LASTUPDATED"
-			type="timestamp" access="field" />
+    <class
+        name="org.openelisglobal.testdictionary.valueholder.TestDictionary"
+        table="TEST_DICTIONARY" optimistic-lock="version"
+        dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="22" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">test_dictionary_seq</param>
+            </generator>
+        </id>
+        <version name="lastupdated" column="LASTUPDATED"
+            type="timestamp" access="field" />
 
-		<many-to-one name="dictionaryCategory"
-			class="org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory"
-			fetch="select">
-			<column name="DICTIONARY_CATEGORY_ID" precision="10" scale="0" />
-		</many-to-one>
+        <many-to-one name="dictionaryCategory"
+            class="org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory"
+            fetch="select">
+            <column name="DICTIONARY_CATEGORY_ID" precision="10" scale="0" />
+        </many-to-one>
 
-		<property name="testId"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="TEST_ID" precision="10" scale="0"
-				not-null="true" />
-		</property>
+        <property name="testId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="TEST_ID" precision="10" scale="0"
+                not-null="true" />
+        </property>
 
-		<property name="qualifiableDictionaryId"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="qualifiable_entry_id" precision="10" scale="0"
-				not-null="true" />
-		</property>
+        <property name="qualifiableDictionaryId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="qualifiable_entry_id" precision="10" scale="0"
+                not-null="true" />
+        </property>
 
-		<property name="context" type="java.lang.String">
-			<column name="context" length="20" />
-		</property>
-	</class>
+        <property name="context" type="java.lang.String">
+            <column name="context" length="20" />
+        </property>
+    </class>
 </hibernate-mapping>

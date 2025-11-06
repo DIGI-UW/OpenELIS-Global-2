@@ -11,7 +11,6 @@ public class FormField {
     private String label;
 
     public FormField() {
-
     }
 
     public FormField(String labelKey) {
@@ -64,5 +63,4 @@ public class FormField {
     public void setRequired(boolean required) {
         this.required = required;
     }
-
 }

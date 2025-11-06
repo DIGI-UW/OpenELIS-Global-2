@@ -1,31 +1,32 @@
 package org.openelisglobal.sample.form;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.Map;
-
-import javax.validation.Valid;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Pattern;
-import javax.validation.constraints.Size;
-
-import org.hibernate.validator.constraints.SafeHtml;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
+import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.patient.saving.form.IAccessionerForm;
 import org.openelisglobal.patient.valueholder.ObservationData;
+import org.openelisglobal.validation.annotations.SafeHtml;
 import org.openelisglobal.validation.annotations.ValidAccessionNumber;
 import org.openelisglobal.validation.annotations.ValidDate;
 import org.openelisglobal.validation.annotations.ValidTime;
 
 public class SampleEntryByProjectForm extends BaseForm implements IAccessionerForm {
+
+    private static final long serialVersionUID = 1L;
 
     @ValidDate(relative = DateRelation.TODAY)
     private String currentDate = "";
@@ -33,7 +34,7 @@ public class SampleEntryByProjectForm extends BaseForm implements IAccessionerFo
     @ValidDate(relative = DateRelation.PAST)
     private String receivedDateForDisplay = "";
 
-    @ValidDate(relative = DateRelation.PAST)
+    @ValidTime
     private String receivedTimeForDisplay = "";
 
     @ValidDate(relative = DateRelation.PAST)
@@ -42,23 +43,29 @@ public class SampleEntryByProjectForm extends BaseForm implements IAccessionerFo
     @ValidTime
     private String interviewTime = "";
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String project = "";
 
-    @ValidAccessionNumber(format = AccessionFormat.PROGRAM, dateValidate = true)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String patientFhirUuid = "";
+
+    @ValidAccessionNumber(format = AccessionFormat.PROGRAMNUM /* , dateValidate = true */)
     private String labNo = "";
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String doctor = "";
 
-    @NotBlank
-    @Size(max = 7)
+    // @NotBlank
+    @Size(max = 10)
     @Pattern(regexp = ValidationHelper.PATIENT_ID_REGEX)
     private String subjectNumber = "";
 
-    @NotBlank
+    // @NotBlank may be subjectNumber or siteSubjectNumber
     @Pattern(regexp = ValidationHelper.PATIENT_ID_REGEX)
     private String siteSubjectNumber = "";
+
+    @Pattern(regexp = ValidationHelper.PATIENT_ID_REGEX)
+    private String upidCode = "";
 
     @NotBlank
     @Pattern(regexp = ValidationHelper.GENDER_REGEX)
@@ -75,10 +82,10 @@ public class SampleEntryByProjectForm extends BaseForm implements IAccessionerFo
 
     private PatientUpdateStatus patientUpdateStatus = PatientUpdateStatus.ADD;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String patientLastUpdated = "";
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String personLastUpdated = "";
 
     @Valid
@@ -86,6 +93,8 @@ public class SampleEntryByProjectForm extends BaseForm implements IAccessionerFo
 
     @Valid
     private ObservationData observations;
+
+    private ElectronicOrder electronicOrder = null;
 
     @Min(0)
     private Integer centerCode;
@@ -105,7 +114,7 @@ public class SampleEntryByProjectForm extends BaseForm implements IAccessionerFo
     // for display
     private PatientSearch patientSearch;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String domain = "";
 
     public SampleEntryByProjectForm() {
@@ -339,4 +348,27 @@ public class SampleEntryByProjectForm extends BaseForm implements IAccessionerFo
         this.centerCode = centerCode;
     }
 
+    public ElectronicOrder getElectronicOrder() {
+        return electronicOrder;
+    }
+
+    public void setElectronicOrder(ElectronicOrder electronicOrder) {
+        this.electronicOrder = electronicOrder;
+    }
+
+    public String getPatientFhirUuid() {
+        return patientFhirUuid;
+    }
+
+    public void setPatientFhirUuid(String patientFhirUuid) {
+        this.patientFhirUuid = patientFhirUuid;
+    }
+
+    public String getUpidCode() {
+        return upidCode;
+    }
+
+    public void setUpidCode(String upidCode) {
+        this.upidCode = upidCode;
+    }
 }

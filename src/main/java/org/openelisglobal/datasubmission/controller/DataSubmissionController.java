@@ -1,11 +1,9 @@
 package org.openelisglobal.datasubmission.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.json.simple.parser.ParseException;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -38,8 +36,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class DataSubmissionController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "dataSubUrl.value", "month", "year",
-            "indicators*.sendIndicator", "indicators*.dataValue.value",
-            "indicators*.resources*.columnValues*.value" };
+            "indicators*.sendIndicator", "indicators*.dataValue.value", "indicators*.resources*.columnValues*.value" };
 
     @Autowired
     DataSubmissionFormValidator formValidator;
@@ -68,7 +65,7 @@ public class DataSubmissionController extends BaseController {
                 ? DateUtil.getCurrentYear()
                 : Integer.parseInt(request.getParameter("year"));
 
-        if (month < 0 ) {
+        if (month < 0) {
             month = DateUtil.getCurrentMonth() + 1;
         }
         if (year < 0) {

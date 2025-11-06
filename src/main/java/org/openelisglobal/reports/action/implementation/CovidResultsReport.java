@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.sql.SQLException;
 import java.text.ParseException;
-
+import net.sf.jasperreports.engine.JRDataSource;
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.reports.action.implementation.reportBeans.CovidResultsBuilder;
@@ -12,10 +14,6 @@ import org.openelisglobal.reports.action.implementation.reportBeans.CovidResults
 import org.openelisglobal.reports.action.implementation.reportBeans.CovidResultsCSVBuilder;
 import org.openelisglobal.reports.action.implementation.reportBeans.CovidResultsJSONBuilder;
 import org.openelisglobal.reports.form.ReportForm;
-
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.JRException;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 
 public class CovidResultsReport extends Report implements IReportParameterSetter, IReportCreator {
 
@@ -37,7 +35,7 @@ public class CovidResultsReport extends Report implements IReportParameterSetter
             form.setUseLowerDateRange(Boolean.TRUE);
             form.setUseUpperDateRange(Boolean.TRUE);
         } catch (RuntimeException e) {
-            LogEvent.logError(this.getClass().getName(), "setRequestParameters",
+            LogEvent.logError(this.getClass().getSimpleName(), "setRequestParameters",
                     "Runtime exception occured while setting params");
         }
     }
@@ -63,16 +61,12 @@ public class CovidResultsReport extends Report implements IReportParameterSetter
         createReportItems();
     }
 
-    /**
-     * check everything
-     */
+    /** check everything */
     private boolean validateSubmitParameters() {
         return dateRange.validateHighLowDate("report.error.message.date.received.missing");
     }
 
-    /**
-     * creating the list for generation to the report
-     */
+    /** creating the list for generation to the report */
     private void createReportItems() {
         covidDataBuilder = getDataBuilder();
         covidDataBuilder.buildDataSource();
@@ -86,7 +80,6 @@ public class CovidResultsReport extends Report implements IReportParameterSetter
             return new CovidResultsCSVBuilder(dateRange);
         }
         throw new IllegalStateException("type must be 'CSV' or 'JSON'");
-
     }
 
     @Override
@@ -132,5 +125,4 @@ public class CovidResultsReport extends Report implements IReportParameterSetter
             throw new UnsupportedOperationException();
         }
     }
-
 }

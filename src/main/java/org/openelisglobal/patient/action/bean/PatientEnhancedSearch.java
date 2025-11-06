@@ -17,12 +17,10 @@
 package org.openelisglobal.patient.action.bean;
 
 import java.util.List;
-
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.IdValuePair;
 
-/**
- */
+/** */
 public class PatientEnhancedSearch {
     private boolean loadFromServerWithPatient = false;
     private String selectedPatientActionButtonText;
@@ -38,7 +36,7 @@ public class PatientEnhancedSearch {
     public List<IdValuePair> getSearchCriteria() {
         return DisplayListService.getInstance().getList(DisplayListService.ListType.PATIENT_SEARCH_CRITERIA);
     }
-    
+
     public List<IdValuePair> getGenders() {
         return DisplayListService.getInstance().getList(DisplayListService.ListType.GENDERS);
     }

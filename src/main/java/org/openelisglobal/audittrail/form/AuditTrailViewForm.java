@@ -1,25 +1,23 @@
 package org.openelisglobal.audittrail.form;
 
+import jakarta.validation.Valid;
 import java.util.List;
-
-import javax.validation.Valid;
-
-import org.hibernate.validator.constraints.SafeHtml;
 import org.openelisglobal.audittrail.action.workers.AuditTrailItem;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.sample.bean.SampleOrderItem;
+import org.openelisglobal.validation.annotations.SafeHtml;
 
 // used for viewing only, does not need validation
 public class AuditTrailViewForm extends BaseForm {
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String accessionNumberSearch = "";
 
     @Valid
     private List<AuditTrailItem> log;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String accessionNumber = "";
 
     @Valid

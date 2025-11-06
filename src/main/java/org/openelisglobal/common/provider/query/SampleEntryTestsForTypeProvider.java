@@ -1,21 +1,21 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.common.provider.query;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,11 +23,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
@@ -84,25 +79,25 @@ public class SampleEntryTestsForTypeProvider extends BaseQueryProvider {
         isVariableTypeOfSample = VARIABLE_SAMPLE_TYPE_ID.equals(sampleType);
         StringBuilder xml = new StringBuilder();
 
-        String receptionRoleId =  roleService.getRoleByName(Constants.ROLE_RECEPTION).getId();
-        UserSessionData usd = (UserSessionData)request.getSession().getAttribute(IActionConstants.USER_SESSION_DATA);
-        List<IdValuePair> testSections = userService.getUserTestSections(String.valueOf(usd.getSystemUserId()) ,receptionRoleId);
+        String receptionRoleId = roleService.getRoleByName(Constants.ROLE_RECEPTION).getId();
+        UserSessionData usd = (UserSessionData) request.getSession().getAttribute(IActionConstants.USER_SESSION_DATA);
+        List<IdValuePair> testSections = userService.getUserTestSections(String.valueOf(usd.getSystemUserId()),
+                receptionRoleId);
         List<String> testUnitIds = new ArrayList<>();
-        if(testSections !=null){
+        if (testSections != null) {
             testSections.forEach(test -> testUnitIds.add(test.getId()));
         }
 
-        String result = createSearchResultXML(sampleType, xml ,testUnitIds);
+        String result = createSearchResultXML(sampleType, xml, testUnitIds);
 
         ajaxServlet.sendData(xml.toString(), result, request, response);
-
     }
 
-    private String createSearchResultXML(String sampleType, StringBuilder xml ,List<String> testUnitIds) {
+    private String createSearchResultXML(String sampleType, StringBuilder xml, List<String> testUnitIds) {
 
         String success = VALID;
 
-        List<Test> tests = typeOfSampleService.getActiveTestsBySampleTypeIdAndTestUnit(sampleType, true ,testUnitIds);
+        List<Test> tests = typeOfSampleService.getActiveTestsBySampleTypeIdAndTestUnit(sampleType, true, testUnitIds);
 
         Collections.sort(tests, new Comparator<Test>() {
             @Override
@@ -129,7 +124,6 @@ public class SampleEntryTestsForTypeProvider extends BaseQueryProvider {
                     return TestServiceImpl.getUserLocalizedTestName(t1)
                             .compareTo(TestServiceImpl.getUserLocalizedTestName(t2));
                 }
-
             }
         });
 
@@ -170,6 +164,9 @@ public class SampleEntryTestsForTypeProvider extends BaseQueryProvider {
 
     private void addVariableSampleTypes(Test test, StringBuilder xml) {
         TestDictionary testDictionary = testDictionaryService.getTestDictionaryForTestId(test.getId());
+        if (testDictionary == null) {
+            return;
+        }
         List<IdValuePair> pairs = DisplayListService.getInstance()
                 .getDictionaryListByCategory(testDictionary.getDictionaryCategory().getCategoryName());
         xml.append("<variableSampleTypes ");
@@ -212,7 +209,7 @@ public class SampleEntryTestsForTypeProvider extends BaseQueryProvider {
         xml.append("<panel>");
         XMLUtil.appendKeyValue("name", testMap.getName(), xml);
         XMLUtil.appendKeyValue("id", testMap.getPanelId(), xml);
-        XMLUtil.appendKeyValue("testMap", testMap.getTestMaps(), xml);
+        XMLUtil.appendKeyValue("testIds", testMap.getTestIds(), xml);
         xml.append("</panel>");
     }
 
@@ -280,13 +277,13 @@ public class SampleEntryTestsForTypeProvider extends BaseQueryProvider {
 
     public class PanelTestMap {
         private String name;
-        private String testMaps;
+        private String testIds;
         private String panelId;
         private int panelOrder;
 
-        public PanelTestMap(String panelId, int panelOrder, String panelName, String map) {
+        public PanelTestMap(String panelId, int panelOrder, String panelName, String testIds) {
             name = panelName;
-            testMaps = map;
+            this.testIds = testIds;
             this.panelId = panelId;
             this.panelOrder = panelOrder;
         }
@@ -295,8 +292,8 @@ public class SampleEntryTestsForTypeProvider extends BaseQueryProvider {
             return name;
         }
 
-        public String getTestMaps() {
-            return testMaps;
+        public String getTestIds() {
+            return testIds;
         }
 
         public String getPanelId() {
@@ -307,5 +304,4 @@ public class SampleEntryTestsForTypeProvider extends BaseQueryProvider {
             return panelOrder;
         }
     }
-
 }

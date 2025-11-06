@@ -1,23 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<include file="liquibase/2.6.x.x/fix_sequences.xml"/>
-	<include file="liquibase/2.6.x.x/remove_do_suffix.xml"/>
-	<include file="liquibase/2.6.x.x/eorder_search_enhancements.xml"/>
-	<include file="liquibase/2.6.x.x/update_roles.xml"/>
-	<include file="liquibase/2.6.x.x/add_lab_roles_map_table.xml"/>	
-	<include file="liquibase/2.6.x.x/reporting_range.xml"/>	
-	<include file="liquibase/2.6.x.x/update_global_admin_role.xml"/>
-	<include file="liquibase/2.6.x.x/add_user_filter_permision.xml"/>		
-	<include file="liquibase/2.6.x.x/address_line.xml"/>
-	<include file="liquibase/2.6.x.x/geographical_unit.xml"/>
-	<include file="liquibase/2.6.x.x/localization.xml"/>
-	<include file="liquibase/2.6.x.x/method.xml"/>
-	<include file="liquibase/2.6.x.x/add_order_priority.xml"/>
-	<include relativeToChangelogFile="true" file="provider.xml"/>	
-	<include relativeToChangelogFile="true" file="update_non_conformity_roles.xml"/>
+    <include file="liquibase/2.6.x.x/data_resource_retroci.xml"/>
+    <include file="liquibase/2.6.x.x/fix_sequences.xml"/>
+    <include file="liquibase/2.6.x.x/remove_do_suffix.xml"/>
+    <include file="liquibase/2.6.x.x/eorder_search_enhancements.xml"/>
+    <include file="liquibase/2.6.x.x/update_roles.xml"/>
+    <include file="liquibase/2.6.x.x/add_lab_roles_map_table.xml"/>
+    <include file="liquibase/2.6.x.x/reporting_range.xml"/>
+    <include file="liquibase/2.6.x.x/update_global_admin_role.xml"/>
+    <include file="liquibase/2.6.x.x/add_user_filter_permision.xml"/>
+    <include file="liquibase/2.6.x.x/address_line.xml"/>
+    <include file="liquibase/2.6.x.x/geographical_unit.xml"/>
+    <include file="liquibase/2.6.x.x/localization.xml"/>
+    <include file="liquibase/2.6.x.x/method.xml"/>
+    <include file="liquibase/2.6.x.x/add_order_priority.xml"/>
+    <include relativeToChangelogFile="true" file="provider.xml"/>
+    <include relativeToChangelogFile="true" file="update_non_conformity_roles.xml"/>
+    <include relativeToChangelogFile="true" file="statistics_report.xml"/>
+    <include relativeToChangelogFile="true" file="add_menu_study_electronic_order.xml"/>
+    <include relativeToChangelogFile="true" file="disable_menu_reports_export_valid.xml"/>
+    <include relativeToChangelogFile="true" file="add_retroci_sampletype_test_element.xml"/>
 </databaseChangeLog>

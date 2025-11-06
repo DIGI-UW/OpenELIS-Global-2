@@ -1,0 +1,94 @@
+name: OpenELIS Frontend QA framework workflow
+
+on:
+  pull_request:
+    branches: [develop]
+  workflow_dispatch:
+  workflow_call: 
+
+env:
+  DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-frontend
+
+jobs:
+  build-prod-frontend-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_NAME }}
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile.prod
+          push: false
+
+  build-and-run-qa-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout OpenELIS-Global2
+        uses: actions/checkout@v2
+        with:
+          repository: ${{github.repository}}
+          submodules: recursive
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: frontend
+
+      - name: Install React scripts
+        run: npm install react-scripts@5.0.1 -g
+        working-directory: frontend
+
+      - name: Install Google Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+      - name: Check Format
+        run: npx prettier ./ --check
+        working-directory: frontend  
+
+      - name: Build OpenELIS Images and Run containers
+        run: docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600
+
+      - name: Run Frontend QA Workflow (Headless Chrome)
+        run: npx cypress run --browser chrome --headless
+        working-directory: frontend
+
+      # In case of failure, uncomment this action and turn video: false to true in cypress.config.js
+      # - name: Upload Cypress videos on failure
+      #   if: failure()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: cypress-videos
+      #     path: frontend/cypress/videos/*.mp4
+
+      - name: Dump docker logs on failure
+        if: failure()
+        uses: jwalton/gh-docker-logs@v2
+        with:
+        # Only show last 100 lines of each
+          tail: "100"
+          

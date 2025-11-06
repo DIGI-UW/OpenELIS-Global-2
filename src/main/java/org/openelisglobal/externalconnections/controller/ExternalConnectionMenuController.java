@@ -1,10 +1,8 @@
 package org.openelisglobal.externalconnections.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseMenuController;
 import org.openelisglobal.common.form.AdminOptionMenuForm;
@@ -83,7 +81,7 @@ public class ExternalConnectionMenuController extends BaseMenuController<Externa
     @Override
     protected String findLocalForward(String forward) {
         if (FWD_SUCCESS.equals(forward)) {
-            return "masterListsPageDefinition";
+            return "externalConnectionsMasterListsPageDefinition";
         } else if (FWD_FAIL.equals(forward)) {
             return "redirect:/MasterListsPage";
         } else if (FWD_SUCCESS_DELETE.equals(forward)) {

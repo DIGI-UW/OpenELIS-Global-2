@@ -29,5 +29,4 @@ public interface PatientInfoForm {
     void setSt(String identityValue);
 
     String getSt();
-
 }

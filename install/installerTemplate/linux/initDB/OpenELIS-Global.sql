@@ -10375,7 +10375,7 @@ COPY clinlims.localization (id, description, english, french, lastupdated) FROM 
 135	panel name	Typage lymphocytaire	Typage lymphocytaire	2020-01-22 21:46:36.230762-08
 136	sampleType name	Variable	Varié	2020-01-22 21:46:36.340022-08
 137	sampleType name	Plasma	Plasma	2020-01-22 21:46:36.340022-08
-138	sampleType name	Sang total	Sang total	2020-01-22 21:46:36.340022-08
+138	sampleType name	Whole Blood	Whole Blood	2020-01-22 21:46:36.340022-08
 139	sampleType name	Serum	Sérum	2020-01-22 21:46:36.340022-08
 140	sampleType name	Urines	Urines	2020-01-22 21:46:36.340022-08
 141	sampleType name	Dry Tube	Tube sec - Rouge	2020-01-22 21:46:41.326636-08
@@ -17169,18 +17169,18 @@ COPY clinlims.test (id, method_id, uom_id, description, loinc, reporting_descrip
 5	\N	29	Amylase(Serum)	\N	Amylase	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	56	\N	\N	Amylase-Serum	50	Amylase	t	b45cace4-5436-41c3-a4df-bcc9c11395eb	11	12
 6	\N	25	Albumine recherche miction(Urines)	\N	Albumine	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	56	\N	\N	Albumin-Urines	60	Albumine recherche miction	t	3578f53d-8e5c-4e16-9dd3-65fe4d1a1f4d	13	14
 57	\N	\N	Determine(Sérum)		Determine-Sérum	\N	\N	\N	\N	N	\N	\N	\N	\N	\N	\N	2013-10-10 16:52:59.678901	\N	\N	117	\N	\N	Murex-Serum	480	Determine	t	585a6c2a-93ca-454f-ace3-f9a5fa61d33d	115	116
-58	\N	\N	Determine(Sang total)		Determine-Sang total	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2013-10-10 16:52:59.678901	\N	\N	117	\N	\N	Vironostika-Blood	490	Determine	t	1f6ebdb4-0305-4fe6-8112-4b8cc8644298	117	118
+58	\N	\N	Determine(Whole Blood)		Determine-Sang total	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2013-10-10 16:52:59.678901	\N	\N	117	\N	\N	Vironostika-Blood	490	Determine	t	1f6ebdb4-0305-4fe6-8112-4b8cc8644298	117	118
 7	\N	25	Cholestérol total(Serum)	\N	Chol total	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	56	\N	\N	Total cholesterol-Serum	70	Cholestérol total	t	4cd86c73-eca4-4968-a410-ee9d61f5da11	15	16
 8	\N	25	Cholestérol HDL(Serum)	\N	Chol HDL	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	56	\N	\N	HDL cholesterol-Serum	80	Cholestérol HDL	t	eea822b4-5535-4e25-b9ef-fd492bef4349	17	18
 9	\N	25	Triglycérides(Serum)	\N	Triglycérides	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	56	\N	\N	Triglicerides-Serum	90	Triglycérides	t	59321bd7-ab24-43a2-b47c-557f283548ff	19	20
 10	\N	25	Prolans (BHCG) urines de 24 h(Urines)	\N	Béta HCG – 24 h	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	56	\N	\N	Beta HCG-Urines	100	Prolans (BHCG) urines de 24 h	t	fd50b89e-0f16-485f-a599-8ed989efa855	21	22
 11	\N	\N	Test urinaire de grossesse(Urine)	\N	Test Grossesse	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	56	\N	\N	Urine prenancy test-Urine	110	Test urinaire de grossesse	t	18ee4ac6-9a1c-4bfa-ad8a-08968a412785	23	24
 12	\N	\N	Protéinurie sur bandelette(Urine)	\N	Protéines	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	56	\N	\N	Proteinuria dipstick-Urine	120	Protéinurie sur bandelette	t	a44239e6-bd4d-4ffa-98eb-549b5102207a	25	26
-13	\N	31	Numération des globules blancs(Sang total)	\N	GB	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	White Blood Cells Count (WBC)-Blood	130	Numération des globules blancs	t	e08bdd35-b7e4-4910-ae73-da5b6447e901	27	28
-14	\N	36	Numération des globules rouges(Sang total)	\N	GR	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Red Blood Cells Count (RBC)-Blood	140	Numération des globules rouges	t	25249ec2-0dbb-4a45-8c97-836c175ab183	29	30
-15	\N	12	Hémoglobine(Sang total)	\N	Hb	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Hemoglobin-Blood	150	Hémoglobine	t	466b3775-e117-4268-92a7-3d3de95d43b3	31	32
-16	\N	5	Hémotocrite(Sang total)	\N	Hte	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Hematocrit-Blood	160	Hémotocrite	t	4dea29d7-09aa-4ae4-92e9-aed3cde44462	33	34
-17	\N	32	Volume Globulaire Moyen(Sang total)	\N	VGM	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Medium corpuscular volum-Blood	170	Volume Globulaire Moyen	t	8980331d-7d69-4364-a793-e1855ea58360	35	36
+13	\N	31	Numération des globules blancs(Whole Blood)	\N	GB	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	White Blood Cells Count (WBC)-Blood	130	Numération des globules blancs	t	e08bdd35-b7e4-4910-ae73-da5b6447e901	27	28
+14	\N	36	Numération des globules rouges(Whole Blood)	\N	GR	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Red Blood Cells Count (RBC)-Blood	140	Numération des globules rouges	t	25249ec2-0dbb-4a45-8c97-836c175ab183	29	30
+15	\N	12	Hémoglobine(Whole Blood)	\N	Hb	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Hemoglobin-Blood	150	Hémoglobine	t	466b3775-e117-4268-92a7-3d3de95d43b3	31	32
+16	\N	5	Hémotocrite(Whole Blood)	\N	Hte	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Hematocrit-Blood	160	Hémotocrite	t	4dea29d7-09aa-4ae4-92e9-aed3cde44462	33	34
+17	\N	32	Volume Globulaire Moyen(Whole Blood)	\N	VGM	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Medium corpuscular volum-Blood	170	Volume Globulaire Moyen	t	8980331d-7d69-4364-a793-e1855ea58360	35	36
 184	\N	5	HCT	\N	HCT	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2020-01-22 21:46:41.948131	\N	\N	36	\N	\N	HCT	180	HCT	t	6792a51e-050b-4493-88ca-6f490c20cc5c	248	249
 186	\N	41	GR	\N	GR	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2020-01-22 21:46:41.948131	\N	\N	36	\N	\N	GR	160	GR	t	fe6405c8-f96b-491b-95c9-b1f635339d6a	250	251
 187	\N	12	Hb	\N	Hb	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2020-01-22 21:46:41.948131	\N	\N	36	\N	\N	Hb	170	Hb	t	cecea358-1fa0-44b2-8185-d8c010315f78	252	253
@@ -17197,23 +17197,23 @@ COPY clinlims.test (id, method_id, uom_id, description, loinc, reporting_descrip
 197	\N	\N	EO#	\N	EO#	\N	N	\N	\N	N	\N	\N	\N	\N	\N	\N	2020-01-22 21:46:41.948131	\N	\N	36	\N	\N	EO#	0	EO#	t	cd73ec28-f5d8-47d6-b079-e2ba8f506f8f	274	275
 198	\N	\N	Bioline	\N	Bioline	\N	N	\N	\N	N	\N	\N	\N	\N	\N	\N	2020-01-22 21:46:41.948131	\N	\N	97	\N	\N	Bioline	45	Bioline	t	c98ef346-76e1-4d16-9964-71cca4396de5	276	277
 199	\N	\N	Innolia	\N	Innolia	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2020-01-22 21:46:41.948131	\N	\N	97	\N	\N	Innolia	40	Innolia	t	de47583b-3dcc-46bf-bfa2-f03d8bc8670d	278	279
-18	\N	16	Teneur Corpusculaire Moyenne en Hémoglobine(Sang total)	\N	TCMH	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	TMCH-Blood	180	Teneur Corpusculaire Moyenne en Hémoglobine	t	78e49ba2-72f8-49df-99f1-5fc2a3c0914c	37	38
-19	\N	37	Concentration Corpusculaire Moyenne en Hémoglobine(Sang total)	\N	CCMH	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	CMCH-Blood	190	Concentration Corpusculaire Moyenne en Hémoglobine	t	a7d20177-a559-4829-ad77-94b9b1ff025b	39	40
-20	\N	31	Plaquette(Sang total)	\N	Plaquettes	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Platelets-Blood	200	Plaquette	t	17ff4ca7-b8b6-44a1-bae0-97f38affc35c	41	42
-21	\N	5	Polynucléaires Neutrophiles (%)(Sang total)	\N	PNN %	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Neutrophiles (%)-Blood	210	Polynucléaires Neutrophiles (%)	t	c8979eb1-f975-4b77-9963-1328e95c5338	43	44
-22	\N	33	Polynucléaires Neutrophiles (Abs)(Sang total)	\N	PNN (Abs)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Neutrophiles-Blood	220	Polynucléaires Neutrophiles (Abs)	t	5bf892d4-4b5d-4f7f-9fea-d54c8d9631df	45	46
-23	\N	5	Polynucléaires Eosinophiles (%)(Sang total)	\N	PNE (%)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Eosinophiles (%)-Blood	230	Polynucléaires Eosinophiles (%)	t	0cdc2eed-19ea-4c36-beed-662273852506	47	48
-24	\N	33	Polynucléaires Eosinophiles (Abs)(Sang total)	\N	PNE (Abs)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Eosinophiles-Blood	240	Polynucléaires Eosinophiles (Abs)	t	f0bbc211-66d2-4219-a377-79a9869a8413	49	50
-25	\N	5	Polynucléaires basophiles (%)(Sang total)	\N	PNB (%)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Basophiles (%)-Blood	250	Polynucléaires basophiles (%)	t	e79dba96-ce3e-4b3c-945b-a73f7fa4b862	51	52
-26	\N	33	Polynucléaires basophiles (Abs)(Sang total)	\N	PNB (Abs)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Basophiles-Blood	260	Polynucléaires basophiles (Abs)	t	febdc29b-78ac-48f8-afba-b7da2a1fb3c2	53	54
-27	\N	5	Lymphocytes (%)(Sang total)	\N	Lympho (%)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Lymphocytes (%)-Blood	270	Lymphocytes (%)	t	7a4f53a3-b1ab-457b-b928-6c69f30aeb27	55	56
-28	\N	33	Lymphocytes (Abs)(Sang total)	\N	Lympho (Abs)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Lymphocytes (Abs)-Blood	280	Lymphocytes (Abs)	t	e182fd13-38e6-4c5e-9ea7-f3635a957a78	57	58
-29	\N	5	Monocytes (%)(Sang total)	\N	Mono (%)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Monocytes (%)-Blood	290	Monocytes (%)	t	79391ea9-9a96-484c-b8d7-c261a5cfffc0	59	60
-30	\N	33	Monocytes (Abs)(Sang total)	\N	Mono (Abs)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Monocytes (Abs)-Blood	300	Monocytes (Abs)	t	545d87fd-7959-4d53-bf9a-c87a7d2af680	61	62
+18	\N	16	Teneur Corpusculaire Moyenne en Hémoglobine(Whole Blood)	\N	TCMH	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	TMCH-Blood	180	Teneur Corpusculaire Moyenne en Hémoglobine	t	78e49ba2-72f8-49df-99f1-5fc2a3c0914c	37	38
+19	\N	37	Concentration Corpusculaire Moyenne en Hémoglobine(Whole Blood)	\N	CCMH	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	CMCH-Blood	190	Concentration Corpusculaire Moyenne en Hémoglobine	t	a7d20177-a559-4829-ad77-94b9b1ff025b	39	40
+20	\N	31	Plaquette(Whole Blood)	\N	Plaquettes	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Platelets-Blood	200	Plaquette	t	17ff4ca7-b8b6-44a1-bae0-97f38affc35c	41	42
+21	\N	5	Polynucléaires Neutrophiles (%)(Whole Blood)	\N	PNN %	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Neutrophiles (%)-Blood	210	Polynucléaires Neutrophiles (%)	t	c8979eb1-f975-4b77-9963-1328e95c5338	43	44
+22	\N	33	Polynucléaires Neutrophiles (Abs)(Whole Blood)	\N	PNN (Abs)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Neutrophiles-Blood	220	Polynucléaires Neutrophiles (Abs)	t	5bf892d4-4b5d-4f7f-9fea-d54c8d9631df	45	46
+23	\N	5	Polynucléaires Eosinophiles (%)(Whole Blood)	\N	PNE (%)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Eosinophiles (%)-Blood	230	Polynucléaires Eosinophiles (%)	t	0cdc2eed-19ea-4c36-beed-662273852506	47	48
+24	\N	33	Polynucléaires Eosinophiles (Abs)(Whole Blood)	\N	PNE (Abs)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Eosinophiles-Blood	240	Polynucléaires Eosinophiles (Abs)	t	f0bbc211-66d2-4219-a377-79a9869a8413	49	50
+25	\N	5	Polynucléaires basophiles (%)(Whole Blood)	\N	PNB (%)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Basophiles (%)-Blood	250	Polynucléaires basophiles (%)	t	e79dba96-ce3e-4b3c-945b-a73f7fa4b862	51	52
+26	\N	33	Polynucléaires basophiles (Abs)(Whole Blood)	\N	PNB (Abs)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Basophiles-Blood	260	Polynucléaires basophiles (Abs)	t	febdc29b-78ac-48f8-afba-b7da2a1fb3c2	53	54
+27	\N	5	Lymphocytes (%)(Whole Blood)	\N	Lympho (%)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Lymphocytes (%)-Blood	270	Lymphocytes (%)	t	7a4f53a3-b1ab-457b-b928-6c69f30aeb27	55	56
+28	\N	33	Lymphocytes (Abs)(Whole Blood)	\N	Lympho (Abs)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Lymphocytes (Abs)-Blood	280	Lymphocytes (Abs)	t	e182fd13-38e6-4c5e-9ea7-f3635a957a78	57	58
+29	\N	5	Monocytes (%)(Whole Blood)	\N	Mono (%)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Monocytes (%)-Blood	290	Monocytes (%)	t	79391ea9-9a96-484c-b8d7-c261a5cfffc0	59	60
+30	\N	33	Monocytes (Abs)(Whole Blood)	\N	Mono (Abs)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	36	\N	\N	Monocytes (Abs)-Blood	300	Monocytes (Abs)	t	545d87fd-7959-4d53-bf9a-c87a7d2af680	61	62
 31	\N	\N	Test rapide HIV(Serum)	\N	VIH rapide-Serum	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	HIV rapid test HIV-Serum	310	Test rapide HIV	t	c200173b-d972-4e54-9c4f-5271290a8ed8	63	64
 32	\N	\N	Test rapide HIV(Plasma)	\N	VIH rapide-Plasm	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	HIV rapid test HIV-Plasma	320	Test rapide HIV	t	d0ec0286-44cd-485d-ac0c-87d3664198a6	65	66
-33	\N	\N	Test rapide HIV(Sang total)	\N	VIH rapide-SangT	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	HIV rapid test HIV-Blood	330	Test rapide HIV	t	0ac0b77e-672c-4eee-ae71-c05a0fee086b	67	68
-34	\N	7	Dénombrement des lymphocytes CD4 (mm3)(Sang total)	\N	CD4  (Abs)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	59	\N	\N	CD4 Absolute count (mm3)-Blood	340	Dénombrement des lymphocytes CD4 (mm3)	t	1d329af4-e1af-43c8-a533-5000bfdd868a	69	70
+33	\N	\N	Test rapide HIV(Whole Blood)	\N	VIH rapide-SangT	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	HIV rapid test HIV-Blood	330	Test rapide HIV	t	0ac0b77e-672c-4eee-ae71-c05a0fee086b	67	68
+34	\N	7	Dénombrement des lymphocytes CD4 (mm3)(Whole Blood)	\N	CD4  (Abs)	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	59	\N	\N	CD4 Absolute count (mm3)-Blood	340	Dénombrement des lymphocytes CD4 (mm3)	t	1d329af4-e1af-43c8-a533-5000bfdd868a	69	70
 159	\N	25	Glycémie	\N	Glycémie	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2020-01-22 21:46:41.948131	\N	\N	56	\N	\N	Glycémie	260	Glycémie	t	3cf20999-c453-4246-b5d4-a39060101b79	200	201
 160	\N	27	Créatininémie	\N	Créatininémie	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2020-01-22 21:46:41.948131	\N	\N	56	\N	\N	Créatininémie	250	Créatininémie	t	db25d5fe-4a7a-4e94-8dec-d57b8c13108a	202	203
 161	\N	26	Transaminases ALTL	\N	Transaminases ALTL	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2020-01-22 21:46:41.948131	\N	\N	56	\N	\N	Transaminases ALTL	230	Transaminases ALTL	t	5f1c1a36-5147-45a8-8c7b-162ff43e5145	204	205
@@ -17235,18 +17235,18 @@ COPY clinlims.test (id, method_id, uom_id, description, loinc, reporting_descrip
 178	\N	39	PLQ	\N	PLQ	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2020-01-22 21:46:41.948131	\N	\N	36	\N	\N	PLQ	220	PLQ	t	88b7d8d3-e82b-441f-aff3-1410ba2850a5	236	237
 179	\N	5	Neut %	\N	Neut %	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2020-01-22 21:46:41.948131	\N	\N	36	\N	\N	Neut %	110	Neut %	t	0c25692f-a321-4e9c-9722-ca73f6625cb9	238	239
 180	\N	5	Lymph %	\N	Lymph %	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2020-01-22 21:46:41.948131	\N	\N	36	\N	\N	Lymph %	120	Lymph %	t	eede92e7-d141-4c76-ab6e-b24ccfc84215	240	241
-35	\N	5	Dénombrement des lymphocytes  CD4 (%)(Sang total)	\N	CD4 %	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	59	\N	\N	CD4 percent  (%)-Blood	350	Dénombrement des lymphocytes  CD4 (%)	t	614652de-5e04-4fe7-a897-77d976317d2b	71	72
+35	\N	5	Dénombrement des lymphocytes  CD4 (%)(Whole Blood)	\N	CD4 %	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	59	\N	\N	CD4 percent  (%)-Blood	350	Dénombrement des lymphocytes  CD4 (%)	t	614652de-5e04-4fe7-a897-77d976317d2b	71	72
 36	\N	\N	HBs AG (antigén australia)(Serum)	\N	Ag HBs	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	HBsAg (Hepatitis B surface antigen)-Serum	360	HBs AG (antigén australia)	t	bc3ab337-3287-477b-9f52-cb0d0db4f06a	73	74
-37	\N	30	Mesure de la charge virale(Sang total)	\N	Charge virale VIH	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	136	\N	\N	Viral load-Blood	370	Mesure de la charge virale	t	5c37ba62-1e04-46ab-8db6-82db9c6fbb5e	75	76
-38	\N	30	Detection de la resistance aux antiretroviraux(Sang total)	\N	ARV res	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	136	\N	\N	ARV resistance-Blood	380	Detection de la resistance aux antiretroviraux	t	d83c247c-ccf4-4b9a-9016-357085672fac	77	78
+37	\N	30	Mesure de la charge virale(Whole Blood)	\N	Charge virale VIH	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	136	\N	\N	Viral load-Blood	370	Mesure de la charge virale	t	5c37ba62-1e04-46ab-8db6-82db9c6fbb5e	75	76
+38	\N	30	Detection de la resistance aux antiretroviraux(Whole Blood)	\N	ARV res	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	136	\N	\N	ARV resistance-Blood	380	Detection de la resistance aux antiretroviraux	t	d83c247c-ccf4-4b9a-9016-357085672fac	77	78
 39	\N	\N	Western blot VIH(Serum)	\N	WB-Serum	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	Western blot HIV-Serum	390	Western blot VIH	t	6e654c26-0a55-4867-a168-e55e6516fd1e	79	80
 40	\N	\N	Western blot VIH(Plasma)	\N	WB-Plasma	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	Western blot HIV-Plasma	400	Western blot VIH	t	ace3f934-4b94-4fbe-8a82-1f4cec317347	81	82
 41	\N	\N	Bioline(Plasma)	\N	Bioline-Plasma	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	Bioline-Plasma	410	Bioline	t	9b43af6e-25e4-4ebf-9724-d7bdf71a62c5	83	84
 42	\N	\N	Bioline(Serum)	\N	Bioline-Serum	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	Bioline-Serum	420	Bioline	t	2e225bfc-e9a3-4ce2-aefb-16364cb2df3b	85	86
-43	\N	\N	Bioline(Sang total)	\N	Bioline-Sang total	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	Bioline-Blood	430	Bioline	t	d7384982-3646-409e-a37d-019da248623f	87	88
+43	\N	\N	Bioline(Whole Blood)	\N	Bioline-Sang total	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	Bioline-Blood	430	Bioline	t	d7384982-3646-409e-a37d-019da248623f	87	88
 44	\N	\N	Genie III(Plasma)	\N	Genie III-Plasma	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	Genie III-Plasma	440	Genie III	f	8a529b1a-72e6-4562-96ac-885b758f3280	89	90
 45	\N	\N	Genie III(Serum)	\N	Genie III-Serum	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	Genie III-Serum	450	Genie III	f	098def0a-779e-496a-afd2-b19ca94c4c94	91	92
-46	\N	\N	Genie III(Sang total)	\N	Genie III-Sang t	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	Genie III-Blood	460	Genie III	f	bea00384-ce9f-44ec-aca1-81c58edadb43	93	94
+46	\N	\N	Genie III(Whole Blood)	\N	Genie III-Sang t	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	Genie III-Blood	460	Genie III	f	bea00384-ce9f-44ec-aca1-81c58edadb43	93	94
 47	\N	\N	Murex(Plasma)	\N	Murex-Plasma	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	Murex-Plasma	470	Murex	t	74bb0da6-c7fe-44f8-810c-a72d38fd8fc7	95	96
 48	\N	\N	Murex(Serum)	\N	Murex-Serum	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	Murex-Serum	480	Murex	t	2587b1f1-4b82-4d6f-a64e-e4fcc2230e1c	97	98
 49	\N	\N	Vironostika(Plasma)	\N	Vironostika-Plas	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	Vironostika-Plasma	490	Vironostika	t	01f90ef2-6afe-4928-8249-2e64e4c02e88	99	100
@@ -17255,7 +17255,7 @@ COPY clinlims.test (id, method_id, uom_id, description, loinc, reporting_descrip
 52	\N	\N	P24 Ag(Serum)	\N	P24 Ag-Serum	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2012-10-24 11:58:25.267898	\N	\N	117	\N	\N	P24 Ag-Serum	520	P24 Ag	t	103fc942-99f1-4991-858b-bd66aa9c3374	105	106
 53	\N	\N	Stat-Pak(Plasma)		Stat-Pak-Plasma	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2013-10-10 16:52:59.678901	\N	\N	117	\N	\N	Stat-Pak-Plasma	434	Stat-Pak	f	05ab0ed9-b9cf-4d9b-9362-8c4f4ebbd614	107	108
 54	\N	\N	Stat-Pak(Sérum)		Stat-Pak-Sérum	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2013-10-10 16:52:59.678901	\N	\N	117	\N	\N	Stat-Pak-Serum	435	Stat-Pak	f	df43c9a3-adc5-4f39-946c-0fdc63692a8d	109	110
-55	\N	\N	Stat-Pak(Sang total)		Stat-Pak-Sang total	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2013-10-10 16:52:59.678901	\N	\N	117	\N	\N	Stat-Pak-Blood	436	Stat-Pak	f	d7c06cb7-f038-4a73-a432-7ca9e25062c5	111	112
+55	\N	\N	Stat-Pak(Whole Blood)		Stat-Pak-Sang total	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2013-10-10 16:52:59.678901	\N	\N	117	\N	\N	Stat-Pak-Blood	436	Stat-Pak	f	d7c06cb7-f038-4a73-a432-7ca9e25062c5	111	112
 56	\N	\N	Determine(Plasma)		Determine-Plasma	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2013-10-10 16:52:59.678901	\N	\N	117	\N	\N	Determine-Plasma	470	Determine	t	679972ca-dce3-4e2d-bd13-8c70b24c299e	113	114
 181	\N	5	Mono %	\N	Mono %	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2020-01-22 21:46:41.948131	\N	\N	36	\N	\N	Mono %	130	Mono %	t	9eece97f-04f3-4381-b378-2a9ac08a535a	242	243
 182	\N	5	Eo %	\N	Eo %	\N	Y	\N	\N	N	\N	\N	\N	\N	\N	\N	2020-01-22 21:46:41.948131	\N	\N	36	\N	\N	Eo %	140	Eo %	t	50b568e8-e9da-428d-9697-8080bca7377b	244	245
@@ -17832,7 +17832,7 @@ COPY clinlims.type_of_sample (id, description, domain, lastupdated, local_abbrev
 5	Actual type will be selected by user	H	2013-09-19 14:31:47.008874	Variable	f	2147483647	136	\N
 3	Plasma	H	2012-10-24 11:58:25.215565	Plasma	t	20	137	sample.type.Plasma
 2	Serum	H	2012-10-24 11:58:25.215565	Serum	t	10	139	sample.type.Serum
-4	Sang total	H	2012-10-24 11:58:25.215565	Sang total	t	50	138	sample.type.Sang
+4	Whole Blood	H	2012-10-24 11:58:25.215565	Whole Bld	t	50	138	sample.type.Sang
 1	Urines	H	2012-10-24 11:58:25.215565	Urines	t	30	140	sample.type.Urines
 24	Dry Tube	H	2020-01-22 21:46:41.326636	Dry	t	2147483647	141	sample.type.dryTube
 25	EDTA Tube	H	2020-01-22 21:46:41.326636	EDTA	t	2147483647	142	sample.type.edtaTube

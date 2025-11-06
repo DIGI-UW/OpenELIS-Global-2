@@ -1,16 +1,14 @@
 package org.openelisglobal.unitofmeasure.service;
 
+import jakarta.annotation.PostConstruct;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import javax.annotation.PostConstruct;
-
 import org.hibernate.Hibernate;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.LocaleChangeListener;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.internationalization.GlobalLocaleResolver;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.unitofmeasure.dao.UnitOfMeasureDAO;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
@@ -18,20 +16,25 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.LocaleResolver;
 
 @Service
 @DependsOn({ "springContext" })
-public class UnitOfMeasureServiceImpl extends BaseObjectServiceImpl<UnitOfMeasure, String>
+public class UnitOfMeasureServiceImpl extends AuditableBaseObjectServiceImpl<UnitOfMeasure, String>
         implements UnitOfMeasureService, LocaleChangeListener {
 
     private Map<String, String> unitOfMeasureIdToNameMap = null;
 
     @Autowired
     protected UnitOfMeasureDAO unitOfMeasureDAO;
+    @Autowired
+    private LocaleResolver localeResolver;
 
     @PostConstruct
     private void initilaize() {
-        SystemConfiguration.getInstance().addLocalChangeListener(this);
+        if (localeResolver instanceof GlobalLocaleResolver) {
+            ((GlobalLocaleResolver) localeResolver).addLocalChangeListener(this);
+        }
     }
 
     @PostConstruct
@@ -79,17 +82,19 @@ public class UnitOfMeasureServiceImpl extends BaseObjectServiceImpl<UnitOfMeasur
     }
 
     private String buildUnitOfMeasureName(UnitOfMeasure unitOfMeasure) {
-//       Localization localization = unitOfMeasure.getLocalization();
-//
-//        if( LANGUAGE_LOCALE.equals( ConfigurationProperties.LOCALE.FRENCH.getRepresentation() )){
-//            return localization.getFrench();
-//        }else{
-//            return localization.getEnglish();
-//        }
-//  }
+        // Localization localization = unitOfMeasure.getLocalization();
+        //
+        // if( LANGUAGE_LOCALE.equals(
+        // ConfigurationProperties.LOCALE.FRENCH.getRepresentation()
+        // )){
+        // return localization.getFrench();
+        // }else{
+        // return localization.getEnglish();
+        // }
+        // }
 
-//    public static List<Test> getTestsInSection(String id) {
-//        return TestServiceImpl.getTestsInTestSectionById(id);
+        // public static List<Test> getTestsInSection(String id) {
+        // return TestServiceImpl.getTestsInTestSectionById(id);
         return ""; // just for compile
     }
 
@@ -139,5 +144,4 @@ public class UnitOfMeasureServiceImpl extends BaseObjectServiceImpl<UnitOfMeasur
         Hibernate.initialize(localization);
         return localization;
     }
-
 }

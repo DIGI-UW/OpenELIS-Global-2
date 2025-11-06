@@ -1,18 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.reports.action.implementation;
 
@@ -44,13 +41,15 @@ public class ReportImplementationFactory {
                 return new ReportSpecificationParameters(Parameter.ACCESSION_RANGE,
                         MessageUtil.getMessage("reports.label.patient.ARV.followup"), null);
             } else if (report.equals("patientEID1")) {
-                return new ReportSpecificationParameters(Parameter.ACCESSION_RANGE,
+                return new ReportSpecificationParameters(new Parameter[] { Parameter.ACCESSION_RANGE,
+                        Parameter.USE_PATIENT_SEARCH, Parameter.USE_SITE_SEARCH },
                         MessageUtil.getMessage("reports.label.patient.EID"), null);
             } else if (report.equals("patientEID2")) {
                 return new ReportSpecificationParameters(Parameter.ACCESSION_RANGE,
                         MessageUtil.getMessage("reports.label.patient.EID"), null);
             } else if (report.equals("patientVL1")) {
-                return new ReportSpecificationParameters(Parameter.ACCESSION_RANGE,
+                return new ReportSpecificationParameters(new Parameter[] { Parameter.ACCESSION_RANGE,
+                        Parameter.USE_PATIENT_SEARCH, Parameter.USE_SITE_SEARCH },
                         MessageUtil.getMessage("reports.label.patient.VL"), null);
             } else if (report.equals("patientIndeterminate1")) {
                 return new ReportSpecificationParameters(Parameter.ACCESSION_RANGE,
@@ -65,6 +64,8 @@ public class ReportImplementationFactory {
                         MessageUtil.getMessage("reports.label.indicator.performance"), null);
             } else if (report.equals("patientHaitiClinical") || report.equals("patientHaitiLNSP")
                     || report.equals("patientCILNSP") || report.equals("patientCILNSP_vreduit")) {
+                return new PatientClinicalReport();
+            } else if (report.equals("TBPatientReport")) {
                 return new PatientClinicalReport();
             } else if (report.equals("indicatorHaitiClinicalHIV")) {
                 return new IndicatorHIV();
@@ -130,12 +131,20 @@ public class ReportImplementationFactory {
                 return new RejectionReportByTestSection();
             } else if (report.equals("CIStudyExport")) {
                 return new ExportStudyProjectByDate();
+            } else if (report.equals("TBOrderExport")) {
+                return new ExportTBOrdersByDate();
+            } else if (report.equals("TBOrderReport")) {
+                return new TBOrderReport();
             } else if (report.equals("Trends")) {
                 return new ExportTrendsByDate();
-            }
-
-            else if (report.equals("covidResultsReport")) {
+            } else if (report.equals("ExportWHONETReportByDate")) {
+                return new WHONETExportRoutineByDate();
+            } else if (report.equals("covidResultsReport")) {
                 return new CovidResultsReport();
+            } else if (report.equals("statisticsReport")) {
+                return new StatisticsReport();
+            } else if (report.equals("sampleRejectionReport")) {
+                return new CSVSampleRejectionReport();
             }
         }
 
@@ -189,6 +198,9 @@ public class ReportImplementationFactory {
                 return new PatientCILNSPClinical();
             } else if (report.equals("patientCILNSP_vreduit")) {
                 return new PatientCILNSPClinical_vreduit();
+                // return new PatientCILNSPClinical();
+            } else if (report.equals("TBPatientReport")) {
+                return new TBPatientReport();
             } else if (report.equals("indicatorHaitiClinicalHIV")) {
                 return new IndicatorHIV();
             } else if (report.equals("indicatorHaitiLNSPHIV")) {
@@ -201,9 +213,7 @@ public class ReportImplementationFactory {
                 return new ExportProjectByDate();
             } else if (report.equals("ForCIDashboard")) {
                 return new ForCIDashboard();
-            }
-
-            else if (report.equals("CISampleRoutineExport")) {
+            } else if (report.equals("CISampleRoutineExport")) {
                 return new ExportRoutineByDate();
             } else if (report.equals("referredOut")) {
                 return new ReferredOutReport();
@@ -261,17 +271,31 @@ public class ReportImplementationFactory {
                 return new ExportStudyProjectByDate();
             } else if (report.equals("Trends")) {
                 return new ExportTrendsByDate();
+            } else if (report.equals("TBOrderExport")) {
+                return new ExportTBOrdersByDate();
             } else if (report.equals("MauritiusProtocolSheet")) {
                 return new MauritiusProtocolSheet();
-            }
-
-            else if (report.equals("covidResultsReport")) {
+            } else if (report.equals("ExportWHONETReportByDate")) {
+                return new WHONETExportRoutineByDate();
+            } else if (report.equals("covidResultsReport")) {
                 return new CovidResultsReport();
+            } else if (report.equals("statisticsReport")) {
+                return new StatisticsReport();
+            } else if (report.equals("sampleRejectionReport")) {
+                return new CSVSampleRejectionReport();
+            } else if (report.equals("PatientPathologyReport")) {
+                return new PatientPathologyReport();
+            } else if (report.equals("PatientCytologyReport")) {
+                return new PatientCytologyReport();
+            } else if (report.equals("PatientImmunoChemistryReport")) {
+                return new PatientImmunoChemistryReport();
+            } else if (report.equals("DualInSituHybridizationReport")) {
+                return new DualInSituHybridizationReport();
+            } else if (report.equals("BreastCancerHormoneReceptorReport")) {
+                return new BreastCancerHormoneReceptorReport();
             }
         }
 
         return null;
-
     }
-
 }

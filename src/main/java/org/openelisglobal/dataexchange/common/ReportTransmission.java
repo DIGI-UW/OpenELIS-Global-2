@@ -1,21 +1,20 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.dataexchange.common;
 
+import ca.uhn.hl7v2.HL7Exception;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
@@ -24,9 +23,6 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-
-import javax.servlet.http.HttpServletResponse;
-
 import org.exolab.castor.mapping.Mapping;
 import org.exolab.castor.mapping.MappingException;
 import org.exolab.castor.xml.MarshalException;
@@ -40,8 +36,6 @@ import org.openelisglobal.dataexchange.resultreporting.beans.ResultReportXmit;
 import org.openelisglobal.spring.util.SpringContext;
 import org.xml.sax.InputSource;
 
-import ca.uhn.hl7v2.HL7Exception;
-
 public class ReportTransmission {
     public enum HTTP_TYPE {
         GET, POST
@@ -53,9 +47,9 @@ public class ReportTransmission {
             orWorker.createReport(resultReport);
             sendRawReport(orWorker.getHl7Message().encode(), url, true, responseHandler, HTTP_TYPE.POST);
         } catch (HL7Exception e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
         } catch (IOException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
         }
     }
 
@@ -85,7 +79,7 @@ public class ReportTransmission {
             errors.add(e.toString());
             responseHandler.handleResponse(HttpServletResponse.SC_BAD_REQUEST, errors, xmlString);
         } catch (ValidationException | MarshalException | IOException | MappingException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
         } finally {
             try {
                 source.getByteStream().close();
@@ -93,24 +87,24 @@ public class ReportTransmission {
                 LogEvent.logError(e);
             }
         }
-
     }
 
     public void sendRawReport(String contents, String url, boolean sendAsychronously,
             ITransmissionResponseHandler responseHandler, HTTP_TYPE httpType) {
         try {
             IExternalSender sender;
-            // LogEvent.logInfo(this.getClass().getName(), "method unkown", contents );
+            // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown", contents
+            // );
             switch (httpType) {
             case GET:
-                sender = new HttpGetSender();
+                sender = SpringContext.getBean(HttpGetSender.class);
                 break;
             case POST:
-                sender = new HttpPostSender();
+                sender = SpringContext.getBean(HttpPostSender.class);
                 sender.setMessage(contents);
                 break;
             default:
-                sender = new HttpPostSender();
+                sender = SpringContext.getBean(HttpPostSender.class);
                 break;
             }
 
@@ -126,9 +120,8 @@ public class ReportTransmission {
                 }
             }
         } catch (RuntimeException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
         }
-
     }
 
     private String getCastorMappingName(String mapping) {
@@ -141,14 +134,14 @@ public class ReportTransmission {
             propertyStream = resourceLocator.getNamedResourceAsInputStream(ResourceLocator.XMIT_PROPERTIES);
             transmissionMap.load(propertyStream);
         } catch (IOException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Unable to load transmission resource mappings.", e);
         } finally {
             if (null != propertyStream) {
                 try {
                     propertyStream.close();
                 } catch (IOException e) {
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                 }
             }
         }

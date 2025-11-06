@@ -7,5 +7,4 @@ public interface TestSectionTestAssignService {
 
     void updateTestAndTestSections(Test test, TestSection testSection, TestSection deActivateTestSection,
             boolean updateTestSection);
-
 }

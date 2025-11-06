@@ -17,10 +17,9 @@ package org.openelisglobal.referral.daoimpl;
 
 import java.sql.Date;
 import java.util.List;
-
 import org.hibernate.HibernateException;
-import org.hibernate.Query;
 import org.hibernate.Session;
+import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.referral.dao.ReferringTestResultDAO;
@@ -39,32 +38,16 @@ public class ReferringTestResultDAOImpl extends BaseDAOImpl<ReferringTestResult,
         super(ReferringTestResult.class);
     }
 
-//	@Override
-//	public boolean insertData(ReferringTestResult referringTestResult) throws LIMSRuntimeException {
-//		try {
-//			String id = (String) entityManager.unwrap(Session.class).save(referringTestResult);
-//			referringTestResult.setId(id);
-//
-//			auditDAO.saveNewHistory(referringTestResult, referringTestResult.getSysUserId(), "REFERRING_TEST_RESULT");
-//			// closeSession(); // CSL remove old
-//		} catch (HibernateException e) {
-//			handleException(e, "insertData");
-//		}
-//
-//		return true;
-//	}
-
     @Override
-    
     @Transactional(readOnly = true)
     public List<ReferringTestResult> getReferringTestResultsForSampleItem(String sampleItemId)
             throws LIMSRuntimeException {
         String sql = "from ReferringTestResult rtr where rtr.sampleItemId = :sampleItemId";
         try {
-            Query query = entityManager.unwrap(Session.class).createQuery(sql);
-            query.setInteger("sampleItemId", Integer.parseInt(sampleItemId));
+            Query<ReferringTestResult> query = entityManager.unwrap(Session.class).createQuery(sql,
+                    ReferringTestResult.class);
+            query.setParameter("sampleItemId", Integer.parseInt(sampleItemId));
             List<ReferringTestResult> list = query.list();
-            // closeSession(); // CSL remove old
             return list;
         } catch (HibernateException e) {
             handleException(e, "getReferringTestResultsForSampleItem");
@@ -77,12 +60,12 @@ public class ReferringTestResultDAOImpl extends BaseDAOImpl<ReferringTestResult,
     public List<ReferringTestResult> getResultsInDateRange(Date lowDate, Date highDate) throws LIMSRuntimeException {
         String sql = "from ReferringTestResult rtr where rtr.lastupdated BETWEEN :lowDate AND :highDate";
         try {
-            Query query = entityManager.unwrap(Session.class).createQuery(sql);
-            query.setDate("lowDate", lowDate);
-            query.setDate("highDate", highDate);
+            Query<ReferringTestResult> query = entityManager.unwrap(Session.class).createQuery(sql,
+                    ReferringTestResult.class);
+            query.setParameter("lowDate", lowDate);
+            query.setParameter("highDate", highDate);
 
             List<ReferringTestResult> list = query.list();
-            // closeSession(); // CSL remove old
             return list;
         } catch (HibernateException e) {
             handleException(e, "getResultsInDateRange");
@@ -90,5 +73,4 @@ public class ReferringTestResultDAOImpl extends BaseDAOImpl<ReferringTestResult,
 
         return null;
     }
-
 }

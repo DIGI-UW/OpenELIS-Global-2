@@ -8,7 +8,7 @@ file_env_secret() {
     if [ -f "${secret_file}" ]; then
         secret_val=$(cat "${secret_file}")
 #        export ${secret_name}="${secret_val}"
-		export CATALINA_OPTS="${CATALINA_OPTS} -D${secret_name}=${secret_val}"
+        export CATALINA_OPTS="${CATALINA_OPTS} -D${secret_name}=${secret_val}"
     else
         echo "Secret file does not exist! ${secret_file}"
     fi

@@ -3,7 +3,6 @@ package org.openelisglobal.notification.dao;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -25,11 +24,12 @@ public class TestNotificationConfigDAOImpl extends BaseDAOImpl<TestNotificationC
         TestNotificationConfig data;
         try {
             String sql = "From TestNotificationConfig as tnc where tnc.test.id = :testId";
-            Query<TestNotificationConfig> query = entityManager.unwrap(Session.class).createQuery(sql);
+            Query<TestNotificationConfig> query = entityManager.unwrap(Session.class).createQuery(sql,
+                    TestNotificationConfig.class);
             query.setParameter("testId", Integer.parseInt(testId));
             data = query.uniqueResult();
         } catch (RuntimeException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException(
                     "Error in TestNotificationConfigDAOImpl getTestNotificationConfigForTestId()", e);
         }
@@ -42,12 +42,13 @@ public class TestNotificationConfigDAOImpl extends BaseDAOImpl<TestNotificationC
         List<TestNotificationConfig> data;
         try {
             String sql = "From TestNotificationConfig as tnc where tnc.test.id IN (:testIds)";
-            Query<TestNotificationConfig> query = entityManager.unwrap(Session.class).createQuery(sql);
+            Query<TestNotificationConfig> query = entityManager.unwrap(Session.class).createQuery(sql,
+                    TestNotificationConfig.class);
             query.setParameterList("testIds",
                     testIds.stream().map(i -> Integer.parseInt(i)).collect(Collectors.toList()));
             data = query.getResultList();
         } catch (RuntimeException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException(
                     "Error in TestNotificationConfigDAOImpl getTestNotificationConfigsForTestIds()", e);
         }
@@ -59,16 +60,17 @@ public class TestNotificationConfigDAOImpl extends BaseDAOImpl<TestNotificationC
     public TestNotificationConfig getForConfigOption(Integer configOptionId) {
         TestNotificationConfig data;
         try {
-            String sql = "SELECT tnc From TestNotificationConfig as tnc join tnc.options as tnco where tnco.id = :configOptionId";
-            Query<TestNotificationConfig> query = entityManager.unwrap(Session.class).createQuery(sql);
+            String sql = "SELECT tnc From TestNotificationConfig as tnc join tnc.options as tnco where tnco.id ="
+                    + " :configOptionId";
+            Query<TestNotificationConfig> query = entityManager.unwrap(Session.class).createQuery(sql,
+                    TestNotificationConfig.class);
             query.setParameter("configOptionId", configOptionId);
             data = query.uniqueResult();
         } catch (RuntimeException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in TestNotificationConfigDAOImpl getForConfigOption()", e);
         }
 
         return data;
     }
-
 }

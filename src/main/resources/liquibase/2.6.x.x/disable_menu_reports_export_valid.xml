@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="CIV developer Group" id="202208311">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_reports_export_valid'</sqlCheck>
+        </preConditions>
+        <comment>Disable menu option for export study valid result </comment>
+        <update tableName="menu" schemaName="clinlims" >
+            <column name="is_active" value="false"/>
+            <where>element_id = 'menu_reports_export_valid'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,184 @@
+@use "@carbon/styles/scss/type";
+
+.singleTest {
+  padding: 1rem 0.75rem;
+}
+
+.searchTestsList {
+  margin-top: 0.25rem;
+  background-color: #fff;
+  max-height: 14rem;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  z-index: 2;
+  cursor: pointer;
+  height: 100%;
+}
+
+.searchTestsList li:hover {
+  background-color: #525252;
+}
+
+.searchTestText {
+  @include type.type-style("body-compact-01");
+  color: #525252;
+}
+
+.emptyFilterTests {
+  @include type.type-style("body-compact-01");
+  color: #525252;
+  min-height: 1rem;
+}
+
+.emptyFilterTests span {
+  color: #d4373a;
+}
+.orderWorkFlowDiv {
+  //border: 0.5px solid #295785;
+  border-radius: 5px;
+  margin: 2%;
+  padding: 4%;
+}
+
+.orderLegendBody {
+  background-color: #ffffff;
+  border-radius: 5px;
+  margin: 2%;
+  padding: 2%;
+  padding-right: 2%;
+}
+
+@media (max-width: 1024px) {
+  .orderWorkFlowDiv {
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.ProgressIndicator {
+  margin: auto;
+  width: 50%;
+  padding: 10px;
+}
+@media (max-width: 600px) {
+  .ProgressIndicator {
+    width: 100%;
+  }
+}
+
+.navigationButtonsLayout {
+  width: 100%;
+}
+
+.navigationButtonsLayout .forwardButton {
+  float: right;
+}
+
+.tabsLayout button {
+  margin: 5px;
+}
+
+.searchActionButtons {
+  padding: 2px;
+  margin: 5px;
+  display: inline-block;
+}
+
+.searchActionButtons button {
+  margin: 10px;
+  text-align: center;
+}
+
+.sampleType {
+  margin-top: 20px;
+  /*padding-bottom: 10px;*/
+  /*border-bottom: 1px solid #888787; !* whichever color you prefer *!*/
+}
+
+.sampleType a {
+  float: right;
+}
+
+.sampleType a text {
+  color: #d76262;
+}
+
+.inputText {
+  margin-right: 5px;
+  margin-left: 5px;
+}
+
+.inputDate {
+  margin-left: 5px;
+}
+
+.inputTime {
+  margin-left: 2px;
+}
+
+.cds--accordion__heading {
+  background-color: #d9d8d9;
+}
+
+.cds--accordion__content {
+  padding: 0px !important;
+}
+
+.cds--date-picker__input {
+  width: 33rem !important;
+}
+
+.cds--time-picker__input-field {
+  width: 31.875rem !important;
+}
+
+.requestTestReferral {
+  margin-top: 40px;
+  margin-bottom: 10px;
+}
+
+.requestTestReferral .cds--checkbox-label-text {
+  color: red !important;
+}
+.orderEntrySuccessMsg {
+  width: 240px;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: auto;
+}
+.printBarCodeBtn {
+  width: 220px;
+  text-align: center;
+}
+.confirmPrintCodeBtn {
+  height: 30px;
+  width: 70px;
+  text-align: center;
+  margin-top: 26px;
+  margin-left: 10px;
+}
+.placeAnotherOrderBtn {
+  width: 220px;
+  text-align: center;
+  margin-top: 10px;
+}
+.orderReferralSentDate input {
+  width: 13rem !important;
+}
+#order_requestDate {
+  width: 438px !important;
+  margin-right: 10px;
+}
+#order_receivedDate {
+  width: 438px !important;
+  margin-right: 10px;
+}
+#order_receivedTime {
+  width: 433px !important;
+  margin-right: 5px;
+}
+#order_nextVisitDate {
+  width: 438px !important;
+}

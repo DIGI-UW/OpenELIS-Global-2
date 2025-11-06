@@ -22,11 +22,10 @@
 <%@ page isELIgnored="false"%>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags"%>
-<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions"%>
-<%@ taglib prefix="tiles" uri="http://tiles.apache.org/tags-tiles"%>
+
+<%@ taglib prefix="fn" uri="jakarta.tags.functions"%>
 
 <c:set var="tests" value="${form.testResult}" />
 <c:set var="testCount" value="${fn:length(tests)}" />
@@ -70,6 +69,7 @@
 	boolean autofillTechBox = ConfigurationProperties.getInstance()
 			.isPropertyValueEqual(Property.autoFillTechNameBox, "true");
 	boolean restrictNewReferringMethodEntries = ConfigurationProperties.getInstance().isPropertyValueEqual(Property.restrictFreeTextMethodEntry, "true");
+	String criticalMessage = ConfigurationProperties.getInstance().getPropertyValue(ConfigurationProperties.Property.customCriticalMessage);
 		
 %>
 
@@ -103,6 +103,7 @@
 var compactHozSpace = '<%=compactHozSpace%>';
 var dirty = false;
 
+var criticalMsg = "<%=criticalMessage%>";
 var pager = new OEPager('<c:out value="${form.formName}" />', '&type=' + encodeURIComponent('<spring:escapeBody javaScriptEscape="true">${type}</spring:escapeBody>'));
 pager.setCurrentPageNumber('<spring:escapeBody javaScriptEscape="true">${form.paging.currentPage}</spring:escapeBody>');
 
@@ -486,7 +487,7 @@ function createReferralOption(sampleNum, testNum, testId, testName, index) {
 	<c:forEach items="${form.referralOrganizations}" var="referralOrganization" varStatus="iter">
 	option = document.createElement('option');
 	option.value = '${referralOrganization.id}';
-	option.innerHTML = '${referralOrganization.value}';
+	option.innerHTML = "${referralOrganization.value}";
 	referralOrgSelect.appendChild(option);
 	</c:forEach>
 	cell2.innerHTML = "Institute ";
@@ -529,7 +530,7 @@ function validateEntrySize( elementValue ){
 
 function doShowTests(){
 	var form = document.getElementById("mainForm");
-	window.location.href = "${requestScope['javax.servlet.forward.request_uri']}?accessionNumber="  + $("searchAccessionID").value;
+	window.location.href = "${requestScope['jakarta.servlet.forward.request_uri']}?accessionNumber="  + $("searchAccessionID").value;
 }
 
 function /*void*/ handleEnterEvent(  ){
@@ -539,25 +540,27 @@ function /*void*/ handleEnterEvent(  ){
 	return false;
 }
 
-// jQuery(document).ready(function (index) {
-//     var dropdown = jQuery('#testMethod_' + index);
+// jQuery(document).ready(function () {
+//     jQuery('select.autocomplete-combobox').each(function(index, value) {
+//     		var dropdown = jQuery(value);
+//             autoCompleteWidth = dropdown.width() + 66 + 'px';
+//             // Actually executes autocomplete
+//             dropdown.combobox();
+//             autocompleteResultCallBack = function (selectedId, textValue) {
+//             	setSave();
+//             };
+//     });
 
-//         autoCompleteWidth = dropdown.width() + 66 + 'px';
-<%--         <% if(restrictNewReferringMethodEntries) { %> --%>
-//        			clearNonMatching = true;
-<%--         <% } else {%> --%>
-//         		clearNonMatching = false;
-<%--         <% } %> --%>
-//         capitialize = true;
-//         // Actually executes autocomplete
-//         dropdown.combobox();
-//         invalidLabID = '<spring:message code="error.method.invalid"/>'; // Alert if value is typed that's not on list. FIX - add bad message icon
-//         maxRepMsg = '<spring:message code="method.entry.project.MaxMsg"/>';
-//         resultCallBack = function (textValue) {
-//         	setSave();
-//         };
 // });
 
+  function validateCriticalResults(resultBox,lowCritical,highCritical){
+	var actualValue = resultBox.value;
+	if (actualValue > lowCritical && actualValue < highCritical) {
+		resultBox.style.borderColor = "orange";
+            alert(criticalMsg);
+            return;
+        }
+  }
 </script>
 
 <c:if test="${form.displayTestSections}">
@@ -654,7 +657,7 @@ function /*void*/ handleEnterEvent(  ){
 		<input type="button" onclick="toggleKitDisplay(this)" value="+">
 		<spring:message code="inventory.testKits" />
 		<div id="kitView" style="display: none;" class="colorFill">
-			<tiles:insertAttribute name="testKitInfo" />
+			<jsp:include page="${testKitInfoFragment}"/>
 			<br />
 			<hr style="width: 100%" />
 		</div>
@@ -740,14 +743,14 @@ function /*void*/ handleEnterEvent(  ){
 	</c:if>
 
 	<div style="width: 100%">
-		<c:if test="${not (form.paging.totalPages == 0)}">
+	<c:if test="${not (form.paging.totalPages == 0)}">
 			<form:hidden id="currentPageID" path="paging.currentPage" />
 			<c:set var="total" value="${form.paging.totalPages}" />
 			<c:set var="currentPage" value="${form.paging.currentPage}" />
 			<c:if test="${not empty analysisCount}">
-		1 - ${pageSize} of ${analysisCount}
-	</c:if>
-			<c:if test="${empty analysisCount}">
+				1 - ${pageSize} of ${analysisCount}
+			</c:if>
+			<%-- <c:if test="${not empty analysisCount}"> --%>
 				<button type="button" style="width: 100px;"
 					onclick="pager.pageBack();"
 					<c:if test="${currentPage == 1}">disabled="disabled"</c:if>>
@@ -762,7 +765,7 @@ function /*void*/ handleEnterEvent(  ){
 		<c:out value="${form.paging.currentPage}" />
 				<spring:message code="report.pageNumberOf" />
 				<c:out value="${form.paging.totalPages}" />
-			</c:if>
+		<%-- 	</c:if> --%>
 			<div class='textcontent' style="float: right">
 				<span style="visibility: hidden" id="searchNotFound"><em><%=MessageUtil.getMessage("search.term.notFound")%></em></span>
 				<%=MessageUtil.getContextualMessage("result.sample.id")%>
@@ -876,6 +879,10 @@ function /*void*/ handleEnterEvent(  ){
 					value="${testResult.lowerAbnormalRange}" />
 				<c:set var="upperAbnormalBound"
 					value="${testResult.upperAbnormalRange}" />
+				<c:set var="lowerCritical"
+					value="${testResult.lowerCritical}" />	
+				<c:set var="upperCritical"
+					value="${testResult.higherCritical}" />	
 				<c:set var="significantDigits"
 					value="${testResult.significantDigits}" />
 				<c:set var="accessionNumber" value="${testResult.accessionNumber}" />
@@ -942,8 +949,8 @@ function /*void*/ handleEnterEvent(  ){
 						indexed="true" />
 					<form:hidden path="testResult[${iter.index}].resultType"
 						id="resultType_${iter.index}" />
-					 <form:hidden path="testResult[${iter.index}].testMethod"
-						id="testMethod_${iter.index}" />	 
+					 <!-- <form:hidden path="testResult[${iter.index}].testMethod"
+						id="testMethod_${iter.index}" />	  -->
 					<form:hidden path="testResult[${iter.index}].valid"
 						id="valid_${iter.index}" />
 					<form:hidden path="testResult[${iter.index}].defaultResultValue"
@@ -1076,7 +1083,9 @@ function /*void*/ handleEnterEvent(  ){
 								style="background: ${testResult.valid ? testResult.normal ? '#ffffff' : '#ffffa0' : '#ffa0a0' }"
 								cssClass="resultValue"
 								disabled='${testResult.readOnly}'
-								onchange="validateResults( this, ${iter.index}, ${lowerBound}, ${upperBound}, ${lowerAbnormalBound}, ${upperAbnormalBound}, ${significantDigits}, 'XXXX' );
+								onchange="validateResults( this, ${iter.index}, ${lowerBound}, ${upperBound}, ${lowerAbnormalBound}, ${upperAbnormalBound}, 
+								 ${significantDigits}, 'XXXX' );
+								 validateCriticalResults(this, ${lowerCritical},${upperCritical});
 					   			 markUpdated(${iter.index});
 					   			 ${(testResult.reflexGroup && not testResult.childReflex) ? 'updateReflexChild(' += testResult.reflexParentGroup += ');' : ''}
 					   			 ${(noteRequired && not empty testResult.resultValue) ? 'showNote(' += iter.index += ');' : ''}
@@ -1192,11 +1201,13 @@ function /*void*/ handleEnterEvent(  ){
 									onchange='markUpdated(${iter.index});' />
 
 							</div>
-						</c:if> <c:if test="${testResult.displayResultAsLog}">
+						</c:if> 
+						<c:out value="${testResult.unitsOfMeasure}" />
+						<c:if test="${testResult.displayResultAsLog}">
 							<br />
 							<input type='text' id="log_${iter.index}" disabled='disabled'
-								style="color: black" value="${testResult.resultValue}" size='6' /> log
-					</c:if> <c:out value="${testResult.unitsOfMeasure}" /></td>
+								style="color: black" value="${testResult.resultValueLog}" size='6' /> log
+					</c:if> </td>
 					
 					<%-- current result cell --%>
 					<td id="currentresultcell_${iter.index}" class="ruled"><c:if
@@ -1281,11 +1292,13 @@ function /*void*/ handleEnterEvent(  ){
 									style="${(not testResult.hasQualifiedResult) ? 'display:none' : ''}" />
 
 							</div>
-						</c:if> <c:if test="${testResult.displayResultAsLog}">
+						</c:if>
+						<c:out value="${testResult.unitsOfMeasure}" />
+						 <c:if test="${testResult.displayResultAsLog}">
 							<br />
 							<input type='text' id="log_${iter.index}" disabled='disabled'
-								style="color: black" value="${testResult.resultValue}" size='6' /> log
-					</c:if> <c:out value="${testResult.unitsOfMeasure}" /></td>
+								style="color: black" value="${testResult.resultValueLog}" size='6' /> log
+					</c:if> </td>
 					<%
 						if (useTechnicianName) {
 					%>
@@ -1367,8 +1380,15 @@ function /*void*/ handleEnterEvent(  ){
 							code="refertest" text="Refer test to a reference lab" /></td>
 							 <td width="50%"><%=MessageUtil.getMessage("workplan.method")%>&nbsp;
 
+					    		<spring:message code="error.site.invalid" var="invalidSite"/>
+					    	    <spring:message code="sample.entry.project.siteMaxMsg" var="siteMaxMessage"/>
 								<form:select id="testMethod_${iter.index}"
-								        path="testResult[${iter.index}].testMethod">
+										class="autocomplete-combobox"
+								         path="testResult[${iter.index}].testMethod" 
+                    					 capitalize="true"
+					                     invalidlabid='${invalidSite}'
+					                     maxrepmsg='${siteMaxMessage}'
+					       				 clearNonMatching="<%=restrictNewReferringMethodEntries%>">
 										<option value=""></option>
 										<form:options items="${form.methods}" itemLabel="value"
 											itemValue="id" />
@@ -1393,7 +1413,7 @@ function /*void*/ handleEnterEvent(  ){
 		<c:if test="${not empty analysisCount}">
 		1 - ${pageSize} of ${analysisCount}
 	</c:if>
-		<c:if test="${empty analysisCount}">
+		<%--  <c:if test="${not empty analysisCount}">--%>
 			<c:set var="total" value="${form.paging.totalPages}" />
 			<c:set var="currentPage" value="${form.paging.currentPage}" />
 			<button type="button" style="width: 100px;"
@@ -1407,11 +1427,11 @@ function /*void*/ handleEnterEvent(  ){
 				<spring:message code="label.button.next" />
 			</button>
 	&nbsp;
-	<c:out value="${form.paging.currentPage}" /> of
+	<c:out value="${form.paging.currentPage}" /> 
+	<spring:message code="report.pageNumberOf" />
 	<c:out value="${form.paging.totalPages}" />
-		</c:if>
+		<%--</c:if>--%>
 	</c:if>
-
 </c:if>
 
 

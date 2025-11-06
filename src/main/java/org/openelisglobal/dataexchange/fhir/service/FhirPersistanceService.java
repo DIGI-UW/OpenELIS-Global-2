@@ -3,7 +3,6 @@ package org.openelisglobal.dataexchange.fhir.service;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.DiagnosticReport;
 import org.hl7.fhir.r4.model.Organization;
@@ -21,7 +20,6 @@ public interface FhirPersistanceService {
 
     Bundle updateFhirResourceInFhirStore(Resource resource) throws FhirLocalPersistingException;
 
-
     Bundle createUpdateFhirResourcesInFhirStore(FhirOperations fhirOperations) throws FhirLocalPersistingException;
 
     Bundle createUpdateFhirResourcesInFhirStore(List<FhirOperations> fhirOperationsList)
@@ -37,10 +35,11 @@ public interface FhirPersistanceService {
 
     Optional<Specimen> getSpecimenBySampleItemUuid(String uuid);
 
-
     Optional<DiagnosticReport> getDiagnosticReportByAnalysisUuid(String uuid);
 
     Optional<Task> getTaskBasedOnServiceRequest(String referringId);
+
+    Optional<ServiceRequest> getServiceRequestByReferingId(String referringId);
 
     Optional<Task> getTaskBasedOnTask(String taskId);
 
@@ -53,6 +52,7 @@ public interface FhirPersistanceService {
 
     Bundle createFhirResourcesInFhirStore(Map<String, Resource> resources) throws FhirLocalPersistingException;
 
-//    Optional<ServiceRequest> getTaskBasedOnServiceRequests(List<ServiceRequest> serviceRequests);
+    // Optional<ServiceRequest> getTaskBasedOnServiceRequests(List<ServiceRequest>
+    // serviceRequests);
 
 }

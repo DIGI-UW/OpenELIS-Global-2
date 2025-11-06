@@ -1,31 +1,32 @@
 /*
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*
-* Contributor(s): CIRG, University of Washington, Seattle WA.
-*/
+ * The contents of this file are subject to the Mozilla Public License
+ * Version 1.1 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
+ * License for the specific language governing rights and limitations under
+ * the License.
+ *
+ * The Original Code is OpenELIS code.
+ *
+ * Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
+ *
+ * Contributor(s): CIRG, University of Washington, Seattle WA.
+ */
 package org.openelisglobal.reports.action.implementation.reportBeans;
 
 import java.sql.Date;
-
 import org.openelisglobal.reports.action.implementation.Report.DateRange;
+import org.openelisglobal.reports.form.ReportForm.DateType;
 
 /**
  * @author pahill (pahill@uw.edu)
  * @since May 18, 2011
  */
 public abstract class ARVColumnBuilder extends CIColumnBuilder {
+    private DateType dateType;
 
     /**
      * @param dateRange
@@ -35,9 +36,7 @@ public abstract class ARVColumnBuilder extends CIColumnBuilder {
         super(dateRange, projectStr);
     }
 
-    /**
-     * This is the order we want them in the CSV file.
-     */
+    /** This is the order we want them in the CSV file. */
     @Override
     protected abstract void defineAllReportColumns();
 
@@ -47,6 +46,21 @@ public abstract class ARVColumnBuilder extends CIColumnBuilder {
      */
     @Override
     public void makeSQL() {
+
+        // Switch date column according to selected DateType: PK
+        String dateColumn = "s.entered_date ";
+        switch (dateType) {
+        case ORDER_DATE:
+            dateColumn = "s.entered_date ";
+            break;
+        case RESULT_DATE:
+            dateColumn = "a.released_date ";
+            break;
+        case PRINT_DATE:
+            dateColumn = "dt.report_generation_time ";
+        default:
+            break;
+        }
 
         query = new StringBuilder();
         Date lowDate = dateRange.getLowDate();
@@ -63,7 +77,7 @@ public abstract class ARVColumnBuilder extends CIColumnBuilder {
         query.append(FROM_SAMPLE_PATIENT_ORGANIZATION);
 
         // all observation history values
-        appendObservationHistoryCrosstab(lowDate, highDate);
+        appendObservationHistoryCrosstab(lowDate, highDate, dateColumn);
 
         // prior diseases
         appendOtherDiseaseCrosstab(lowDate, highDate, SQLConstant.PRIOR_DISEASES, SQLConstant.PRIOR_DISEASE_OTHER);
@@ -78,7 +92,7 @@ public abstract class ARVColumnBuilder extends CIColumnBuilder {
         appendRepeatingObservation(SQLConstant.ARV_TREATMENT_ADV_EFF_TYPE, 4, lowDate, highDate);
         appendRepeatingObservation(SQLConstant.COTRIMOXAZOLE_TREAT_ADV_EFF_GRD, 4, lowDate, highDate);
         appendRepeatingObservation(SQLConstant.COTRIMOXAZOLE_TREAT_ADV_EFF_TYPE, 4, lowDate, highDate);
-        appendResultCrosstab(lowDate, highDate);
+        appendResultCrosstab(lowDate, highDate, dateColumn);
 
         // and finally the join that puts these all together. Each cross table should be
         // listed here otherwise it's not in the result and you'll get a full join

@@ -19,7 +19,6 @@ package org.openelisglobal.testconfiguration.action;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
@@ -82,5 +81,4 @@ public class PanelTestConfigurationUtil {
 
         return sampleTypeMap;
     }
-
 }

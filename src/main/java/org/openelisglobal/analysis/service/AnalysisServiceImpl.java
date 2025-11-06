@@ -1,5 +1,6 @@
 package org.openelisglobal.analysis.service;
 
+import jakarta.annotation.PostConstruct;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -7,13 +8,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-
-import javax.annotation.PostConstruct;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.dao.AnalysisDAO;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.services.IReportTrackingService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.QAService;
@@ -28,6 +26,7 @@ import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.service.ResultServiceImpl;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
@@ -44,7 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @DependsOn({ "springContext" })
-public class AnalysisServiceImpl extends BaseObjectServiceImpl<Analysis, String> implements AnalysisService {
+public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis, String> implements AnalysisService {
 
     @Autowired
     protected AnalysisDAO baseObjectDAO;
@@ -94,14 +93,19 @@ public class AnalysisServiceImpl extends BaseObjectServiceImpl<Analysis, String>
         }
         Test test = getTest(analysis);
         String name = TestServiceImpl.getLocalizedTestNameWithType(test);
-
-        TypeOfSample typeOfSample = SpringContext.getBean(TypeOfSampleService.class)
-                .getTypeOfSampleForTest(test.getId());
-
-        if (typeOfSample != null && typeOfSample.getId().equals(
+        if (analysis.getSampleItem().getTypeOfSampleId().equals(
                 SpringContext.getBean(TypeOfSampleService.class).getTypeOfSampleIdForLocalAbbreviation("Variable"))) {
             name += "(" + analysis.getSampleTypeName() + ")";
         }
+
+        // TypeOfSample typeOfSample = SpringContext.getBean(TypeOfSampleService.class)
+        // .getTypeOfSampleForTest(test.getId());
+        // if (typeOfSample != null && typeOfSample.getId().equals(
+        //
+        // SpringContext.getBean(TypeOfSampleService.class).getTypeOfSampleIdForLocalAbbreviation("Variable")))
+        // {
+        // name += "(" + analysis.getSampleTypeName() + ")";
+        // }
 
         String parentResultType = analysis.getParentResult() != null ? analysis.getParentResult().getResultType() : "";
         if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(parentResultType)) {
@@ -238,6 +242,14 @@ public class AnalysisServiceImpl extends BaseObjectServiceImpl<Analysis, String>
 
     @Override
     @Transactional(readOnly = true)
+    public List<Analysis> getAnalysisByTestIdAndTestSectionIdsAndStartedInDateRange(Date lowDate, Date highDate,
+            String testId, List<Integer> testSectionIds) {
+        return baseObjectDAO.getAnalysisByTestIdAndTestSectionIdsAndStartedInDateRange(lowDate, highDate, testId,
+                testSectionIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Result> getResults(Analysis analysis) {
         return analysis == null ? new ArrayList<>() : resultService.getResultsByAnalysis(analysis);
     }
@@ -300,7 +312,8 @@ public class AnalysisServiceImpl extends BaseObjectServiceImpl<Analysis, String>
         analysis.setAnalysisType(DEFAULT_ANALYSIS_TYPE);
         analysis.setRevision("0");
         analysis.setStartedDate(DateUtil.getNowAsSqlDate());
-        analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(StatusService.AnalysisStatus.NotStarted));
+        analysis.setStatusId(
+                SpringContext.getBean(IStatusService.class).getStatusID(StatusService.AnalysisStatus.NotStarted));
         analysis.setSampleItem(sampleItem);
         analysis.setTestSection(test.getTestSection());
         analysis.setSampleTypeName(sampleItem.getTypeOfSample().getLocalizedName());
@@ -348,6 +361,11 @@ public class AnalysisServiceImpl extends BaseObjectServiceImpl<Analysis, String>
     }
 
     @Override
+    public int getCountOfAnalysesForStatusIds(List<Integer> statusIdList) {
+        return baseObjectDAO.getCountOfAnalysesForStatusIds(statusIdList);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<Analysis> getAnalysesBySampleStatusIdExcludingByStatusId(String sampleStatus,
             Set<Integer> excludedStatusIds) {
@@ -363,7 +381,8 @@ public class AnalysisServiceImpl extends BaseObjectServiceImpl<Analysis, String>
     @Override
     @Transactional
     public void updateAnalysises(List<Analysis> cancelAnalysis, List<Analysis> newAnalysis, String sysUserId) {
-        String cancelStatus = SpringContext.getBean(IStatusService.class).getStatusID(StatusService.AnalysisStatus.Canceled);
+        String cancelStatus = SpringContext.getBean(IStatusService.class)
+                .getStatusID(StatusService.AnalysisStatus.Canceled);
         for (Analysis analysis : cancelAnalysis) {
             analysis.setStatusId(cancelStatus);
             analysis.setSysUserId(sysUserId);
@@ -384,8 +403,10 @@ public class AnalysisServiceImpl extends BaseObjectServiceImpl<Analysis, String>
 
     @Override
     @Transactional(readOnly = true)
-    public List<Analysis> getAllAnalysisByTestsAndStatusAndCompletedDateRange(List<Integer> testIdList, List<Integer> analysisStatusList, List<Integer> sampleStatusList, Date lowDate, Date highDate) {
-        return baseObjectDAO.getAllAnalysisByTestsAndStatusAndCompletedDateRange(testIdList, analysisStatusList, sampleStatusList, lowDate, highDate);
+    public List<Analysis> getAllAnalysisByTestsAndStatusAndCompletedDateRange(List<Integer> testIdList,
+            List<Integer> analysisStatusList, List<Integer> sampleStatusList, Date lowDate, Date highDate) {
+        return baseObjectDAO.getAllAnalysisByTestsAndStatusAndCompletedDateRange(testIdList, analysisStatusList,
+                sampleStatusList, lowDate, highDate);
     }
 
     @Override
@@ -409,7 +430,8 @@ public class AnalysisServiceImpl extends BaseObjectServiceImpl<Analysis, String>
         if (accessionNumber != null && accessionNumber.contains(".")) {
             accessionNumber = accessionNumber.substring(0, accessionNumber.indexOf('.'));
         }
-        return baseObjectDAO.getPageAnalysisAtAccessionNumberAndStatus(accessionNumber, statusList, sortedByDateAndAccession);
+        return baseObjectDAO.getPageAnalysisAtAccessionNumberAndStatus(accessionNumber, statusList,
+                sortedByDateAndAccession);
     }
 
     @Override
@@ -422,7 +444,6 @@ public class AnalysisServiceImpl extends BaseObjectServiceImpl<Analysis, String>
     @Transactional(readOnly = true)
     public void getData(Analysis analysis) {
         getBaseObjectDAO().getData(analysis);
-
     }
 
     @Override
@@ -562,7 +583,6 @@ public class AnalysisServiceImpl extends BaseObjectServiceImpl<Analysis, String>
     @Transactional(readOnly = true)
     public void getMaxRevisionAnalysisBySampleAndTest(Analysis analysis) {
         getBaseObjectDAO().getMaxRevisionAnalysisBySampleAndTest(analysis);
-
     }
 
     @Override
@@ -701,8 +721,60 @@ public class AnalysisServiceImpl extends BaseObjectServiceImpl<Analysis, String>
     }
 
     @Override
+    public List<Analysis> getPageAnalysisByStatusFromAccession(List<Integer> analysisStatusList,
+            List<Integer> sampleStatusList, String accessionNumber, String upperRangeAccessionNumber, boolean doRange,
+            boolean finished) {
+        if (accessionNumber != null && accessionNumber.contains(".")) {
+            accessionNumber = accessionNumber.substring(0, accessionNumber.indexOf('.'));
+        }
+        return baseObjectDAO.getPageAnalysisByStatusFromAccession(analysisStatusList, sampleStatusList, accessionNumber,
+                upperRangeAccessionNumber, doRange, finished);
+    }
+
+    @Override
     public List<Analysis> getAnalysisForSiteBetweenResultDates(String referringSiteId, LocalDate lowerDate,
             LocalDate upperDate) {
         return baseObjectDAO.getAnalysisForSiteBetweenResultDates(referringSiteId, lowerDate, upperDate);
+    }
+
+    @Override
+    public List<Analysis> getAnalysesByPriorityAndStatusId(OrderPriority priority, List<Integer> analysisStatusIds) {
+        return baseObjectDAO.getAnalysesByPriorityAndStatusId(priority, analysisStatusIds);
+    }
+
+    @Override
+    public List<Analysis> getStudyAnalysisForSiteBetweenResultDates(String referringSiteId, LocalDate lowerDate,
+            LocalDate upperDate) {
+        return baseObjectDAO.getStudyAnalysisForSiteBetweenResultDates(referringSiteId, lowerDate, upperDate);
+    }
+
+    @Override
+    public List<Analysis> getAnalysesCompletedOnByStatusId(Date completedDate, String statusId) {
+        return baseObjectDAO.getAnalysesCompletedOnByStatusId(completedDate, statusId);
+    }
+
+    @Override
+    public int getCountOfAnalysisCompletedOnByStatusId(Date completedDate, List<Integer> statusIds) {
+        return baseObjectDAO.getCountOfAnalysisCompletedOnByStatusId(completedDate, statusIds);
+    }
+
+    @Override
+    public int getCountOfAnalysisStartedOnExcludedByStatusId(Date collectionDate, Set<Integer> statusIds) {
+        return baseObjectDAO.getCountOfAnalysisStartedOnExcludedByStatusId(collectionDate, statusIds);
+    }
+
+    @Override
+    public int getCountOfAnalysisStartedOnByStatusId(Date startedDate, List<Integer> statusIds) {
+        return baseObjectDAO.getCountOfAnalysisStartedOnByStatusId(startedDate, statusIds);
+    }
+
+    @Override
+    public List<Analysis> getAnalysesResultEnteredOnExcludedByStatusId(Date completedDate, Set<Integer> statusIds) {
+        return baseObjectDAO.getAnalysesResultEnteredOnExcludedByStatusId(completedDate, statusIds);
+    }
+
+    @Override
+    public String getMethodId(Analysis analysis) {
+        return analysis == null ? "" : analysis.getMethod() == null ? "" : analysis.getMethod().getId();
     }
 }

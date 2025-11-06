@@ -1,7 +1,6 @@
 package org.openelisglobal.patientidentitytype.service;
 
 import java.util.List;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.patientidentitytype.valueholder.PatientIdentityType;
 

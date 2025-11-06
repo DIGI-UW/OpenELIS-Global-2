@@ -7,7 +7,9 @@
 <%@ page import="org.openelisglobal.internationalization.MessageUtil"%>
 <%@ page import="org.openelisglobal.common.util.Versioning"%>
 <%@ page
-	import="org.openelisglobal.common.util.SystemConfiguration"%>
+	import="org.openelisglobal.common.util.ConfigurationProperties"%>
+<%@ page
+	import="org.openelisglobal.common.util.ConfigurationProperties.Property"%>
 <%@ page
 	import="org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl"%>
 <%@ page
@@ -18,9 +20,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 <%--
   ~ The contents of this file are subject to the Mozilla Public License
   ~ Version 1.1 (the "License"); you may not use this file except in
@@ -38,7 +40,7 @@
   --%>
 
 <%
-	String locale = SystemConfiguration.getInstance().getDefaultLocale().toString();
+String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
 %>
 <%--Do not add jquery.ui.js, it will break the sorting --%>
 <script type="text/javascript"
@@ -168,7 +170,8 @@
 
 				jQuery("#notifyResults").prop('checked', jQuery(elem).attr('fNotifyResults') === 'true');
 				jQuery("#inLabOnly").prop('checked', jQuery(elem).attr('fInLabOnly') === 'true');
-				
+				jQuery("#antimicrobialResistance").prop('checked', jQuery(elem).attr('fantimicrobialResistance') === 'true');
+
 				jQuery("#panelSelection").change();
 							
         	}
@@ -883,6 +886,69 @@
         });
     }
 
+    function lowCriticalRangeCheck() {
+        var lowCriticalRangeHighValue, lowCriticalRangeLowValue;
+        var lowCriticalRangeLow = jQuery("#lowCriticalRangeLow");
+        var lowCriticalRangeHigh = jQuery("#lowCriticalRangeHigh");
+
+        lowCriticalRangeLow.removeClass("error");
+        lowCriticalRangeLowValue = +lowCriticalRangeLow.val();
+        if (lowCriticalRangeLowValue != "-Infinity" &&
+          lowCriticalRangeLowValue != lowCriticalRangeLow.val()) {
+            lowCriticalRangeLow.addClass("error");
+            alert("<%=MessageUtil.getContextualMessage("error.low.valid.value")%>");
+            return;
+        }
+
+        lowCriticalRangeHigh.removeClass("error");
+        lowCriticalRangeHighValue = +lowCriticalRangeHigh.val();
+        if (lowCriticalRangeHighValue != "Infinity" &&
+           lowCriticalRangeHighValue != lowCriticalRangeHigh.val()) {
+            lowCriticalRangeHigh.addClass("error");
+            alert("<%=MessageUtil.getContextualMessage("error.high.valid.value")%>");
+            return;
+        }
+
+        jQuery(".rowKey").each(function () {
+            //index is in the template
+            if (jQuery(this).val() != "index") {
+                lowCriticalRangeCheck(jQuery(this).val());
+            }
+        });
+    }
+
+    function highCriticalRangeCheck() {
+        var highCriticalRangeHighValue, highCriticalRangeLowValue;
+        var highCriticalRangeLow = jQuery("#highCriticalRangeLow");
+        var highCriticalRangeHigh = jQuery("#highCriticalRangeHigh");
+
+        highCriticalRangeLow.removeClass("error");
+        highCriticalRangeLowValue = +highCriticalRangeLow.val();
+        if (highCriticalRangeLowValue != "-Infinity" &&
+          highCriticalRangeLowValue != highCriticalRangeLow.val()) {
+            highCriticalRangeLow.addClass("error");
+            alert("<%=MessageUtil.getContextualMessage("error.low.valid.value")%>");
+            return;
+        }
+
+        highCriticalRangeHigh.removeClass("error");
+        highCriticalRangeHighValue = +highCriticalRangeHigh.val();
+        if (highCriticalRangeHighValue != "Infinity" &&
+          highCriticalRangeHighValue != highCriticalRangeHigh.val()) {
+            highCriticalRangeHigh.addClass("error");
+            alert("<%=MessageUtil.getContextualMessage("error.high.valid.value")%>");
+            return;
+        }
+
+        jQuery(".rowKey").each(function () {
+            //index is in the template
+            if (jQuery(this).val() != "index") {
+                lowCriticalRangeCheck(jQuery(this).val());
+            }
+        });
+    }
+
+
     function reportingRangeCheck() {
         var highReportingRangeValue, lowReportingRangeValue;
         var lowReportingRange = jQuery("#lowReportingRange");
@@ -1148,6 +1214,8 @@
     	var normalLow = null; var normalHigh = null;
     	var valid = [];
     	var validLow = null; var validHigh = null;
+        var report = [];
+        var reportLow = null; var reportHigh = null;
 		
     	var tmpArray = defaultLimitsString.split("|");
     	
@@ -1170,8 +1238,13 @@
     			validLow = (validLowHigh.length == 2) ? validLowHigh[0] : "-Infinity";
     			validHigh = (validLowHigh.length == 2) ? validLowHigh[1] : "Infinity";
     			valid = [validLow, validHigh];
+
+                var reportLowHigh = tmpRangeArray[4].split("-");
+    			reportLow = (reportLowHigh.length == 2) ? reportLowHigh[0] : "-Infinity";
+    			reportHigh = (reportLowHigh.length == 2) ? reportLowHigh[1] : "Infinity";
+    			report = [reportLow, reportHigh];
     			
-    			resultLimits.push([gender, age, normal, valid]);
+    			resultLimits.push([gender, age, normal, valid ,report]);
     	}
 
         return resultLimits;
@@ -1405,7 +1478,8 @@
         jQuery("#highValid").val("Infinity");
         jQuery("#lowNormal_0").removeClass("error");
         jQuery("#highNormal_0").removeClass("error");
-        jQuery("#reportingRange_0").val('');
+        jQuery("#lowReportingRange").val('-Infinity');
+        jQuery("#highReportingRange").val('Infinity');
         //jQuery("#significantDigits").val('');
         jQuery("#lowerAge_0").val('0');
         jQuery("#upperAge_0").text('');
@@ -1443,6 +1517,7 @@
         jQuery("#orderableRO").text(jQuery("#orderable").attr("checked") ? "Y" : "N");
         jQuery("#notifyResultsRO").text(jQuery("#notifyResults").attr("checked") ? "Y" : "N");
         jQuery("#inLabOnlyRO").text(jQuery("#inLabOnly").attr("checked") ? "Y" : "N");
+		jQuery("#antimicrobialResistanceRO").text(jQuery("#antimicrobialResistance").attr("checked") ? "Y" : "N");
     }
 
     function createJSON() {
@@ -1462,7 +1537,8 @@
         jsonObj.notifyResults = jQuery("#notifyResults").attr("checked") ? 'Y' : 'N';
         jsonObj.inLabOnly = jQuery("#inLabOnly").attr("checked") ? 'Y' : 'N';
         jsonObj.active = jQuery("#active").attr("checked") ? 'Y' : 'N';
-        
+		jsonObj.antimicrobialResistance = jQuery("#antimicrobialResistance").attr("checked") ? 'Y' : 'N';
+
         jQuery(".resultClass").each(function (i,elem) {
         	jsonObj.testId = jQuery(elem).attr('fTestId');
             console.log("createJSON: " + jQuery(elem).attr('fTestId') + ":" + jQuery(elem).attr('fResultType'));
@@ -1578,18 +1654,35 @@
 
         jsonObj.lowValid = defaultResultLimits[0][3][0];
         jsonObj.highValid = defaultResultLimits[0][3][1];
+        jsonObj.lowReportingRange = defaultResultLimits[0][4][0];
+        jsonObj.highReportingRange = defaultResultLimits[0][4][1];
         jsonObj.resultLimits = [];
 
         for (var rowIndex = 0; rowIndex < defaultResultLimits.length; rowIndex++) {
             
             //yearMonth = monthYear = jQuery(".yearMonthSelect_" + rowIndex + ":checked").val();
-            yearMonth = 'D'; // always month regardless
+            //yearMonth = 'D'; // always month regardless
             limit = {};
 
             upperAge = defaultResultLimits[rowIndex][1][1];
             if (upperAge != "Infinity") {
-                //limit.highAgeRange = yearMonth == "<%=MessageUtil.getContextualMessage("abbreviation.year.single")%>" ? (upperAge * 12).toString() : upperAge;
-            	 limit.highAgeRange = yearMonth == '<%=MessageUtil.getMessage("abbreviation.day.single")%>' ? upperAge : yearMonth == '<%=MessageUtil.getMessage("abbreviation.month.single")%>' ? Math.floor(upperAge * 365/12) : 365 * upperAge;
+                // 0D/0M/0Y
+                 var ageLimitArray = upperAge.split("/");
+                 var days = ageLimitArray[0].slice(0, -1);
+                 var months = ageLimitArray[1].slice(0, -1);
+                 var years = ageLimitArray[2].slice(0, -1);
+                 var totalDays = 0;
+                  if(days > 0){
+                     totalDays = days ;
+                  }
+                  if(months > 0){
+                      totalDays = Math.floor(months * 365/12); 
+                  }
+
+                  if(years > 0){
+                     totalDays = years * 365 ;
+                  }
+            	 limit.highAgeRange = (totalDays).toString();
             } else {
                 limit.highAgeRange = "Infinity";
             }
@@ -1602,7 +1695,6 @@
             
             limit.lowNormal = defaultResultLimits[rowIndex][2][0];
             limit.highNormal = defaultResultLimits[rowIndex][2][1];
-            //limit.reportingRange = not used
 
             if (limit.gender) {
                 limit.lowNormalFemale = defaultResultLimits[rowIndex][2][0];
@@ -1622,6 +1714,8 @@
 
         jsonObj.lowValid = jQuery("#lowValid").val();
         jsonObj.highValid = jQuery("#highValid").val();
+        jsonObj.lowReportingRange = jQuery("#lowReportingRange").val();
+        jsonObj.highReportingRange = jQuery("#highReportingRange").val();
         jsonObj.significantDigits = jQuery("#significantDigits").val();
         jsonObj.resultLimits = [];
 
@@ -1633,7 +1727,7 @@
 
             upperAge = jQuery("#upperAgeSetter_" + rowIndex).val();
             if (upperAge != "Infinity") {
-<%--                 limit.highAgeRange = yearMonth == "<%=MessageUtil.getContextualMessage("abbreviation.year.single")%>" ? (upperAge * 365).toString() : upperAge; --%>
+                //limit.highAgeRange = yearMonth == "<%=MessageUtil.getContextualMessage("abbreviation.year.single")%>" ? (upperAge * 365).toString() : upperAge; --%>
                 limit.highAgeRange = yearMonth == '<%=MessageUtil.getMessage("abbreviation.day.single")%>' ? upperAge : yearMonth == '<%=MessageUtil.getMessage("abbreviation.month.single")%>' ? Math.floor(upperAge * 365/12).toString() : (365 * upperAge).toString();
             } else {
                 limit.highAgeRange = upperAge;
@@ -1642,12 +1736,10 @@
             limit.gender = gender;
             limit.lowNormal = jQuery("#lowNormal_" + rowIndex).val();
             limit.highNormal = jQuery("#highNormal_" + rowIndex).val();
-            limit.reportingRange = jQuery("#reportingRange_" + rowIndex).val();
 
             if (gender) {
                 limit.lowNormalFemale = jQuery("#lowNormal_G_" + rowIndex).val();
                 limit.highNormalFemale = jQuery("#highNormal_G_" + rowIndex).val();
-                limit.reportingRangeFemale = jQuery("#reportingRange_G_" + rowIndex).val();
             }
 
             jsonObj.resultLimits[countIndex++] = limit;
@@ -1706,7 +1798,7 @@ td {
   <%    List<IdValuePair> sampleTypeList = (List<IdValuePair>) pageContext.getAttribute("sampleTypeList"); %>
   <%    List<IdValuePair> ageRangeList = (List<IdValuePair>) pageContext.getAttribute("ageRangeList"); %>
   <%    List<IdValuePair> testList = (List<IdValuePair>) pageContext.getAttribute("testList"); %>
-
+  
 	<form:hidden id="jsonWad" name='${form.formName}' path="jsonWad" />
 
 	<input type="button"
@@ -1775,8 +1867,7 @@ td {
 		<h2><%=MessageUtil.getContextualMessage("sample.entry.test")%>:<span
 				id="testName"></span>
 		</h2>
-
-	    <%    List<TestCatalogBean> testCatBeanList = (List<TestCatalogBean>) pageContext.getAttribute("testCatBeanList"); %>
+        <%    List<TestCatalogBean> testCatBeanList = (List<TestCatalogBean>) pageContext.getAttribute("testCatBeanList"); %>
 		<%
 			for (TestCatalogBean bean : testCatBeanList) {
 		%>
@@ -1792,6 +1883,7 @@ td {
 					fReferenceId='<%=bean.getReferenceId()%>'
 					fNotifyResults='<%=bean.getNotifyResults()%>'
 					fInLabOnly='<%=bean.getInLabOnly()%>'
+					fantimicrobialResistance='<%=bean.getAntimicrobialResistance()%>'
 				class='resultClass'>
 				
 				<tr>
@@ -1831,6 +1923,7 @@ td {
 				%>
 				<tr>
 					<td><b><%=bean.getActive()%></b></td>
+					<td><b><%=bean.getAntimicrobialResistance()%></b></td>
 					<td><b><%=bean.getOrderable()%></b></td>
 					<%if (bean.getNotifyResults()) { %><td><b><spring:message code="test.notifyResults"/></b></td><%} %>
 					<%if (bean.getInLabOnly()) { %><td><b><spring:message code="test.inLabOnly"/></b></td><%} %>
@@ -1890,6 +1983,8 @@ td {
 					<td><span class="catalog-label"><spring:message code="configuration.test.catalog.normal.range" /></span></td>
 					<td><span class="catalog-label"><spring:message code="configuration.test.catalog.valid.range" /></span></td>
                     <td><span class="catalog-label"><spring:message code="configuration.test.catalog.reporting.range" /></span></td>
+                    <td><span class="catalog-label"><spring:message code="configuration.test.catalog.critical.range" /></span></td>
+
 				</tr>
 				<%
 					String fLimitString = "";
@@ -1897,8 +1992,9 @@ td {
 						fLimitString = fLimitString + limitBean.getGender() + ",";
 						fLimitString = fLimitString + limitBean.getAgeRange() + ",";
 						fLimitString = fLimitString + limitBean.getNormalRange() + ",";
-						fLimitString = fLimitString + limitBean.getValidRange() + "|";
-                        fLimitString = fLimitString + limitBean.getReportingRange() + "|";
+						fLimitString = fLimitString + limitBean.getValidRange() + ",";
+                        fLimitString = fLimitString + limitBean.getReportingRange() + ",";
+                        fLimitString = fLimitString + limitBean.getCriticalRange() + "|";
 
 				%>
 				<tr>
@@ -1907,7 +2003,8 @@ td {
 					<td><b><%=limitBean.getNormalRange()%></b></td>
 					<td><b><%=limitBean.getValidRange()%></b></td>
                     <td><b><%=limitBean.getReportingRange()%></b></td>
-
+                    <td><b><%=limitBean.getCriticalRange()%></b></td>
+                            
 				</tr>
 				<%
 					}
@@ -2097,8 +2194,10 @@ td {
 				<br />
 				<br />
 				<br />
-				<br /> 
-				<label for="orderable"><spring:message code="test.isActive" /></label> 
+				<br />
+					<label for="antimicrobialResistance"><spring:message code="test.antimicrobialResistance"/></label>
+					<input type="checkbox" id="antimicrobialResistance" /><br/>
+				<label for="orderable"><spring:message code="test.isActive" /></label>
 				<input type="checkbox" id="active"checked="checked" /><br />
 				<label for="orderable"><spring:message code="label.orderable" /></label>
 				<input type="checkbox" id="orderable" checked="checked" /><br/>
@@ -2144,6 +2243,10 @@ td {
 			<spring:message code="result.resultType" />
 			<div class="tab" id="resultTypeRO"></div>
 			<br />
+
+			<spring:message code="test.antimicrobialResistance"/>
+			<div class="tab" id="antimicrobialResistanceRO"></div>
+			<br/>
 			<spring:message code="test.isActive" />
 			<div class="tab" id="activeRO"></div>
 			<br />
@@ -2295,7 +2398,7 @@ td {
 				<td><span class="sexRange_index" style="display: none">
 						<spring:message code="sex.male" />
 				</span></td>
-				<td>
+				<td style="white-space:nowrap;">
 				<input class="yearMonthSelect_index" type="radio"
 					name="time_index"
 					value="<%=MessageUtil.getContextualMessage("abbreviation.year.single")%>"
@@ -2330,8 +2433,7 @@ td {
 				<td><input type="text" value="Infinity" size="10"
 					id="highNormal_index" class="highNormal"
 					onchange="normalRangeCheck('index');"></td>
-				<td><input type="text" value="" size="12"
-					id="reportingRange_index"></td>
+				<td></td>
 				<td></td>
 				<td></td>
 				<td><input id="removeButton_index" type="button"
@@ -2351,8 +2453,7 @@ td {
 				<td><input type="text" value="Infinity" size="10"
 					id="highNormal_G_index" class="highNormal"
 					onchange="normalRangeCheck('index');"></td>
-				<td><input type="text" value="" size="12"
-					id="reportingRange_G_index"></td>
+				<td></td>
 				<td></td>
 				<td></td>
 			</tr>
@@ -2365,30 +2466,32 @@ td {
 	</div>
 	<div id="normalRangeDiv" style="display: none;">
 		<h3>
-			<spring:message code="configuration.test.catalog.normal.range" />
-		</h3>
+			<spring:message code="label.range" />
+		</h3>      
 		<table style="display: inline-table">
 			<tr>
-				<th></th>
-				<th colspan="8"><spring:message code="configuration.test.catalog.normal.range" /></th>
-				<th colspan="2"><spring:message code="configuration.test.catalog.valid.range" /></th>
-				<th></th>
-			</tr>
+                <th colspan="6"><spring:message code="label.age.range" /></th>
+                <th colspan="2"><spring:message code="configuration.test.catalog.normal.range" /></th>
+                <th colspan="2"><spring:message code="label.reporting.range" /> </th>
+                 <th colspan="2"><spring:message code="configuration.test.catalog.valid.range" /> </th>
+                 <th colspan="4"><spring:message code="configuration.test.catalog.critical.range" /> </th>
+
+            </tr>
 			<tr>
 				<td><spring:message code="label.sex.dependent" /></td>
 				<td><span class="sexRange" style="display: none"><spring:message code="label.sex" /> </span></td>
-				<td colspan="4" align="center"><spring:message code="label.age.range" /></td>
-				<td colspan="2" align="center"><spring:message code="label.range" /></td>
-				<td align="center"><spring:message code="label.reporting.range" /></td>
-				<td colspan="2"></td>
-			</tr>
+				<td colspan="4" align="center"></td>
+                <td colspan="2" align="center"></td>
+                <td colspan="2" align="center"></td>
+                <td colspan="2"></td>
+			</tr>   
 			<tr class="row_0">
 				<td><input type="hidden" class="rowKey" value="0" /><input
 					id="genderCheck_0" type="checkbox"
 					onchange="genderMatersForRange(this.checked, '0')"></td>
 				<td><span class="sexRange_0" style="display: none"> <spring:message code="sex.male" />
 				</span></td>
-				<td><input class="yearMonthSelect_0" type="radio" name="time_0"
+				<td style="white-space:nowrap;"><input class="yearMonthSelect_0" type="radio" name="time_0"
 					value="<%=MessageUtil.getContextualMessage("abbreviation.year.single")%>"
 					onchange="upperAgeRangeChanged('0')" checked>
 				<spring:message code="abbreviation.year.single" /> <input
@@ -2421,14 +2524,16 @@ td {
 					onchange="normalRangeCheck('0');"></td>
 				<td><input type="text" value="Infinity" size="10"
 					id="highNormal_0" class="highNormal"
-					onchange="normalRangeCheck('0');"></td>
+					onchange="normalRangeCheck('0');"></td>                
                 <td><input type="text" value="-Infinity" size="10" id="lowReportingRange" onchange="reportingRangeCheck();"></td>
                 <td><input type="text" value="Infinity" size="10" id="highReportingRange" onchange="reportingRangeCheck();"></td>
+                <td><input type="text" value="infinity" size="5" id="lowCritical"></td>
+                <td><input type="text" value="infinity" size="5" id="highCritical"></td>
 				<td><input type="text" value="-Infinity" size="10"
 					id="lowValid" onchange="validRangeCheck();"></td>
 				<td><input type="text" value="Infinity" size="10"
 					id="highValid" onchange="validRangeCheck();"></td>
-			</tr>
+			</tr>               
 			<tr class="sexRange_0 row_0" style="display: none">
 				<td></td>
 				<td><spring:message code="sex.female" /></td>
@@ -2442,12 +2547,11 @@ td {
 				<td><input type="text" value="Infinity" size="10"
 					id="highNormal_G_0" class="highNormal"
 					onchange="normalRangeCheck('0');"></td>
-				<td><input type="text" value="" size="12"
-					id="reportingRange_G_0"></td>
 				<td></td>
 				<td></td>
-			</tr>
-			<tr id="endRow"></tr>
+				<td></td>
+			</tr>        
+			<tr id="endRow"></tr>      
 		</table>
 		<label for="significantDigits"><spring:message code="label.significant.digits" /></label> <input type="number" min="0"
 			max="10" id="significantDigits">

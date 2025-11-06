@@ -2,7 +2,6 @@ package org.openelisglobal.referral.service;
 
 import java.util.List;
 import java.util.Set;
-
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.referral.valueholder.ReferralSet;
@@ -15,5 +14,4 @@ public interface ReferralSetService {
             List<ReferralResult> removableReferralResults, String sysUserId);
 
     void createSaveReferralSetsSamplePatientEntry(List<ReferralItem> referralItems, SamplePatientUpdateData updateData);
-
 }

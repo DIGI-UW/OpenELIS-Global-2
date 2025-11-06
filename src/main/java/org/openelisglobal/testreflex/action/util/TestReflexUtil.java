@@ -1,18 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.testreflex.action.util;
 
@@ -25,7 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-
+import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -38,11 +36,18 @@ import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.resultlimit.service.ResultLimitService;
+import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.scriptlet.service.ScriptletService;
 import org.openelisglobal.scriptlet.valueholder.Scriptlet;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
+import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testreflex.action.bean.ReflexRule;
+import org.openelisglobal.testreflex.action.bean.ReflexRuleOptions;
 import org.openelisglobal.testreflex.service.TestReflexService;
 import org.openelisglobal.testreflex.valueholder.TestReflex;
 import org.openelisglobal.testresult.service.TestResultService;
@@ -72,6 +77,7 @@ public class TestReflexUtil {
     private static AnalyteService analyteService = SpringContext.getBean(AnalyteService.class);
     private static ScriptletService scriptletService = SpringContext.getBean(ScriptletService.class);
     private static NoteService noteService = SpringContext.getBean(NoteService.class);
+    private static TestService testService = SpringContext.getBean(TestService.class);
 
     private TestReflexResolver reflexResolver = SpringContext.getBean(TestReflexResolver.class);
 
@@ -137,6 +143,15 @@ public class TestReflexUtil {
         return false;
     }
 
+    public static List<TestReflex> getReflexTests(String testId) {
+        if (isTriggeringReflexTestId(testId)) {
+            return TEST_TO_REFLEX_MAP.get(testId);
+        } else {
+            return new ArrayList<>();
+        }
+
+    }
+
     public static String makeReflexTestName(TestReflex testReflex) {
         return TestServiceImpl.getUserLocalizedTestName(testReflex.getAddedTest());
     }
@@ -180,7 +195,6 @@ public class TestReflexUtil {
                     visitedReflexIdList.add(siblingId);
                 }
             }
-
         }
         return siblingList;
     }
@@ -257,20 +271,76 @@ public class TestReflexUtil {
         List<Analysis> parentAnalysisList = new ArrayList<>();
         List<Analysis> reflexAnalysises = new ArrayList<>();
 
+        Map<Integer, Set<Integer>> analyteTestMap = new HashMap<>();
+        for (TestReflexBean reflexBean : newResults) {
+            List<TestReflex> reflexesForResult = getReflexTests(reflexBean);
+            if (!reflexesForResult.isEmpty()) {
+                TestAnalyte testAnalyte = reflexesForResult.get(0).getTestAnalyte();
+                Set<Integer> testAnalyteIds = new HashSet<>();
+                reflexesForResult
+                        .forEach(reflex -> testAnalyteIds.add(Integer.valueOf(reflex.getTestAnalyte().getId())));
+                Integer analyteId = Integer.valueOf(testAnalyte.getAnalyte().getId());
+                if (analyteTestMap.keySet().contains(analyteId)) {
+                    analyteTestMap.get(analyteId).addAll(testAnalyteIds);
+                } else {
+                    analyteTestMap.put(analyteId, testAnalyteIds);
+                }
+            }
+        }
+
         for (TestReflexBean reflexBean : newResults) {
             // list may be empty or have previous handled reflexes
             List<String> handledReflexIdList = getHandledReflexesForSample(sampleIdToHandledTestReflexIds, reflexBean);
 
             // use cases 1-6, 10
             if (reflexBean.getTriggersToSelectedReflexesMap().isEmpty()) {
-                reflexAnalysises.addAll(
-                        handleAutomaticReflexes(parentAnalysisList, reflexBean, handledReflexIdList, sysUserId));
+                List<Analysis> newReflexAnalyses = new ArrayList<>();
+                Analyte analyte = reflexBean.getResult().getAnalyte();
+                if (analyte != null) {
+                    Integer analyteId = Integer.valueOf(analyte.getId());
+                    ReflexRule rule = testReflexService.getReflexRuleByAnalyteId(analyte.getId());
+                    if (rule != null) {
+                        if (rule.getOverall().equals(ReflexRuleOptions.OverallOptions.ALL)) {
+                            Set<Integer> testAnalyteIds = new HashSet<>();
+                            rule.getConditions().forEach(c -> testAnalyteIds.add(c.getTestAnalyteId()));
+                            if (analyteTestMap.get(analyteId) != null) {
+                                if (testAnalyteIds.size() == analyteTestMap.get(analyteId).size()) {
+                                    newReflexAnalyses = handleAutomaticReflexes(parentAnalysisList, reflexBean,
+                                            handledReflexIdList, sysUserId);
+                                }
+                            }
+                        } else {
+                            newReflexAnalyses = handleAutomaticReflexes(parentAnalysisList, reflexBean,
+                                    handledReflexIdList, sysUserId);
+                        }
+                    } else {
+                        newReflexAnalyses = handleAutomaticReflexes(parentAnalysisList, reflexBean, handledReflexIdList,
+                                sysUserId);
+                    }
+                }
+                reflexAnalysises.addAll(newReflexAnalyses);
             } else { // use cases 7,8,9
                 reflexAnalysises.addAll(handleUserSelectedReflexes(parentAnalysisList, reflexBean, sysUserId));
-
             }
         }
         return reflexAnalysises;
+    }
+
+    private List<TestReflex> getReflexTests(TestReflexBean reflexBean) {
+        if (reflexBean.getResult().getTestResult() == null) {
+            return new ArrayList<>();
+        }
+        String resultType = testService.getResultType(reflexBean.getResult().getTestResult().getTest());
+        List<TestReflex> reflexesForResult;
+        if (resultType.equals("D")) {
+            reflexesForResult = reflexResolver.getTestReflexsByAnalyteAndTest(reflexBean.getResult());
+        } else {
+            reflexesForResult = reflexResolver.getTestReflexesForResult(reflexBean.getResult());
+        }
+        reflexesForResult = reflexesForResult.stream()
+                .filter(e -> isTestTriggeredByResult(e.getAddedTest(), reflexBean.getResult()))
+                .collect(Collectors.toList());
+        return reflexesForResult;
     }
 
     private List<Analysis> handleUserSelectedReflexes(List<Analysis> parentAnalysisList, TestReflexBean reflexBean,
@@ -296,12 +366,12 @@ public class TestReflexUtil {
                     reflex.setActionScriptletId(splitActionId[1]);
                 }
 
-                Optional<Analysis> newAnalysis =addReflexTest(reflex, reflexBean.getResult(), reflexBean.getPatient().getId(), reflexBean.getSample(),
-                        true, true, addedActionId, false, sysUserId);
+                Optional<Analysis> newAnalysis = addReflexTest(reflex, reflexBean.getResult(),
+                        reflexBean.getPatient().getId(), reflexBean.getSample(), true, true, addedActionId, false,
+                        sysUserId);
                 if (newAnalysis.isPresent()) {
                     reflexAnalysises.add(newAnalysis.get());
                 }
-
             }
 
             if (reflexBean.getResult().getAnalysis() != null) {
@@ -317,7 +387,9 @@ public class TestReflexUtil {
             List<String> handledReflexIdList, String sysUserId) {
         // More than one reflex may be returned if more than one action
         // should be taken by the result
-        List<TestReflex> reflexesForResult = reflexResolver.getTestReflexesForResult(reflexBean.getResult());
+
+        List<TestReflex> reflexesForResult = getReflexTests(reflexBean);
+
         List<Analysis> reflexAnalysises = new ArrayList<>();
         for (TestReflex reflexForResult : reflexesForResult) {
             // filter out handled reflexes
@@ -344,8 +416,8 @@ public class TestReflexUtil {
                 boolean allSibAnalysisCausedReflex = doAllAnalysisHaveReflex(parentAnalysisList, reflexBean);
 
                 Optional<Analysis> newAnalysis = addReflexTest(reflexForResult, reflexBean.getResult(),
-                        reflexBean.getPatient().getId(),
-                        reflexBean.getSample(), true, true, null, allSibAnalysisCausedReflex, sysUserId);
+                        reflexBean.getPatient().getId(), reflexBean.getSample(), true, true, null,
+                        allSibAnalysisCausedReflex, sysUserId);
                 if (newAnalysis.isPresent()) {
                     reflexAnalysises.add(newAnalysis.get());
                 }
@@ -373,6 +445,53 @@ public class TestReflexUtil {
             }
         }
         return reflexAnalysises;
+    }
+
+    private Boolean applyNumericRelationRulesForReflex(TestReflex reflexTest, Result result) {
+        if (reflexTest.getRelation() == null) {
+            return false;
+        }
+        switch (reflexTest.getRelation()) {
+        case EQUALS:
+            return Double.valueOf(reflexTest.getNonDictionaryValue()).equals(Double.valueOf(result.getValue()));
+        case NOT_EQUALS:
+            return !(Double.valueOf(reflexTest.getNonDictionaryValue()).equals(Double.valueOf(result.getValue())));
+        case GREATER_THAN:
+            return Double.valueOf(reflexTest.getNonDictionaryValue()) < Double.valueOf(result.getValue());
+        case LESS_THAN:
+            return Double.valueOf(reflexTest.getNonDictionaryValue()) > Double.valueOf(result.getValue());
+        case GREATER_THAN_OR_EQUAL:
+            return Double.valueOf(reflexTest.getNonDictionaryValue()) <= Double.valueOf(result.getValue());
+        case LESS_THAN_OR_EQUAL:
+            return Double.valueOf(reflexTest.getNonDictionaryValue()) >= Double.valueOf(result.getValue());
+        case INSIDE_NORMAL_RANGE:
+            return Double.valueOf(result.getValue()) >= result.getMinNormal()
+                    && Double.valueOf(result.getValue()) <= result.getMaxNormal();
+        case OUTSIDE_NORMAL_RANGE:
+            return !(Double.valueOf(result.getValue()) >= result.getMinNormal()
+                    && Double.valueOf(result.getValue()) <= result.getMaxNormal());
+        case BETWEEN:
+            String value1 = reflexTest.getNonDictionaryValue().split("-")[0];
+            String value2 = reflexTest.getNonDictionaryValue().split("-")[1];
+            return Double.valueOf(result.getValue()) >= Double.valueOf(value1)
+                    && Double.valueOf(result.getValue()) <= Double.valueOf(value2);
+        default:
+            return false;
+        }
+    }
+
+    private Boolean applyTextRelationRulesForReflex(TestReflex reflexTest, Result result) {
+        if (reflexTest.getRelation() == null) {
+            return false;
+        }
+        switch (reflexTest.getRelation()) {
+        case EQUALS:
+            return reflexTest.getNonDictionaryValue().equals(result.getValue());
+        case NOT_EQUALS:
+            return !(reflexTest.getNonDictionaryValue().equals(result.getValue()));
+        default:
+            return false;
+        }
     }
 
     private boolean doAllAnalysisHaveReflex(List<Analysis> parentAnalysisList, TestReflexBean reflexBean) {
@@ -424,8 +543,8 @@ public class TestReflexUtil {
     }
 
     private Optional<Analysis> addReflexTest(TestReflex reflex, Result result, String patientId, Sample sample,
-            boolean addTest,
-            boolean handleAction, String actionSelectionId, boolean failOnDuplicateTest, String sysUserId) {
+            boolean addTest, boolean handleAction, String actionSelectionId, boolean failOnDuplicateTest,
+            String sysUserId) {
 
         if (addTest || handleAction) {
 
@@ -470,20 +589,40 @@ public class TestReflexUtil {
                 currentAnalysis.setSysUserId(sysUserId);
                 currentAnalysis.setTriggeredReflex(Boolean.TRUE);
 
-                analysisService.insert(newAnalysis);
-                analysisService.update(currentAnalysis);
+                try {
+                    analysisService.insert(newAnalysis);
+                    analysisService.update(currentAnalysis);
+                } catch (Exception e) {
+                    return Optional.empty();
+                }
 
                 List<Note> notes = new ArrayList<>();
-                notes.add(noteService.createSavableNote(newAnalysis, NoteType.EXTERNAL,
+                notes.add(noteService.createSavableNote(newAnalysis, NoteType.INTERNAL,
                         "Triggered by " + currentAnalysis.getTest().getLocalizedReportingName().getLocalizedValue(),
                         "Reflex Test Note", "1"));
                 notes.add(noteService.createSavableNote(newAnalysis, NoteType.INTERNAL,
-                        "This is part of a set of tests, please ensure all tests are resulted before validation",
+                        "This is part of a set of tests, please ensure all tests are resulted before" + " validation",
                         "Reflex Test Note", "1"));
                 if (result.getParentResult() == null) {
                     Note note = noteService.createSavableNote(currentAnalysis, NoteType.INTERNAL,
-                            "This is part of a set of tests, please ensure all tests are resulted before validation",
+                            "This is part of a set of tests, please ensure all tests are resulted before"
+                                    + " validation",
                             "Reflex Test Note", "1");
+                    if (!noteService.duplicateNoteExists(note)) {
+                        notes.add(note);
+                    }
+                }
+                if (StringUtils.isNotBlank(reflex.getInternalNote())) {
+                    Note note = noteService.createSavableNote(newAnalysis, NoteType.INTERNAL, reflex.getInternalNote(),
+                            "Reflex Rule Internal Note", "1");
+                    if (!noteService.duplicateNoteExists(note)) {
+                        notes.add(note);
+                    }
+                }
+
+                if (StringUtils.isNotBlank(reflex.getExternalNote())) {
+                    Note note = noteService.createSavableNote(newAnalysis, NoteType.EXTERNAL, reflex.getExternalNote(),
+                            "Reflex Rule External Note", "1");
                     if (!noteService.duplicateNoteExists(note)) {
                         notes.add(note);
                     }
@@ -524,9 +663,8 @@ public class TestReflexUtil {
         for (Analysis analysis : parentAnalysisList) {
             analysis.setSysUserId(sysUserId);
             analysis.setTriggeredReflex(Boolean.TRUE);
-//            analysisService.update(analysis);
+            // analysisService.update(analysis);
         }
-
     }
 
     public void updateModifiedReflexes(List<TestReflexBean> reflexBeanList, String sysUserId)
@@ -597,7 +735,6 @@ public class TestReflexUtil {
                 }
             }
         }
-
     }
 
     private Map<Sample, List<TestReflexBean>> groupBySample(List<TestReflexBean> reflexBeanList) {
@@ -648,7 +785,78 @@ public class TestReflexUtil {
 
         return analyte != null
                 && (CONCLUSION_ANAYLETE_ID.equals(analyte.getId()) || CD4_ANAYLETE.getId().equals(analyte.getId()));
-
     }
 
+    public boolean isTestTriggeredByResult(Test potentialReflexTest, Result potentialTriggerResult) {
+        String resultType = testService.getResultType(potentialTriggerResult.getTestResult().getTest());
+        if (resultType.equals("D")) {
+            return doesDictionaryRelationRulesForReflexApply(potentialReflexTest, potentialTriggerResult);
+        } else if (!resultType.equals("D")) {
+            if (resultType.equals("N")) {
+                return doesNumericRulesForReflexApply(potentialReflexTest, potentialTriggerResult);
+            } else {
+                return doesGenericRulesForReflexApply(potentialReflexTest, potentialTriggerResult);
+            }
+        }
+        return false;
+    }
+
+    public boolean doesDictionaryRelationRulesForReflexApply(Test potentialReflexTest, Result potentialTriggerResult) {
+        return reflexResolver.getTestReflexsByAnalyteAndTest(potentialTriggerResult).stream().anyMatch(reflexTest -> {
+            if (reflexTest.getAddedTest().getId().equals(potentialReflexTest.getId())) {
+                if (reflexTest.getRelation() != null) {
+                    switch (reflexTest.getRelation()) {
+                    case EQUALS:
+                        if (reflexTest.getTestResult().getValue().equals(potentialTriggerResult.getValue())) {
+                            return true;
+                        }
+                        break;
+                    case NOT_EQUALS:
+                        if (!(reflexTest.getTestResult().getValue().equals(potentialTriggerResult.getValue()))) {
+                            return true;
+                        }
+                        break;
+                    case INSIDE_NORMAL_RANGE:
+                        List<ResultLimit> resultLimits = SpringContext.getBean(ResultLimitService.class)
+                                .getResultLimits(potentialTriggerResult.getTestResult().getTest());
+                        if (!resultLimits.isEmpty()
+                                && StringUtils.isNotBlank(resultLimits.get(0).getDictionaryNormalId())) {
+                            if (potentialTriggerResult.getValue().equals(resultLimits.get(0).getDictionaryNormalId())) {
+                                return true;
+                            }
+                        }
+                        break;
+                    case OUTSIDE_NORMAL_RANGE:
+                        List<ResultLimit> limits = SpringContext.getBean(ResultLimitService.class)
+                                .getResultLimits(potentialTriggerResult.getTestResult().getTest());
+                        if (!limits.isEmpty() && StringUtils.isNotBlank(limits.get(0).getDictionaryNormalId())) {
+                            if (!(potentialTriggerResult.getValue().equals(limits.get(0).getDictionaryNormalId()))) {
+                                return true;
+                            }
+                        }
+                        break;
+                    default:
+                        break;
+                    }
+                }
+            }
+
+            return false;
+
+        });
+    }
+
+    private boolean doesNumericRulesForReflexApply(Test potentialReflexTest, Result potentialTriggerResult) {
+        List<TestReflex> reflexesForResult = reflexResolver.getTestReflexesForResult(potentialTriggerResult);
+        return reflexesForResult.stream()
+                .anyMatch(test -> test.getAddedTest().getId().equals(potentialReflexTest.getId())
+                        && applyNumericRelationRulesForReflex(test, potentialTriggerResult));
+    }
+
+    private boolean doesGenericRulesForReflexApply(Test potentialReflexTest, Result potentialTriggerResult) {
+        List<TestReflex> reflexesForResult = reflexResolver.getTestReflexesForResult(potentialTriggerResult);
+        return reflexesForResult.stream()
+                .anyMatch(test -> test.getAddedTest().getId().equals(potentialReflexTest.getId())
+                        && applyTextRelationRulesForReflex(test, potentialTriggerResult));
+    }
 }

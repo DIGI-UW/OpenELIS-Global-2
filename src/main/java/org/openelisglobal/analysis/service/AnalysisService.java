@@ -5,11 +5,11 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
-
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.test.valueholder.Test;
@@ -33,6 +33,9 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     List<Analysis> getAnalysesBySampleIdExcludedByStatusId(String id, Set<Integer> statusIds);
 
     List<Analysis> getAnalysisStartedOrCompletedInDateRange(Date lowDate, Date highDate);
+
+    List<Analysis> getAnalysisByTestIdAndTestSectionIdsAndStartedInDateRange(Date lowDate, Date highDate, String testId,
+            List<Integer> testScectionIds);
 
     List<Analysis> getAllAnalysisByTestSectionAndStatus(String testSectionId, List<Integer> analysisStatusList,
             List<Integer> sampleStatusList);
@@ -67,6 +70,8 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
 
     List<Analysis> getAnalysisStartedOnExcludedByStatusId(Date collectionDate, Set<Integer> statusIds);
 
+    int getCountOfAnalysisStartedOnExcludedByStatusId(Date collectionDate, Set<Integer> statusIds);
+
     List<Analysis> getAnalysisByTestSectionAndCompletedDateRange(String sectionID, Date lowDate, Date highDate);
 
     List<Analysis> getMaxRevisionAnalysesReadyToBeReported();
@@ -86,6 +91,8 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
 
     List<Analysis> getAnalysesBySampleIdAndStatusId(String id, Set<Integer> analysisStatusIds);
 
+    List<Analysis> getAnalysesByPriorityAndStatusId(OrderPriority priority, List<Integer> analysisStatusIds);
+
     List<Analysis> getAnalysisStartedOn(Date collectionDate);
 
     List<Analysis> getMaxRevisionAnalysesBySample(SampleItem sampleItem);
@@ -101,6 +108,8 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     List<Analysis> getAnalysisCompleteInRange(Timestamp lowDate, Timestamp highDate);
 
     List<Analysis> getAnalysesForStatusId(String statusId);
+
+    int getCountOfAnalysesForStatusIds(List<Integer> statusIdList);
 
     List<Analysis> getAllMaxRevisionAnalysesPerTest(Test test);
 
@@ -166,7 +175,6 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
 
     List<Analysis> get(List<String> value);
 
-
     List<Analysis> getAllAnalysisByTestsAndStatusAndCompletedDateRange(List<Integer> nfsTestIdList,
             List<Integer> analysisStatusList, List<Integer> sampleStatusList, Date lowDate, Date highDate);
 
@@ -184,13 +192,29 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
 
     int getCountAnalysisByTestSectionAndStatus(String sectionId, List<Integer> statusList);
 
-
     int getCountAnalysisByStatusFromAccession(List<Integer> analysisStatusList, List<Integer> sampleStatusList,
             String accessionNumber);
 
     List<Analysis> getPageAnalysisByStatusFromAccession(List<Integer> analysisStatusList,
             List<Integer> sampleStatusList, String accessionNumber);
 
+    List<Analysis> getPageAnalysisByStatusFromAccession(List<Integer> analysisStatusList,
+            List<Integer> sampleStatusList, String accessionNumber, String upperRangeAccessionNumber, boolean doRange,
+            boolean finished);
+
     List<Analysis> getAnalysisForSiteBetweenResultDates(String referringSiteId, LocalDate lowerDate,
             LocalDate upperDate);
+
+    List<Analysis> getStudyAnalysisForSiteBetweenResultDates(String referringSiteId, LocalDate lowerDate,
+            LocalDate upperDate);
+
+    List<Analysis> getAnalysesCompletedOnByStatusId(Date completedDate, String statusId);
+
+    List<Analysis> getAnalysesResultEnteredOnExcludedByStatusId(Date completedDate, Set<Integer> statusIds);
+
+    int getCountOfAnalysisCompletedOnByStatusId(Date completedDate, List<Integer> statusIds);
+
+    int getCountOfAnalysisStartedOnByStatusId(Date startedDate, List<Integer> statusIds);
+
+    String getMethodId(Analysis analysis);
 }

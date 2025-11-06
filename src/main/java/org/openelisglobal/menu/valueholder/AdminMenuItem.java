@@ -21,5 +21,4 @@ public class AdminMenuItem {
     public void setMessageKey(String messageKey) {
         this.messageKey = messageKey;
     }
-
 }

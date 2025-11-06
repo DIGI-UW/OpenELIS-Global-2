@@ -2,7 +2,6 @@ package org.openelisglobal.reports.action.implementation;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
@@ -52,5 +51,4 @@ public class RetroCIPatientCollectionReport extends CollectionReport implements 
         }
         return byteList;
     }
-
 }

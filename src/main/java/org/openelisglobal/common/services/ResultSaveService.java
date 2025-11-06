@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-
 import org.apache.commons.validator.GenericValidator;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -119,8 +118,8 @@ public class ResultSaveService {
             if (TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(serviceBean.getResultType())
                     || isQualifiedResult) {
                 setTestResultsForDictionaryResult(serviceBean.getTestId(), serviceBean.getResultValue(), result); // support
-                                                                                                                  // qualified
-                                                                                                                  // result
+                // qualified
+                // result
             } else {
                 List<TestResult> testResultList = testResultService.getActiveTestResultsByTest(serviceBean.getTestId());
                 // we are assuming there is only one testResult for a numeric
@@ -231,7 +230,6 @@ public class ResultSaveService {
                         }
                     }
                 }
-
             }
         }
 
@@ -316,6 +314,5 @@ public class ResultSaveService {
             result.setSysUserId(currentUserId);
             resultService.delete(result);
         }
-
     }
 }

@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.openelisglobal.audittrail.action.workers.AuditTrailItem;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.services.QAService;
@@ -56,7 +55,5 @@ public class QaHistoryService extends AbstractHistoryService {
     @Override
     protected void getObservableChanges(History history, Map<String, String> changeMap, String changes) {
         changeMap.put(STATUS_ATTRIBUTE, "Gail");
-
     }
-
 }

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+<property name="now" value="now()" dbms="postgresql"/>
+<changeSet author="moses_mutesa" id="1">
+        <preConditions onFail="MARK_RAN">
+                <tableExists tableName="user_lab_unit_roles"/>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM
+                      clinlims.user_lab_unit_roles ul WHERE ul.system_user_id = (SELECT su.id FROM clinlims.system_user su WHERE su.login_name = 'admin')
+                </sqlCheck>
+        </preConditions>
+        <comment>Add default Lab Unit Roles to admin User </comment>
+        <insert tableName="user_lab_unit_roles" schemaName="clinlims">
+            <column name="system_user_id" valueComputed="(SELECT id FROM system_user WHERE login_name = 'admin')" />
+            <column name="last_updated" valueComputed="${now}" />
+        </insert>
+        <insert tableName="lab_unit_role_map" schemaName="clinlims">
+            <column name="lab_unit" value="AllLabUnits" />
+        </insert>
+         <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT MAX(lab_unit_role_map_id) FROM lab_unit_role_map)" />
+            <column name="role" valueComputed="(SELECT id FROM system_role WHERE name = 'Reception')" />
+        </insert>
+         <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT MAX(lab_unit_role_map_id) FROM lab_unit_role_map)" />
+            <column name="role" valueComputed="(SELECT id FROM system_role WHERE name = 'Results')" />
+        </insert>
+         <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT MAX(lab_unit_role_map_id) FROM lab_unit_role_map)" />
+            <column name="role" valueComputed="(SELECT id FROM system_role WHERE name = 'Validation')" />
+        </insert>
+         <insert tableName="lab_roles" schemaName="clinlims">
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT MAX(lab_unit_role_map_id) FROM lab_unit_role_map)" />
+            <column name="role" valueComputed="(SELECT id FROM system_role WHERE name = 'Reports')" />
+        </insert>
+        <insert tableName="lab_unit_roles" schemaName="clinlims">
+            <column name="system_user_id" valueComputed="(SELECT MAX(system_user_id) FROM user_lab_unit_roles)" />
+            <column name="lab_unit_role_map_id" valueComputed="(SELECT MAX(lab_unit_role_map_id) FROM lab_unit_role_map)" />
+        </insert>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="2">
+        <preConditions onFail="MARK_RAN">
+                <tableExists tableName="system_user_role"/>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM system_user_role WHERE system_user_id = (SELECT id FROM system_user WHERE login_name = 'admin')
+                </sqlCheck>
+        </preConditions>
+        <comment>Add default Global Roles to admin User </comment>
+        <insert tableName="system_user_role" schemaName="clinlims">
+            <column name="system_user_id" valueComputed="(SELECT id FROM system_user WHERE login_name = 'admin')" />
+            <column name="role_id" valueComputed="(SELECT id FROM system_role WHERE name = 'Analyser Import')" />
+        </insert>
+        <insert tableName="system_user_role" schemaName="clinlims">
+            <column name="system_user_id" valueComputed="(SELECT id FROM system_user WHERE login_name = 'admin')" />
+            <column name="role_id" valueComputed="(SELECT id FROM system_role WHERE name = 'Audit Trail')" />
+        </insert>
+        <insert tableName="system_user_role" schemaName="clinlims">
+            <column name="system_user_id" valueComputed="(SELECT id FROM system_user WHERE login_name = 'admin')" />
+            <column name="role_id" valueComputed="(SELECT id FROM system_role WHERE name = 'Global Administrator')" />
+        </insert>
+        <insert tableName="system_user_role" schemaName="clinlims">
+            <column name="system_user_id" valueComputed="(SELECT id FROM system_user WHERE login_name = 'admin')" />
+            <column name="role_id" valueComputed="(SELECT id FROM system_role WHERE name = 'User Account Administrator')" />
+        </insert>
+        <insert tableName="system_user_role" schemaName="clinlims">
+            <column name="system_user_id" valueComputed="(SELECT id FROM system_user WHERE login_name = 'admin')" />
+            <column name="role_id" valueComputed="(SELECT id FROM system_role WHERE name = 'Reception')" />
+        </insert>
+         <insert tableName="system_user_role" schemaName="clinlims">
+            <column name="system_user_id" valueComputed="(SELECT id FROM system_user WHERE login_name = 'admin')" />
+            <column name="role_id" valueComputed="(SELECT id FROM system_role WHERE name = 'Results')" />
+        </insert>
+         <insert tableName="system_user_role" schemaName="clinlims">
+            <column name="system_user_id" valueComputed="(SELECT id FROM system_user WHERE login_name = 'admin')" />
+            <column name="role_id" valueComputed="(SELECT id FROM system_role WHERE name = 'Validation')" />
+        </insert>
+         <insert tableName="system_user_role" schemaName="clinlims">
+            <column name="system_user_id" valueComputed="(SELECT id FROM system_user WHERE login_name = 'admin')" />
+            <column name="role_id" valueComputed="(SELECT id FROM system_role WHERE name = 'Reports')" />
+        </insert>
+    </changeSet>
+    </databaseChangeLog>

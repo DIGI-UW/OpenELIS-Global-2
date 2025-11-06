@@ -1,24 +1,20 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.analyzerimport.analyzerreaders;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
 import org.openelisglobal.analyzerimport.util.MappedTestName;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
@@ -32,15 +28,20 @@ public class CobasTaqmanReader extends AnalyzerLineInserter {
 
     @SuppressWarnings("unused")
     private static final int PATIENT_NAME = 0;
+
     @SuppressWarnings("unused")
     private static final int PATIENT_ID = 1;
+
     @SuppressWarnings("unused")
     private static final int ORDER_NUMBER = 2;
+
     private static final int ORDER_DATE = 3;
     private static final int SAMPLE_ID = 4;
     private static final int SAMPLE_TYPE = 5;
+
     @SuppressWarnings("unused")
     private static final int BATCH_ID = 6;
+
     private static final int TEST = 7;
     private static final int RESULT = 8;
     private static final int UNIT = 9;
@@ -80,7 +81,6 @@ public class CobasTaqmanReader extends AnalyzerLineInserter {
         if (resultFromDB != null) {
             resultList.add(resultFromDB);
         }
-
     }
 
     private void createAnalyzerResultFromLine(String line, List<AnalyzerResults> resultList) {
@@ -90,8 +90,8 @@ public class CobasTaqmanReader extends AnalyzerLineInserter {
         }
 
         AnalyzerResults analyzerResults = new AnalyzerResults();
-        MappedTestName mappedName = AnalyzerTestNameCache.getInstance().getMappedTest(AnalyzerTestNameCache.COBAS_TAQMAN,
-                fields[TEST].replace("\"", "").trim());
+        MappedTestName mappedName = AnalyzerTestNameCache.getInstance()
+                .getMappedTest(AnalyzerTestNameCache.COBAS_TAQMAN, fields[TEST].replace("\"", "").trim());
 
         if (mappedName == null) {
             mappedName = AnalyzerTestNameCache.getInstance().getEmptyMappedTestName(AnalyzerTestNameCache.COBAS_TAQMAN,

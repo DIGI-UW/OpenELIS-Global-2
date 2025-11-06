@@ -4,16 +4,24 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-
+import net.sf.jasperreports.engine.JRDataSource;
+import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
+import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.services.IReportTrackingService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.ReportTrackingService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.observationhistory.service.ObservationHistoryService;
+import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
+import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.reports.action.implementation.reportBeans.VLReportData;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
@@ -21,9 +29,6 @@ import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
 import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestServiceImpl;
-
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 
 public abstract class PatientVLReport extends RetroCIPatientReport {
 
@@ -35,6 +40,8 @@ public abstract class PatientVLReport extends RetroCIPatientReport {
     private AnalysisService analysisService = SpringContext.getBean(AnalysisService.class);
     private ResultService resultService = SpringContext.getBean(ResultService.class);
     private SampleOrganizationService orgService = SpringContext.getBean(SampleOrganizationService.class);
+    private OrganizationService oService = SpringContext.getBean(OrganizationService.class);
+    private ObservationHistoryService ohService = SpringContext.getBean(ObservationHistoryService.class);
 
     protected List<VLReportData> reportItems;
     private String invalidValue = MessageUtil.getMessage("report.test.status.inProgress");
@@ -65,7 +72,6 @@ public abstract class PatientVLReport extends RetroCIPatientReport {
         setPatientInfo(data);
         setTestInfo(data);
         reportItems.add(data);
-
     }
 
     protected void setTestInfo(VLReportData data) {
@@ -77,7 +83,10 @@ public abstract class PatientVLReport extends RetroCIPatientReport {
 
         Date maxCompleationDate = null;
         long maxCompleationTime = 0L;
-//		String invalidValue = MessageUtil.getMessage("report.test.status.inProgress");
+        Date maxReleasedDate = null;
+        long maxReleasedTime = 0L;
+        // String invalidValue =
+        // MessageUtil.getMessage("report.test.status.inProgress");
 
         for (Analysis analysis : analysisList) {
 
@@ -88,7 +97,12 @@ public abstract class PatientVLReport extends RetroCIPatientReport {
                     maxCompleationDate = analysis.getCompletedDate();
                     maxCompleationTime = maxCompleationDate.getTime();
                 }
-
+            }
+            if (analysis.getReleasedDate() != null) {
+                if (analysis.getReleasedDate().getTime() > maxReleasedTime) {
+                    maxReleasedDate = analysis.getReleasedDate();
+                    maxReleasedTime = maxReleasedDate.getTime();
+                }
             }
 
             String testName = TestServiceImpl.getUserLocalizedTestName(analysis.getTest());
@@ -105,7 +119,7 @@ public abstract class PatientVLReport extends RetroCIPatientReport {
                     // data.setShowVirologie(Boolean.TRUE);
                     String resultValue = "";
                     if (resultList.size() > 0) {
-                        resultValue = resultList.get(resultList.size() - 1).getValue();
+                        resultValue = resultList.get(resultList.size() - 1).getValue(false);
                     }
 
                     String baseValue = resultValue;
@@ -124,18 +138,20 @@ public abstract class PatientVLReport extends RetroCIPatientReport {
                             data.setAmpli2lo("");
                         }
                     }
-
                 }
-
             }
-            if (mayBeDuplicate && SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(), AnalysisStatus.Finalized)
+            if (mayBeDuplicate
+                    && SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(),
+                            AnalysisStatus.Finalized)
                     && lastReport != null && lastReport.before(analysis.getLastupdated())) {
                 mayBeDuplicate = false;
             }
-
         }
         if (maxCompleationDate != null) {
             data.setCompleationdate(DateUtil.convertSqlDateToStringDate(maxCompleationDate));
+        }
+        if (maxReleasedDate != null) {
+            data.setReleasedate(DateUtil.convertSqlDateToStringDate(maxReleasedDate));
         }
 
         data.setDuplicateReport(mayBeDuplicate);
@@ -145,6 +161,10 @@ public abstract class PatientVLReport extends RetroCIPatientReport {
 
     protected void setPatientInfo(VLReportData data) {
 
+        data.setVlSuckle(ohService.getMostRecentValueForPatient(ObservationType.VL_SUCKLE, reportPatient.getId()));
+        data.setVlPregnancy(
+                ohService.getMostRecentValueForPatient(ObservationType.VL_PREGNANCY, reportPatient.getId()));
+        data.setvih(ohService.getMostRecentValueForPatient(ObservationType.HIV_STATUS, reportPatient.getId()));
         data.setSubjectno(reportPatient.getNationalId());
         data.setSitesubjectno(reportPatient.getExternalId());
         data.setBirth_date(reportPatient.getBirthDateForDisplay());
@@ -154,9 +174,16 @@ public abstract class PatientVLReport extends RetroCIPatientReport {
         SampleOrganization sampleOrg = new SampleOrganization();
         sampleOrg.setSample(reportSample);
         orgService.getDataBySample(sampleOrg);
-        data.setServicename(sampleOrg.getId() == null ? "" : sampleOrg.getOrganization().getOrganizationName());
+        data.setServicename(sampleOrg.getId() == null ? ""
+                : oService.get(sampleOrg.getOrganization().getId()).getOrganizationName());
         data.setDoctor(getObservationValues(OBSERVATION_DOCTOR_ID));
-        data.setAccession_number(reportSample.getAccessionNumber());
+        if (AccessionFormat.ALPHANUM.toString()
+                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.AccessionFormat))) {
+            data.setAccessionNumber(
+                    AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(reportSample.getAccessionNumber()));
+        } else {
+            data.setAccessionNumber(reportSample.getAccessionNumber());
+        }
         data.setReceptiondate(DateUtil.convertTimestampToStringDateAndTime(reportSample.getReceivedTimestamp()));
         Timestamp collectionDate = reportSample.getCollectionDate();
 
@@ -168,7 +195,6 @@ public abstract class PatientVLReport extends RetroCIPatientReport {
             } else {
                 data.setAgeMonth(String.valueOf((int) Math.floor(collectionTime / MONTH)));
             }
-
         }
         data.getSampleQaEventItems(reportSample);
     }
@@ -178,5 +204,4 @@ public abstract class PatientVLReport extends RetroCIPatientReport {
         return ANTIRETROVIRAL_STUDY_ID + ":" + ANTIRETROVIRAL_FOLLOW_UP_STUDY_ID + ":" + VL_STUDY_ID;
         // return ANTIRETROVIRAL_ID;
     }
-
 }

@@ -1,25 +1,38 @@
 package org.openelisglobal.internationalization;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.openelisglobal.common.util.ConfigurationProperties;
+import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.common.util.ConfigurationListener;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.common.util.DefaultConfigurationProperties;
+import org.openelisglobal.common.util.LocaleChangeListener;
+import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.context.i18n.LocaleContext;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.context.i18n.TimeZoneAwareLocaleContext;
 import org.springframework.lang.Nullable;
 import org.springframework.web.servlet.i18n.AbstractLocaleContextResolver;
 
-public class GlobalLocaleResolver extends AbstractLocaleContextResolver {
+public class GlobalLocaleResolver extends AbstractLocaleContextResolver implements ConfigurationListener {
 
-    private Locale defaultLocale = Locale
-            .forLanguageTag(ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE));
+    private Locale defaultLocale;
     private Locale currentLocale;
     private TimeZone timeZone;
+
+    private List<LocaleChangeListener> localChangeListeners = new ArrayList<>();
+
+    public GlobalLocaleResolver() {
+        defaultLocale = Locale.US;
+    }
+
+    public void addLocalChangeListener(LocaleChangeListener listener) {
+        localChangeListeners.add(listener);
+    }
 
     @Override
     public Locale resolveLocale(HttpServletRequest request) {
@@ -33,14 +46,18 @@ public class GlobalLocaleResolver extends AbstractLocaleContextResolver {
     public void setLocale(HttpServletRequest request, HttpServletResponse response, Locale locale) {
         if (!locale.equals(currentLocale)) {
             currentLocale = locale;
-            SystemConfiguration.getInstance().setDefaultLocale(locale.getLanguage());
         }
         currentLocale = locale;
     }
 
     @Override
     public void setDefaultLocale(Locale locale) {
-        defaultLocale = locale;
+        if (!defaultLocale.equals(locale)) {
+            this.defaultLocale = locale;
+            for (LocaleChangeListener listener : localChangeListeners) {
+                listener.localeChanged(locale.toLanguageTag());
+            }
+        }
     }
 
     @Override
@@ -73,7 +90,6 @@ public class GlobalLocaleResolver extends AbstractLocaleContextResolver {
             locale = localeContext.getLocale();
         }
         currentLocale = locale;
-
     }
 
     public Locale determineDefaultLocale() {
@@ -83,6 +99,7 @@ public class GlobalLocaleResolver extends AbstractLocaleContextResolver {
     /**
      * Determine the default time zone for the given request, Called if no TimeZone
      * session attribute has been found.
+     *
      * <p>
      * The default implementation returns the specified default time zone, if any,
      * or {@code null} otherwise.
@@ -96,4 +113,13 @@ public class GlobalLocaleResolver extends AbstractLocaleContextResolver {
         return getDefaultTimeZone();
     }
 
+    @Override
+    public void refreshConfiguration() {
+        String localeTag = SpringContext.getBean(DefaultConfigurationProperties.class)
+                .getPropertyValue(Property.DEFAULT_LANG_LOCALE);
+        System.out.println("LOCALE IS: " + localeTag);
+        Locale locale = GenericValidator.isBlankOrNull(localeTag) ? Locale.US : Locale.forLanguageTag(localeTag);
+        setDefaultLocale(locale);
+        LocaleContextHolder.setDefaultLocale(locale);
+    }
 }

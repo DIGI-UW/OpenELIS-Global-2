@@ -42,5 +42,4 @@ public class PatientIdentity extends BaseObject<String> {
     public void setIdentityData(String identityData) {
         this.identityData = identityData;
     }
-
 }

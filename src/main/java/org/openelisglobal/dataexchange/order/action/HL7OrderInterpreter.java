@@ -1,34 +1,17 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.dataexchange.order.action;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import org.apache.commons.validator.GenericValidator;
-import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.services.ITestIdentityService;
-import org.openelisglobal.common.services.TestIdentityService;
-import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.test.service.TestService;
-import org.openelisglobal.test.valueholder.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Scope;
-import org.springframework.stereotype.Service;
 
 import ca.uhn.hl7v2.HL7Exception;
 import ca.uhn.hl7v2.model.Message;
@@ -39,6 +22,18 @@ import ca.uhn.hl7v2.model.v251.message.OML_O21;
 import ca.uhn.hl7v2.model.v251.segment.OBR;
 import ca.uhn.hl7v2.model.v251.segment.ORC;
 import ca.uhn.hl7v2.model.v251.segment.PID;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.ITestIdentityService;
+import org.openelisglobal.common.services.TestIdentityService;
+import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Service;
 
 @Service
 @Scope("prototype")
@@ -70,7 +65,6 @@ public class HL7OrderInterpreter implements IOrderInterpreter {
         public String getIdentifier() {
             return tag;
         }
-
     }
 
     public enum ServiceIdentifier {
@@ -103,12 +97,14 @@ public class HL7OrderInterpreter implements IOrderInterpreter {
     @Override
     public List<InterpreterResults> interpret(Message orderMessage) {
         this.orderMessage = (OML_O21) orderMessage;
-//		try{
-//			LogEvent.logInfo(this.getClass().getName(), "method unkown", this.orderMessage.printStructure());
-//			LogEvent.logError( "Debugging", "hl7", this.orderMessage.printStructure());
-//		}catch(HL7Exception e1){
-//        LogEvent.logError(this.getClass().getName(), "interpret", e1.getMessage());
-//		}
+        // try{
+        // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown",
+        // this.orderMessage.printStructure());
+        // LogEvent.logError( "Debugging", "hl7", this.orderMessage.printStructure());
+        // }catch(HL7Exception e1){
+        // LogEvent.logError(this.getClass().getSimpleName(), "interpret",
+        // e1.getMessage());
+        // }
         try {
             patient = createPatientFromHL7();
             test = createTestFromHl7();
@@ -137,7 +133,6 @@ public class HL7OrderInterpreter implements IOrderInterpreter {
         } else {
             orderType = OrderType.UNKNOWN;
         }
-
     }
 
     private Test createTestFromHl7() throws HL7Exception {
@@ -236,15 +231,19 @@ public class HL7OrderInterpreter implements IOrderInterpreter {
                  * results.add(InterpreterResults.MISSING_PATIENT_GUID); }
                  */
 
-//These are being commented out until we get confirmation on the desired policy.  Either the request should be rejected or the user should be required to
-// fill the missing information in at the time of sample entry.  Commenting these out supports the latter
-//				if(GenericValidator.isBlankOrNull(getMessagePatient().getGender())){
-//					results.add(InterpreterResults.MISSING_PATIENT_GENDER);
-//				}
-//
-//				if(getMessagePatient().getDob() == null){
-//					results.add(InterpreterResults.MISSING_PATIENT_DOB);
-//				}
+                // These are being commented out until we get confirmation on the desired
+                // policy. Either
+                // the request should be rejected or the user should be required to
+                // fill the missing information in at the time of sample entry. Commenting these
+                // out
+                // supports the latter
+                // if(GenericValidator.isBlankOrNull(getMessagePatient().getGender())){
+                // results.add(InterpreterResults.MISSING_PATIENT_GENDER);
+                // }
+                //
+                // if(getMessagePatient().getDob() == null){
+                // results.add(InterpreterResults.MISSING_PATIENT_DOB);
+                // }
 
                 if (getMessagePatient().getNationalId() == null && getMessagePatient().getObNumber() == null
                         && getMessagePatient().getPcNumber() == null && getMessagePatient().getStNumber() == null
@@ -364,5 +363,4 @@ public class HL7OrderInterpreter implements IOrderInterpreter {
     public Test getTest() {
         return test;
     }
-
 }

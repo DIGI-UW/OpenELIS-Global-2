@@ -1,12 +1,12 @@
 package org.openelisglobal.sampleitem.service;
 
+import jakarta.annotation.PostConstruct;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-
-import javax.annotation.PostConstruct;
-
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -16,7 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class SampleItemServiceImpl extends BaseObjectServiceImpl<SampleItem, String> implements SampleItemService {
+public class SampleItemServiceImpl extends AuditableBaseObjectServiceImpl<SampleItem, String>
+        implements SampleItemService {
 
     private static String SAMPLE_ITEM_TABLE_REFERENCE_ID;
 
@@ -56,7 +57,12 @@ public class SampleItemServiceImpl extends BaseObjectServiceImpl<SampleItem, Str
     @Override
     @Transactional(readOnly = true)
     public List<SampleItem> getSampleItemsBySampleId(String id) {
-        return baseObjectDAO.getAllMatching("sample.id", id);
+
+        Map<String, Object> criteria = new HashMap<>();
+        criteria.put("sample.id", id);
+        criteria.put("voided", false);
+
+        return baseObjectDAO.getAllMatching(criteria);
     }
 
     @Override
@@ -69,7 +75,6 @@ public class SampleItemServiceImpl extends BaseObjectServiceImpl<SampleItem, Str
     @Transactional(readOnly = true)
     public void getData(SampleItem sampleItem) {
         getBaseObjectDAO().getData(sampleItem);
-
     }
 
     @Override
@@ -100,7 +105,6 @@ public class SampleItemServiceImpl extends BaseObjectServiceImpl<SampleItem, Str
     @Transactional(readOnly = true)
     public void getDataBySample(SampleItem sampleItem) {
         getBaseObjectDAO().getDataBySample(sampleItem);
-
     }
 
     @Override
@@ -108,5 +112,18 @@ public class SampleItemServiceImpl extends BaseObjectServiceImpl<SampleItem, Str
     public String getTypeOfSampleId(SampleItem sampleItem) {
         sampleItem = get(sampleItem.getId());
         return sampleItem.getTypeOfSampleId();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SampleItem> getSampleItemsByExternalID(String externalId) {
+        return getBaseObjectDAO().getSampleItemsByExternalID(externalId);
+    }
+
+    @Override
+    public boolean insertAliquots(SampleItem lastSampleItem, List<SampleItem> sampleItemsToInsert,
+            List<List<String>> analysisGroups) {
+        getBaseObjectDAO().insertAliquots(lastSampleItem, sampleItemsToInsert, analysisGroups);
+        return true;
     }
 }

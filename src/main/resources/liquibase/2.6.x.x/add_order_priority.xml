@@ -1,78 +1,78 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-	<changeSet author="moses_mutesa" id="1">
-		<preConditions onFail="MARK_RAN">
-			<tableExists tableName="sample" schemaName="clinlims" />
-			<not>
-				<columnExists tableName="sample" columnName="order_priority" />
-			</not>
-		</preConditions>
-		<comment>add Priority column to sample table</comment>
-		<addColumn schemaName="clinlims" tableName="sample">
-			<column name="order_priority" type="VARCHAR(255)" defaultValue="ROUTINE" />
-		</addColumn>
-	</changeSet>
-	<changeSet author="moses_mutesa" id="2">
-		<preConditions onFail="MARK_RAN">
-			<tableExists tableName="electronic_order" schemaName="clinlims" />
-			<not>
-				<columnExists tableName="electronic_order" columnName="order_priority" />
-			</not>
-		</preConditions>
-		<comment>add Priority column to electronic_order table</comment>
-		<addColumn schemaName="clinlims" tableName="electronic_order">
-			<column name="order_priority" type="VARCHAR(255)" defaultValue="ROUTINE" />
-		</addColumn>
-	</changeSet>
-	<changeSet author="moses_mutesa" id="3">
-		<preConditions onFail="MARK_RAN">
-			<tableExists tableName="menu" schemaName="clinlims" />
-			<sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_workplan_priority'</sqlCheck> 
-		</preConditions>
-		<comment>add Option 'By Priority' to the WorkPlan menu</comment>
-		<insert tableName="menu" schemaName="clinlims">
-			<column name="id" valueSequenceNext="menu_seq"/>
-			<column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_workplan')"/>
-			<column name="presentation_order" value="4"/>
-			<column name="element_id" value="menu_workplan_priority"/>
-			<column name="action_url" value="/WorkPlanByPriotiy?type=priority"/>
-			<column name="display_key" value="banner.menu.workplan.priority"/>
-			<column name="tool_tip_key" value="tooltip.bannner.menu.workplan.priority"/>
-			<column name="new_window" value="false"/>
-			<column name="is_active" value="true"/>
-		</insert>
-	</changeSet>
-	<changeSet author="moses_mutesa" id="4">
-		<preConditions onFail="MARK_RAN">
-			<tableExists tableName="system_role_module" schemaName="clinlims" />
-			<sqlCheck expectedResult="0">
-				SELECT count(*) FROM clinlims.system_module_url smu WHERE smu.system_module_id = (SELECT sm.id FROM clinlims.system_module sm WHERE sm.name ='Workplan') AND smu.url_path = '/WorkPlanByPriority'
-			</sqlCheck>
-		</preConditions>
-		<comment>update Results Role to have Acces to WorkPlan By Priority Tab </comment>
-		<insert tableName="system_module_url" schemaName="clinlims">
-			<column name="id" valueSequenceNext="system_module_url_seq"/>
-			<column name="url_path" value="/WorkPlanByPriority"/>
-			<column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'Workplan')"/>
-		</insert>
-	</changeSet>
-	<changeSet author="moses_mutesa" id="5">
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck expectedResult="1">
-				SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_workplan_priority'
-			</sqlCheck>
-			<sqlCheck expectedResult="0">
-				SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_workplan_priority' AND action_url = '/WorkPlanByPriority?type=priority'
-			</sqlCheck>	
-		</preConditions>
-		<comment>update correct WorkPlanByPriority action url</comment>
-		<update tableName="menu" schemaName="clinlims" >
-			<column name="action_url" value="/WorkPlanByPriority?type=priority"/>
-			<where>element_id='menu_workplan_priority'</where>
-		</update>
-	</changeSet>
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet author="moses_mutesa" id="1">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample" schemaName="clinlims" />
+            <not>
+                <columnExists tableName="sample" columnName="order_priority" />
+            </not>
+        </preConditions>
+        <comment>add Priority column to sample table</comment>
+        <addColumn schemaName="clinlims" tableName="sample">
+            <column name="order_priority" type="VARCHAR(255)" defaultValue="ROUTINE" />
+        </addColumn>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="2">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="electronic_order" schemaName="clinlims" />
+            <not>
+                <columnExists tableName="electronic_order" columnName="order_priority" />
+            </not>
+        </preConditions>
+        <comment>add Priority column to electronic_order table</comment>
+        <addColumn schemaName="clinlims" tableName="electronic_order">
+            <column name="order_priority" type="VARCHAR(255)" defaultValue="ROUTINE" />
+        </addColumn>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="3">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_workplan_priority'</sqlCheck>
+        </preConditions>
+        <comment>add Option 'By Priority' to the WorkPlan menu</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_workplan')"/>
+            <column name="presentation_order" value="4"/>
+            <column name="element_id" value="menu_workplan_priority"/>
+            <column name="action_url" value="/WorkPlanByPriotiy?type=priority"/>
+            <column name="display_key" value="banner.menu.workplan.priority"/>
+            <column name="tool_tip_key" value="tooltip.bannner.menu.workplan.priority"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="4">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.system_module_url smu WHERE smu.system_module_id = (SELECT sm.id FROM clinlims.system_module sm WHERE sm.name ='Workplan') AND smu.url_path = '/WorkPlanByPriority'
+            </sqlCheck>
+        </preConditions>
+        <comment>update Results Role to have Acces to WorkPlan By Priority Tab </comment>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/WorkPlanByPriority"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'Workplan')"/>
+        </insert>
+    </changeSet>
+    <changeSet author="moses_mutesa" id="5">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_workplan_priority'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_workplan_priority' AND action_url = '/WorkPlanByPriority?type=priority'
+            </sqlCheck>
+        </preConditions>
+        <comment>update correct WorkPlanByPriority action url</comment>
+        <update tableName="menu" schemaName="clinlims" >
+            <column name="action_url" value="/WorkPlanByPriority?type=priority"/>
+            <where>element_id='menu_workplan_priority'</where>
+        </update>
+    </changeSet>
 </databaseChangeLog>

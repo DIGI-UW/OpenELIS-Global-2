@@ -1,7 +1,6 @@
 package org.openelisglobal.common.form;
 
 import java.util.List;
-
 import org.openelisglobal.menu.form.AdminMenuForm;
 
 public abstract class AdminOptionMenuForm<T> extends AdminMenuForm {

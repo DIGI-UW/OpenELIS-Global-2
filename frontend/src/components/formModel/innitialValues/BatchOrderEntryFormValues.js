@@ -1,0 +1,62 @@
+const BatchOrderEntryFormValues = {
+  currentDate: "",
+  currentTime: "",
+  sampleTypeSelect: "",
+  panels: [
+    {
+      name: "",
+      testIds: "",
+      panelId: "",
+      panelOrder: 0,
+    },
+  ],
+  testSectionList: [],
+  tests: [],
+  _ProjectDataVL: {
+    dryTubeTaken: "",
+    edtaTubeTaken: "",
+    dbsTaken: "",
+    viralLoadTest: "",
+  },
+  _ProjectDataEID: {
+    dryTubeTaken: "",
+    dbsTaken: "",
+    dnaPCR: "",
+  },
+
+  method: "",
+  facilityIDCheck: false,
+  facilityID: "",
+  patientInfoCheck: false,
+  sampleXML: "",
+  patientProperties: {
+    currentDate: "",
+    patientLastUpdated: "",
+    personLastUpdated: "",
+    patientUpdateStatus: "ADD",
+    patientPK: "",
+    subjectNumber: "",
+    nationalId: "",
+    guid: "",
+    lastName: "",
+    firstName: "",
+    aka: null,
+    gender: "",
+    ageYears: null,
+    ageMonths: null,
+    ageDays: null,
+    birthDateForDisplay: "",
+  },
+  sampleOrderItems: {
+    newRequesterName: "",
+    labNo: "",
+    receivedDateForDisplay: null,
+    receivedTime: null,
+    referringSiteId: "",
+    referringSiteDepartmentId: "",
+    referringSiteName: "",
+    referringSiteDepartmentName: "",
+  },
+};
+
+export default BatchOrderEntryFormValues;

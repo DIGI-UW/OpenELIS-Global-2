@@ -1,0 +1,12 @@
+{
+  "testName": "Western blot HIV(Serum)",
+  "bilanPanelType": "Bilan Biochimique",
+  "panelType": "Serologie VIH",
+  "unitBioType": "Biochemistry",
+  "unitType": "Serology-Immunology",
+  "priority": "Routine",
+  "panelTile": "Workplan By Panel",
+  "testTile": "Workplan By Test",
+  "unitTile": "Workplan By Unit",
+  "priorityTile": "Workplan By Priority"
+}

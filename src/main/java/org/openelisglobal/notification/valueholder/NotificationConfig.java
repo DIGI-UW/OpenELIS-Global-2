@@ -1,7 +1,6 @@
 package org.openelisglobal.notification.valueholder;
 
 import java.util.List;
-
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption.NotificationMethod;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption.NotificationNature;
@@ -25,5 +24,4 @@ public abstract class NotificationConfig<T> extends BaseObject<Integer> {
     public abstract NotificationConfigOption getProviderEmail();
 
     public abstract NotificationConfigOption getProviderSMS();
-
 }

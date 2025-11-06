@@ -1,10 +1,8 @@
 package org.openelisglobal.referral.fhir.controller;
 
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import javax.validation.Valid;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.services.DisplayListService;
@@ -29,8 +27,6 @@ import org.springframework.web.servlet.ModelAndView;
 @Controller
 public class FhirReferralReceptionController extends BaseController {
 
-    private static final String[] ALLOWED_FIELDS = new String[] { "organization.id", "sampleIdsToAnalysisIds" };
-
     @Autowired
     private ElectronicOrderService electronicOrderService;
     @Autowired
@@ -40,9 +36,12 @@ public class FhirReferralReceptionController extends BaseController {
     @Autowired
     private DisplayListService displayListService;
 
+    private static final String[] ALLOWED_FIELDS = new String[] { "externalAccessionNumber", "patientID",
+            "patientLastName", "patientFirstName", "dateOfBirth", "gender", "page" };
+
     @InitBinder
     public void initBinder(WebDataBinder binder) {
-//        binder.setAllowedFields(ALLOWED_FIELDS);
+        binder.setAllowedFields(ALLOWED_FIELDS);
     }
 
     @GetMapping("/FhirReferralReception")
@@ -83,7 +82,6 @@ public class FhirReferralReceptionController extends BaseController {
             for (ElectronicOrder eOrder : electronicOrders) {
                 eOrder.setStatus(statusOfSampleService.get(eOrder.getStatusId()));
             }
-
         }
         return findForward(FWD_SUCCESS, form);
     }
@@ -115,5 +113,4 @@ public class FhirReferralReceptionController extends BaseController {
         // TODO Auto-generated method stub
         return null;
     }
-
 }

@@ -1,18 +1,16 @@
 package org.openelisglobal.dictionary.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseMenuController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.form.AdminOptionMenuForm;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.dictionary.form.DictionaryMenuForm;
 import org.openelisglobal.dictionary.service.DictionaryService;
@@ -86,8 +84,10 @@ public class DictionaryMenuController extends BaseMenuController<Dictionary> {
         request.setAttribute(MENU_TOTAL_RECORDS, String.valueOf(total));
         request.setAttribute(MENU_FROM_RECORD, String.valueOf(startingRecNo));
         int numOfRecs = 0;
-        if (dictionaries.size() > SystemConfiguration.getInstance().getDefaultPageSize()) {
-            numOfRecs = SystemConfiguration.getInstance().getDefaultPageSize();
+        if (dictionaries.size() > Integer
+                .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))) {
+            numOfRecs = Integer
+                    .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         } else {
             numOfRecs = dictionaries.size();
         }
@@ -111,7 +111,7 @@ public class DictionaryMenuController extends BaseMenuController<Dictionary> {
 
     @Override
     protected int getPageSize() {
-        return SystemConfiguration.getInstance().getDefaultPageSize();
+        return Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
     }
 
     @Override
@@ -142,15 +142,14 @@ public class DictionaryMenuController extends BaseMenuController<Dictionary> {
             dictionaryService.deleteAll(dictionaries);
         } catch (LIMSRuntimeException e) {
             // bugzilla 2154
-            LogEvent.logError(e.toString(), e);
-            if (e.getException() instanceof org.hibernate.StaleObjectStateException) {
+            LogEvent.logError(e);
+            if (e.getCause() instanceof org.hibernate.StaleObjectStateException) {
                 result.reject("errors.OptimisticLockException");
             } else {
                 result.reject("errors.DeleteException");
             }
             redirectAttributes.addFlashAttribute(Constants.REQUEST_ERRORS, result);
             return findForward(FWD_FAIL_DELETE, form);
-
         }
 
         redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
@@ -160,7 +159,7 @@ public class DictionaryMenuController extends BaseMenuController<Dictionary> {
     @Override
     protected String findLocalForward(String forward) {
         if (FWD_SUCCESS.equals(forward)) {
-            return "masterListsPageDefinition";
+            return "dictionaryMasterListsPageDefinition";
         } else if (FWD_FAIL.equals(forward)) {
             return "redirect:/MasterListsPage";
         } else if (FWD_SUCCESS_DELETE.equals(forward)) {
@@ -181,5 +180,4 @@ public class DictionaryMenuController extends BaseMenuController<Dictionary> {
     protected String getPageSubtitleKey() {
         return "dictionary.browse.title";
     }
-
 }

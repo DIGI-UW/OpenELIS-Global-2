@@ -1,18 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.reports.action.implementation;
 
@@ -20,7 +17,8 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-
+import net.sf.jasperreports.engine.JRDataSource;
+import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -39,9 +37,6 @@ import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
 import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestServiceImpl;
-
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 
 public abstract class PatientARVReport extends RetroCIPatientReport {
     private List<ARVReportData> reportItems;
@@ -81,7 +76,6 @@ public abstract class PatientARVReport extends RetroCIPatientReport {
         data.setLabNo(reportSample.getAccessionNumber());
 
         data.getSampleQaEventItems(reportSample);
-
     }
 
     @Override
@@ -100,7 +94,6 @@ public abstract class PatientARVReport extends RetroCIPatientReport {
         setPatientInfo(data);
         setTestInfo(data);
         reportItems.add(data);
-
     }
 
     protected void setTestInfo(ARVReportData data) {
@@ -118,10 +111,10 @@ public abstract class PatientARVReport extends RetroCIPatientReport {
                     maxCompleationDate = analysis.getCompletedDate();
                     maxCompleationTime = maxCompleationDate.getTime();
                 }
-
             }
 
-            if (!analysis.getStatusId().equals(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled))) {
+            if (!analysis.getStatusId()
+                    .equals(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled))) {
                 String testName = TestServiceImpl.getUserLocalizedTestName(analysis.getTest());
                 List<Result> resultList = resultService.getResultsByAnalysis(analysis);
                 String resultValue = null;
@@ -161,11 +154,12 @@ public abstract class PatientARVReport extends RetroCIPatientReport {
                 }
             }
 
-            if (mayBeDuplicate && SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(), AnalysisStatus.Finalized)
+            if (mayBeDuplicate
+                    && SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(),
+                            AnalysisStatus.Finalized)
                     && lastReport != null && lastReport.before(analysis.getLastupdated())) {
                 mayBeDuplicate = false;
             }
-
         }
 
         if (maxCompleationDate != null) {
@@ -239,8 +233,15 @@ public abstract class PatientARVReport extends RetroCIPatientReport {
                 }
             }
 
-        } else if (testName.equals("Murex") || testName.equals("Intgral")) { // Serology must have one of these but not
-                                                                             // necessarily both
+        } else if (testName.equals("Murex") || testName.equals("Murex Combinaison") || testName.equals("Genscreen")) { // Serology
+                                                                                                                       // must
+                                                                                                                       // have
+                                                                                                                       // one
+                                                                                                                       // of
+                                                                                                                       // these
+                                                                                                                       // but
+                                                                                                                       // not
+            // necessarily both
             data.setShowSerologie(Boolean.TRUE);
             if (GenericValidator.isBlankOrNull(data.getVih())) {
                 data.setVih(invalidValue);

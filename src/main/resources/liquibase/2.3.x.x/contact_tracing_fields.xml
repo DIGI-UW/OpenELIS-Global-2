@@ -1,52 +1,52 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
 
-	<changeSet author="csteele" id="1">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<tableExists tableName="sample_additional_fields" />
-			</not>
-		</preConditions>
-		
-		<createTable schemaName="clinlims"
-			tableName="sample_additional_fields">
-			<column name="sample_id" type="NUMERIC(10)">
-				<constraints 
-					nullable="false" 
-					primaryKey="true" primaryKeyName="pk_sample_additional_fields"
-					foreignKeyName="fk_sample_additional_fields_sample" references="sample"/>
-			</column>
-			<column name="field_name" type="VARCHAR(255)">
-				<constraints nullable="false" primaryKey="true" primaryKeyName="pk_sample_additional_fields"/>
-			</column>
-			<column name="field_value" type="VARCHAR(255)" />
-			<column name="last_updated" type="DATE" />
-		</createTable>
-	</changeSet>
-	
-	<changeSet author="csteele" id="2">
-	
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.site_information WHERE name = 'contactTracingEnabled'</sqlCheck> 
-		</preConditions>
-		<insert schemaName="clinlims" tableName="site_information">
-			<column name="id" valueSequenceNext="site_information_seq" />
-			<column name="name" value="contactTracingEnabled" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="whether fields for contact tracing should be enabled" />
-			<column name="value" value="false" />
-			<column name="encrypted" value="false" />
-			<column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'sampleEntryConfig')" />
-			<column name="value_type" value="boolean" />
-			<column name="instruction_key" value="siteInfo.instruction.contactTracing.i" />
-			<column name="group" value="0" />
-			<column name="description_key" value="siteInfo.instruction.contactTracing.d" />
-		</insert>
-	</changeSet>
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="sample_additional_fields" />
+            </not>
+        </preConditions>
+
+        <createTable schemaName="clinlims"
+            tableName="sample_additional_fields">
+            <column name="sample_id" type="NUMERIC(10)">
+                <constraints
+                    nullable="false"
+                    primaryKey="true" primaryKeyName="pk_sample_additional_fields"
+                    foreignKeyName="fk_sample_additional_fields_sample" references="sample"/>
+            </column>
+            <column name="field_name" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_sample_additional_fields"/>
+            </column>
+            <column name="field_value" type="VARCHAR(255)" />
+            <column name="last_updated" type="DATE" />
+        </createTable>
+    </changeSet>
+
+    <changeSet author="csteele" id="2">
+
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.site_information WHERE name = 'contactTracingEnabled'</sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="contactTracingEnabled" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="whether fields for contact tracing should be enabled" />
+            <column name="value" value="false" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'sampleEntryConfig')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="siteInfo.instruction.contactTracing.i" />
+            <column name="group" value="0" />
+            <column name="description_key" value="siteInfo.instruction.contactTracing.d" />
+        </insert>
+    </changeSet>
 
 </databaseChangeLog>

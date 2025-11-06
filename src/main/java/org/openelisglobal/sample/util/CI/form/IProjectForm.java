@@ -1,5 +1,6 @@
 package org.openelisglobal.sample.util.CI.form;
 
+import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.patient.valueholder.ObservationData;
 import org.openelisglobal.sample.form.ProjectData;
 
@@ -42,4 +43,16 @@ public interface IProjectForm {
     String getLabNo();
 
     void setLabNo(String labNo);
+
+    ElectronicOrder getElectronicOrder();
+
+    void setElectronicOrder(ElectronicOrder electronicOrder);
+
+    String getPatientFhirUuid();
+
+    void setPatientFhirUuid(String patientFhirUuid);
+
+    String getUpidCode();
+
+    void setUpidCode(String upidCode);
 }

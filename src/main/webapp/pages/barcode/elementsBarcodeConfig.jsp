@@ -5,9 +5,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
+
 
 	
 
@@ -76,6 +76,14 @@
 						value="true"
 						onchange="enableSave();"/>
 					<spring:message code="barcode.label.info.collectiondatetime"/>
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<form:checkbox path="collectedByCheck"
+						value="true"
+						onchange="enableSave();"/>
+					<spring:message code="barcode.label.info.collectedBy"/>
 				</td>
 			</tr>
 			<tr>

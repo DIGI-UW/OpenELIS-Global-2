@@ -2,7 +2,6 @@ package org.openelisglobal.analyzer.form;
 
 import java.util.List;
 import java.util.Map;
-
 import org.openelisglobal.analyzer.valueholder.WellInfo;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.util.LabelValuePair;
@@ -99,5 +98,4 @@ public class AnalyzerSetupForm extends BaseForm {
     public void setAnalyzersWellInfo(Map<String, WellInfo> analyzersWellInfo) {
         this.analyzersWellInfo = analyzersWellInfo;
     }
-
 }

@@ -1,18 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) CIRG, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.reports.action.implementation;
 
@@ -21,9 +18,9 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.sql.SQLException;
 import java.text.ParseException;
-
 import org.apache.commons.validator.GenericValidator;
 import org.jfree.util.Log;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.project.service.ProjectService;
 import org.openelisglobal.reports.action.implementation.reportBeans.RoutineColumnBuilder;
@@ -75,6 +72,10 @@ public class ExportRoutineByDate extends CSVRoutineSampleExportReport
 
         lowDateStr = form.getLowerDateRange();
         highDateStr = form.getUpperDateRange();
+        if (form.getSelectList() != null && form.getSelectList().getSelection() != null) {
+            selectedLabUnit = form.getSelectList().getSelection();
+        }
+
         // projectStr = form.getProjectCode();
         dateRange = new DateRange(lowDateStr, highDateStr);
 
@@ -88,21 +89,19 @@ public class ExportRoutineByDate extends CSVRoutineSampleExportReport
         createReportItems();
     }
 
-    /**
-     * check everything
-     */
-//-----------------------------------
+    /** check everything */
+    // -----------------------------------
     private boolean validateSubmitParameters() {
         return dateRange.validateHighLowDate("report.error.message.date.received.missing");
     }
 
-//-------------------------------
+    // -------------------------------
 
     /**
      * @return true, if location is not blank or "0" is is found in the DB; false
      *         otherwise
      */
-//--------------------------
+    // --------------------------
     /*
      * private boolean validateProject() { if (isBlankOrNull(projectStr) ||
      * "0".equals(Integer.getInteger(projectStr))) {
@@ -112,13 +111,14 @@ public class ExportRoutineByDate extends CSVRoutineSampleExportReport
      * add1LineErrorMessage("report.error.message.project.missing"); return false; }
      * return true; }
      */
-//-------------------------
-    /**
-     * creating the list for generation to the report
-     */
+    // -------------------------
+    /** creating the list for generation to the report */
     private void createReportItems() {
         try {
             csvRoutineColumnBuilder = getColumnBuilder();
+            if (selectedLabUnit != null) {
+                csvRoutineColumnBuilder.setSelectedLabUnit(selectedLabUnit);
+            }
             csvRoutineColumnBuilder.buildDataSource();
         } catch (SQLException e) {
             Log.error("Error in " + this.getClass().getSimpleName() + ".createReportItems: ", e);
@@ -134,7 +134,7 @@ public class ExportRoutineByDate extends CSVRoutineSampleExportReport
         String[] splitBase = null;
         while (csvRoutineColumnBuilder.next()) {
             String line = csvRoutineColumnBuilder.nextLine();
-            String[] splitLine = line.split(",");
+            String[] splitLine = StringUtil.separateCSVWithMixedEmbededQuotes(line);
 
             if (splitLine[0].equals(currentAccessionNumber)) {
                 merge(splitBase, splitLine);
@@ -175,7 +175,6 @@ public class ExportRoutineByDate extends CSVRoutineSampleExportReport
 
     private RoutineColumnBuilder getColumnBuilder() {
         return new RoutineColumnBuilder(dateRange);
-
     }
 
     /**

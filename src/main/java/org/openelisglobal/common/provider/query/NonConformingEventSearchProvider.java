@@ -1,15 +1,13 @@
 package org.openelisglobal.common.provider.query;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.openelisglobal.common.servlet.validation.AjaxServlet;
 import org.openelisglobal.common.util.XMLUtil;
 import org.openelisglobal.qaevent.service.NCEventService;
@@ -66,10 +64,12 @@ public class NonConformingEventSearchProvider extends BaseQueryProvider {
             XMLUtil.appendKeyValue("unit", reportingUnit, xml);
             XMLUtil.appendKeyValue("color", nce.getColorCode(), xml);
             xml.append("</nce>");
-//            xml.append("<nce><date>").append(nce.getDateOfEvent()).append("</date><ncenumber>");
-//            xml.append(nce.getNceNumber()).append("</ncenumber>").append("<unit>").append(reportingUnit)
-//                    .append("</unit>");
-//            xml.append("<color>").append(nce.getColorCode()).append("</color></nce>");
+            //
+            // xml.append("<nce><date>").append(nce.getDateOfEvent()).append("</date><ncenumber>");
+            //
+            // xml.append(nce.getNceNumber()).append("</ncenumber>").append("<unit>").append(reportingUnit)
+            // .append("</unit>");
+            // xml.append("<color>").append(nce.getColorCode()).append("</color></nce>");
         }
     }
 

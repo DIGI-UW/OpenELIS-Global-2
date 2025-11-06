@@ -1,10 +1,8 @@
 package org.openelisglobal.workplan.controller;
 
+import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.annotation.PostConstruct;
-
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.formfields.FormFields;
@@ -45,11 +43,14 @@ public abstract class BaseWorkplanController extends BaseController {
     private void initialize() {
         if (statusList == null) {
             statusList = new ArrayList<>();
-            statusList.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted)));
-            statusList.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected)));
-            statusList.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
-            statusList.add(
-                    Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated)));
+            statusList.add(Integer
+                    .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted)));
+            statusList.add(Integer.parseInt(
+                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected)));
+            statusList.add(Integer.parseInt(
+                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+            statusList.add(Integer.parseInt(
+                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated)));
         }
 
         if (nfsTestIdList == null) {
@@ -68,7 +69,6 @@ public abstract class BaseWorkplanController extends BaseController {
             nfsTestIdList.add(getTestId("CCMH"));
             nfsTestIdList.add(getTestId("PLQ"));
         }
-
     }
 
     @Override
@@ -78,7 +78,6 @@ public abstract class BaseWorkplanController extends BaseController {
 
     protected boolean allNFSTestsRequested(List<String> testIdList) {
         return (testIdList.containsAll(nfsTestIdList));
-
     }
 
     protected String getTestId(String testName) {
@@ -87,7 +86,6 @@ public abstract class BaseWorkplanController extends BaseController {
             test = new Test();
         }
         return test.getId();
-
     }
 
     protected String getSubjectNumber(Analysis analysis) {
@@ -149,7 +147,5 @@ public abstract class BaseWorkplanController extends BaseController {
         public WorkplanType getWorkplanType() {
             return workplanType;
         }
-
     }
-
 }

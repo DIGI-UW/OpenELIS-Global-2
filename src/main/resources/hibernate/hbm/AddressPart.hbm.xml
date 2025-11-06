@@ -1,24 +1,24 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-	<class name="org.openelisglobal.address.valueholder.AddressPart"
-		table="address_part" optimistic-lock="version" dynamic-update="true">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<param name="sequence_name">address_part_seq</param>
-			</generator>
-		</id>
+    <class name="org.openelisglobal.address.valueholder.AddressPart"
+        table="address_part" optimistic-lock="version" dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">address_part_seq</param>
+            </generator>
+        </id>
 
-		<property name="partName" column="part_name" type="string" />
-		<property name="displayOrder" column="display_order"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
-		<property name="nameKey" type="java.lang.String">
-			<column name="display_key" length="60" not-null="false" />
-		</property>
-	</class>
+        <property name="partName" column="part_name" type="string" />
+        <property name="displayOrder" column="display_order"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+        <property name="nameKey" type="java.lang.String">
+            <column name="display_key" length="60" not-null="false" />
+        </property>
+    </class>
 </hibernate-mapping>

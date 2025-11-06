@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet author="moses_mutesa" id="1">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM clinlims.system_role WHERE name  = 'Analyser Import'
+                </sqlCheck>
+        </preConditions>
+        <comment>Create Analyser Import Role</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="Analyser Import"/>
+            <column name="description" value="Acces to Analyser Results Page"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM system_role WHERE name = 'Global Roles')"/>
+            <column name="display_key" value="role.analyser"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Analyser Import')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'AnalyzerResults')"/>
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/AnalyzerResults"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'AnalyzerResults')"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202303181">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module_url" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM clinlims.system_module WHERE name  = 'AnalyzerResults' limit 1
+                </sqlCheck>
+        </preConditions>
+        <comment>Attach importAnalyzer url path to Analyzer result module</comment>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/importAnalyzer"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'AnalyzerResults')"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

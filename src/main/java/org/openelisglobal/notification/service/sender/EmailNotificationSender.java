@@ -15,8 +15,10 @@ public class EmailNotificationSender implements ClientNotificationSender<EmailNo
 
     @Autowired
     private JavaMailSender javaMailSender;
+
     @Value("${org.openelisglobal.mail.bcc:safemauritius@govmu.org}")
     private String bcc;
+
     @Value("${org.openelisglobal.mail.from:ahl-lab@safemauritius.govmu.org}")
     private String from;
 
@@ -48,5 +50,4 @@ public class EmailNotificationSender implements ClientNotificationSender<EmailNo
     public void refreshConfiguration() {
         javaMailSender = SpringContext.getBean(JavaMailSender.class);
     }
-
 }

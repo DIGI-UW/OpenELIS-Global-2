@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+<!-- TB dictionary category -->
+    <changeSet author="CIV developer Group" id="2023091525"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.dictionary_category WHERE description = 'TB Order Reasons'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value ="TB Order Reasons"/>
+            <column name="lastupdated" valueDate ="now()"/>
+            <column name="local_abbrev" value ="TBReason"/>
+            <column name="name" value ="TB Order Reasons"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091526"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.dictionary_category WHERE description = 'TB Diagnostic Reasons'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value ="TB Diagnostic Reasons"/>
+            <column name="lastupdated" valueDate ="now()"/>
+            <column name="local_abbrev" value ="TBDReason"/>
+            <column name="name" value ="TB Diagnostic Reasons"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091527"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.dictionary_category WHERE description = 'TB Followup Reasons'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value ="TB Followup Reasons"/>
+            <column name="lastupdated" valueDate ="now()"/>
+            <column name="local_abbrev" value ="TBFReason"/>
+            <column name="name" value ="TB Followup Reasons"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091528"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.dictionary_category WHERE description = 'TB Analysis Methods'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value ="TB Analysis Methods"/>
+            <column name="lastupdated" valueDate ="now()"/>
+            <column name="local_abbrev" value ="TBMeth"/>
+            <column name="name" value ="TB Analysis Methods"/>
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091529"
+        context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM
+                clinlims.dictionary_category WHERE description = 'TB Sample Aspects'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value ="TB Sample Aspects"/>
+            <column name="lastupdated" valueDate ="now()"/>
+            <column name="local_abbrev" value ="TBSampAsp"/>
+            <column name="name" value ="TB Sample Aspects"/>
+        </insert>
+    </changeSet>
+
+
+<!-- TB dictionary entries -->
+
+    <changeSet author="CIV developer Group" id="2023091530" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="dictionary" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM
+                clinlims.dictionary_category WHERE description = 'TB Order Reasons' limit 1</sqlCheck>
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM
+                clinlims.dictionary WHERE dict_entry = 'Diagnostic'</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.dictionary(id,is_active,dict_entry,lastupdated,local_abbrev,dictionary_category_id,display_key,sort_order,name_localization_id)
+            VALUES
+            (nextval('dictionary_seq'),'Y','Diagnostic',now(),'Diagn',(select id from clinlims.dictionary_category where description = 'TB Order Reasons' limit 1),
+            'dictionary.tb.order.diagnostic',55000,null),
+            (nextval('dictionary_seq'),'Y','Follow up',now(),'Followup',(select id from clinlims.dictionary_category where description = 'TB Order Reasons' limit 1),
+            'dictionary.tb.order.followup',55000,null);
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091531" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="dictionary" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM
+                clinlims.dictionary_category WHERE description = 'TB Diagnostic Reasons' limit 1</sqlCheck>
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM
+                clinlims.dictionary WHERE dict_entry = 'Cas présumé jamais traité'</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.dictionary(id,is_active,dict_entry,lastupdated,local_abbrev,dictionary_category_id,display_key,sort_order,name_localization_id)
+            VALUES
+            (nextval('dictionary_seq'),'Y','Cas présumé jamais traité',now(),'never deal',(select id from clinlims.dictionary_category where description = 'TB Diagnostic Reasons' limit 1),
+            'dictionary.tb.order.never_dealt',60001,null),
+            (nextval('dictionary_seq'),'Y','Echec',now(),'Echec',(select id from clinlims.dictionary_category where description = 'TB Diagnostic Reasons' limit 1),
+            'dictionary.tb.order.failure',60002,null),
+            (nextval('dictionary_seq'),'Y','Rechute',now(),'Rechute',(select id from clinlims.dictionary_category where description = 'TB Diagnostic Reasons' limit 1),
+            'dictionary.tb.order.relapse',60003,null),
+            (nextval('dictionary_seq'),'Y','Reprise',now(),'Reprise',(select id from clinlims.dictionary_category where description = 'TB Diagnostic Reasons' limit 1),
+            'dictionary.tb.order.resumption',60004,null),
+            (nextval('dictionary_seq'),'Y','Frottis positif à M2',now(),'positifM2',(select id from clinlims.dictionary_category where description = 'TB Diagnostic Reasons' limit 1),
+            'dictionary.tb.order.smear_positivem2',60005,null);
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091532" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="dictionary" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM
+                clinlims.dictionary_category WHERE description = 'TB Followup Reasons' limit 1</sqlCheck>
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM
+                clinlims.dictionary WHERE dict_entry = 'Examen de suivi 1ère ligne (TB Sensible)'</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.dictionary(id,is_active,dict_entry,lastupdated,local_abbrev,dictionary_category_id,display_key,sort_order,name_localization_id)
+            VALUES
+            (nextval('dictionary_seq'),'Y','Examen de suivi 1ère ligne (TB Sensible)',now(),'TB Line1',(select id from clinlims.dictionary_category where description = 'TB Followup Reasons' limit 1),
+            'dictionary.tb.followup.line1',60001,null),
+            (nextval('dictionary_seq'),'Y','Examen de suivi 2ième ligne (TB/RR ; TBXDR)',now(),'TB Line2',(select id from clinlims.dictionary_category where description = 'TB Followup Reasons' limit 1),
+            'dictionary.tb.followup.line2',60002,null);
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091533" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="dictionary" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM
+                clinlims.dictionary_category WHERE description = 'TB Analysis Methods' limit 1</sqlCheck>
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM
+                clinlims.dictionary WHERE dict_entry = 'Diagnostic moléculaire TB'</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.dictionary(id,is_active,dict_entry,lastupdated,local_abbrev,dictionary_category_id,display_key,sort_order,name_localization_id)
+            VALUES
+            (nextval('dictionary_seq'),'Y','Diagnostic moléculaire TB',now(),'TB DiagMol',(select id from clinlims.dictionary_category where description = 'TB Analysis Methods' limit 1),
+            'dictionary.tb.diagnostic.molecular',60001,null),
+            (nextval('dictionary_seq'),'Y','Microscopie TB',now(),'Microsc',(select id from clinlims.dictionary_category where description = 'TB Analysis Methods' limit 1),
+            'dictionary.tb.microscopy',60002,null),
+            (nextval('dictionary_seq'),'Y','Culture TB',now(),'CultureTB',(select id from clinlims.dictionary_category where description = 'TB Analysis Methods' limit 1),
+            'dictionary.tb.culture',60003,null),
+            (nextval('dictionary_seq'),'Y','Diagnostic Immunologique TB',now(),'ImmunTB',(select id from clinlims.dictionary_category where description = 'TB Analysis Methods' limit 1),
+            'dictionary.tb.immunologic_diagnostic',60004,null),
+            (nextval('dictionary_seq'),'Y','Tests de sensibilité genotypique LPA',now(),'LPATests',(select id from clinlims.dictionary_category where description = 'TB Analysis Methods' limit 1),
+            'dictionary.tb.lpa_tests',60005,null),
+            (nextval('dictionary_seq'),'Y','Tests de sensibilité phénotypique',now(),'PhenoTests',(select id from clinlims.dictionary_category where description = 'TB Analysis Methods' limit 1),
+            'dictionary.tb.phenotypic_tests',60006,null);
+        </sql>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023091534" context="ci_TB">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="dictionary" schemaName="clinlims" />
+            <sqlCheck  expectedResult="1">SELECT count(*) FROM
+                clinlims.dictionary_category WHERE description = 'TB Sample Aspects' limit 1</sqlCheck>
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM
+                clinlims.dictionary WHERE dict_entry = 'Muco-purulent'</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO
+            clinlims.dictionary(id,is_active,dict_entry,lastupdated,local_abbrev,dictionary_category_id,display_key,sort_order,name_localization_id)
+            VALUES
+            (nextval('dictionary_seq'),'Y','Muco-purulent',now(),'MucoPuru',(select id from clinlims.dictionary_category where description = 'TB Sample Aspects' limit 1),
+            'dictionary.tb.aspect.mucopurulent',60001,null),
+            (nextval('dictionary_seq'),'Y','Salivaire',now(),'Saliv',(select id from clinlims.dictionary_category where description = 'TB Sample Aspects' limit 1),
+            'dictionary.tb.aspect.salivary',60002,null),
+            (nextval('dictionary_seq'),'Y','Sanglant',now(),'Sanglant',(select id from clinlims.dictionary_category where description = 'TB Sample Aspects' limit 1),
+            'dictionary.tb.aspect.bloody',60003,null);
+        </sql>
+    </changeSet>
+    </databaseChangeLog>

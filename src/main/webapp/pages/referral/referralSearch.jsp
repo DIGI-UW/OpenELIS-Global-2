@@ -12,14 +12,14 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions"%>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions"%>
 
 <script type="text/javascript" src="scripts/ajaxCalls.js?"></script>
 <script type="text/javascript" src="scripts/utilities.js"></script>
 <link href="select2/css/select2.min.css" rel="stylesheet" />
-<script src="select2/js/select2.min.js"></script>
+<script type="text/javascript" src="select2/js/select2.min.js"></script>
 <script type="text/javascript">
 
 function checkValidEntryDate(date, dateRange, blankAllowed)
@@ -73,8 +73,8 @@ Date Type:
 Note if searching by result date, only tests with results will appear
 <br><br>
 
-Start Date (dd/mm/yyyy) <form:input id='startDate' path="startDate" onkeyup="addDateSlashes(this, event);" onchange="checkValidEntryDate(this, 'any', true);"/> 
-End Date (dd/mm/yyyy) <form:input id='endDate' path="endDate" onkeyup="addDateSlashes(this, event);" onchange="checkValidEntryDate(this, 'any', true);"/>
+Start Date <%=DateUtil.getDateUserPrompt()%> <form:input id='startDate' path="startDate" onkeyup="addDateSlashes(this, event);" onchange="checkValidEntryDate(this, 'any', true);"/> 
+End Date <%=DateUtil.getDateUserPrompt()%> <form:input id='endDate' path="endDate" onkeyup="addDateSlashes(this, event);" onchange="checkValidEntryDate(this, 'any', true);"/>
 <br><br>
 
 Unit(s) 

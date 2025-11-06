@@ -1,15 +1,14 @@
 package org.openelisglobal.result.form;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
-
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
-
-import org.hibernate.validator.constraints.SafeHtml;
+import org.openelisglobal.analyzer.service.BidirectionalAnalyzer.LISAction;
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.form.IPagingForm;
 import org.openelisglobal.common.paging.PagingBean;
+import org.openelisglobal.validation.annotations.SafeHtml;
 
 public class AnalyzerResultsForm extends BaseForm implements IPagingForm {
 
@@ -22,7 +21,7 @@ public class AnalyzerResultsForm extends BaseForm implements IPagingForm {
     @Valid
     private List<AnalyzerResultItem> resultList;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String type;
 
     @NotNull
@@ -30,6 +29,9 @@ public class AnalyzerResultsForm extends BaseForm implements IPagingForm {
 
     @NotNull
     private Boolean displayMissingTestMsg = false;
+
+    // display only
+    private List<LISAction> supportedLISActions;
 
     public AnalyzerResultsForm() {
         setFormName("AnalyzerResultsForm");
@@ -77,4 +79,11 @@ public class AnalyzerResultsForm extends BaseForm implements IPagingForm {
         this.displayMissingTestMsg = displayMissingTestMsg;
     }
 
+    public List<LISAction> getSupportedLISActions() {
+        return supportedLISActions;
+    }
+
+    public void setSupportedLISActions(List<LISAction> supportedLISActions) {
+        this.supportedLISActions = supportedLISActions;
+    }
 }

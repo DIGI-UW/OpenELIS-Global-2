@@ -1,24 +1,21 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ */
 package org.openelisglobal.common.provider.selectdropdown;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
-
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.resources.ResourceLocator;
@@ -29,14 +26,12 @@ import org.openelisglobal.common.util.resources.ResourceLocator;
  *
  * @version 1.0
  * @author diane benz
- *
  */
-
 public class SelectDropDownProviderFactory {
 
     private static class SingletonHelper {
         private static final SelectDropDownProviderFactory INSTANCE = new SelectDropDownProviderFactory(); // Instance
-                                                                                                           // of this
+        // of this
     }
 
     // class
@@ -44,11 +39,7 @@ public class SelectDropDownProviderFactory {
     // Properties object that holds validation provider mappings
     private Properties validationProviderClassMap = null;
 
-    /**
-     * Singleton global access for AutocompleteProviderFactory
-     *
-     */
-
+    /** Singleton global access for AutocompleteProviderFactory */
     public static SelectDropDownProviderFactory getInstance() {
         return SingletonHelper.INSTANCE;
     }
@@ -66,8 +57,8 @@ public class SelectDropDownProviderFactory {
             object = classDefinition.newInstance();
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
             // bugzilla 2154
-            LogEvent.logError(e.toString(), e);
-            throw new LIMSRuntimeException("Unable to create an object for " + className, e, true);
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Unable to create an object for " + className, e);
         }
         return object;
     }
@@ -95,15 +86,15 @@ public class SelectDropDownProviderFactory {
                 validationProviderClassMap.load(propertyStream);
             } catch (IOException e) {
                 // bugzilla 2154
-                LogEvent.logError(e.toString(), e);
-                throw new LIMSRuntimeException("Unable to load validation provider class mappings.", e, true);
+                LogEvent.logError(e);
+                throw new LIMSRuntimeException("Unable to load validation provider class mappings.", e);
             } finally {
                 if (null != propertyStream) {
                     try {
                         propertyStream.close();
                     } catch (IOException e) {
                         // bugzilla 2154
-                        LogEvent.logError(e.toString(), e);
+                        LogEvent.logError(e);
                     }
                 }
             }
@@ -111,7 +102,8 @@ public class SelectDropDownProviderFactory {
 
         String mapping = validationProviderClassMap.getProperty(validationProvidername);
         if (mapping == null) {
-            LogEvent.logError(this.getClass().getName(), "getSelectDropdownProviderClassName", validationProvidername);
+            LogEvent.logError(this.getClass().getSimpleName(), "getSelectDropdownProviderClassName",
+                    validationProvidername);
             throw new LIMSRuntimeException(
                     "getSelectDropDownProviderClassName - Unable to find mapping for " + validationProvidername);
         }
@@ -123,7 +115,6 @@ public class SelectDropDownProviderFactory {
      *
      * @param name
      * @return Autocomplete Provider object
-     *
      */
     public BaseSelectDropDownProvider getSelectDropDownProvider(String name) throws LIMSRuntimeException {
         BaseSelectDropDownProvider provider = null;
@@ -134,5 +125,4 @@ public class SelectDropDownProviderFactory {
 
         return provider;
     }
-
 }

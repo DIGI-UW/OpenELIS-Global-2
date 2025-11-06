@@ -1,0 +1,61 @@
+@use "@carbon/styles/scss/spacing";
+@use "@carbon/styles/scss/type";
+@import "../commons/scss/vars.scss";
+
+.card {
+  border: 1px solid $ui-03;
+}
+
+.activeCard {
+  border: 2px solid var(--brand-03);
+}
+
+.cardHeader {
+  &:after {
+    content: "";
+    display: block;
+    width: 2rem;
+    padding-top: 0.188rem;
+    border-bottom: 0.375rem solid var(--brand-03);
+  }
+}
+
+.columns {
+  col {
+    width: 33.3%;
+  }
+}
+
+.separator {
+  height: 1.5rem;
+  border-bottom: 1px solid $ui-03;
+  width: calc(100% - 1.5rem);
+  margin-left: 0.75rem;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+}
+
+.tooltipContainer {
+  margin: 0 0.5rem;
+}
+
+.tooltip {
+  @include type.type-style("body-compact-01");
+  color: $ui-01;
+
+  p {
+    margin: 0.5rem 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+}
+
+.label {
+  @include type.type-style("label-01");
+  color: $labeldropdown;
+  margin-right: 0.25rem;
+}

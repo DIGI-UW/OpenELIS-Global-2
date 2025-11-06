@@ -2,7 +2,6 @@ package org.openelisglobal.analyzerimport.analyzerreaders;
 
 import java.sql.Timestamp;
 import java.util.List;
-
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
@@ -16,9 +15,9 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.spring.util.SpringContext;
 
 public class AnalyzerReaderUtil {
-//	private SampleDAO sampleDAO = new SampleDAOImpl();
-//	private AnalysisDAO analysisDAO = new AnalysisDAOImpl();
-//	private ResultDAO resultDAO = new ResultDAOImpl();
+    // private SampleDAO sampleDAO = new SampleDAOImpl();
+    // private AnalysisDAO analysisDAO = new AnalysisDAOImpl();
+    // private ResultDAO resultDAO = new ResultDAOImpl();
 
     protected SampleService sampleService = SpringContext.getBean(SampleService.class);
     protected AnalysisService analysisService = SpringContext.getBean(AnalysisService.class);
@@ -30,7 +29,8 @@ public class AnalyzerReaderUtil {
 
         if (sample != null && sample.getId() != null) {
             List<Analysis> analysisList = analysisService.getAnalysesBySampleId(sample.getId());
-            String acceptedStatusId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
+            String acceptedStatusId = SpringContext.getBean(IStatusService.class)
+                    .getStatusID(AnalysisStatus.TechnicalAcceptance);
 
             for (Analysis analysis : analysisList) {
                 if (analysis.getStatusId().equals(acceptedStatusId)
@@ -40,7 +40,8 @@ public class AnalyzerReaderUtil {
                         try {
                             AnalyzerResults resultFromDB = (AnalyzerResults) resultFromAnalyzer.clone();
                             resultFromDB.setResult(resultList.get(resultList.size() - 1).getValue());
-                            resultFromDB.setCompleteDate(new Timestamp(analysis.getCompletedDate().getTime()));
+                            resultFromDB.setCompleteDate(analysis.getCompletedDate() == null ? null
+                                    : new Timestamp(analysis.getCompletedDate().getTime()));
                             resultFromDB.setReadOnly(true);
                             resultFromDB.setResultType(resultFromAnalyzer.getResultType());
                             return resultFromDB;
@@ -53,5 +54,4 @@ public class AnalyzerReaderUtil {
         }
         return null;
     }
-
 }

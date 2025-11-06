@@ -1,11 +1,9 @@
 package org.openelisglobal.resultvalidation.form;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import java.util.List;
-
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Pattern;
-
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.paging.PagingBean;
 import org.openelisglobal.common.util.IdValuePair;
@@ -29,12 +27,13 @@ public class ResultValidationForm extends BaseForm implements ValidationPagingFo
     @Valid
     private List<AnalysisItem> resultList;
 
-    @Pattern(regexp = "^[a-zA-Z -]*$", groups = { ResultValidation.class })
+    @Pattern(regexp = "^[a-zA-Z0-9 -]*$", groups = { ResultValidation.class })
     private String testSection = "";
-    
+
     private String accessionNumber = "";
-    
-    
+
+    @ValidDate
+    private String testDate = "";
 
     public String getAccessionNumber() {
         return accessionNumber;
@@ -98,7 +97,7 @@ public class ResultValidationForm extends BaseForm implements ValidationPagingFo
     public void setTestSection(String testSection) {
         this.testSection = testSection;
     }
-    
+
     public String getTestName() {
         return testName;
     }
@@ -150,4 +149,11 @@ public class ResultValidationForm extends BaseForm implements ValidationPagingFo
         return searchFinished;
     }
 
+    public String getTestDate() {
+        return testDate;
+    }
+
+    public void setTestDate(String testDate) {
+        this.testDate = testDate;
+    }
 }

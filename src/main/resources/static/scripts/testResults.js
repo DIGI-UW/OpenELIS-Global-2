@@ -13,31 +13,46 @@
 var outOfValidRangeMsg = null;
 
 function validateNumberFormat( resultBox, row, significantDigits){
-    if(resultBox.value.blank()){
+	//ignore < or > from the analyser on validation
+	var greaterThanOrLessThan = "";
+	if(resultBox.value.startsWith("<") ||resultBox.value.startsWith(">") ){
+		greaterThanOrLessThan = resultBox.value.charAt(0);
+	}
+	var actualValue = resultBox.value.replace(/[<>]/g, '')
+	
+
+    if(actualValue.blank()){
         resultBox.title = "";
         resultBox.style.background = "#ffffff";
         $("valid_" + row).value = false;
         return true;
     }
 
-    if( resultBox.value.trim() == "."){
-        resultBox.value = "0.0";
+    if( actualValue.trim() == "."){
+        resultBox.value = greaterThanOrLessThan + "0.0";
     }
 
-    if(isNaN(resultBox.value)){
+    if(isNaN(actualValue)){
         $("valid_" + row).value = false;
         return false;
     }
 
     if( !isNaN(significantDigits)){
-        resultBox.value = round( resultBox.value, significantDigits);
+        resultBox.value = greaterThanOrLessThan + round( actualValue, significantDigits);
     }
 
     return true;
 }
 
 function /*void*/ validateResults( resultBox, row, lowerNormal, upperNormal, lowerAbnormal, upperAbnormal, significantDigits, specialCase ){
-    var isSpecialCase = specialCase == resultBox.value.toUpperCase();
+    //ignore < or > from the analyser on validation
+	var greaterThanOrLessThan = "";
+	if(resultBox.value.startsWith("<") ||resultBox.value.startsWith(">") ){
+		greaterThanOrLessThan = resultBox.value.charAt(0);
+	}
+	var actualValue = resultBox.value.replace(/[<>]/g, '')
+
+    var isSpecialCase = specialCase == actualValue.toUpperCase();
     var validFormat = validateNumberFormat( resultBox,row, significantDigits);
 
     resultBox.style.borderColor = validFormat ? "" : "red";
@@ -45,15 +60,15 @@ function /*void*/ validateResults( resultBox, row, lowerNormal, upperNormal, low
 
 	if( isSpecialCase ){
 		resultBox.title = "";
-		resultBox.value = resultBox.value.toUpperCase();
+		resultBox.value = greaterThanOrLessThan + actualValue.toUpperCase();
 		resultBox.style.borderColor = "";
 		resultBox.style.background = "#ffffff";
 		$("valid_" + row).value = true;
 		return;
 	}
-
+	
 	if( lowerAbnormal != upperAbnormal &&
-	   (resultBox.value < lowerAbnormal || resultBox.value > upperAbnormal) ){
+	   (actualValue < lowerAbnormal || actualValue > upperAbnormal) ){
 		resultBox.style.background = "#ffa0a0";
 		resultBox.title = "En dehors de la plage valide"; //FIXME: Uses hardcoded French labels. Switch to refer to resource file.
 		$("valid_" + row).value = false;
@@ -62,7 +77,7 @@ function /*void*/ validateResults( resultBox, row, lowerNormal, upperNormal, low
 			alert( outOfValidRangeMsg);
 		}
 	}else if( lowerNormal != upperNormal &&
-		(resultBox.value < lowerNormal || resultBox.value > upperNormal) ){
+		(actualValue < lowerNormal || actualValue > upperNormal) ){
 		resultBox.style.background = "#ffffa0";
 		resultBox.title = "En dehors de la plage normale"; //FIXME: Uses hardcoded French labels. Switch to refer to resource file.
 		$("valid_" + row).value = true;

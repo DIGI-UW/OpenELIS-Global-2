@@ -4,8 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-
-import org.openelisglobal.common.util.SystemConfiguration;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.rolemodule.service.RoleModuleService;
 import org.openelisglobal.systemusermodule.valueholder.PermissionModule;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +22,7 @@ public class PermissionModuleServiceImpl implements PermissionModuleService<Perm
 
     @SuppressWarnings("rawtypes")
     protected PermissionModuleService getActivePermissionModule() {
-        if (SystemConfiguration.getInstance().getPermissionAgent().equals("USER")) {
+        if (ConfigurationProperties.getInstance().getPropertyValue("permissions.agent").equals("USER")) {
             return systemUserService;
         } else {
             return roleModuleService;
@@ -223,7 +222,6 @@ public class PermissionModuleServiceImpl implements PermissionModuleService<Perm
     @Transactional
     public PermissionModule update(PermissionModule baseObject) {
         return (PermissionModule) getActivePermissionModule().update(baseObject);
-
     }
 
     @SuppressWarnings("unchecked")
@@ -327,7 +325,6 @@ public class PermissionModuleServiceImpl implements PermissionModuleService<Perm
     @Transactional(readOnly = true)
     public void getData(PermissionModule permissionModule) {
         getActivePermissionModule().getData(permissionModule);
-
     }
 
     @Override

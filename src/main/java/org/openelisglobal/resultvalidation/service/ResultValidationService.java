@@ -2,7 +2,6 @@ package org.openelisglobal.resultvalidation.service;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IResultSaveService;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
@@ -16,5 +15,4 @@ public interface ResultValidationService {
     void persistdata(List<Result> deletableList, List<Analysis> analysisUpdateList, ArrayList<Result> resultUpdateList,
             List<AnalysisItem> resultItemList, ArrayList<Sample> sampleUpdateList, ArrayList<Note> noteUpdateList,
             IResultSaveService resultSaveService, List<IResultUpdate> updaters, String sysUserId);
-
 }

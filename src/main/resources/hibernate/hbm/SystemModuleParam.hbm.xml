@@ -1,23 +1,23 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping
-	package="org.openelisglobal.systemmodule.valueholder">
-	<class name="SystemModuleParam" table="SYSTEM_MODULE_PARAM"
-		optimistic-lock="version" dynamic-update="true">
-		<id name="id"
-			type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-			<column name="ID" precision="10" scale="0" />
-			<generator
-				class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
-				<param name="sequence_name">SYSTEM_MODULE_PARAM_SEQ</param>
-			</generator>
-		</id>
+    package="org.openelisglobal.systemmodule.valueholder">
+    <class name="SystemModuleParam" table="SYSTEM_MODULE_PARAM"
+        optimistic-lock="version" dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">SYSTEM_MODULE_PARAM_SEQ</param>
+            </generator>
+        </id>
 
-		<property name="name" type="java.lang.String" column="name"
-			not-null="true" />
-		<property name="value" type="java.lang.String" column="value"
-			not-null="true" />
-	</class>
+        <property name="name" type="java.lang.String" column="name"
+            not-null="true" />
+        <property name="value" type="java.lang.String" column="value"
+            not-null="true" />
+    </class>
 </hibernate-mapping>

@@ -1,24 +1,59 @@
 site_name: OpenELIS Global Documentation
+site_description: "Technical documentation for the OpenELIS Global2"
+site_author: "DIGI - University Of Washington"
+site_url: "https://openelis-global.org/"
+
+# Repository
+repo_name: "OpenELIS-Global-2"
+repo_url: "https://github.com/DIGI-UW/OpenELIS-Global-2"
+
+# Copyright
+copyright: "Copyright &copy; 2023 DIGI - University Of Washington"
 nav:
     - Home: index.md
     - About: about.md
     - Install OpenELIS Global: install.md
     - Upgrade to the Newest Version: upgrade.md
+    - Upgrade from 2.x to 2.7: 27upgrade.md
     - Analyzers: analyzer.md
+    - ASTM Bi-Directional Analyzer Setup: astm.md
     - Deploy:
+       - Technical Requirements for Deployment: implementation.md 
+       - Implementation Best Practices: implementation-bestpract.md
+       - Configure the property files to connect to the Consolidated Server: server-property.md
        - OpenMRS Interoperability: deployomrs.md
        - Backup Configuration: backups.md
        - Update From OpenELIS Global 1.x to 2.x: upgrade1to2.md
        - Password Migration: password.md
        - Examples of FHIR messages used: messages.md
        - Deploy Consolidated Server: csbuild.md
+       - Setup High Availability Failover: failover.md
     - Develop: 
        - Dev Environment Setup Instructions: dev_setup.md
        - Developers Notes: dev.md
        - Adding facilities to the Consolidated Server: addingfacilities.md
        - Adding a Requester to the Consolidated server: add_dr.md
        - Database Profiles Mass facility and test catalog updates: dbprofiles.md
+       - Entity Relation Diagram: entity relation diagram.md
+    - Interacting with the co-resident FHIR store: directFHIRCommunication.md
     - Troubleshooting: troubleshooting.md
+    - Google Summer of Code :
+        - GSoC 2024: gsoc.md
+    - GSoC ‐ Guidelines for Students : gsocstudentguide.md
     - Website: http://openelis-global.org
-theme: readthedocs
+
+# Theme
+theme: 
+  name: "material"
+  logo: img/openelis_logo.png
+
+markdown_extensions:
+  - admonition
+  - codehilite:
+      guess_lang: false
+  - toc:
+      toc_depth : "3"
+  - footnotes
+
+  
 

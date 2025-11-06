@@ -7,9 +7,8 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
-<%@ taglib uri="http://tiles.apache.org/tags-tiles" prefix="tiles"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
+
 
 <html>
 <head>
@@ -173,8 +172,8 @@ if (document.layers) {
 <title>
 		<c:out value="${title}" />
 </title>
-<tiles:insertAttribute name="banner" />
-<tiles:insertAttribute name="login" />
+<jsp:include page="${bannerFragment}"/>
+<jsp:include page="${loginHeaderFragment}"/>
 </head>
 
 <%-- check_width()--%>
@@ -183,19 +182,19 @@ if (document.layers) {
 	<%-- for optimistic locking--%>
 	<table cellpadding="0" cellspacing="1" width="100%">
 		<tr>
-			<td><tiles:insertAttribute name="error" /></td>
+			<td><jsp:include page="${errorFragment}"/></td>
 		</tr>
 		<tr>
-			<td><tiles:insertAttribute name="header" /></td>
+			<td><jsp:include page="${headerFragment}"/></td>
 		</tr>
 		<tr>
-			<td><tiles:insertAttribute name="preSelectionHeader" /></td>
+			<td><jsp:include page="${preSelectionHeaderFragment}"/></td>
 		</tr>
 		<tr>
-			<td><tiles:insertAttribute name="body" /></td>
+			<td><jsp:include page="${bodyFragment}"/></td>
 		</tr>
 		<tr>
-			<td><tiles:insertAttribute name="footer" /></td>
+			<td><jsp:include page="${footerFragment}"/></td>
 		</tr>
 	</table>
 

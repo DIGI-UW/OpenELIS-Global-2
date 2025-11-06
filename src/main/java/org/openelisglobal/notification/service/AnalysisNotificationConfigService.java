@@ -2,7 +2,6 @@ package org.openelisglobal.notification.service;
 
 import java.util.List;
 import java.util.Optional;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.notification.valueholder.AnalysisNotificationConfig;
 

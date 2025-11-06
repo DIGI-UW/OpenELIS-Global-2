@@ -1,31 +1,27 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ */
 package org.openelisglobal.common.log;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.Category;
 import org.owasp.encoder.Encode;
 
 /**
  * @author Hung Nguyen
  */
-
 public class LogEvent {
-    private static final int MAX_STACK_DEPTH = 10;
+    private static final int MAX_STACK_DEPTH = 50;
+    private static final int MAX_ERROR_DEPTH = 4;
 
     /**
      * Write to the log file (type error)
@@ -45,12 +41,25 @@ public class LogEvent {
      * @param throwable    the error to log
      */
     public static void logError(String errorMessage, Throwable throwable) {
+        logError(errorMessage, throwable, false);
+    }
+
+    /**
+     * Write to the log file (type error)
+     *
+     * @param errorMessage  the error message
+     * @param throwable     the error to log
+     * @param hideException whether to display only errorMessage
+     */
+    public static void logError(String errorMessage, Throwable throwable, boolean hideException) {
         StackTraceElement[] stackTrace = throwable.getStackTrace();
         String className = stackTrace[0].getClassName();
         String methodName = stackTrace[0].getMethodName();
-
         getLog().error(
                 "Class: " + className + ", Method: " + methodName + ", Error: " + sanitizeLogMessage(errorMessage));
+        if (!hideException) {
+            logError(throwable);
+        }
     }
 
     /**
@@ -60,28 +69,34 @@ public class LogEvent {
      */
     public static void logError(Throwable throwable) {
         StackTraceElement[] stackTrace = throwable.getStackTrace();
-        String className = stackTrace[0].getClassName();
-        String methodName = stackTrace[0].getMethodName();
-
-        getLog().error("Class: " + className + ", Method: " + methodName + ", Error: "
-                + sanitizeLogMessage(throwable.getMessage()));
+        StringBuilder errorMessage = new StringBuilder();
+        errorMessage.append("Class: ").append(stackTrace[0].getClassName()).append(", Method: ")
+                .append(stackTrace[0].getMethodName()).append(", Line: ").append(stackTrace[0].getLineNumber())
+                .append(", Message: ").append(sanitizeLogMessage(throwable.getMessage()));
+        if (throwable.getCause() != null) {
+            logCause(throwable, throwable.getCause(), errorMessage, 0);
+        }
+        getLog().error(errorMessage.toString());
+        if (getLog().isDebugEnabled()) {
+            StringBuilder stackErrorMessage = new StringBuilder();
+            for (int i = 0; (i < MAX_STACK_DEPTH) && (i < stackTrace.length); ++i) {
+                stackErrorMessage.append(sanitizeLogMessage(stackTrace[i].toString()));
+                stackErrorMessage.append(System.lineSeparator());
+            }
+            logDebugWithoutSanitizing(stackErrorMessage.toString(), throwable);
+        }
     }
 
-    /**
-     * Write to the log file (type error)
-     *
-     * @param throwable -- exception which will be used to generate the stack trace
-     */
-    public static void logErrorStack(Throwable throwable) {
-        StringBuilder stackErrorMessage = new StringBuilder();
+    private static void logCause(Throwable originalThrowable, Throwable throwable, StringBuilder errorMessage,
+            int depth) {
         StackTraceElement[] stackTrace = throwable.getStackTrace();
-        for (int i = 0; i < MAX_STACK_DEPTH; ++i) {
-            stackErrorMessage.append(sanitizeLogMessage(stackTrace[i].toString()));
-            stackErrorMessage.append(System.lineSeparator());
+        errorMessage.append(System.lineSeparator()).append("Class: ").append(stackTrace[0].getClassName())
+                .append(", Method: ").append(stackTrace[0].getMethodName()).append(", Line: ")
+                .append(stackTrace[0].getLineNumber()).append(", Sub-Message: ")
+                .append(sanitizeLogMessage(throwable.getMessage()));
+        if (throwable.getCause() != null && depth < MAX_ERROR_DEPTH) {
+            logCause(originalThrowable, throwable.getCause(), errorMessage, ++depth);
         }
-        logError(stackErrorMessage.toString(), throwable);
-        getLog().error("Class: " + stackTrace[0].getClassName() + ", Method: " + stackTrace[0].getMethodName(),
-                throwable);
     }
 
     public static void logTrace(String className, String methodName, String debugMessage) {
@@ -114,6 +129,20 @@ public class LogEvent {
 
         getLog().debug(
                 "Class: " + className + ", Method: " + methodName + ", Error: " + sanitizeLogMessage(debugMessage));
+    }
+
+    /**
+     * Write to the log file (type error)
+     *
+     * @param errorMessage the error message
+     * @param throwable    the error to log
+     */
+    private static void logDebugWithoutSanitizing(String debugMessage, Throwable throwable) {
+        StackTraceElement[] stackTrace = throwable.getStackTrace();
+        String className = stackTrace[0].getClassName();
+        String methodName = stackTrace[0].getMethodName();
+
+        getLog().debug("Class: " + className + ", Method: " + methodName + ", Error: " + debugMessage);
     }
 
     /**
@@ -154,6 +183,25 @@ public class LogEvent {
     }
 
     /**
+     * Write to the log file (type warning)
+     *
+     * @param className   the class name
+     * @param methodName  the method name
+     * @param warnMessage the warning message
+     */
+    public static void logWarn(Throwable throwable) {
+        StackTraceElement[] stackTrace = throwable.getStackTrace();
+        StringBuilder warnMessage = new StringBuilder();
+        warnMessage.append("Class: ").append(stackTrace[0].getClassName()).append(", Method: ")
+                .append(stackTrace[0].getMethodName()).append(", Line: ").append(stackTrace[0].getLineNumber())
+                .append(", Message: ").append(sanitizeLogMessage(throwable.getMessage()));
+        if (throwable.getCause() != null) {
+            logCause(throwable, throwable.getCause(), warnMessage, 0);
+        }
+        getLog().warn(warnMessage.toString());
+    }
+
+    /**
      * Write to the log file (type fatal)
      *
      * @param className   the class name
@@ -163,11 +211,6 @@ public class LogEvent {
     public static void logFatal(String className, String methodName, String fatalMessage) {
         getLog().fatal(
                 "Class: " + className + ", Method: " + methodName + ", Fatal:" + sanitizeLogMessage(fatalMessage));
-    }
-
-    public static Log getLog(Class className) {
-        Log log = LogFactory.getLog(className);
-        return log;
     }
 
     private static Category getLog() {

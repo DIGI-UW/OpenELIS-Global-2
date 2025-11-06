@@ -11,17 +11,15 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
+import net.sf.jasperreports.engine.JRDataSource;
+import net.sf.jasperreports.engine.JREmptyDataSource;
+import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.openelisglobal.analyzer.service.AnalyzerExperimentService;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.reports.form.ReportForm;
 import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.context.i18n.LocaleContextHolder;
-
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.JREmptyDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 
 public class MauritiusProtocolSheet extends Report implements IReportCreator {
 
@@ -76,8 +74,7 @@ public class MauritiusProtocolSheet extends Report implements IReportCreator {
         twelveWellRow.setRowLabel(alpha);
         String num = matcher.group(2);
         String printValue = idValue == null ? ""
-                : idValue.getValue().substring(
-                        Math.max(0, idValue.getValue().length() - ACCESSION_PRINT_MAX_LENGTH));
+                : idValue.getValue().substring(Math.max(0, idValue.getValue().length() - ACCESSION_PRINT_MAX_LENGTH));
         switch (num) {
         case "1":
             twelveWellRow.setValue1(printValue);
@@ -139,5 +136,4 @@ public class MauritiusProtocolSheet extends Report implements IReportCreator {
     protected String reportFileName() {
         return "MauritiusProtocolSheet";
     }
-
 }

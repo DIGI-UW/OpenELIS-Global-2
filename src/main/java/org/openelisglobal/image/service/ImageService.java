@@ -1,7 +1,6 @@
 package org.openelisglobal.image.service;
 
 import java.util.Optional;
-
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.image.valueholder.Image;
 

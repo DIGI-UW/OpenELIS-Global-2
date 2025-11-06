@@ -1,8 +1,7 @@
 package org.openelisglobal.typeofsample.service;
 
 import java.util.List;
-
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.typeofsample.dao.TypeOfSampleTestDAO;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class TypeOfSampleTestServiceImpl extends BaseObjectServiceImpl<TypeOfSampleTest, String>
+public class TypeOfSampleTestServiceImpl extends AuditableBaseObjectServiceImpl<TypeOfSampleTest, String>
         implements TypeOfSampleTestService {
     @Autowired
     protected TypeOfSampleTestDAO baseObjectDAO;
@@ -24,11 +23,11 @@ public class TypeOfSampleTestServiceImpl extends BaseObjectServiceImpl<TypeOfSam
         return baseObjectDAO;
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public TypeOfSampleTest getTypeOfSampleTestForTest(String testId) {
-        return getMatch("testId", testId).orElse(null);
-    }
+    // @Override
+    // @Transactional(readOnly = true)
+    // public TypeOfSampleTest getTypeOfSampleTestForTest(String testId) {
+    // return getMatch("testId", testId).orElse(null);
+    // }
 
     @Override
     @Transactional(readOnly = true)
@@ -46,7 +45,6 @@ public class TypeOfSampleTestServiceImpl extends BaseObjectServiceImpl<TypeOfSam
     @Transactional(readOnly = true)
     public void getData(TypeOfSampleTest typeOfSampleTest) {
         getBaseObjectDAO().getData(typeOfSampleTest);
-
     }
 
     @Override
@@ -66,5 +64,4 @@ public class TypeOfSampleTestServiceImpl extends BaseObjectServiceImpl<TypeOfSam
     public Integer getTotalTypeOfSampleTestCount() {
         return getBaseObjectDAO().getTotalTypeOfSampleTestCount();
     }
-
 }

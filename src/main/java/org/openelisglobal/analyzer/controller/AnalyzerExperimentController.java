@@ -1,14 +1,13 @@
 package org.openelisglobal.analyzer.controller;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import javax.validation.Valid;
-
 import org.openelisglobal.analyzer.form.AnalyzerSetupForm;
 import org.openelisglobal.analyzer.service.AnalyzerExperimentService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
@@ -27,7 +26,10 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.InitBinder;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -37,6 +39,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 public class AnalyzerExperimentController extends BaseController {
 
+    private static final String[] ALLOWED_FIELDS = new String[] { "id", "filename", "wellValues", "analyzerId",
+            "previousRun", };
+
     @Autowired
     private AnalyzerExperimentService analyzerExperimentService;
     @Autowired
@@ -45,6 +50,16 @@ public class AnalyzerExperimentController extends BaseController {
     private AnalyzerTestMappingService analyzerMappingService;
     @Autowired
     private TestService testService;
+
+    @ModelAttribute("form")
+    public AnalyzerSetupForm initForm() {
+        return new AnalyzerSetupForm();
+    }
+
+    @InitBinder
+    public void initBinder(WebDataBinder binder) {
+        binder.setAllowedFields(ALLOWED_FIELDS);
+    }
 
     @GetMapping("/AnalyzerSetup")
     public ModelAndView displayAnalyzerSetup() {
@@ -60,21 +75,25 @@ public class AnalyzerExperimentController extends BaseController {
         for (Analyzer analyzer : analyzers) {
             analyzerLabels.add(new LabelValuePair(analyzer.getDescription(), analyzer.getId().toString()));
             analyzersWellInfo.put(analyzer.getId(), new WellInfo(12, 8));
-            analyzersTests.put(analyzer.getId(), analyzerMappingService.getAllForAnalyzer(analyzer.getId()).stream()
-                    .map(e -> new LabelValuePair(
-                            testService.get(e.getTestId()).getLocalizedTestName().getLocalizedValue(),
-                            testService.get(e.getTestId()).getLoinc()))
-                    .collect(Collectors.toList()));
-//            analyzerTests.put(analyzer.getId(),
-//                    analyzerMappingService.getAllForAnalyzer(analyzer.getId()).stream()
-//                            .map(e -> new LabelValuePair(e.getAnalyzerTestName(), e.getTestId()))
-//                            .collect(Collectors.toList()));
+            analyzersTests.put(analyzer.getId(),
+                    analyzerMappingService.getAllForAnalyzer(analyzer.getId()).stream()
+                            .map(e -> new LabelValuePair(
+                                    testService.get(e.getTestId()).getLocalizedTestName().getLocalizedValue(),
+                                    testService.get(e.getTestId()).getLoinc()))
+                            .collect(Collectors.toList()));
+            // analyzerTests.put(analyzer.getId(),
+            // analyzerMappingService.getAllForAnalyzer(analyzer.getId()).stream()
+            // .map(e -> new LabelValuePair(e.getAnalyzerTestName(),
+            // e.getTestId()))
+            // .collect(Collectors.toList()));
 
         }
         form.setAnalyzers(analyzerLabels);
         form.setAnalyzersTests(analyzersTests);
         form.setAnalyzersWellInfo(analyzersWellInfo);
-//        form.setTests(analyzerService.getAllMatching("hasSetupPage", true).stream().map(e -> e.))
+        // form.setTests(analyzerService.getAllMatching("hasSetupPage",
+        // true).stream().map(e ->
+        // e.))
         form.setPreviousRuns(analyzerExperimentService.getAllOrdered("lastupdated", true).stream()
                 .map(e -> new LabelValuePair(e.getName(), e.getId().toString())).collect(Collectors.toList()));
         return findForward(FWD_SUCCESS, form);
@@ -103,7 +122,12 @@ public class AnalyzerExperimentController extends BaseController {
     }
 
     @GetMapping(path = "/AnalyzerSetupFile/{id}", produces = MediaType.TEXT_PLAIN_VALUE)
-    public ResponseEntity<byte[]> getSetupFile(@PathVariable Integer id, @RequestParam("filename") String fileName) {
+    public ResponseEntity<byte[]> getSetupFile(@PathVariable Integer id,
+            @RequestParam("fileName") @Pattern(regexp = "^[\\w]+$") String fileName, BindingResult result) {
+        if (result.hasErrors()) {
+            saveErrors(result);
+            return ResponseEntity.badRequest().build();
+        }
         byte[] file = analyzerExperimentService.get(id).getFile();
         return ResponseEntity.ok().header("Content-Disposition", "attachment; filename=" + fileName + ".csv")
                 .contentLength(file.length).body(file);
@@ -149,5 +173,4 @@ public class AnalyzerExperimentController extends BaseController {
         // TODO Auto-generated method stub
         return null;
     }
-
 }

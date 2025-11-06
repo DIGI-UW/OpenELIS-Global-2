@@ -1,23 +1,21 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ */
 package org.openelisglobal.samplepdf.daoimpl;
 
 import java.util.List;
-
 import org.hibernate.Session;
+import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -42,17 +40,15 @@ public class SamplePdfDAOImpl extends BaseDAOImpl<SamplePdf, String> implements 
         Boolean isFound = false;
         try {
             String sql = "from SamplePdf s where s.accessionNumber = :param and s.allowView='Y'";
-            org.hibernate.Query query = entityManager.unwrap(Session.class).createQuery(sql);
+            Query<SamplePdf> query = entityManager.unwrap(Session.class).createQuery(sql, SamplePdf.class);
             query.setParameter("param", accessionNumber);
             List<SamplePdf> list = query.list();
             if ((list != null) && !list.isEmpty()) {
                 isFound = true;
             }
-            // entityManager.unwrap(Session.class).flush(); // CSL remove old
-            // entityManager.unwrap(Session.class).clear(); // CSL remove old
         } catch (RuntimeException e) {
             // bugzilla 2154
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in SamplePdf isAccessionNumberFound()", e);
         }
 
@@ -65,19 +61,16 @@ public class SamplePdfDAOImpl extends BaseDAOImpl<SamplePdf, String> implements 
     public SamplePdf getSamplePdfByAccessionNumber(SamplePdf samplePdf) throws LIMSRuntimeException {
         try {
             String sql = "from SamplePdf s where s.accessionNumber = :param";
-            org.hibernate.Query query = entityManager.unwrap(Session.class).createQuery(sql);
-            query.setParameter("param", samplePdf.getAccessionNumber());
+            Query<SamplePdf> query = entityManager.unwrap(Session.class).createQuery(sql, SamplePdf.class);
+            query.setParameter("param", Integer.parseInt(samplePdf.getAccessionNumber()));
 
             List<SamplePdf> list = query.list();
             if ((list != null) && !list.isEmpty()) {
                 samplePdf = list.get(0);
             }
 
-            // entityManager.unwrap(Session.class).flush(); // CSL remove old
-            // entityManager.unwrap(Session.class).clear(); // CSL remove old
-
         } catch (RuntimeException e) {
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in SamplePdf getSamplePdfByAccessionNumber()", e);
         }
 

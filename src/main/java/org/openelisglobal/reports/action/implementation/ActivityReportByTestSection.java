@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.reports.action.implementation.reportBeans.ActivityReportBean;
@@ -28,8 +27,7 @@ import org.openelisglobal.reports.form.ReportForm;
 import org.openelisglobal.result.service.ResultServiceImpl;
 import org.openelisglobal.result.valueholder.Result;
 
-/**
- */
+/** */
 public class ActivityReportByTestSection extends ActivityReport implements IReportCreator, IReportParameterSetter {
     private String unitName;
 
@@ -38,7 +36,8 @@ public class ActivityReportByTestSection extends ActivityReport implements IRepo
         new ReportSpecificationParameters(ReportSpecificationParameters.Parameter.DATE_RANGE,
                 MessageUtil.getMessage("report.activity.report.base") + " " + MessageUtil.getMessage("report.by.unit"),
                 MessageUtil.getMessage("report.instruction.all.fields")).setRequestParameters(form);
-        new ReportSpecificationList(DisplayListService.getInstance().getList(DisplayListService.ListType.TEST_SECTION),
+        new ReportSpecificationList(
+                DisplayListService.getInstance().getList(DisplayListService.ListType.TEST_SECTION_ACTIVE),
                 MessageUtil.getMessage("workplan.unit.types")).setRequestParameters(form);
     }
 
@@ -49,7 +48,16 @@ public class ActivityReportByTestSection extends ActivityReport implements IRepo
 
     @Override
     protected void buildReportContent(ReportSpecificationList unitSelection) {
-        unitName = unitSelection.getSelectionAsName();
+        String selection = unitSelection.getSelection();
+        if (unitSelection.getList().isEmpty()) {
+            unitSelection = new ReportSpecificationList(
+                    DisplayListService.getInstance().getList(DisplayListService.ListType.TEST_SECTION_ACTIVE),
+                    MessageUtil.getMessage("workplan.unit.types"));
+            unitSelection.setSelection(selection);
+            unitName = unitSelection.getSelectionAsName();
+        } else {
+            unitName = unitSelection.getSelectionAsName();
+        }
         createReportParameters();
 
         List<Result> resultList = ResultServiceImpl.getResultsInTimePeriodInTestSection(dateRange.getLowDate(),
@@ -82,7 +90,5 @@ public class ActivityReportByTestSection extends ActivityReport implements IRepo
             }
             testsResults.add(item);
         }
-
     }
-
 }

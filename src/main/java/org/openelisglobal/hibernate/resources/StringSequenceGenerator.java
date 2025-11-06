@@ -2,7 +2,6 @@ package org.openelisglobal.hibernate.resources;
 
 import java.io.Serializable;
 import java.util.Properties;
-
 import org.hibernate.HibernateException;
 import org.hibernate.MappingException;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
@@ -24,5 +23,4 @@ public class StringSequenceGenerator extends SequenceStyleGenerator {
     public void configure(Type type, Properties params, ServiceRegistry dialect) throws MappingException {
         super.configure(LongType.INSTANCE, params, dialect);
     }
-
 }

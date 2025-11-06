@@ -1,31 +1,27 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*
-* Contributor(s): CIRG, University of Washington, Seattle WA.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ *
+ * <p>Contributor(s): CIRG, University of Washington, Seattle WA.
+ */
 package org.openelisglobal.sample.util.CI;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.dictionary.ObservationHistoryList;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
@@ -94,7 +90,6 @@ public abstract class BaseProjectFormMapper implements IProjectFormMapper {
         public TypeOfSampleTests(TypeOfSample typeOfSample, List<Test> tests) {
             this.typeOfSample = typeOfSample;
             this.tests = tests;
-
         }
     }
 
@@ -108,7 +103,7 @@ public abstract class BaseProjectFormMapper implements IProjectFormMapper {
         TypeOfSample typeofsample = new TypeOfSample();
         typeofsample.setDescription(typeName);
         typeofsample = typeofsampleService.getTypeOfSampleByDescriptionAndDomain(typeofsample, true); // true =
-                                                                                                      // ignoreCase
+        // ignoreCase
 
         return typeofsample;
     }
@@ -263,6 +258,7 @@ public abstract class BaseProjectFormMapper implements IProjectFormMapper {
         addHistory(histories, "priorVLLab", od.getPriorVLLab(), ValueType.LITERAL);
         addHistory(histories, "priorVLValue", od.getPriorVLValue(), ValueType.LITERAL);
         addHistory(histories, "priorVLDate", od.getPriorVLDate(), ValueType.LITERAL);
+        addHistory(histories, "hpvSamplingMethod", od.getHpvSamplingMethod(), ValueType.DICTIONARY);
 
         return histories;
     }
@@ -301,9 +297,7 @@ public abstract class BaseProjectFormMapper implements IProjectFormMapper {
         return historiesLists;
     }
 
-    /**
-     *
-     */
+    /** */
     private List<ObservationHistory> readAdverseEffectGrades(String historyType, String controlAnswer,
             List<AdverseEffect> adverseEffects) {
         List<ObservationHistory> histories = new ArrayList<>();
@@ -391,7 +385,7 @@ public abstract class BaseProjectFormMapper implements IProjectFormMapper {
     /**
      * ?type=xxxxx specifies how we are using a study form.
      *
-     * @see org.openelisglobal.sample.util.CI.IProjectFormMapper#isSecondEntry(javax.servlet.http.HttpServletRequest)
+     * @see org.openelisglobal.sample.util.CI.IProjectFormMapper#isSecondEntry(jakarta.servlet.http.HttpServletRequest)
      */
     @Override
     public boolean isSecondEntry(HttpServletRequest request) {
@@ -422,7 +416,6 @@ public abstract class BaseProjectFormMapper implements IProjectFormMapper {
     /**
      * @see org.openelisglobal.sample.util.CI.IProjectFormMapper#setPatientForm(boolean)
      */
-
     @Override
     public void setPatientForm(boolean b) {
         patientForm = b;
@@ -448,7 +441,8 @@ public abstract class BaseProjectFormMapper implements IProjectFormMapper {
     @Override
     public String getOrganizationId() {
         if (patientForm) {
-            if (getProjectForm().equals(ProjectForm.VL)) {
+            if (getProjectForm().equals(ProjectForm.VL) || getProjectForm().equals(ProjectForm.RECENCY_TESTING)
+                    || getProjectForm().equals(ProjectForm.HPV_TESTING)) {
                 return getSampleCenterCode();
             } else {
                 return form.getCenterCode().toString();

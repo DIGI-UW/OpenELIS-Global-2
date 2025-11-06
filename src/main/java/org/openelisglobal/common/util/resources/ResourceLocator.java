@@ -1,30 +1,24 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ */
 package org.openelisglobal.common.util.resources;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
-
 import org.openelisglobal.common.log.LogEvent;
 
-/**
- * Diane Benz Oct 29, 2005
- *
- */
+/** Diane Benz Oct 29, 2005 */
 public class ResourceLocator {
     private static class SingletonHelper {
         private static final ResourceLocator INSTANCE = new ResourceLocator(); // Holder for Singleton
@@ -62,7 +56,7 @@ public class ResourceLocator {
             propertyFilePairs.load(propertyStream);
         } catch (IOException e) {
             // bugzilla 2154
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             throw new RuntimeException(e);
         } finally {
             if (null != propertyStream) {
@@ -70,7 +64,7 @@ public class ResourceLocator {
                     propertyStream.close();
                 } catch (IOException e) {
                     // bugzilla 2154
-                    LogEvent.logError(e.toString(), e);
+                    LogEvent.logError(e);
                 }
             }
         }
@@ -79,9 +73,7 @@ public class ResourceLocator {
         // initializeMessageResources();
     }
 
-    /**
-     * Return the instance of this singleton
-     */
+    /** Return the instance of this singleton */
     public static ResourceLocator getInstance() throws RuntimeException {
         return SingletonHelper.INSTANCE;
     }

@@ -51,5 +51,4 @@ public class PatientResultsViewNotificationPayload implements NotificationPayloa
         subject = subject.replaceAll("\\[patientLastNameInitial\\]", patientLastNameInitial);
         return subject;
     }
-
 }

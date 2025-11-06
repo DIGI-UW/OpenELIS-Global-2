@@ -1,5 +1,6 @@
 package org.openelisglobal.referral.service;
 
+import jakarta.annotation.PostConstruct;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,9 +9,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-
-import javax.annotation.PostConstruct;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -131,28 +129,30 @@ public class ReferralSetServiceImpl implements ReferralSetService {
 
         for (ReferralSet referralSet : referralSetList) {
             if (referralSet.getReferral().isCanceled()) {
-//                try {
-//                    fhirReferralService.cancelReferralToOrganization(
-//                            referralSet.getReferral().getOrganization().getId(),
-//                            referralSet.getReferral().getAnalysis().getSampleItem().getSample().getId(),
-//                            Arrays.asList(referralSet.getReferral().getAnalysis().getId()));
-//                } catch (FhirLocalPersistingException e) {
-//                    // TODO don't catch since this is a considerable error in OE world going ahead?
-//                    LogEvent.logError(e);
-//                }
+                // try {
+                // fhirReferralService.cancelReferralToOrganization(
+                // referralSet.getReferral().getOrganization().getId(),
+                //
+                // referralSet.getReferral().getAnalysis().getSampleItem().getSample().getId(),
+                //
+                // Arrays.asList(referralSet.getReferral().getAnalysis().getId()));
+                // } catch (FhirLocalPersistingException e) {
+                // // TODO don't catch since this is a considerable error in OE world
+                // going ahead?
+                // LogEvent.logError(e);
+                // }
             } else {
                 try {
                     fhirReferralService.referAnalysisesToOrganization(referralSet.getReferral());
                 } catch (TestNotFullyConfiguredException e) {
-                    LogEvent.logError(this.getClass().getName(), "updateRefreralSets",
+                    LogEvent.logError(this.getClass().getSimpleName(), "updateRefreralSets",
                             "unable to automatically refer a test that does not have a loinc code set");
                 } catch (FhirLocalPersistingException e) {
-                    LogEvent.logError(this.getClass().getName(), "updateRefreralSets",
+                    LogEvent.logError(this.getClass().getSimpleName(), "updateRefreralSets",
                             "had a problem saving the referral locally in fhir");
                 }
             }
         }
-
     }
 
     private void setStatusOfParentSamples(List<Sample> modifiedSamples, Set<Sample> parentSamples, String sysUserId) {
@@ -251,5 +251,4 @@ public class ReferralSetServiceImpl implements ReferralSetService {
         updateReferralSets(referralSets, new ArrayList<>(), new HashSet<>(), new ArrayList<>(),
                 updateData.getCurrentUserId());
     }
-
 }

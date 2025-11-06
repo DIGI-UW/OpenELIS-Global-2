@@ -1,63 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-	  
-	  
-  	<property name="now" value="now()" dbms="postgresql"/>
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<changeSet author="cliff" id="1">
-		<validCheckSum>8:f41594bce075c4f423f54cf8b0c67d83</validCheckSum>
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.site_information WHERE name = 'Geographic Unit 1 (EG: Region ) Label'</sqlCheck> 
-		</preConditions>
-		<insert schemaName="clinlims" tableName="site_information">
-			<column name="id" valueSequenceNext="site_information_seq" />
-			<column name="name" value="Geographic Unit 1 Label" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="geographical label name for a place" />
-			<column name="value" value="Region" />
-			<column name="encrypted" value="false" />
-			<column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')" />
-			<column name="value_type" value="text" />
-			<column name="instruction_key" value="siteInfo.instruction.georaphical.one" />
-			<column name="group" value="0" />
-			<column name="description_key" value="siteInfo.geographical.region" />
-		</insert>
-		<insert schemaName="clinlims" tableName="site_information">
-			<column name="id" valueSequenceNext="site_information_seq" />
-			<column name="name" value="Geographic Unit 2 Label" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="geographical label name for a place" />
-			<column name="value" value="District" />
-			<column name="encrypted" value="false" />
-			<column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')" />
-			<column name="value_type" value="text" />
-			<column name="instruction_key" value="siteInfo.instruction.georaphical.two" />
-			<column name="group" value="0" />
-			<column name="description_key" value="siteInfo.geographical.district" />
-		</insert>
-	</changeSet>
-	<changeSet author="cliff" id="2">
-		<validCheckSum>8:d0eed534f8421378388b6c61b7325708</validCheckSum>
-		<preConditions onFail="MARK_RAN">
-			<sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.site_information WHERE name = 'restrictFreeTextMethodEntry'</sqlCheck> 
-		</preConditions>
-		<insert schemaName="clinlims" tableName="site_information">
-			<column name="id" valueSequenceNext="site_information_seq" />
-			<column name="name" value="restrictFreeTextMethodEntry" />
-			<column name="lastupdated" valueComputed="${now}" />
-			<column name="description" value="Users cannot enter new methods through result entry" />
-			<column name="value" value="false" />
-			<column name="encrypted" value="false" />
-			<column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')" />
-			<column name="value_type" value="boolean" />
-			<column name="instruction_key" value="instructions.method.limit" />
-			<column name="group" value="0" />
-			<column name="description_key" value="siteInfo.restrictFreeTextMethodEntry" />
-		</insert>
-	</changeSet>
-	
+
+      <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet author="cliff" id="1">
+        <validCheckSum>8:f41594bce075c4f423f54cf8b0c67d83</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.site_information WHERE name = 'Geographic Unit 1 (EG: Region ) Label'</sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="Geographic Unit 1 Label" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="geographical label name for a place" />
+            <column name="value" value="Region" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')" />
+            <column name="value_type" value="text" />
+            <column name="instruction_key" value="siteInfo.instruction.georaphical.one" />
+            <column name="group" value="0" />
+            <column name="description_key" value="siteInfo.geographical.region" />
+        </insert>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="Geographic Unit 2 Label" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="geographical label name for a place" />
+            <column name="value" value="District" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')" />
+            <column name="value_type" value="text" />
+            <column name="instruction_key" value="siteInfo.instruction.georaphical.two" />
+            <column name="group" value="0" />
+            <column name="description_key" value="siteInfo.geographical.district" />
+        </insert>
+    </changeSet>
+    <changeSet author="cliff" id="2">
+        <validCheckSum>8:d0eed534f8421378388b6c61b7325708</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.site_information WHERE name = 'restrictFreeTextMethodEntry'</sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="restrictFreeTextMethodEntry" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Users cannot enter new methods through result entry" />
+            <column name="value" value="false" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="instructions.method.limit" />
+            <column name="group" value="0" />
+            <column name="description_key" value="siteInfo.restrictFreeTextMethodEntry" />
+        </insert>
+    </changeSet>
+
 </databaseChangeLog>

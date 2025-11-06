@@ -1,6 +1,6 @@
 package org.openelisglobal.common.util;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 public class URLUtil {
 
@@ -19,7 +19,9 @@ public class URLUtil {
         } else {
             pathWithoutSuffix = pathWithoutQuery;
         }
+        if (pathWithoutSuffix.startsWith("/rest")) {
+            pathWithoutSuffix = pathWithoutSuffix.split("/rest")[1];
+        }
         return pathWithoutSuffix;
     }
-
 }

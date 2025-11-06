@@ -1,0 +1,131 @@
+@use "@carbon/styles/scss/spacing";
+@use "@carbon/styles/scss/type";
+@import "../commons/scss/vars.scss";
+
+.tableContainer :global(.cds--data-table-header) {
+  padding: 0.75rem 1rem 0.25rem 1rem;
+
+  *:not(:first-child) {
+    margin: 0.25rem 0rem;
+  }
+
+  h4 {
+    @include type.type-style("heading-compact-02");
+    max-width: 50%;
+  }
+}
+
+.tableContainer {
+  &.desktop {
+    h4 {
+      color: $text-02;
+    }
+  }
+}
+
+tr {
+  &.critically-low,
+  &.critically-high,
+  &.low,
+  &.high {
+    td:nth-child(2) {
+      @include type.type-style("heading-compact-01");
+      color: $ui-05;
+    }
+  }
+
+  &.critically-low,
+  &.critically-high,
+  &.off-scale-high,
+  &.off-scale-low {
+    outline: 2px solid $danger;
+    outline-offset: -1px;
+  }
+
+  &.low,
+  &.high {
+    outline: 1px solid black;
+    outline-offset: -1px;
+  }
+
+  &.critically-low {
+    td:nth-child(2)::after {
+      content: " ↓↓";
+    }
+  }
+
+  &.critically-high {
+    td:nth-child(2)::after {
+      content: " ↑↑";
+    }
+  }
+
+  &.low {
+    td:nth-child(2)::after {
+      content: " ↓";
+    }
+  }
+
+  &.high {
+    td:nth-child(2)::after {
+      content: " ↑";
+    }
+  }
+
+  &.off-scale-low {
+    td:nth-child(2)::after {
+      content: " ↓↓↓";
+    }
+  }
+
+  &.off-scale-high {
+    td:nth-child(2)::after {
+      content: " ↑↑↑";
+    }
+  }
+}
+
+.offScaleHigh,
+.offScaleLow,
+.criticallyHigh,
+.criticallyLow,
+.high,
+.low {
+  @include type.type-style("heading-compact-01");
+}
+
+.high,
+.low {
+  box-shadow: 0 0 0 1px #000000;
+}
+
+.criticallyHigh,
+.criticallyLow {
+  box-shadow:
+    0 0 0 1px $danger,
+    inset 0 0 0 1px $danger;
+}
+
+.offScaleLow::after {
+  content: " ↓↓↓";
+}
+
+.offScaleHigh::after {
+  content: " ↑↑↑";
+}
+
+.criticallyLow::after {
+  content: " ↓↓";
+}
+
+.criticallyHigh::after {
+  content: " ↑↑";
+}
+
+.low::after {
+  content: " ↓";
+}
+
+.high::after {
+  content: " ↑";
+}

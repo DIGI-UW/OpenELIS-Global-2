@@ -1,38 +1,32 @@
 /**
-/* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*
-* Contributor(s): CIRG, University of Washington, Seattle WA.
-*/
+ * /* The contents of this file are subject to the Mozilla Public License Version 1.1 (the
+ * "License"); you may not use this file except in compliance with the License. You may obtain a
+ * copy of the License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ *
+ * <p>Contributor(s): CIRG, University of Washington, Seattle WA.
+ */
 package org.openelisglobal.common.action;
 
 /**
  * IActionConstants.java
  *
  * @author diane benz 10/31/2005
- *
+ *         <p>
  *         This interface contains the constants for bean and attribute names
  *         used by the struts action classes.
  */
 public interface IActionConstants {
-    /**
-     * The key for the page title in the request scope.
-     */
+    /** The key for the page title in the request scope. */
     String PAGE_TITLE_KEY = "title";
-    /**
-     * The key for the page subtitle in the request scope.
-     */
+    /** The key for the page subtitle in the request scope. */
     String PAGE_SUBTITLE_KEY = "subtitle";
 
     String INVALID = "invalid";
@@ -262,13 +256,16 @@ public interface IActionConstants {
     String RESULTS_SESSION_CACHE = "ResultsSessionCache";
     String RESULTS_PAGE_MAPPING_SESSION_CACHE = "ResultsPageMappingSessionCache";
 
+    String DISPLAY_LIST_SESSION_CACHE = "DisplayListSessionCache";
+    String DISPLAY_LIST_MAPPING_SESSION_CACHE = "DisplayListPageMappingSessionCache";
+
     /**
      * The system_module name used to determine if the current user is allowed to
      * edit primary patient IDs (subject number & site subject number).
      */
     String MODULE_ACCESS_PATIENT_SUBJECTNOS_EDIT = "Access.patient.subjectNos.edit";
+
     String MODULE_ACCESS_SAMPLE_ACCESSIONNO_EDIT = "Access.sample.accessionNo.edit";
 
-    String DISPLAY_PREV_NEXT = "DisplayPrevNext" ;
-
+    String DISPLAY_PREV_NEXT = "DisplayPrevNext";
 }

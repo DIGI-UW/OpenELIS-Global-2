@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+      <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'alphanumAccessionPrefix'; </sqlCheck>
+        </preConditions>
+        <comment>add alphanum lab number info</comment>
+        <insert schemaName="clinlims" tableName="site_information_domain">
+            <column name="id" valueSequenceNext="site_information_domain_seq" />
+            <column name="name" value="labNumberManagement" />
+            <column name="description" value="Items related to lab numbers" />
+        </insert>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="alphanumAccessionPrefix" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="accession prefix for alphanumeric lab numbers" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'labNumberManagement')" />
+            <column name="value_type" value="text" />
+            <column name="group" value="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="useAlphanumAccessionPrefix" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="accession prefix for alphanumeric lab numbers" />
+            <column name="value" value="false" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'labNumberManagement')" />
+            <column name="value_type" value="boolean" />
+            <column name="group" value="0" />
+        </insert>
+        <update schemaName="clinlims" tableName="site_information">
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'labNumberManagement')" />
+            <where>name = 'acessionFormat'</where>
+        </update>
+    </changeSet>
+    <changeSet author="csteele" id="2">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">select count(*) from clinlims.site_information where name = 'acessionFormat' AND value = 'SiteYearNum'; </sqlCheck>
+        </preConditions>
+        <update schemaName="clinlims" tableName="site_information">
+            <column name="description" value="specifies the format of the acession number,ex: SITEYEARNUM" />
+            <column name="value" value="SITEYEARNUM" />
+            <where>name = 'acessionFormat' AND value = 'SiteYearNum'</where>
+        </update>
+    </changeSet>
+
+
+</databaseChangeLog>

@@ -9,10 +9,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
-<%@ taglib prefix="tiles" uri="http://tiles.apache.org/tags-tiles"%>	     
+
 
 <c:set var="localDBOnly" value='<%=Boolean.toString(ConfigurationProperties.getInstance().getPropertyValueLowerCase(Property.UseExternalPatientInfo).equals("false"))%>'/>
 
@@ -327,7 +326,7 @@ function printBarcode(button) {
 </script>
 
 <!-- new for pre-printing -->
-<tiles:insertAttribute name="prePrinting"/>
+<jsp:include page="${prePrintingFragment}"/>
 
 <!-- end new for pre-printing -->
 

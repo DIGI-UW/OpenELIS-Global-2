@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-	  
-	  
-	<changeSet author="csteele" id="1">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+
+    <changeSet author="csteele" id="1">
 <!-- 		no precondition needed, always delete the option -->
-		<delete schemaName="clinlims" tableName="menu">
-			<where>element_id = 'menu_administration_test_management' OR element_id = 'menu_administration_report_management'</where>
-		</delete>
-		<!-- no rollback as these options were never needed -->
-	</changeSet>
-	
+        <delete schemaName="clinlims" tableName="menu">
+            <where>element_id = 'menu_administration_test_management' OR element_id = 'menu_administration_report_management'</where>
+        </delete>
+        <!-- no rollback as these options were never needed -->
+    </changeSet>
+
 </databaseChangeLog>

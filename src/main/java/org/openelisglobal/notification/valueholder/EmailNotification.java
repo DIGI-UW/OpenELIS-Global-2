@@ -43,5 +43,4 @@ public class EmailNotification implements RemoteNotification {
     public void setBccs(List<String> bccs) {
         this.bccs = bccs;
     }
-
 }

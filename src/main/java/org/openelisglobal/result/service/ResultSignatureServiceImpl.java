@@ -1,8 +1,7 @@
 package org.openelisglobal.result.service;
 
 import java.util.List;
-
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.result.dao.ResultSignatureDAO;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultSignature;
@@ -11,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class ResultSignatureServiceImpl extends BaseObjectServiceImpl<ResultSignature, String>
+public class ResultSignatureServiceImpl extends AuditableBaseObjectServiceImpl<ResultSignature, String>
         implements ResultSignatureService {
     @Autowired
     protected ResultSignatureDAO baseObjectDAO;
@@ -29,7 +28,6 @@ public class ResultSignatureServiceImpl extends BaseObjectServiceImpl<ResultSign
     @Transactional(readOnly = true)
     public void getData(ResultSignature resultSignature) {
         getBaseObjectDAO().getData(resultSignature);
-
     }
 
     @Override

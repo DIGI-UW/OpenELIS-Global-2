@@ -2,14 +2,15 @@ package org.openelisglobal.profile.controller;
 
 import java.io.IOException;
 import java.util.Arrays;
-
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.profile.form.ProfileForm;
 import org.openelisglobal.test.service.TestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.servlet.ModelAndView;
@@ -17,6 +18,13 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 public class ProfileController extends BaseController {
+
+    private static final String[] ALLOWED_FIELDS = new String[] { "file" };
+
+    @InitBinder
+    public void initBinder(WebDataBinder binder) {
+        binder.setAllowedFields(ALLOWED_FIELDS);
+    }
 
     @Autowired
     private TestService testService;
@@ -87,5 +95,4 @@ public class ProfileController extends BaseController {
         // TODO Auto-generated method stub
         return null;
     }
-
 }

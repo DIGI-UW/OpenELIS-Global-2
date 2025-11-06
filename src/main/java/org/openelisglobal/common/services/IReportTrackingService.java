@@ -2,7 +2,6 @@ package org.openelisglobal.common.services;
 
 import java.sql.Timestamp;
 import java.util.List;
-
 import org.openelisglobal.common.services.ReportTrackingService.ReportType;
 import org.openelisglobal.reports.valueholder.DocumentTrack;
 import org.openelisglobal.sample.valueholder.Sample;

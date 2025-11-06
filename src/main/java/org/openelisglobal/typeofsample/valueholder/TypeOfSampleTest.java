@@ -32,5 +32,4 @@ public class TypeOfSampleTest extends BaseObject<String> {
     public void setTestId(String testId) {
         this.testId = testId;
     }
-
 }

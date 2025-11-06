@@ -17,13 +17,14 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
-
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
-<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
 
-<c:set var="testSection"	value='${form.testSection}' />
+<%@ taglib prefix="fn" uri="jakarta.tags.functions"%>
+<%@ taglib prefix = "fmt" uri = "jakarta.tags.fmt" %>
+
+
+<c:set var="testSection"	value='${form.testSection}'/>
 <c:set var="results" value="${form.resultList}" />
 <c:set var="pagingSearch" value='${form.paging.searchTermToPage}'/>
 <c:set var="testSectionsByName" value='${form.testSectionsByName}' />
@@ -33,8 +34,9 @@
 <%
 	int rowColorIndex = 2;
 	String searchTerm = request.getParameter("searchTerm");
-	String url = request.getAttribute("javax.servlet.forward.servlet_path").toString();	
+	String url = request.getAttribute("jakarta.servlet.forward.servlet_path").toString();	
 	//boolean showTestSectionSelect = !ConfigurationProperties.getInstance().isPropertyValueEqual(Property.configurationName, "CI RetroCI");
+	String criticalMessage = ConfigurationProperties.getInstance().getPropertyValue(ConfigurationProperties.Property.customCriticalMessage);
 %>
 
 
@@ -50,11 +52,13 @@
 
 <script>
 var dirty = false;
-var pager = new OEPager('${form.formName}', '<spring:escapeBody javaScriptEscape="true">${(analyzerType == "") ? "" : "&type=" +=  analyzerType}</spring:escapeBody>');
-var pager = new OEPager('${form.formName}', '<spring:escapeBody javaScriptEscape="true">${(testSection == "") ? "" : "&type=" += testSection}</spring:escapeBody>' + '&test= <spring:escapeBody javaScriptEscape="true">testName</spring:escapeBody>');
+var pager = new OEPager('${form.formName}', '<c:if test="${not empty analyzerType}">&type=<spring:escapeBody javaScriptEscape="true">${analyzerType}</spring:escapeBody></c:if>');
+var pager = new OEPager('${form.formName}', '<c:if test="${not empty testSection}">&type=<spring:escapeBody javaScriptEscape="true">${testSection}</spring:escapeBody></c:if>' + '&test= <spring:escapeBody javaScriptEscape="true">testName</spring:escapeBody>');
 pager.setCurrentPageNumber('<c:out value="${form.paging.currentPage}"/>');
 
 var pageSearch; //assigned in post load function
+
+var criticalMsg = "<%=criticalMessage%>";
 
 var pagingSearch = {};
 
@@ -196,7 +200,7 @@ function toggleSelectAll( element ) {
 }
 
 function updateLogValue(element, index ){
-	var logField = jQuery("log_" + index );
+	var logField = jQuery("#log_" + index );
 
 	if( logField ){
 		var logValue = Math.baseLog(element.value).toFixed(2);
@@ -321,8 +325,19 @@ function altAccessionHighlightSearch(accessionNumber) {
 	}
 }
 
+function validateCriticalResults(index,lowCritical,highCritical){
+	var elementVal;
+	var elementt = jQuery("#resultId_" + index);
+	elementVal = elementt.val();
+	console.log(elementVal);
+	if (elementVal > lowCritical && elementVal < highCritical) {
+		    elementt.addClass("error");
+            alert(criticalMsg);
+            return;
+        }
+  }
 </script>
-
+<c:set var="total" value="${form.paging.totalPages}"/>
 <c:if test="${resultCount != 0}">
 <div  style="width:80%" >
 	<form:hidden path="paging.currentPage" id="currentPageID" />
@@ -350,12 +365,12 @@ function altAccessionHighlightSearch(accessionNumber) {
 	       id="labnoSearch"
 	       placeholder='<spring:message code="sample.search.scanner.instructions"/>'
 	       maxlength='<%= Integer.toString(AccessionNumberUtil.getMaxAccessionLength())%>' />
-	<input type="button" onclick="pageSearch.doLabNoSearch(document.getElementById('labnoSearch'))" value='<%= MessageUtil.getMessage("label.button.search") %>'>
+	<input type="button" onclick="pageSearch.doLabNoSearch(document.getElementById('labnoSearch'));" value='<%= MessageUtil.getMessage("label.button.search") %>'>
 	</span>
 </div>
 </c:if>
-<form:hidden path="testSection" value="${param.type}"/>
-<form:hidden path="testName" value="${param.test}"/>
+<form:hidden path="testSection"/>
+<form:hidden path="testName"/>
 <c:if test="${resultCount != 0}">
 <Table style="width:80%" >
     <tr>
@@ -382,7 +397,7 @@ function altAccessionHighlightSearch(accessionNumber) {
 				id="selectAllAccept"
 				class="accepted acceptAll">
 		</th>
-		<th  style="text-align:center;width:3%;" style="background-color: white">&nbsp;
+		<th  style="text-align:center;width:resultCount3%;" style="background-color: white">&nbsp;
 		<spring:message code="validation.reject.all" />
 			<input type="checkbox"
 					name="selectAllReject"
@@ -578,7 +593,10 @@ function altAccessionHighlightSearch(accessionNumber) {
 						<br/>
 						<div id='log_${iter.index}'
 								class='results-readonly'>
-								${resultList.result}
+							<c:catch var="logConversionException">
+								<fmt:formatNumber maxFractionDigits="2" value = "${Math.log10(resultList.result)}" type="number" />
+							</c:catch>
+							<c:if test = "${logConversionException != null}"> -- </c:if>  
 								<%-- <% try{
 												Double value = Math.log10(Double.parseDouble(resultList.getResult()));
 												DecimalFormat twoDForm = new DecimalFormat("##.##");
@@ -594,7 +612,8 @@ function altAccessionHighlightSearch(accessionNumber) {
 								   id='accepted_${iter.index}'
 								   cssClass='accepted accepted_${resultList.sampleGroupingNumber} ${resultList.normal ? "normalAccepted" : "" }'
 								   onchange="markUpdated(); makeDirty();"
-								   onclick='enableDisableCheckboxes("rejected_${iter.index}", "${resultList.sampleGroupingNumber}");' 
+								   onclick='enableDisableCheckboxes("rejected_${iter.index}", "${resultList.sampleGroupingNumber}");
+								    validateCriticalResults("${iter.index}","${resultList.lowerCritical}","${resultList.higherCritical}");' 
 								   />
 				</td>
 				<td style="text-align:center">

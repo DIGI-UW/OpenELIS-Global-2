@@ -1,20 +1,24 @@
 /**
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ */
 package org.openelisglobal.common.provider.reports;
 
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -25,30 +29,21 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.Map;
-
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
-import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 import javax.sql.DataSource;
-
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JasperRunManager;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.springframework.validation.Errors;
 
-import net.sf.jasperreports.engine.JRException;
-import net.sf.jasperreports.engine.JasperRunManager;
-
 /**
  * @author benzd1
- *
  */
 public class MycologyWorksheetProvider extends BaseReportsProvider {
 
@@ -56,8 +51,8 @@ public class MycologyWorksheetProvider extends BaseReportsProvider {
      * (non-Javadoc)
      *
      * @see org.openelisglobal.common.provider.reports.BaseReportsProvider#
-     * processRequest(java.util.Map, javax.servlet.http.HttpServletRequest,
-     * javax.servlet.http.HttpServletResponse) bugzilla 2274: added boolean
+     * processRequest(java.util.Map, jakarta.servlet.http.HttpServletRequest,
+     * jakarta.servlet.http.HttpServletResponse) bugzilla 2274: added boolean
      * successful
      */
     @Override
@@ -79,7 +74,7 @@ public class MycologyWorksheetProvider extends BaseReportsProvider {
 
             InitialContext ic = new InitialContext();
             DataSource nativeDS = (DataSource) ic
-                    .lookup(SystemConfiguration.getInstance().getDefaultDataSource().toString());
+                    .lookup(ConfigurationProperties.getInstance().getPropertyValue("default.datasource").toString());
             conn = nativeDS.getConnection();
 
             // get yesterday's date as date received
@@ -96,7 +91,7 @@ public class MycologyWorksheetProvider extends BaseReportsProvider {
 
             // convert string date to java.util.Date by going through java.sql.Date
             // bugzilla 2274 - date conversion fixed
-            String locale = SystemConfiguration.getInstance().getDefaultLocale().toString();
+            String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
             java.sql.Date sDate = DateUtil.convertStringDateToSqlDate(dateAsText, locale);
             java.util.Date date = new java.util.Date(sDate.getTime());
 
@@ -112,7 +107,7 @@ public class MycologyWorksheetProvider extends BaseReportsProvider {
             servletOutputStream.close();
         } catch (JRException e) {
             // bugzilla 2154
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             // display stack trace in the browser
             StringWriter stringWriter = new StringWriter();
             response.setContentType("text/plain");
@@ -120,7 +115,7 @@ public class MycologyWorksheetProvider extends BaseReportsProvider {
             errors.reject("errors.jasperreport.general");
         } catch (SQLException | NamingException e) {
             // bugzilla 2154
-            LogEvent.logError(e.toString(), e);
+            LogEvent.logError(e);
             errors.reject("errors.jasperreport.general");
         } finally {
             try {
@@ -129,7 +124,7 @@ public class MycologyWorksheetProvider extends BaseReportsProvider {
                 }
             } catch (SQLException e) {
                 // bugzilla 2154
-                LogEvent.logError(e.toString(), e);
+                LogEvent.logError(e);
             }
         }
 
@@ -139,7 +134,5 @@ public class MycologyWorksheetProvider extends BaseReportsProvider {
         } else {
             return true;
         }
-
     }
-
 }

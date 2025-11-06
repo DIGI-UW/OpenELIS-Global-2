@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="CIV Developer Group" id="202303244"
+        context="CDIRetroCI">
+        <comment>Update  next value for observation_history_type_seq after database migration </comment>
+        <sql>
+            SELECT setval('clinlims.observation_history_type_seq', CAST
+            ((SELECT coalesce(MAX(id),0) FROM clinlims.observation_history_type)
+            AS BIGINT) + 1);
+        </sql>
+    </changeSet>
+    <changeSet author="CIV Developer Group" id="202303245"
+        context="CDIRetroCI">
+        <comment>Update  localisation english label </comment>
+        <sql>
+            update clinlims.localization set english = 'Serum' where english
+            = 'Sérum';
+        </sql>
+    </changeSet>
+    <changeSet author="CIV Developer Group" id="202303246"
+        context="CDIRetroCI">
+        <preConditions onError="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+        </preConditions>
+        <comment>Update  localisation english label </comment>
+        <sql>
+            alter table clinlims.system_role drop constraint
+            role_parent_role_fk,add constraint role_parent_role_fk foreign key
+            (grouping_parent) references clinlims.system_role (id) MATCH SIMPLE
+            ON UPDATE NO ACTION ON DELETE CASCADE;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.jdbc.ReturningWork;
@@ -40,6 +39,7 @@ import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.StringUtil;
@@ -61,7 +61,7 @@ import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
  * @author pahill (pahill@uw.edu)
  * @since Mar 18, 2011
  */
-abstract public class CSVColumnBuilder {
+public abstract class CSVColumnBuilder {
 
     // these are used so we are not passing around strings in the methods that are
     // appended to sql
@@ -88,9 +88,7 @@ abstract public class CSVColumnBuilder {
         }
     }
 
-    /**
-     *
-     */
+    /** */
     public CSVColumnBuilder(StatusService.AnalysisStatus validStatusFilter) {
         // we'll round up everything via hibernate first.
         ResourceTranslator.DictionaryTranslator.getInstance();
@@ -119,9 +117,7 @@ abstract public class CSVColumnBuilder {
      */
     protected List<ObservationHistoryType> allObHistoryTypes;
 
-    /**
-     * All possible tests, so we can have 1 result per test.
-     */
+    /** All possible tests, so we can have 1 result per test. */
     protected List<Test> allTests;
 
     /**
@@ -173,11 +169,9 @@ abstract public class CSVColumnBuilder {
         }
     }
 
-    /**
-     * map to provide appropriate tag to identify the project.
-     */
-
+    /** map to provide appropriate tag to identify the project. */
     static Map<String /* project Id */, String /* project tag */> projectTagById = new HashMap<>();
+
     static {
         defineAllProjectTags();
     }
@@ -193,6 +187,10 @@ abstract public class CSVColumnBuilder {
                 projectTag = "ARVB";
             } else if (project.getNameKey().contains("VLS")) {
                 projectTag = "VLS";
+            } else if (project.getNameKey().contains("Recency")) {
+                projectTag = "RTRI";
+            } else if (project.getNameKey().contains("HPV")) {
+                projectTag = "HPV";
             } else {
                 // otherwise we use the letters from the Sample ID prefix, which
                 // at some locations for some projects is undefined.
@@ -214,16 +212,15 @@ abstract public class CSVColumnBuilder {
      * @since Feb 1, 2011
      */
     public enum Strategy {
-        ANALYSIS_STATUS,
-        DICT, // dictionary localized value
+        ANALYSIS_STATUS, DICT, // dictionary localized value
         DICT_PLUS, // dictionary localized value or a string constant
         DICT_RAW, // dictionary localized value, no attempts at trimming to show just code number.
         DATE, // date (i.e. 01/01/2013)
         DATE_TIME, // date with time (i.e. 01/01/2013 12:12:00)
         NONE, GENDER, DROP_ZERO, TEST_RESULT, GEND_CD4, SAMPLE_STATUS, PROJECT, LOG, // results is a real number, but
-                                                                                     // display the log of it.
+        // display the log of it.
         AGE_YEARS, AGE_MONTHS, AGE_WEEKS, DEBUG, CUSTOM, // special handling which is encapsulated in an instance of
-                                                         // ICSVColumnCustomStrategy
+        // ICSVColumnCustomStrategy
         BLANK // Will always be an empty string. Used when column is wanted but data is not
     }
 
@@ -234,17 +231,22 @@ abstract public class CSVColumnBuilder {
     protected void buildResultSet() throws SQLException {
         makeSQL();
         String sql = query.toString();
-        // LogEvent.logInfo(this.getClass().getName(), "method unkown", "===1===\n" +
+        // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown",
+        // "===1===\n" +
         // sql.substring(0, 7000)); // the SQL is
         // chunked out only because Eclipse thinks printing really big strings to the
         // console must be wrong, so it truncates them
-        // LogEvent.logInfo(this.getClass().getName(), "method unkown", "===2===\n" +
+        // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown",
+        // "===2===\n" +
         // sql.substring(7000));
-//		Session session = HibernateUtil.getSession().getSessionFactory().openSession();
-//		PreparedStatement stmt = session.connection().prepareStatement(sql, ResultSet.TYPE_SCROLL_SENSITIVE,
-//				ResultSet.CONCUR_READ_ONLY);
-//		resultSet = stmt.executeQuery();
+        // Session session =
+        // HibernateUtil.getSession().getSessionFactory().openSession();
+        // PreparedStatement stmt = session.connection().prepareStatement(sql,
+        // ResultSet.TYPE_SCROLL_SENSITIVE,
+        // ResultSet.CONCUR_READ_ONLY);
+        // resultSet = stmt.executeQuery();
         Session session = SpringContext.getBean(SessionFactory.class).getCurrentSession();
+        session.beginTransaction();
         resultSet = session.doReturningWork(new ReturningWork<ResultSet>() {
 
             @Override
@@ -252,7 +254,6 @@ abstract public class CSVColumnBuilder {
                 return connection.prepareStatement(sql, ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_READ_ONLY)
                         .executeQuery();
             }
-
         });
     }
 
@@ -306,7 +307,7 @@ abstract public class CSVColumnBuilder {
             // if you end up where it is because the result set doesn't return a
             // column of the right name
             // Check MAX_POSTGRES_COL_NAME if this fails on a long name
-            LogEvent.logInfo(this.getClass().getName(), "method unkown",
+            LogEvent.logInfo(this.getClass().getSimpleName(), "getValue",
                     "Internal Error: Unable to find db column \"" + column.dbName + "\" in data.");
             return "?" + column.csvName + "?";
         }
@@ -315,15 +316,15 @@ abstract public class CSVColumnBuilder {
         // translate should never return null, "" is better while it is doing
         // translation.
         if (result == null) {
-            LogEvent.logInfo(this.getClass().getName(), "method unkown", "A null found " + column.dbName);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "getValue", "A null found " + column.dbName);
         }
         return result;
     }
 
-    private String prepareColumnName(String columnName) {
+    protected String prepareColumnName(String columnName) {
         // trim and escape the column name so it is more safe from sql injection
         if (!columnName.matches("(?i)[a-zàâçéèêëîïôûùüÿñæœ0-9_ ()%/\\[\\]+\\-]+")) {
-            LogEvent.logWarn(this.getClass().getName(), "prepareColumnName",
+            LogEvent.logWarn(this.getClass().getSimpleName(), "prepareColumnName",
                     "potentially dangerous character detected in '" + columnName + "'");
         }
         return "\"" + trimToPostgresMaxColumnName(columnName = columnName.replace("\"", "\\\"")) + "\"";
@@ -356,7 +357,6 @@ abstract public class CSVColumnBuilder {
     /**
      * A utility routine for finding the project short tag (used in exporting etc.)
      * from a projectId.
-     *
      */
     public static String translateProjectId(String projectId) {
         return (projectId == null) ? null : projectTagById.get(projectId);
@@ -402,12 +402,14 @@ abstract public class CSVColumnBuilder {
             case AGE_MONTHS:
             case AGE_WEEKS:
                 return isBlankOrNull(value) ? "" : translateAge(strategy, value);
-            case GENDER:
-                return isBlankOrNull(value) ? "" : ResourceTranslator.GenderTranslator.getInstance().translate(value);
+            // PK: Query result already return M/F so no need to translate
+            // case GENDER:
+            // return isBlankOrNull(value) ? "" :
+            // ResourceTranslator.GenderTranslator.getInstance().translate(value);
             case DROP_ZERO:
                 return ("0".equals(value) || value == null) ? "" : value;
             case TEST_RESULT:
-                return isBlankOrNull(value) ? "" : translateTestResult(csvName, value);
+                return isBlankOrNull(value) ? "" : translateTestResult(this.csvName, value);
             case GEND_CD4:
                 return isBlankOrNull(value) ? "" : translateGendResult(getGendCD4CountAnalyteId(), value);
             case LOG:
@@ -427,10 +429,32 @@ abstract public class CSVColumnBuilder {
                 case NonConforming_depricated:
                     return "N"; // Non-conforming, Non-conformes
                 }
+            case ANALYSIS_STATUS:
+                AnalysisStatus analysisStatus = StatusService.getInstance().getAnalysisStatusForID(value);
+                if (analysisStatus == null)
+                    return "?";
+                switch (analysisStatus) {
+                case SampleRejected:
+                    return "Reject"; // rejété, entr�e
+                case NotStarted:
+                    return "Not_Started"; // entered, entr�e
+                case Canceled:
+                    return "Canceled"; // commenced, commenc�
+                case TechnicalAcceptance:
+                    return "Validation_Technique"; // Finished, Finale
+                case TechnicalRejected:
+                    return "Rejet - Technique"; // Non-conforming, Non-conformes
+                case BiologistRejected:
+                    return "Rejet - Biologie"; // entered, entr�e
+                case NonConforming_depricated:
+                    return "Non Conforme"; // commenced, commenc�
+                case Finalized:
+                    return "Validation_Biologique"; // Finished, Finale
+                }
             case PROJECT:
                 return translateProjectId(value);
             case DEBUG:
-                LogEvent.logInfo(this.getClass().getName(), "method unkown",
+                LogEvent.logInfo(this.getClass().getSimpleName(), "translate",
                         "Processing Column Value: " + csvName + " \"" + value + "\"");
             case BLANK:
                 return "";
@@ -445,7 +469,7 @@ abstract public class CSVColumnBuilder {
             if (gendCD4Result == null) {
                 return "";
             }
-            String value = gendCD4Result.getValue();
+            String value = gendCD4Result.getValue(true);
             return (value == null) ? "" : value;
         }
 
@@ -485,6 +509,9 @@ abstract public class CSVColumnBuilder {
          */
         public String translateTestResult(String testName, String value) throws SQLException {
             TestResult testResult = testResultsByTestName.get(testName);
+            if (testName.equalsIgnoreCase("DNA PCR")) { // need fix: testName is different from map key
+                return ResourceTranslator.DictionaryTranslator.getInstance().translateRaw(value);
+            }
             // if it is not in the table then its just a value in the result
             // that was NOT selected from a list, thus no translation
             if (testResult == null) {
@@ -523,10 +550,10 @@ abstract public class CSVColumnBuilder {
         }
     }
 
-    abstract public void makeSQL();
+    public abstract void makeSQL();
 
     protected void defineAllObservationHistoryTypes() {
-        allObHistoryTypes = ohtService.getAllOrdered("type_name", false);
+        allObHistoryTypes = ohtService.getAllOrdered("typeName", false);
     }
 
     /**
@@ -536,7 +563,7 @@ abstract public class CSVColumnBuilder {
      * @param lowDatePostgres
      * @param highDatePostgres
      */
-    protected void appendResultCrosstab(Date lowDate, Date highDate) {
+    protected void appendResultCrosstab(Date lowDate, Date highDate, String byDate) {
         // A list of analytes which should not show up in the regular results,
         // because they are not the primary results, but, for example, is a
         // conclusion.
@@ -546,11 +573,11 @@ abstract public class CSVColumnBuilder {
                 + ".* " + " FROM sample_item AS si LEFT JOIN \n ");
 
         // Begin cross tab / pivot table
-        query.append(" crosstab( " + "\n 'SELECT si.id, t.description, r.value "
-                + "\n FROM clinlims.result AS r, clinlims.analysis AS a, clinlims.sample_item AS si, clinlims.sample AS s, clinlims.test AS t, clinlims.test_result AS tr "
-                + "\n WHERE " + "\n s.id = si.samp_id" + " AND s.collection_date >= date(''"
-                + formatDateForDatabaseSql(lowDate) + "'')  AND s.collection_date <= date(''"
-                + formatDateForDatabaseSql(highDate) + " '') " + "\n AND s.id = si.samp_id "
+        query.append(" crosstab( \n" + " 'SELECT si.id, t.description, r.value \n"
+                + " FROM clinlims.result AS r, clinlims.analysis AS a, clinlims.sample_item AS si,"
+                + " clinlims.sample AS s, clinlims.test AS t, clinlims.test_result AS tr \n" + " WHERE \n"
+                + " s.id = si.samp_id AND " + byDate + " >= date(''" + formatDateForDatabaseSql(lowDate) + "'')  AND "
+                + byDate + " <= date(''" + formatDateForDatabaseSql(highDate) + " '') " + "\n AND s.id = si.samp_id "
                 + "\n AND si.id = a.sampitem_id "
                 // sql injection safe as user cannot overwrite validStatusId in database
                 + ((validStatusId == null) ? "" : " AND a.status_id = " + validStatusId)
@@ -558,8 +585,7 @@ abstract public class CSVColumnBuilder {
                 // + (( excludeAnalytes == null)?"":
                 // " AND r.analyte_id NOT IN ( " + excludeAnalytes) + ")"
                 // + " AND a.test_id = t.id "
-                + "\n ORDER BY 1, 2 "
-                + "\n ', 'SELECT description FROM test where description != ''CD4'' AND is_active = ''Y'' ORDER BY 1' ) ");
+                + "\n ORDER BY 1, 2 " + "\n ', 'SELECT description FROM test where is_active = ''Y'' ORDER BY 1' ) ");
         // end of cross tab
 
         // Name the test pivot table columns . We'll name them all after the
@@ -571,19 +597,15 @@ abstract public class CSVColumnBuilder {
                 + "\"si_id\" numeric(10) ");
         for (Test col : allTests) {
             String testName = TestServiceImpl.getLocalizedTestNameWithType(col);
-            if (!"CD4".equals(testName)) { // CD4 is listed as a test name but
-                                           // it isn't clear it should be line
-                                           // 446 may also have to be changed
-                // sql injection safe as it is escaped for
-                query.append("\n, " + prepareColumnName(testName) + " varchar(200) ");
-            }
+            // sql injection safe as it is escaped for
+            query.append("\n, " + prepareColumnName(testName) + " varchar(200) ");
         }
         query.append(" ) \n");
         // left join all sample Items from the right sample range to the results table.
         query.append("\n ON si.id = " + listName + ".si_id " // the inner use a few lines above
                 + "\n ORDER BY si.samp_id, si.id " + "\n) AS " + listName + "\n "); // outer re-use the list name to
-                                                                                    // name this sparse matrix of
-                                                                                    // results.
+        // name this sparse matrix of
+        // results.
     }
 
     /**
@@ -597,7 +619,7 @@ abstract public class CSVColumnBuilder {
      * sb.toString(); }
      */
 
-    protected void appendObservationHistoryCrosstab(Date lowDate, Date highDate) {
+    protected void appendObservationHistoryCrosstab(Date lowDate, Date highDate, String byDate) {
         SQLConstant listName = SQLConstant.DEMO;
         appendCrosstabPreamble(listName);
         query.append( // any Observation History items
@@ -665,15 +687,11 @@ abstract public class CSVColumnBuilder {
         return translate;
     }
 
-    /**
-     * Generate a column to the list of all columns. One for each possible test.
-     */
+    /** Generate a column to the list of all columns. One for each possible test. */
     protected void addAllResultsColumns() {
         for (Test test : allTests) {
             String testTag = TestServiceImpl.getLocalizedTestNameWithType(test);
-            if (!"CD4".equals(testTag)) {
-                add(testTag, TestServiceImpl.getLocalizedTestNameWithType(test), TEST_RESULT);
-            }
+            add(testTag, TestServiceImpl.getLocalizedTestNameWithType(test), TEST_RESULT);
         }
     }
 
@@ -725,7 +743,6 @@ abstract public class CSVColumnBuilder {
 
     /**
      * @throws SQLException
-     *
      */
     public void closeResultSet() throws SQLException {
         resultSet.close();

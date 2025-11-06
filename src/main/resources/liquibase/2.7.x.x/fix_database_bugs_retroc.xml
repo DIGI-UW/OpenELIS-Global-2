@@ -1,0 +1,489 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="CIV developer Group" id="202303061"
+        onValidationFail="MARK_RAN" context="CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_module WHERE name = 'SamplePatientEntry' limit 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Fix roles issues while migrating from OE9.1 to OE Global</comment>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="has_delete" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Reception' limit 1)" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM system_module WHERE name = 'SamplePatientEntry' limit 1)" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202304051"
+        onValidationFail="MARK_RAN" context="CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_module WHERE name = 'SampleEntryByProject' limit 1
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="has_delete" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Reception')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM system_module WHERE name = 'SampleEntryByProject')" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202304052"
+        onValidationFail="MARK_RAN" context="CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_module WHERE name = 'SampleEntryByProject:initial'
+                limit 1
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="has_delete" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Reception')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM system_module WHERE name = 'SampleEntryByProject:initial' limit 1)" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202304053"
+        onValidationFail="MARK_RAN" context="CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_module WHERE name = 'SampleEntryByProject:verify'
+                limit 1
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="has_delete" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Reception' limit 1)" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM system_module WHERE name = 'SampleEntryByProject:verify' limit 1)" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202304054"
+        onValidationFail="MARK_RAN" context="CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_module WHERE name = 'SampleEdit'
+                limit 1
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="has_delete" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Reception')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM system_module WHERE name = 'SampleEdit' limit 1)" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202304055"
+        onValidationFail="MARK_RAN" context="CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_module WHERE name = 'SampleEdit:readwrite'
+                limit 1
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="has_delete" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Reception')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM system_module WHERE name = 'SampleEdit:readwrite' limit 1)" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202304056"
+        onValidationFail="MARK_RAN" context="CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_module WHERE name = 'SampleEdit:readonly'
+                limit 1
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="has_delete" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Reception')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM system_module WHERE name = 'SampleEdit:readonly' limit 1)" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202304057"
+        onValidationFail="MARK_RAN" context="CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_module WHERE name = 'PrintBarcode'
+                limit 1
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="has_delete" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Reception')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM system_module WHERE name = 'PrintBarcode' limit 1)" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202304058"
+        onValidationFail="MARK_RAN" context="CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_module WHERE name = 'PatientEntryByProject'
+                limit 1
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="has_delete" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Reception')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM system_module WHERE name = 'PatientEntryByProject' limit 1)" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202304059"
+        onValidationFail="MARK_RAN" context="CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_module WHERE name = 'PatientEntryByProject:initial'
+                limit 1
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="has_delete" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Reception')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM system_module WHERE name = 'PatientEntryByProject:initial' limit 1)" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023040510"
+        onValidationFail="MARK_RAN" context="CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_module WHERE name = 'PatientEntryByProject:verify'
+                limit 1
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="has_delete" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Reception')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM system_module WHERE name = 'PatientEntryByProject:verify' limit 1)" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023040511"
+        onValidationFail="MARK_RAN" context="CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_module WHERE name = 'PatientEditByProject'
+                limit 1
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="has_delete" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Reception')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM system_module WHERE name = 'PatientEditByProject' limit 1)" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023040512"
+        onValidationFail="MARK_RAN" context="CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_module WHERE name = 'PatientEditByProject:readwrite'
+                limit 1
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="has_delete" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Reception')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM system_module WHERE name = 'PatientEditByProject:readwrite' limit 1)" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023040513"
+        onValidationFail="MARK_RAN" context="CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_module WHERE name = 'PatientEditByProject:readonly'
+                limit 1
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="has_delete" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Reception')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM system_module WHERE name = 'PatientEditByProject:readonly' limit 1)" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023040514"
+        onValidationFail="MARK_RAN" context="CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_module WHERE name = 'SampleBatchEntry'
+                limit 1
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="has_delete" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Reception')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM system_module WHERE name = 'SampleBatchEntry' limit 1)" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023040515"
+        onValidationFail="MARK_RAN" context="CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_module WHERE name = 'SampleBatchEntryOnDemand'
+                limit
+                1
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="has_delete" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Reception')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM system_module WHERE name = 'SampleBatchEntryOnDemand' limit 1)" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="2023040516"
+        onValidationFail="MARK_RAN" context="CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_module WHERE name = 'SampleBatchEntryPrePrinted'
+                limit
+                1
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column name="has_delete" value="Y" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM system_role WHERE name = 'Reception')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM system_module WHERE name = 'SampleBatchEntryPrePrinted' limit 1)" />
+        </insert>
+    </changeSet>
+    <changeSet author="CIV developer Group" id="202303062"
+        onValidationFail="MARK_RAN" context="CDIRetroCI">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role"
+                schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM
+                clinlims.system_module WHERE name =
+                'ResultValidation'
+            </sqlCheck>
+        </preConditions>
+        <comment>Fix roles issues while migrating from OE9.1 to OE Global</comment>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/ResultValidationByTestDate" />
+            <column name="system_module_id"
+                valueComputed="(select id from system_module where name = 'ResultValidation' limit 1)" />
+            <column name="system_module_param_id" value="null" />
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

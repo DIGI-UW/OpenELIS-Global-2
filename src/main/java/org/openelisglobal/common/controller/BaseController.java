@@ -1,24 +1,23 @@
 package org.openelisglobal.common.controller;
 
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-
-import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.common.util.SystemConfiguration;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.login.dao.UserModuleService;
-import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.view.PageBuilderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.BindingResult;
@@ -29,7 +28,7 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.support.RequestContextUtils;
 
 @Component
-public abstract class BaseController implements IActionConstants {
+public abstract class BaseController extends ControllerUtills implements IActionConstants {
 
     // Request being autowired appears to be threadsafe because of how Spring
     // handles autowiring, despite all controllers being singletons
@@ -40,6 +39,8 @@ public abstract class BaseController implements IActionConstants {
 
     @Autowired
     protected UserModuleService userModuleService;
+    @Autowired
+    protected PageBuilderService pageBuilderService;
 
     protected abstract String findLocalForward(String forward);
 
@@ -160,7 +161,6 @@ public abstract class BaseController implements IActionConstants {
                 pageTitle = getMessageForKey(request, pageTitleKey, pageTitleKeyParameter);
             }
         } catch (RuntimeException e) {
-            LogEvent.logDebug(e);
             LogEvent.logError("could not get message for key: " + pageTitleKey, e);
         }
 
@@ -172,7 +172,6 @@ public abstract class BaseController implements IActionConstants {
             }
 
         } catch (RuntimeException e) {
-            LogEvent.logDebug(e);
             LogEvent.logError("could not get message for key: " + pageSubtitleKey, e);
         }
 
@@ -182,15 +181,6 @@ public abstract class BaseController implements IActionConstants {
         if (null != pageSubtitle) {
             request.setAttribute(PAGE_SUBTITLE_KEY, pageSubtitle);
         }
-
-    }
-
-    protected String getSysUserId(HttpServletRequest request) {
-        UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
-        if (usd == null) {
-            return null;
-        }
-        return String.valueOf(usd.getSystemUserId());
     }
 
     protected void setSuccessFlag(HttpServletRequest request, boolean success) {
@@ -202,8 +192,8 @@ public abstract class BaseController implements IActionConstants {
     }
 
     protected boolean userHasPermissionForModule(HttpServletRequest request, String module) {
-        if (!userModuleService.isUserAdmin(request)
-                && SystemConfiguration.getInstance().getPermissionAgent().equals("ROLE")) {
+        if (!userModuleService.isUserAdmin(request) && ConfigurationProperties.getInstance()
+                .getPropertyValue("permissions.agent").equalsIgnoreCase("ROLE")) {
             @SuppressWarnings("rawtypes")
             HashSet accessMap = (HashSet) request.getSession().getAttribute(IActionConstants.PERMITTED_ACTIONS_MAP);
             return accessMap.contains(module);
@@ -220,6 +210,7 @@ public abstract class BaseController implements IActionConstants {
             return "redirect:Home";
         }
         String forwardView = findLocalForward(forward);
+
         if (GenericValidator.isBlankOrNull(forwardView)) {
             forwardView = "PageNotFound";
         }
@@ -234,7 +225,7 @@ public abstract class BaseController implements IActionConstants {
         } else {
             setPageTitles(request, form);
             // insert global forwards here
-            return new ModelAndView(realForward, "form", form);
+            return new ModelAndView(pageBuilderService.setupJSPPage(realForward, request), "form", form);
         }
     }
 
@@ -283,7 +274,6 @@ public abstract class BaseController implements IActionConstants {
         } catch (IOException e) {
             LogEvent.logError(e.getMessage(), e);
         }
-
     }
 
     protected Errors getErrors() {
@@ -324,7 +314,6 @@ public abstract class BaseController implements IActionConstants {
         }
     }
 
-    @SuppressWarnings("unchecked")
     public <T extends BaseForm> T resetSessionFormToType(BaseForm form, Class<T> classType) {
         try {
             T newForm = classType.newInstance();

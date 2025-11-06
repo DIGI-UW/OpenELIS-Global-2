@@ -1,48 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-	  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-	<changeSet author="csteele" id="1">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<columnExists schemaName="clinlims"
-					tableName="referral" columnName="status" />
-			</not>
-		</preConditions>
-		<addColumn schemaName="clinlims" tableName="referral">
-			<column name="status" type="VARCHAR(255)" />
-		</addColumn>
-      	<update schemaName="clinlims"
-      		tableName="referral">
-      		<column name="status" value="FINISHED"/>
-      		<where>canceled = false</where>
-      	</update>
-      	<update schemaName="clinlims"
-      		tableName="referral">
-      		<column name="status" value="CANCELED"/>
-      		<where>canceled = true</where>
-      	</update>
-      	<update schemaName="clinlims"
-      		tableName="referral">
-      		<column name="status" value="SENT"/>
-      		<where>result_recieved_date is NULL AND canceled = false</where>
-      	</update>
-	</changeSet>
-	
-	<changeSet author="csteele" id="2">
-		<preConditions onFail="MARK_RAN">
-			<not>
-				<indexExists schemaName="clinlims"
-					tableName="referral" indexName="referral_status_index" />
-			</not>
-		</preConditions>
-		<createIndex indexName="referral_status_index"
-			tableName="referral">
-			<column name="status"/>
-		</createIndex>
-	</changeSet>
-	
+    <changeSet author="csteele" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims"
+                    tableName="referral" columnName="status" />
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="referral">
+            <column name="status" type="VARCHAR(255)" />
+        </addColumn>
+          <update schemaName="clinlims"
+              tableName="referral">
+              <column name="status" value="FINISHED"/>
+              <where>canceled = false</where>
+          </update>
+          <update schemaName="clinlims"
+              tableName="referral">
+              <column name="status" value="CANCELED"/>
+              <where>canceled = true</where>
+          </update>
+          <update schemaName="clinlims"
+              tableName="referral">
+              <column name="status" value="SENT"/>
+              <where>result_recieved_date is NULL AND canceled = false</where>
+          </update>
+    </changeSet>
+
+
+
 </databaseChangeLog>

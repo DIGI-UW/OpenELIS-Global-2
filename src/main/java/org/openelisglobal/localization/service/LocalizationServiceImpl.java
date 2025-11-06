@@ -3,9 +3,7 @@ package org.openelisglobal.localization.service;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
-
-import org.hibernate.ObjectNotFoundException;
-import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.localization.dao.LocalizationDAO;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @DependsOn({ "springContext", "localeResolver" })
-public class LocalizationServiceImpl extends BaseObjectServiceImpl<Localization, String>
+public class LocalizationServiceImpl extends AuditableBaseObjectServiceImpl<Localization, String>
         implements LocalizationService {
 
     public enum LocalizationType {
@@ -38,8 +36,7 @@ public class LocalizationServiceImpl extends BaseObjectServiceImpl<Localization,
     @Override
     @Transactional(readOnly = true)
     public Localization get(String id) {
-        return getBaseObjectDAO().get(id).orElseThrow(() -> new ObjectNotFoundException(id, "Localization"));
-
+        return getBaseObjectDAO().get(id).get();
     }
 
     @Autowired
@@ -80,8 +77,7 @@ public class LocalizationServiceImpl extends BaseObjectServiceImpl<Localization,
 
     @Override
     public String getLocalizedValueById(String id) {
-        return baseObjectDAO.get(id).orElseThrow(() -> new ObjectNotFoundException(id, "Localization"))
-                .getLocalizedValue();
+        return baseObjectDAO.get(id).get().getLocalizedValue();
     }
 
     /**

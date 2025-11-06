@@ -1,18 +1,15 @@
 /**
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
  *
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
- * License for the specific language governing rights and limitations under
- * the License.
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
  *
- * The Original Code is OpenELIS code.
+ * <p>The Original Code is OpenELIS code.
  *
- * Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
- *
+ * <p>Copyright (C) ITECH, University of Washington, Seattle WA. All Rights Reserved.
  */
 package org.openelisglobal.common.services.historyservices;
 
@@ -25,7 +22,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.audittrail.action.workers.AuditTrailItem;
 import org.openelisglobal.audittrail.valueholder.History;
@@ -55,8 +51,8 @@ public abstract class AbstractHistoryService {
 
     protected Map<String, String> newValueMap;
 
-//	protected HistoryService() {
-//	}
+    // protected HistoryService() {
+    // }
 
     protected abstract void addInsertion(History history, List<AuditTrailItem> items);
 
@@ -134,7 +130,6 @@ public abstract class AbstractHistoryService {
         if (attributeToIdentifierMap != null && attributeToIdentifierMap.get(key) != null) {
             identifier = attributeToIdentifierMap.get(key);
         }
-
     }
 
     protected AuditTrailItem getCoreTrail(History history) {
@@ -151,15 +146,17 @@ public abstract class AbstractHistoryService {
 
     private Map<String, String> getChangeMap(History history) throws SQLException, IOException {
         Map<String, String> changeMap = new HashMap<>();
-        // LogEvent.logInfo(this.getClass().getName(), "method unkown",  history.getId() + " : " + history.getActivity() );
+        // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown",
+        // history.getId()
+        // + " : " + history.getActivity() );
         if ("U".equals(history.getActivity()) || "D".equals(history.getActivity())) {
 
             byte[] bindata = history.getChanges();
 
             String changes = new String(bindata, StandardCharsets.UTF_8);
-            // LogEvent.logInfo(this.getClass().getName(), "method unkown", history.getActivity() + " : "+ changes);
+            // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown",
+            // history.getActivity() + " : "+ changes);
             getObservableChanges(history, changeMap, changes);
-
         }
 
         return changeMap;
@@ -167,8 +164,11 @@ public abstract class AbstractHistoryService {
 
     protected void simpleChange(Map<String, String> changeMap, String changesString, String attribute) {
         String value = extractSimple(changesString, attribute);
+
         if (value != null) {
             changeMap.put(attribute, value);
+            // TODO should we call something to trigger addInsertion here if the value is
+            // null?
         }
     }
 
@@ -191,7 +191,7 @@ public abstract class AbstractHistoryService {
 
     protected String getViewableValue(String value, Result result) {
         if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())
-                && !GenericValidator.isBlankOrNull(value) && org.apache.commons.lang.StringUtils.isNumeric(value)) {
+                && !GenericValidator.isBlankOrNull(value) && org.apache.commons.lang3.StringUtils.isNumeric(value)) {
             Dictionary dictionaryValue = dictionaryService.getDictionaryById(value);
             value = dictionaryValue != null ? dictionaryValue.getDictEntry()
                     : MessageUtil.getMessage("result.undefined");
@@ -204,5 +204,4 @@ public abstract class AbstractHistoryService {
         SystemUser user = systemUserService.getUserById(history.getSysUserId());
         return user.getDisplayName();
     }
-
 }

@@ -5,7 +5,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.openelisglobal.common.valueholder.BaseObject;
 
 public class DataResource extends BaseObject<String> {

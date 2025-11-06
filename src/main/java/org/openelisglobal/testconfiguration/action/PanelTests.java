@@ -3,7 +3,6 @@ package org.openelisglobal.testconfiguration.action;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.valueholder.Test;
@@ -37,7 +36,6 @@ public class PanelTests {
     }
 
     public PanelTests() {
-
     }
 
     public IdValuePair getPanelIdValuePair() {
@@ -69,7 +67,6 @@ public class PanelTests {
                 availableTests.add(new IdValuePair(test.getId(), test.getLocalizedName()));
             }
         }
-
     }
 
     public List<IdValuePair> getAvailableTests() {

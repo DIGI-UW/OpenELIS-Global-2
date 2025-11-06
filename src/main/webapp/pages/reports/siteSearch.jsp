@@ -10,11 +10,9 @@
 <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-<%@ taglib prefix="ajax" uri="/tags/ajaxtags" %>
 
-<%@ taglib uri="http://tiles.apache.org/tags-tiles" prefix="tiles"%>
 
 <%
     boolean useReferralSiteList = FormFields.getInstance().useField( FormFields.Field.RequesterSiteList );
@@ -72,7 +70,7 @@ function siteDepartmentSuccess (xhr) {
 
 <div id="siteSearch" style="display:inline;" >
 <table>
-<% if( useReferralSiteList ){ %>
+<%-- <% if( useReferralSiteList ){ %> --%>
 <tr>
     <td>
         <%= MessageUtil.getContextualMessage( "sample.entry.project.siteName" ) %>:
@@ -85,7 +83,6 @@ function siteDepartmentSuccess (xhr) {
             </form:select>
     </td>
 </tr>
-
 	<% if( useSiteDepartment ){ %>
 	<tr>
 	    <td>
@@ -99,7 +96,7 @@ function siteDepartmentSuccess (xhr) {
 	    </td>
 	</tr>
 	<% } %>
-<% } %>
+<%-- <% } %> --%>
 <tr>
   		<td><spring:message code="report.patient.site.description"/></td>
 </tr>

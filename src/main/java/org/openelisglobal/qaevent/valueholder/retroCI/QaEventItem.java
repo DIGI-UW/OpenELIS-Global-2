@@ -1,34 +1,30 @@
 /*
-* The contents of this file are subject to the Mozilla Public License
-* Version 1.1 (the "License"); you may not use this file except in
-* compliance with the License. You may obtain a copy of the License at
-* http://www.mozilla.org/MPL/
-*
-* Software distributed under the License is distributed on an "AS IS"
-* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
-* License for the specific language governing rights and limitations under
-* the License.
-*
-* The Original Code is OpenELIS code.
-*
-* Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
-*
-* Contributor(s): CIRG, University of Washington, Seattle WA.
-*/
-/**
- * Value Object for transfer from UI table of QaEvents to Action classes(s).
+ * The contents of this file are subject to the Mozilla Public License
+ * Version 1.1 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
+ * License for the specific language governing rights and limitations under
+ * the License.
+ *
+ * The Original Code is OpenELIS code.
+ *
+ * Copyright (C) The Minnesota Department of Health.  All Rights Reserved.
+ *
+ * Contributor(s): CIRG, University of Washington, Seattle WA.
  */
+/** Value Object for transfer from UI table of QaEvents to Action classes(s). */
 package org.openelisglobal.qaevent.valueholder.retroCI;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.groups.Default;
 import java.io.Serializable;
-
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Pattern;
-import javax.validation.groups.Default;
-
-import org.hibernate.validator.constraints.SafeHtml;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.qaevent.form.NonConformityForm;
+import org.openelisglobal.validation.annotations.SafeHtml;
 
 public class QaEventItem implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -45,16 +41,16 @@ public class QaEventItem implements Serializable {
             Default.class })
     private String sampleType;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { NonConformityForm.NonConformity.class, Default.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { NonConformityForm.NonConformity.class, Default.class })
     private String section;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { NonConformityForm.NonConformity.class, Default.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { NonConformityForm.NonConformity.class, Default.class })
     private String authorizer;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { NonConformityForm.NonConformity.class, Default.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { NonConformityForm.NonConformity.class, Default.class })
     private String note;
 
-    @SafeHtml(whitelistType = SafeHtml.WhiteListType.NONE, groups = { NonConformityForm.NonConformity.class, Default.class })
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { NonConformityForm.NonConformity.class, Default.class })
     private String recordNumber;
 
     private boolean remove;

@@ -20,7 +20,8 @@ package org.openelisglobal.reports.action.implementation;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
+import net.sf.jasperreports.engine.JRDataSource;
+import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.apache.commons.validator.GenericValidator;
 import org.jfree.util.Log;
 import org.openelisglobal.common.services.QAService;
@@ -47,9 +48,6 @@ import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
 import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
 import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
 import org.openelisglobal.spring.util.SpringContext;
-
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 
 public class RetroCIFollowupRequiredByLocation extends RetroCIReport implements IReportParameterSetter, IReportCreator {
 
@@ -133,16 +131,12 @@ public class RetroCIFollowupRequiredByLocation extends RetroCIReport implements 
         reportParameters.put("reportTitle", getReportNameForParameterPage() + "  -  " + dateRange.toString());
     }
 
-    /**
-     * check everything
-     */
+    /** check everything */
     private boolean validateSubmitParameters() {
         return (dateRange.validateHighLowDate("report.error.message.date.received.missing"));
     }
 
-    /**
-     *
-     */
+    /** */
     private void createReportItems() {
         reportItems = new ArrayList<>();
         List<Sample> sampleList = sampleService.getSamplesReceivedInDateRange(
@@ -295,11 +289,11 @@ public class RetroCIFollowupRequiredByLocation extends RetroCIReport implements 
             dictionary = dictionaryService.getDictionaryById(dictionaryId);
         } catch (RuntimeException e) {
             return dictionaryId; // I guess it wasn't really a dictionary ID
-                                 // after all, so let's just return it.
+            // after all, so let's just return it.
         }
         if (dictionary == null) {
             return dictionaryId; // it was a number, but it wasn't in the
-                                 // dictionary.
+            // dictionary.
         }
         return dictionary.getLocalAbbreviation();
     }
