@@ -32,6 +32,12 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
+/**
+ * @deprecated This base class uses JUnit 4 and is deprecated. Please use
+ *             {@link org.openelisglobal.jupiter.BaseWebContextSensitiveTests}
+ *             for JUnit 5 (Jupiter) tests.
+ */
+
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @ContextConfiguration(classes = { BaseTestConfig.class, AppTestConfig.class })
 @WebAppConfiguration

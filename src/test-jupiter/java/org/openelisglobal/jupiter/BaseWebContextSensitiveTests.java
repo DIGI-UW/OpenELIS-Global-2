@@ -1,5 +1,4 @@
-package org.openelisglobal;
-
+package org.openelisglobal.jupiter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,6 +11,8 @@ import org.dbunit.dataset.xml.FlatXmlDataSet;
 import org.dbunit.ext.postgresql.PostgresqlDataTypeFactory;
 import org.dbunit.operation.DatabaseOperation;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openelisglobal.AppTestConfig;
+import org.openelisglobal.BaseTestConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
