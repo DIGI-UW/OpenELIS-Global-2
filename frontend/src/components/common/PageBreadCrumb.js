@@ -10,9 +10,22 @@ const PageBreadCrumb = ({ breadcrumbs }) => {
       <Column lg={16} md={8} sm={4}>
         <Breadcrumb>
           {breadcrumbs.map((breadcrumb, index) => {
+            const labelConfig =
+              typeof breadcrumb.label === "string"
+                ? { id: breadcrumb.label }
+                : breadcrumb.label;
+
+            const message = intl.formatMessage(
+              {
+                id: labelConfig.id,
+                defaultMessage: labelConfig.defaultMessage || labelConfig.id,
+              },
+              labelConfig.values,
+            );
+
             return (
               <BreadcrumbItem key={index} href={breadcrumb.link}>
-                {intl.formatMessage({ id: `${breadcrumb.label}` })}
+                {message}
               </BreadcrumbItem>
             );
           })}

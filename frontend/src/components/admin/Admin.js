@@ -89,6 +89,7 @@ import TestSectionRenameEntry from "./testManagementConfigMenu/TestSectionRename
 import UomRenameEntry from "./testManagementConfigMenu/UomRenameEntry.js";
 import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry.js";
 import MethodRenameEntry from "./testManagementConfigMenu/MethodRenameEntry.js";
+import OdooSyncQueue from "./odoo/OdooSyncQueue";
 
 function Admin() {
   const intl = useIntl();
@@ -316,6 +317,12 @@ function Admin() {
           </SideNavLink>
           <SideNavLink href="#SearchIndexManagement" renderIcon={Search}>
             <FormattedMessage id="searchindexmanagement.label" />
+          </SideNavLink>
+          <SideNavLink href="#odooSyncQueue" renderIcon={BatchJob}>
+            <FormattedMessage
+              id="sidenav.label.admin.odooSyncQueue"
+              defaultMessage="Odoo Sync Queue"
+            />
           </SideNavLink>
           <SideNavLink
             renderIcon={Catalog}
@@ -555,6 +562,9 @@ function Admin() {
       </PathRoute>
       <PathRoute path="#SearchIndexManagement">
         <SearchIndexManagement />
+      </PathRoute>
+      <PathRoute path="#odooSyncQueue">
+        <OdooSyncQueue />
       </PathRoute>
     </>
   );

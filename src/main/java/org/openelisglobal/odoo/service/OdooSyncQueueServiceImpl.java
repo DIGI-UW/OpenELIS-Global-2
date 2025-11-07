@@ -16,10 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Service implementation for managing Odoo sync queue operations. Handles
- * queueing, retry logic, and status management for failed Odoo syncs.
- */
 @Service
 public class OdooSyncQueueServiceImpl extends BaseObjectServiceImpl<OdooSyncQueue, Long>
         implements OdooSyncQueueService {
@@ -52,7 +48,6 @@ public class OdooSyncQueueServiceImpl extends BaseObjectServiceImpl<OdooSyncQueu
                 queueEntry.setSampleId(updateData.getSample().getId());
             }
 
-            // Serialize invoice data to JSON
             String invoiceDataJson = objectMapper.writeValueAsString(invoiceData);
             queueEntry.setInvoiceData(invoiceDataJson);
 

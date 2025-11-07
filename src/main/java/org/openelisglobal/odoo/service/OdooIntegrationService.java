@@ -26,11 +26,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-/**
- * Service class for integrating OpenELIS with Odoo for billing functionality.
- * This service handles the creation of invoices in Odoo when orders are created
- * in OpenELIS.
- */
 @Service
 public class OdooIntegrationService {
 
@@ -63,10 +58,23 @@ public class OdooIntegrationService {
      *                                queue is disabled
      */
     public void createInvoice(SamplePatientUpdateData updateData) {
-        // Check if Odoo connection is available
+        boolean queueEnabled = ConfigurationProperties.getInstance().isPropertyValueEqual(Property.ENABLE_ODOO_QUEUE,
+                "true");
+
         if (!odooConnection.isAvailable()) {
-            log.info("Odoo connection is not available. Skipping invoice creation for sample: {}",
-                    updateData.getAccessionNumber());
+            String accessionNumber = updateData.getAccessionNumber();
+            if (queueEnabled) {
+                try {
+                    Map<String, Object> invoiceData = createInvoiceData(updateData);
+                    odooSyncQueueService.queueFailedSync(updateData, invoiceData, "Odoo connection is not available");
+                    log.info("Odoo connection unavailable. Queued invoice for automatic retry: {}", accessionNumber);
+                } catch (Exception queueError) {
+                    log.error("Failed to queue Odoo sync when connection is unavailable for sample {}: {}",
+                            accessionNumber, queueError.getMessage(), queueError);
+                }
+            } else {
+                log.info("Odoo connection is not available. Skipping invoice creation for sample: {}", accessionNumber);
+            }
             return;
         }
 
@@ -83,15 +91,11 @@ public class OdooIntegrationService {
             log.error("Error creating invoice in Odoo for sample {}: {}", updateData.getAccessionNumber(),
                     e.getMessage(), e);
 
-            // Check if queueing is enabled
-            boolean queueEnabled = ConfigurationProperties.getInstance()
-                    .isPropertyValueEqual(Property.ENABLE_ODOO_QUEUE, "true");
             if (queueEnabled) {
                 try {
                     Map<String, Object> invoiceData = createInvoiceData(updateData);
                     odooSyncQueueService.queueFailedSync(updateData, invoiceData, e.getMessage());
                     log.info("Queued failed Odoo sync for automatic retry: {}", updateData.getAccessionNumber());
-                    // Don't throw exception - we've queued it for retry
                 } catch (Exception queueError) {
                     log.error("Failed to queue Odoo sync for retry: {}", queueError.getMessage(), queueError);
                     throw new OdooOperationException("Failed to create invoice in Odoo and failed to queue for retry",

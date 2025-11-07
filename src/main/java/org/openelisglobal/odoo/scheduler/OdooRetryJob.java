@@ -29,7 +29,7 @@ public class OdooRetryJob {
     @Autowired
     private OdooConnection odooConnection;
 
-    @Value("${org.openelisglobal.odoo.retry.enabled:true}")
+    @Value("${org.openelisglobal.odoo.retry.enabled:false}")
     private boolean retryEnabled;
 
     @Value("${org.openelisglobal.odoo.retry.batchSize:10}")
@@ -46,6 +46,11 @@ public class OdooRetryJob {
     public void retryFailedSyncs() {
         if (!retryEnabled) {
             log.debug("Odoo retry job is disabled");
+            return;
+        }
+
+        if (!odooConnection.isAvailable()) {
+            log.warn("Odoo connection is not available. Skipping retry job execution.");
             return;
         }
 
@@ -83,7 +88,6 @@ public class OdooRetryJob {
             log.info("Odoo retry job completed. Processed: {}, Succeeded: {}, Failed: {}", processed, succeeded,
                     failed);
 
-            // Log summary if there are still pending or permanently failed entries
             int remainingPending = odooSyncQueueService.getPendingCount();
             int permanentlyFailed = odooSyncQueueService.getFailedCount();
 
@@ -108,20 +112,16 @@ public class OdooRetryJob {
                 queueEntry.getAccessionNumber(), queueEntry.getRetryCount() + 1, queueEntry.getMaxRetries());
 
         try {
-            // Mark as processing
             odooSyncQueueService.markAsProcessing(queueEntry);
 
-            // Deserialize invoice data
             Map<String, Object> invoiceData = odooSyncQueueService.getInvoiceDataAsMap(queueEntry);
 
-            // Attempt to create invoice in Odoo
             Integer invoiceId = odooConnection.create("account.move", List.of(invoiceData));
 
             if (invoiceId == null) {
                 throw new RuntimeException("Odoo returned null invoice ID");
             }
 
-            // Success! Mark as completed
             odooSyncQueueService.markAsCompleted(queueEntry, invoiceId);
             log.info("Successfully synced queue entry {} with Odoo invoice ID: {}", queueEntry.getId(), invoiceId);
             return true;

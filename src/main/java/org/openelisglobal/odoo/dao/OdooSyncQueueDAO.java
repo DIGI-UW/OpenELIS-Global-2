@@ -5,9 +5,6 @@ import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.odoo.entity.OdooSyncQueue;
 import org.openelisglobal.odoo.entity.OdooSyncQueue.SyncStatus;
 
-/**
- * DAO interface for OdooSyncQueue entity
- */
 public interface OdooSyncQueueDAO extends BaseDAO<OdooSyncQueue, Long> {
 
     /**

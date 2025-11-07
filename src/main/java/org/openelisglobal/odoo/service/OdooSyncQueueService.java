@@ -8,10 +8,6 @@ import org.openelisglobal.odoo.entity.OdooSyncQueue;
 import org.openelisglobal.odoo.entity.OdooSyncQueue.SyncStatus;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 
-/**
- * Service interface for managing Odoo sync queue operations. Handles queueing,
- * retry logic, and status management for failed Odoo syncs.
- */
 public interface OdooSyncQueueService extends BaseObjectService<OdooSyncQueue, Long> {
 
     /**
