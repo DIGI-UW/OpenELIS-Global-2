@@ -24,6 +24,44 @@
 
 // Custom header styling for dark theme
 [data-carbon-theme="g100"] {
+  --cds-background: #161616;
+  --cds-background-hover: #262626;
+  --cds-background-active: #393939;
+  --cds-layer: #161616;
+  --cds-layer-active: #393939;
+  --cds-layer-hover: #262626;
+  --cds-layer-01: #262626;
+  --cds-layer-02: #1f1f1f;
+  --cds-layer-03: #161616;
+  --cds-layer-hover-01: #323232;
+  --cds-layer-hover-02: #2c2c2c;
+  --cds-field: #262626;
+  --cds-field-hover: #323232;
+  --cds-field-01: #262626;
+  --cds-field-02: #393939;
+  --cds-border-subtle: #393939;
+  --cds-border-subtle-01: #393939;
+  --cds-border-strong: #6f6f6f;
+  --cds-border-inverse: #f4f4f4;
+  --cds-text-primary: #f4f4f4;
+  --cds-text-secondary: #c6c6c6;
+  --cds-text-helper: #a8a8a8;
+  --cds-text-placeholder: #a8a8a8;
+  --cds-icon-primary: #f4f4f4;
+  --cds-icon-secondary: #c6c6c6;
+  --cds-tile-background: #262626;
+  --cds-inverse-01: #f4f4f4;
+  --cds-inverse-hover-ui: #6f6f6f;
+  --cds-body-background: #161616;
+
+  background-color: #161616;
+  color: #f4f4f4;
+
+  body {
+    background-color: #161616;
+    color: #f4f4f4;
+  }
+
   .mainHeader {
     background: #295785; // Keep the blue header in dark mode
 
@@ -43,11 +81,328 @@
   }
 
   .cds--content {
-    background-color: var(--cds-layer-01, #262626);
+    background-color: #161616;
+    color: #f4f4f4;
+  }
+
+  .cds--grid,
+  .pageContent,
+  .adminPageContent,
+  .loginPageContent,
+  .changePasswordPage {
+    background-color: #161616;
+    color: #f4f4f4;
   }
 
   .cds--side-nav {
     background-color: #262626;
+    color: #f4f4f4;
+  }
+
+  .cds--text-input,
+  .cds--text-area,
+  .cds--number input,
+  .cds--date-picker__input,
+  .cds--time-picker__input-field,
+  .cds--list-box__field,
+  .cds--list-box__menu-item__primary-content,
+  .cds--combo-box,
+  .cds--dropdown,
+  .cds--search-input {
+    color: #ffffff;
+    background-color: #0a0a0a;
+    border-color: #393939;
+  }
+
+  .cds--text-input::placeholder,
+  .cds--text-area::placeholder,
+  .cds--number input::placeholder,
+  .cds--date-picker__input::placeholder,
+  .cds--time-picker__input-field::placeholder,
+  .cds--search-input::placeholder {
+    color: #ffffff !important;
+    opacity: 0.7;
+  }
+
+  .cds--tile {
+    background-color: #1f1f1f;
+    color: #f4f4f4;
+  }
+
+  .cds--tile .cds--list__item,
+  .cds--tile .cds--list__item span,
+  .cds--tile .cds--list__item p,
+  .cds--tile .cds--list__item .cds--link,
+  .cds--tile .cds--list__item .cds--list__item,
+  .cds--tile .cds--list__item .cds--list__item span {
+    color: #f4f4f4;
+  }
+
+  .cds--section,
+  .cds--section--with-subsection,
+  .cds--section__content,
+  .cds--section__subsection {
+    background-color: #1f1f1f;
+    color: #f4f4f4;
+  }
+
+  .cds--section h1,
+  .cds--section h2,
+  .cds--section h3,
+  .cds--section h4,
+  .cds--section h5,
+  .cds--section h6,
+  .cds--section__title,
+  .cds--section__subtitle,
+  .cds--section__action,
+  .cds--section__description {
+    color: #161616;
+  }
+
+  .cds--section .cds--label,
+  .cds--section .cds--form-item .cds--label,
+  .cds--section .cds--form__helper-text,
+  .cds--section p,
+  .cds--section span {
+    color: #161616;
+  }
+
+  .orderWorkFlowDiv .cds--form-item .cds--label,
+  .orderWorkFlowDiv .cds--form__helper-text,
+  .orderWorkFlowDiv .cds--form-item .cds--form__helper-text,
+  .orderWorkFlowDiv .cds--label,
+  .orderWorkFlowDiv .cds--fieldset-legend,
+  .orderWorkFlowDiv .cds--radio-button__label,
+  .orderWorkFlowDiv .cds--checkbox-label-text,
+  .orderWorkFlowDiv .cds--assistive-text,
+  .orderWorkFlowDiv .cds--form__requirement,
+  .orderWorkFlowDiv .cds--list-box__label {
+    color: #161616;
+  }
+
+  .orderWorkFlowDiv .cds--text-input,
+  .orderWorkFlowDiv .cds--text-area,
+  .orderWorkFlowDiv .cds--number input,
+  .orderWorkFlowDiv .cds--date-picker__input,
+  .orderWorkFlowDiv .cds--time-picker__input-field,
+  .orderWorkFlowDiv .cds--list-box__field,
+  .orderWorkFlowDiv .cds--combo-box,
+  .orderWorkFlowDiv .cds--dropdown,
+  .orderWorkFlowDiv .cds--search-input,
+  .orderWorkFlowDiv .cds--select__item-text {
+    color: #ffffff;
+    background-color: #0a0a0a;
+    border-color: #393939;
+  }
+
+  .orderWorkFlowDiv .cds--text-input::placeholder,
+  .orderWorkFlowDiv .cds--text-area::placeholder,
+  .orderWorkFlowDiv .cds--number input::placeholder,
+  .orderWorkFlowDiv .cds--date-picker__input::placeholder,
+  .orderWorkFlowDiv .cds--time-picker__input-field::placeholder,
+  .orderWorkFlowDiv .cds--search-input::placeholder {
+    color: #ffffff !important;
+    opacity: 0.7;
+  }
+
+  .cds--list-box__menu,
+  .cds--list-box__menu-item,
+  .cds--list-box__menu-item__option {
+    background-color: #0a0a0a;
+    color: #ffffff;
+  }
+
+  .cds--list-box__menu .cds--text-input,
+  .cds--list-box__menu .cds--search-input,
+  .cds--list-box__menu .cds--text-input__field-outer-wrapper,
+  .cds--list-box__menu .cds--text-input__field-wrapper,
+  .cds--list-box__menu .cds--search-input__wrapper {
+    background-color: #0a0a0a;
+    color: #ffffff;
+  }
+
+  .cds--list-box__menu .cds--text-input::placeholder,
+  .cds--list-box__menu .cds--search-input::placeholder {
+    color: #ffffffb3;
+  }
+
+  .cds--list-box__menu-item:hover,
+  .cds--list-box__menu-item:focus,
+  .cds--list-box__menu-item:active {
+    background-color: #262626;
+    color: #ffffff;
+  }
+
+  .cds--list-box__menu-item--highlighted,
+  .cds--list-box__menu-item--highlighted .cds--list-box__menu-item__option {
+    background-color: #262626 !important;
+    color: #ffffff;
+  }
+
+  .cds--list-box__menu-item__option--selected,
+  .cds--list-box__menu-item__option--selected
+    .cds--list-box__menu-item__primary-content,
+  .cds--list-box__menu-item__option--selected
+    .cds--list-box__menu-item__secondary-content {
+    color: #ffffff;
+  }
+
+  .cds--number__controls svg,
+  .cds--number__control-btn svg,
+  .cds--number__control-btn path,
+  .cds--text-input__field-wrapper svg,
+  .cds--search-magnifier,
+  .cds--search-close,
+  .cds--dropdown__arrow,
+  .cds--list-box__menu-icon svg,
+  .cds--list-box__selection svg,
+  .cds--date-picker__icon svg,
+  .cds--time-picker__icon svg,
+  .cds--input__icon svg,
+  .cds--btn.cds--btn--ghost svg,
+  .cds--btn.cds--btn--ghost path,
+  .cds--btn.cds--btn--primary svg,
+  .cds--btn.cds--btn--primary path,
+  .cds--btn.cds--btn--secondary svg,
+  .cds--btn.cds--btn--secondary path {
+    fill: #ffffff;
+    stroke: #ffffff;
+    color: #ffffff;
+  }
+
+  .cds--radio-button__appearance {
+    background-color: #ffffff;
+    border-color: #8d8d8d;
+  }
+
+  .cds--radio-button__appearance::before {
+    background-color: #0f62fe;
+  }
+
+  .cds--radio-button:checked
+    + .cds--radio-button__label
+    .cds--radio-button__appearance {
+    border-color: #0f62fe;
+  }
+
+  .cds--checkbox {
+    background-color: transparent;
+  }
+
+  .cds--checkbox-label-text,
+  .cds--checkbox__label {
+    color: #f4f4f4;
+  }
+
+  .cds--checkbox__appearance {
+    background-color: #ffffff !important;
+    border: 1px solid #ffffff !important;
+  }
+
+  .cds--checkbox__appearance::before {
+    background-color: #ffffff !important;
+    border: 1px solid #ffffff !important;
+  }
+
+  .cds--checkbox__appearance::after {
+    border-color: #161616 !important;
+  }
+
+  .cds--checkbox:checked + .cds--checkbox__label .cds--checkbox__appearance,
+  .cds--checkbox:indeterminate
+    + .cds--checkbox__label
+    .cds--checkbox__appearance {
+    background-color: #ffffff !important;
+    border-color: #ffffff !important;
+  }
+
+  .cds--checkbox:checked
+    + .cds--checkbox__label
+    .cds--checkbox__appearance::before,
+  .cds--checkbox:indeterminate
+    + .cds--checkbox__label
+    .cds--checkbox__appearance::before {
+    background-color: #ffffff !important;
+    border-color: #ffffff !important;
+  }
+
+  .cds--checkbox:checked
+    + .cds--checkbox__label
+    .cds--checkbox__appearance::after,
+  .cds--checkbox:indeterminate
+    + .cds--checkbox__label
+    .cds--checkbox__appearance::after {
+    border-color: #161616 !important;
+  }
+
+  .cds--checkbox__label:hover .cds--checkbox__appearance,
+  .cds--checkbox__label:focus .cds--checkbox__appearance,
+  .cds--checkbox:focus-visible
+    + .cds--checkbox__label
+    .cds--checkbox__appearance {
+    border-color: #ffffff !important;
+    box-shadow: 0 0 0 1px #78a9ff;
+  }
+
+  .cds--data-table,
+  .cds--data-table thead,
+  .cds--data-table thead th,
+  .cds--data-table tbody,
+  .cds--data-table tbody td,
+  .cds--data-table tbody tr {
+    color: #f4f4f4;
+    background-color: #1f1f1f;
+  }
+
+  .cds--tabs__nav-item,
+  .cds--tabs__nav-link,
+  .cds--tabs__nav-link:focus,
+  .cds--tabs__nav-link:hover,
+  .cds--tabs__nav-link:active,
+  .cds--tabs__nav-link[aria-selected="true"] {
+    color: #f4f4f4;
+  }
+
+  .cds--progress {
+    --cds-text-primary: #f4f4f4;
+    --cds-text-secondary: rgba(244, 244, 244, 0.7);
+  }
+
+  .cds--progress-step-button,
+  .cds--progress-step-label,
+  .cds--progress-step-button span,
+  .cds--progress-step .cds--progress-label,
+  .cds--progress-step .cds--progress-label span,
+  .cds--progress-step .cds--progress-label::before,
+  .cds--progress-step .cds--progress-label::after,
+  .cds--progress-line {
+    color: #f4f4f4 !important;
+    border-color: #f4f4f4;
+    background-color: #393939;
+  }
+
+  .cds--progress-line::before,
+  .cds--progress-line::after {
+    background-color: #393939;
+  }
+
+  .cds--list-box__menu,
+  .cds--list-box__menu-item,
+  .cds--list-box__menu-item__option {
+    background-color: #0a0a0a;
+    color: #ffffff;
+  }
+
+  a,
+  .cds--link {
+    color: #78a9ff;
+  }
+
+  a:hover,
+  a:focus,
+  .cds--link:hover,
+  .cds--link:focus {
+    color: #a6c8ff;
   }
 
   // Login page dark mode styling
@@ -55,6 +410,28 @@
   .changePasswordPage {
     background: #161616;
     color: #f4f4f4;
+  }
+}
+
+[data-carbon-theme="g100"] .orderLegendBody {
+  background-color: #ffffff;
+  color: #161616;
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  .cds--label,
+  .cds--form-item .cds--label,
+  .cds--form__helper-text,
+  .cds--form-item .cds--form__helper-text,
+  .cds--radio-button__label,
+  .cds--checkbox-label-text,
+  p,
+  span {
+    color: #161616;
   }
 }
 
