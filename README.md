@@ -168,6 +168,45 @@ Please follow the [pull request tips](PULL_REQUEST_TIPS.md) in order to make
 life easy for the code reviewers by having a well defined and clean pull
 request.
 
+### Odoo Sync Queue Overview
+
+OpenELIS provides a dedicated queueing layer for Odoo invoice synchronization
+whenever the live connection is unavailable or an invocation fails.
+
+- **Backend services**
+
+  - `OdooIntegrationService#createInvoice` will enqueue failed payloads when
+    `enableOdooQueue` is set to `"true"` in the configuration properties.
+  - The queue is stored in the `odoo_sync_queue` table and manipulated through
+    `OdooSyncQueueService`.
+  - A manual REST API is exposed at:
+    - `GET /api/odoo/queue` – returns the current queue contents, pending/failed
+      counts, and connection status.
+    - `POST /api/odoo/queue/retry` – triggers an on-demand processing run by the
+      `OdooRetryJob` scheduler and returns the updated queue state plus a status
+      message.
+  - The scheduled retry job still exists but is disabled by default
+    (`org.openelisglobal.odoo.retry.enabled=false`). You can re-enable it via
+    configuration if automatic retries are desired.
+
+- **Frontend management UI**
+  - The React admin console now includes an **Odoo Sync Queue** page
+    (`frontend/src/components/admin/odoo/OdooSyncQueue.js`) accessible from the
+    Admin sidebar.
+  - This view calls the REST endpoints above, shows connection status, queue
+    counts, individual entries, and provides buttons to trigger manual retries
+    or refresh the data.
+
+To make use of the queue:
+
+1. Set the configuration property `enableOdooQueue` to `"true"` so failed
+   invoices are recorded.
+2. Ensure the Odoo credentials are configured correctly (otherwise the queue
+   will continue to grow while connection remains offline).
+3. Use the admin UI or `POST /api/odoo/queue/retry` to process queued invoices
+   once connectivity is restored; optionally re-enable the scheduled job for
+   unattended retries.
+
 ### code of conduct
 
 Please see our [Contributor Code of Conduct](./CODE_OF_CONDUCT.md)
