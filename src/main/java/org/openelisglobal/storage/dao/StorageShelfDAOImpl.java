@@ -41,4 +41,18 @@ public class StorageShelfDAOImpl extends BaseDAOImpl<StorageShelf, Integer> impl
             throw new LIMSRuntimeException("Error finding StorageShelves by device ID", e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int countByDeviceId(Integer deviceId) {
+        try {
+            String hql = "SELECT COUNT(*) FROM StorageShelf s WHERE s.parentDevice.id = :deviceId";
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+            query.setParameter("deviceId", deviceId);
+            Long count = query.uniqueResult();
+            return count != null ? count.intValue() : 0;
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error counting StorageShelves by device ID", e);
+        }
+    }
 }

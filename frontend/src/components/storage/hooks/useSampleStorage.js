@@ -30,10 +30,26 @@ export const useSampleStorage = () => {
               response.error || response.message || "Unknown error";
             setError(errorMessage);
             reject(new Error(errorMessage));
+          } else if (response.status || response.statusCode) {
+            // HTTP error response with status code
+            const errorMessage =
+              response.message ||
+              response.error ||
+              `Request failed with status ${response.status || response.statusCode}`;
+            setError(errorMessage);
+            reject(new Error(errorMessage));
+          } else if (typeof response === "string") {
+            // Error response is a string
+            setError(response);
+            reject(new Error(response));
           } else {
-            // Unexpected response format
-            setError("Unexpected response format");
-            reject(new Error("Unexpected response format"));
+            // Unexpected response format - log it for debugging
+            console.error("Unexpected response format:", response);
+            const errorMessage =
+              response.toString() ||
+              "Unexpected response format from server";
+            setError(errorMessage);
+            reject(new Error(errorMessage));
           }
         },
       );
@@ -61,10 +77,26 @@ export const useSampleStorage = () => {
               response.error || response.message || "Unknown error";
             setError(errorMessage);
             reject(new Error(errorMessage));
+          } else if (response.status || response.statusCode) {
+            // HTTP error response with status code
+            const errorMessage =
+              response.message ||
+              response.error ||
+              `Request failed with status ${response.status || response.statusCode}`;
+            setError(errorMessage);
+            reject(new Error(errorMessage));
+          } else if (typeof response === "string") {
+            // Error response is a string
+            setError(response);
+            reject(new Error(response));
           } else {
-            // Unexpected response format
-            setError("Unexpected response format");
-            reject(new Error("Unexpected response format"));
+            // Unexpected response format - log it for debugging
+            console.error("Unexpected response format:", response);
+            const errorMessage =
+              response.toString() ||
+              "Unexpected response format from server";
+            setError(errorMessage);
+            reject(new Error(errorMessage));
           }
         },
       );

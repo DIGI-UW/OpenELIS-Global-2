@@ -10,22 +10,25 @@
 StorageRoom (1) ──┬──> (N) StorageDevice
                   │
 StorageDevice (1) ─┼──> (N) StorageShelf
-                  │      └──> (N) StoragePosition (via parent_device_id)
                   │
 StorageShelf (1) ──┼──> (N) StorageRack
-                  │      └──> (N) StoragePosition (via parent_shelf_id, optional)
                   │
-StorageRack (1) ───┼──> (N) StoragePosition (via parent_rack_id, optional)
                   │
-StoragePosition (1) ─┴──> (0..1) SampleStorageAssignment ──> (1) Sample
+SampleStorageAssignment (1) ──> (1) Sample (one current location per sample)
+  └──> Uses polymorphic location: location_id + location_type
+       (references StorageDevice, StorageShelf, or StorageRack)
+  └──> Optional position_coordinate (text field)
 
 SampleStorageAssignment ──> (N) SampleStorageMovement (audit log)
+  └──> Records all changes to SampleStorageAssignment
+  └──> Captures previous_location_id + previous_location_type + previous_position_coordinate
+  └──> Captures new_location_id + new_location_type + new_position_coordinate
 
-Note: StoragePosition can have:
-- parent_device_id (required, minimum 2 levels: room + device)
-- parent_shelf_id (optional, for 3+ level positions)
-- parent_rack_id (optional, for 4+ level positions)
-- coordinate (optional, only for 5-level positions)
+Note: Flexible assignment model allows samples to be assigned directly to:
+- StorageDevice (minimum 2 levels: room + device)
+- StorageShelf (3 levels: room + device + shelf)
+- StorageRack (4 levels: room + device + shelf + rack)
+- Optional position_coordinate (text field) can be used with any location_type
 ```
 
 ---
@@ -355,7 +358,7 @@ and enforced by database constraint.
   `parent_shelf_id`, `parent_rack_id`, and `coordinate` fields. Represents a
   physical storage position in the hierarchy.
 - **Position coordinate**: The text field (`position_coordinate` in
-  `SampleStorageAssignment` or `coordinate` in `StoragePosition`). A free-text
+  `SampleStorageAssignment`). A free-text
   identifier for a specific position within a location (e.g., "A1", "Top shelf",
   "Rack 3, Position 5").
 
@@ -413,7 +416,7 @@ a separate entity reference.
 - **On UPDATE (sample moved)**: Update location reference, create audit log
   entry
 - **On DELETE (sample disposed)**: Create audit log entry with
-  `new_position_id = NULL`
+  `new_location_id = NULL`, `new_location_type = NULL`, `new_position_coordinate = NULL`
 
 **Validation Rules**:
 
@@ -438,39 +441,46 @@ a separate entity reference.
 ## 7. SampleStorageMovement
 
 **Purpose**: Immutable audit log of sample storage movements. Records all
-location changes for compliance.
+location changes for compliance. This table serves as a complete audit trail of
+all changes to `SampleStorageAssignment`, capturing both the previous and new
+location states for each movement event.
 
 **Table**: `SAMPLE_STORAGE_MOVEMENT`
 
 **Fields**:
 
-| Field                  | Type        | Constraints             | Description                                     |
-| ---------------------- | ----------- | ----------------------- | ----------------------------------------------- |
-| `id`                   | VARCHAR(36) | PK, AUTO                | Primary key                                     |
-| `sample_id`            | VARCHAR(36) | NOT NULL, FK            | Sample reference                                |
-| `previous_position_id` | VARCHAR(36) | NULL, FK                | Previous position (NULL for initial assignment) |
-| `new_position_id`      | VARCHAR(36) | NULL, FK                | New position (NULL for disposal/removal)        |
-| `moved_by_user_id`     | INT         | NOT NULL, FK            | User who performed move                         |
-| `movement_date`        | TIMESTAMP   | NOT NULL, DEFAULT NOW() | Movement timestamp                              |
-| `reason`               | TEXT        | NULL                    | Optional reason for move                        |
+| Field                        | Type        | Constraints             | Description                                                                  |
+| ---------------------------- | ----------- | ----------------------- | ---------------------------------------------------------------------------- |
+| `id`                         | VARCHAR(36) | PK, AUTO                | Primary key                                                                  |
+| `sample_id`                  | VARCHAR(36) | NOT NULL, FK            | Sample reference                                                             |
+| `previous_location_id`       | NUMERIC(10) | NULL                    | Previous location ID (polymorphic: device, shelf, or rack)                   |
+| `previous_location_type`    | VARCHAR(20) | NULL                    | Previous location type: 'device', 'shelf', or 'rack'                         |
+| `previous_position_coordinate` | VARCHAR(50) | NULL                    | Previous position coordinate (optional text field)                           |
+| `new_location_id`            | NUMERIC(10) | NULL                    | New location ID (polymorphic: device, shelf, or rack)                        |
+| `new_location_type`          | VARCHAR(20) | NULL                    | New location type: 'device', 'shelf', or 'rack'                               |
+| `new_position_coordinate`    | VARCHAR(50) | NULL                    | New position coordinate (optional text field)                                 |
+| `moved_by_user_id`           | INT         | NOT NULL, FK            | User who performed move                                                      |
+| `movement_date`              | TIMESTAMP   | NOT NULL, DEFAULT NOW() | Movement timestamp                                                           |
+| `reason`                     | TEXT        | NULL                    | Optional reason for move                                                      |
 
 **Constraints**:
 
 - PRIMARY KEY (`id`)
 - FOREIGN KEY (`sample_id`) REFERENCES `sample(id)` ON DELETE CASCADE
-- FOREIGN KEY (`previous_position_id`) REFERENCES `storage_position(id)` ON
-  DELETE SET NULL
-- FOREIGN KEY (`new_position_id`) REFERENCES `storage_position(id)` ON DELETE
-  SET NULL
 - FOREIGN KEY (`moved_by_user_id`) REFERENCES `system_user(id)`
-- CHECK (`previous_position_id` IS NOT NULL OR `new_position_id` IS NOT NULL) -
-  At least one position must be specified
+- CHECK (`previous_location_id` IS NOT NULL AND `previous_location_type` IS NOT NULL) OR
+  (`new_location_id` IS NOT NULL AND `new_location_type` IS NOT NULL) - At least one
+  location (previous or new) must be specified
+- CHECK (`previous_location_type` IS NULL OR `previous_location_type` IN ('device', 'shelf', 'rack'))
+- CHECK (`new_location_type` IS NULL OR `new_location_type` IN ('device', 'shelf', 'rack'))
 
 **Relationships**:
 
 - Many-to-One with `Sample`
-- Many-to-One with `StoragePosition` (previous location)
-- Many-to-One with `StoragePosition` (new location)
+- Polymorphic relationship to `StorageDevice`, `StorageShelf`, or `StorageRack` via
+  `previous_location_id` + `previous_location_type` (previous location)
+- Polymorphic relationship to `StorageDevice`, `StorageShelf`, or `StorageRack` via
+  `new_location_id` + `new_location_type` (new location)
 - Many-to-One with `SystemUser` (moved by)
 
 **Immutability**:
@@ -481,18 +491,33 @@ location changes for compliance.
 
 **Event Types**:
 
-- **Initial Assignment**: `previous_position_id = NULL`, `new_position_id` =
-  assigned position
-- **Movement**: Both previous and new position IDs populated
-- **Disposal/Removal**: `new_position_id = NULL`, `previous_position_id` = last
-  position
+- **Initial Assignment**: `previous_location_id = NULL`, `previous_location_type = NULL`,
+  `previous_position_coordinate = NULL`, `new_location_id` and `new_location_type`
+  populated with assigned location
+- **Movement**: Both previous and new location fields populated (captures the change from
+  one location to another)
+- **Disposal/Removal**: `new_location_id = NULL`, `new_location_type = NULL`,
+  `new_position_coordinate = NULL`, previous location fields contain the last known location
 
 **Validation Rules**:
 
-- At least one of previous_position_id or new_position_id must be non-NULL
-- movement_date must not be in the future
+- At least one of (previous_location_id + previous_location_type) or
+  (new_location_id + new_location_type) must be non-NULL
+- `previous_location_type` and `new_location_type` must be one of: 'device', 'shelf', or
+  'rack' (enforced by CHECK constraint)
+- `movement_date` must not be in the future
 - Cannot update or delete existing records (immutability enforced via database
   permissions)
+
+**Relationship to SampleStorageAssignment**:
+
+- `SampleStorageMovement` is an **audit log** of all changes to `SampleStorageAssignment`
+- When a sample is assigned or moved:
+  1. `SampleStorageAssignment` is created or updated with the new current location
+  2. A `SampleStorageMovement` record is created capturing both the previous state (from
+     the old assignment) and the new state (the updated assignment)
+- This provides a complete audit trail: the assignment table shows "where is it now", the
+  movement table shows "how did it get there"
 
 ---
 
@@ -503,30 +528,19 @@ location changes for compliance.
 ```
 [No Location]
     │
-    ├─(initial assignment)─> [Assigned to Position A]
+    ├─(initial assignment)─> [Assigned to Location A (device/shelf/rack)]
     │                            │
-    │                            ├─(moved)─> [Assigned to Position B]
+    │                            ├─(moved)─> [Assigned to Location B (device/shelf/rack)]
     │                            │              │
-    │                            │              └─(moved)─> [Assigned to Position C]
+    │                            │              └─(moved)─> [Assigned to Location C (device/shelf/rack)]
     │                            │
     │                            └─(disposed - P3, out of POC scope)─> [Disposed, No Location]
     │
     └─(direct disposal without assignment - P3, out of POC scope)─> [Disposed, No Location]
 ```
 
-### Position Occupancy State
-
-```
-[Empty]
-  │
-  ├─(sample assigned)─> [Occupied]
-  │                        │
-  │                        ├─(sample moved away)─> [Empty]
-  │                        │
-  │                        └─(sample disposed)─> [Empty]
-  │
-  └─(position created but not used)─> [Empty]
-```
+Note: Each location assignment can include an optional `position_coordinate` (text field) for
+additional specificity within the assigned location (device, shelf, or rack).
 
 ### Location Hierarchy Active Status
 

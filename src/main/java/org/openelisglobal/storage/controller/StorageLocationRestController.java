@@ -129,7 +129,8 @@ public class StorageLocationRestController extends BaseRestController {
             Integer idInt = Integer.parseInt(id);
             StorageRoom roomToUpdate = new StorageRoom();
             roomToUpdate.setName(form.getName());
-            roomToUpdate.setCode(form.getCode());
+            // Code is read-only - ignored if provided in form
+            // roomToUpdate.setCode(form.getCode()); // Do not set code - it's read-only
             roomToUpdate.setDescription(form.getDescription());
             roomToUpdate.setActive(form.getActive());
 
@@ -138,6 +139,11 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
             return ResponseEntity.ok(entityToMap(updatedRoom));
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            logger.error("Error updating room: " + e.getMessage(), e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         } catch (Exception e) {
             logger.error("Error updating room", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -145,18 +151,32 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @DeleteMapping("/rooms/{id}")
-    public ResponseEntity<Void> deleteRoom(@PathVariable String id) {
+    public ResponseEntity<Map<String, Object>> deleteRoom(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
+            StorageRoom room = storageLocationService.getRoom(idInt);
+            if (room == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            // Validate constraints before deletion
+            if (!storageLocationService.canDeleteLocation(room)) {
+                String message = storageLocationService.getDeleteConstraintMessage(room);
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Cannot delete room");
+                error.put("message", message);
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+            }
+
             storageLocationService.deleteRoom(idInt);
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
             logger.error("Error deleting room: " + e.getMessage(), e);
-            // Conflict if room has children (checked in service layer)
-            if (e.getMessage() != null && e.getMessage().contains("active child")) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).build();
-            }
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            // Conflict if room has constraints (checked in service layer)
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Cannot delete room");
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
         } catch (Exception e) {
             logger.error("Error deleting room", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -245,6 +265,89 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
+    @GetMapping("/devices/{id}")
+    public ResponseEntity<Map<String, Object>> getDeviceById(@PathVariable String id) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageDevice device = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
+            if (device == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            return ResponseEntity.ok(entityToMap(device));
+        } catch (Exception e) {
+            logger.error("Error getting device by id", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PutMapping("/devices/{id}")
+    public ResponseEntity<Map<String, Object>> updateDevice(@PathVariable String id,
+            @Valid @RequestBody StorageDeviceForm form) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageDevice deviceToUpdate = new StorageDevice();
+            deviceToUpdate.setName(form.getName());
+            // Code and parentRoom are read-only - ignored if provided
+            deviceToUpdate.setType(form.getType());
+            deviceToUpdate.setTemperatureSetting(
+                    form.getTemperatureSetting() != null ? java.math.BigDecimal.valueOf(form.getTemperatureSetting())
+                            : null);
+            deviceToUpdate.setCapacityLimit(form.getCapacityLimit());
+            deviceToUpdate.setActive(form.getActive());
+
+            // Get existing device to preserve ID
+            StorageDevice existingDevice = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
+            if (existingDevice == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            deviceToUpdate.setId(existingDevice.getId());
+
+            storageLocationService.update(deviceToUpdate);
+            StorageDevice updatedDevice = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
+            return ResponseEntity.ok(entityToMap(updatedDevice));
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            logger.error("Error updating device: " + e.getMessage(), e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            logger.error("Error updating device", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    @DeleteMapping("/devices/{id}")
+    public ResponseEntity<Map<String, Object>> deleteDevice(@PathVariable String id) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageDevice device = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
+            if (device == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            // Validate constraints before deletion
+            if (!storageLocationService.canDeleteLocation(device)) {
+                String message = storageLocationService.getDeleteConstraintMessage(device);
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Cannot delete device");
+                error.put("message", message);
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+            }
+
+            storageLocationService.delete(device);
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            logger.error("Error deleting device: " + e.getMessage(), e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Cannot delete device");
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        } catch (Exception e) {
+            logger.error("Error deleting device", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     // ========== Shelf Endpoints ==========
 
     @PostMapping("/shelves")
@@ -302,6 +405,85 @@ public class StorageLocationRestController extends BaseRestController {
         } catch (Exception e) {
             logger.error("Error getting shelves", e);
             return ResponseEntity.ok(new ArrayList<>());
+        }
+    }
+
+    @GetMapping("/shelves/{id}")
+    public ResponseEntity<Map<String, Object>> getShelfById(@PathVariable String id) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageShelf shelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
+            if (shelf == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            return ResponseEntity.ok(entityToMap(shelf));
+        } catch (Exception e) {
+            logger.error("Error getting shelf by id", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PutMapping("/shelves/{id}")
+    public ResponseEntity<Map<String, Object>> updateShelf(@PathVariable String id,
+            @Valid @RequestBody StorageShelfForm form) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageShelf shelfToUpdate = new StorageShelf();
+            shelfToUpdate.setLabel(form.getLabel());
+            // parentDevice is read-only - ignored if provided
+            shelfToUpdate.setCapacityLimit(form.getCapacityLimit());
+            shelfToUpdate.setActive(form.getActive());
+
+            // Get existing shelf to preserve ID
+            StorageShelf existingShelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
+            if (existingShelf == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            shelfToUpdate.setId(existingShelf.getId());
+
+            storageLocationService.update(shelfToUpdate);
+            StorageShelf updatedShelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
+            return ResponseEntity.ok(entityToMap(updatedShelf));
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            logger.error("Error updating shelf: " + e.getMessage(), e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            logger.error("Error updating shelf", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    @DeleteMapping("/shelves/{id}")
+    public ResponseEntity<Map<String, Object>> deleteShelf(@PathVariable String id) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageShelf shelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
+            if (shelf == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            // Validate constraints before deletion
+            if (!storageLocationService.canDeleteLocation(shelf)) {
+                String message = storageLocationService.getDeleteConstraintMessage(shelf);
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Cannot delete shelf");
+                error.put("message", message);
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+            }
+
+            storageLocationService.delete(shelf);
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            logger.error("Error deleting shelf: " + e.getMessage(), e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Cannot delete shelf");
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        } catch (Exception e) {
+            logger.error("Error deleting shelf", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -367,6 +549,87 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
+    @GetMapping("/racks/{id}")
+    public ResponseEntity<Map<String, Object>> getRackById(@PathVariable String id) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageRack rack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
+            if (rack == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            return ResponseEntity.ok(entityToMap(rack));
+        } catch (Exception e) {
+            logger.error("Error getting rack by id", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PutMapping("/racks/{id}")
+    public ResponseEntity<Map<String, Object>> updateRack(@PathVariable String id,
+            @Valid @RequestBody StorageRackForm form) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageRack rackToUpdate = new StorageRack();
+            rackToUpdate.setLabel(form.getLabel());
+            rackToUpdate.setRows(form.getRows());
+            rackToUpdate.setColumns(form.getColumns());
+            rackToUpdate.setPositionSchemaHint(form.getPositionSchemaHint());
+            // parentShelf is read-only - ignored if provided
+            rackToUpdate.setActive(form.getActive());
+
+            // Get existing rack to preserve ID
+            StorageRack existingRack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
+            if (existingRack == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            rackToUpdate.setId(existingRack.getId());
+
+            storageLocationService.update(rackToUpdate);
+            StorageRack updatedRack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
+            return ResponseEntity.ok(entityToMap(updatedRack));
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            logger.error("Error updating rack: " + e.getMessage(), e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            logger.error("Error updating rack", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    @DeleteMapping("/racks/{id}")
+    public ResponseEntity<Map<String, Object>> deleteRack(@PathVariable String id) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageRack rack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
+            if (rack == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            // Validate constraints before deletion
+            if (!storageLocationService.canDeleteLocation(rack)) {
+                String message = storageLocationService.getDeleteConstraintMessage(rack);
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Cannot delete rack");
+                error.put("message", message);
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+            }
+
+            storageLocationService.delete(rack);
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            logger.error("Error deleting rack: " + e.getMessage(), e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Cannot delete rack");
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        } catch (Exception e) {
+            logger.error("Error deleting rack", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     // ========== Position Endpoints ==========
 
     @PostMapping("/positions")
@@ -386,6 +649,25 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent rack not found"));
             }
             position.setParentRack(parentRack);
+
+            // StoragePosition requires parentDevice (not-null constraint)
+            // Traverse hierarchy: Rack → Shelf → Device
+            StorageShelf parentShelf = parentRack.getParentShelf();
+            if (parentShelf != null) {
+                position.setParentShelf(parentShelf);
+                StorageDevice parentDevice = parentShelf.getParentDevice();
+                if (parentDevice != null) {
+                    position.setParentDevice(parentDevice);
+                } else {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(Map.of("error", "Parent device not found in hierarchy"));
+                }
+            } else {
+                // If no shelf, we need to get device from rack's shelf relationship
+                // But rack always has a shelf (nullable = false in StorageRack entity)
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "Parent shelf not found in rack hierarchy"));
+            }
 
             Integer id = storageLocationService.insert(position);
             position.setId(id);

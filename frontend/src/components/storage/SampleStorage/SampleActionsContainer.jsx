@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { useIntl } from "react-intl";
 import SampleActionsOverflowMenu from "./SampleActionsOverflowMenu";
-import MoveSampleModal from "./MoveSampleModal";
+import LocationManagementModal from "./LocationManagementModal";
 import DisposeSampleModal from "./DisposeSampleModal";
-import ViewStorageModal from "./ViewStorageModal";
 
 /**
  * Container component that manages sample action overflow menu and modals
@@ -11,47 +10,40 @@ import ViewStorageModal from "./ViewStorageModal";
  *
  * Props:
  * - sample: object - Sample data { id, sampleId, type, status, location }
- * - onMoveConfirm: function - Callback when move is confirmed (sample, newLocation, reason)
+ * - onLocationConfirm: function - Callback when location is confirmed (assignment or movement)
  * - onDisposeConfirm: function - Callback when dispose is confirmed (sample, reason, method, notes)
- * - onViewStorageSave: function - Callback when storage location is saved (sample, location)
  * - onNotification: function - Callback to show notifications (optional)
  */
 const SampleActionsContainer = ({
   sample,
-  onMoveConfirm,
+  onLocationConfirm,
   onDisposeConfirm,
-  onViewStorageSave,
   onNotification,
 }) => {
   const intl = useIntl();
-  const [moveModalOpen, setMoveModalOpen] = useState(false);
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
   const [disposeModalOpen, setDisposeModalOpen] = useState(false);
-  const [viewStorageModalOpen, setViewStorageModalOpen] = useState(false);
 
-  const handleMove = (sample) => {
-    setMoveModalOpen(true);
+  const handleManageLocation = (sample) => {
+    setLocationModalOpen(true);
   };
 
   const handleDispose = (sample) => {
     setDisposeModalOpen(true);
   };
 
-  const handleViewStorage = (sample) => {
-    setViewStorageModalOpen(true);
-  };
-
-  const handleMoveConfirm = async (moveData) => {
-    // moveData format: { sample, newLocation, reason }
-    if (onMoveConfirm) {
+  const handleLocationConfirm = async (locationData) => {
+    // locationData format: { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
+    if (onLocationConfirm) {
       try {
-        await onMoveConfirm(moveData);
-        // Only close modal if move succeeds (no error thrown)
-        setMoveModalOpen(false);
+        await onLocationConfirm(locationData);
+        // Only close modal if operation succeeds (no error thrown)
+        setLocationModalOpen(false);
         // Note: Success notification is handled by parent component after API call succeeds
       } catch (error) {
         // Error notification is handled by parent component
         // Don't close modal on error so user can retry
-        console.error("Move confirmation failed:", error);
+        console.error("Location confirmation failed:", error);
       }
     }
   };
@@ -72,22 +64,6 @@ const SampleActionsContainer = ({
     }
   };
 
-  const handleViewStorageSave = (location) => {
-    if (onViewStorageSave) {
-      onViewStorageSave(sample, location);
-    }
-    setViewStorageModalOpen(false);
-    if (onNotification) {
-      onNotification({
-        kind: "success",
-        title: intl.formatMessage({
-          id: "storage.save.success",
-          defaultMessage: "Storage location updated successfully",
-        }),
-      });
-    }
-  };
-
   const currentLocation = sample.location
     ? { path: sample.location, position: null }
     : null;
@@ -96,17 +72,16 @@ const SampleActionsContainer = ({
     <>
       <SampleActionsOverflowMenu
         sample={sample}
-        onMove={handleMove}
+        onManageLocation={handleManageLocation}
         onDispose={handleDispose}
-        onViewStorage={handleViewStorage}
       />
 
-      <MoveSampleModal
-        open={moveModalOpen}
+      <LocationManagementModal
+        open={locationModalOpen}
         sample={sample}
         currentLocation={currentLocation}
-        onClose={() => setMoveModalOpen(false)}
-        onConfirm={handleMoveConfirm}
+        onClose={() => setLocationModalOpen(false)}
+        onConfirm={handleLocationConfirm}
       />
 
       <DisposeSampleModal
@@ -115,14 +90,6 @@ const SampleActionsContainer = ({
         currentLocation={currentLocation}
         onClose={() => setDisposeModalOpen(false)}
         onConfirm={handleDisposeConfirm}
-      />
-
-      <ViewStorageModal
-        open={viewStorageModalOpen}
-        sample={sample}
-        currentLocation={currentLocation}
-        onClose={() => setViewStorageModalOpen(false)}
-        onSave={handleViewStorageSave}
       />
     </>
   );

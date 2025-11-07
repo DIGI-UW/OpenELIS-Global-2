@@ -64,4 +64,19 @@ public class StorageDeviceDAOImpl extends BaseDAOImpl<StorageDevice, Integer> im
             throw new LIMSRuntimeException("Error finding StorageDevice by room ID and code", e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int countByRoomId(Integer roomId) {
+        try {
+            String hql = "SELECT COUNT(*) FROM StorageDevice d WHERE d.parentRoom.id = :roomId";
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+            query.setParameter("roomId", roomId);
+            Long count = query.uniqueResult();
+            return count != null ? count.intValue() : 0;
+        } catch (Exception e) {
+            logger.error("Error counting StorageDevices by room ID", e);
+            throw new LIMSRuntimeException("Error counting StorageDevices by room ID", e);
+        }
+    }
 }

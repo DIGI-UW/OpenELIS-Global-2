@@ -41,4 +41,18 @@ public class StorageRackDAOImpl extends BaseDAOImpl<StorageRack, Integer> implem
             throw new LIMSRuntimeException("Error finding StorageRacks by shelf ID", e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int countByShelfId(Integer shelfId) {
+        try {
+            String hql = "SELECT COUNT(*) FROM StorageRack r WHERE r.parentShelf.id = :shelfId";
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+            query.setParameter("shelfId", shelfId);
+            Long count = query.uniqueResult();
+            return count != null ? count.intValue() : 0;
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error counting StorageRacks by shelf ID", e);
+        }
+    }
 }

@@ -5,19 +5,17 @@ import "./SampleActionsOverflowMenu.css";
 
 /**
  * Overflow menu for sample row actions
- * Displays four menu items: Move, Dispose, View Audit (disabled), View Storage
+ * Displays three menu items: Manage Location, Dispose, View Audit (disabled)
  *
  * Props:
  * - sample: object - Sample data { id, sampleId, type, status }
- * - onMove: function - Callback when Move clicked
+ * - onManageLocation: function - Callback when Manage Location clicked
  * - onDispose: function - Callback when Dispose clicked
- * - onViewStorage: function - Callback when View Storage clicked
  */
 const SampleActionsOverflowMenu = ({
   sample,
-  onMove,
+  onManageLocation,
   onDispose,
-  onViewStorage,
 }) => {
   const intl = useIntl();
 
@@ -25,21 +23,20 @@ const SampleActionsOverflowMenu = ({
   useEffect(() => {
     console.log("SampleActionsOverflowMenu: Component mounted/updated", {
       sampleId: sample?.sampleId,
-      hasOnMove: !!onMove,
+      hasOnManageLocation: !!onManageLocation,
       hasOnDispose: !!onDispose,
-      hasOnViewStorage: !!onViewStorage,
       sample: sample,
     });
-  }, [sample, onMove, onDispose, onViewStorage]);
+  }, [sample, onManageLocation, onDispose]);
 
   // Use useCallback to ensure stable function references
   // Carbon OverflowMenuItem onClick receives an event object
-  const handleMove = useCallback(
+  const handleManageLocation = useCallback(
     (event) => {
-      console.log("SampleActionsOverflowMenu: handleMove called", {
+      console.log("SampleActionsOverflowMenu: handleManageLocation called", {
         sample,
         event,
-        hasOnMove: !!onMove,
+        hasOnManageLocation: !!onManageLocation,
       });
       // Prevent default behavior and stop propagation
       if (event) {
@@ -47,24 +44,26 @@ const SampleActionsOverflowMenu = ({
         event.stopPropagation?.();
       }
       // Execute callback if provided
-      if (onMove) {
-        console.log("SampleActionsOverflowMenu: executing onMove callback");
+      if (onManageLocation) {
+        console.log(
+          "SampleActionsOverflowMenu: executing onManageLocation callback",
+        );
         try {
-          onMove(sample);
+          onManageLocation(sample);
         } catch (error) {
           console.error(
-            "SampleActionsOverflowMenu: error in onMove callback",
+            "SampleActionsOverflowMenu: error in onManageLocation callback",
             error,
           );
         }
       } else {
         console.warn(
-          "SampleActionsOverflowMenu: onMove callback not provided for sample",
+          "SampleActionsOverflowMenu: onManageLocation callback not provided for sample",
           sample?.sampleId,
         );
       }
     },
-    [sample, onMove],
+    [sample, onManageLocation],
   );
 
   const handleDispose = useCallback(
@@ -98,39 +97,6 @@ const SampleActionsOverflowMenu = ({
     [sample, onDispose],
   );
 
-  const handleViewStorage = useCallback(
-    (event) => {
-      console.log("SampleActionsOverflowMenu: handleViewStorage called", {
-        sample,
-        event,
-        hasOnViewStorage: !!onViewStorage,
-      });
-      if (event) {
-        event.preventDefault?.();
-        event.stopPropagation?.();
-      }
-      if (onViewStorage) {
-        console.log(
-          "SampleActionsOverflowMenu: executing onViewStorage callback",
-        );
-        try {
-          onViewStorage(sample);
-        } catch (error) {
-          console.error(
-            "SampleActionsOverflowMenu: error in onViewStorage callback",
-            error,
-          );
-        }
-      } else {
-        console.warn(
-          "SampleActionsOverflowMenu: onViewStorage callback not provided for sample",
-          sample?.sampleId,
-        );
-      }
-    },
-    [sample, onViewStorage],
-  );
-
   return (
     <div className="sample-actions-overflow-menu">
       <OverflowMenu
@@ -142,11 +108,11 @@ const SampleActionsOverflowMenu = ({
       >
         <OverflowMenuItem
           itemText={intl.formatMessage({
-            id: "storage.move.sample",
-            defaultMessage: "Move",
+            id: "storage.manage.location",
+            defaultMessage: "Manage Location",
           })}
-          onClick={handleMove}
-          data-testid="move-menu-item"
+          onClick={handleManageLocation}
+          data-testid="manage-location-menu-item"
         />
         <OverflowMenuItem
           itemText={intl.formatMessage({
@@ -163,14 +129,6 @@ const SampleActionsOverflowMenu = ({
           })}
           disabled
           data-testid="view-audit-menu-item"
-        />
-        <OverflowMenuItem
-          itemText={intl.formatMessage({
-            id: "storage.view.storage",
-            defaultMessage: "View Storage",
-          })}
-          onClick={handleViewStorage}
-          data-testid="view-storage-menu-item"
         />
       </OverflowMenu>
     </div>
