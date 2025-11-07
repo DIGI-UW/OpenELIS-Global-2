@@ -20,24 +20,22 @@ describe("SampleActionsOverflowMenu", () => {
     status: "Active",
   };
 
-  const mockOnMove = jest.fn();
+  const mockOnManageLocation = jest.fn();
   const mockOnDispose = jest.fn();
-  const mockOnViewStorage = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   /**
-   * T088a: Test renders all four menu items
+   * T201: Test renders all three menu items (Manage Location, Dispose, View Audit)
    */
-  test("testRendersAllFourMenuItems", () => {
+  test("testOverflowMenu_RendersThreeItems", () => {
     renderWithIntl(
       <SampleActionsOverflowMenu
         sample={mockSample}
-        onMove={mockOnMove}
+        onManageLocation={mockOnManageLocation}
         onDispose={mockOnDispose}
-        onViewStorage={mockOnViewStorage}
       />,
     );
 
@@ -49,22 +47,23 @@ describe("SampleActionsOverflowMenu", () => {
     fireEvent.click(menuButton);
 
     // Verify menu items are present (text may be in aria-label or visible text)
-    expect(screen.getByText(/move/i)).toBeTruthy();
+    expect(screen.getByText(/manage location/i)).toBeTruthy();
     expect(screen.getByText(/dispose/i)).toBeTruthy();
     expect(screen.getByText(/view audit/i)).toBeTruthy();
-    expect(screen.getByText(/view storage/i)).toBeTruthy();
+    // Verify "Move" and "View Storage" are NOT present
+    expect(screen.queryByText(/^move$/i)).toBeNull();
+    expect(screen.queryByText(/view storage/i)).toBeNull();
   });
 
   /**
-   * T088a: Test View Audit is disabled
+   * T201: Test View Audit is disabled
    */
-  test("testViewAuditIsDisabled", () => {
+  test("testOverflowMenu_ViewAuditIsDisabled", () => {
     renderWithIntl(
       <SampleActionsOverflowMenu
         sample={mockSample}
-        onMove={mockOnMove}
+        onManageLocation={mockOnManageLocation}
         onDispose={mockOnDispose}
-        onViewStorage={mockOnViewStorage}
       />,
     );
 
@@ -78,15 +77,14 @@ describe("SampleActionsOverflowMenu", () => {
   });
 
   /**
-   * T088a: Test calls onMove when Move clicked
+   * T201: Test calls onManageLocation when Manage Location clicked
    */
-  test("testCallsOnMoveWhenMoveClicked", () => {
+  test("testOverflowMenu_ManageLocationOpensModal", () => {
     renderWithIntl(
       <SampleActionsOverflowMenu
         sample={mockSample}
-        onMove={mockOnMove}
+        onManageLocation={mockOnManageLocation}
         onDispose={mockOnDispose}
-        onViewStorage={mockOnViewStorage}
       />,
     );
 
@@ -97,30 +95,29 @@ describe("SampleActionsOverflowMenu", () => {
     // Click to open the menu
     fireEvent.click(menuButton);
 
-    // Find the Move menu item by testid - Carbon should render it
-    const moveItem = screen.getByTestId("move-menu-item");
-    expect(moveItem).toBeTruthy();
+    // Find the Manage Location menu item by testid - Carbon should render it
+    const manageLocationItem = screen.getByTestId("manage-location-menu-item");
+    expect(manageLocationItem).toBeTruthy();
 
     // Carbon OverflowMenuItem wraps onClick in its own handler
     // We need to trigger the onClick directly or find the actual button
     // Try clicking the item - Carbon should handle it
-    fireEvent.click(moveItem);
+    fireEvent.click(manageLocationItem);
 
     // Verify callback was called
-    expect(mockOnMove).toHaveBeenCalledWith(mockSample);
-    expect(mockOnMove).toHaveBeenCalledTimes(1);
+    expect(mockOnManageLocation).toHaveBeenCalledWith(mockSample);
+    expect(mockOnManageLocation).toHaveBeenCalledTimes(1);
   });
 
   /**
-   * T088a: Test calls onDispose when Dispose clicked
+   * Test calls onDispose when Dispose clicked
    */
   test("testCallsOnDisposeWhenDisposeClicked", () => {
     renderWithIntl(
       <SampleActionsOverflowMenu
         sample={mockSample}
-        onMove={mockOnMove}
+        onManageLocation={mockOnManageLocation}
         onDispose={mockOnDispose}
-        onViewStorage={mockOnViewStorage}
       />,
     );
 
@@ -139,33 +136,6 @@ describe("SampleActionsOverflowMenu", () => {
   });
 
   /**
-   * T088a: Test calls onViewStorage when View Storage clicked
-   */
-  test("testCallsOnViewStorageWhenViewStorageClicked", () => {
-    renderWithIntl(
-      <SampleActionsOverflowMenu
-        sample={mockSample}
-        onMove={mockOnMove}
-        onDispose={mockOnDispose}
-        onViewStorage={mockOnViewStorage}
-      />,
-    );
-
-    const menuButton = screen.getByRole("button");
-    expect(menuButton).toBeTruthy();
-
-    fireEvent.click(menuButton);
-
-    const viewStorageItem = screen.getByTestId("view-storage-menu-item");
-    expect(viewStorageItem).toBeTruthy();
-
-    fireEvent.click(viewStorageItem);
-
-    expect(mockOnViewStorage).toHaveBeenCalledWith(mockSample);
-    expect(mockOnViewStorage).toHaveBeenCalledTimes(1);
-  });
-
-  /**
    * Test that component fails gracefully when callbacks are not provided
    * This ensures we don't have silent failures in production
    */
@@ -174,9 +144,8 @@ describe("SampleActionsOverflowMenu", () => {
     const { container } = renderWithIntl(
       <SampleActionsOverflowMenu
         sample={mockSample}
-        onMove={undefined}
+        onManageLocation={undefined}
         onDispose={undefined}
-        onViewStorage={undefined}
       />,
     );
 
@@ -186,12 +155,12 @@ describe("SampleActionsOverflowMenu", () => {
     fireEvent.click(menuButton);
 
     // Menu items should still be visible
-    const moveItem = screen.getByTestId("move-menu-item");
-    expect(moveItem).toBeTruthy();
+    const manageLocationItem = screen.getByTestId("manage-location-menu-item");
+    expect(manageLocationItem).toBeTruthy();
 
     // Clicking should not throw an error, even if callback is undefined
     expect(() => {
-      fireEvent.click(moveItem);
+      fireEvent.click(manageLocationItem);
     }).not.toThrow();
   });
 
@@ -207,9 +176,8 @@ describe("SampleActionsOverflowMenu", () => {
     renderWithIntl(
       <SampleActionsOverflowMenu
         sample={mockSample}
-        onMove={mockOnMove}
+        onManageLocation={mockOnManageLocation}
         onDispose={mockOnDispose}
-        onViewStorage={mockOnViewStorage}
       />,
     );
 
@@ -218,21 +186,22 @@ describe("SampleActionsOverflowMenu", () => {
 
     // If onClick handlers are properly attached, clicking should trigger them
     // This test will help identify if Carbon OverflowMenuItem has issues with onClick
-    const moveItem = screen.getByTestId("move-menu-item");
+    const manageLocationItem = screen.getByTestId("manage-location-menu-item");
 
     // Try to find the actual clickable element within Carbon's structure
     const clickableButton =
-      moveItem.closest("button") || moveItem.querySelector("button");
+      manageLocationItem.closest("button") ||
+      manageLocationItem.querySelector("button");
 
     if (clickableButton) {
       fireEvent.click(clickableButton);
     } else {
       // Fallback: click the item directly
-      fireEvent.click(moveItem);
+      fireEvent.click(manageLocationItem);
     }
 
     // Verify callback was called - if this fails, onClick is not properly wired
-    expect(mockOnMove).toHaveBeenCalledTimes(1);
+    expect(mockOnManageLocation).toHaveBeenCalledTimes(1);
 
     consoleSpy.mockRestore();
   });

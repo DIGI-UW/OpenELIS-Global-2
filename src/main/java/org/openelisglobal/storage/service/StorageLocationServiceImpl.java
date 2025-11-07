@@ -61,8 +61,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         if (existingRoom == null) {
             return null;
         }
+        // Update only editable fields - code is read-only (ignored if provided)
         existingRoom.setName(room.getName());
-        existingRoom.setCode(room.getCode());
+        // existingRoom.setCode(room.getCode()); // Code is read-only - do not update
         existingRoom.setDescription(room.getDescription());
         existingRoom.setActive(room.getActive());
         storageRoomDAO.update(existingRoom);
@@ -72,9 +73,17 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     @Override
     public void deleteRoom(Integer id) {
         StorageRoom room = storageRoomDAO.get(id).orElse(null);
-        if (room != null) {
-            delete(room);
+        if (room == null) {
+            return;
         }
+
+        // Validate constraints before deletion
+        if (!canDeleteRoom(room)) {
+            String message = getDeleteConstraintMessage(room);
+            throw new LIMSRuntimeException(message);
+        }
+
+        delete(room);
     }
 
     @Override
@@ -206,25 +215,68 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     @Override
     public Integer update(Object entity) {
         if (entity instanceof StorageRoom) {
-            storageRoomDAO.update((StorageRoom) entity);
+            StorageRoom room = (StorageRoom) entity;
+            // Get existing room to preserve read-only fields
+            StorageRoom existingRoom = storageRoomDAO.get(room.getId()).orElse(null);
+            if (existingRoom == null) {
+                throw new LIMSRuntimeException("Room not found: " + room.getId());
+            }
+            // Update only editable fields - code is read-only
+            existingRoom.setName(room.getName());
+            existingRoom.setDescription(room.getDescription());
+            existingRoom.setActive(room.getActive());
+            storageRoomDAO.update(existingRoom);
             return null;
         } else if (entity instanceof StorageDevice) {
             StorageDevice device = (StorageDevice) entity;
-            // Check for active samples when deactivating
-            if (!device.getActive()) {
-                int occupiedCount = storagePositionDAO.countOccupiedInDevice(device.getId());
+            // Get existing device to preserve read-only fields
+            StorageDevice existingDevice = storageDeviceDAO.get(device.getId()).orElse(null);
+            if (existingDevice == null) {
+                throw new LIMSRuntimeException("Device not found: " + device.getId());
+            }
+            // Update only editable fields - code and parentRoom are read-only
+            existingDevice.setName(device.getName());
+            existingDevice.setType(device.getType());
+            existingDevice.setTemperatureSetting(device.getTemperatureSetting());
+            existingDevice.setCapacityLimit(device.getCapacityLimit());
+            existingDevice.setActive(device.getActive());
+            // Check for active samples when deactivating (null-safe check)
+            if (existingDevice.getActive() != null && !existingDevice.getActive()) {
+                int occupiedCount = storagePositionDAO.countOccupiedInDevice(existingDevice.getId());
                 if (occupiedCount > 0) {
                     throw new LIMSRuntimeException("Warning: Device has " + occupiedCount + " active samples. "
                             + "Please move or dispose samples before deactivating.");
                 }
             }
-            storageDeviceDAO.update(device);
+            storageDeviceDAO.update(existingDevice);
             return null;
         } else if (entity instanceof StorageShelf) {
-            storageShelfDAO.update((StorageShelf) entity);
+            StorageShelf shelf = (StorageShelf) entity;
+            // Get existing shelf to preserve read-only fields
+            StorageShelf existingShelf = storageShelfDAO.get(shelf.getId()).orElse(null);
+            if (existingShelf == null) {
+                throw new LIMSRuntimeException("Shelf not found: " + shelf.getId());
+            }
+            // Update only editable fields - parentDevice is read-only
+            existingShelf.setLabel(shelf.getLabel());
+            existingShelf.setCapacityLimit(shelf.getCapacityLimit());
+            existingShelf.setActive(shelf.getActive());
+            storageShelfDAO.update(existingShelf);
             return null;
         } else if (entity instanceof StorageRack) {
-            storageRackDAO.update((StorageRack) entity);
+            StorageRack rack = (StorageRack) entity;
+            // Get existing rack to preserve read-only fields
+            StorageRack existingRack = storageRackDAO.get(rack.getId()).orElse(null);
+            if (existingRack == null) {
+                throw new LIMSRuntimeException("Rack not found: " + rack.getId());
+            }
+            // Update only editable fields - parentShelf is read-only
+            existingRack.setLabel(rack.getLabel());
+            existingRack.setRows(rack.getRows());
+            existingRack.setColumns(rack.getColumns());
+            existingRack.setPositionSchemaHint(rack.getPositionSchemaHint());
+            existingRack.setActive(rack.getActive());
+            storageRackDAO.update(existingRack);
             return null;
         } else if (entity instanceof StoragePosition) {
             storagePositionDAO.update((StoragePosition) entity);
@@ -235,23 +287,38 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public void delete(Object entity) {
+        // Note: Constraint validation is done in the controller before calling this method
+        // This method assumes constraints have been validated
         if (entity instanceof StorageRoom) {
             StorageRoom room = (StorageRoom) entity;
-            // Check for active child devices
-            var devices = storageDeviceDAO.findByParentRoomId(room.getId());
-            boolean hasActiveDevices = devices.stream().anyMatch(d -> d.getActive() != null && d.getActive());
-            if (hasActiveDevices) {
-                throw new LIMSRuntimeException("Cannot delete room with active child devices");
-            }
-            storageRoomDAO.delete(room);
+            // Ensure entity is managed by fetching from database
+            StorageRoom managedRoom = storageRoomDAO.get(room.getId())
+                    .orElseThrow(() -> new LIMSRuntimeException("Room not found: " + room.getId()));
+            storageRoomDAO.delete(managedRoom);
         } else if (entity instanceof StorageDevice) {
-            storageDeviceDAO.delete((StorageDevice) entity);
+            StorageDevice device = (StorageDevice) entity;
+            // Ensure entity is managed by fetching from database
+            StorageDevice managedDevice = storageDeviceDAO.get(device.getId())
+                    .orElseThrow(() -> new LIMSRuntimeException("Device not found: " + device.getId()));
+            storageDeviceDAO.delete(managedDevice);
         } else if (entity instanceof StorageShelf) {
-            storageShelfDAO.delete((StorageShelf) entity);
+            StorageShelf shelf = (StorageShelf) entity;
+            // Ensure entity is managed by fetching from database
+            StorageShelf managedShelf = storageShelfDAO.get(shelf.getId())
+                    .orElseThrow(() -> new LIMSRuntimeException("Shelf not found: " + shelf.getId()));
+            storageShelfDAO.delete(managedShelf);
         } else if (entity instanceof StorageRack) {
-            storageRackDAO.delete((StorageRack) entity);
+            StorageRack rack = (StorageRack) entity;
+            // Ensure entity is managed by fetching from database
+            StorageRack managedRack = storageRackDAO.get(rack.getId())
+                    .orElseThrow(() -> new LIMSRuntimeException("Rack not found: " + rack.getId()));
+            storageRackDAO.delete(managedRack);
         } else if (entity instanceof StoragePosition) {
-            storagePositionDAO.delete((StoragePosition) entity);
+            StoragePosition position = (StoragePosition) entity;
+            // Ensure entity is managed by fetching from database
+            StoragePosition managedPosition = storagePositionDAO.get(position.getId())
+                    .orElseThrow(() -> new LIMSRuntimeException("Position not found: " + position.getId()));
+            storagePositionDAO.delete(managedPosition);
         } else {
             throw new LIMSRuntimeException("Unsupported entity type for delete");
         }
@@ -779,5 +846,144 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         }
 
         return results;
+    }
+
+    // ========== Phase 6: Location CRUD Operations - Constraint Validation Methods ==========
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean validateDeleteConstraints(Object locationEntity) {
+        if (locationEntity == null) {
+            return false;
+        }
+
+        if (locationEntity instanceof StorageRoom) {
+            return canDeleteRoom((StorageRoom) locationEntity);
+        } else if (locationEntity instanceof StorageDevice) {
+            return canDeleteDevice((StorageDevice) locationEntity);
+        } else if (locationEntity instanceof StorageShelf) {
+            return canDeleteShelf((StorageShelf) locationEntity);
+        } else if (locationEntity instanceof StorageRack) {
+            return canDeleteRack((StorageRack) locationEntity);
+        }
+
+        return false;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean canDeleteLocation(Object locationEntity) {
+        return validateDeleteConstraints(locationEntity);
+    }
+
+    /**
+     * Check if a room can be deleted (no child devices, no active samples)
+     */
+    private boolean canDeleteRoom(StorageRoom room) {
+        if (room == null || room.getId() == null) {
+            return false;
+        }
+
+        // Check for child devices
+        int deviceCount = storageDeviceDAO.countByRoomId(room.getId());
+        if (deviceCount > 0) {
+            return false;
+        }
+
+        // TODO: Check for active samples when SampleStorageService.hasActiveSamplesInLocation() is available
+        // For now, we only check for child locations
+        return true;
+    }
+
+    /**
+     * Check if a device can be deleted (no child shelves, no active samples)
+     */
+    private boolean canDeleteDevice(StorageDevice device) {
+        if (device == null || device.getId() == null) {
+            return false;
+        }
+
+        // Check for child shelves
+        int shelfCount = storageShelfDAO.countByDeviceId(device.getId());
+        if (shelfCount > 0) {
+            return false;
+        }
+
+        // TODO: Check for active samples when SampleStorageService.hasActiveSamplesInLocation() is available
+        return true;
+    }
+
+    /**
+     * Check if a shelf can be deleted (no child racks, no active samples)
+     */
+    private boolean canDeleteShelf(StorageShelf shelf) {
+        if (shelf == null || shelf.getId() == null) {
+            return false;
+        }
+
+        // Check for child racks
+        int rackCount = storageRackDAO.countByShelfId(shelf.getId());
+        if (rackCount > 0) {
+            return false;
+        }
+
+        // TODO: Check for active samples when SampleStorageService.hasActiveSamplesInLocation() is available
+        return true;
+    }
+
+    /**
+     * Check if a rack can be deleted (no active samples)
+     */
+    private boolean canDeleteRack(StorageRack rack) {
+        if (rack == null || rack.getId() == null) {
+            return false;
+        }
+
+        // TODO: Check for active samples when SampleStorageService.hasActiveSamplesInLocation() is available
+        // For now, racks can be deleted if no constraints (sample check will be added later)
+        return true;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String getDeleteConstraintMessage(Object locationEntity) {
+        if (locationEntity == null) {
+            return "Cannot delete location: location is null";
+        }
+
+        if (locationEntity instanceof StorageRoom) {
+            StorageRoom room = (StorageRoom) locationEntity;
+            int deviceCount = storageDeviceDAO.countByRoomId(room.getId());
+            if (deviceCount > 0) {
+                return String.format("Cannot delete Room '%s' because it contains %d device(s)", room.getName(),
+                        deviceCount);
+            }
+            // TODO: Add sample count check when available
+            return "Cannot delete room: unknown constraint";
+        } else if (locationEntity instanceof StorageDevice) {
+            StorageDevice device = (StorageDevice) locationEntity;
+            int shelfCount = storageShelfDAO.countByDeviceId(device.getId());
+            if (shelfCount > 0) {
+                return String.format("Cannot delete Device '%s' because it contains %d shelf(s)", device.getName(),
+                        shelfCount);
+            }
+            // TODO: Add sample count check when available
+            return "Cannot delete device: unknown constraint";
+        } else if (locationEntity instanceof StorageShelf) {
+            StorageShelf shelf = (StorageShelf) locationEntity;
+            int rackCount = storageRackDAO.countByShelfId(shelf.getId());
+            if (rackCount > 0) {
+                return String.format("Cannot delete Shelf '%s' because it contains %d rack(s)", shelf.getLabel(),
+                        rackCount);
+            }
+            // TODO: Add sample count check when available
+            return "Cannot delete shelf: unknown constraint";
+        } else if (locationEntity instanceof StorageRack) {
+            StorageRack rack = (StorageRack) locationEntity;
+            // TODO: Add sample count check when available
+            return "Cannot delete rack: unknown constraint";
+        }
+
+        return "Cannot delete location: unknown type";
     }
 }

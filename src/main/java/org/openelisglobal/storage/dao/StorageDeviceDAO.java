@@ -8,4 +8,12 @@ public interface StorageDeviceDAO extends BaseDAO<StorageDevice, Integer> {
     List<StorageDevice> findByParentRoomId(Integer roomId);
 
     StorageDevice findByParentRoomIdAndCode(Integer roomId, String code);
+
+    /**
+     * Count devices by parent room ID (for constraint validation)
+     * 
+     * @param roomId Parent room ID
+     * @return Count of devices in the room
+     */
+    int countByRoomId(Integer roomId);
 }

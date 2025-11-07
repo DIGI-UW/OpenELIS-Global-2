@@ -30,6 +30,9 @@ import { AlertDialog } from "../common/CustomNotification";
 import StorageLocationsMetricCard from "./StorageDashboard/StorageLocationsMetricCard";
 import LocationFilterDropdown from "./StorageDashboard/LocationFilterDropdown";
 import SampleActionsContainer from "./SampleStorage/SampleActionsContainer";
+import LocationActionsOverflowMenu from "./LocationManagement/LocationActionsOverflowMenu";
+import EditLocationModal from "./LocationManagement/EditLocationModal";
+import DeleteLocationModal from "./LocationManagement/DeleteLocationModal";
 import { useSampleStorage } from "./hooks/useSampleStorage";
 import "./StorageDashboard.css";
 
@@ -42,7 +45,7 @@ const StorageDashboard = () => {
   const componentMounted = useRef(true);
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { moveSample, isSubmitting: isMovingSample } = useSampleStorage();
+  const { assignSample, moveSample, isSubmitting: isMovingSample } = useSampleStorage();
 
   // Metric cards state
   const [metrics, setMetrics] = useState({
@@ -77,6 +80,110 @@ const StorageDashboard = () => {
   const [filterStatus, setFilterStatus] = useState("");
 
   const [loading, setLoading] = useState(true);
+
+  // Location CRUD modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [selectedLocationType, setSelectedLocationType] = useState(null);
+
+  // Handle Edit location
+  const handleEditLocation = (location) => {
+    setSelectedLocation(location);
+    // Determine location type from current tab (rooms -> room, devices -> device, etc.)
+    const tabName = TAB_ROUTES[selectedTab] || "rooms";
+    const locationType = tabName.slice(0, -1); // Remove 's' from plural (rooms -> room)
+    setSelectedLocationType(locationType);
+    setEditModalOpen(true);
+  };
+
+  // Handle Delete location
+  const handleDeleteLocation = (location) => {
+    setSelectedLocation(location);
+    // Determine location type from current tab (rooms -> room, devices -> device, etc.)
+    const tabName = TAB_ROUTES[selectedTab] || "rooms";
+    const locationType = tabName.slice(0, -1); // Remove 's' from plural (rooms -> room)
+    setSelectedLocationType(locationType);
+    setDeleteModalOpen(true);
+  };
+
+  // Handle Edit modal close
+  const handleEditModalClose = () => {
+    setEditModalOpen(false);
+    setSelectedLocation(null);
+    setSelectedLocationType(null);
+  };
+
+  // Handle Edit modal save
+  const handleEditModalSave = (updatedLocation) => {
+    // Refresh the appropriate table based on location type
+    const tabName = TAB_ROUTES[selectedTab] || "rooms";
+    switch (tabName) {
+      case "rooms":
+        loadRooms();
+        break;
+      case "devices":
+        loadDevices();
+        break;
+      case "shelves":
+        loadShelves();
+        break;
+      case "racks":
+        loadRacks();
+        break;
+    }
+    // Show success notification
+    addNotification({
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({
+        id: "storage.edit.location.success",
+        defaultMessage: "Location updated successfully",
+      }),
+      kind: "success",
+    });
+    setNotificationVisible(true);
+    handleEditModalClose();
+  };
+
+  // Handle Delete modal close
+  const handleDeleteModalClose = () => {
+    setDeleteModalOpen(false);
+    setSelectedLocation(null);
+    setSelectedLocationType(null);
+  };
+
+  // Handle Delete modal confirm
+  const handleDeleteModalConfirm = (deletedLocation) => {
+    // Refresh the appropriate table based on location type
+    const tabName = TAB_ROUTES[selectedTab] || "rooms";
+    switch (tabName) {
+      case "rooms":
+        loadRooms();
+        break;
+      case "devices":
+        loadDevices();
+        break;
+      case "shelves":
+        loadShelves();
+        break;
+      case "racks":
+        loadRacks();
+        break;
+    }
+    // Refresh metrics
+    loadMetrics();
+    // Show success notification
+    addNotification({
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({
+        id: "storage.delete.location.success",
+        defaultMessage: "Location deleted successfully",
+      }),
+      kind: "success",
+    });
+    setNotificationVisible(true);
+    handleDeleteModalClose();
+  };
 
   // Determine which filters should be visible based on active tab
   const getVisibleFilters = () => {
@@ -924,9 +1031,11 @@ const StorageDashboard = () => {
         </Tag>
       ),
       actions: (
-        <Button kind="ghost" size="sm">
-          ⋮
-        </Button>
+        <LocationActionsOverflowMenu
+          location={room}
+          onEdit={handleEditLocation}
+          onDelete={handleDeleteLocation}
+        />
       ),
     }));
   };
@@ -989,9 +1098,11 @@ const StorageDashboard = () => {
           </Tag>
         ),
         actions: (
-          <Button kind="ghost" size="sm">
-            ⋮
-          </Button>
+          <LocationActionsOverflowMenu
+            location={device}
+            onEdit={handleEditLocation}
+            onDelete={handleDeleteLocation}
+          />
         ),
       };
     });
@@ -1042,9 +1153,11 @@ const StorageDashboard = () => {
           </Tag>
         ),
         actions: (
-          <Button kind="ghost" size="sm">
-            ⋮
-          </Button>
+          <LocationActionsOverflowMenu
+            location={shelf}
+            onEdit={handleEditLocation}
+            onDelete={handleDeleteLocation}
+          />
         ),
       };
     });
@@ -1098,9 +1211,11 @@ const StorageDashboard = () => {
           </Tag>
         ),
         actions: (
-          <Button kind="ghost" size="sm">
-            ⋮
-          </Button>
+          <LocationActionsOverflowMenu
+            location={rack}
+            onEdit={handleEditLocation}
+            onDelete={handleDeleteLocation}
+          />
         ),
       };
     });
@@ -1137,40 +1252,51 @@ const StorageDashboard = () => {
             status: sample.status || "Active",
             location: sample.location || sample.hierarchicalPath || "",
           }}
-          onMoveConfirm={async (moveData) => {
-            // moveData format: { sample: { id, sampleId, type, status }, newLocation: {...}, reason: "..." }
-            const { sample, newLocation, reason } = moveData;
+          onLocationConfirm={async (locationData) => {
+            // locationData format: { sample: { id, sampleId, type, status }, newLocation: {...}, reason?: "...", conditionNotes?: "...", positionCoordinate?: "..." }
+            // positionCoordinate can come from:
+            // 1. Direct positionCoordinate field in locationData (from LocationManagementModal)
+            // 2. newLocation.positionCoordinate (from location object)
+            // 3. newLocation.position?.coordinate (from nested position object)
+            const { sample, newLocation, reason, conditionNotes, positionCoordinate: directPositionCoordinate } = locationData;
+            const positionCoordinate = directPositionCoordinate || newLocation?.positionCoordinate || newLocation?.position?.coordinate || null;
+            
+            // Determine if this is assignment (no current location) or movement (location exists)
+            const isAssignment = !sample.location || !sample.location.trim();
 
             try {
               // NEW FLEXIBLE ASSIGNMENT ARCHITECTURE:
               // Extract locationId, locationType (device/shelf/rack), and optional positionCoordinate
               // No longer need to find/create StoragePosition entities
+              // positionCoordinate is already extracted above from locationData
 
               let locationId = null;
               let locationType = null;
-              let positionCoordinate = null;
+              // Use positionCoordinate extracted from locationData above (line 1147)
+              // If not found in locationData, try to extract from newLocation object
+              let finalPositionCoordinate = positionCoordinate;
 
               // Determine locationId and locationType based on selected hierarchy level
               // Priority: rack > shelf > device (lowest selected level wins)
               if (newLocation.rack && newLocation.rack.id) {
                 locationId = newLocation.rack.id;
                 locationType = "rack";
-                // Extract positionCoordinate if provided (from position input field)
-                positionCoordinate =
+                // Use positionCoordinate from locationData if available, otherwise try newLocation
+                finalPositionCoordinate = positionCoordinate ||
                   newLocation.position?.coordinate ||
                   newLocation.positionCoordinate ||
                   null;
               } else if (newLocation.shelf && newLocation.shelf.id) {
                 locationId = newLocation.shelf.id;
                 locationType = "shelf";
-                positionCoordinate =
+                finalPositionCoordinate = positionCoordinate ||
                   newLocation.position?.coordinate ||
                   newLocation.positionCoordinate ||
                   null;
               } else if (newLocation.device && newLocation.device.id) {
                 locationId = newLocation.device.id;
                 locationType = "device";
-                positionCoordinate =
+                finalPositionCoordinate = positionCoordinate ||
                   newLocation.position?.coordinate ||
                   newLocation.positionCoordinate ||
                   null;
@@ -1183,7 +1309,7 @@ const StorageDashboard = () => {
                 ) {
                   locationId = newLocation.id;
                   locationType = newLocation.type;
-                  positionCoordinate = newLocation.positionCoordinate || null;
+                  finalPositionCoordinate = positionCoordinate || newLocation.positionCoordinate || null;
                 } else if (newLocation.type === "room") {
                   // Room alone is not sufficient - need at least device
                   throw new Error(
@@ -1212,7 +1338,7 @@ const StorageDashboard = () => {
                 // If we have room+device but no specific shelf/rack, use device level
                 locationId = newLocation.device.id;
                 locationType = "device";
-                positionCoordinate =
+                finalPositionCoordinate = positionCoordinate ||
                   newLocation.position?.coordinate ||
                   newLocation.positionCoordinate ||
                   null;
@@ -1224,49 +1350,90 @@ const StorageDashboard = () => {
                 );
               }
 
-              // Build movement data using new flexible assignment format
-              const movementData = {
-                sampleId: sample.sampleId || sample.id,
-                locationId: locationId,
-                locationType: locationType,
-                positionCoordinate: positionCoordinate || null,
-                reason: reason || null,
-              };
+              // Build location data using new flexible assignment format
+              let locationPayload;
+              if (isAssignment) {
+                // Assignment mode - use assign endpoint
+                // SampleAssignmentForm expects: sampleId, locationId, locationType, positionCoordinate, notes
+                locationPayload = {
+                  sampleId: sample.sampleId || sample.id,
+                  locationId: locationId,
+                  locationType: locationType,
+                  positionCoordinate: finalPositionCoordinate || null,
+                  notes: conditionNotes || null, // Assignment form uses "notes" field
+                };
+                const response = await assignSample(locationPayload);
+                
+                // Refresh samples table and metrics after successful assignment
+                loadSamples();
+                loadMetrics();
 
-              const moveResponse = await moveSample(movementData);
-
-              // Refresh samples table and metrics after successful move
-              loadSamples();
-              loadMetrics();
-
-              // Show success notification
-              addNotification({
-                title: intl.formatMessage({ id: "notification.title" }),
-                message: intl.formatMessage({
-                  id: "storage.move.success",
-                  defaultMessage: "Sample moved successfully",
-                }),
-                kind: "success",
-              });
-              setNotificationVisible(true);
-
-              // Show shelf capacity warning if present (informational only)
-              if (moveResponse.shelfCapacityWarning) {
+                // Show success notification
                 addNotification({
                   title: intl.formatMessage({ id: "notification.title" }),
-                  message: moveResponse.shelfCapacityWarning,
-                  kind: "warning",
+                  message: intl.formatMessage({
+                    id: "storage.assign.success",
+                    defaultMessage: "Storage location assigned successfully",
+                  }),
+                  kind: "success",
                 });
                 setNotificationVisible(true);
+
+                // Show shelf capacity warning if present (informational only)
+                if (response.shelfCapacityWarning) {
+                  addNotification({
+                    title: intl.formatMessage({ id: "notification.title" }),
+                    message: response.shelfCapacityWarning,
+                    kind: "warning",
+                  });
+                  setNotificationVisible(true);
+                }
+              } else {
+                // Movement mode - use move endpoint
+                // SampleMovementForm expects: sampleId, locationId, locationType, positionCoordinate, reason
+                // Note: conditionNotes is NOT supported in movement form
+                locationPayload = {
+                  sampleId: sample.sampleId || sample.id,
+                  locationId: locationId,
+                  locationType: locationType,
+                  positionCoordinate: finalPositionCoordinate || null,
+                  reason: reason || null, // Movement form uses "reason" field
+                };
+                const response = await moveSample(locationPayload);
+
+                // Refresh samples table and metrics after successful move
+                loadSamples();
+                loadMetrics();
+
+                // Show success notification
+                addNotification({
+                  title: intl.formatMessage({ id: "notification.title" }),
+                  message: intl.formatMessage({
+                    id: "storage.move.success",
+                    defaultMessage: "Sample moved successfully",
+                  }),
+                  kind: "success",
+                });
+                setNotificationVisible(true);
+
+                // Show shelf capacity warning if present (informational only)
+                if (response.shelfCapacityWarning) {
+                  addNotification({
+                    title: intl.formatMessage({ id: "notification.title" }),
+                    message: response.shelfCapacityWarning,
+                    kind: "warning",
+                  });
+                  setNotificationVisible(true);
+                }
               }
             } catch (error) {
-              console.error("Failed to move sample:", error);
+              console.error(`Failed to ${isAssignment ? 'assign' : 'move'} sample:`, error);
               addNotification({
                 title: intl.formatMessage({ id: "notification.title" }),
                 message:
                   intl.formatMessage({
-                    id: "storage.move.error",
-                    defaultMessage: "Failed to move sample",
+                    id: isAssignment ? "storage.assign.error" : "storage.move.error",
+                    defaultMessage: isAssignment ? "Failed to assign storage location" : "Failed to move sample",
                   }) + (error.message ? `: ${error.message}` : ""),
                 kind: "error",
               });
@@ -1281,10 +1448,6 @@ const StorageDashboard = () => {
               notes,
             });
             // TODO: Implement API call to dispose sample
-          }}
-          onViewStorageSave={(sample, location) => {
-            console.log("Save storage location", { sample, location });
-            // TODO: Implement API call to save/update location
           }}
           onNotification={addNotification}
         />
@@ -2485,6 +2648,22 @@ const StorageDashboard = () => {
           </Tabs>
         </Column>
       </Grid>
+
+      {/* Location CRUD Modals */}
+      <EditLocationModal
+        open={editModalOpen}
+        location={selectedLocation}
+        locationType={selectedLocationType}
+        onClose={handleEditModalClose}
+        onSave={handleEditModalSave}
+      />
+      <DeleteLocationModal
+        open={deleteModalOpen}
+        location={selectedLocation}
+        locationType={selectedLocationType}
+        onClose={handleDeleteModalClose}
+        onDelete={handleDeleteModalConfirm}
+      />
     </div>
   );
 };

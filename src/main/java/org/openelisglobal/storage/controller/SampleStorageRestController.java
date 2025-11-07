@@ -126,10 +126,22 @@ public class SampleStorageRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
 
+            // Log incoming request for debugging
+            if (logger.isDebugEnabled()) {
+                logger.debug("Assigning sample {} to location: locationId={}, locationType={}, positionCoordinate={}", 
+                    form.getSampleId(), form.getLocationId(), form.getLocationType(), form.getPositionCoordinate());
+            }
+
             // Service layer prepares all data including hierarchical path within
             // transaction
             Map<String, Object> response = sampleStorageService.assignSampleWithLocation(form.getSampleId(),
                     form.getLocationId(), form.getLocationType(), form.getPositionCoordinate(), form.getNotes());
+
+            // Log successful assignment
+            if (logger.isInfoEnabled()) {
+                logger.info("Sample {} assigned successfully to locationId={}, locationType={}, positionCoordinate={}", 
+                    form.getSampleId(), form.getLocationId(), form.getLocationType(), form.getPositionCoordinate());
+            }
 
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
@@ -168,9 +180,21 @@ public class SampleStorageRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
 
+            // Log incoming request for debugging
+            if (logger.isDebugEnabled()) {
+                logger.debug("Moving sample {} to location: locationId={}, locationType={}, positionCoordinate={}", 
+                    form.getSampleId(), form.getLocationId(), form.getLocationType(), form.getPositionCoordinate());
+            }
+
             // Service layer handles all business logic
             String movementId = sampleStorageService.moveSampleWithLocation(form.getSampleId(), form.getLocationId(),
                     form.getLocationType(), form.getPositionCoordinate(), form.getReason());
+
+            // Log successful movement
+            if (logger.isInfoEnabled()) {
+                logger.info("Sample {} moved successfully to locationId={}, locationType={}, positionCoordinate={}, movementId={}", 
+                    form.getSampleId(), form.getLocationId(), form.getLocationType(), form.getPositionCoordinate(), movementId);
+            }
 
             // Build hierarchical path for new location
             Integer locationIdInt = Integer.parseInt(form.getLocationId());

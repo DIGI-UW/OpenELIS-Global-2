@@ -417,5 +417,106 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
         assertNotNull(json.get("newHierarchicalPath"));
         assertTrue(json.get("newHierarchicalPath").asText().contains("Rack-1"));
         assertTrue(json.get("newHierarchicalPath").asText().contains("C7"));
+
+        // Verify positionCoordinate is saved in database
+        Map<String, Object> assignmentRecord = jdbcTemplate
+                .queryForMap("SELECT * FROM sample_storage_assignment WHERE sample_id = ?", Integer.parseInt(sampleId));
+        assertEquals("Position coordinate should be saved", "C7", assignmentRecord.get("position_coordinate"));
+
+        // Verify positionCoordinate is saved in movement record
+        com.fasterxml.jackson.databind.JsonNode moveResponseJson = objectMapper.readTree(response);
+        String movementId = moveResponseJson.get("movementId").asText();
+        Map<String, Object> movementRecord = jdbcTemplate
+                .queryForMap("SELECT * FROM sample_storage_movement WHERE id = ?", Integer.parseInt(movementId));
+        assertEquals("New position coordinate should be saved in movement", "C7",
+                movementRecord.get("new_position_coordinate"));
+    }
+
+    /**
+     * Test: Assign sample with positionCoordinate - verifies positionCoordinate is saved
+     */
+    @Test
+    public void testAssignSample_WithPositionCoordinate_SavesToDatabase() throws Exception {
+        // Setup
+        String sampleId = createSampleAndGetId();
+        String roomId = createRoomAndGetId("Test Room", "TEST-ROOM-" + System.currentTimeMillis());
+        String deviceId = createDeviceAndGetId("Test Device", "TEST-DEV-" + System.currentTimeMillis(), "freezer",
+                roomId);
+
+        // Assign to device with position coordinate
+        SampleAssignmentForm assignForm = new SampleAssignmentForm();
+        assignForm.setSampleId(sampleId);
+        assignForm.setLocationId(deviceId);
+        assignForm.setLocationType("device");
+        assignForm.setPositionCoordinate("A1");
+        assignForm.setNotes("Initial assignment with position");
+
+        // Execute
+        String response = mockMvc
+                .perform(post("/rest/storage/samples/assign").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(assignForm)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+
+        // Verify
+        com.fasterxml.jackson.databind.JsonNode json = objectMapper.readTree(response);
+        assertNotNull(json.get("assignmentId"));
+
+        // Verify positionCoordinate is saved in database
+        Map<String, Object> assignmentRecord = jdbcTemplate
+                .queryForMap("SELECT * FROM sample_storage_assignment WHERE sample_id = ?", Integer.parseInt(sampleId));
+        assertEquals("Position coordinate should be saved", "A1", assignmentRecord.get("position_coordinate"));
+    }
+
+    /**
+     * Test: Move sample with positionCoordinate - verifies positionCoordinate is saved in both assignment and movement
+     */
+    @Test
+    public void testMoveSample_WithPositionCoordinate_SavesToDatabase() throws Exception {
+        // Setup - create assignment first
+        String sampleId = createSampleAndGetId();
+        String roomId = createRoomAndGetId("Test Room", "TEST-ROOM-" + System.currentTimeMillis());
+        String deviceId = createDeviceAndGetId("Test Device", "TEST-DEV-" + System.currentTimeMillis(), "freezer",
+                roomId);
+        String shelfId = createShelfAndGetId("Shelf-A", deviceId);
+
+        // Assign to device with initial position
+        SampleAssignmentForm assignForm = new SampleAssignmentForm();
+        assignForm.setSampleId(sampleId);
+        assignForm.setLocationId(deviceId);
+        assignForm.setLocationType("device");
+        assignForm.setPositionCoordinate("A1");
+        assignForm.setNotes("Initial assignment");
+
+        mockMvc.perform(post("/rest/storage/samples/assign").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(assignForm))).andExpect(status().isCreated());
+
+        // Move to shelf with new position coordinate
+        SampleMovementForm moveForm = new SampleMovementForm();
+        moveForm.setSampleId(sampleId);
+        moveForm.setLocationId(shelfId);
+        moveForm.setLocationType("shelf");
+        moveForm.setPositionCoordinate("B5");
+        moveForm.setReason("Moving to shelf with position");
+
+        // Execute
+        String response = mockMvc
+                .perform(post("/rest/storage/samples/move").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(moveForm)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        // Verify positionCoordinate is updated in assignment
+        Map<String, Object> assignmentRecord = jdbcTemplate
+                .queryForMap("SELECT * FROM sample_storage_assignment WHERE sample_id = ?", Integer.parseInt(sampleId));
+        assertEquals("Position coordinate should be updated in assignment", "B5",
+                assignmentRecord.get("position_coordinate"));
+
+        // Verify positionCoordinate is saved in movement record (both previous and new)
+        com.fasterxml.jackson.databind.JsonNode moveResponseJson = objectMapper.readTree(response);
+        String movementId = moveResponseJson.get("movementId").asText();
+        Map<String, Object> movementRecord = jdbcTemplate
+                .queryForMap("SELECT * FROM sample_storage_movement WHERE id = ?", Integer.parseInt(movementId));
+        assertEquals("Previous position coordinate should be saved", "A1",
+                movementRecord.get("previous_position_coordinate"));
+        assertEquals("New position coordinate should be saved", "B5", movementRecord.get("new_position_coordinate"));
     }
 }

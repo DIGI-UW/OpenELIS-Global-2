@@ -303,7 +303,7 @@ const LocationSearchAndCreate = ({
 
     setInternalSelectedLocation(convertedLocation);
 
-    // CRITICAL: Call onLocationChange to notify parent (MoveSampleModal)
+    // CRITICAL: Call onLocationChange to notify parent (LocationManagementModal)
     // This ensures the Selected Location preview appears and Confirm button is enabled
     // Add locationId, locationType, and positionCoordinate for flexible assignment architecture
     if (onLocationChange) {
@@ -385,7 +385,7 @@ const LocationSearchAndCreate = ({
     setInternalSelectedLocation(location);
 
     // CRITICAL: Build location object with type, hierarchical_path, locationId, locationType, and positionCoordinate
-    // for parent (MoveSampleModal) - flexible assignment architecture
+    // for parent (LocationManagementModal) - flexible assignment architecture
     // This ensures parent gets notified immediately and can display full path and enable button
     let locationId = null;
     let locationType = null;
@@ -553,7 +553,7 @@ const LocationSearchAndCreate = ({
     if (selectedCount >= 2 && internalSelectedLocation) {
       // At least 2 levels selected - valid location
       // CRITICAL: Build hierarchical_path from cascading format to match search format
-      // This ensures MoveSampleModal can display the full path and validate consistently
+      // This ensures LocationManagementModal can display the full path and validate consistently
       const locationToPass = {
         ...internalSelectedLocation,
       };

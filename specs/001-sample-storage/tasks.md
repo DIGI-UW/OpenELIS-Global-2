@@ -1360,7 +1360,7 @@ other user story work.
 
 ### Tests First - Update Unit Tests for Consolidated Modal
 
-- [ ] T200 [P] Update unit test
+- [X] T200 [P] Update unit test
       `frontend/src/components/storage/SampleStorage/LocationManagementModal.test.jsx`
       (rename from MoveSampleModal.test.jsx): Update test suite to validate
       consolidated modal behavior: testDisplaysModalTitle_DynamicBasedOnLocation
@@ -1376,7 +1376,7 @@ other user story work.
       preview updates in real-time), testValidation_PreventsMovingToSameLocation
       (when moving, validates new location different from current)
 
-- [ ] T201 [P] Update unit test
+- [X] T201 [P] Update unit test
       `frontend/src/components/storage/SampleStorage/SampleActionsOverflowMenu.test.jsx`:
       Update test suite to validate consolidated menu: testOverflowMenu_RendersThreeItems
       (menu renders with Manage Location, Dispose, View Audit), testOverflowMenu_ManageLocationOpensModal
@@ -1384,11 +1384,11 @@ other user story work.
       testOverflowMenu_ViewAuditIsDisabled (View Audit is disabled), remove tests
       for separate Move and View Storage menu items
 
-- [ ] T202 [P] Delete unit test file
+- [X] T202 [P] Delete unit test file
       `frontend/src/components/storage/SampleStorage/ViewStorageModal.test.jsx` (no
       longer needed - functionality consolidated into LocationManagementModal)
 
-- [ ] T203 Run frontend unit tests → Verify updated tests FAIL (implementation not
+- [X] T203 Run frontend unit tests → Verify updated tests FAIL (implementation not
       yet updated): `npm test -- LocationManagementModal SampleActionsOverflowMenu`
 
 ### Tests First - Update E2E Tests for Consolidated Modal
@@ -1419,7 +1419,7 @@ other user story work.
 
 ### Implementation - Create Consolidated LocationManagementModal
 
-- [ ] T208 [US2B] Create LocationManagementModal component
+- [X] T208 [US2B] Create LocationManagementModal component
       `frontend/src/components/storage/SampleStorage/LocationManagementModal.jsx`:
       Start with existing MoveSampleModal.jsx as foundation, extend to support both
       assignment and movement: Add logic to detect if sample has location
@@ -1431,54 +1431,54 @@ other user story work.
       existence, update API call to handle both assignment and movement (use
       appropriate endpoint based on mode)
 
-- [ ] T209 [US2B] Update SampleActionsOverflowMenu component
+- [X] T209 [US2B] Update SampleActionsOverflowMenu component
       `frontend/src/components/storage/SampleStorage/SampleActionsOverflowMenu.jsx`:
       Replace "Move" and "View Storage" menu items with single "Manage Location"
       menu item, update onClick handler to open LocationManagementModal, update
       internationalization message keys
 
-- [ ] T210 [US2B] Update SampleActionsContainer component
+- [X] T210 [US2B] Update SampleActionsContainer component
       `frontend/src/components/storage/SampleStorage/SampleActionsContainer.jsx`:
       Replace MoveSampleModal and ViewStorageModal imports with LocationManagementModal,
       update state management to use single modal, update handlers to use
       consolidated modal, remove separate moveModalOpen and viewStorageModalOpen
       state variables
 
-- [ ] T211 [US2B] Update StorageDashboard component
+- [X] T211 [US2B] Update StorageDashboard component
       `frontend/src/components/storage/StorageDashboard.jsx`: Update references from
       MoveSampleModal/ViewStorageModal to LocationManagementModal, verify
       SampleActionsContainer integration works correctly
 
 ### Implementation - Update API Integration
 
-- [ ] T212 [US2B] Update LocationManagementModal API calls
+- [X] T212 [US2B] Update LocationManagementModal API calls
       `frontend/src/components/storage/SampleStorage/LocationManagementModal.jsx`:
       Implement logic to call POST /rest/storage/samples/assign for assignment mode
       (no existing location), implement logic to call POST /rest/storage/samples/move
       for movement mode (location exists), handle response and error states
-      appropriately
+      appropriately (implemented in StorageDashboard.jsx onLocationConfirm handler)
 
 ### Cleanup - Remove Artifacts from Previous Approach
 
-- [ ] T213 Delete MoveSampleModal component file
+- [X] T213 Delete MoveSampleModal component file
       `frontend/src/components/storage/SampleStorage/MoveSampleModal.jsx` (functionality
       consolidated into LocationManagementModal)
 
-- [ ] T214 Delete ViewStorageModal component file
+- [X] T214 Delete ViewStorageModal component file
       `frontend/src/components/storage/SampleStorage/ViewStorageModal.jsx` (functionality
       consolidated into LocationManagementModal)
 
-- [ ] T215 Delete MoveSampleModal CSS file
+- [X] T215 Delete MoveSampleModal CSS file
       `frontend/src/components/storage/SampleStorage/MoveSampleModal.css` (if exists,
       styles should be moved to LocationManagementModal.css)
 
-- [ ] T216 [P] Search codebase for references to MoveSampleModal: Use grep to find
+- [X] T216 [P] Search codebase for references to MoveSampleModal: Use grep to find
       all imports and references to MoveSampleModal, verify all references updated
-      or removed
+      or removed (all references updated to LocationManagementModal)
 
-- [ ] T217 [P] Search codebase for references to ViewStorageModal: Use grep to find
+- [X] T217 [P] Search codebase for references to ViewStorageModal: Use grep to find
       all imports and references to ViewStorageModal, verify all references updated
-      or removed
+      or removed (all references updated to LocationManagementModal)
 
 - [ ] T218 [P] Search codebase for "Move" menu item text: Verify no hardcoded "Move"
       menu item text remains (should be "Manage Location"), check internationalization
@@ -1535,126 +1535,126 @@ separate "Move" and "View Storage" items.
 
 ### Tests First - Backend Integration Tests (Write BEFORE implementation)
 
-- [ ] T099 [P] Write integration test
+- [x] T099 [P] Write integration test
       `src/test/java/org/openelisglobal/storage/controller/StorageLocationRestControllerTest.java`
       for Edit Location operations: testUpdateRoom_UpdatesEditableFields (update room name, description, status), testUpdateRoom_CodeReadOnly (attempt to update code, verify rejected or ignored), testUpdateDevice_UpdatesEditableFields (update device name, type, temperature, capacity), testUpdateDevice_ParentReadOnly (attempt to change parent room, verify rejected), testUpdateShelf_UpdatesEditableFields (update shelf label, capacity, status), testUpdateRack_UpdatesEditableFields (update rack label, dimensions, status), testUpdateLocation_CodeUniquenessValidation (attempt duplicate code, verify error), testUpdateLocation_InvalidData_Returns400 (invalid field values return 400)
 
-- [ ] T100 [P] Write integration test
+- [x] T100 [P] Write integration test
       `src/test/java/org/openelisglobal/storage/controller/StorageLocationRestControllerTest.java`
       for Delete Location operations: testDeleteRoom_WithChildDevices_ReturnsError (cannot delete room with devices), testDeleteRoom_WithActiveSamples_ReturnsError (cannot delete room with active samples), testDeleteRoom_NoConstraints_DeletesSuccessfully (delete room with no children/samples), testDeleteDevice_WithChildShelves_ReturnsError (cannot delete device with shelves), testDeleteDevice_WithActiveSamples_ReturnsError (cannot delete device with active samples), testDeleteShelf_WithChildRacks_ReturnsError (cannot delete shelf with racks), testDeleteRack_WithActiveSamples_ReturnsError (cannot delete rack with active samples), testDeleteLocation_ReturnsConstraintMessage (error message includes specific reason), testDeleteLocation_ConfirmationRequired (successful deletion requires confirmation, handled in frontend)
 
-- [ ] T101 Run backend integration tests → Verify all FAIL:
+- [x] T101 Run backend integration tests → Verify all FAIL:
       `mvn test -Dtest="StorageLocationRestControllerTest"`
 
 ### Tests First - Backend Service Unit Tests (Write BEFORE implementation)
 
-- [ ] T102 [P] Write unit test
+- [x] T102 [P] Write unit test
       `src/test/java/org/openelisglobal/storage/service/StorageLocationServiceImplTest.java`
       for constraint validation: testValidateDeleteConstraints_RoomWithDevices_ReturnsFalse (room with devices cannot be deleted), testValidateDeleteConstraints_RoomWithActiveSamples_ReturnsFalse (room with samples cannot be deleted), testValidateDeleteConstraints_DeviceWithShelves_ReturnsFalse (device with shelves cannot be deleted), testValidateDeleteConstraints_LocationNoConstraints_ReturnsTrue (location with no constraints can be deleted), testGetDeleteConstraintMessage_RoomWithDevices_ReturnsMessage (error message for room with devices), testGetDeleteConstraintMessage_DeviceWithSamples_ReturnsMessage (error message for device with samples)
 
-- [ ] T103 [P] Write unit test
+- [x] T103 [P] Write unit test
       `src/test/java/org/openelisglobal/storage/service/StorageLocationServiceImplTest.java`
       for update validation: testUpdateLocation_CodeUniquenessCheck (verify code uniqueness validation), testUpdateLocation_ReadOnlyFieldsIgnored (code and Parent fields not updated even if provided)
 
-- [ ] T104 Run backend service unit tests → Verify all FAIL:
+- [x] T104 Run backend service unit tests → Verify all FAIL:
       `mvn test -Dtest="StorageLocationServiceImplTest"`
 
 ### Tests First - Frontend Unit Tests (Write BEFORE implementation)
 
-- [ ] T105 [P] Write unit test
+- [x] T105 [P] Write unit test
       `frontend/src/components/storage/__tests__/LocationActionsOverflowMenu.test.jsx`
       for overflow menu: testOverflowMenu_RendersEditAndDelete (menu renders with Edit and Delete items), testOverflowMenu_EditOpensModal (clicking Edit opens EditLocationModal), testOverflowMenu_DeleteOpensModal (clicking Delete opens DeleteLocationModal), testOverflowMenu_KeyboardAccessible (menu accessible via keyboard navigation)
 
-- [ ] T106 [P] Write unit test
+- [x] T106 [P] Write unit test
       `frontend/src/components/storage/__tests__/EditLocationModal.test.jsx`
       for edit modal: testEditModal_RendersForRoom (modal renders with Room fields), testEditModal_RendersForDevice (modal renders with Device fields), testEditModal_CodeFieldReadOnly (code field is disabled/read-only), testEditModal_ParentFieldReadOnly (parent field is disabled/read-only), testEditModal_EditableFieldsEnabled (name, description, status fields are editable), testEditModal_ValidationErrors (displays validation errors for duplicate code), testEditModal_SaveCallsAPI (save button calls PUT endpoint), testEditModal_CancelClosesModal (cancel button closes modal without saving)
 
-- [ ] T107 [P] Write unit test
+- [x] T107 [P] Write unit test
       `frontend/src/components/storage/__tests__/DeleteLocationModal.test.jsx`
       for delete modal: testDeleteModal_WithConstraints_ShowsError (shows error message if constraints exist), testDeleteModal_NoConstraints_ShowsConfirmation (shows confirmation dialog if no constraints), testDeleteModal_ConfirmationRequired (confirm button disabled until user confirms), testDeleteModal_DeleteCallsAPI (delete button calls DELETE endpoint), testDeleteModal_CancelClosesModal (cancel button closes modal without deleting)
 
-- [ ] T108 Run frontend unit tests → Verify all FAIL:
+- [x] T108 Run frontend unit tests → Verify all FAIL:
       `npm test -- LocationActionsOverflowMenu.test.jsx EditLocationModal.test.jsx DeleteLocationModal.test.jsx`
 
 ### Implementation - Backend Service Layer
 
-- [ ] T109 Add validateDeleteConstraints() method to StorageLocationService interface
+- [x] T109 Add validateDeleteConstraints() method to StorageLocationService interface
       `src/main/java/org/openelisglobal/storage/service/StorageLocationService.java`: Method signature `boolean validateDeleteConstraints(Object locationEntity)` - Check for child locations and active samples
 
-- [ ] T110 Add canDeleteLocation() method to StorageLocationService interface
+- [x] T110 Add canDeleteLocation() method to StorageLocationService interface
       `src/main/java/org/openelisglobal/storage/service/StorageLocationService.java`: Method signature `boolean canDeleteLocation(Object locationEntity)` - Returns boolean with reason if false
 
-- [ ] T111 Add getDeleteConstraintMessage() method to StorageLocationService interface
+- [x] T111 Add getDeleteConstraintMessage() method to StorageLocationService interface
       `src/main/java/org/openelisglobal/storage/service/StorageLocationService.java`: Method signature `String getDeleteConstraintMessage(Object locationEntity)` - Returns user-friendly error message
 
-- [ ] T112 Implement validateDeleteConstraints() method in StorageLocationServiceImpl
+- [x] T112 Implement validateDeleteConstraints() method in StorageLocationServiceImpl
       `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`: Check for child locations (room has devices, device has shelves, shelf has racks), check for active samples in location or child locations, return false if constraints exist
 
-- [ ] T113 Implement canDeleteRoom() method in StorageLocationServiceImpl
+- [x] T113 Implement canDeleteRoom() method in StorageLocationServiceImpl
       `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`: Check deviceDAO.countByRoomId(room.getId()) > 0, check sampleStorageService.hasActiveSamplesInLocation(room.getId(), "room"), return false if constraints exist
 
-- [ ] T114 Implement canDeleteDevice() method in StorageLocationServiceImpl
+- [x] T114 Implement canDeleteDevice() method in StorageLocationServiceImpl
       `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`: Check shelfDAO.countByDeviceId(device.getId()) > 0, check sampleStorageService.hasActiveSamplesInLocation(device.getId(), "device"), return false if constraints exist
 
-- [ ] T115 Implement canDeleteShelf() method in StorageLocationServiceImpl
+- [x] T115 Implement canDeleteShelf() method in StorageLocationServiceImpl
       `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`: Check rackDAO.countByShelfId(shelf.getId()) > 0, check sampleStorageService.hasActiveSamplesInLocation(shelf.getId(), "shelf"), return false if constraints exist
 
-- [ ] T116 Implement canDeleteRack() method in StorageLocationServiceImpl
+- [x] T116 Implement canDeleteRack() method in StorageLocationServiceImpl
       `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`: Check sampleStorageService.hasActiveSamplesInLocation(rack.getId(), "rack"), return false if constraints exist
 
-- [ ] T117 Implement getDeleteConstraintMessage() method in StorageLocationServiceImpl
+- [x] T117 Implement getDeleteConstraintMessage() method in StorageLocationServiceImpl
       `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`: Return user-friendly error message (e.g., "Cannot delete Room 'Main Laboratory' because it contains 8 devices" or "Cannot delete Device 'Freezer Unit 1' because 287 active samples are stored there")
 
-- [ ] T118 Update update() methods in StorageLocationServiceImpl to ignore Code and Parent fields
+- [x] T118 Update update() methods in StorageLocationServiceImpl to ignore Code and Parent fields
       `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`: Update updateRoom(), updateDevice(), updateShelf(), updateRack() methods to ignore code and parent fields if provided in request, only update editable fields (name, description, status, type, temperature, capacity, dimensions)
 
-- [ ] T119 Run backend service unit tests → Verify all PASS:
+- [x] T119 Run backend service unit tests → Verify all PASS:
       `mvn test -Dtest="StorageLocationServiceImplTest"`
 
 ### Implementation - Backend REST Controllers
 
-- [ ] T120 Update PUT /rest/storage/rooms/{id} endpoint in StorageLocationRestController
+- [x] T120 Update PUT /rest/storage/rooms/{id} endpoint in StorageLocationRestController
       `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`: Ensure endpoint validates editable fields only (name, description, active), ignores code field if provided, returns 400 for validation errors (duplicate code, invalid data), returns 404 if room not found
 
-- [ ] T121 [P] Update PUT /rest/storage/devices/{id} endpoint in StorageLocationRestController
+- [x] T121 [P] Update PUT /rest/storage/devices/{id} endpoint in StorageLocationRestController
       `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`: Ensure endpoint validates editable fields only (name, type, temperature, capacity, active), ignores code and parentRoom fields if provided, returns 400 for validation errors, returns 404 if device not found
 
-- [ ] T122 [P] Update PUT /rest/storage/shelves/{id} endpoint in StorageLocationRestController
+- [x] T122 [P] Update PUT /rest/storage/shelves/{id} endpoint in StorageLocationRestController
       `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`: Ensure endpoint validates editable fields only (label, capacity, active), ignores parentDevice field if provided, returns 400 for validation errors, returns 404 if shelf not found
 
-- [ ] T123 [P] Update PUT /rest/storage/racks/{id} endpoint in StorageLocationRestController
+- [x] T123 [P] Update PUT /rest/storage/racks/{id} endpoint in StorageLocationRestController
       `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`: Ensure endpoint validates editable fields only (label, dimensions rows/columns, positionSchemaHint, active), ignores parentShelf field if provided, returns 400 for validation errors, returns 404 if rack not found
 
-- [ ] T124 Add DELETE /rest/storage/rooms/{id} endpoint in StorageLocationRestController
+- [x] T124 Add DELETE /rest/storage/rooms/{id} endpoint in StorageLocationRestController
       `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`: Validate constraints using canDeleteRoom(), return 409 Conflict with constraint message if constraints exist, return 200 if deletion successful, return 404 if room not found
 
-- [ ] T125 [P] Add DELETE /rest/storage/devices/{id} endpoint in StorageLocationRestController
+- [x] T125 [P] Add DELETE /rest/storage/devices/{id} endpoint in StorageLocationRestController
       `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`: Validate constraints using canDeleteDevice(), return 409 Conflict with constraint message if constraints exist, return 200 if deletion successful, return 404 if device not found
 
-- [ ] T126 [P] Add DELETE /rest/storage/shelves/{id} endpoint in StorageLocationRestController
+- [x] T126 [P] Add DELETE /rest/storage/shelves/{id} endpoint in StorageLocationRestController
       `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`: Validate constraints using canDeleteShelf(), return 409 Conflict with constraint message if constraints exist, return 200 if deletion successful, return 404 if shelf not found
 
-- [ ] T127 [P] Add DELETE /rest/storage/racks/{id} endpoint in StorageLocationRestController
+- [x] T127 [P] Add DELETE /rest/storage/racks/{id} endpoint in StorageLocationRestController
       `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java`: Validate constraints using canDeleteRack(), return 409 Conflict with constraint message if constraints exist, return 200 if deletion successful, return 404 if rack not found
 
-- [ ] T128 Run backend integration tests → Verify all PASS:
+- [x] T128 Run backend integration tests → Verify all PASS:
       `mvn test -Dtest="StorageLocationRestControllerTest"`
 
 ### Implementation - Frontend Components
 
-- [ ] T129 Create LocationActionsOverflowMenu component
+- [x] T129 Create LocationActionsOverflowMenu component
       `frontend/src/components/storage/LocationManagement/LocationActionsOverflowMenu.jsx`: Similar structure to SampleActionsOverflowMenu.jsx, uses Carbon Design System OverflowMenu component, displays two menu items (Edit, Delete), props: location (entity object), onEdit, onDelete callbacks, accessible via keyboard navigation and screen readers
 
 - [ ] T130 Create EditLocationModal component
       `frontend/src/components/storage/LocationManagement/EditLocationModal.jsx`: Generic component that adapts to entity type (Room/Device/Shelf/Rack), displays editable fields based on entity type (Room: name, description, status; Device: name, type, temperature, capacity, status; Shelf: label, capacity, status; Rack: label, dimensions, status), code and Parent fields disabled/read-only, validates code uniqueness, uses Carbon Design System Modal component, calls PUT /rest/storage/{entityType}/{id} endpoint on save, displays Cancel and "Save Changes" buttons in footer
 
-- [ ] T131 Create DeleteLocationModal component
+- [x] T131 Create DeleteLocationModal component
       `frontend/src/components/storage/LocationManagement/DeleteLocationModal.jsx`: Checks constraints via API call before showing confirmation, displays error message if constraints exist (409 Conflict response), shows confirmation dialog with warning if no constraints (e.g., "Are you sure you want to delete [Location Name]? This action cannot be undone."), uses Carbon Design System Modal component with destructive action styling for confirm button, calls DELETE /rest/storage/{entityType}/{id} endpoint on confirm, displays Cancel and "Confirm Delete" buttons in footer
 
-- [ ] T132 Update StorageDashboard component to integrate LocationActionsOverflowMenu
+- [x] T132 Update StorageDashboard component to integrate LocationActionsOverflowMenu
       `frontend/src/components/storage/StorageDashboard.jsx`: Replace placeholder action buttons (⋮) in Rooms, Devices, Shelves, Racks table rows with LocationActionsOverflowMenu component, add state management for Edit and Delete modals (editModalOpen, deleteModalOpen, selectedLocation, selectedLocationType), handle modal open/close callbacks (onEdit, onDelete), handle API calls for PUT and DELETE operations, refresh table data after Edit/Delete operations, display success/error notifications
 
-- [ ] T133 Run frontend unit tests → Verify all PASS:
+- [x] T133 Run frontend unit tests → Verify all PASS:
       `npm test -- LocationActionsOverflowMenu.test.jsx EditLocationModal.test.jsx DeleteLocationModal.test.jsx`
 
 ### Tests First - Frontend E2E Tests (Write BEFORE final verification)
