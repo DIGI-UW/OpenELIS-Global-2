@@ -1,7 +1,9 @@
 package org.openelisglobal.notebook.valueholder;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -11,6 +13,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import java.util.ArrayList;
+import java.util.List;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
@@ -23,6 +27,9 @@ public class NoteBookPage extends BaseObject<Integer> {
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "notebook_page_generator")
     @SequenceGenerator(name = "notebook_page_generator", sequenceName = "notebook_page_seq", allocationSize = 1)
     private Integer id;
+
+    @Column(name = "page_order")
+    private Integer order;
 
     @Column(name = "title")
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
@@ -40,6 +47,11 @@ public class NoteBookPage extends BaseObject<Integer> {
     @JoinColumn(name = "notebook_id", nullable = false)
     @JsonIgnore
     private NoteBook notebook;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "notebook_page_tests", joinColumns = @JoinColumn(name = "notebook_page_id"))
+    @Column(name = "test")
+    private List<Integer> tests;
 
     public Integer getId() {
         return id;
@@ -79,6 +91,25 @@ public class NoteBookPage extends BaseObject<Integer> {
 
     public void setNotebook(NoteBook notebook) {
         this.notebook = notebook;
+    }
+
+    public Integer getOrder() {
+        return order;
+    }
+
+    public void setOrder(Integer order) {
+        this.order = order;
+    }
+
+    public List<Integer> getTests() {
+        if (tests == null) {
+            tests = new ArrayList<>();
+        }
+        return tests;
+    }
+
+    public void setTests(List<Integer> tests) {
+        this.tests = tests;
     }
 
 }
