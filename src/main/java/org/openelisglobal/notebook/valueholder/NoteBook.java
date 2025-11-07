@@ -23,7 +23,6 @@ import java.util.Date;
 import java.util.List;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
@@ -53,6 +52,9 @@ public class NoteBook extends BaseObject<Integer> {
     @SequenceGenerator(name = "notebook_generator", sequenceName = "notebook_seq", allocationSize = 1)
     private Integer id;
 
+    @Column(name = "is_template")
+    private Boolean isTemplate;
+
     @Column(name = "title")
     private String title;
 
@@ -81,11 +83,6 @@ public class NoteBook extends BaseObject<Integer> {
 
     @Valid
     @OneToOne
-    @JoinColumn(name = "patient_id", referencedColumnName = "id")
-    private Patient patient;
-
-    @Valid
-    @OneToOne
     @JoinColumn(name = "technician_id", referencedColumnName = "id")
     private SystemUser technician;
 
@@ -107,6 +104,10 @@ public class NoteBook extends BaseObject<Integer> {
 
     @OneToMany(mappedBy = "notebook", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<NoteBookFile> files;
+
+    @OneToMany
+    @JoinTable(name = "notebook_entries", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "entry_id"))
+    private List<NoteBook> entries;
 
     @Override
     public Integer getId() {
@@ -218,14 +219,6 @@ public class NoteBook extends BaseObject<Integer> {
         this.technician = technician;
     }
 
-    public Patient getPatient() {
-        return patient;
-    }
-
-    public void setPatient(Patient patient) {
-        this.patient = patient;
-    }
-
     public Date getDateCreated() {
         return dateCreated;
     }
@@ -251,6 +244,25 @@ public class NoteBook extends BaseObject<Integer> {
 
     public void setStatus(NoteBookStatus status) {
         this.status = status;
+    }
+
+    public List<NoteBook> getEntries() {
+        if (entries == null) {
+            entries = new ArrayList<>();
+        }
+        return entries;
+    }
+
+    public void setEntries(List<NoteBook> entries) {
+        this.entries = entries;
+    }
+
+    public Boolean getIsTemplate() {
+        return isTemplate;
+    }
+
+    public void setIsTemplate(Boolean isTemplate) {
+        this.isTemplate = isTemplate;
     }
 
 }
