@@ -15,6 +15,7 @@ import org.hl7.fhir.r4.model.Reference;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.common.util.LocationReportingConfigurationProperties;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
@@ -48,8 +49,8 @@ public class LocationReportingServiceImpl implements LocationReportingService {
     @Autowired
     private SiteInformationService siteInformationService;
 
-    private static final String OPT_IN_SITE_INFO_NAME = "locationReportingOptIn";
-    private static final String LAST_REPORT_SITE_INFO_NAME = "lastLocationReportDate";
+    private static final String OPT_IN_SITE_INFO_NAME = LocationReportingConfigurationProperties.SITEINFO_OPT_IN;
+    private static final String LAST_REPORT_SITE_INFO_NAME = LocationReportingConfigurationProperties.SITEINFO_LAST_SENT;
 
     private static final String SITE_ID_SYSTEM = "http://openelis-global.org/site-id";
     private static final String SITE_LOCATION_ID_SYSTEM = "http://openelis-global.org/site-location-id";
@@ -72,7 +73,17 @@ public class LocationReportingServiceImpl implements LocationReportingService {
         if (optInInfo != null && !GenericValidator.isBlankOrNull(optInInfo.getValue())) {
             return "true".equalsIgnoreCase(optInInfo.getValue().trim());
         }
-        return false;
+
+        try {
+            String prop = ConfigurationProperties.getInstance()
+                    .getPropertyValue(LocationReportingConfigurationProperties.PROPERTY_OPT_IN);
+            if (!GenericValidator.isBlankOrNull(prop)) {
+                return "true".equalsIgnoreCase(prop.trim());
+            }
+        } catch (Exception e) {
+        }
+
+        return true;
     }
 
     @Override
