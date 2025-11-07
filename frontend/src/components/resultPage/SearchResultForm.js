@@ -785,7 +785,6 @@ export function SearchResults(props) {
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState({});
 
   const componentMounted = useRef(false);
 
@@ -875,12 +874,15 @@ export function SearchResults(props) {
     }
   };
 
-  const downloadFile = (fileName, base64Content, fileType) => {
-    const linkSource = `data:${fileType};base64,${base64Content.split(",")[1]}`;
-    const downloadLink = document.createElement("a");
-    downloadLink.href = linkSource;
-    downloadLink.download = fileName;
-    downloadLink.click();
+  const downloadFile = (fileName, content, fileType) => {
+    var win = window.open();
+    win.document.write(
+      '<iframe src="' +
+        fileType +
+        ";base64," +
+        content +
+        '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
+    );
   };
 
   const addRejectResult = () => {
@@ -1290,20 +1292,18 @@ export function SearchResults(props) {
           />
 
           {data.resultFile && data.resultFile.fileName && (
-            <div style={{ marginTop: "3px" }}>
-              <Link
-                onClick={() =>
-                  downloadFile(
-                    data.resultFile.fileName,
-                    data.resultFile.base64Content,
-                    data.resultFile.fileType,
-                  )
-                }
-                style={{ fontSize: "12px" }}
-              >
-                {data.resultFile.fileName}
-              </Link>
-            </div>
+            <Link
+              onClick={() =>
+                downloadFile(
+                  data.resultFile.fileName,
+                  data.resultFile.content,
+                  data.resultFile.fileType,
+                )
+              }
+              style={{ fontSize: "12px" }}
+            >
+              {data.resultFile.fileName}
+            </Link>
           )}
         </Column>
         <Column lg={2}>
@@ -1319,7 +1319,7 @@ export function SearchResults(props) {
             }}
           />
         </Column>
-        <Column lg={3}>
+        <Column lg={2}>
           <Select
             id={"referralReason" + data.id}
             name={"testResult[" + data.id + "].referralItem.referralReasonId"}
@@ -1340,7 +1340,7 @@ export function SearchResults(props) {
             ))}
           </Select>
         </Column>
-        <Column lg={3}>
+        <Column lg={2}>
           <Select
             id={"institute" + data.id}
             name={

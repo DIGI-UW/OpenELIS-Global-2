@@ -17,7 +17,6 @@ package org.openelisglobal.result.action.util;
 
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -699,7 +698,7 @@ public class ResultsLoadUtility {
         if (file != null) {
             form.setFileName(file.getFileName());
             form.setFileType(file.getFileType());
-            form.setBase64Content(Base64.getEncoder().encodeToString(file.getContent()));
+            form.setContent(file.getContent());
             form.setUploadedAt(file.getUploadedAt());
             form.setLastupdated(file.getLastupdated());
         }

@@ -137,7 +137,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             "testResult*.referredOut", "testResult*.referralReasonId", "testResult*.technician",
             "testResult*.shadowRejected", "testResult*.rejected", "testResult*.rejectReasonId", "testResult*.note",
             "paging.currentPage", "testResult*.resultFile", "testResult*.resultFile.fileName",
-            "testResult*.resultFile.fileType", "testResult*.resultFile.content", "testResult*.refer",
+            "testResult*.resultFile.fileType", "testResult*.resultFile.base64Content", "testResult*.refer",
             "testResult*.referralItem.referralReasonId", "testResult*.referralItem.referredInstituteId",
             "testResult*.referralItem.referredTestId", "testResult*.referralItem.referredSendDate" };
 
@@ -560,6 +560,12 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
                 analysis.setMethod(methodService.get(testResultItem.getTestMethod()));
             }
+            if (testResultItem.getResultFile() != null) {
+                ResultFile resultFile = createResultFile(testResultItem.getResultFile());
+                if (resultFile != null) {
+                    analysis.setResultFile(resultFile);
+                }
+            }
             actionDataSet.getModifiedAnalysis().add(analysis);
         }
     }
@@ -698,12 +704,9 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
         ResultInventory testKit = createTestKitLinkIfNeeded(testResultItem, ResultsLoadUtility.TESTKIT);
         if (testResultItem.getResultFile() != null) {
-            ResultFile existingFile = analysis.getResultFile();
-            if (existingFile == null || existingFile.getId() == null) {
-                ResultFile resultFile = createResultFile(testResultItem.getResultFile());
-                if (resultFile != null) {
-                    analysis.setResultFile(resultFile);
-                }
+            ResultFile resultFile = createResultFile(testResultItem.getResultFile());
+            if (resultFile != null) {
+                analysis.setResultFile(resultFile);
             }
         }
 
