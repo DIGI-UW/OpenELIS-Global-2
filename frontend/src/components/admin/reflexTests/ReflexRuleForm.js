@@ -454,6 +454,12 @@ function ReflexRule() {
     }
     return false;
   };
+  const blockInvalidChars = (e) => {
+    const invalidChars = ["e", "E", "+", "-", "."];
+    if (invalidChars.includes(e.key)) {
+      e.preventDefault();
+    }
+  };
 
   return (
     <>
@@ -751,6 +757,7 @@ function ReflexRule() {
                                             ? "number"
                                             : "text"
                                         }
+                                        onKeyDown={blockInvalidChars}
                                         id={
                                           index +
                                           "_" +
@@ -806,7 +813,8 @@ function ReflexRule() {
                                 <>
                                   <TextInput
                                     name="value"
-                                    type="text"
+                                    type="number"
+                                    onKeyDown={blockInvalidChars}
                                     id={
                                       index + "_" + condition_index + "_value"
                                     }
