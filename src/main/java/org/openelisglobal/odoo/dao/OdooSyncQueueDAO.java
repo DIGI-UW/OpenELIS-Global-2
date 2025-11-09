@@ -10,9 +10,12 @@ public interface OdooSyncQueueDAO extends BaseDAO<OdooSyncQueue, Long> {
     /**
      * Get all pending sync requests that need to be retried
      * 
+     * @param processingTimeoutThreshold Entries stuck in PROCESSING with a last
+     *                                   retry before this threshold are included as
+     *                                   stale and should be retried.
      * @return List of pending sync queue entries
      */
-    List<OdooSyncQueue> getPendingSyncRequests();
+    List<OdooSyncQueue> getPendingSyncRequests(java.sql.Timestamp processingTimeoutThreshold);
 
     /**
      * Get sync requests by status

@@ -12,11 +12,13 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.odoo.client.OdooConnection;
 import org.openelisglobal.odoo.config.TestProductMapping;
+import org.openelisglobal.odoo.entity.OdooSyncQueue;
 import org.openelisglobal.odoo.exception.OdooOperationException;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
+import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.spring.util.SpringContext;
@@ -45,6 +47,9 @@ public class OdooIntegrationService {
 
     @Autowired
     private PatientService patientService;
+
+    @Autowired
+    private SampleService sampleService;
 
     @Autowired
     private OdooSyncQueueService odooSyncQueueService;
@@ -378,5 +383,91 @@ public class OdooIntegrationService {
             }
         }
         return invoiceLines;
+    }
+
+    public boolean partnerExists(Integer partnerId) {
+        if (partnerId == null) {
+            return false;
+        }
+
+        try {
+            Object[] result = odooConnection.searchAndRead("res.partner", List.of("id", "=", partnerId), List.of("id"));
+            return result != null && result.length > 0;
+        } catch (Exception e) {
+            log.error("Error verifying existence of partner {}: {}", partnerId, e.getMessage(), e);
+            return false;
+        }
+    }
+
+    public Integer ensurePartnerForQueueEntry(OdooSyncQueue queueEntry) {
+        Sample sample = resolveSample(queueEntry);
+        if (sample == null) {
+            log.warn("Unable to resolve sample for Odoo queue entry {}. Partner cannot be refreshed.",
+                    queueEntry.getId());
+            return null;
+        }
+
+        Patient patient = sampleHumanService.getPatientForSample(sample);
+        if (patient == null) {
+            log.warn("No patient found for sample {} when refreshing partner for queue entry {}", sample.getId(),
+                    queueEntry.getId());
+            return null;
+        }
+
+        Person person = patient.getPerson();
+        if (person == null) {
+            log.warn("No person associated with patient {} when refreshing partner for queue entry {}", patient.getId(),
+                    queueEntry.getId());
+            return null;
+        }
+
+        String nationalId = patientService.getNationalId(patient);
+        if (nationalId != null && !nationalId.trim().isEmpty()) {
+            Integer existingPartnerId = findPartnerByNationalId(nationalId);
+            if (existingPartnerId != null) {
+                return existingPartnerId;
+            }
+        }
+
+        Integer partnerFromName = findPartnerByName(person.getFirstName(), person.getLastName());
+        if (partnerFromName != null) {
+            return partnerFromName;
+        }
+
+        Map<String, Object> partnerData = createPartnerData(patient, person);
+        Integer partnerId = odooConnection.create("res.partner", List.of(partnerData));
+
+        if (partnerId == null) {
+            log.warn("Odoo returned null partner ID when recreating partner for queue entry {}", queueEntry.getId());
+            return null;
+        }
+
+        log.info("Created new partner {} while processing queue entry {}", partnerId, queueEntry.getId());
+        return partnerId;
+    }
+
+    private Sample resolveSample(OdooSyncQueue queueEntry) {
+        try {
+            if (queueEntry.getSampleId() != null && !queueEntry.getSampleId().trim().isEmpty()) {
+                Sample sample = sampleService.get(queueEntry.getSampleId());
+                if (sample != null) {
+                    return sample;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to load sample {} for queue entry {}: {}", queueEntry.getSampleId(), queueEntry.getId(),
+                    e.getMessage());
+        }
+
+        try {
+            if (queueEntry.getAccessionNumber() != null && !queueEntry.getAccessionNumber().trim().isEmpty()) {
+                return sampleService.getSampleByAccessionNumber(queueEntry.getAccessionNumber());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to load sample by accession {} for queue entry {}: {}", queueEntry.getAccessionNumber(),
+                    queueEntry.getId(), e.getMessage());
+        }
+
+        return null;
     }
 }

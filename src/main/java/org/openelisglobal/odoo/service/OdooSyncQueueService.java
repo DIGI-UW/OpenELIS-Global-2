@@ -24,7 +24,10 @@ public interface OdooSyncQueueService extends BaseObjectService<OdooSyncQueue, L
     /**
      * Get all pending sync requests that need to be retried
      * 
-     * @return List of pending sync queue entries
+     * Entries stuck in PROCESSING beyond the configured timeout are also returned
+     * for retry.
+     * 
+     * @return List of pending or stale processing sync queue entries
      */
     List<OdooSyncQueue> getPendingSyncRequests();
 
@@ -89,6 +92,14 @@ public interface OdooSyncQueueService extends BaseObjectService<OdooSyncQueue, L
      * @param queueEntry The queue entry to reset
      */
     void resetToPending(OdooSyncQueue queueEntry);
+
+    /**
+     * Update the stored invoice payload for a queue entry.
+     *
+     * @param queueEntry  The queue entry to update
+     * @param invoiceData The invoice payload to persist
+     */
+    void updateInvoiceData(OdooSyncQueue queueEntry, Map<String, Object> invoiceData);
 
     /**
      * Get count of pending sync requests

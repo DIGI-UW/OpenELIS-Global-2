@@ -61,7 +61,6 @@ public class OdooClient {
         validateRequiredField("org.openelisglobal.odoo.database.name", database);
         validateRequiredField("org.openelisglobal.odoo.username", username);
         validateRequiredField("org.openelisglobal.odoo.password", password);
-        log.info("Odoo configuration validated: url={}, database={}, username={}", url, database, username);
     }
 
     private void validateRequiredField(String fieldName, String value) {

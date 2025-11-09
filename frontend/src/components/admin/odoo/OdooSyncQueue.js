@@ -300,23 +300,6 @@ function OdooSyncQueue() {
             </Section>
           </Column>
         </Grid>
-        {queueData.statusMessage ? (
-          <Grid fullWidth={true}>
-            <Column lg={16} md={8} sm={4}>
-              <Section>
-                <InlineNotification
-                  kind="info"
-                  lowContrast={true}
-                  subtitle={queueData.statusMessage}
-                  title={intl.formatMessage({
-                    id: "odoo.syncQueue.notice",
-                    defaultMessage: "Latest queue status",
-                  })}
-                />
-              </Section>
-            </Column>
-          </Grid>
-        ) : null}
         <div className="orderLegendBody">
           <TableContainer>
             <Table size="lg" useZebraStyles={true}>
@@ -414,6 +397,23 @@ function OdooSyncQueue() {
             </Table>
           </TableContainer>
         </div>
+        {queueData.statusMessage ? (
+          <Grid fullWidth={true} style={{ marginTop: "1.5rem" }}>
+            <Column lg={16} md={8} sm={4}>
+              <Section>
+                <InlineNotification
+                  kind="info"
+                  lowContrast={true}
+                  subtitle={queueData.statusMessage}
+                  title={intl.formatMessage({
+                    id: "odoo.syncQueue.notice",
+                    defaultMessage: "Latest queue status",
+                  })}
+                />
+              </Section>
+            </Column>
+          </Grid>
+        ) : null}
       </div>
     </>
   );
