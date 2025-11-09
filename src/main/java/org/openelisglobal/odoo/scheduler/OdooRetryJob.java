@@ -11,13 +11,11 @@ import org.openelisglobal.odoo.service.OdooIntegrationService;
 import org.openelisglobal.odoo.service.OdooSyncQueueService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Scheduled job to retry failed Odoo synchronization attempts. Runs
- * periodically to process pending queue entries and attempt to sync them with
- * Odoo.
+ * Handles manual retries of failed Odoo synchronization attempts. Queued
+ * entries are processed on demand through the admin-triggered retry endpoint.
  */
 @Component
 public class OdooRetryJob {
@@ -33,23 +31,8 @@ public class OdooRetryJob {
     @Autowired
     private OdooIntegrationService odooIntegrationService;
 
-    @Value("${org.openelisglobal.odoo.retry.enabled:false}")
-    private boolean retryEnabled;
-
     @Value("${org.openelisglobal.odoo.retry.batchSize:10}")
     private int batchSize;
-
-    /**
-     * Scheduled method to process pending Odoo sync queue entries. Runs every 5
-     * minutes by default (300000 milliseconds). Can be configured via property:
-     * org.openelisglobal.odoo.retry.interval
-     */
-    @Scheduled(initialDelay = 60000, // Start 1 minute after application startup
-            fixedDelayString = "${org.openelisglobal.odoo.retry.interval:300000}" // Default: 5 minutes
-    )
-    public void retryFailedSyncs() {
-        runRetry(false);
-    }
 
     /**
      * Process a single queue entry
@@ -105,7 +88,7 @@ public class OdooRetryJob {
 
     public String triggerManualRetry() {
         log.info("Manual Odoo retry job triggered");
-        RetryRunStatus status = runRetry(true);
+        RetryRunStatus status = runRetry();
 
         if (!status.executed) {
             if (status.message != null) {
@@ -117,16 +100,8 @@ public class OdooRetryJob {
         return String.format("Odoo retry job completed. Pending: %d, Failed: %d", status.pending, status.failed);
     }
 
-    private RetryRunStatus runRetry(boolean forceRun) {
+    private RetryRunStatus runRetry() {
         RetryRunStatus status = new RetryRunStatus();
-
-        if (!forceRun && !retryEnabled) {
-            log.debug("Odoo retry job is disabled");
-            status.message = "Odoo retry job is disabled by configuration";
-            status.pending = odooSyncQueueService.getPendingCount();
-            status.failed = odooSyncQueueService.getFailedCount();
-            return status;
-        }
 
         if (!odooConnection.isAvailable()) {
             log.warn("Odoo connection is not available. Skipping retry job execution.");

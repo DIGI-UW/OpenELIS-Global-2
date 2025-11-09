@@ -10,6 +10,7 @@ whenever the live connection is unavailable or an invocation fails.
 - The queue is stored in the `odoo_sync_queue` table and manipulated through
   `OdooSyncQueueService`.
 - Manual REST endpoints:
+
   - `GET /api/odoo/queue` – returns current queue contents, pending/failed
     counts, and connection status.
   - `POST /api/odoo/queue/retry` – triggers an on-demand processing run through
@@ -18,14 +19,14 @@ whenever the live connection is unavailable or an invocation fails.
     beyond a configurable timeout
     (`org.openelisglobal.odoo.retry.processingTimeoutMinutes`, default `1`
     minutes) and acquires pessimistic row locks to prevent multiple workers from
-    handling the same entry concurrently.  
-    **New:** retries now validate the stored `partner_id`. If the referenced
-    partner has been removed in Odoo, the job will recreate or remap the partner
-    using local patient data, update the stored payload, and continue
-    processing.
-- The scheduled retry job still exists but is disabled by default
-  (`org.openelisglobal.odoo.retry.enabled=false`). Re-enable it via
-  configuration if automated retries are desired.
+    handling the same entry concurrently.
+
+    Retries now validate the stored `partner_id`. If the referenced partner has
+    been removed in Odoo, the job will recreate or remap the partner using local
+    patient data, update the stored payload, and continue processing.
+
+- Processing happens only when the manual retry endpoint or admin UI button is
+  invoked.
 
 ### Frontend management UI
 
@@ -42,10 +43,9 @@ whenever the live connection is unavailable or an invocation fails.
 2. Ensure Odoo credentials are valid; otherwise queued items will continue to
    accumulate while the connection is offline.
 3. Use the admin UI or `POST /api/odoo/queue/retry` to process queued invoices
-   once connectivity is restored. Optionally re-enable the scheduled job for
-   unattended retries. Items stuck in `PROCESSING` longer than the configured
-   timeout are automatically returned to the retry pool the next time the job
-   runs.
+   once connectivity is restored. Items stuck in `PROCESSING` longer than the
+   configured timeout are automatically returned to the retry pool whenever the
+   manual retry is executed.
 4. If Odoo records (such as partners) were deleted while the queue accumulated,
    simply run the retry job—partner references are healed automatically and the
    updated payload is persisted for future attempts.
