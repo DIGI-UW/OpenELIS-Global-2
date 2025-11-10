@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet id="20250825-01-create-result-file-table" author="elia">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="result_file" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Creating the result_file table to store result files</comment>
+        <createSequence sequenceName="result_file_seq" startValue="1" incrementBy="1"/>
+        <createTable tableName="result_file">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="result_file_seq">
+                <constraints primaryKey="true" nullable="false" unique="true" primaryKeyName="pk_result_file_id"/>
+            </column>
+            <column name="file_name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_type" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_content" type="bytea">
+                <constraints nullable="false"/>
+            </column>
+            <column name="uploaded_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="20250825-02-add-resultfile-to-analysis" author="elia">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="analysis" schemaName="clinlims" />
+             <not>
+                <columnExists columnName="result_file_id" schemaName="clinlims" tableName="analysis" />
+            </not>
+        </preConditions>
+        <comment>Creating the result_file table to store result files</comment>
+        <addColumn tableName="analysis">
+            <column name="result_file_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint baseTableName="analysis"
+                                 baseColumnNames="result_file_id"
+                                 referencedTableName="result_file"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_analysis_resultfile"
+                                 onDelete="SET NULL"/>
+        <addUniqueConstraint tableName="analysis"
+                            columnNames="result_file_id"
+                            constraintName="uq_analysis_result_file"/>
+    </changeSet>
+</databaseChangeLog>

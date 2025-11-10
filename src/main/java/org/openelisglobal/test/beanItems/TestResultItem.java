@@ -21,7 +21,9 @@ import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
+import org.openelisglobal.analysis.valueholder.ResultFile;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.util.IdValuePair;
@@ -232,6 +234,7 @@ public class TestResultItem implements ResultItem, Serializable {
     private String defaultResultValue;
 
     private ReferralItem referralItem;
+    private ResultFileForm resultFile;
 
     public String getConsiderRejectReason() {
         return considerRejectReason;
@@ -975,5 +978,34 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setReferralItem(ReferralItem referralItem) {
         this.referralItem = referralItem;
+    }
+
+    public ResultFileForm getResultFile() {
+        return resultFile;
+    }
+
+    public void setResultFile(ResultFileForm resultFile) {
+        this.resultFile = resultFile;
+    }
+
+    public static class ResultFileForm extends ResultFile {
+        private static final long serialVersionUID = 3142138533368581327L;
+
+        private String base64Content;
+
+        public String getBase64Content() {
+            return base64Content;
+        }
+
+        public void setBase64Content(String base64Content) {
+            this.base64Content = base64Content;
+            if (base64Content != null && base64Content.contains(";base64,")) {
+                String[] contentInfo = base64Content.split(";base64,", 2);
+                setFileType(contentInfo[0]);
+                setContent(Base64.getDecoder().decode(contentInfo[1]));
+
+            }
+        }
+
     }
 }

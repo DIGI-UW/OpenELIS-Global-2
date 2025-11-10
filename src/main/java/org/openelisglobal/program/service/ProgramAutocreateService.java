@@ -7,8 +7,12 @@ import com.fasterxml.jackson.datatype.hibernate5.jakarta.Hibernate5JakartaModule
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -28,6 +32,7 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 
@@ -37,8 +42,11 @@ public class ProgramAutocreateService {
     @Value("${org.openelisglobal.program.autocreate:true}")
     private boolean autocreateOn;
 
+    @Value("${org.openelisglobal.program.path:/var/lib/openelis-global/programs}")
+    private String programPath;
+
     @Value("classpath*:programs/*.json")
-    private Resource[] programResources;
+    private Resource[] classpathProgramResources;
 
     @Autowired
     private ProgramService programService;
@@ -49,10 +57,43 @@ public class ProgramAutocreateService {
     @Autowired
     private FhirConfig fhirConfig;
 
+    /**
+     * Get all program resources from both classpath and filesystem
+     * 
+     * @return Array of all program resources
+     */
+    private Resource[] getAllProgramResources() {
+        List<Resource> allResources = new ArrayList<>();
+
+        // Add classpath resources (backward compatibility)
+        if (classpathProgramResources != null) {
+            allResources.addAll(Arrays.asList(classpathProgramResources));
+        }
+
+        // Add filesystem resources if directory exists
+        File programDir = new File(programPath);
+        if (programDir.exists() && programDir.isDirectory()) {
+            File[] jsonFiles = programDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".json"));
+            if (jsonFiles != null) {
+                for (File file : jsonFiles) {
+                    allResources.add(new FileSystemResource(file));
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "getAllProgramResources",
+                            "Loading program from filesystem: " + file.getName());
+                }
+            }
+        } else {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "getAllProgramResources",
+                    "Program directory does not exist: " + programPath);
+        }
+
+        return allResources.toArray(new Resource[0]);
+    }
+
     @PostConstruct
     @Transactional
     public void autocreateProgram() {
         if (autocreateOn && StringUtils.isNotBlank(fhirConfig.getLocalFhirStorePath())) {
+            Resource[] programResources = getAllProgramResources();
             for (Resource programResource : programResources) {
                 try (BufferedReader reader = new BufferedReader(
                         new InputStreamReader(programResource.getInputStream()))) {

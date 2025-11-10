@@ -40,16 +40,12 @@ import {
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
-  postToOpenElisServer,
   hasRole,
   toBase64,
 } from "../utils/Utils";
 import { Add } from "@carbon/icons-react";
-import AddSample from "../addOrder/AddSample";
-import { sampleObject } from "../addOrder/Index";
-import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 
-const NoteBookEntryForm = () => {
+const NoteBookInstanceEntryForm = () => {
   let breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "notebook.label.dashboard", link: "/NoteBookDashboard" },
@@ -60,10 +56,15 @@ const NoteBookEntryForm = () => {
     EDIT: "EDIT",
   });
 
+  const TABS = Object.freeze({
+    ACCESSION: "ACCESSION",
+    PATIENT: "PATIENT",
+  });
   const intl = useIntl();
   const componentMounted = useRef(false);
   const [mode, setMode] = useState(MODES.CREATE);
   const { notebookid } = useParams();
+  const { notebookentryid } = useParams();
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -71,7 +72,6 @@ const NoteBookEntryForm = () => {
   const [statuses, setStatuses] = useState([]);
   const [types, setTypes] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmittingSample, setIsSubmittingSample] = useState(false);
   const [loading, setLoading] = useState(false);
   const [noteBookData, setNoteBookData] = useState(NoteBookInitialData);
   const [noteBookForm, setNoteBookForm] = useState(NoteBookFormValues);
@@ -82,73 +82,18 @@ const NoteBookEntryForm = () => {
   const [accession, setAccesiion] = useState("");
   const [initialMount, setInitialMount] = useState(false);
   const [allTests, setAllTests] = useState([]);
-  const [samples, setSamples] = useState([sampleObject]);
-  const [orderFormValues, setOrderFormValues] = useState(ModifyOrderFormValues);
-  const [errors, setErrors] = useState([]);
-
-  const isFormValid = () => {
-    return (
-      noteBookData.title?.trim() !== "" &&
-      noteBookData.type !== null &&
-      noteBookData.type !== "" &&
-      noteBookData.project?.trim() !== "" &&
-      noteBookData.objective?.trim() !== ""
-    );
-  };
 
   const handleSubmit = (status) => {
     if (isSubmitting) {
       return;
     }
     if (mode === MODES.CREATE) {
-      if (!noteBookData.title || noteBookData.title.trim() === "") {
-        addNotification({
-          kind: NotificationKinds.error,
-          title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage({
-            id: "notebook.validation.title.required",
-          }),
-        });
-        return;
-      }
-
-      if (!noteBookData.type) {
-        addNotification({
-          kind: NotificationKinds.error,
-          title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage({
-            id: "notebook.validation.type.required",
-          }),
-        });
-        return;
-      }
-
-      if (!noteBookData.project || noteBookData.project.trim() === "") {
-        addNotification({
-          kind: NotificationKinds.error,
-          title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage({
-            id: "notebook.validation.project.required",
-          }),
-        });
-        return;
-      }
-
-      if (!noteBookData.objective || noteBookData.objective.trim() === "") {
-        addNotification({
-          kind: NotificationKinds.error,
-          title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage({
-            id: "notebook.validation.objective.required",
-          }),
-        });
-        return;
-      }
       noteBookData.status = status ? status : noteBookData.status;
     }
     setIsSubmitting(true);
     noteBookForm.id = noteBookData.id;
-    noteBookForm.isTemplate = true;
+    noteBookForm.isTemplate = false;
+    noteBookForm.templateId = notebookid;
     noteBookForm.title = noteBookData.title;
     noteBookForm.type = noteBookData.type;
     noteBookForm.project = noteBookData.project;
@@ -169,7 +114,7 @@ const NoteBookEntryForm = () => {
     console.log(JSON.stringify(noteBookForm));
     var url =
       mode === MODES.EDIT
-        ? "/rest/notebook/update/" + notebookid
+        ? "/rest/notebook/update/" + notebookentryid
         : "/rest/notebook/create";
     postToOpenElisServerFullResponse(
       url,
@@ -197,7 +142,7 @@ const NoteBookEntryForm = () => {
         message: intl.formatMessage({ id: "error.save.msg" }),
       });
     }
-    window.location.href = "/NoteBookEntryForm/" + body.id;
+    window.location.href = "/NoteBookInstanceEditForm/" + body.id;
   };
 
   // Add sample to noteBookData.samples
@@ -218,115 +163,6 @@ const NoteBookEntryForm = () => {
       samples: prev.samples.filter((s) => s.id !== sampleId),
     }));
     setAddedSampleIds((prev) => prev.filter((id) => id !== sampleId));
-  };
-
-  const handleSubmitOrderForm = (e) => {
-    e.preventDefault();
-    if (isSubmittingSample) {
-      return;
-    }
-    setIsSubmittingSample(true);
-    orderFormValues.sampleXML = getSamplesXmlValues();
-    orderFormValues.sampleOrderItems.modified = true;
-    //remove display Lists rom the form
-    orderFormValues.sampleOrderItems.priorityList = [];
-    orderFormValues.sampleOrderItems.programList = [];
-    orderFormValues.sampleOrderItems.referringSiteList = [];
-    orderFormValues.initialSampleConditionList = [];
-    orderFormValues.testSectionList = [];
-    orderFormValues.sampleOrderItems.providersList = [];
-    orderFormValues.sampleOrderItems.paymentOptions = [];
-    orderFormValues.sampleOrderItems.testLocationCodeList = [];
-    console.log(JSON.stringify(orderFormValues));
-    postToOpenElisServer(
-      "/rest/SampleEdit",
-      JSON.stringify(orderFormValues),
-      handlePost,
-    );
-  };
-
-  const handlePost = (status) => {
-    setIsSubmitting(false);
-    if (status === 200) {
-      showAlertMessage(
-        <FormattedMessage id="save.order.success.msg" />,
-        NotificationKinds.success,
-      );
-      setSamples([sampleObject]);
-      getFromOpenElisServer(
-        "/rest/notebook/samples?accession=" + accession,
-        setSampleList,
-      );
-    } else {
-      showAlertMessage(
-        <FormattedMessage id="server.error.msg" />,
-        NotificationKinds.error,
-      );
-    }
-  };
-  const showAlertMessage = (msg, kind) => {
-    setNotificationVisible(true);
-    addNotification({
-      kind: kind,
-      title: intl.formatMessage({ id: "notification.title" }),
-      message: msg,
-    });
-  };
-
-  const getSamplesXmlValues = () => {
-    let sampleXmlString = "";
-    let referralItems = [];
-    if (samples.length > 0) {
-      if (samples[0].tests.length > 0) {
-        sampleXmlString = '<?xml version="1.0" encoding="utf-8"?>';
-        sampleXmlString += "<samples>";
-        let tests = null;
-        samples.map((sampleItem) => {
-          if (sampleItem.tests.length > 0) {
-            tests = Object.keys(sampleItem.tests)
-              .map(function (i) {
-                return sampleItem.tests[i].id;
-              })
-              .join(",");
-            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds=''/>`;
-          }
-          if (sampleItem.referralItems.length > 0) {
-            const referredInstitutes = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].institute;
-              })
-              .join(",");
-
-            const sentDates = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].sentDate;
-              })
-              .join(",");
-
-            const referralReasonIds = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].reasonForReferral;
-              })
-              .join(",");
-
-            const referrers = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].referrer;
-              })
-              .join(",");
-            referralItems.push({
-              referrer: referrers,
-              referredInstituteId: referredInstitutes,
-              referredTestId: tests,
-              referredSendDate: sentDates,
-              referralReasonId: referralReasonIds,
-            });
-          }
-        });
-        sampleXmlString += "</samples>";
-      }
-    }
-    return sampleXmlString;
   };
 
   const [showPageModal, setShowPageModal] = useState(false);
@@ -472,44 +308,11 @@ const NoteBookEntryForm = () => {
     setAccesiion(value);
   };
 
-  const elementError = (path) => {
-    if (errors?.errors?.length > 0) {
-      let error = errors.inner?.find((e) => e.path === path);
-      if (error) {
-        return error.message;
-      } else {
-        return null;
-      }
-    }
-  };
-
   const handleAccesionSearch = () => {
     getFromOpenElisServer(
       "/rest/notebook/samples?accession=" + accession,
       setSampleList,
     );
-
-    getFromOpenElisServer(
-      "/rest/SampleEdit?accessionNumber=" + accession,
-      loadOrderValues,
-    );
-  };
-
-  const loadOrderValues = (data) => {
-    if (componentMounted.current) {
-      data.sampleOrderItems.referringSiteName = "";
-      setOrderFormValues(data);
-    }
-  };
-
-  const loadInitialData = (data) => {
-    if (componentMounted.current) {
-      if (data && data.id) {
-        setNoteBookData(data);
-        setLoading(false);
-        setInitialMount(true);
-      }
-    }
   };
 
   useEffect(() => {
@@ -524,17 +327,50 @@ const NoteBookEntryForm = () => {
   }, []);
 
   useEffect(() => {
-    if (!notebookid) {
+    if (!notebookentryid) {
       setMode(MODES.CREATE);
     } else {
       setMode(MODES.EDIT);
       setLoading(true);
       getFromOpenElisServer(
-        "/rest/notebook/view/" + notebookid,
+        "/rest/notebook/view/" + notebookentryid,
         loadInitialData,
       );
     }
-  }, [notebookid]);
+  }, [notebookentryid]);
+
+  useEffect(() => {
+    if (notebookid) {
+      setLoading(true);
+      getFromOpenElisServer(
+        "/rest/notebook/view/" + notebookid,
+        loadInitialProjectData,
+      );
+    }
+  }, []);
+
+  const loadInitialProjectData = (data) => {
+    if (componentMounted.current) {
+      if (data && data.id) {
+        data.id = null;
+        data.isTemplate = false;
+        data.dateCreated = null;
+        data.status = "NEW";
+        setNoteBookData(data);
+        setLoading(false);
+      }
+    }
+  };
+
+  const loadInitialData = (data) => {
+    if (componentMounted.current) {
+      if (data && data.id) {
+        setNoteBookData(data);
+        setLoading(false);
+        setInitialMount(true);
+      }
+    }
+  };
 
   const statusMap = [
     { id: "DRAFT", value: "Save Draft" },
@@ -591,6 +427,7 @@ const NoteBookEntryForm = () => {
             <Column lg={16} md={8} sm={4}>
               <TextInput
                 id="entryTitle"
+                readOnly
                 labelText={
                   <>
                     {intl.formatMessage({
@@ -633,10 +470,14 @@ const NoteBookEntryForm = () => {
                   });
                 }}
               >
-                <SelectItem />
                 {types.map((type, index) => {
                   return (
-                    <SelectItem key={index} text={type.value} value={type.id} />
+                    <SelectItem
+                      disabled={true}
+                      key={index}
+                      text={type.value}
+                      value={type.id}
+                    />
                   );
                 })}
               </Select>
@@ -644,6 +485,7 @@ const NoteBookEntryForm = () => {
             <Column lg={8} md={4} sm={4}>
               <TextInput
                 id="entryProject"
+                readOnly
                 labelText={
                   <>
                     {intl.formatMessage({
@@ -668,6 +510,7 @@ const NoteBookEntryForm = () => {
             <Column lg={16} md={8} sm={4}>
               <TextArea
                 id="objective"
+                readOnly
                 labelText={
                   <>
                     {intl.formatMessage({
@@ -695,6 +538,7 @@ const NoteBookEntryForm = () => {
             <Column lg={16} md={8} sm={4}>
               <TextInput
                 id="protocol"
+                readOnly
                 labelText={
                   <>
                     {intl.formatMessage({
@@ -731,6 +575,7 @@ const NoteBookEntryForm = () => {
             <Column lg={16} md={8} sm={4}>
               <TextArea
                 id="content"
+                readOnly
                 labelText={
                   <>
                     {intl.formatMessage({
@@ -988,39 +833,6 @@ const NoteBookEntryForm = () => {
               >
                 <FormattedMessage id="label.button.search" />
               </Button>
-            </Column>
-
-            <Column lg={16} md={8} sm={4}>
-              <br></br>
-            </Column>
-            <Column lg={16} md={8} sm={4}>
-              {orderFormValues?.sampleOrderItems.labNo === accession &&
-                accession != "" && (
-                  <Accordion>
-                    <AccordionItem title="Add Sample">
-                      <Grid className="gridBoundary">
-                        <Column lg={16} md={8} sm={4}>
-                          <AddSample
-                            error={elementError}
-                            setSamples={setSamples}
-                            samples={samples}
-                          />
-                        </Column>
-                        <Column lg={16} md={8} sm={4}>
-                          <Button
-                            data-cy="submit-order"
-                            kind="primary"
-                            className="forwardButton"
-                            onClick={handleSubmitOrderForm}
-                            disabled={isSubmittingSample}
-                          >
-                            <FormattedMessage id="label.button.submit" />
-                          </Button>
-                        </Column>
-                      </Grid>
-                    </AccordionItem>
-                  </Accordion>
-                )}
             </Column>
 
             <Column lg={16} md={8} sm={4}>
@@ -1373,11 +1185,7 @@ const NoteBookEntryForm = () => {
             <Column lg={8} md={8} sm={4}>
               <Button
                 kind="danger--tertiary"
-                disabled={
-                  isSubmitting ||
-                  noteBookData.status === "ARCHIVED" ||
-                  (mode === MODES.CREATE && !isFormValid())
-                }
+                disabled={isSubmitting || noteBookData.status === "ARCHIVED"}
                 onClick={() => handleSubmit()}
               >
                 {intl.formatMessage({
@@ -1389,7 +1197,6 @@ const NoteBookEntryForm = () => {
               <Column lg={8} md={8} sm={4}>
                 <Button
                   kind="danger--tertiary"
-                  disabled={mode === MODES.CREATE && !isFormValid()}
                   onClick={() => handleSubmit("DRAFT")}
                 >
                   {intl.formatMessage({
@@ -1405,4 +1212,4 @@ const NoteBookEntryForm = () => {
   );
 };
 
-export default NoteBookEntryForm;
+export default NoteBookInstanceEntryForm;
