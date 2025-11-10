@@ -27,8 +27,6 @@ import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 import org.openelisglobal.notebook.valueholder.NoteBookFile;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
-import org.openelisglobal.patient.service.PatientService;
-import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.service.SampleService;
@@ -54,9 +52,6 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     private SampleItemService sampleItemService;
 
     @Autowired
-    private PatientService patientService;
-
-    @Autowired
     private TypeOfSampleService typeOfSampleService;
 
     @Autowired
@@ -74,8 +69,6 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     @Autowired
     private DictionaryService dictionaryService;
 
-    private Patient patient;
-
     public NoteBookServiceImpl() {
         super(NoteBook.class);
     }
@@ -87,9 +80,17 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
     @Override
     @Transactional
-    public List<NoteBook> filterNoteBooks(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
-            Date fromDate, Date toDate) {
-        return baseObjectDAO.filterNoteBooks(statuses, types, tags, fromDate, toDate);
+    public List<NoteBook> filterNoteBookEntries(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
+            Date fromDate, Date toDate, Integer noteBookId) {
+        List<Integer> entryIds = new ArrayList<>();
+        if (noteBookId != null) {
+            entryIds = getNoteBookEntries(noteBookId).stream().map(e -> e.getId()).collect(Collectors.toList());
+        }
+        if (noteBookId != null && entryIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        return baseObjectDAO.filterNoteBookEntries(statuses, types, tags, fromDate, toDate, entryIds);
     }
 
     @Override
@@ -105,10 +106,19 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
     @Override
     @Transactional
-    public void createWithFormValues(NoteBookForm form) {
+    public NoteBook createWithFormValues(NoteBookForm form) {
         NoteBook noteBook = new NoteBook();
         noteBook = createNoteBookFromForm(noteBook, form);
-        save(noteBook);
+        noteBook = save(noteBook);
+        if (!noteBook.getIsTemplate()) {
+            NoteBook templateNoteBook = get(form.getTemplateId());
+            if (templateNoteBook != null && templateNoteBook.getIsTemplate()) {
+                templateNoteBook.getEntries().add(noteBook);
+                update(templateNoteBook);
+            }
+        }
+
+        return noteBook;
     }
 
     @Override
@@ -129,18 +139,17 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         Optional<NoteBook> optionalNoteBook = baseObjectDAO.get(noteBookId);
         if (optionalNoteBook.isPresent()) {
             NoteBook noteBook = optionalNoteBook.get();
-            Patient patient = patientService.getData(noteBook.getPatient().getId());
             Hibernate.initialize(noteBook.getTags());
+            Hibernate.initialize(noteBook.getEntries());
             displayBean.setId(noteBook.getId());
             displayBean.setTitle(noteBook.getTitle());
             displayBean.setType(Integer.valueOf(noteBook.getType()));
-            displayBean.setLastName(patientService.getLastName(patient));
-            displayBean.setFirstName(patientService.getFirstName(patient));
-            displayBean.setGender(patientService.getGender(patient));
             displayBean.setTags(noteBook.getTags());
             displayBean.setDateCreated(DateUtil.formatDateAsText(noteBook.getDateCreated()));
             displayBean.setStatus(noteBook.getStatus());
             displayBean.setTypeName(dictionaryService.get(noteBook.getType().toString()).getDictEntry());
+            displayBean.setIsTemplate(noteBook.getIsTemplate());
+            displayBean.setEntriesCount(noteBook.getEntries().size());
         }
         return displayBean;
     }
@@ -149,24 +158,17 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     @Transactional
     public NoteBookFullDisplayBean convertToFullDisplayBean(Integer noteBookId) {
         NoteBookFullDisplayBean fullDisplayBean = new NoteBookFullDisplayBean();
-        Optional<NoteBook> optionalNoteBook = baseObjectDAO.get(noteBookId);
-        if (optionalNoteBook.isPresent()) {
-            NoteBook noteBook = optionalNoteBook.get();
+        NoteBook noteBook = get(noteBookId);
+        if (noteBook != null) {
             Hibernate.initialize(noteBook.getAnalysers());
             Hibernate.initialize(noteBook.getSamples());
             Hibernate.initialize(noteBook.getPages());
             Hibernate.initialize(noteBook.getFiles());
             Hibernate.initialize(noteBook.getTags());
-            patient = patientService.getData(noteBook.getPatient().getId());
+            Hibernate.initialize(noteBook.getEntries());
             fullDisplayBean.setId(noteBook.getId());
             fullDisplayBean.setTitle(noteBook.getTitle());
             fullDisplayBean.setType((Integer.valueOf(noteBook.getType())));
-            if (patient != null) {
-                fullDisplayBean.setLastName(patientService.getLastName(patient));
-                fullDisplayBean.setFirstName(patientService.getFirstName(patient));
-                fullDisplayBean.setGender(patientService.getGender(patient));
-                fullDisplayBean.setPatientId(Integer.valueOf(patient.getId()));
-            }
             fullDisplayBean.setTags(noteBook.getTags());
             fullDisplayBean.setDateCreated(DateUtil.formatDateAsText(noteBook.getDateCreated()));
             fullDisplayBean.setStatus(noteBook.getStatus());
@@ -182,6 +184,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             fullDisplayBean.setFiles(noteBook.getFiles());
             fullDisplayBean.setTechnicianName(noteBook.getTechnician().getDisplayName());
             fullDisplayBean.setTechnicianId(Integer.valueOf(noteBook.getTechnician().getId()));
+            fullDisplayBean.setIsTemplate(noteBook.getIsTemplate());
+            fullDisplayBean.setEntriesCount(noteBook.getEntries().size());
 
             List<SampleDisplayBean> sampleDisplayBeans = new ArrayList<>();
 
@@ -200,9 +204,6 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         sampleDisplayBean.setId(Integer.valueOf(sampleItem.getId()));
         sampleDisplayBean
                 .setSampleType(typeOfSampleService.getNameForTypeOfSampleId(sampleItem.getTypeOfSample().getId()));
-        if (patient != null) {
-            sampleDisplayBean.setPatientId(Integer.valueOf(patient.getId()));
-        }
         sampleDisplayBean.setCollectionDate(DateUtil.convertTimestampToStringDate(sampleItem.getLastupdated()));
         sampleDisplayBean.setVoided(sampleItem.isVoided());
         sampleDisplayBean.setVoidReason(sampleItem.getVoidReason());
@@ -246,18 +247,17 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         if (!GenericValidator.isBlankOrNull(form.getProject())) {
             noteBook.setProject(form.getProject());
         }
-
+        noteBook.setIsTemplate(form.getIsTemplate());
+        if (form.getStatus() != null) {
+            noteBook.setStatus(form.getStatus());
+        }
         if (noteBook.getId() == null) {
             noteBook.setDateCreated(new Date());
-            noteBook.setStatus(NoteBookStatus.DRAFT);
             noteBook.setTechnician(systemUserService.get(form.getSystemUserId().toString()));
         } else {
             noteBook.setDateCreated(noteBook.getDateCreated());
-            noteBook.setStatus(form.getStatus());
             noteBook.setTechnician(systemUserService.get(form.getTechnicianId().toString()));
         }
-
-        noteBook.setPatient(patientService.getData(form.getPatientId().toString()));
 
         noteBook.getAnalysers().clear();
         if (form.getAnalyzerIds() != null) {
@@ -314,23 +314,31 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
     @Override
     @Transactional
-    public List<SampleDisplayBean> searchSampleItems(String patientId, String accession) {
+    public List<SampleDisplayBean> searchSampleItems(String accession) {
 
-        if (StringUtils.isNotBlank(patientId)) {
-            patient = patientService.get(patientId);
-        } else if (StringUtils.isNotBlank(accession)) {
-            Sample sample = sampleService.getSampleByAccessionNumber(accession);
-            if (sample != null) {
-                patient = sampleService.getPatient(sample);
-            }
-        }
-        List<Sample> samples = StringUtils.isNotBlank(accession)
-                ? Optional.ofNullable(sampleService.getSampleByAccessionNumber(accession)).map(List::of)
-                        .orElseGet(List::of)
-                : StringUtils.isNotBlank(patientId) ? sampleService.getSamplesForPatient(patientId) : List.of();
+        List<Sample> samples = StringUtils.isNotBlank(accession) ? Optional
+                .ofNullable(sampleService.getSampleByAccessionNumber(accession)).map(List::of).orElseGet(List::of)
+                : new ArrayList<>();
 
         return samples.stream().flatMap(sample -> sampleItemService.getSampleItemsBySampleId(sample.getId()).stream())
                 .map(this::convertSampleToDisplayBean).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public List<NoteBook> getAllTemplateNoteBooks() {
+        return baseObjectDAO.getAllMatching("isTemplate", true);
+    }
+
+    @Override
+    @Transactional
+    public List<NoteBook> getNoteBookEntries(Integer templateId) {
+        NoteBook template = get(templateId);
+        if (template != null && template.getIsTemplate()) {
+            Hibernate.initialize(template.getEntries());
+            return template.getEntries();
+        }
+        return new ArrayList<>();
     }
 
 }

@@ -24,4 +24,5 @@ public interface TestResultService extends BaseObjectService<TestResult, String>
     List<TestResult> getTestResultsByTestAndResultGroup(TestAnalyte testAnalyte);
 
     List<TestResult> getAllSortedTestResults();
+
 }
