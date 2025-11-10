@@ -32,7 +32,7 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
 
     private String id;
 
-    private String quantity;
+    private Double quantity;
 
     private UUID fhirUuid;
     private ValueHolderInterface sample;
@@ -51,6 +51,8 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
     private String collector;
     private boolean rejected = false;
     private String rejectReasonId;
+    private boolean voided = false;
+    private String voidReason;
 
     public SampleItem() {
         super();
@@ -86,11 +88,11 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
         return id;
     }
 
-    public void setQuantity(String quantity) {
+    public void setQuantity(Double quantity) {
         this.quantity = quantity;
     }
 
-    public String getQuantity() {
+    public Double getQuantity() {
         return quantity;
     }
 
@@ -238,5 +240,21 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
 
     public void setRejectReasonId(String rejectReasonId) {
         this.rejectReasonId = rejectReasonId;
+    }
+
+    public boolean isVoided() {
+        return voided;
+    }
+
+    public void setVoided(boolean voided) {
+        this.voided = voided;
+    }
+
+    public String getVoidReason() {
+        return voidReason;
+    }
+
+    public void setVoidReason(String voidReason) {
+        this.voidReason = voidReason;
     }
 }

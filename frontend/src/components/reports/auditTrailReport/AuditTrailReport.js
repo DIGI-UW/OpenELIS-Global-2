@@ -117,7 +117,9 @@ const AuditTrailReport = ({ id }) => {
                 defaultMessage: "Lab No",
               })}
               value={labNo}
-              onChange={(event, rowValue) => setLabNo(rowValue)}
+              onChange={(event, rowVal) =>
+                setLabNo(rowVal ? rowVal : event?.target?.value)
+              }
               invalid={
                 isLabNoError
                   ? intl.formatMessage({

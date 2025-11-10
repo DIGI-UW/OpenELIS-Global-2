@@ -1,3 +1,4 @@
+
 package org.openelisglobal.result.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,6 +22,7 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analysis.valueholder.ResultFile;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -134,10 +136,10 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             "testResult*.qualifiedResultValue", "testResult*.qualifiedResultValue", "testResult*.shadowReferredOut",
             "testResult*.referredOut", "testResult*.referralReasonId", "testResult*.technician",
             "testResult*.shadowRejected", "testResult*.rejected", "testResult*.rejectReasonId", "testResult*.note",
-            "paging.currentPage", //
-            "testResult*.refer", "testResult*.referralItem.referralReasonId",
-            "testResult*.referralItem.referredInstituteId", "testResult*.referralItem.referredTestId",
-            "testResult*.referralItem.referredSendDate" };
+            "paging.currentPage", "testResult*.resultFile", "testResult*.resultFile.fileName",
+            "testResult*.resultFile.fileType", "testResult*.resultFile.base64Content", "testResult*.refer",
+            "testResult*.referralItem.referralReasonId", "testResult*.referralItem.referredInstituteId",
+            "testResult*.referralItem.referredTestId", "testResult*.referralItem.referredSendDate" };
 
     @Autowired
     private DictionaryService dictionaryService;
@@ -558,6 +560,12 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
                 analysis.setMethod(methodService.get(testResultItem.getTestMethod()));
             }
+            if (testResultItem.getResultFile() != null) {
+                ResultFile resultFile = createResultFile(testResultItem.getResultFile());
+                if (resultFile != null) {
+                    analysis.setResultFile(resultFile);
+                }
+            }
             actionDataSet.getModifiedAnalysis().add(analysis);
         }
     }
@@ -695,6 +703,12 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         }
 
         ResultInventory testKit = createTestKitLinkIfNeeded(testResultItem, ResultsLoadUtility.TESTKIT);
+        if (testResultItem.getResultFile() != null) {
+            ResultFile resultFile = createResultFile(testResultItem.getResultFile());
+            if (resultFile != null) {
+                analysis.setResultFile(resultFile);
+            }
+        }
 
         analysis.setReferredOut(testResultItem.isReferredOut());
         analysis.setEnteredDate(DateUtil.getNowAsTimestamp());
@@ -871,6 +885,24 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
     private Patient getPatient(Sample sample) {
         return sampleHumanService.getPatientForSample(sample);
+    }
+
+    private ResultFile createResultFile(TestResultItem.ResultFileForm fileForm) {
+        if (fileForm == null || GenericValidator.isBlankOrNull(fileForm.getFileName())
+                || GenericValidator.isBlankOrNull(fileForm.getFileType()) || fileForm.getContent() == null
+                || fileForm.getContent().length == 0) {
+            return null;
+        }
+        ResultFile file = new ResultFile();
+        file.setFileName(fileForm.getFileName());
+        file.setFileType(fileForm.getFileType());
+        file.setContent(fileForm.getContent());
+
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        file.setUploadedAt(now);
+        file.setLastupdated(now);
+
+        return file;
     }
 
     private String findLogBookForward(String forward) {
