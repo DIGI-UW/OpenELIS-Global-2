@@ -27,7 +27,6 @@
         <property name="connection.username">${db.user}</property>
         <property name="connection.password">${db.pass}</property>
 
-        <mapping resource="hibernate/hbm/Action.hbm.xml" />
         <mapping resource="hibernate/hbm/Analysis.hbm.xml" />
         <mapping resource="hibernate/hbm/AnalysisQaEvent.hbm.xml" />
         <mapping

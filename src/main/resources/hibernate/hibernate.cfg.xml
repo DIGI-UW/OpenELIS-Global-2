@@ -26,7 +26,6 @@
         <property name="hibernate.current_session_context_class">thread</property>
 
 
-        <mapping resource="hibernate/hbm/Action.hbm.xml" />
         <mapping resource="hibernate/hbm/Analysis.hbm.xml" />
         <mapping resource="hibernate/hbm/AnalysisQaEvent.hbm.xml" />
         <mapping

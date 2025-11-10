@@ -15,6 +15,7 @@
         <class>org.openelisglobal.security.converter.EncryptionConverter</class>
 
         <!-- entities -->
+        <class>org.openelisglobal.action.valueholder.Action</class>
         <class>org.openelisglobal.testcalculated.valueholder.Operation</class>
         <class>org.openelisglobal.analysis.valueholder.ResultFile</class>
         <class>org.openelisglobal.testcalculated.valueholder.ResultCalculation</class>

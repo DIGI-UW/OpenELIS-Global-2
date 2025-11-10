@@ -13,17 +13,33 @@
  */
 package org.openelisglobal.action.valueholder;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Parameter;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
 
+@Entity
+@Table(name = "action")
 public class Action extends BaseObject<String> {
 
-    private String code;
-
+    @Id
+    @GenericGenerator(name = "action_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "action_seq"))
+    @GeneratedValue(generator = "action_seq_gen ")
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "ID", precision = 10, scale = 0)
     private String id;
 
+    @Column(name = "CODE", nullable = true, length = 10)
+    private String code;
+    @Column(name = "DESCRIPTION", nullable = false, length = 256)
     private String description;
-
+    @Column(name = "TYPE", nullable = false, length = 10)
     private String type;
 
     // (concatenate action code name/desc)
