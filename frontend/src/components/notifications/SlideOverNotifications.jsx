@@ -16,6 +16,7 @@ import {
 import Spinner from "../common/Sprinner";
 import { useIntl } from "react-intl";
 import { useContext, useEffect, useState } from "react";
+import classNames from "classnames";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog } from "../common/CustomNotification";
 import NoNotificationSVG from "./NoNotificationSVG";
@@ -206,56 +207,24 @@ export default function SlideOverNotifications(props) {
 
   const NotificationButton = ({ icon, label, onClick, disabled }) => (
     <button
+      className={classNames("notification-slideover-button", {
+        "notification-slideover-button--disabled": disabled,
+      })}
       onClick={onClick}
       disabled={disabled}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: disabled ? "#f0f0f0" : "white",
-        padding: "0.5rem 0.8rem",
-        fontWeight: "600",
-        border: "none",
-        borderRadius: "0.3rem",
-        transition: "background-color 0.2s ease-in-out",
-        color: disabled ? "#a1a1a1" : "#837994",
-        whiteSpace: "nowrap",
-        cursor: disabled ? "not-allowed" : "pointer",
-      }}
-      onMouseEnter={(e) => {
-        if (!disabled) e.currentTarget.style.backgroundColor = "#DFDAE8";
-      }}
-      onMouseLeave={(e) => {
-        if (!disabled) e.currentTarget.style.backgroundColor = "white";
-      }}
     >
       {icon}
-      <span style={{ fontSize: "0.75rem", marginLeft: "0.5rem" }}>{label}</span>
+      <span className="notification-slideover-button__label">{label}</span>
     </button>
   );
 
   return (
-    <div
-      style={{
-        backgroundColor: "white",
-        borderRadius: "0.3rem",
-        transition: "background-color 0.2s ease-in-out",
-        padding: "1rem",
-        maxWidth: "600px",
-        margin: "0 auto",
-      }}
-    >
+    <div className="notification-slideover">
       {notificationVisible === true ? <AlertDialog /> : ""}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         <br />
 
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-          }}
-        >
+        <div className="notification-slideover__actions">
           {[
             {
               icon:

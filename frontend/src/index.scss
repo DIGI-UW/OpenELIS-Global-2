@@ -576,6 +576,103 @@
     stroke: #161616 !important;
   }
 
+  .slide-over-root {
+    background-color: transparent;
+  }
+
+  .slide-over-backdrop {
+    background: rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .slide-over-content {
+    background-color: #0f0f0f !important;
+    color: #f4f4f4 !important;
+    border: 1px solid #262626 !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .slide-over-header {
+    background-color: #161616 !important;
+    color: #f4f4f4 !important;
+    border-bottom: 1px solid #262626 !important;
+  }
+
+  .slide-over-title,
+  .slide-over-body,
+  .slide-over-body * {
+    color: #f4f4f4 !important;
+  }
+
+  .slide-over-body {
+    background-color: #0f0f0f !important;
+  }
+
+  .slide-over-body p {
+    color: #c6c6c6 !important;
+  }
+
+  .slide-over-content svg,
+  .slide-over-content svg *,
+  .slide-over-content path {
+    fill: #ffffff !important;
+    stroke: #ffffff !important;
+    color: #ffffff !important;
+  }
+
+  .close-button {
+    color: #f4f4f4 !important;
+  }
+
+  .close-button:hover,
+  .close-button:focus {
+    color: #a6c8ff !important;
+  }
+
+  .notification-slideover {
+    background-color: #0f0f0f !important;
+    color: #f4f4f4 !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+  }
+
+  .notification-slideover__actions {
+    background-color: #0f0f0f !important;
+    border-radius: 0.4rem !important;
+    padding: 0.75rem 1rem !important;
+    gap: 0.75rem !important;
+  }
+
+  .notification-slideover__actions .notification-slideover-button {
+    background-color: #262626 !important;
+    color: #f4f4f4 !important;
+    box-shadow: inset 0 0 0 1px #393939 !important;
+  }
+
+  .notification-slideover__actions
+    .notification-slideover-button:hover:not(:disabled),
+  .notification-slideover__actions
+    .notification-slideover-button:focus-visible:not(:disabled) {
+    background-color: rgba(120, 169, 255, 0.2) !important;
+    box-shadow: inset 0 0 0 1px #78a9ff !important;
+  }
+
+  .notification-slideover-button--disabled {
+    background-color: #393939 !important;
+    color: #a8a8a8 !important;
+    box-shadow: inset 0 0 0 1px #505050 !important;
+  }
+
+  .notification-slideover__actions svg,
+  .notification-slideover__actions svg *,
+  .notification-slideover__actions path {
+    fill: #ffffff !important;
+    stroke: #ffffff !important;
+    color: #ffffff !important;
+  }
+
+  .notification-slideover-button__label {
+    color: inherit !important;
+  }
+
   .exampleDiv {
     background-color: #0a0a0a !important;
     color: #f4f4f4 !important;
@@ -589,7 +686,6 @@
   }
 
   .cds--data-table-container,
-  .cds--data-table-container .cds--data-table-content,
   .cds--data-table-container .cds--table-toolbar,
   .cds--data-table-container .cds--table-toolbar-content,
   .cds--data-table-container .cds--table-toolbar-search-container,
@@ -601,6 +697,12 @@
     color: #f4f4f4;
     background-color: #161616;
     border-color: #262626;
+  }
+
+  .cds--data-table-container .cds--data-table-content {
+    background: #000000 !important;
+    background-color: #000000 !important;
+    color: #f4f4f4 !important;
   }
 
   .cds--data-table,
@@ -799,6 +901,69 @@
   margin-top: 3rem;
   padding: 0;
   background-color: var(--cds-layer-01, #f4f4f4);
+}
+
+// Notification slide-over styles (light theme)
+.notification-slideover {
+  background-color: #ffffff;
+  border-radius: 0.3rem;
+  transition: background-color 0.2s ease-in-out;
+  padding: 1rem;
+  max-width: 600px;
+  margin: 0 auto;
+  color: #161616;
+}
+
+.notification-slideover__actions {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  background-color: #ffffff;
+  border-radius: 0.3rem;
+  padding: 0.75rem;
+}
+
+.notification-slideover-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #ffffff;
+  padding: 0.5rem 0.8rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 0.3rem;
+  transition:
+    background-color 0.2s ease-in-out,
+    color 0.2s ease-in-out;
+  color: #837994;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px #d9d9d9;
+}
+
+.notification-slideover-button:hover:not(:disabled),
+.notification-slideover-button:focus-visible:not(:disabled) {
+  background-color: #dfdae8;
+  box-shadow: inset 0 0 0 1px #b8aeda;
+  outline: none;
+}
+
+.notification-slideover-button--disabled {
+  background-color: #f0f0f0;
+  color: #a1a1a1;
+  cursor: not-allowed;
+  box-shadow: inset 0 0 0 1px #d0d0d0;
+}
+
+.notification-slideover-button__label {
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+}
+
+[data-carbon-theme="g100"] .toastDisplay,
+[data-carbon-theme="g100"] .toastDisplay * {
+  color: #161616 !important;
 }
 
 .loginPageContent,
