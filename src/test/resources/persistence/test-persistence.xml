@@ -16,6 +16,7 @@
 
         <!-- entities -->
         <class>org.openelisglobal.testcalculated.valueholder.Operation</class>
+        <class>org.openelisglobal.analysis.valueholder.ResultFile</class>
         <class>org.openelisglobal.testcalculated.valueholder.ResultCalculation</class>
         <class>org.openelisglobal.testcalculated.valueholder.Calculation</class>
         <class>org.openelisglobal.testreflex.action.bean.ReflexRuleOptionsDisplayItem</class>

@@ -115,6 +115,12 @@
             lazy="false">
             <column name="method_id" precision="10" scale="0" />
         </many-to-one>
+        <many-to-one name="resultFile"
+            class="org.openelisglobal.analysis.valueholder.ResultFile"
+            fetch="join" lazy="false" cascade="all">
+            <column name="result_file_id" not-null="false" unique="true" />
+        </many-to-one>
+
     </class>
 
     <!-- <!- bugzilla 1993 get sample analyses as reported on in results report -->
