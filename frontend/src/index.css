@@ -1,15 +1,15 @@
 body {
   margin: 0;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
-    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+    "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
+    "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family:
-    source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
 }
 
 .slide-over-root {
@@ -147,25 +147,6 @@ code {
   margin: 1px;
   overflow-y: auto;
   flex-grow: 1;
-}
-
-[data-carbon-theme="g100"] .slide-over-content,
-[data-carbon-theme="g100"] .slide-over-body {
-  color: #161616;
-}
-
-[data-carbon-theme="g100"] .slide-over-content {
-  background: #ffffff;
-}
-
-[data-carbon-theme="g100"] .slide-over-header {
-  background: #f1f1f1;
-  color: #161616;
-}
-
-[data-carbon-theme="g100"] .slide-over-title,
-[data-carbon-theme="g100"] .close-button {
-  color: #161616;
 }
 
 @keyframes pulse {
