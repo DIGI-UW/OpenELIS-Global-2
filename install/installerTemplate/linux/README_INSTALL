@@ -71,16 +71,16 @@ sudo python ./setup_OpenELIS.py -uninstall
 
 ## Configuration
 
-Location reporting now uses FHIR/GOFR for facility registration. Configure these properties in your `application.properties`:
+Location reporting now uses FHIR/GOFR for facility registration (managed inside OpenELIS, not the installer). Configure these properties in your `application.properties` (or via environment variables):
 
 ```properties
-# Anonymous Location Reporting (GOFR)
-org.openelisglobal.locationreporting.fhirstore=https://hub.openelis-global.org/gofr/fhir
-org.openelisglobal.locationreporting.authurl=https://hub.openelis-global.org/gofr/token
-org.openelisglobal.locationreporting.username=
-org.openelisglobal.locationreporting.password=
-org.openelisglobal.locationreporting.auth=basic
-org.openelisglobal.locationreporting.schedule=0 0 2 1 * ?
+# Anonymous Location Reporting (GOFR) - example endpoints
+#org.openelisglobal.locationreporting.fhirstore = https://hub.openelisci.org:5000/gofr/exemple4
+#org.openelisglobal.locationreporting.authurl= https://hub.openelisci.org:5000/gofr/token
+#org.openelisglobal.locationreporting.username=
+#org.openelisglobal.locationreporting.password=
+#org.openelisglobal.locationreporting.auth=basic
+#org.openelisglobal.locationreporting.schedule=0 0 2 1 * ?
 ```
 
 Reports are sent monthly via FHIR Organization and Location resources to help the development team understand OpenELIS's global reach. No clinical or personal information is collected.
