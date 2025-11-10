@@ -3,24 +3,37 @@ package org.openelisglobal.analysis;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analysis.valueholder.ResultFile;
+import org.openelisglobal.method.service.MethodService;
+import org.openelisglobal.method.valueholder.Method;
+import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
+
+    private static final byte[] fileContent = Base64.getDecoder()
+            .decode("iPBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/wcAAgMBAQEBBQAAAA==");
+
     @Autowired
     AnalysisService aService;
 
@@ -35,6 +48,14 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     ResultService resultService;
+
+    @Autowired
+    MethodService methodService;
+
+    @Autowired
+    PanelService panelService;
+    @Autowired
+    TestSectionService testSectionService;
 
     @Before
     public void init() throws Exception {
@@ -323,5 +344,87 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         org.openelisglobal.test.valueholder.Test test = tService.get("1");
         Analysis analysis = aService.buildAnalysis(test, sampleItem);
         Assert.assertEquals("MANUAL", analysis.getAnalysisType());
+    }
+
+    @Test
+    public void insert_shouldInsertAnalysisWithResultFile() {
+
+        Analysis analysis = createDemoAnalysis();
+        String analysisId = aService.insert(analysis);
+
+        Analysis retrievedAnalysis = aService.getAnalysisById(analysisId);
+        Assert.assertEquals(analysisId, retrievedAnalysis.getId());
+        Assert.assertEquals("resultfile.txt", retrievedAnalysis.getResultFile().getFileName());
+
+    }
+
+    @Test
+    public void update_shouldUpdateAnalysis() {
+        Timestamp createAt = new Timestamp(System.currentTimeMillis());
+        Timestamp updatedAt = new Timestamp(System.currentTimeMillis());
+        Analysis analysis = aService.get("2");
+        ResultFile resultFile = new ResultFile();
+        resultFile.setFileName("resultfile.txt");
+        resultFile.setFileType("TEXT");
+        resultFile.setContent(fileContent);
+        resultFile.setLastupdated(updatedAt);
+        resultFile.setUploadedAt(createAt);
+        analysis.setResultFile(resultFile);
+        Analysis updatedAnalysis = aService.update(analysis);
+        Assert.assertEquals(analysis.getId(), updatedAnalysis.getId());
+        Assert.assertEquals("resultfile.txt", updatedAnalysis.getResultFile().getFileName());
+    }
+
+    public Analysis createDemoAnalysis() {
+        Analysis analysis1 = aService.getAnalysisById("2");
+        aService.delete(analysis1);
+
+        Analysis analysis = new Analysis();
+
+        analysis.setId("3");
+        Timestamp createAt = new Timestamp(System.currentTimeMillis());
+        Timestamp updatedAt = new Timestamp(System.currentTimeMillis());
+        analysis.setFhirUuid(UUID.randomUUID());
+        analysis.setAnalysisType("Blood Test");
+        analysis.setRevision("1");
+
+        // Dates
+        analysis.setStartedDate(Date.valueOf("2025-10-01"));
+        analysis.setCompletedDate(Date.valueOf("2025-10-02"));
+        analysis.setReleasedDate(Date.valueOf("2025-10-03"));
+        analysis.setEnteredDate(Timestamp.valueOf("2025-10-01 10:00:00"));
+        TestSection testSection = testSectionService.get("1");
+        analysis.setTestSection(testSection);
+        org.openelisglobal.test.valueholder.Test test = tService.get("1");
+
+        SampleItem sampleItem = sampleItemService.get("1");
+        analysis.setTest(test);
+        analysis.setSampleItem(sampleItem);
+
+        // Method
+        Method method = methodService.get("1");
+        analysis.setMethod(method);
+
+        ResultFile resultFile = new ResultFile();
+        resultFile.setFileName("resultfile.txt");
+        resultFile.setFileType("TEXT");
+        resultFile.setContent(fileContent);
+        resultFile.setLastupdated(updatedAt);
+        resultFile.setUploadedAt(createAt);
+        analysis.setResultFile(resultFile);
+
+        Result result = resultService.get("1");
+        analysis.setParentResult(result);
+        analysis.setTriggeredReflex(false);
+        analysis.setResultCalculated(true);
+        analysis.setReferredOut(false);
+        analysis.setCorrectedSincePatientReport(false);
+        analysis.setIsReportable("Y");
+        analysis.setSoClientReference("LAB-REF-1001");
+        analysis.setSoSendReadyDate(Date.valueOf("2025-10-04"));
+        analysis.setSoSendEntryBy("tech_user");
+        analysis.setSoSendEntryDate(Date.valueOf("2025-10-05"));
+
+        return analysis;
     }
 }

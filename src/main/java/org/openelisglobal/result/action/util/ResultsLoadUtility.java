@@ -28,6 +28,7 @@ import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analysis.valueholder.ResultFile;
 import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -90,6 +91,7 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
 import org.openelisglobal.testreflex.valueholder.TestReflex;
+import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
@@ -150,6 +152,8 @@ public class ResultsLoadUtility {
     private SampleItemService sampleItemService;
     @Autowired
     private SampleQaEventService sampleQaEventService;
+    @Autowired
+    private TestResultService testResultService;
 
     private final StatusRules statusRules = new StatusRules();
 
@@ -688,6 +692,17 @@ public class ResultsLoadUtility {
         if (resultDisplayType != ResultDisplayType.TEXT) {
             inventoryNeeded = true;
         }
+        ResultFile file = analysis.getResultFile();
+
+        TestResultItem.ResultFileForm form = new TestResultItem.ResultFileForm();
+        if (file != null) {
+            form.setFileName(file.getFileName());
+            form.setFileType(file.getFileType());
+            form.setContent(file.getContent());
+            form.setUploadedAt(file.getUploadedAt());
+            form.setLastupdated(file.getLastupdated());
+        }
+
         TestResultItem testItem = new TestResultItem();
 
         testItem.setAccessionNumber(accessionNumber);
@@ -736,6 +751,7 @@ public class ResultsLoadUtility {
                 analysisService.getTriggeredReflex(analysis) && analysisService.resultIsConclusion(result, analysis));
         testItem.setPastNotes(notes);
         testItem.setDisplayResultAsLog(hasLogValue(test));
+        testItem.setResultFile(form);
         testItem.setNonconforming(
                 analysisService.isParentNonConforming(analysis) || SpringContext.getBean(IStatusService.class)
                         .matches(analysisService.getStatusId(analysis), AnalysisStatus.TechnicalRejected));
