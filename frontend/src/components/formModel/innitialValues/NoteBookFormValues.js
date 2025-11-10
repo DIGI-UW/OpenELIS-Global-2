@@ -7,17 +7,19 @@ export const NoteBookFormValues = {
   protocol: "",
   content: "",
   technicianId: null,
-  patientId: null,
   systemUserId: null,
   status: "",
   sampleIds: [],
   tags: [],
   analyzerIds: [],
+  isTemplate: null,
+  templateId: null,
   pages: [
     {
       title: "",
       content: "",
       instructions: "",
+      tests: [],
     },
   ],
   files: [
@@ -32,9 +34,6 @@ export const NoteBookInitialData = {
   id: null,
   title: "",
   type: null,
-  lastName: "",
-  firstName: "",
-  gender: "",
   dateCreated: "",
   status: "NEW",
   tags: [],
@@ -43,13 +42,13 @@ export const NoteBookInitialData = {
   protocol: "",
   content: "",
   technicianId: null,
-  patientId: null,
   systemUserId: null,
   technicianName: "",
   samples: [],
   analyzers: [],
   pages: [],
   files: [],
+  isTemplate: null,
 };
 
 // export const NoteBookInitialData = {
