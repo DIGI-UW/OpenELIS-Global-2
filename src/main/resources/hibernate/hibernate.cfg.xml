@@ -101,7 +101,6 @@
         <mapping resource="hibernate/hbm/InventoryItem.hbm.xml" />
         <mapping resource="hibernate/hbm/InventoryLocation.hbm.xml" />
         <mapping resource="hibernate/hbm/InventoryReceipt.hbm.xml" />
-        <mapping resource="hibernate/hbm/Role.hbm.xml" />
         <mapping resource="hibernate/hbm/UserRole.hbm.xml" />
         <mapping resource="hibernate/hbm/SystemRoleModule.hbm.xml" />
         <mapping resource="hibernate/hbm/Analyzer.hbm.xml" />

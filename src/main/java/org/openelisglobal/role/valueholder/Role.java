@@ -52,9 +52,6 @@ public class Role extends BaseObject<String> implements PermissionAgent {
     @Column(name = "grouping_parent")
     private String groupingParent;
 
-    @Column(name = "display_key")
-    private String displayKey;
-
     @Column(name = "active")
     private boolean active;
 
@@ -107,14 +104,6 @@ public class Role extends BaseObject<String> implements PermissionAgent {
 
     public void setGroupingParent(String groupingParent) {
         this.groupingParent = groupingParent;
-    }
-
-    public String getDisplayKey() {
-        return displayKey;
-    }
-
-    public void setDisplayKey(String displayKey) {
-        this.displayKey = displayKey;
     }
 
     protected String getDefaultLocalizedName() {
