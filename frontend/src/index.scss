@@ -69,6 +69,16 @@
     color: #ffffff !important;
   }
 
+  .cds--loading-overlay {
+    background-color: #000000 !important;
+  }
+
+  .cds--loading__stroke,
+  .cds--loading_stroke {
+    stroke: #0f62fe !important;
+    fill: none !important;
+  }
+
   body {
     background-color: #161616;
     color: #f4f4f4;
