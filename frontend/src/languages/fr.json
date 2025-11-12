@@ -1024,6 +1024,7 @@
   "patient.label.primaryphone": "Téléphone principal du patient",
   "patient.label.sex": "Sexe",
   "patient.last.name": "Nom de famille",
+  "patient.photo.label": "Photo",
   "patient.male": "Mâle",
   "patient.maritalstatus": "État civil",
   "patient.natioanalid": "Carte d'identité",
@@ -1566,5 +1567,13 @@
   "workplan.title": "Plan de Travail",
   "workplan.unit.title": "Plan de travail par unit\u00E9",
   "workplan.unit.types": "Unité\u00E9",
-  "yes.option": "Oui"
+  "yes.option": "Oui",
+  "patient.photo.retake":"Cliquez pour reprendre",
+  "patient.photo.add": "Cliquez pour ajouter une photo",
+  "patient.photo.dragndrop":"Glissez et déposez une image ici",
+  "patient.photo.browse":"ou cliquez pour parcourir",
+  "patient.photo.active.camera":"Cliquez sur le bouton ci-dessous pour activer la caméra",
+  "patient.photo.start.camera":"Démarrer la caméra",
+  "patient.photo.import": "Importer une image",
+  "patient.photo.take": "Prendre une photo"
 }

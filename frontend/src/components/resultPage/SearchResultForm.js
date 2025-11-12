@@ -34,6 +34,7 @@ import ReferredOutTests from "./resultsReferredOut/ReferredOutTests";
 import { ConfigurationContext } from "../layout/Layout";
 import config from "../../config.json";
 import CustomDatePicker from "../common/CustomDatePicker";
+import AsyncAvatar from '../patient/photoManagement/photoAvatar/AyncAvatar'
 
 function ResultSearchPage() {
   const [originalResultForm, setOriginalResultForm] = useState({
@@ -1019,6 +1020,9 @@ export function SearchResults(props) {
               {row.patientInfo}
               <br></br>
               <br></br>
+            </div>
+            <div>
+              <AsyncAvatar patientId={row.patientId} hasPhoto={true} />
             </div>
             {row.nonconforming && (
               <picture>

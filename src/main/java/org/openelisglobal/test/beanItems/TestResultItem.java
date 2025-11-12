@@ -132,6 +132,8 @@ public class TestResultItem implements ResultItem, Serializable {
     private boolean reportable;
     private String patientName;
 
+    private String patientId;
+
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { WorkplanForm.PrintWorkplan.class })
     private String patientInfo;
 
@@ -975,5 +977,11 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setReferralItem(ReferralItem referralItem) {
         this.referralItem = referralItem;
+    }
+    public String getPatientId() {
+        return patientId;
+    }
+    public void setPatientId(String patientId) {
+        this.patientId = patientId;
     }
 }

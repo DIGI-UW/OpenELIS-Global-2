@@ -36,6 +36,8 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import CreatePatientValidationSchema from "../formModel/validationSchema/CreatePatientValidationShema";
 import CustomDatePicker from "../common/CustomDatePicker";
+import PatientImageSelector from "./photoManagement/uploadPhoto/PatientImageSelector";
+
 function CreatePatientForm(props) {
   const componentMounted = useRef(false);
 
@@ -72,6 +74,14 @@ function CreatePatientForm(props) {
     primaryPhone: { body: "", status: true },
     contactPhone: { body: "", status: true },
   });
+
+
+  const handlePhotoChange = (photo) => {
+    setPatientDetails({
+      ...patientDetails,
+      photo: photo,
+    });
+  };
 
   const handleNationalIdChange = (event) => {
     const newValue = event.target.value;
@@ -509,6 +519,13 @@ function CreatePatientForm(props) {
               <Column lg={16} md={8} sm={4}>
                 {" "}
                 <br></br>
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <PatientImageSelector
+                  value={values.photo}
+                  onChange={handlePhotoChange}
+                  required={false}
+                />
               </Column>
               <Column lg={8} md={4} sm={4}>
                 <Field name="subjectNumber">

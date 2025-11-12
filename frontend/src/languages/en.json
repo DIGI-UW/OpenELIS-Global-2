@@ -1566,5 +1566,14 @@
   "workplan.title": "Workplan",
   "workplan.unit.title": "Workplan By Unit",
   "workplan.unit.types": "Unit Type",
-  "yes.option": "Yes"
+  "yes.option": "Yes",
+  "patient.photo.retake":"Click to take again",
+  "patient.photo.add": "Click to add",
+  "patient.photo.dragndrop":"Drag and drop here",
+  "patient.photo.browse":"Or click to browse ",
+  "patient.photo.active.camera":"Click the button below to activate the camera",
+  "patient.photo.start.camera":"Start camera",
+  "patient.photo.import": "Import photo",
+  "patient.photo.take": "Take a photo"
+
 }
