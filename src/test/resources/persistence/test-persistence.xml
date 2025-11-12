@@ -27,6 +27,7 @@
         <class>org.openelisglobal.testreflex.valueholder.TestReflex</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerExperiment</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
+        <class>org.openelisglobal.role.valueholder.Role</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnectionContact</class>
