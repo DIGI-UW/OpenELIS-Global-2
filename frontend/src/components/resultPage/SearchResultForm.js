@@ -21,6 +21,7 @@ import {
   SelectItem,
   Loading,
   Link,
+  FileUploader,
 } from "@carbon/react";
 import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
@@ -35,6 +36,7 @@ import { ConfigurationContext } from "../layout/Layout";
 import config from "../../config.json";
 import CustomDatePicker from "../common/CustomDatePicker";
 import AsyncAvatar from '../patient/photoManagement/photoAvatar/AyncAvatar'
+import CompactFileInput from "./fileUpload/FileInput";
 
 function ResultSearchPage() {
   const [originalResultForm, setOriginalResultForm] = useState({
@@ -873,6 +875,17 @@ export function SearchResults(props) {
     }
   };
 
+  const downloadFile = (fileName, content, fileType) => {
+    var win = window.open();
+    win.document.write(
+      '<iframe src="' +
+        fileType +
+        ";base64," +
+        content +
+        '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
+    );
+  };
+
   const addRejectResult = () => {
     const resultColumn = {
       id: "reject",
@@ -1275,7 +1288,28 @@ export function SearchResults(props) {
             ))}
           </Select>
         </Column>
-        <Column lg={1}></Column>
+        <Column lg={2}>
+          <CompactFileInput
+            data={data}
+            results={props.results}
+            setResultForm={props.setResultForm}
+          />
+
+          {data.resultFile && data.resultFile.fileName && (
+            <Link
+              onClick={() =>
+                downloadFile(
+                  data.resultFile.fileName,
+                  data.resultFile.content,
+                  data.resultFile.fileType,
+                )
+              }
+              style={{ fontSize: "12px" }}
+            >
+              {data.resultFile.fileName}
+            </Link>
+          )}
+        </Column>
         <Column lg={2}>
           <Checkbox
             labelText={intl.formatMessage({ id: "results.label.refer" })}
@@ -1289,7 +1323,7 @@ export function SearchResults(props) {
             }}
           />
         </Column>
-        <Column lg={3}>
+        <Column lg={2}>
           <Select
             id={"referralReason" + data.id}
             name={"testResult[" + data.id + "].referralItem.referralReasonId"}
@@ -1310,7 +1344,7 @@ export function SearchResults(props) {
             ))}
           </Select>
         </Column>
-        <Column lg={3}>
+        <Column lg={2}>
           <Select
             id={"institute" + data.id}
             name={

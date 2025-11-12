@@ -9,8 +9,8 @@ import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 
 public interface NoteBookDAO extends BaseDAO<NoteBook, Integer> {
 
-    List<NoteBook> filterNoteBooks(List<NoteBookStatus> statuses, List<String> types, List<String> tags, Date fromDate,
-            Date toDate);
+    List<NoteBook> filterNoteBookEntries(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
+            Date fromDate, Date toDate, List<Integer> entryIds);
 
     Long getCountWithStatus(List<NoteBookStatus> statuses);
 

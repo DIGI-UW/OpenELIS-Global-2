@@ -6,4 +6,5 @@
 
   <include relativeToChangelogFile="true" file="notebook.xml"/>
    <include relativeToChangelogFile="true" file="patient_photo.xml"/>
+  <include relativeToChangelogFile="true" file="result_file.xml"/>
 </databaseChangeLog>

@@ -47,6 +47,7 @@ import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index.j
 import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests.js";
 import ChangePassword from "./components/ChangePassword.js";
 import { Roles } from "./components/utils/Utils";
+import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
 
 export default function App() {
   let i18nConfig = {
@@ -317,6 +318,20 @@ export default function App() {
                   path="/NoteBookEntryForm"
                   exact
                   component={() => <NoteBookEntryForm />}
+                  role=""
+                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                />
+                <SecureRoute
+                  path="/NoteBookInstanceEntryForm/:notebookid"
+                  exact
+                  component={() => <NoteBookInstanceEntryForm />}
+                  role=""
+                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                />
+                <SecureRoute
+                  path="/NoteBookInstanceEditForm/:notebookentryid"
+                  exact
+                  component={() => <NoteBookInstanceEntryForm />}
                   role=""
                   labUnitRole={{ Cytology: [Roles.RESULTS] }}
                 />
