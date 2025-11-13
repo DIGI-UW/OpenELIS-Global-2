@@ -18,11 +18,17 @@
 .cds--content {
   margin-top: 3rem;
   padding: 0;
-  background-color: #f5f6f8;
+  background-color: var(--cds-background);
+  color: var(--cds-text-primary);
 }
 
 .loginPageContent,
 .changePasswordPage {
   padding-top: 3rem;
   background: var(--cds-background);
+}
+
+body {
+  background-color: var(--cds-background);
+  color: var(--cds-text-primary);
 }

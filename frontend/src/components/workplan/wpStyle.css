@@ -19,8 +19,8 @@ tr.oddRowHead {
   font-weight: bold;
   font-size: 23px;
   line-height: normal;
-  color: #235689;
-  background-color: #dadddd;
+  color: var(--cds-text-primary);
+  background-color: var(--cds-layer-accent, var(--cds-layer));
   width: 100%;
   border: none;
 }
@@ -29,6 +29,7 @@ tr.oddRowHead {
   margin-top: 2px;
   border: none;
   font-size: 17px;
-  background-color: #e0e3e3;
+  background-color: var(--cds-layer, #e0e3e3);
+  color: var(--cds-text-secondary, #235689);
   line-height: normal;
 }

@@ -9,6 +9,7 @@ import {
   UserAvatarFilledAlt,
   LocationFilled,
 } from "@carbon/icons-react";
+import { Moon, Sun } from "@carbon/icons-react";
 import { Select, SelectItem } from "@carbon/react";
 import HelpMenu from "./HelpMenu";
 import React, {
@@ -23,7 +24,7 @@ import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { withRouter } from "react-router-dom";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import "../Style.css";
-import { ConfigurationContext } from "../layout/Layout";
+import { ConfigurationContext, ThemePreferenceContext } from "../layout/Layout";
 import SlideOver from "../notifications/SlideOver";
 import { languages } from "../../languages";
 
@@ -39,7 +40,6 @@ import {
   SideNavItems,
   SideNavMenu,
   SideNavMenuItem,
-  Theme,
 } from "@carbon/react";
 import SlideOverNotifications from "../notifications/SlideOverNotifications";
 import { getFromOpenElisServer, putToOpenElisServer } from "../utils/Utils";
@@ -47,6 +47,7 @@ import SearchBar from "./search/searchBar";
 function OEHeader(props) {
   const { configurationProperties } = useContext(ConfigurationContext);
   const { userSessionDetails, logout } = useContext(UserSessionDetailsContext);
+  const { toggleTheme, isDarkMode } = useContext(ThemePreferenceContext);
 
   const userSwitchRef = createRef();
   const headerPanelRef = createRef();
@@ -69,6 +70,10 @@ function OEHeader(props) {
   const [readNotifications, setReadNotifications] = useState([]);
   const [searchBar, setSearchBar] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const modeToggleLabel = intl.formatMessage({
+    id: "header.aria.darkModeToggle",
+    defaultMessage: "Toggle dark mode",
+  });
   scrollRef.current = window.scrollY;
   useLayoutEffect(() => {
     window.scrollTo(0, scrollRef.current);
@@ -424,232 +429,228 @@ function OEHeader(props) {
   return (
     <>
       <div className="container">
-        <Theme>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <HeaderContainer
-              render={({ isSideNavExpanded, onClickSideNavExpand }) => (
-                <Header id="mainHeader" className="mainHeader" aria-label="">
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <HeaderContainer
+            render={({ isSideNavExpanded, onClickSideNavExpand }) => (
+              <Header id="mainHeader" className="mainHeader" aria-label="">
+                {userSessionDetails.authenticated && (
+                  <HeaderMenuButton
+                    data-cy="menuButton"
+                    aria-label={isSideNavExpanded ? "Close menu" : "Open menu"}
+                    onClick={onClickSideNavExpand}
+                    isActive={isSideNavExpanded}
+                    isCollapsible={true}
+                  />
+                )}
+                <HeaderName href="/" prefix="" style={{ padding: "0px" }}>
+                  <span id="header-logo">{logo()}</span>
+                  <div className="banner">
+                    <h5>{configurationProperties?.BANNER_TEXT}</h5>
+                    <p>
+                      <FormattedMessage id="header.label.version" /> &nbsp;{" "}
+                      {configurationProperties?.releaseNumber}
+                    </p>
+                  </div>
+                </HeaderName>
+                <HeaderGlobalBar>
                   {userSessionDetails.authenticated && (
-                    <HeaderMenuButton
-                      data-cy="menuButton"
-                      aria-label={
-                        isSideNavExpanded ? "Close menu" : "Open menu"
-                      }
-                      onClick={onClickSideNavExpand}
-                      isActive={isSideNavExpanded}
-                      isCollapsible={true}
-                    />
-                  )}
-                  <HeaderName href="/" prefix="" style={{ padding: "0px" }}>
-                    <span id="header-logo">{logo()}</span>
-                    <div className="banner">
-                      <h5>{configurationProperties?.BANNER_TEXT}</h5>
-                      <p>
-                        <FormattedMessage id="header.label.version" /> &nbsp;{" "}
-                        {configurationProperties?.releaseNumber}
-                      </p>
-                    </div>
-                  </HeaderName>
-                  <HeaderGlobalBar>
-                    {userSessionDetails.authenticated && (
-                      <>
-                        {searchBar && <SearchBar />}
-                        <HeaderGlobalAction
-                          id="search-Icon"
-                          aria-label="Search"
-                          onClick={() =>
-                            handlePanelToggle(searchBar ? "" : "search")
-                          }
+                    <>
+                      {searchBar && <SearchBar />}
+                      <HeaderGlobalAction
+                        id="search-Icon"
+                        aria-label="Search"
+                        onClick={() =>
+                          handlePanelToggle(searchBar ? "" : "search")
+                        }
+                      >
+                        {!searchBar ? (
+                          <Search size={20} />
+                        ) : (
+                          <Close size={20} />
+                        )}
+                      </HeaderGlobalAction>
+                      <HeaderGlobalAction
+                        id="notification-Icon"
+                        aria-label="Notifications"
+                        onClick={() =>
+                          handlePanelToggle(
+                            notificationsOpen ? "" : "notifications",
+                          )
+                        }
+                      >
+                        <div
+                          style={{
+                            position: "relative",
+                            display: "inline-block",
+                          }}
                         >
-                          {!searchBar ? (
-                            <Search size={20} />
+                          {!notificationsOpen ? (
+                            <Notification size={20} />
                           ) : (
                             <Close size={20} />
                           )}
-                        </HeaderGlobalAction>
-                        <HeaderGlobalAction
-                          id="notification-Icon"
-                          aria-label="Notifications"
-                          onClick={() =>
-                            handlePanelToggle(
-                              notificationsOpen ? "" : "notifications",
-                            )
-                          }
-                        >
-                          <div
-                            style={{
-                              position: "relative",
-                              display: "inline-block",
-                            }}
-                          >
-                            {!notificationsOpen ? (
-                              <Notification size={20} />
-                            ) : (
-                              <Close size={20} />
-                            )}
-                            {unReadNotifications?.length > 0 && (
-                              <span
-                                style={{
-                                  position: "absolute",
-                                  top: "-5px",
-                                  right: "-5px",
-                                  backgroundColor: "red",
-                                  color: "white",
-                                  borderRadius: "50%",
-                                  width: "22px",
-                                  height: "22px",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  fontSize: "12px",
-                                  animation: "pulse 5s infinite",
-                                  opacity: 1,
-                                  transition:
-                                    "background-color 0.3s ease-in-out",
-                                }}
-                              >
-                                {unReadNotifications.length}
-                              </span>
-                            )}
-                          </div>
-                        </HeaderGlobalAction>
-                      </>
-                    )}
-                    <HeaderGlobalAction
-                      id="user-Icon"
-                      aria-label={panelSwitchLabel()}
-                      onClick={() =>
-                        handlePanelToggle(switchCollapsed ? "user" : "")
-                      }
-                      ref={userSwitchRef}
-                    >
-                      {panelSwitchIcon()}
-                    </HeaderGlobalAction>
-                    <HelpMenu
-                      helpOpen={helpOpen}
-                      handlePanelToggle={handlePanelToggle}
-                    />
-                  </HeaderGlobalBar>
-                  <HeaderPanel
-                    aria-label="Header Panel"
-                    expanded={!switchCollapsed}
-                    className="headerPanel"
-                    ref={headerPanelRef}
+                          {unReadNotifications?.length > 0 && (
+                            <span
+                              style={{
+                                position: "absolute",
+                                top: "-5px",
+                                right: "-5px",
+                                backgroundColor: "red",
+                                color: "white",
+                                borderRadius: "50%",
+                                width: "22px",
+                                height: "22px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "12px",
+                                animation: "pulse 5s infinite",
+                                opacity: 1,
+                                transition: "background-color 0.3s ease-in-out",
+                              }}
+                            >
+                              {unReadNotifications.length}
+                            </span>
+                          )}
+                        </div>
+                      </HeaderGlobalAction>
+                      <HeaderGlobalAction
+                        id="theme-toggle-icon"
+                        aria-label={modeToggleLabel}
+                        onClick={toggleTheme}
+                      >
+                        {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                      </HeaderGlobalAction>
+                    </>
+                  )}
+                  <HeaderGlobalAction
+                    id="user-Icon"
+                    aria-label={panelSwitchLabel()}
+                    onClick={() =>
+                      handlePanelToggle(switchCollapsed ? "user" : "")
+                    }
+                    ref={userSwitchRef}
                   >
-                    <ul>
-                      {userSessionDetails.authenticated && (
-                        <>
+                    {panelSwitchIcon()}
+                  </HeaderGlobalAction>
+                  <HelpMenu
+                    helpOpen={helpOpen}
+                    handlePanelToggle={handlePanelToggle}
+                  />
+                </HeaderGlobalBar>
+                <HeaderPanel
+                  aria-label="Header Panel"
+                  expanded={!switchCollapsed}
+                  className="headerPanel"
+                  ref={headerPanelRef}
+                >
+                  <ul>
+                    {userSessionDetails.authenticated && (
+                      <>
+                        <li className="userDetails">
+                          <UserAvatarFilledAlt
+                            size={18}
+                            style={{ marginRight: "4px" }}
+                          />
+                          {userSessionDetails.firstName}{" "}
+                          {userSessionDetails.lastName}
+                        </li>
+                        {userSessionDetails.loginLabUnit && (
                           <li className="userDetails">
-                            <UserAvatarFilledAlt
+                            <LocationFilled
                               size={18}
                               style={{ marginRight: "4px" }}
                             />
-                            {userSessionDetails.firstName}{" "}
-                            {userSessionDetails.lastName}
+                            {userSessionDetails.loginLabUnit}{" "}
                           </li>
-                          {userSessionDetails.loginLabUnit && (
-                            <li className="userDetails">
-                              <LocationFilled
-                                size={18}
-                                style={{ marginRight: "4px" }}
-                              />
-                              {userSessionDetails.loginLabUnit}{" "}
-                            </li>
-                          )}
-                          <li
-                            data-cy="logOut"
-                            className="userDetails clickableUserDetails"
-                            onClick={logout}
-                          >
-                            <Logout style={{ marginRight: "3px" }} />
-                            <FormattedMessage id="header.label.logout" />
-                          </li>
-                        </>
-                      )}
-                      <li className="userDetails">
-                        <Select
-                          id="selector"
-                          name="selectLocale"
-                          className="selectLocale"
-                          invalidText="A valid locale value is required"
-                          labelText={
-                            <FormattedMessage id="header.label.selectlocale" />
-                          }
-                          onChange={(event) => {
-                            props.onChangeLanguage(event.target.value);
-                          }}
-                          value={props.intl.locale}
+                        )}
+                        <li
+                          data-cy="logOut"
+                          className="userDetails clickableUserDetails"
+                          onClick={logout}
                         >
-                          {Object.entries(languages).map(
-                            ([code, { label }]) => (
-                              <SelectItem
-                                key={code}
-                                text={label}
-                                value={code}
-                              />
-                            ),
-                          )}
-                        </Select>
-                      </li>
-                      <li className="userDetails">
-                        <label className="cds--label">
-                          {" "}
-                          <FormattedMessage id="header.label.version" />:{" "}
-                          {configurationProperties?.releaseNumber}
-                        </label>
-                      </li>
-                    </ul>
-                  </HeaderPanel>
-                  {userSessionDetails.authenticated && (
-                    <>
-                      <SideNav
-                        aria-label="Side navigation"
-                        expanded={isSideNavExpanded}
-                        isPersistent={false}
+                          <Logout style={{ marginRight: "3px" }} />
+                          <FormattedMessage id="header.label.logout" />
+                        </li>
+                      </>
+                    )}
+                    <li className="userDetails">
+                      <Select
+                        id="selector"
+                        name="selectLocale"
+                        className="selectLocale"
+                        invalidText="A valid locale value is required"
+                        labelText={
+                          <FormattedMessage id="header.label.selectlocale" />
+                        }
+                        onChange={(event) => {
+                          props.onChangeLanguage(event.target.value);
+                        }}
+                        value={props.intl.locale}
                       >
-                        <SideNavItems>
-                          {menus["menu"].map((childMenuItem, index) => {
-                            return generateMenuItems(
-                              childMenuItem,
-                              index,
-                              0,
-                              "$.menu[" + index + "]",
-                            );
-                          })}
-                        </SideNavItems>
-                      </SideNav>
-                    </>
-                  )}
-                </Header>
-              )}
-            />
-            <div style={{ flex: 1 }}>
-              <SlideOver
-                open={notificationsOpen}
-                setOpen={(open) => setNotificationsOpen(open)}
-                slideFrom="right"
-                title="Notifications"
-              >
-                <SlideOverNotifications
-                  loading={loading}
-                  notifications={
-                    showRead ? readNotifications : unReadNotifications
-                  }
-                  showRead={showRead}
-                  markNotificationAsRead={markNotificationAsRead}
-                  getNotifications={getNotifications}
-                  setShowRead={setShowRead}
-                  markAllNotificationsAsRead={markAllNotificationsAsRead}
-                />
-              </SlideOver>
-            </div>
+                        {Object.entries(languages).map(([code, { label }]) => (
+                          <SelectItem key={code} text={label} value={code} />
+                        ))}
+                      </Select>
+                    </li>
+                    <li className="userDetails">
+                      <label className="cds--label">
+                        {" "}
+                        <FormattedMessage id="header.label.version" />:{" "}
+                        {configurationProperties?.releaseNumber}
+                      </label>
+                    </li>
+                  </ul>
+                </HeaderPanel>
+                {userSessionDetails.authenticated && (
+                  <>
+                    <SideNav
+                      aria-label="Side navigation"
+                      expanded={isSideNavExpanded}
+                      isPersistent={false}
+                    >
+                      <SideNavItems>
+                        {menus["menu"].map((childMenuItem, index) => {
+                          return generateMenuItems(
+                            childMenuItem,
+                            index,
+                            0,
+                            "$.menu[" + index + "]",
+                          );
+                        })}
+                      </SideNavItems>
+                    </SideNav>
+                  </>
+                )}
+              </Header>
+            )}
+          />
+          <div style={{ flex: 1 }}>
+            <SlideOver
+              open={notificationsOpen}
+              setOpen={(open) => setNotificationsOpen(open)}
+              slideFrom="right"
+              title="Notifications"
+            >
+              <SlideOverNotifications
+                loading={loading}
+                notifications={
+                  showRead ? readNotifications : unReadNotifications
+                }
+                showRead={showRead}
+                markNotificationAsRead={markNotificationAsRead}
+                getNotifications={getNotifications}
+                setShowRead={setShowRead}
+                markAllNotificationsAsRead={markAllNotificationsAsRead}
+              />
+            </SlideOver>
           </div>
-        </Theme>
+        </div>
       </div>
     </>
   );

@@ -26,6 +26,14 @@ import config from "../../config.json";
 
 const Validation = (props) => {
   const componentMounted = useRef(false);
+  const NoRecordsMessage = () => (
+    <div className="validation-no-records">
+      <FormattedMessage
+        id="validation.noRecordsToDisplay"
+        defaultMessage="There are no records to display"
+      />
+    </div>
+  );
 
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -420,6 +428,7 @@ const Validation = (props) => {
               }
               columns={columns}
               isSortable
+              noDataComponent={<NoRecordsMessage />}
             ></DataTable>
             <Pagination
               onChange={handlePageChange}

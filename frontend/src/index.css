@@ -114,10 +114,11 @@ code {
 .slide-over-content {
   display: flex;
   flex-direction: column;
-  background: white;
+  background: var(--cds-layer);
+  color: var(--cds-text-primary);
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
   height: 100%;
 }
 
@@ -125,7 +126,8 @@ code {
   display: flex;
   align-items: center;
   padding: 16px;
-  background: #f1f1f1;
+  background: var(--cds-layer-accent, var(--cds-layer));
+  color: var(--cds-text-primary);
 }
 
 .close-button {
@@ -133,6 +135,7 @@ code {
   border: none;
   font-size: 24px;
   cursor: pointer;
+  color: var(--cds-icon-primary);
 }
 
 .slide-over-title {
@@ -140,6 +143,7 @@ code {
   font-size: 18px;
   font-weight: bold;
   text-align: center;
+  color: var(--cds-text-primary);
 }
 
 .slide-over-body {

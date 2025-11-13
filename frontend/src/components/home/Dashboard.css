@@ -12,8 +12,10 @@
 .dashboard-tile {
   padding: 20px;
   border-radius: 3px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  background-color: #f4f4f4;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  background-color: var(--cds-layer);
+  color: var(--cds-text-primary);
+  border: 1px solid var(--cds-border-subtle, var(--cds-border-subtle-01));
 }
 
 .tile-title {
@@ -23,7 +25,7 @@
 
 .tile-subtitle {
   margin-top: 5px;
-  color: #666;
+  color: var(--cds-text-secondary);
 }
 
 .tile-value {
@@ -54,7 +56,7 @@
 
 .tile-subtitle-view {
   margin-top: 5px;
-  color: #666;
+  color: var(--cds-text-secondary);
 }
 
 .tile-value-view {
