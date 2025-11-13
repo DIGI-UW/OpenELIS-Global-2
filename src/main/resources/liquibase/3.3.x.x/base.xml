@@ -16,5 +16,6 @@
   <include relativeToChangelogFile="true" file="008-add-short-code-columns.xml"/>
   <include relativeToChangelogFile="true" file="009-create-print-history-table.xml"/>
   <include relativeToChangelogFile="true" file="010-remove-odoo-site-information.xml"/>
+  <include relativeToChangelogFile="true" file="011-freezer-monitoring-schema.xml"/>
 
 </databaseChangeLog>

@@ -293,6 +293,12 @@ public class ReportImplementationFactory {
                 return new DualInSituHybridizationReport();
             } else if (report.equals("BreastCancerHormoneReceptorReport")) {
                 return new BreastCancerHormoneReceptorReport();
+            } else if (report.equals("freezerDailyLogReport")) {
+                return new FreezerDailyLogReport();
+            } else if (report.equals("freezerExcursionReport")) {
+                return new FreezerExcursionReport();
+            } else if (report.equals("freezerAuditTrailReport")) {
+                return new FreezerAuditTrailReport();
             }
         }
 

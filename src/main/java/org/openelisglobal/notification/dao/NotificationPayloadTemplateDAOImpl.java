@@ -11,6 +11,7 @@ import org.openelisglobal.notification.valueholder.NotificationPayloadTemplate.N
 import org.springframework.stereotype.Component;
 
 @Component
+@SuppressWarnings("unused")
 public class NotificationPayloadTemplateDAOImpl extends BaseDAOImpl<NotificationPayloadTemplate, Integer>
         implements NotificationPayloadTemplateDAO {
 

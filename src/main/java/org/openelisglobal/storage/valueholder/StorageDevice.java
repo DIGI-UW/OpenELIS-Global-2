@@ -1,5 +1,6 @@
 package org.openelisglobal.storage.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -131,10 +132,12 @@ public class StorageDevice extends BaseObject<Integer> {
         this.type = type;
     }
 
+    @JsonIgnore
     public DeviceType getTypeEnum() {
         return type != null ? DeviceType.fromValue(type) : null;
     }
 
+    @JsonIgnore
     public void setTypeEnum(DeviceType typeEnum) {
         this.type = typeEnum != null ? typeEnum.getValue() : null;
     }
@@ -179,10 +182,12 @@ public class StorageDevice extends BaseObject<Integer> {
         this.parentRoom = parentRoom;
     }
 
+    @JsonIgnore
     public Integer getSysUserIdValue() {
         return sysUserId;
     }
 
+    @JsonIgnore
     public void setSysUserIdValue(Integer sysUserId) {
         this.sysUserId = sysUserId;
     }
@@ -205,10 +210,12 @@ public class StorageDevice extends BaseObject<Integer> {
     }
 
     // Helper methods for FHIR transform
+    @JsonIgnore
     public String getFhirUuidAsString() {
         return fhirUuid != null ? fhirUuid.toString() : null;
     }
 
+    @JsonIgnore
     public String getTypeAsString() {
         return type; // type is already a String
     }

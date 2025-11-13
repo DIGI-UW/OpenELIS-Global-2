@@ -12,6 +12,7 @@ import org.openelisglobal.notification.valueholder.TestNotificationConfig;
 import org.springframework.stereotype.Component;
 
 @Component
+@SuppressWarnings("unused")
 public class TestNotificationConfigDAOImpl extends BaseDAOImpl<TestNotificationConfig, Integer>
         implements TestNotificationConfigDAO {
 
