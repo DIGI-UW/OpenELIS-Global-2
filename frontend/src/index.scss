@@ -69,6 +69,20 @@
     color: #ffffff !important;
   }
 
+  .cds--text-input__invalid-icon,
+  .cds--text-input__invalid-icon * {
+    fill: var(--cds-support-error, #da1e28) !important;
+    stroke: var(--cds-support-error, #da1e28) !important;
+    color: var(--cds-support-error, #da1e28) !important;
+  }
+
+  .cds--text-input__readonly-icon,
+  .cds--text-input__readonly-icon * {
+    fill: #f4f4f4 !important;
+    stroke: #f4f4f4 !important;
+    color: #f4f4f4 !important;
+  }
+
   .cds--loading-overlay {
     background-color: #000000 !important;
   }
@@ -328,6 +342,139 @@
   .cds--form__column label,
   .cds--form__row label {
     color: #f4f4f4 !important;
+  }
+
+  .requiredlabel,
+  .cds--form .requiredlabel,
+  .cds--form-item .requiredlabel,
+  .cds--label .requiredlabel,
+  label .requiredlabel,
+  .cds--section .requiredlabel,
+  .formSection .requiredlabel {
+    color: #ff4d4d !important;
+  }
+
+  .cds--link,
+  .cds--link:link,
+  .cds--link:visited {
+    color: #0f62fe !important;
+  }
+
+  .cds--link:hover,
+  .cds--link:focus {
+    color: #0043ce !important;
+  }
+
+  .cds--btn--danger,
+  .cds--btn--danger:link,
+  .cds--btn--danger:visited {
+    background-color: #da1e28 !important;
+    border-color: #da1e28 !important;
+    color: #ffffff !important;
+  }
+
+  .cds--btn--danger:hover,
+  .cds--btn--danger:focus,
+  .cds--btn--danger:active {
+    background-color: #a2191f !important;
+    border-color: #a2191f !important;
+    color: #ffffff !important;
+  }
+
+  .cds--btn--tertiary,
+  .cds--btn--tertiary:link,
+  .cds--btn--tertiary:visited {
+    color: #ffffff !important;
+    border-color: #0f62fe !important;
+  }
+
+  .cds--btn--tertiary:hover,
+  .cds--btn--tertiary:focus,
+  .cds--btn--tertiary:active {
+    color: #ffffff !important;
+    background-color: rgba(15, 98, 254, 0.4) !important;
+    border-color: #0f62fe !important;
+  }
+
+  .tile-title {
+    color: #ffffff !important;
+  }
+
+  .tile-value {
+    color: #ffffff !important;
+  }
+
+  .cds--btn--secondary,
+  .cds--btn--secondary:link,
+  .cds--btn--secondary:visited {
+    background-color: #da1e28 !important;
+    border-color: #da1e28 !important;
+    color: #ffffff !important;
+  }
+
+  .cds--btn--secondary:hover,
+  .cds--btn--secondary:focus,
+  .cds--btn--secondary:active {
+    background-color: #a2191f !important;
+    border-color: #a2191f !important;
+    color: #ffffff !important;
+  }
+
+  .cds--number__rule-divider {
+    background-color: #525252 !important;
+  }
+
+  .cds--tile--clickable,
+  .cds--tile--clickable:link,
+  .cds--tile--clickable:visited,
+  .cds--tile--clickable:hover,
+  .cds--tile--clickable:active {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+    background-color: #000000 !important;
+  }
+
+  .cds--list--unordered > .cds--list__item,
+  ul.cds--list--unordered > .cds--list__item,
+  ul.cds--list--unordered > .cds--list__item:link,
+  ul.cds--list--unordered > .cds--list__item:visited,
+  ul.cds--list--unordered > .cds--list__item:hover,
+  ul.cds--list--unordered > .cds--list__item:active {
+    background-color: #000000 !important;
+  }
+
+  .cds--modal-container {
+    background-color: #161616 !important;
+    border: 1px solid #0f62fe !important;
+    color: #ffffff !important;
+  }
+
+  .cds--modal-container--md {
+    border: 1px solid #0f62fe !important;
+  }
+
+  .cds--modal-container--sm {
+    background-color: #161616 !important;
+    border: 1px solid #0f62fe !important;
+    color: #ffffff !important;
+  }
+
+  .cds--modal-container--sm .cds--text-input,
+  .cds--modal-container--sm .cds--text-area,
+  .cds--modal-container--sm .cds--number input,
+  .cds--modal-container--sm .cds--date-picker__input,
+  .cds--modal-container--sm .cds--time-picker__input-field,
+  .cds--modal-container--sm .cds--list-box__field,
+  .cds--modal-container--sm .cds--combo-box,
+  .cds--modal-container--sm .cds--dropdown,
+  .cds--modal-container--sm .cds--search-input {
+    color: #ffffff !important;
+    background-color: #0a0a0a !important;
+    border-color: #393939 !important;
+  }
+
+  .cds--modal-header__heading {
+    color: #ffffff !important;
   }
 
   .adminSideNav,
