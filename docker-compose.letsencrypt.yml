@@ -1,0 +1,53 @@
+# Override file for Let's Encrypt certificate support
+# Usage: docker compose -f dev.docker-compose.yml -f docker-compose.letsencrypt.yml up
+# 
+# Required environment variables (set in .env or export):
+#   LETSENCRYPT_EMAIL - Email address for Let's Encrypt notifications
+#   LETSENCRYPT_DOMAIN - Domain name (default: storage.openelis-global.org)
+#
+# Optional environment variables:
+#   LETSENCRYPT_STAGING - Set to "true" to use Let's Encrypt staging environment (for testing)
+
+services:
+    proxy:
+        volumes:
+            - ./volume/letsencrypt:/etc/letsencrypt:ro
+            - ./nginx-proxy/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+        environment:
+            - LETSENCRYPT_DOMAIN=${LETSENCRYPT_DOMAIN:-storage.openelis-global.org}
+        entrypoint: ["/bin/bash", "/docker-entrypoint.sh"]
+    
+    certbot-init:
+        image: certbot/certbot:latest
+        container_name: openelisglobal-certbot-init
+        volumes:
+            - ./volume/letsencrypt:/etc/letsencrypt
+            - ./volume/nginx/certbot:/var/www/certbot
+            - ./scripts/certbot-init.sh:/certbot-init.sh:ro
+        command: ["/bin/sh", "/certbot-init.sh"]
+        environment:
+            - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL:-}
+            - LETSENCRYPT_DOMAIN=${LETSENCRYPT_DOMAIN:-storage.openelis-global.org}
+            - LETSENCRYPT_STAGING=${LETSENCRYPT_STAGING:-false}
+        networks:
+            - default
+        depends_on:
+            - proxy
+    
+    certbot-renew:
+        image: certbot/certbot:latest
+        container_name: openelisglobal-certbot-renew
+        volumes:
+            - ./volume/letsencrypt:/etc/letsencrypt
+            - ./volume/nginx/certbot:/var/www/certbot
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+            - ./scripts/certbot-renew.sh:/certbot-renew.sh:ro
+        command: ["/bin/sh", "-c", "apk add --no-cache docker-cli 2>/dev/null || true && /certbot-renew.sh"]
+        environment:
+            - LETSENCRYPT_DOMAIN=${LETSENCRYPT_DOMAIN:-storage.openelis-global.org}
+        networks:
+            - default
+        restart: unless-stopped
+        depends_on:
+            - proxy
+

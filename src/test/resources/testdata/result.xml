@@ -6,6 +6,10 @@
         english="Urinalysis" french="Urinalysis" />
     <localization id="3" description="Test Description 3"
         english="blood test" french="Merci" />
+    <localization id="4" description="Reporting Test Name"
+        english="GPT/ALAT" french="GPT/ALAT" />
+    <localization id="5" description="Type of Sample Name"
+        english="Serum" french="Sérum" />
 
     <system_user id="1" external_id="EXT003" login_name="admin"
         last_name="Doe" first_name="John" initials="JD" is_active="Y"
@@ -67,6 +71,8 @@
         domain="H" name_localization_id="1" lastupdated="2023-12-01 12:00:00" />
     <type_of_sample id="2" description="Urine Sample"
         domain="H" name_localization_id="2" lastupdated="2023-12-01 12:00:00" />
+    <type_of_sample id="3" description="Serum Sample"
+        domain="H" name_localization_id="5" lastupdated="2023-12-01 12:00:00" />
 
     <sample id="1" accession_number="12345" status_id="1"
         received_date="2024-06-03 00:00:00.0"
@@ -80,7 +86,7 @@
         lastupdated="2023-11-01 12:00:00" />
 
     <sample_item id="601" sort_order="1" status_id="1"
-        samp_id="1" typeosamp_id="1" collection_date="2023-11-15 10:00:00"
+        samp_id="1" typeosamp_id="3" collection_date="2023-11-15 10:00:00"
         lastupdated="2023-12-01 12:00:00" />
     <sample_item id="602" sort_order="12" status_id="3"
         samp_id="2" typeosamp_id="2" collection_date="2023-11-16 10:00:00"
@@ -119,7 +125,8 @@
         lastupdated="2025-03-20 12:00:00" label_id="1" test_trailer_id="1"
         test_section_id="1" scriptlet_id="1" test_format_id="1"
         local_code="CBC" sort_order="2147483646" name="Complete Blood Count"
-        orderable="true" guid="abc-123" name_localization_id="1"
+        orderable="true" guid="abc-123" name_localization_id="4"
+        reporting_name_localization_id="4" is_active="Y"
         antimicrobial_resistance="true" />
     <test id="2" method_id="2" uom_id="2" description="Urine Test"
         loinc="543216" reporting_description="Urinalysis"
@@ -156,6 +163,8 @@
     <test_analyte id="2" test_id="2" analyte_id="4"
         result_group="1" sort_order="2" testalyt_type="R"
         lastupdated="2025-03-19 10:01:00" is_reportable="Y" />
+
+    <sampletype_test id="1" test_id="1" sample_type_id="3" />
 
     <panel id="1" name="Test Panel"
         description="This is a test panel." name_localization_id="1"

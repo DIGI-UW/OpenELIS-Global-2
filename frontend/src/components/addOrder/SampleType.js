@@ -23,6 +23,7 @@ import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvide
 import CustomTextInput from "../common/CustomTextInput";
 import OrderReferralRequest from "../addOrder/OrderReferralRequest";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import StorageLocationSelector from "../storage/StorageLocationSelector";
 
 const SampleType = (props) => {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -111,6 +112,14 @@ const SampleType = (props) => {
     setSampleXml({
       ...sampleXml,
       collector: value,
+    });
+  }
+
+  function handleStorageLocationChange(location, sampleIndex) {
+    setSampleXml({
+      ...sampleXml,
+      storageLocation: location,
+      storagePositionId: location?.position?.id || null,
     });
   }
 
@@ -570,6 +579,30 @@ const SampleType = (props) => {
             value={sampleXml.collector}
             labelText={intl.formatMessage({ id: "collector.label" })}
             className="inputText"
+          />
+        </div>
+        {/* Storage Location Selector - INT-001: Integration point */}
+        {/* NOTE: In order entry workflow, SampleItems are created after Sample is saved.
+            Storage assignment operates at SampleItem level, so actual assignment happens
+            after SampleItems are created. The location preference is stored here for
+            later assignment to the first/default SampleItem. */}
+        <div className="inlineDiv">
+          <StorageLocationSelector
+            workflow="orders"
+            optional={true}
+            sampleInfo={{
+              // Note: sampleId here is temporary/placeholder - actual SampleItem ID will be available after SampleItems are created
+              sampleId: sample?.id || sample?.sampleId || `TEMP-${index}`,
+              type: selectedSampleType?.name || sampleXml?.sampleTypeName || "",
+              status: sampleXml?.rejected ? "Rejected" : "Active",
+            }}
+            onLocationChange={(locationData) => {
+              // locationData format: { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
+              // Extract newLocation from locationData for backward compatibility
+              // Store location preference - will be assigned to SampleItem after SampleItems are created
+              const location = locationData?.newLocation || locationData;
+              handleStorageLocationChange(location, index);
+            }}
           />
         </div>
         <div className="testPanels">

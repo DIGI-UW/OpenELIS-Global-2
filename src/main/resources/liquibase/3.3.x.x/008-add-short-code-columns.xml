@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add short_code column to storage_device -->
+    <changeSet id="storage-008-add-short-code-to-device" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="storage_device" columnName="short_code"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="storage_device">
+            <column name="short_code" type="VARCHAR(10)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <createIndex tableName="storage_device" indexName="idx_device_short_code">
+            <column name="short_code"/>
+        </createIndex>
+        <rollback>
+            <dropIndex tableName="storage_device" indexName="idx_device_short_code"/>
+            <dropColumn tableName="storage_device" columnName="short_code"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Add short_code column to storage_shelf -->
+    <changeSet id="storage-009-add-short-code-to-shelf" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="storage_shelf" columnName="short_code"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="storage_shelf">
+            <column name="short_code" type="VARCHAR(10)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <createIndex tableName="storage_shelf" indexName="idx_shelf_short_code">
+            <column name="short_code"/>
+        </createIndex>
+        <rollback>
+            <dropIndex tableName="storage_shelf" indexName="idx_shelf_short_code"/>
+            <dropColumn tableName="storage_shelf" columnName="short_code"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Add short_code column to storage_rack -->
+    <changeSet id="storage-010-add-short-code-to-rack" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="storage_rack" columnName="short_code"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="storage_rack">
+            <column name="short_code" type="VARCHAR(10)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <createIndex tableName="storage_rack" indexName="idx_rack_short_code">
+            <column name="short_code"/>
+        </createIndex>
+        <rollback>
+            <dropIndex tableName="storage_rack" indexName="idx_rack_short_code"/>
+            <dropColumn tableName="storage_rack" columnName="short_code"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
