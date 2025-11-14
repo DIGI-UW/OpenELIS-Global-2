@@ -56,7 +56,18 @@
     "cy:run": "cypress run --headless --browser chrome",
     "cy:open": "cypress open --browser chrome",
     "format": "prettier ./ --write",
-    "check-format": "prettier ./ --check"
+    "check-format": "prettier ./ --check",
+    "cy:quick": "cypress run --browser electron --config video=false,defaultCommandTimeout=10000",
+    "cy:single": "cypress run --browser electron --config video=false,defaultCommandTimeout=10000 --spec"
+  },
+  "jest": {
+    "transformIgnorePatterns": [
+      "node_modules/(?!lodash-es)"
+    ],
+    "moduleNameMapper": {
+      "\\.(css|less|scss|sass)$": "<rootDir>/src/__mocks__/styleMock.js",
+      "^react-confirm-alert/src/react-confirm-alert\\.css$": "<rootDir>/src/__mocks__/styleMock.js"
+    }
   },
   "eslintConfig": {
     "extends": [
@@ -80,14 +91,14 @@
     "**/@types/react": "16.14.5"
   },
   "devDependencies": {
-    "cypress": "^12.17.3",
+    "@testing-library/react-hooks": "^8.0.1",
+    "cypress": "^12.17.4",
     "cypress-xpath": "^2.0.1",
     "eslint": "^8.48.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
-    "prettier": "^3.4.2",
-    "sass": "^1.57.1"
+    "prettier": "^3.4.2"
   }
 }

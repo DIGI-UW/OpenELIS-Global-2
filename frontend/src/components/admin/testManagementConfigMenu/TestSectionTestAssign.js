@@ -233,13 +233,13 @@ function TestSectionTestAssign() {
                           >
                             <ClickableTile
                               onClick={() => {
-                                setTestSectionTestAssignModal(true),
+                                (setTestSectionTestAssignModal(true),
                                   setTestSectionTestAssignPost({
                                     testId: test.id,
                                     testValue: test.value,
                                     testSectionNameOld: sectionName,
                                     testSectionIdOld: sectionId,
-                                  });
+                                  }));
                               }}
                             >
                               {test.value}
