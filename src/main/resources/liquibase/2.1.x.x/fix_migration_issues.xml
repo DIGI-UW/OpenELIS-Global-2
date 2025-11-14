@@ -30,9 +30,8 @@
         </preConditions>
         <comment>Update  localisation english label </comment>
         <sql>
-            alter table clinlims.system_role drop constraint IF EXISTS
-            role_parent_role_fk;
-            alter table clinlims.system_role add constraint role_parent_role_fk foreign key
+            alter table clinlims.system_role drop constraint
+            role_parent_role_fk,add constraint role_parent_role_fk foreign key
             (grouping_parent) references clinlims.system_role (id) MATCH SIMPLE
             ON UPDATE NO ACTION ON DELETE CASCADE;
         </sql>

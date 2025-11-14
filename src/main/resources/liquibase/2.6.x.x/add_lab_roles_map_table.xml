@@ -86,6 +86,7 @@
     </changeSet>
 
     <changeSet author="CIV developer Group" id="2312131">
+        <validCheckSum>8:5ab80bc3875b87ded964141c1814d466</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="lab_unit_roles"/>
             <tableExists tableName="lab_unit_role_map"/>
