@@ -2,12 +2,29 @@
 
 **Feature Branch**: `002-shipment-support`
 **Created**: 2025-01-15
-**Last Updated**: 2025-01-14 (Design Review Integration)
+**Last Updated**: 2025-01-15 (Figma Design Alignment Clarification)
 **Status**: Draft - Ready for Planning
 **Input**: User description: "I want to create a new feature based on the following JIRA ticket: https://uwdigi.atlassian.net/browse/OGC-62"
 
 **Change Log**:
+- 2025-01-15: Figma design alignment clarification (Session 2025-01-15) - Clarified receiving workflow UX (auto-mark on scan, no acceptance modal), unified rejection terminology ('Reject Sample' triggers non-conformity recording via inline table actions), confirmed non-conformity types read from existing OpenELIS configuration, mandated consistent state terminology across all layers (no simplified aliases)
+- 2025-11-14: OGC-62 alignment remediation - Added missing box states (Partially Received, Cancelled, Lost in Transit) with detailed state definitions, expanded NonConformity entity with full data model, added 3 new functional requirements (FR-030b, FR-030c, FR-030d) for state transitions, added 3 edge cases for new states, enhanced FR-027 with sample disposition, updated SC-004 with state progression, added batch import to out of scope, confirmed exact match for manual search (no auto-complete)
 - 2025-01-14: Integrated Figma design review findings - Added 13 new functional requirements (FR-042 to FR-053), comprehensive UI/UX requirements section (UI-001 to UI-029), expanded Key Entities with design-based fields (temperature, capacity, priority, tracking number, courier, patient name, sample type, Reconciled state), added 7 new edge cases, and enhanced assumptions with design clarifications
+
+## Clarifications
+
+### Session 2025-11-14
+- Q: How should the manual sample search/lookup handle partial matches or multiple results when a user types an accession number? → A: Require exact full accession number match - show error if not found, no partial matching
+- Q: Can a receiving technician pause the receiving workflow and resume it later, or must it be completed in one session? → A: Auto-save draft state, allow resume anytime - system remembers which samples were checked
+- Q: What is the relationship between a "shipment" and a "box"? Are they the same entity or different? → A: Shipment contains multiple boxes - one shipment can have many boxes with shared tracking/courier
+- Q: Are "packing list" and "manifest" the same document, or are they different documents with different purposes? → A: Same document - just different names for the same box contents listing
+
+### Session 2025-01-15 (Figma Design Alignment)
+- Q: Should we add explicit acceptance modal after scanning a sample during receiving? → A: No - Auto-mark as received on scan (keep existing FR-025 behavior)
+- Q: Are 'rejecting a sample' and 'recording a non-conformity' the same action, or different workflows? → A: Same action - 'Reject' triggers non-conformity recording workflow
+- Q: Which rejection UX approach should take precedence during receiving - modal after scan or inline table actions? → A: Inline table actions only - No modal rejection option
+- Q: Should non-conformity types be configurable by administrators or hard-coded? → A: Read from existing OpenELIS non-conformity configuration (list exists in app already)
+- Q: Should Figma TypeScript types use simplified UI labels ('ready', 'shipped') or match spec states exactly ('Ready to Send', 'Sent')? → A: Align to spec - Update Figma types to match spec exactly for consistency
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -53,18 +70,18 @@
 
 ### User Story 3 - Generate Labels and Manifests (Priority: P1)
 
-**As a** shipping coordinator  
-**I want to** print box labels and generate packing lists/manifests  
+**As a** shipping coordinator
+**I want to** print box labels and generate manifests (also called packing lists)
 **So that** boxes can be physically identified and reference labs know what samples to expect
 
 **Why this priority**: Labels and manifests are essential for physical shipment tracking and regulatory compliance. Reference labs require documentation of what samples are being sent.
 
-**Independent Test**: Can be fully tested by marking a box as Ready to Send, printing a box label with barcode, generating a packing list/manifest with all sample details, and verifying the manifest includes all required information (box ID, destination, sample list, dates). This delivers immediate value by providing physical and electronic documentation for shipments.
+**Independent Test**: Can be fully tested by marking a box as Ready to Send, printing a box label with barcode, generating a manifest with all sample details, and verifying the manifest includes all required information (box ID, destination, sample list, dates). This delivers immediate value by providing physical and electronic documentation for shipments.
 
 **Acceptance Scenarios**:
 
 1. **Given** I have a box in Ready to Send state, **When** I click "Print Label", **Then** a label is generated with the box ID as a scannable barcode and all configured label fields (destination, date, sample count)
-2. **Given** I have a box in Ready to Send state, **When** I click "Generate Packing List", **Then** a manifest is created with box metadata, complete sample list with accession numbers, test types, collection dates, and special requirements
+2. **Given** I have a box in Ready to Send state, **When** I click "Generate Manifest" (or "Print Manifest"), **Then** a manifest is created with box metadata, complete sample list with accession numbers, test types, collection dates, and special requirements
 3. **Given** I have generated a manifest, **When** I view the manifest, **Then** I can see barcodes for the box and optionally for each sample, and I can export it as PDF or print it
 4. **Given** I have sent a box, **When** I need to resend the manifest, **Then** I can resend it electronically (FHIR/API/Email) or regenerate it within 24 hours without approval
 
@@ -72,9 +89,9 @@
 
 ### User Story 4 - Send Boxes with Confirmation (Priority: P1)
 
-**As a** shipping coordinator  
-**I want to** mark boxes as sent with mandatory confirmation  
-**So that** I don't accidentally send boxes prematurely and the packing list is locked
+**As a** shipping coordinator
+**I want to** mark boxes as sent with mandatory confirmation
+**So that** I don't accidentally send boxes prematurely and the manifest is locked
 
 **Why this priority**: Sending a box is a critical action that locks the manifest and triggers electronic notifications. The confirmation prevents accidental sends and ensures proper workflow.
 
@@ -83,7 +100,7 @@
 **Acceptance Scenarios**:
 
 1. **Given** I have a box in Ready to Send state, **When** I click "Send Box", **Then** a warning modal appears showing box summary (ID, destination, sample count, date/time) requiring explicit confirmation
-2. **Given** I confirm sending a box, **When** the box is marked as Sent, **Then** the packing list is locked (samples cannot be edited), the box state changes to Sent, and an electronic manifest is automatically sent based on destination configuration
+2. **Given** I confirm sending a box, **When** the box is marked as Sent, **Then** the manifest is locked (samples cannot be edited), the box state changes to Sent, and an electronic manifest is automatically sent based on destination configuration
 3. **Given** I have sent a box, **When** I view the box details, **Then** I can see the send timestamp, sending user, and transmission status of the electronic manifest
 
 ---
@@ -104,7 +121,8 @@
 2. **Given** I am receiving a box, **When** I scan each sample barcode, **Then** the corresponding sample is marked as received with a green checkmark, and a running count shows "X of Y samples received"
 3. **Given** I encounter a sample with a damaged barcode, **When** I manually check it off, **Then** the sample is marked as received with a note indicating manual confirmation
 4. **Given** I receive a damaged sample, **When** I record a non-conformity with type and optional notes/photos, **Then** the non-conformity is logged, the sample is flagged but remains available for testing, and the issue appears in reports
-5. **Given** I have accounted for all expected samples (received, missing, or damaged), **When** I complete the receipt, **Then** the box state changes to Received or Closed, a receipt summary is generated, and the completion is logged with timestamp and user
+5. **Given** I am in the middle of receiving a box, **When** I exit the receiving workflow, **Then** the system auto-saves my progress (which samples were checked) and I can resume later from the same point
+6. **Given** I have accounted for all expected samples (received, missing, or damaged), **When** I complete the receipt, **Then** the box state changes to Received or Closed, a receipt summary is generated, and the completion is logged with timestamp and user
 
 ---
 
@@ -161,6 +179,12 @@
 - What happens when removing a sample from a Ready to Send box? The box state automatically reverts to Draft state, requiring re-validation before it can be marked Ready to Send again
 - How does the system handle samples with different temperature requirements in the same box? The box temperature requirement is set at box level; users should only add samples with matching temperature requirements to avoid conflicts
 - What happens during receiving if a sample's barcode is completely illegible? User can manually check off the sample by selecting it from the list, and the audit trail logs this as manual confirmation (distinct from scanned confirmation)
+- What happens to in-progress receiving workflows that are never completed? The system retains in-progress receiving state indefinitely (no automatic timeout), and administrators can view and manage incomplete receiving workflows via dashboard filters
+- How are boxes grouped into shipments? When boxes are marked as Sent, the system either creates a new shipment or allows adding them to an existing shipment going to the same destination; shipment provides shared tracking/courier information and shipment-level reporting
+- Are "packing list" and "manifest" different documents? No, they are the same document listing all samples in a box; the terms are used interchangeably, but "manifest" is the preferred term for consistency
+- What is the difference between "Received" and "Partially Received" states? "Partially Received" means receiving workflow has started (first sample scanned) but not all samples are accounted for yet; "Received" means the receiving workflow shows all expected samples as accounted for (received, missing, or damaged)
+- How long before a box can be marked "Lost in Transit"? After a configurable time period (default 14 days from ship date) if box state is still "In Transit" and no receiving activity has occurred
+- Can a cancelled box be reactivated? No - cancellation is permanent. Samples must be added to a new box if referral is still needed
 
 ## Requirements _(mandatory)_
 
@@ -169,7 +193,7 @@
 - **FR-001**: System MUST allow shipping coordinators to create boxes with unique identifiers (auto-generated or manually entered/scanned)
 - **FR-002**: System MUST require destination facility selection from a facility registry when creating boxes
 - **FR-003**: System MUST allow users to add samples to boxes via barcode scanning (USB keyboard wedge input)
-- **FR-004**: System MUST allow users to add samples to boxes via manual search/lookup by accession number or sample ID
+- **FR-004**: System MUST allow users to add samples to boxes via manual search/lookup by accession number or sample ID, requiring exact full match (no partial matching) and showing error if not found
 - **FR-005**: System MUST validate that each sample exists in OpenELIS before allowing addition to a box
 - **FR-006**: System MUST prevent duplicate samples within the same box
 - **FR-007**: System MUST prevent samples from being added to multiple active boxes simultaneously
@@ -184,18 +208,25 @@
 - **FR-016**: System MUST support bulk selection and bulk actions on unassigned samples (add to box, export)
 - **FR-017**: System MUST allow users to mark boxes as "Ready to Send" after validating required fields (destination, at least one sample, all samples have required metadata)
 - **FR-018**: System MUST generate printable box labels with scannable barcodes using configurable templates
-- **FR-019**: System MUST generate packing lists/manifests with box metadata (ID, destination, temperature requirement, date/time), complete sample list with accession numbers and test types, and optional sample barcodes
+- **FR-019**: System MUST generate manifests (also called packing lists) with box metadata (ID, destination, temperature requirement, date/time), complete sample list with accession numbers and test types, and optional sample barcodes
 - **FR-020**: System MUST allow regeneration of manifests within 24 hours of sending without approval
 - **FR-021**: System MUST require confirmation via warning modal before marking a box as Sent
-- **FR-022**: System MUST lock packing lists (prevent sample edits) when a box is marked as Sent
+- **FR-022**: System MUST lock manifests (prevent sample edits) when a box is marked as Sent
 - **FR-023**: System MUST automatically send electronic manifests (FHIR/API/Email) when a box is marked as Sent, based on destination configuration
+- **FR-023a**: System MUST allow grouping multiple boxes with the same destination into a single shipment with shared tracking number and courier information
+- **FR-023b**: System MUST automatically create a shipment when one or more boxes are marked as Sent, or allow adding boxes to existing shipments
+- **FR-023c**: System MUST display shipment-level information in the Shipments dashboard tab, showing tracking, courier, total boxes, and total samples per shipment
 - **FR-024**: System MUST allow receiving technicians to scan box IDs to initiate receiving workflow
 - **FR-025**: System MUST allow receiving technicians to scan sample barcodes to mark samples as received
 - **FR-026**: System MUST allow manual check-off of samples when barcodes are unreadable
-- **FR-027**: System MUST allow recording of non-conformities with type selection (Damaged, Insufficient Volume, Mislabeled, Expired, Contaminated, Wrong Sample Type, Other), required notes for type "Other", and optional photo/document attachments (JPG, PNG, PDF, max 10MB per file)
+- **FR-027**: System MUST allow recording of non-conformities via inline "Reject Sample" action button in receiving workflow table with type selection from existing OpenELIS non-conformity configuration, required notes for type "Other", optional photo/document attachments (JPG, PNG, PDF, max 10MB per file, max 5 files per non-conformity), and required sample disposition selection (Accepted for Testing, Rejected, Recollection Requested) with all data persisted to NonConformity table. Note: "Reject Sample" is the user-facing term; the action triggers the non-conformity recording workflow
 - **FR-028**: System MUST allow marking samples as missing during receiving workflow
 - **FR-029**: System MUST allow documenting unexpected samples (not in manifest) with required explanation
 - **FR-030**: System MUST allow completion of receiving workflow when all expected samples are accounted for (received, missing, damaged, or rejected)
+- **FR-030a**: System MUST auto-save receiving progress after each sample is checked (scanned or manually confirmed) and allow technicians to exit and resume the workflow later from the same point
+- **FR-030b**: System MUST transition box to "Partially Received" state when receiving workflow is initiated (first sample scanned) and to "Received" state when all expected samples are accounted for
+- **FR-030c**: System MUST allow marking boxes as "Lost in Transit" after a configurable time period (default 14 days) if box has not been received
+- **FR-030d**: System MUST allow administrators to cancel boxes in Draft, Ready to Send, or In Transit states with required cancellation reason, transitioning box to "Cancelled" state
 - **FR-031**: System MUST display a dashboard with key metrics (boxes ready to send, in transit, awaiting receipt, received this week)
 - **FR-032**: System MUST provide search and filter capabilities for box lists (by date range, destination, status, Box ID)
 - **FR-033**: System MUST allow generation of reports with filters (Box ID, date range, destination, status) and export to PDF, Excel, or CSV
@@ -215,7 +246,7 @@
 - **FR-047**: System MUST allow filtering unassigned tests by "My cases" (samples assigned to current user)
 - **FR-048**: System MUST provide "Simulate Scan" functionality for testing barcode workflows without physical scanners (for training and testing purposes)
 - **FR-049**: System MUST support "Reconciled" state for boxes when receiving is complete and all samples are checked into local system (distinct from "Received" which indicates box arrival)
-- **FR-050**: System MUST display non-conformity type selection when recording quality issues with the following types: Damaged, Insufficient Volume, Mislabeled, Expired, Contaminated, Wrong Sample Type, Other (with required explanation)
+- **FR-050**: System MUST display non-conformity type selection when recording quality issues, reading available types from existing OpenELIS non-conformity configuration (typical types include: Damaged, Insufficient Volume, Mislabeled, Expired, Contaminated, Wrong Sample Type, Other with required explanation)
 - **FR-051**: System MUST include temperature designation on packing lists/manifests to ensure proper handling during transport
 - **FR-052**: System MUST support bulk actions on unassigned samples including: bulk add to box, bulk export, bulk mark as lost (with confirmation), bulk cancel referral (with confirmation)
 - **FR-053**: System MUST distinguish in audit trail between samples received via barcode scan versus manual check-off
@@ -280,6 +311,7 @@ _Based on Carbon Design System implementation in approved designs:_
 - **UI-021**: All barcode scan fields MUST include "Simulate Scan" button for testing without hardware
 - **UI-022**: Helper text under scan fields MUST read: "Position barcode in scanner or click 'Simulate Scan' to test"
 - **UI-023**: Scan fields MUST include "Search" button for manual lookup alternative
+- **UI-023a**: Manual search MUST require exact full accession number match; if not found, display inline error message: "Sample not found. Please verify the accession number and try again."
 
 **Status and Feedback:**
 - **UI-024**: Status tags MUST use consistent color coding: Blue (In Transit), Green (Delivered/Received), Gray (Draft)
@@ -293,14 +325,40 @@ _Based on Carbon Design System implementation in approved designs:_
 
 ### Key Entities _(include if feature involves data)_
 
-- **Box (ShippingBox)**: Represents a physical container used to ship multiple samples to a reference laboratory. Key attributes: unique Box ID, destination facility, creation date/time, creator user, current state (Draft, Ready to Send, Sent, In Transit, Received, Reconciled), sent date/time, received date/time, **tracking number (optional)**, **courier name (optional)**, **capacity (25, 50, or 100 samples)**, **temperature requirement (2-8°C Refrigerated, -20°C Frozen, Ambient Room Temperature, -80°C Ultra-low)**, notes
-  - **State Progression**: Draft → Ready to Send → Sent → In Transit → Received → Reconciled
-  - **Received**: Box has been scanned at destination facility
-  - **Reconciled**: All samples have been accounted for and checked into the local system
+- **Box (ShippingBox)**: Represents a physical container used to ship multiple samples to a reference laboratory. Key attributes: unique Box ID, destination facility, creation date/time, creator user, current state (Draft, Ready to Send, Sent, In Transit, Partially Received, Received, Reconciled, Cancelled, Lost in Transit), sent date/time, received date/time, shipment reference (foreign key to Shipment), **capacity (25, 50, or 100 samples)**, **temperature requirement (2-8°C Refrigerated, -20°C Frozen, Ambient Room Temperature, -80°C Ultra-low)**, notes
+  - **State Progression**: Draft → Ready to Send → Sent → In Transit → Partially Received → Received → Reconciled
+    - **Alternative paths**: Any active state → Cancelled (if box not sent or shipment abandoned)
+    - **Alternative paths**: In Transit → Lost in Transit (if box not received within configurable time period)
+  - **Draft**: Box created, samples being added
+  - **Ready to Send**: All validation passed, ready for shipment
+  - **Sent**: Box dispatched to reference lab, manifest locked
+  - **In Transit**: Box confirmed en route
+  - **Partially Received**: Receiving workflow initiated, some samples confirmed (not all)
+  - **Received**: Box scanned at destination facility, receiving workflow in progress or complete
+  - **Reconciled**: All samples accounted for (received, missing, damaged, or rejected) and checked into local system (terminal state for successful receipt)
+  - **Cancelled**: Box or shipment cancelled/abandoned (terminal state)
+  - **Lost in Transit**: Box not received within expected timeframe, marked as lost (terminal state)
+  - **Note**: Individual boxes may have their own tracking numbers, but when grouped into a shipment, the shipment-level tracking/courier takes precedence
+- **Shipment**: Represents a logical grouping of one or more boxes being sent together to the same destination on the same date with shared tracking and courier information. Key attributes: unique Shipment ID, list of boxes (one-to-many relationship), destination facility, **tracking number (shared across all boxes in shipment)**, **courier name (shared across all boxes in shipment)**, shipment date/time, expected delivery date, current status (In Transit, Delivered, Reconciled), total sample count (calculated from all boxes)
+  - **Relationship**: One Shipment contains one or more Boxes; all boxes in a shipment must have the same destination facility
+  - **Purpose**: Provides shipment-level tracking and reporting when multiple boxes are sent together
 - **Sample (in Box)**: Represents a laboratory sample included in a shipment box. Key attributes: accession number, test type, collection date, status within box (Pending, Sent, Received, Missing, Damaged, Rejected), **priority (Critical/Urgent/Normal - derived from test type)**, temperature/storage requirements, relationship to OpenELIS sample record
 - **Unassigned Sample**: Represents a sample marked for referral in OpenELIS but not yet assigned to any active box. Key attributes: accession number, referral date, referral destination, referral reason, days unassigned (calculated), lost status, referral cancellation status, **priority (Critical/Urgent/Normal)**, **sample type (Plasma, Whole Blood, Sputum, Nasopharyngeal Swab, etc.)**, **patient name (optional - requires "View Patient Names" permission for HIPAA compliance)**, **assigned to user (optional)**, lab number
 - **Facility (Destination)**: Represents a reference laboratory or facility that receives shipments. Key attributes: facility name, facility code, address, contact information, integration configuration (FHIR/API/Email settings)
-- **Non-Conformity**: Represents a quality issue recorded during receiving. Key attributes: non-conformity type (damaged, insufficient volume, mislabeled, etc.), notes, attached documents/photos, recorded date/time, recorded by user
+- **Non-Conformity (Quality Issue)**: Represents a quality issue recorded during receiving workflow when a sample is received but has problems. Key attributes:
+  - `id` (BIGINT, PK) - Unique identifier
+  - `sample_id` (BIGINT, FK) - Reference to sample with issue
+  - `box_id` (BIGINT, FK) - Reference to box being received
+  - `type` (VARCHAR, required) - Type of issue read from existing OpenELIS non-conformity configuration (typical values: Damaged, Insufficient Volume, Mislabeled, Expired, Contaminated, Wrong Sample Type, Other)
+  - `notes` (TEXT, required for type="Other", optional otherwise) - Description of the issue
+  - `resolution` (TEXT, optional) - How the issue was resolved
+  - `recorded_date` (TIMESTAMP, required) - When issue was recorded
+  - `recorded_by` (BIGINT, FK, required) - User who recorded the issue
+  - `attachments` (JSON, optional) - Array of document/photo file references (JPG, PNG, PDF; max 10MB per file, max 5 files per non-conformity)
+  - `sample_disposition` (ENUM, required) - What happened to the sample: Accepted for Testing (with caveats), Rejected (cannot be tested), Recollection Requested
+  - **Relationship**: One sample can have multiple non-conformities (e.g., both damaged and insufficient volume)
+  - **Business Rule**: Non-conformity does NOT automatically reject the sample; technician decides disposition based on severity
+  - **UI Note**: User-facing action button labeled "Reject Sample" in receiving workflow table triggers the non-conformity recording workflow; rejection options are accessed via inline table actions, not modal dialogs
 - **Manifest**: Represents the packing list/documentation for a box. Key attributes: box reference, version number, generation date/time, sample list, electronic transmission status and history
 - **Audit Log**: Represents a record of all actions performed in the system. Key attributes: action type, user ID, timestamp, entity affected (Box ID, Sample ID), previous and new values, IP address
 
@@ -311,7 +369,7 @@ _Based on Carbon Design System implementation in approved designs:_
 - **SC-001**: Shipping coordinators can create a box and add 10 samples via barcode scanning in under 2 minutes
 - **SC-002**: All referred samples are visible in the unassigned tests list within 1 minute of being marked for referral in the order entry system
 - **SC-003**: Shipping coordinators can generate and print a box label and packing list in under 30 seconds
-- **SC-004**: Receiving technicians can scan a box and reconcile 20 samples (marking as received, recording non-conformities) in under 5 minutes
+- **SC-004**: Receiving technicians can scan a box (transitioning to Partially Received state), reconcile 20 samples (marking as received, recording non-conformities), and complete receiving (transitioning to Received then Reconciled state) in under 5 minutes
 - **SC-005**: System supports tracking 1,000+ active boxes and 10,000+ samples per day without performance degradation
 - **SC-006**: 95% of electronic manifest transmissions succeed on the first attempt, with 99% success rate after automatic retries
 - **SC-007**: Users can search and filter box lists and find a specific box among 500+ boxes in under 10 seconds
@@ -342,19 +400,21 @@ _Based on Carbon Design System implementation in approved designs:_
 - **Tracking numbers are manually entered** (not integrated with courier APIs) and serve as reference information only
 - **"Received" and "Reconciled" are distinct states**: Received = box scanned at destination, Reconciled = all samples accounted for and checked into local system
 - **Simulate Scan functionality is provided for training and testing** without requiring physical barcode scanners
+- **State terminology must be consistent across all layers**: TypeScript types, database enums, and UI labels must use exact spec state names (e.g., 'Ready to Send', 'Sent', 'In Transit', 'Partially Received') - no simplified aliases like 'ready' or 'shipped'
 
 ## Dependencies
 
 - OpenELIS order entry system: For reading sample data, checking referral flags, updating referral status
 - OpenELIS user management: For authentication and role-based access control
 - OpenELIS facility registry: For reference laboratory destination data
-- OpenELIS non-conformity system: For integration of non-conformity types and flags
+- OpenELIS non-conformity/quality system: For reading configured non-conformity types (during receiving workflow), integration of sample flags, and optional linkage to existing quality incident tracking system (if present)
 - FHIR server: For electronic manifest exchange via SupplyDelivery resources (if destination supports FHIR)
 - Label printing infrastructure: Printers and drivers accessible from user workstations
 - Barcode scanning hardware: USB keyboard wedge scanners for sample and box ID scanning
 
 ## Out of Scope
 
+- Batch import of samples via CSV/Excel file upload (future enhancement - v2.0; v1.0 supports barcode scanning and manual lookup only)
 - Courier/shipping carrier integration (automatic tracking via carrier APIs - tracking numbers are manually entered for reference only)
 - Mobile application for receiving workflow (web interface only)
 - Automated box suggestions based on destination and sample volume (manual box creation only)
