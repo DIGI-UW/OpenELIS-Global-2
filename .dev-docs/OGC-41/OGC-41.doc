@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>[#OGC-41] Westgard Rules Dashboard for Analyzers</title>
+    <meta http-equiv="Content-Type" Content="application/vnd.ms-word; charset=UTF-8">
+        <style type="text/css">
+
+.tableBorder, .grid
+{
+    background-color: #fff;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tableBorder td, .grid td
+{
+    vertical-align: top;
+    padding: 2px;
+    border: 1px solid #ccc;
+}
+
+.noPadding
+{
+    padding: 0 !important;
+}
+
+h3 .subText
+{
+    font-size: 60%;
+    font-weight: normal;
+}
+
+.tabLabel
+{
+    font-weight: bold;
+    border: 1px solid #ccc;
+    border-bottom:none;
+    padding: 2px;
+    display: inline;
+}
+
+td.blank
+{
+    padding: 0;
+    margin: 0;
+}
+
+.blank td
+{
+    border: none;
+}
+
+#descriptionArea
+{
+    margin: 0;
+    padding: 2px;
+    border: 1px solid #ccc;
+}
+
+hr
+{
+    border-top:1px solid #aaa;
+}
+
+hr.fullcontent
+{
+  height: 15px;
+  padding: 10px 0;
+  background: #fff url('https://uwdigi.atlassian.net/images/icons/hr.gif') no-repeat scroll center;
+}
+
+</style>
+
+</head>
+<body>
+
+<table class="tableBorder" cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+        <td bgcolor="#f0f0f0" width="100%" colspan="2" valign="top">
+                            <h3 class="formtitle">
+                        [OGC-41]&nbsp;<a href="https://uwdigi.atlassian.net/browse/OGC-41">Westgard Rules Dashboard for Analyzers</a>
+            <span class="subText">
+               Created: 24/Mar/25                   &nbsp;Updated: 13/Nov/25
+
+                                            </span>
+            </h3>
+        </td>
+    </tr>
+    <tr>
+        <td width="20%"><b>Status:</b></td>
+        <td width="80%">Community To Do</td>
+    </tr>
+    <tr>
+        <td width="20%"><b>Project:</b></td>
+        <td width="80%"><a href="https://uwdigi.atlassian.net/secure/BrowseProject.jspa?id=10093">OpenELIS Global Community</a></td>
+    </tr>
+
+        <tr>
+            <td><b>Components:</b></td>
+            <td>
+                            None
+                </td>
+    </tr>
+    
+
+        <tr>
+            <td><b>Affects versions:</b></td>
+            <td>
+                            None
+                </td>
+    </tr>
+    
+
+        <tr>
+            <td><b>Fix versions:</b></td>
+            <td>
+                            None
+                </td>
+    </tr>
+    
+            <tr>
+            <td><b>Security Level:</b></td>
+            <td>
+                Open to the Community
+                            </td>
+       </tr>
+    
+    </table>
+
+<br />
+<table class="grid" cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+        <td bgcolor="#f0f0f0" valign="top" width="20%">
+            <b>Type:</b>
+        </td>
+        <td bgcolor="#ffffff" valign="top"  width="30%" >
+            Story
+        </td>
+
+                    <td bgcolor="#f0f0f0">
+                <b>Priority:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top" nowrap>
+                Medium
+            </td>
+            </tr>
+    <tr>
+                        <td bgcolor="#f0f0f0" valign="top" width="20%">
+                <b>Reporter:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top"  width="30%" >
+                                        
+                
+        
+            <a class="user-hover" rel="557058:99fa116c-0d0d-4dd2-aa5c-a335a4160851"
+                id="word_reporter_557058:99fa116c-0d0d-4dd2-aa5c-a335a4160851"
+                href="https://uwdigi.atlassian.net/secure/ViewProfile.jspa?accountId=557058%3A99fa116c-0d0d-4dd2-aa5c-a335a4160851">
+                    Casey Iiams-Hauser
+                </a>
+
+                            </td>
+        
+                    <td bgcolor="#f0f0f0" width="20%">
+                <b>Assignee:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top" nowrap  width="30%" >
+                                        
+                
+        
+            <a class="user-hover" rel="5e765a025e755d0cd425c863"
+                id="word_assignee_5e765a025e755d0cd425c863"
+                href="https://uwdigi.atlassian.net/secure/ViewProfile.jspa?accountId=5e765a025e755d0cd425c863">
+                    Piotr Mankowski
+                </a>
+
+                            </td>
+            </tr>
+    	<tr>
+		<td bgcolor="#f0f0f0" width="20%">
+			<b>Resolution:</b>
+		</td>
+		<td bgcolor="#ffffff" valign="top" width="30%" nowrap>
+            				Unresolved
+                    </td>
+                    <td bgcolor="#f0f0f0" width="20%">
+                <b>Votes:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top" width="30%" nowrap>
+                0
+            </td>
+        
+    </tr>
+    
+        <tr>
+        <td bgcolor="#f0f0f0" width="20%">
+            <b>Labels:</b>
+        </td>
+        <td id="labels-13389-value" class="value" bgcolor="#ffffff" valign="top" colspan="3" nowrap>
+                            None
+                    </td>
+    </tr>
+    
+    	<tr>
+        		<td bgcolor="#f0f0f0" width="20%"><b>Remaining Estimate:</b></td>
+        <td bgcolor="#ffffff" valign="top" nowrap width="80%" colspan="3">
+                            Not Specified
+            		</td>
+    </tr>
+    <tr>
+                <td bgcolor="#f0f0f0" width="20%"><b>Time Spent:</b></td>
+		<td bgcolor="#ffffff" valign="top" nowrap width="80%" colspan="3">
+                            Not Specified
+            		</td>
+	</tr>
+    <tr>
+                <td bgcolor="#f0f0f0" width="20%"><b>Original estimate:</b></td>
+		<td bgcolor="#ffffff" valign="top" nowrap width="80%" colspan="3">
+                            Not Specified
+            		</td>
+    </tr>
+    
+    </table>
+
+
+
+    <br />
+
+    	<table class="grid" cellpadding="0" cellspacing="0" border="0" width="100%">
+            
+
+                <tr>
+            <td bgcolor="#f0f0f0" width=20% valign=top>
+                <b>Attachments:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top">
+                                    <img src="https://uwdigi.atlassian.net/images/icons/attach/file.gif" height="16" width="16" border="0" alt="File">
+                    westgard_rules_implementation.md &nbsp;&nbsp;&nbsp;
+                            </td>
+        </tr>
+        
+    
+
+
+    
+</table>
+
+    <br/>
+
+    <table cellpadding="2" cellspacing="0" border="0" width="100%" align="center">
+    <tr>
+        <td bgcolor="#bbbbbb" width="1%" nowrap align="center">
+            &nbsp;<font color="#ffffff"><b>Description</b></font>&nbsp;
+        </td>
+        <td>&nbsp;</td>
+    </tr>
+    </table>
+
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+        <td id="descriptionArea">
+            <h2><a name="Userstory"></a>User story</h2>
+
+<ul>
+	<li>As a laboratory technician, when I check the compliance status of instruments, I want to see a clear overview so that I can quickly assess any issues.</li>
+	<li>As a lab manager, when rules are violated, I want to receive automated alerts so that I can take immediate corrective actions.</li>
+</ul>
+
+
+<h2><a name="Context"></a>Context</h2>
+
+<p>This issue focuses on designing a dashboard for instrument compliance. The dashboard will provide an overview of compliance status, instrument-specific details, control charts, historical data, alerts, and corrective actions.</p>
+
+<h2><a name="Acceptancecriteria"></a>Acceptance criteria</h2>
+
+<ul>
+	<li>Overview section displays compliance status with visual indicators:
+	<ul>
+		<li>Green for compliant</li>
+		<li>Yellow for warning</li>
+		<li>Red for out of compliance</li>
+	</ul>
+	</li>
+	<li>Each instrument has a card with:
+	<ul>
+		<li>Current compliance status</li>
+		<li>List of triggered rules</li>
+		<li>Date and time of the latest data point analyzed</li>
+	</ul>
+	</li>
+	<li>Clickable feature for detailed views, including control charts.</li>
+	<li>Interactive Levey-Jennings charts integrated for each instrument.</li>
+	<li>Westgard Rule limits overlaid on control charts.</li>
+	<li>Points violating rules are highlighted.</li>
+	<li>Trend graphs show compliance over time with filtering options.</li>
+	<li>Automated alerts sent via email or system notifications for rule violations.</li>
+	<li>Real-time feed for ongoing compliance issues.</li>
+	<li>Log for corrective actions taken and task assignments for follow-up.</li>
+</ul>
+
+
+<h2><a name="Otherinformation"></a>Other information</h2>
+
+<ul>
+	<li>Use color-coded visuals for clarity.</li>
+	<li>Responsive design for various devices.</li>
+	<li>Customizable thresholds and rule sets.</li>
+	<li>Search or filter bar for quick access to instruments or violations.</li>
+	<li>Dashboard linked to the lab information system (LIS) for live data feeds.</li>
+	<li>Data synchronized from instruments at regular intervals via ASTM interface or flat file import.</li>
+	<li>Sensitive data protected with encryption and secure user authentication.</li>
+	<li>System designed for scalability to support additional instruments or rules.</li>
+</ul>
+
+
+
+
+<p>Mockup: <a href="https://kit-mango-37758223.figma.site" title="smart-link" class="external-link" rel="nofollow noreferrer">https://kit-mango-37758223.figma.site</a> </p>
+            <br/>
+        </td>
+    </tr>
+    </table>
+
+    <br/>
+
+    <table cellpadding="2" cellspacing="0" border="0" width="100%" align="center">
+    <tr>
+        <td bgcolor="#bbbbbb" width="1%" nowrap align="center">
+            &nbsp;<font color="#ffffff"><b>Comments</b></font>&nbsp;
+        </td>
+        <td>&nbsp;</td>
+    </tr>
+    </table>
+
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" class="grid" style="margin: 0;">
+                <tr id="comment-header-12994"><td bgcolor="#f0f0f0">
+            Comment by  
+                                                    
+                
+        
+            <a class="user-hover" rel="557058:99fa116c-0d0d-4dd2-aa5c-a335a4160851"
+                id="word_commented_557058:99fa116c-0d0d-4dd2-aa5c-a335a4160851"
+                href="https://uwdigi.atlassian.net/secure/ViewProfile.jspa?accountId=557058%3A99fa116c-0d0d-4dd2-aa5c-a335a4160851">
+                    Casey Iiams-Hauser
+                </a>
+
+                                        <font size="-2">
+            [
+                <font color="#336699">24/Mar/25</font>
+
+                            ]
+            </font>
+
+        </td></tr>
+        <tr id="comment-body-12994"><td bgcolor="#ffffff">
+            <p>The Westgard Rules are a set of statistical quality control guidelines used in laboratories to monitor the accuracy and precision of analytical systems. These rules help determine whether a test run is "in control" or "out of control" by analyzing patterns in control measurements. They are commonly applied using Levey-Jennings charts, which plot control data against standard deviation limits2.</p>
+
+<p>Some key Westgard Rules include:</p>
+
+<ul>
+	<li><b>1 2s Rule</b>: A warning rule triggered when one measurement exceeds 2 standard deviations from the mean.</li>
+	<li><b>1 3s Rule</b>: Rejects a run if one measurement exceeds 3 standard deviations from the mean.</li>
+	<li><b>2 2s Rule</b>: Rejects a run if two consecutive measurements exceed 2 standard deviations on the same side of the mean.</li>
+	<li><b>R 4s Rule</b>: Rejects a run if one measurement exceeds +2 standard deviations and another exceeds -2 standard deviations within the same run.</li>
+	<li><b>4 1s Rule</b>: Rejects a run if four consecutive measurements exceed 1 standard deviation on the same side of the mean.</li>
+	<li><b>10 x Rule</b>: Rejects a run if ten consecutive measurements fall on one side of the mean3.</li>
+</ul>
+
+
+<p>These rules are designed to minimize false alarms while maximizing error detection, ensuring reliable laboratory results. They are particularly useful in clinical chemistry, hematology, and immunoassays2.</p>
+        </td></tr>
+                <tr id="comment-header-12995"><td bgcolor="#f0f0f0">
+            Comment by  
+                                                    
+                
+        
+            <a class="user-hover" rel="557058:99fa116c-0d0d-4dd2-aa5c-a335a4160851"
+                id="word_commented_557058:99fa116c-0d0d-4dd2-aa5c-a335a4160851"
+                href="https://uwdigi.atlassian.net/secure/ViewProfile.jspa?accountId=557058%3A99fa116c-0d0d-4dd2-aa5c-a335a4160851">
+                    Casey Iiams-Hauser
+                </a>
+
+                                        <font size="-2">
+            [
+                <font color="#336699">24/Mar/25</font>
+
+                            ]
+            </font>
+
+        </td></tr>
+        <tr id="comment-body-12995"><td bgcolor="#ffffff">
+            <hr />
+
+<h3><a name="DashboardLayoutandVisualElements"></a><b>Dashboard Layout and Visual Elements</b></h3>
+
+<h4><a name="1.OverviewSection"></a><b>1. Overview Section</b></h4>
+
+<p>This section provides a summary of compliance status for all instruments:</p>
+
+<ul>
+	<li><b>Visual Representation</b>: A grid or table with color-coded status indicators:
+	<ul>
+		<li><b>Green</b> for compliance.</li>
+		<li><b>Yellow</b> for warning (e.g., Rule 1 2s triggered).</li>
+		<li><b>Red</b> for non-compliance (e.g., Rule 1 3s violated).</li>
+	</ul>
+	</li>
+	<li><b>Mockup</b>:<br/>
+Imagine rows labeled with instrument names, accompanied by compliance status icons (✔️, ⚠️, ❌), percentages of compliance, and timestamps for the latest data.</li>
+</ul>
+
+
+<h4><a name="2.InstrumentSpecificDetails"></a><b>2. Instrument-Specific Details</b></h4>
+
+<p>Each instrument has its own card or section:</p>
+
+<ul>
+	<li><b>Visual Representation</b>: Cards with information such as:
+	<ul>
+		<li>Current compliance status.</li>
+		<li>List of triggered rules (e.g., "R 4s violated on <span class="error">&#91;date/time&#93;</span>").</li>
+		<li>Data visualization icons for further exploration.</li>
+	</ul>
+	</li>
+	<li><b>Mockup</b>:<br/>
+A sleek card for each instrument, showing the last five tests and highlighting rules that were breached.</li>
+</ul>
+
+
+<h4><a name="3.ControlCharts"></a><b>3. Control Charts</b></h4>
+
+<p>Interactive Levey-Jennings charts for each instrument:</p>
+
+<ul>
+	<li><b>Visual Representation</b>:
+	<ul>
+		<li>Plot control data with standard deviation limits clearly marked.</li>
+		<li>Highlight data points that violate Westgard Rules (e.g., red points for violations).</li>
+	</ul>
+	</li>
+	<li><b>Mockup</b>:<br/>
+Visualizing a graph with an “overlaid” zone for ±1s, ±2s, and ±3s, with flagged points that exceed the limits.</li>
+</ul>
+
+
+<h4><a name="4.HistoricalData%26Trends"></a><b>4. Historical Data &amp; Trends</b></h4>
+
+<p>Graphical insights into compliance over time:</p>
+
+<ul>
+	<li><b>Visual Representation</b>:
+	<ul>
+		<li>Trend graphs to identify recurring issues and compliance improvement over months.</li>
+		<li>Filtering tools for date ranges or specific instruments.</li>
+	</ul>
+	</li>
+	<li><b>Mockup</b>:<br/>
+Imagine a line graph labeled with the percentage of runs in compliance, annotated with significant rule violations.</li>
+</ul>
+
+
+<h4><a name="5.Alerts%26Notifications"></a><b>5. Alerts &amp; Notifications</b></h4>
+
+<p>This section flags rule violations:</p>
+
+<ul>
+	<li><b>Visual Representation</b>:
+	<ul>
+		<li>A scrolling feed with real-time updates for non-compliance cases.</li>
+		<li>Notifications panel for lab managers.</li>
+	</ul>
+	</li>
+	<li><b>Mockup</b>:<br/>
+Notifications could appear as cards labeled “Rule 1 3s triggered - Instrument X,” dated and prioritized.</li>
+</ul>
+
+
+<h4><a name="6.CorrectiveActionsLog"></a><b>6. Corrective Actions Log</b></h4>
+
+<p>Tracking corrective actions taken:</p>
+
+<ul>
+	<li><b>Visual Representation</b>:
+	<ul>
+		<li>A log with timestamps, actions performed (e.g., recalibration), and who handled the task.</li>
+	</ul>
+	</li>
+	<li><b>Mockup</b>:<br/>
+A list view with sortable columns for date, instrument, corrective action, and status.</li>
+</ul>
+
+
+<hr />
+
+<p> here's a textual mockup of one of the sections:</p>
+
+<hr />
+
+<p><b>Instrument Compliance Overview</b>  </p>
+
+<div class='table-wrap'>
+<table class='confluenceTable'><tbody>
+<tr>
+<th class='confluenceTh'>Instrument Name</th>
+<th class='confluenceTh'>Status</th>
+<th class='confluenceTh'>Compliance %</th>
+<th class='confluenceTh'>Last Checked</th>
+<th class='confluenceTh'>Action Required</th>
+</tr>
+<tr>
+<td class='confluenceTd'>Analyzer A</td>
+<td class='confluenceTd'>🟢 Compliant</td>
+<td class='confluenceTd'>98%</td>
+<td class='confluenceTd'>March 24, 2025</td>
+<td class='confluenceTd'>No action</td>
+</tr>
+<tr>
+<td class='confluenceTd'>Analyzer B</td>
+<td class='confluenceTd'>🟡 Warning</td>
+<td class='confluenceTd'>85%</td>
+<td class='confluenceTd'>March 23, 2025</td>
+<td class='confluenceTd'>Investigate rule violations</td>
+</tr>
+<tr>
+<td class='confluenceTd'>Analyzer C</td>
+<td class='confluenceTd'>🔴 Out of compliance</td>
+<td class='confluenceTd'>65%</td>
+<td class='confluenceTd'>March 22, 2025</td>
+<td class='confluenceTd'>Immediate calibration needed</td>
+</tr>
+</tbody></table>
+</div>
+
+
+<hr />
+        </td></tr>
+                <tr id="comment-header-15205"><td bgcolor="#f0f0f0">
+            Comment by  
+                                                    
+                
+        
+            <a class="user-hover" rel="557058:99fa116c-0d0d-4dd2-aa5c-a335a4160851"
+                id="word_commented_557058:99fa116c-0d0d-4dd2-aa5c-a335a4160851"
+                href="https://uwdigi.atlassian.net/secure/ViewProfile.jspa?accountId=557058%3A99fa116c-0d0d-4dd2-aa5c-a335a4160851">
+                    Casey Iiams-Hauser
+                </a>
+
+                                        <font size="-2">
+            [
+                <font color="#336699">06/Aug/25</font>
+
+                            ]
+            </font>
+
+        </td></tr>
+        <tr id="comment-body-15205"><td bgcolor="#ffffff">
+            <p>Mockup is here for the UI: <a href="https://urban-poster-21038766.figma.site" title="smart-link" class="external-link" rel="nofollow noreferrer">https://urban-poster-21038766.figma.site</a> </p>
+        </td></tr>
+                <tr id="comment-header-16461"><td bgcolor="#f0f0f0">
+            Comment by  
+                                                    
+                
+        
+            <a class="user-hover" rel="712020:1ae27884-b49d-431e-8f3a-24c3e7a1fd04"
+                id="word_commented_712020:1ae27884-b49d-431e-8f3a-24c3e7a1fd04"
+                href="https://uwdigi.atlassian.net/secure/ViewProfile.jspa?accountId=712020%3A1ae27884-b49d-431e-8f3a-24c3e7a1fd04">
+                    Ian Bacher
+                </a>
+
+                                        <font size="-2">
+            [
+                <font color="#336699">07/Nov/25</font>
+
+                            ]
+            </font>
+
+        </td></tr>
+        <tr id="comment-body-16461"><td bgcolor="#ffffff">
+            <p>I don’t think the actual UI code gets us very far, but I do think having the design mock artifacts is fantastic! Probably after this current push we should see if we can integrate IBM’s Figma for Carbon kit with our Figma setup… That’s more likely to get us to an easily usable artifact.</p>
+        </td></tr>
+                <tr id="comment-header-16761"><td bgcolor="#f0f0f0">
+            Comment by  
+                                                    
+                
+        
+            <a class="user-hover" rel="557058:c0b40bdd-71df-4365-93ef-efc2b70107da"
+                id="word_commented_557058:c0b40bdd-71df-4365-93ef-efc2b70107da"
+                href="https://uwdigi.atlassian.net/secure/ViewProfile.jspa?accountId=557058%3Ac0b40bdd-71df-4365-93ef-efc2b70107da">
+                    Male Samuel
+                </a>
+
+                                        <font size="-2">
+            [
+                <font color="#336699">13/Nov/25</font>
+
+                            ]
+            </font>
+
+        </td></tr>
+        <tr id="comment-body-16761"><td bgcolor="#ffffff">
+            <p>A few questions regarding the overall scope of work for this feature:</p>
+
+<ol>
+	<li><b>Analyzer Coverage:</b><br/>
+Is this feature intended to work exclusively with ASTM-enabled analyzers, or should we design it to support other communication protocols as well (e.g., HL7, CSV imports, or direct OpenELIS data entry)?</li>
+	<li><b>Analyzer Configuration UI:</b><br/>
+Do we already have a <a href="https://uwdigi.atlassian.net/wiki/spaces/OG/pages/640319495/OpenELIS+Global+Software+Release+Roadmap#%F0%9F%94%AC-Analyzer-Integration-%26-Management" class="external-link" rel="nofollow noreferrer">UI for configuring or mapping ASTM-enabled analyzers</a>, or would part of this work involve creating a configuration panel for instrument setup and QC data mapping?</li>
+	<li><b>Backend Components:</b><br/>
+While I see that we already have <a href="https://github.com/DIGI-UW/openelisglobal-plugins/tree/develop" class="external-link" rel="nofollow noreferrer">plugins</a> for instrument communication, do we currently have backend components for:
+	<ul>
+		<li>A Westgard rule evaluation service or basic rule engine</li>
+		<li>QC-related database models</li>
+		<li>An alerting or notification service for rule violations<br/>
+Or should these be developed as part of this story’s implementation?</li>
+	</ul>
+	</li>
+	<li><b>Rule Definition and Management:</b><br/>
+How do we plan to define and maintain the Westgard rules?<br/>
+Should rules be configurable through a UI (for admins to add or modify), or are we expecting them to be defined via configuration files?</li>
+	<li><b>Data Flow:</b><br/>
+Are QC results expected to be synchronized in real time from analyzers, or will there be scheduled batch imports?</li>
+</ol>
+
+        </td></tr>
+                <tr id="comment-header-16762"><td bgcolor="#f0f0f0">
+            Comment by  
+                                                    
+                
+        
+            <a class="user-hover" rel="557058:99fa116c-0d0d-4dd2-aa5c-a335a4160851"
+                id="word_commented_557058:99fa116c-0d0d-4dd2-aa5c-a335a4160851"
+                href="https://uwdigi.atlassian.net/secure/ViewProfile.jspa?accountId=557058%3A99fa116c-0d0d-4dd2-aa5c-a335a4160851">
+                    Casey Iiams-Hauser
+                </a>
+
+                                        <font size="-2">
+            [
+                <font color="#336699">13/Nov/25</font>
+
+                            ]
+            </font>
+
+        </td></tr>
+        <tr id="comment-body-16762"><td bgcolor="#ffffff">
+            <p><span class="nobr"><a href="/rest/api/3/attachment/content/12538" title="westgard_rules_implementation.md attached to OGC-41" data-attachment-type="file" data-attachment-name="westgard_rules_implementation.md" data-media-services-type="file" data-media-services-id="a86300f1-8f4a-4675-a8b5-3f5327856ca2" rel="noreferrer">westgard_rules_implementation.md<sup><img class="rendericon" src="/images/icons/link_attachment_7.gif" height="7" width="7" align="absmiddle" alt="" border="0"/></sup></a></span></p>
+
+<p>Here are some additional details. </p>
+        </td></tr>
+                <tr id="comment-header-16763"><td bgcolor="#f0f0f0">
+            Comment by  
+                                                    
+                
+        
+            <a class="user-hover" rel="557058:99fa116c-0d0d-4dd2-aa5c-a335a4160851"
+                id="word_commented_557058:99fa116c-0d0d-4dd2-aa5c-a335a4160851"
+                href="https://uwdigi.atlassian.net/secure/ViewProfile.jspa?accountId=557058%3A99fa116c-0d0d-4dd2-aa5c-a335a4160851">
+                    Casey Iiams-Hauser
+                </a>
+
+                                        <font size="-2">
+            [
+                <font color="#336699">13/Nov/25</font>
+
+                            ]
+            </font>
+
+        </td></tr>
+        <tr id="comment-body-16763"><td bgcolor="#ffffff">
+            <p><a href="https://uwdigi.atlassian.net/secure/ViewProfile.jspa?accountId=557058%3Ac0b40bdd-71df-4365-93ef-efc2b70107da" class="user-hover" rel="557058:c0b40bdd-71df-4365-93ef-efc2b70107da" data-account-id="557058:c0b40bdd-71df-4365-93ef-efc2b70107da" accountid="557058:c0b40bdd-71df-4365-93ef-efc2b70107da" rel="noreferrer">Male Samuel</a> I’ve added some more details above, which detail out the rules for the rule builder, we do indeed already have a mechanism to connect to the analyzers to OpenELIS, and there is a different story to enable the mapping. This would be to build out the rules to run the checks against the QC data, and then show the alerts, and log corrective actions. </p>
+
+
+        </td></tr>
+            </table>
+Generated at Fri Nov 14 18:02:02 UTC 2025 by Piotr Mankowski using Jira 1001.0.0-SNAPSHOT#100290-rev:ed7c6f8ea342fcdf654be5e285289be6bf3b4784.
+
+</body>
+</html>
