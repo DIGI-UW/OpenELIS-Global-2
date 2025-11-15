@@ -150,4 +150,31 @@ public class ShortCodeValidationServiceTest {
         assertNotNull("Warning should be generated when short code changes", warning);
         assertTrue("Warning should mention short code change", warning.contains("FRZ01") || warning.contains("FRZ02"));
     }
+
+    /**
+     * Test required field validation T284: Required Field Validation - Short code
+     * is required for Device/Shelf/Rack (cannot be empty or null)
+     */
+    @Test
+    public void testRequiredFieldValidation() {
+        // Empty string should be invalid
+        ShortCodeValidationResult result = shortCodeValidationService.validateFormat("");
+        assertFalse("Empty string should be invalid", result.isValid());
+        assertNotNull("Error message should be provided", result.getErrorMessage());
+
+        // Null should be invalid
+        result = shortCodeValidationService.validateFormat(null);
+        assertFalse("Null should be invalid", result.isValid());
+        assertNotNull("Error message should be provided", result.getErrorMessage());
+
+        // Whitespace-only should be invalid (after trim)
+        result = shortCodeValidationService.validateFormat("   ");
+        assertFalse("Whitespace-only should be invalid", result.isValid());
+        assertNotNull("Error message should be provided", result.getErrorMessage());
+
+        // Valid short code should pass
+        result = shortCodeValidationService.validateFormat("FRZ01");
+        assertTrue("Valid short code should pass", result.isValid());
+        assertNull("No error message for valid code", result.getErrorMessage());
+    }
 }

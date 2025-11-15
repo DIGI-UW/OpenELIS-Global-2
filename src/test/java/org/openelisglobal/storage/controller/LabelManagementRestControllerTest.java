@@ -3,6 +3,7 @@ package org.openelisglobal.storage.controller;
 import static org.junit.Assert.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.sql.DataSource;
@@ -120,11 +121,32 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         device.setActive(true);
 
         jdbcTemplate.update(
-                "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid) "
-                        + "VALUES (nextval('storage_device_seq'), ?, ?, 'freezer', ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid, short_code) "
+                        + "VALUES (nextval('storage_device_seq'), ?, ?, 'freezer', ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid(), 'FRZ01')",
                 device.getName(), device.getCode(), roomId, device.getActive(), 1);
         Integer id = jdbcTemplate.queryForObject("SELECT id FROM storage_device WHERE code = ?", Integer.class,
                 device.getCode());
+        return String.valueOf(id);
+    }
+
+    /**
+     * Helper: Create a test device without shortCode and return its ID
+     */
+    private String createTestDeviceWithoutShortCode() throws Exception {
+        // Create a test room first
+        long timestamp = System.currentTimeMillis() % 9000;
+        Integer roomId = 1000 + (int) timestamp;
+        jdbcTemplate.update("INSERT INTO storage_room (id, name, code, active, sys_user_id, last_updated, fhir_uuid) "
+                + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid()) " + "ON CONFLICT (id) DO NOTHING",
+                roomId, "Test Room No SC", "TEST-ROOM-NO-SC-" + timestamp, true, 1);
+
+        // Create device without short_code
+        jdbcTemplate.update(
+                "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid, short_code) "
+                        + "VALUES (nextval('storage_device_seq'), ?, ?, 'freezer', ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid(), '')",
+                "Test Device No SC", "TEST-DEV-NO-SC-" + timestamp, roomId, true, 1);
+        Integer id = jdbcTemplate.queryForObject("SELECT id FROM storage_device WHERE code = ?", Integer.class,
+                "TEST-DEV-NO-SC-" + timestamp);
         return String.valueOf(id);
     }
 
@@ -182,65 +204,84 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: POST /rest/storage/{type}/{id}/print-label generates PDF Expected: 200
-     * OK with PDF content type
+     * T285: Test POST /rest/storage/{type}/{id}/print-label generates PDF
+     * Expected: 200 OK with PDF content type (shortCode from entity)
      */
     @Test
     public void testPostPrintLabelEndpoint_GeneratesPdf_Returns200() throws Exception {
-        // Given: Test device exists with proper room relationship
+        // Given: Test device exists with shortCode set in entity
         String deviceId = createTestDevice();
 
-        // Verify device was created correctly with code and parentRoom
+        // Verify device was created correctly with code, parentRoom, and shortCode
         StorageDevice device = storageDeviceDAO.get(Integer.parseInt(deviceId)).orElse(null);
         assertNotNull("Device should exist", device);
         assertNotNull("Device should have code", device.getCode());
         assertNotNull("Device should have parentRoom", device.getParentRoom());
         assertNotNull("ParentRoom should have code", device.getParentRoom().getCode());
+        assertNotNull("Device should have shortCode", device.getShortCode());
+        assertEquals("Device shortCode should be FRZ01", "FRZ01", device.getShortCode());
 
-        // When: POST /rest/storage/device/{id}/print-label?shortCode=FRZ01
+        // When: POST /rest/storage/device/{id}/print-label (no shortCode parameter - uses entity)
         // Then: Expect 200 OK with PDF content
-        MvcResult result = mockMvc
-                .perform(post("/rest/storage/device/" + deviceId + "/print-label").param("shortCode", "FRZ01"))
-                .andReturn();
-
-        // Debug: Print response details if not 200
-        if (result.getResponse().getStatus() != 200) {
-            Exception exception = result.getResolvedException();
-            try {
-                java.io.FileWriter fw = new java.io.FileWriter("/tmp/test-response-error.log");
-                fw.write("Status: " + result.getResponse().getStatus() + "\n");
-                fw.write("Body: " + result.getResponse().getContentAsString() + "\n");
-                fw.write("Headers: " + result.getResponse().getHeaderNames() + "\n");
-                if (exception != null) {
-                    fw.write("Exception: " + exception.getClass().getName() + "\n");
-                    fw.write("Exception Message: " + exception.getMessage() + "\n");
-                    java.io.StringWriter sw = new java.io.StringWriter();
-                    java.io.PrintWriter pw = new java.io.PrintWriter(sw);
-                    exception.printStackTrace(pw);
-                    fw.write("Stack Trace:\n" + sw.toString() + "\n");
-                }
-                fw.close();
-            } catch (Exception e) {
-                // Ignore
-            }
-        }
-
-        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label").param("shortCode", "FRZ01"))
+        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label"))
                 .andExpect(status().isOk()).andExpect(header().string("Content-Type", "application/pdf"))
                 .andExpect(header().exists("Content-Disposition"));
     }
 
     /**
-     * Test: POST /rest/storage/{type}/{id}/print-label tracks print history
+     * T285: Test POST /rest/storage/{type}/{id}/print-label with missing shortCode
+     * Expected: 400 Bad Request with error message
+     */
+    @Test
+    public void testPrintValidationChecksShortCodeExists_MissingShortCode_Returns400() throws Exception {
+        // Given: Test device exists without shortCode
+        String deviceId = createTestDeviceWithoutShortCode();
+
+        // When: POST /rest/storage/device/{id}/print-label
+        // Then: Expect 400 Bad Request with error message about missing shortCode
+        MvcResult result = mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error").exists())
+                .andReturn();
+        
+        // Verify error message contains "Short code"
+        String errorMessage = objectMapper.readTree(result.getResponse().getContentAsString()).get("error").asText();
+        assertTrue("Error message should mention short code", errorMessage.contains("Short code"));
+    }
+
+    /**
+     * T285: Test error response if shortCode missing
+     * Expected: JSON error response with specific message
+     */
+    @Test
+    public void testErrorResponseIfShortCodeMissing_ReturnsJsonError() throws Exception {
+        // Given: Test device exists without shortCode
+        String deviceId = createTestDeviceWithoutShortCode();
+
+        // When: POST /rest/storage/device/{id}/print-label
+        // Then: Expect JSON error response (not PDF)
+        MvcResult result = mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andReturn();
+        
+        // Verify error message contains "Short code is required"
+        String errorMessage = objectMapper.readTree(result.getResponse().getContentAsString()).get("error").asText();
+        assertTrue("Error message should mention short code is required", errorMessage.contains("Short code is required"));
+    }
+
+    /**
+     * T285: Test POST /rest/storage/{type}/{id}/print-label tracks print history
      * Expected: Print history is recorded after label generation
      */
     @Test
     public void testPrintHistoryTracking_AfterLabelGeneration_Recorded() throws Exception {
-        // Given: Test device exists
+        // Given: Test device exists with shortCode
         String deviceId = createTestDevice();
 
         // When: POST /rest/storage/device/{id}/print-label
-        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label").param("shortCode", "FRZ01"))
+        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label"))
                 .andExpect(status().isOk());
 
         // Then: Print history record exists in database
@@ -286,21 +327,23 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: PDF generation uses system admin settings for dimensions Expected:
-     * Label service uses ConfigurationProperties dimensions Note: This test
-     * verifies integration with configuration, actual dimension values are tested
-     * in LabelManagementService unit tests
+     * T285: Test PDF generation with shortCode from entity
+     * Expected: PDF is generated using shortCode from entity (not parameter)
+     * Note: This test verifies the endpoint works, actual dimension testing is in service layer
      */
     @Test
-    public void testPdfGenerationWithSystemAdminSettings_UsesConfigDimensions() throws Exception {
-        // Given: Test device exists
+    public void testPdfGenerationWithShortCode_FromEntity() throws Exception {
+        // Given: Test device exists with shortCode
         String deviceId = createTestDevice();
 
-        // When: POST /rest/storage/device/{id}/print-label
-        // Then: PDF is generated (dimensions are handled by LabelManagementService)
-        // This test verifies the endpoint works, actual dimension testing is in service
-        // layer
-        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label").param("shortCode", "FRZ01"))
+        // Verify device has shortCode
+        StorageDevice device = storageDeviceDAO.get(Integer.parseInt(deviceId)).orElse(null);
+        assertNotNull("Device should exist", device);
+        assertEquals("Device should have shortCode FRZ01", "FRZ01", device.getShortCode());
+
+        // When: POST /rest/storage/device/{id}/print-label (no shortCode parameter)
+        // Then: PDF is generated using shortCode from entity
+        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label"))
                 .andExpect(status().isOk()).andExpect(header().string("Content-Type", "application/pdf"));
     }
 }
