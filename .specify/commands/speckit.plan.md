@@ -26,6 +26,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
    - Fill Technical Context (mark unknowns as "NEEDS CLARIFICATION")
    - Fill Constitution Check section from constitution
+   - Fill Testing Strategy section (MANDATORY - per Testing Roadmap)
    - Evaluate gates (ERROR if violations unjustified)
    - Phase 0: Generate research.md (resolve all NEEDS CLARIFICATION)
    - Phase 1: Generate data-model.md, contracts/, quickstart.md
@@ -86,7 +87,25 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 **Output**: data-model.md, /contracts/\*, quickstart.md, agent-specific file
 
+### Testing Strategy (MANDATORY)
+
+**Reference**: `.specify/guides/testing-roadmap.md`
+
+The plan MUST include a complete "Testing Strategy" section that:
+
+1. **References the Testing Roadmap**: Link to
+   `.specify/guides/testing-roadmap.md`
+2. **Documents Coverage Goals**: >80% backend, >70% frontend
+3. **Identifies Test Types**: Unit, ORM validation, integration, E2E
+4. **Describes Test Data Management**: Builders/factories, API-based setup
+5. **Specifies Checkpoint Validations**: Which tests must pass at each phase
+
+**Validation**: Ensure the testing strategy references the Testing Roadmap and
+includes all required subsections (Coverage Goals, Test Types, Test Data
+Management, Checkpoint Validations, TDD Workflow).
+
 ## Key rules
 
 - Use absolute paths
 - ERROR on gate failures or unresolved clarifications
+- ERROR if Testing Strategy section is missing or incomplete

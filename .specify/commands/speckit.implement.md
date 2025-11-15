@@ -140,8 +140,16 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **Phase-by-phase execution**: Complete each phase before moving to the next
    - **Respect dependencies**: Run sequential tasks in order, parallel tasks [P]
      can run together
-   - **Follow TDD approach**: Execute test tasks before their corresponding
-     implementation tasks
+   - **Follow TDD approach (MANDATORY)**:
+     - Execute test tasks BEFORE their corresponding implementation tasks
+     - Write failing tests first (Red), then implement to make them pass
+       (Green), then refactor
+     - Use test templates from `.specify/templates/testing/` when generating
+       test code
+     - Reference Testing Roadmap (`.specify/guides/testing-roadmap.md`) for
+       patterns
+     - At checkpoint validations: Tests MUST pass before proceeding to next
+       phase
    - **File-based coordination**: Tasks affecting the same files must run
      sequentially
    - **Validation checkpoints**: Verify each phase completion before proceeding
