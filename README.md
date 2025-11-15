@@ -162,6 +162,16 @@ accessing any of these links, simply follow these steps:
         npm run build
         npm run cy:run # this will run e2e testing same CI
 
+### Testing Resources
+
+For comprehensive testing guidance, see:
+
+- **Testing Roadmap**: `.specify/guides/testing-roadmap.md` - Complete testing
+  guide for both agents and humans
+- **Test Templates**: `.specify/templates/testing/` - Standardized test
+  templates
+- **AGENTS.md**: Testing Strategy section - Overview of testing approach
+
 ### Pull request guidelines
 
 Please follow the [pull request tips](PULL_REQUEST_TIPS.md) in order to make
