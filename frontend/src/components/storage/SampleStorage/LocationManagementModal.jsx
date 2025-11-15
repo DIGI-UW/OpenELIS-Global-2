@@ -7,6 +7,7 @@ import {
   Button,
   TextArea,
   TextInput,
+  InlineNotification,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ArrowDown } from "@carbon/icons-react";
@@ -51,6 +52,10 @@ const LocationManagementModal = ({
   const [barcodeErrorMessage, setBarcodeErrorMessage] = useState("");
   const [lastModifiedMethod, setLastModifiedMethod] = useState(null); // null | 'dropdown' | 'barcode'
   const [lastModifiedTimestamp, setLastModifiedTimestamp] = useState(null);
+  const [autoOpenCreateForm, setAutoOpenCreateForm] = useState(false);
+  const [prefillLocation, setPrefillLocation] = useState(null);
+  const [focusField, setFocusField] = useState(null); // 'device' | 'shelf' | 'rack' | 'position'
+  const [showAdditionalInvalidWarning, setShowAdditionalInvalidWarning] = useState(false);
 
   // Determine modal mode: assignment (no location) or movement (location exists)
   const isMovementMode = !!currentLocation;
@@ -76,6 +81,10 @@ const LocationManagementModal = ({
       setBarcodeErrorMessage("");
       setLastModifiedMethod(null);
       setLastModifiedTimestamp(null);
+      setAutoOpenCreateForm(false);
+      setPrefillLocation(null);
+      setFocusField(null);
+      setShowAdditionalInvalidWarning(false);
     }
   }, [open]);
 
@@ -297,31 +306,32 @@ const LocationManagementModal = ({
         setLocationUpdateTrigger((prev) => prev + 1);
       }
     } else {
-      // Validation failed
-      setBarcodeValidationState("error");
+      // Validation failed - check for partial valid hierarchy
+      const firstMissingLevel = result.firstMissingLevel || null;
+      const validComponents = result.validComponents || {};
+      const hasAdditionalInvalid = result.hasAdditionalInvalidLevels || false;
 
-      // Handle partial validation (some components valid)
-      if (result.error && result.error.validComponents) {
-        const partialData = result.error.validComponents;
-        const errorMsg =
-          result.error.errorMessage ||
-          intl.formatMessage({
-            id: "barcode.partialMatch",
-            defaultMessage:
-              "Partial match - some location components not found",
-          });
-        setBarcodeErrorMessage(errorMsg);
+      if (firstMissingLevel && Object.keys(validComponents).length > 0) {
+        // Partial valid hierarchy - auto-open create form
+        setBarcodeValidationState("error");
+        setBarcodeErrorMessage("");
 
-        // Auto-populate partial location data
-        const location = {
-          room: partialData.room,
-          device: partialData.device,
-          shelf: partialData.shelf,
-          rack: partialData.rack,
-          position: partialData.position,
+        // Convert validComponents to location format for pre-filling
+        const prefillLoc = {
+          room: validComponents.room || null,
+          device: validComponents.device || null,
+          shelf: validComponents.shelf || null,
+          rack: validComponents.rack || null,
+          position: validComponents.position || null,
         };
 
-        // Implement "last-modified wins" logic for partial validation
+        // Set auto-open state
+        setAutoOpenCreateForm(true);
+        setPrefillLocation(prefillLoc);
+        setFocusField(firstMissingLevel);
+        setShowAdditionalInvalidWarning(hasAdditionalInvalid);
+
+        // Pre-fill selected location with valid components
         const timestamp = Date.now();
         if (
           lastModifiedTimestamp === null ||
@@ -329,11 +339,16 @@ const LocationManagementModal = ({
         ) {
           setLastModifiedMethod("barcode");
           setLastModifiedTimestamp(timestamp);
-
-          setSelectedLocation(location);
+          setSelectedLocation(prefillLoc);
         }
       } else {
-        // Complete validation failure
+        // Complete validation failure - no valid levels
+        setBarcodeValidationState("error");
+        setAutoOpenCreateForm(false);
+        setPrefillLocation(null);
+        setFocusField(null);
+        setShowAdditionalInvalidWarning(false);
+
         const errorMsg =
           result.error?.errorMessage ||
           result.error?.message ||
@@ -343,12 +358,12 @@ const LocationManagementModal = ({
             defaultMessage: "Invalid barcode",
           });
         setBarcodeErrorMessage(errorMsg);
-      }
 
-      // Reset to ready state after 3 seconds
-      setTimeout(() => {
-        setBarcodeValidationState("ready");
-      }, 3000);
+        // Reset to ready state after 3 seconds
+        setTimeout(() => {
+          setBarcodeValidationState("ready");
+        }, 3000);
+      }
     }
   };
 
@@ -656,12 +671,37 @@ const LocationManagementModal = ({
                 <span className="required-indicator">*</span>
               </label>
               <div className="location-management-location-selector">
+                {showAdditionalInvalidWarning && (
+                  <div style={{ marginBottom: "1rem" }}>
+                    <InlineNotification
+                      kind="warning"
+                      title={intl.formatMessage({
+                        id: "barcode.additionalInvalidLevels.warning",
+                        defaultMessage: "Additional invalid levels detected",
+                      })}
+                      subtitle={intl.formatMessage({
+                        id: "barcode.additionalInvalidLevels.message",
+                        defaultMessage:
+                          "The barcode contains levels beyond the valid portion. Only valid levels are pre-filled.",
+                      })}
+                      lowContrast
+                      hideCloseButton
+                    />
+                  </div>
+                )}
                 <LocationSearchAndCreate
                   onLocationChange={handleLocationChange}
                   selectedLocation={selectedLocationForValidation}
                   allowInactive={false}
                   showCreateButton={true}
                   isActive={lastModifiedMethod === "dropdown"}
+                  autoOpenCreateForm={autoOpenCreateForm}
+                  prefillLocation={prefillLocation}
+                  focusField={focusField}
+                  onCreateFormOpened={() => {
+                    // Reset auto-open flag after form is opened
+                    setAutoOpenCreateForm(false);
+                  }}
                 />
               </div>
             </div>

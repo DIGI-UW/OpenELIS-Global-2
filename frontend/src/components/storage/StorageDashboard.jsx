@@ -43,7 +43,7 @@ import SampleActionsContainer from "./SampleStorage/SampleActionsContainer";
 import LocationActionsOverflowMenu from "./LocationManagement/LocationActionsOverflowMenu";
 import EditLocationModal from "./LocationManagement/EditLocationModal";
 import DeleteLocationModal from "./LocationManagement/DeleteLocationModal";
-import LabelManagementModal from "./LocationManagement/LabelManagementModal";
+import PrintLabelButton from "./LocationManagement/PrintLabelButton";
 import { useSampleStorage } from "./hooks/useSampleStorage";
 import "./StorageDashboard.css";
 
@@ -99,10 +99,9 @@ const StorageDashboard = () => {
   // Location CRUD modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [labelManagementModalOpen, setLabelManagementModalOpen] =
-    useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [selectedLocationType, setSelectedLocationType] = useState(null);
+  const [printLabelLocation, setPrintLabelLocation] = useState(null);
 
   // Expandable row state - Object mapping row IDs to expanded state (allows multiple rows to be expanded)
   const [expandedRowIds, setExpandedRowIds] = useState({});
@@ -235,57 +234,45 @@ const StorageDashboard = () => {
     handleDeleteModalClose();
   };
 
-  // Handle Label Management
-  const handleLabelManagement = (location) => {
-    setSelectedLocation(location);
-    // Determine location type from current tab (rooms -> room, devices -> device, etc.)
-    const tabName = TAB_ROUTES[selectedTab] || "devices";
-    // Map tab names to location types (handle special cases like shelves -> shelf)
-    const locationTypeMap = {
-      rooms: "room",
-      devices: "device",
-      shelves: "shelf",
-      racks: "rack",
-      samples: "sample",
-    };
-    const locationType = locationTypeMap[tabName] || tabName.slice(0, -1);
-    setSelectedLocationType(locationType);
-    setLabelManagementModalOpen(true);
+  // Handle Print Label
+  const handlePrintLabel = (location) => {
+    setPrintLabelLocation(location);
   };
 
-  // Handle Label Management modal close
-  const handleLabelManagementModalClose = () => {
-    setLabelManagementModalOpen(false);
-    setSelectedLocation(null);
-    setSelectedLocationType(null);
-  };
-
-  // Handle Label Management modal short code update
-  const handleLabelManagementShortCodeUpdate = (updatedLocation) => {
-    // Refresh the appropriate table based on location type
-    const tabName = TAB_ROUTES[selectedTab] || "devices";
-    switch (tabName) {
-      case "devices":
-        loadDevices();
-        break;
-      case "shelves":
-        loadShelves();
-        break;
-      case "racks":
-        loadRacks();
-        break;
-    }
-    // Show success notification
+  // Handle Print Label success
+  const handlePrintLabelSuccess = () => {
     addNotification({
       title: intl.formatMessage({ id: "notification.title" }),
       message: intl.formatMessage({
-        id: "label.shortCode.update.success",
-        defaultMessage: "Short code updated successfully",
+        id: "label.print.success",
+        defaultMessage: "Label printed successfully",
       }),
       kind: "success",
     });
     setNotificationVisible(true);
-    handleLabelManagementModalClose();
+    setPrintLabelLocation(null);
+  };
+
+  // Handle Print Label error
+  const handlePrintLabelError = (error) => {
+    // If error is null, user cancelled - don't show error notification
+    if (error === null) {
+      setPrintLabelLocation(null);
+      return;
+    }
+    const errorMessage =
+      error?.message ||
+      intl.formatMessage({
+        id: "label.print.error",
+        defaultMessage: "Failed to print label",
+      });
+    addNotification({
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: errorMessage,
+      kind: "error",
+    });
+    setNotificationVisible(true);
+    setPrintLabelLocation(null);
   };
 
   // Determine which filters should be visible based on active tab
@@ -1276,7 +1263,7 @@ const StorageDashboard = () => {
             location={deviceWithType}
             onEdit={handleEditLocation}
             onDelete={handleDeleteLocation}
-            onLabelManagement={handleLabelManagement}
+            onPrintLabel={handlePrintLabel}
           />
         ),
         isExpanded: !!expandedRowIds[String(device.id || "")],
@@ -1384,7 +1371,7 @@ const StorageDashboard = () => {
             location={shelfWithType}
             onEdit={handleEditLocation}
             onDelete={handleDeleteLocation}
-            onLabelManagement={handleLabelManagement}
+            onPrintLabel={handlePrintLabel}
           />
         ),
         isExpanded: !!expandedRowIds[String(shelf.id || "")],
@@ -1449,7 +1436,7 @@ const StorageDashboard = () => {
             location={rackWithType}
             onEdit={handleEditLocation}
             onDelete={handleDeleteLocation}
-            onLabelManagement={handleLabelManagement}
+            onPrintLabel={handlePrintLabel}
           />
         ),
         isExpanded: !!expandedRowIds[String(rack.id || "")],
@@ -3655,12 +3642,18 @@ const StorageDashboard = () => {
         onClose={handleDeleteModalClose}
         onDelete={handleDeleteModalConfirm}
       />
-      <LabelManagementModal
-        open={labelManagementModalOpen}
-        location={selectedLocation}
-        onClose={handleLabelManagementModalClose}
-        onShortCodeUpdate={handleLabelManagementShortCodeUpdate}
-      />
+      {/* Print Label Button (auto-triggers dialog when printLabelLocation is set) */}
+      {printLabelLocation && (
+        <PrintLabelButton
+          locationType={printLabelLocation.type}
+          locationId={String(printLabelLocation.id)}
+          locationName={printLabelLocation.name || printLabelLocation.label}
+          locationCode={printLabelLocation.code || printLabelLocation.label}
+          onPrintSuccess={handlePrintLabelSuccess}
+          onPrintError={handlePrintLabelError}
+          autoTrigger={true}
+        />
+      )}
     </div>
   );
 };

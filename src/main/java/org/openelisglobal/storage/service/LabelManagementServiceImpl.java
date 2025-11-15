@@ -34,9 +34,14 @@ public class LabelManagementServiceImpl implements LabelManagementService {
 
     @Override
     @Transactional(readOnly = true)
-    public ByteArrayOutputStream generateLabel(StorageDevice device, String shortCode) {
+    public ByteArrayOutputStream generateLabel(StorageDevice device) {
         if (device == null) {
             throw new IllegalArgumentException("Device cannot be null");
+        }
+
+        // Validate short_code exists
+        if (device.getShortCode() == null || device.getShortCode().trim().isEmpty()) {
+            throw new IllegalArgumentException("Device short_code is required for label printing");
         }
 
         // Build hierarchical path using codes (for barcode): RoomCode-DeviceCode
@@ -48,9 +53,9 @@ public class LabelManagementServiceImpl implements LabelManagementService {
             hierarchicalPath = device.getCode();
         }
 
-        // Create label
+        // Create label using short_code from entity
         StorageLocationLabel label = new StorageLocationLabel(device.getName(), device.getCode(), hierarchicalPath,
-                shortCode);
+                device.getShortCode());
 
         // Generate PDF using BarcodeLabelMaker
         return generatePDF(label);
@@ -58,9 +63,14 @@ public class LabelManagementServiceImpl implements LabelManagementService {
 
     @Override
     @Transactional(readOnly = true)
-    public ByteArrayOutputStream generateLabel(StorageShelf shelf, String shortCode) {
+    public ByteArrayOutputStream generateLabel(StorageShelf shelf) {
         if (shelf == null) {
             throw new IllegalArgumentException("Shelf cannot be null");
+        }
+
+        // Validate short_code exists
+        if (shelf.getShortCode() == null || shelf.getShortCode().trim().isEmpty()) {
+            throw new IllegalArgumentException("Shelf short_code is required for label printing");
         }
 
         // Build hierarchical path using codes: RoomCode-DeviceCode-ShelfLabel
@@ -77,9 +87,9 @@ public class LabelManagementServiceImpl implements LabelManagementService {
             hierarchicalPath = shelf.getLabel();
         }
 
-        // Create label
+        // Create label using short_code from entity
         StorageLocationLabel label = new StorageLocationLabel(shelf.getLabel(), shelf.getLabel(), hierarchicalPath,
-                shortCode);
+                shelf.getShortCode());
 
         // Generate PDF using BarcodeLabelMaker
         return generatePDF(label);
@@ -87,9 +97,14 @@ public class LabelManagementServiceImpl implements LabelManagementService {
 
     @Override
     @Transactional(readOnly = true)
-    public ByteArrayOutputStream generateLabel(StorageRack rack, String shortCode) {
+    public ByteArrayOutputStream generateLabel(StorageRack rack) {
         if (rack == null) {
             throw new IllegalArgumentException("Rack cannot be null");
+        }
+
+        // Validate short_code exists
+        if (rack.getShortCode() == null || rack.getShortCode().trim().isEmpty()) {
+            throw new IllegalArgumentException("Rack short_code is required for label printing");
         }
 
         // Build hierarchical path using codes: RoomCode-DeviceCode-ShelfLabel-RackLabel
@@ -112,12 +127,41 @@ public class LabelManagementServiceImpl implements LabelManagementService {
             hierarchicalPath = rack.getLabel();
         }
 
-        // Create label
+        // Create label using short_code from entity
         StorageLocationLabel label = new StorageLocationLabel(rack.getLabel(), rack.getLabel(), hierarchicalPath,
-                shortCode);
+                rack.getShortCode());
 
         // Generate PDF using BarcodeLabelMaker
         return generatePDF(label);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean validateShortCodeExists(String locationId, String locationType) {
+        if (locationId == null || locationType == null) {
+            return false;
+        }
+
+        try {
+            switch (locationType.toLowerCase()) {
+            case "device":
+                StorageDevice device = storageLocationService.get(Integer.parseInt(locationId), StorageDevice.class);
+                return device != null && device.getShortCode() != null
+                        && !device.getShortCode().trim().isEmpty();
+            case "shelf":
+                StorageShelf shelf = storageLocationService.get(Integer.parseInt(locationId), StorageShelf.class);
+                return shelf != null && shelf.getShortCode() != null && !shelf.getShortCode().trim().isEmpty();
+            case "rack":
+                StorageRack rack = storageLocationService.get(Integer.parseInt(locationId), StorageRack.class);
+                return rack != null && rack.getShortCode() != null && !rack.getShortCode().trim().isEmpty();
+            default:
+                return false;
+            }
+        } catch (Exception e) {
+            LogEvent.logError("LabelManagementServiceImpl", "validateShortCodeExists",
+                    "Error validating short_code: " + e.getMessage());
+            return false;
+        }
     }
 
     /**

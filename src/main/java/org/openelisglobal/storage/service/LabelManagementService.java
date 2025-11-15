@@ -13,33 +13,42 @@ public interface LabelManagementService {
 
     /**
      * Generate PDF label for a storage device
+     * Uses short_code from the device entity
      * 
-     * @param device    The storage device
-     * @param shortCode Optional short code (if provided, used for barcode;
-     *                  otherwise uses hierarchical path)
+     * @param device The storage device (must have short_code set)
      * @return PDF as ByteArrayOutputStream
+     * @throws IllegalArgumentException if device is null or short_code is missing
      */
-    ByteArrayOutputStream generateLabel(StorageDevice device, String shortCode);
+    ByteArrayOutputStream generateLabel(StorageDevice device);
 
     /**
      * Generate PDF label for a storage shelf
+     * Uses short_code from the shelf entity
      * 
-     * @param shelf     The storage shelf
-     * @param shortCode Optional short code (if provided, used for barcode;
-     *                  otherwise uses hierarchical path)
+     * @param shelf The storage shelf (must have short_code set)
      * @return PDF as ByteArrayOutputStream
+     * @throws IllegalArgumentException if shelf is null or short_code is missing
      */
-    ByteArrayOutputStream generateLabel(StorageShelf shelf, String shortCode);
+    ByteArrayOutputStream generateLabel(StorageShelf shelf);
 
     /**
      * Generate PDF label for a storage rack
+     * Uses short_code from the rack entity
      * 
-     * @param rack      The storage rack
-     * @param shortCode Optional short code (if provided, used for barcode;
-     *                  otherwise uses hierarchical path)
+     * @param rack The storage rack (must have short_code set)
      * @return PDF as ByteArrayOutputStream
+     * @throws IllegalArgumentException if rack is null or short_code is missing
      */
-    ByteArrayOutputStream generateLabel(StorageRack rack, String shortCode);
+    ByteArrayOutputStream generateLabel(StorageRack rack);
+
+    /**
+     * Validate that short_code exists for a location before printing
+     * 
+     * @param locationId   The ID of the location
+     * @param locationType The type: "device", "shelf", or "rack"
+     * @return true if short_code exists, false otherwise
+     */
+    boolean validateShortCodeExists(String locationId, String locationType);
 
     /**
      * Track print history for a location Records audit trail of label printing

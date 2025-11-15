@@ -50,6 +50,7 @@ const EditLocationModal = ({
     rows: "",
     columns: "",
     positionSchemaHint: "",
+    shortCode: "",
   });
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,6 +98,7 @@ const EditLocationModal = ({
       rows: loc.rows || "",
       columns: loc.columns || "",
       positionSchemaHint: loc.positionSchemaHint || "",
+      shortCode: loc.shortCode || "",
     };
   };
 
@@ -132,6 +134,7 @@ const EditLocationModal = ({
               rows: fullLocation.rows || "",
               columns: fullLocation.columns || "",
               positionSchemaHint: fullLocation.positionSchemaHint || "",
+              shortCode: fullLocation.shortCode || "",
             });
             setError(null);
             setIsLoading(false);
@@ -211,16 +214,19 @@ const EditLocationModal = ({
         payload.temperatureSetting = formData.temperatureSetting || null;
         payload.capacityLimit = formData.capacityLimit || null;
         payload.active = formData.active;
+        payload.shortCode = formData.shortCode || null;
       } else if (locationType === "shelf") {
         payload.label = formData.label;
         payload.capacityLimit = formData.capacityLimit || null;
         payload.active = formData.active;
+        payload.shortCode = formData.shortCode || null;
       } else if (locationType === "rack") {
         payload.label = formData.label;
         payload.rows = formData.rows;
         payload.columns = formData.columns;
         payload.positionSchemaHint = formData.positionSchemaHint || null;
         payload.active = formData.active;
+        payload.shortCode = formData.shortCode || null;
       }
 
       // Use putToOpenElisServer utility
@@ -443,6 +449,26 @@ const EditLocationModal = ({
                 }
                 type="number"
               />
+              <TextInput
+                id="device-short-code"
+                data-testid="edit-location-device-short-code"
+                labelText={intl.formatMessage({
+                  id: "label.shortCode",
+                  defaultMessage: "Short Code",
+                })}
+                value={formData.shortCode || ""}
+                onChange={(e) => {
+                  // Auto-uppercase on input
+                  const value = e.target.value.toUpperCase();
+                  handleFieldChange("shortCode", value);
+                }}
+                maxLength={10}
+                required
+                helperText={intl.formatMessage({
+                  id: "label.shortCode.helper",
+                  defaultMessage: "Max 10 characters, alphanumeric with hyphens/underscores",
+                })}
+              />
               <Toggle
                 id="device-active"
                 data-testid="edit-location-device-active"
@@ -498,6 +524,26 @@ const EditLocationModal = ({
                   handleFieldChange("capacityLimit", e.target.value)
                 }
                 type="number"
+              />
+              <TextInput
+                id="shelf-short-code"
+                data-testid="edit-location-shelf-short-code"
+                labelText={intl.formatMessage({
+                  id: "label.shortCode",
+                  defaultMessage: "Short Code",
+                })}
+                value={formData.shortCode || ""}
+                onChange={(e) => {
+                  // Auto-uppercase on input
+                  const value = e.target.value.toUpperCase();
+                  handleFieldChange("shortCode", value);
+                }}
+                maxLength={10}
+                required
+                helperText={intl.formatMessage({
+                  id: "label.shortCode.helper",
+                  defaultMessage: "Max 10 characters, alphanumeric with hyphens/underscores",
+                })}
               />
               <Toggle
                 id="shelf-active"
@@ -584,6 +630,26 @@ const EditLocationModal = ({
                   handleFieldChange("positionSchemaHint", e.target.value)
                 }
               />
+              <TextInput
+                id="rack-short-code"
+                data-testid="edit-location-rack-short-code"
+                labelText={intl.formatMessage({
+                  id: "label.shortCode",
+                  defaultMessage: "Short Code",
+                })}
+                value={formData.shortCode || ""}
+                onChange={(e) => {
+                  // Auto-uppercase on input
+                  const value = e.target.value.toUpperCase();
+                  handleFieldChange("shortCode", value);
+                }}
+                maxLength={10}
+                required
+                helperText={intl.formatMessage({
+                  id: "label.shortCode.helper",
+                  defaultMessage: "Max 10 characters, alphanumeric with hyphens/underscores",
+                })}
+              />
               <Toggle
                 id="rack-active"
                 data-testid="edit-location-rack-active"
@@ -613,10 +679,10 @@ const EditLocationModal = ({
           disabled={
             isSubmitting ||
             (locationType === "room" && !formData.name) ||
-            (locationType === "device" && !formData.name) ||
-            (locationType === "shelf" && !formData.label) ||
+            (locationType === "device" && (!formData.name || !formData.shortCode)) ||
+            (locationType === "shelf" && (!formData.label || !formData.shortCode)) ||
             (locationType === "rack" &&
-              (!formData.label || !formData.rows || !formData.columns))
+              (!formData.label || !formData.rows || !formData.columns || !formData.shortCode))
           }
           data-testid="edit-location-save-button"
         >

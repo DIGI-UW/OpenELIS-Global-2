@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.storage.dao.*;
+import org.openelisglobal.storage.service.ShortCodeValidationService;
 import org.openelisglobal.storage.valueholder.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -37,6 +38,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Autowired
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
+
+    @Autowired
+    private ShortCodeValidationService shortCodeValidationService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -204,14 +208,54 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (existing != null) {
                 throw new LIMSRuntimeException("Device with code " + device.getCode() + " already exists in this room");
             }
+            // Validate short_code if provided
+            if (device.getShortCode() != null && !device.getShortCode().trim().isEmpty()) {
+                var formatResult = shortCodeValidationService.validateFormat(device.getShortCode());
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                var uniquenessResult = shortCodeValidationService.validateUniqueness(
+                        formatResult.getNormalizedCode(), "device", null);
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                device.setShortCode(formatResult.getNormalizedCode());
+            }
             return storageDeviceDAO.insert(device);
         } else if (entity instanceof StorageShelf) {
-            return storageShelfDAO.insert((StorageShelf) entity);
+            StorageShelf shelf = (StorageShelf) entity;
+            // Validate short_code if provided
+            if (shelf.getShortCode() != null && !shelf.getShortCode().trim().isEmpty()) {
+                var formatResult = shortCodeValidationService.validateFormat(shelf.getShortCode());
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                var uniquenessResult = shortCodeValidationService.validateUniqueness(
+                        formatResult.getNormalizedCode(), "shelf", null);
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                shelf.setShortCode(formatResult.getNormalizedCode());
+            }
+            return storageShelfDAO.insert(shelf);
         } else if (entity instanceof StorageRack) {
             StorageRack rack = (StorageRack) entity;
             // Validate grid dimensions
             if (rack.getRows() < 0 || rack.getColumns() < 0) {
                 throw new IllegalArgumentException("Grid dimensions cannot be negative");
+            }
+            // Validate short_code if provided
+            if (rack.getShortCode() != null && !rack.getShortCode().trim().isEmpty()) {
+                var formatResult = shortCodeValidationService.validateFormat(rack.getShortCode());
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                var uniquenessResult = shortCodeValidationService.validateUniqueness(
+                        formatResult.getNormalizedCode(), "rack", null);
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                rack.setShortCode(formatResult.getNormalizedCode());
             }
             return storageRackDAO.insert(rack);
         } else if (entity instanceof StoragePosition) {
@@ -248,6 +292,21 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             existingDevice.setTemperatureSetting(device.getTemperatureSetting());
             existingDevice.setCapacityLimit(device.getCapacityLimit());
             existingDevice.setActive(device.getActive());
+            
+            // Validate and update short_code if provided
+            if (device.getShortCode() != null) {
+                var formatResult = shortCodeValidationService.validateFormat(device.getShortCode());
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                var uniquenessResult = shortCodeValidationService.validateUniqueness(
+                        formatResult.getNormalizedCode(), "device", String.valueOf(device.getId()));
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                existingDevice.setShortCode(formatResult.getNormalizedCode());
+            }
+            
             // Check for active samples when deactivating (null-safe check)
             if (existingDevice.getActive() != null && !existingDevice.getActive()) {
                 int occupiedCount = storagePositionDAO.countOccupiedInDevice(existingDevice.getId());
@@ -269,6 +328,21 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             existingShelf.setLabel(shelf.getLabel());
             existingShelf.setCapacityLimit(shelf.getCapacityLimit());
             existingShelf.setActive(shelf.getActive());
+            
+            // Validate and update short_code if provided
+            if (shelf.getShortCode() != null) {
+                var formatResult = shortCodeValidationService.validateFormat(shelf.getShortCode());
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                var uniquenessResult = shortCodeValidationService.validateUniqueness(
+                        formatResult.getNormalizedCode(), "shelf", String.valueOf(shelf.getId()));
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                existingShelf.setShortCode(formatResult.getNormalizedCode());
+            }
+            
             storageShelfDAO.update(existingShelf);
             return null;
         } else if (entity instanceof StorageRack) {
@@ -284,6 +358,21 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             existingRack.setColumns(rack.getColumns());
             existingRack.setPositionSchemaHint(rack.getPositionSchemaHint());
             existingRack.setActive(rack.getActive());
+            
+            // Validate and update short_code if provided
+            if (rack.getShortCode() != null) {
+                var formatResult = shortCodeValidationService.validateFormat(rack.getShortCode());
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                var uniquenessResult = shortCodeValidationService.validateUniqueness(
+                        formatResult.getNormalizedCode(), "rack", String.valueOf(rack.getId()));
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                existingRack.setShortCode(formatResult.getNormalizedCode());
+            }
+            
             storageRackDAO.update(existingRack);
             return null;
         } else if (entity instanceof StoragePosition) {

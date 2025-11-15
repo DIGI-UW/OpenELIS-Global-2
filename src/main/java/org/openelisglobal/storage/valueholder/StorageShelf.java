@@ -43,7 +43,7 @@ public class StorageShelf extends BaseObject<Integer> {
     @Column(name = "CAPACITY_LIMIT")
     private Integer capacityLimit;
 
-    @Column(name = "SHORT_CODE", length = 10)
+    @Column(name = "SHORT_CODE", length = 10, nullable = false)
     private String shortCode;
 
     @Column(name = "ACTIVE", nullable = false)
