@@ -44,7 +44,7 @@ actionable tasks. Each phase corresponds to an implementation phase in
 | Phase 8   | [COMPLETE]    | Location CRUD Operations                        | All            | 0               |
 | Phase 9   | [COMPLETE]    | Expandable Row Functionality                    | All            | 0               |
 | Phase 9.5 | [COMPLETE]    | Capacity Calculation Logic                      | All            | 0               |
-| Phase 10  | [COMPLETE]    | Barcode Workflow Implementation                 | All            | 0               |
+| Phase 10  | [IN PROGRESS] | Barcode Workflow Implementation                 | All            | 0               |
 | Phase 11  | [NOT STARTED] | Polish & Cross-Cutting Concerns                 | 0              | All             |
 | Phase 12  | [NOT STARTED] | Constitution Compliance Verification            | 0              | All             |
 
@@ -2473,21 +2473,33 @@ post-run, core happy paths efficiently covered.
 
 ---
 
-## Phase 10: Barcode Workflow Implementation (Comprehensive) [COMPLETE]
+## Phase 10: Barcode Workflow Implementation (Comprehensive) [IN PROGRESS]
 
 **Purpose**: Implement comprehensive barcode workflow functionality per FR-023
-through FR-027f, following TDD approach with 6 iterations.
+through FR-027f, following TDD approach with 7 iterations.
 
 **Note**: Research on existing OpenELIS barcode printing infrastructure
 completed (see `research.md` Section 9). Integration strategy documented.
 
-**Goal**: Enable barcode scanning for location assignment, unified input field
-(scan/type-ahead), 5-step validation, debouncing, visual feedback, label
-management (short code, printing, print history), and error recovery.
+**Amendment (2025-11-15)**: Two clarifications add new requirements:
+1. **Barcode Scan Auto-Open Location Modal**: Successful barcode scans with valid
+   partial hierarchies automatically open the "+ Location" form with valid hierarchy
+   pre-filled to the first missing level. See Session 2025-11-15 in spec.md.
+2. **Label Management Simplification**: Replace "Label Management" modal with
+   "Print Label" button. Short code stored in location entities and edited via
+   Edit form. See Session 2025-11-15 in spec.md.
 
-**Independent Test**: Scan a 4-level barcode (e.g., "MAIN-FRZ01-SHA-RKR1"),
-verify location fields auto-populate, print label from Label Management modal,
-verify print history displays.
+**Goal**: Enable barcode scanning for location assignment, unified input field
+(scan/type-ahead), progressive validation (identify first missing level),
+auto-open "+ Location" form for valid partial hierarchies, debouncing, visual
+feedback, simplified label printing (Print Label button, short_code in Edit
+form), and error recovery.
+
+**Independent Test**: Scan a barcode with valid partial hierarchy (e.g.,
+"MAIN-FRZ01-SHA-RKR1" where Room/Device/Shelf exist but Rack doesn't), verify
+"+ Location" form auto-opens with valid hierarchy pre-filled and focuses on
+first missing level. Edit location to add short_code, then print label from
+Print Label button, verify PDF generates.
 
 ### Iteration 9.1: Backend Barcode Parsing and Validation
 
@@ -2649,90 +2661,154 @@ modes.
 **Checkpoint**: "Last-modified wins" logic works, visual feedback shows active
 method
 
-### Iteration 9.5: Label Management (Short Code and Printing)
+### Iteration 9.4.5: Barcode Scan Auto-Open Location Modal
 
-**Objective**: Implement label management modal with short code input and print
-functionality.
+**Objective**: Implement auto-open behavior for barcode scans with valid partial
+hierarchies (see Amendment 2025-11-15).
 
 #### Tests First (Write BEFORE implementation)
 
-- [x] T254 [P] [US1] Write unit test
-      `src/test/java/org/openelisglobal/storage/service/ShortCodeValidationServiceTest.java`
-      with test methods: testShortCodeFormat, testAutoUppercaseConversion,
-      testMustStartWithLetterOrNumber, testUniquenessWithinContext,
-      testWarningWhenChangingShortCode
-- [x] T255 [P] [US1] Write integration test
-      `src/test/java/org/openelisglobal/storage/controller/LabelManagementRestControllerTest.java`
-      with test methods: testPutShortCodeEndpoint, testPostPrintLabelEndpoint,
-      testPrintHistoryTracking, testPdfGenerationWithSystemAdminSettings
-- [x] T256 [P] [US1] Write unit test
-      `frontend/src/components/storage/LocationManagement/LabelManagementModal.test.jsx`
-      with test methods: testShortCodeInputValidation, testAutoUppercaseOnInput,
-      testWarningDialogBeforeChange, testPrintLabelOpensPdf,
-      testPrintHistoryDisplay
-- [x] T257 Run short code validation tests → Verify all FAIL:
-      `mvn test -Dtest="ShortCodeValidationServiceTest"`
-- [x] T258 Run label management controller tests → Verify all FAIL:
-      `mvn test -Dtest="LabelManagementRestControllerTest"`
-- [x] T259 Run label management modal tests → Verify all FAIL:
-      `cd frontend && npm test LabelManagementModal`
+- [x] T275 [P] [US1] Update unit test
+      `src/test/java/org/openelisglobal/storage/service/BarcodeValidationServiceTest.java`
+      with test methods: testProgressiveValidationIdentifiesFirstMissingLevel,
+      testReturnsValidHierarchyPortion, testReturnsFirstMissingLevel,
+      testCompletelyInvalidBarcodeReturnsError
+- [ ] T276 Run barcode validation tests → Verify new tests FAIL:
+      `mvn test -Dtest="BarcodeValidationServiceTest"`
+- [ ] T277 [P] [US1] Update unit test
+      `frontend/src/components/storage/StorageLocationSelector/UnifiedBarcodeInput.test.jsx`
+      with test methods: testAutoOpensLocationFormWhenValidPartialHierarchy,
+      testPrefillsValidHierarchyLevels, testFocusesOnFirstMissingLevelField,
+      testShowsWarningIfAdditionalInvalidLevels, testShowsErrorAndKeepsModalClosedIfCompletelyInvalid
+- [ ] T278 Run unified barcode input tests → Verify new tests FAIL:
+      `cd frontend && npm test UnifiedBarcodeInput`
+- [ ] T279 [P] [US1] Write integration test
+      `frontend/src/components/storage/StorageLocationSelector/LocationSelectorModal.integration.test.jsx`
+      with test methods: testLocationFormOpensAutomaticallyAfterBarcodeScan,
+      testValidHierarchyPrefilledCorrectly, testFirstMissingLevelFieldReceivesFocus
 
 #### Implementation (Make Tests Pass)
 
-- [x] T260 [US1] Create
+- [x] T280 [US1] Update
+      `src/main/java/org/openelisglobal/storage/service/BarcodeValidationService.java`
+      to return progressive validation results (valid hierarchy portion, first
+      missing level) in response DTO
+- [x] T281 [US1] Update
+      `frontend/src/components/storage/StorageLocationSelector/UnifiedBarcodeInput.jsx`
+      to trigger auto-open of "+ Location" form when valid partial hierarchy
+      detected
+- [x] T282 [US1] Update
+      `frontend/src/components/storage/StorageLocationSelector/LocationSelectorModal.jsx`
+      to handle auto-open with pre-filled data, focus on first missing level
+      field, show warning if additional invalid levels beyond valid portion
+- [ ] T283 [P] [US1] Add React Intl message keys to
+      `frontend/src/languages/en.json`, `fr.json`, `sw.json` for auto-open
+      behavior: barcode.autoOpenForm, barcode.validHierarchyPrefilled,
+      barcode.firstMissingLevel, barcode.additionalInvalidLevelsWarning
+
+**Checkpoint**: Barcode scan with valid partial hierarchy auto-opens "+ Location"
+form, valid hierarchy pre-filled, first missing level receives focus
+
+### Iteration 9.5: Simplified Label Printing (Short Code in Edit Form)
+
+**Objective**: Implement simplified label printing with short_code stored in
+location entities and edited via Edit form (see Amendment 2025-11-15).
+
+#### Tests First (Write BEFORE implementation)
+
+- [ ] T284 [P] [US1] Write unit test
+      `src/test/java/org/openelisglobal/storage/service/ShortCodeValidationServiceTest.java`
+      with test methods: testShortCodeFormat, testAutoUppercaseConversion,
+      testMustStartWithLetterOrNumber, testUniquenessWithinContext,
+      testRequiredFieldValidation
+- [ ] T285 [P] [US1] Update integration test
+      `src/test/java/org/openelisglobal/storage/controller/StorageLocationRestControllerTest.java`
+      with test methods: testPutEndpointAcceptsShortCodeField,
+      testShortCodeValidationOnSave, testPostPrintLabelEndpoint,
+      testPrintValidationChecksShortCodeExists, testErrorResponseIfShortCodeMissing,
+      testPrintHistoryTracking, testPdfGenerationWithShortCode
+- [ ] T286 [P] [US1] Update unit test
+      `frontend/src/components/storage/LocationManagement/EditLocationModal.test.jsx`
+      with test methods: testShortCodeFieldInEditForm, testShortCodeInputValidation,
+      testAutoUppercaseOnInput, testRequiredFieldValidation
+- [ ] T287 [P] [US1] Write unit test
+      `frontend/src/components/storage/LocationManagement/PrintLabelButton.test.jsx`
+      with test methods: testPrintLabelButtonShowsConfirmationDialog,
+      testConfirmationDialogText, testErrorMessageIfShortCodeMissing
+- [ ] T288 Run short code validation tests → Verify all FAIL:
+      `mvn test -Dtest="ShortCodeValidationServiceTest"`
+- [ ] T289 Run storage location controller tests → Verify new tests FAIL:
+      `mvn test -Dtest="StorageLocationRestControllerTest"`
+- [ ] T290 Run edit location modal tests → Verify new tests FAIL:
+      `cd frontend && npm test EditLocationModal`
+- [ ] T291 Run print label button tests → Verify all FAIL:
+      `cd frontend && npm test PrintLabelButton`
+
+#### Implementation (Make Tests Pass)
+
+- [ ] T292 [US1] Add `short_code VARCHAR(10) NOT NULL` column to
+      `STORAGE_DEVICE`, `STORAGE_SHELF`, `STORAGE_RACK` tables via Liquibase
+      changeset `src/main/resources/liquibase/storage/004-add-short-code-columns.xml`
+      with UNIQUE constraint within parent context
+- [ ] T293 [US1] Add `short_code` field to
+      `src/main/java/org/openelisglobal/storage/valueholder/StorageDevice.java`,
+      `StorageShelf.java`, `StorageRack.java` valueholders with JPA annotations
+- [ ] T294 [US1] Update
+      `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`
+      to include short_code in create/update operations, validate short_code
+      required for Device/Shelf/Rack
+- [ ] T295 [US1] Create
       `src/main/java/org/openelisglobal/storage/service/ShortCodeValidationService.java`
       with methods: validateFormat(String shortCode), validateUniqueness(String
-      shortCode, String context), checkShortCodeChangeWarning(String oldCode,
-      String newCode, String locationId)
-- [x] T261 [US1] Create
-      `src/main/java/org/openelisglobal/storage/service/LabelManagementService.java`
+      shortCode, String context), validateRequired(String shortCode)
+- [ ] T296 [US1] Create
+      `src/main/java/org/openelisglobal/storage/service/LabelPrintingService.java`
       integrating with existing BarcodeLabelMaker (see research.md Section 9),
-      methods: generateLabel(StorageDevice/StorageShelf/StorageRack, String
-      shortCode), trackPrintHistory(String locationId, String userId)
-- [x] T262 [US1] Create
+      methods: generateLabel(StorageDevice/StorageShelf/StorageRack), validateShortCodeExists(String locationId),
+      trackPrintHistory(String locationId, String userId)
+- [ ] T297 [US1] Create
       `src/main/java/org/openelisglobal/storage/barcode/labeltype/StorageLocationLabel.java`
       extending `org.openelisglobal.barcode.labeltype.Label` class, implementing
-      label generation with hierarchical path or short code
-- [x] T263 [US1] Create
-      `src/main/java/org/openelisglobal/storage/controller/LabelManagementRestController.java`
-      with endpoints: `PUT /rest/storage/{type}/{id}/short-code`,
-      `POST /rest/storage/{type}/{id}/print-label`,
-      `GET /rest/storage/{type}/{id}/print-history`
-- [x] T264 [US1] Create Liquibase changeset
-      `src/main/resources/liquibase/storage/004-create-print-history-table.xml`
+      label generation using short_code from location entity
+- [ ] T298 [US1] Create
+      `src/main/java/org/openelisglobal/storage/controller/LabelPrintingRestController.java`
+      with endpoint: `POST /rest/storage/{type}/{id}/print-label` that validates
+      short_code exists before printing, returns error if missing
+- [ ] T299 [US1] Create Liquibase changeset
+      `src/main/resources/liquibase/storage/005-create-print-history-table.xml`
       for storage_location_print_history table with columns: id, location_type,
-      location_id, short_code, printed_by, printed_date, print_count
-- [x] T265 [US1] Add `STORAGE_LOCATION_BARCODE_HEIGHT` and
+      location_id, short_code, printed_by, printed_date (tracked but not displayed in UI)
+- [ ] T300 [US1] Add `STORAGE_LOCATION_BARCODE_HEIGHT` and
       `STORAGE_LOCATION_BARCODE_WIDTH` to
       `src/main/java/org/openelisglobal/common/util/ConfigurationProperties.java`
       Property enum
-- [x] T266 [US1] Extend
+- [ ] T301 [US1] Extend
       `src/main/java/org/openelisglobal/barcode/form/BarcodeConfigurationForm.java`
       with storage location label dimension fields (heightStorageLocationLabels,
       widthStorageLocationLabels)
-- [x] T267 [US1] Create
-      `frontend/src/components/storage/LocationManagement/LabelManagementModal.jsx`
-      with Short Code input field and Print Label button
-- [x] T268 [US1] Create
-      `frontend/src/components/storage/LocationManagement/ShortCodeInput.jsx`
-      with validation (max 10 chars, alphanumeric, auto-uppercase, must start
-      with letter/number)
-- [x] T269 [US1] Create
+- [ ] T302 [US1] Update
+      `frontend/src/components/storage/LocationManagement/EditLocationModal.jsx`
+      to include short_code field (required for Device/Shelf/Rack, with
+      validation, auto-uppercase)
+- [ ] T303 [US1] Create
       `frontend/src/components/storage/LocationManagement/PrintLabelButton.jsx`
-      that calls print endpoint and opens PDF in new tab
-- [x] T270 [US1] Create
-      `frontend/src/components/storage/LocationManagement/PrintHistoryDisplay.jsx`
-      showing last printed date/time/user with optional "View History" link
-- [x] T271 [US1] Update
+      simple button component that triggers confirmation dialog
+- [ ] T304 [US1] Create
+      `frontend/src/components/storage/LocationManagement/PrintLabelConfirmationDialog.jsx`
+      confirmation dialog component with text: "Print label for [Location Name]
+      ([Location Code])?" with Cancel and Print buttons
+- [ ] T305 [US1] Update
       `frontend/src/components/storage/LocationManagement/LocationActionsOverflowMenu.jsx`
-      to include "Label Management" menu item for Devices, Shelves, and Racks
-- [x] T272 [P] [US1] Add React Intl message keys to
-      `frontend/src/languages/en.json`, `fr.json`, `sw.json` for label
-      management: label.shortCode, label.print, label.printHistory,
-      label.shortCodeWarning, etc.
+      to include "Print Label" button (replaces "Label Management") for Devices,
+      Shelves, and Racks
+- [ ] T306 [P] [US1] Add React Intl message keys to
+      `frontend/src/languages/en.json`, `fr.json`, `sw.json` for simplified
+      label printing: label.printLabel, label.printConfirmation,
+      label.shortCodeRequired, label.shortCode, etc.
 
-**Checkpoint**: Label management modal works, short code validation works, print
-label generates PDF, print history displays
+**Checkpoint**: Short code field in Edit form (required, validation works),
+Print Label button shows confirmation dialog, print label generates PDF when
+short_code exists, error message shown if short_code missing
 
 ### Iteration 9.6: E2E Tests
 
@@ -2740,14 +2816,15 @@ label generates PDF, print history displays
 
 #### Tests First (Write BEFORE implementation)
 
-- [x] T273 [P] [US1] Write Cypress E2E test
+- [ ] T307 [P] [US1] Update Cypress E2E test
       `frontend/cypress/e2e/barcodeWorkflow.cy.js` with test cases:
       testScan4LevelBarcodePopulatesFields, testScan2LevelBarcodeMinimum,
-      testScanInvalidBarcodeShowsError, testDebouncingPreventsDuplicateScans,
-      testLastModifiedWinsLogic, testLabelManagementModalOpens,
-      testShortCodeChangeShowsWarning, testPrintLabelGeneratesPdf,
-      testPrintHistoryDisplays (per Constitution V.5: run individually, review
-      console logs, video disabled)
+      testScanInvalidBarcodeShowsError, testScanWithValidPartialHierarchyAutoOpensForm,
+      testFirstMissingLevelFieldReceivesFocus, testCompletelyInvalidBarcodeShowsError,
+      testDebouncingPreventsDuplicateScans, testLastModifiedWinsLogic,
+      testPrintLabelButtonOpensConfirmationDialog, testPrintLabelGeneratesPdf,
+      testErrorMessageIfShortCodeMissing, testShortCodeFieldInEditForm
+      (per Constitution V.5: run individually, review console logs, video disabled)
 - [x] T274 Run E2E tests → Verify all FAIL:
       `cd frontend && npm run cy:run -- --spec "cypress/e2e/barcodeWorkflow.cy.js"`
 
@@ -2974,9 +3051,9 @@ Phase 2 (Foundational) ← BLOCKS all user stories
 **Phase 10 (Barcode Workflow)**:
 
 - T227-T229 (Backend tests) can run in parallel
-- T237-T238, T245, T256 (Frontend tests) can run in parallel
-- T233-T234, T260-T261 (Backend services) can run in parallel
-- T240-T241, T247, T267-T270 (Frontend components) can run in parallel
+- T237-T238, T245, T275, T277, T279 (Frontend/Backend tests) can run in parallel
+- T233-T234, T280, T295-T296 (Backend services) can run in parallel
+- T240-T241, T247, T281-T282, T302-T304 (Frontend components) can run in parallel
 
 **Phase 11 (Polish)**:
 
@@ -3174,18 +3251,17 @@ Task T256: "Write LabelManagementModal.test.jsx"
 # Backend services can be created simultaneously:
 Task T233: "Create BarcodeParsingService.java"
 Task T234: "Create BarcodeValidationService.java"
-Task T260: "Create ShortCodeValidationService.java"
-Task T261: "Create LabelManagementService.java"
+Task T295: "Create ShortCodeValidationService.java"
+Task T296: "Create LabelPrintingService.java"
 # All different services, can be done by different developers
 
 # Frontend components can be created simultaneously:
 Task T240: "Create UnifiedBarcodeInput.jsx"
 Task T241: "Create BarcodeVisualFeedback.jsx"
 Task T247: "Create BarcodeDebounceHook.js"
-Task T267: "Create LabelManagementModal.jsx"
-Task T268: "Create ShortCodeInput.jsx"
-Task T269: "Create PrintLabelButton.jsx"
-Task T270: "Create PrintHistoryDisplay.jsx"
+Task T302: "Update EditLocationModal.jsx to include short_code field"
+Task T303: "Create PrintLabelButton.jsx"
+Task T304: "Create PrintLabelConfirmationDialog.jsx"
 # All different components, no conflicts
 ```
 

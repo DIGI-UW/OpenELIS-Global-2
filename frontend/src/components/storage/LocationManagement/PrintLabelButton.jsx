@@ -1,127 +1,158 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@carbon/react";
-import { useIntl } from "react-intl";
 import { Printer } from "@carbon/icons-react";
+import { useIntl } from "react-intl";
 import PropTypes from "prop-types";
-import { postToOpenElisServer } from "../../utils/Utils";
+import PrintLabelConfirmationDialog from "./PrintLabelConfirmationDialog";
 
 /**
- * PrintLabelButton - Button to generate and print storage location labels
- *
- * Features:
- * - Calls POST /rest/storage/{type}/{id}/print-label?shortCode={code}
- * - Opens PDF in new tab
- * - Shows loading state during PDF generation
+ * PrintLabelButton - Component that triggers label printing
+ * Shows confirmation dialog before printing
+ * Can be used as a button or auto-triggered when location is provided
  *
  * Props:
- * - locationType: string - Location type ('device', 'shelf', 'rack')
+ * - locationType: string - "device" | "shelf" | "rack"
  * - locationId: string - Location ID
- * - shortCode: string - Short code to print (optional)
- * - disabled: boolean - Disable button
+ * - locationName: string - Location name for confirmation dialog
+ * - locationCode: string - Location code for confirmation dialog
+ * - onPrintSuccess: function - Optional callback when print succeeds
+ * - onPrintError: function - Optional callback when print fails
+ * - autoTrigger: boolean - If true, automatically shows dialog when component mounts (for overflow menu usage)
  */
 const PrintLabelButton = ({
   locationType,
   locationId,
-  shortCode = null,
-  disabled = false,
+  locationName,
+  locationCode,
+  onPrintSuccess,
+  onPrintError,
+  autoTrigger = false,
 }) => {
   const intl = useIntl();
-  const [isLoading, setIsLoading] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
 
-  /**
-   * Handle print label click
-   */
-  const handlePrint = () => {
-    if (!locationType || !locationId) {
-      return;
+  // Auto-trigger confirmation dialog when component mounts (for overflow menu usage)
+  useEffect(() => {
+    if (autoTrigger && locationId) {
+      setShowConfirmation(true);
     }
+  }, [autoTrigger, locationId]);
 
-    setIsLoading(true);
-    const url = `/rest/storage/${locationType}/${locationId}/print-label`;
-    const params = shortCode
-      ? `?shortCode=${encodeURIComponent(shortCode)}`
-      : "";
-    const fullUrl = url + params;
+  const handlePrintClick = () => {
+    setShowConfirmation(true);
+  };
 
-    // Use postToOpenElisServer to get PDF blob
-    // Note: postToOpenElisServer expects JSON, but we need to handle binary PDF
-    // We'll use fetch directly for binary response
-    fetch(fullUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+  const handleConfirmPrint = async () => {
+    setIsPrinting(true);
+    setShowConfirmation(false);
+
+    try {
+      const endpoint = `/rest/storage/${locationType}/${locationId}/print-label`;
+
+      // Fetch PDF using POST request
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      // Check if response is PDF or error JSON
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/pdf")) {
+        // PDF response - create blob and download
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `label-${locationType}-${locationId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        setIsPrinting(false);
+        if (onPrintSuccess) {
+          onPrintSuccess();
         }
-        return response.blob();
-      })
-      .then((blob) => {
-        // Create object URL and open in new tab
-        const blobUrl = window.URL.createObjectURL(blob);
-        const newWindow = window.open(blobUrl, "_blank");
-        if (!newWindow) {
-          // Popup blocked - show error
-          alert(
-            intl.formatMessage({
-              id: "label.print.error.popupBlocked",
-              defaultMessage:
-                "Popup blocked. Please allow popups for this site to print labels.",
-            }),
-          );
-        }
-        // Clean up blob URL after a delay (let browser load it first)
-        setTimeout(() => {
-          window.URL.revokeObjectURL(blobUrl);
-        }, 1000);
-        setIsLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error printing label:", error);
-        alert(
+      } else {
+        // Error response - parse JSON error
+        const errorData = await response.json();
+        const errorMessage =
+          errorData.error ||
           intl.formatMessage({
             id: "label.print.error",
-            defaultMessage: "Error generating label. Please try again.",
-          }),
-        );
-        setIsLoading(false);
-      });
+            defaultMessage: "Failed to print label",
+          });
+        setIsPrinting(false);
+        if (onPrintError) {
+          onPrintError(new Error(errorMessage));
+        }
+      }
+    } catch (error) {
+      setIsPrinting(false);
+      console.error("Error printing label:", error);
+      if (onPrintError) {
+        onPrintError(error);
+      }
+    }
+  };
+
+  const handleCancelPrint = () => {
+    setShowConfirmation(false);
+    // If auto-triggered, call onPrintError with null to signal cancellation
+    if (autoTrigger && onPrintError) {
+      onPrintError(null);
+    }
   };
 
   return (
-    <Button
-      kind="primary"
-      onClick={handlePrint}
-      disabled={disabled || isLoading}
-      renderIcon={Printer}
-      data-testid="print-label-button"
-    >
-      {isLoading
-        ? intl.formatMessage({
-            id: "label.print.generating",
-            defaultMessage: "Generating...",
-          })
-        : intl.formatMessage({
-            id: "label.print",
+    <>
+      {/* Only render button if not auto-triggering */}
+      {!autoTrigger && (
+        <Button
+          kind="ghost"
+          size="sm"
+          renderIcon={Printer}
+          onClick={handlePrintClick}
+          disabled={isPrinting}
+          data-testid="print-label-button"
+        >
+          {intl.formatMessage({
+            id: "label.printLabel",
             defaultMessage: "Print Label",
           })}
-    </Button>
+        </Button>
+      )}
+
+      <PrintLabelConfirmationDialog
+        open={showConfirmation}
+        locationName={locationName}
+        locationCode={locationCode}
+        onConfirm={handleConfirmPrint}
+        onCancel={handleCancelPrint}
+      />
+    </>
   );
 };
 
 PrintLabelButton.propTypes = {
   locationType: PropTypes.oneOf(["device", "shelf", "rack"]).isRequired,
   locationId: PropTypes.string.isRequired,
-  shortCode: PropTypes.string,
-  disabled: PropTypes.bool,
+  locationName: PropTypes.string,
+  locationCode: PropTypes.string,
+  onPrintSuccess: PropTypes.func,
+  onPrintError: PropTypes.func,
+  autoTrigger: PropTypes.bool,
 };
 
 PrintLabelButton.defaultProps = {
-  shortCode: null,
-  disabled: false,
+  locationName: "",
+  locationCode: "",
+  onPrintSuccess: () => {},
+  onPrintError: () => {},
+  autoTrigger: false,
 };
 
 export default PrintLabelButton;

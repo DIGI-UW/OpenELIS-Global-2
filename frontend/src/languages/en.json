@@ -1750,8 +1750,14 @@
   "barcode.partialMatch": "Partial match - some components valid",
   "barcode.scanning": "Scanning...",
   "barcode.debounce.warning": "Please wait before scanning another barcode",
-  "label.management.title": "Label Management",
+  "barcode.autoOpenForm": "Opening location form with valid hierarchy",
+  "barcode.validHierarchyPrefilled": "Valid hierarchy levels pre-filled",
+  "barcode.firstMissingLevel": "First missing level: {level}",
+  "barcode.additionalInvalidLevels.warning": "Additional invalid levels detected",
+  "barcode.additionalInvalidLevels.message": "The barcode contains levels beyond the valid portion. Only valid levels are pre-filled.",
+  "label.printLabel": "Print Label",
   "label.shortCode": "Short Code",
+<<<<<<< HEAD
   "label.print": "Print Label",
   "label.printHistory": "Print History",
   "label.shortCodeWarning": "Changing short code will invalidate existing labels",
@@ -1800,5 +1806,12 @@
   "banner.menu.generic.sample": "Generic Sample",
   "banner.menu.generic.sample.order": "Create Order",
   "banner.menu.generic.sample.edit": "Edit Order",
-  "banner.menu.generic.sample.import": "Import Samples"
+  "banner.menu.generic.sample.import": "Import Samples",
+  "label.shortCode.helper": "Max 10 characters, alphanumeric with hyphens/underscores",
+  "label.print": "Print",
+  "label.printConfirmation.title": "Print Label",
+  "label.printConfirmation.message": "Print label for {name}{code}?",
+  "label.print.success": "Label printed successfully",
+  "label.print.error": "Failed to print label",
+  "label.shortCodeRequired": "Short code is required for label printing. Please set short code in Edit form first."
 }

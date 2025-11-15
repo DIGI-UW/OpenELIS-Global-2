@@ -114,6 +114,10 @@ const UnifiedBarcodeInput = ({
             onValidationResult({
               success: response.valid || false,
               data: response,
+              // Include progressive validation fields for auto-open behavior
+              firstMissingLevel: response.firstMissingLevel || null,
+              validComponents: response.validComponents || {},
+              hasAdditionalInvalidLevels: response.hasAdditionalInvalidLevels || false,
               // Include errorMessage in error object for LocationManagementModal to extract
               error: response.valid
                 ? null
@@ -129,6 +133,10 @@ const UnifiedBarcodeInput = ({
             onValidationResult({
               success: response.valid || false,
               data: response,
+              // Include progressive validation fields for auto-open behavior
+              firstMissingLevel: response.firstMissingLevel || null,
+              validComponents: response.validComponents || {},
+              hasAdditionalInvalidLevels: response.hasAdditionalInvalidLevels || false,
               // Include errorMessage in error object
               error: response.valid
                 ? null

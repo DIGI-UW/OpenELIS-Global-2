@@ -106,6 +106,7 @@ room.
 | `fhir_uuid`           | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier             |
 | `name`                | VARCHAR(255) | NOT NULL                | Device name (e.g., "Freezer Unit 1")          |
 | `code`                | VARCHAR(50)  | NOT NULL                | Device code (unique within parent room)       |
+| `short_code`          | VARCHAR(10)  | NOT NULL                | Short code for barcode labels (max 10 chars, alphanumeric, unique within parent room) |
 | `type`                | VARCHAR(20)  | NOT NULL                | Enum: freezer, refrigerator, cabinet, other   |
 | `temperature_setting` | DECIMAL(5,2) | NULL                    | Optional temperature in Celsius               |
 | `capacity_limit`      | INT          | NULL                    | Optional capacity limit (number of positions) |
@@ -162,6 +163,7 @@ room.
 | `id`               | VARCHAR(36)  | PK, AUTO                | Primary key                          |
 | `fhir_uuid`        | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier    |
 | `label`            | VARCHAR(100) | NOT NULL                | Shelf label (e.g., "Shelf-A", "Top") |
+| `short_code`       | VARCHAR(10)  | NOT NULL                | Short code for barcode labels (max 10 chars, alphanumeric, unique within parent device) |
 | `capacity_limit`   | INT          | NULL                    | Optional capacity limit              |
 | `active`           | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status               |
 | `parent_device_id` | VARCHAR(36)  | NOT NULL, FK            | Parent device reference              |
@@ -172,6 +174,7 @@ room.
 
 - PRIMARY KEY (`id`)
 - UNIQUE (`parent_device_id`, `label`) - Label unique within parent device
+- UNIQUE (`parent_device_id`, `short_code`) - Short code unique within parent device
 - UNIQUE (`fhir_uuid`)
 - FOREIGN KEY (`parent_device_id`) REFERENCES `storage_device(id)` ON DELETE
   RESTRICT
@@ -212,6 +215,7 @@ room.
 | `id`                   | VARCHAR(36)  | PK, AUTO                | Primary key                                           |
 | `fhir_uuid`            | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier                     |
 | `label`                | VARCHAR(100) | NOT NULL                | Rack label (e.g., "Rack R1", "Tray-1")                |
+| `short_code`           | VARCHAR(10)  | NOT NULL                | Short code for barcode labels (max 10 chars, alphanumeric, unique within parent shelf) |
 | `rows`                 | INT          | NOT NULL, DEFAULT 0     | Grid rows (0 = no grid)                               |
 | `columns`              | INT          | NOT NULL, DEFAULT 0     | Grid columns (0 = no grid)                            |
 | `position_schema_hint` | VARCHAR(50)  | NULL                    | Optional hint for position naming (e.g., "A1", "1-1") |
@@ -224,6 +228,7 @@ room.
 
 - PRIMARY KEY (`id`)
 - UNIQUE (`parent_shelf_id`, `label`) - Label unique within parent shelf
+- UNIQUE (`parent_shelf_id`, `short_code`) - Short code unique within parent shelf
 - UNIQUE (`fhir_uuid`)
 - CHECK (`rows` >= 0 AND `columns` >= 0)
 - FOREIGN KEY (`parent_shelf_id`) REFERENCES `storage_shelf(id)` ON DELETE

@@ -33,8 +33,9 @@ import "./EnhancedCascadingMode.css";
  * Props:
  * - onLocationChange: function - Callback when location is selected/created
  * - selectedLocation: object - Pre-selected location (optional)
+ * - focusField: string - Field to focus on ('device' | 'shelf' | 'rack' | 'position')
  */
-const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
+const EnhancedCascadingMode = ({ onLocationChange, selectedLocation, focusField = null }) => {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);

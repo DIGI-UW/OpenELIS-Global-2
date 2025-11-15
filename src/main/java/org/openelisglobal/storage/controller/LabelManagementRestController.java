@@ -129,16 +129,18 @@ public class LabelManagementRestController extends BaseRestController {
     }
 
     /**
-     * Generate and return PDF label POST
-     * /rest/storage/{type}/{id}/print-label?shortCode=FRZ01
+     * Generate and return PDF label POST /rest/storage/{type}/{id}/print-label
+     * Validates short_code exists before printing, returns error if missing
      */
     @PostMapping(value = "/{type}/{id}/print-label", produces = MediaType.APPLICATION_PDF_VALUE)
-    public void printLabel(@PathVariable String type, @PathVariable String id,
-            @RequestParam(required = false) String shortCode, HttpServletResponse response) throws IOException {
+    public void printLabel(@PathVariable String type, @PathVariable String id, HttpServletResponse response)
+            throws IOException {
         try {
             // Validate type
             if (!"device".equals(type) && !"shelf".equals(type) && !"rack".equals(type)) {
                 response.setStatus(HttpStatus.BAD_REQUEST.value());
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.getWriter().write("{\"error\":\"Invalid location type. Must be 'device', 'shelf', or 'rack'\"}");
                 return;
             }
 
@@ -146,33 +148,46 @@ public class LabelManagementRestController extends BaseRestController {
             Object location = getLocationById(type, id);
             if (location == null) {
                 response.setStatus(HttpStatus.NOT_FOUND.value());
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.getWriter().write("{\"error\":\"Location not found\"}");
                 return;
             }
 
-            // Generate label
+            // Validate short_code exists before printing
+            if (!labelManagementService.validateShortCodeExists(id, type)) {
+                response.setStatus(HttpStatus.BAD_REQUEST.value());
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.getWriter().write("{\"error\":\"Short code is required for label printing. Please set short code in Edit form.\"}");
+                return;
+            }
+
+            // Generate label (uses short_code from entity)
             ByteArrayOutputStream pdfStream;
             String userId = getCurrentUserId(); // Get from security context
 
             if (location instanceof StorageDevice) {
-                pdfStream = labelManagementService.generateLabel((StorageDevice) location, shortCode);
+                pdfStream = labelManagementService.generateLabel((StorageDevice) location);
             } else if (location instanceof StorageShelf) {
-                pdfStream = labelManagementService.generateLabel((StorageShelf) location, shortCode);
+                pdfStream = labelManagementService.generateLabel((StorageShelf) location);
             } else if (location instanceof StorageRack) {
-                pdfStream = labelManagementService.generateLabel((StorageRack) location, shortCode);
+                pdfStream = labelManagementService.generateLabel((StorageRack) location);
             } else {
                 response.setStatus(HttpStatus.BAD_REQUEST.value());
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.getWriter().write("{\"error\":\"Invalid location type\"}");
                 return;
             }
 
             // Track print history
             String currentShortCode = getCurrentShortCode(location);
-            labelManagementService.trackPrintHistory(id, type, currentShortCode != null ? currentShortCode : shortCode,
-                    userId);
+            labelManagementService.trackPrintHistory(id, type, currentShortCode, userId);
 
             // Return PDF
             if (pdfStream == null || pdfStream.size() == 0) {
                 logger.error("PDF stream is null or empty");
                 response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.getWriter().write("{\"error\":\"Failed to generate label PDF\"}");
                 return;
             }
 
@@ -184,12 +199,20 @@ public class LabelManagementRestController extends BaseRestController {
             response.getOutputStream().write(pdfBytes);
             response.getOutputStream().flush();
             response.getOutputStream().close();
+        } catch (IllegalArgumentException e) {
+            // Handle short_code validation errors
+            logger.error("Label printing validation error: " + e.getMessage(), e);
+            response.setStatus(HttpStatus.BAD_REQUEST.value());
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.getWriter().write("{\"error\":\"" + e.getMessage() + "\"}");
         } catch (Exception e) {
             logger.error("Error generating label: " + e.getClass().getName() + " - " + e.getMessage(), e);
             if (e.getCause() != null) {
                 logger.error("Caused by: " + e.getCause().getClass().getName() + " - " + e.getCause().getMessage());
             }
             response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.getWriter().write("{\"error\":\"Internal server error generating label\"}");
         }
     }
 
