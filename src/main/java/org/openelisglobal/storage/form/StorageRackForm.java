@@ -32,6 +32,9 @@ public class StorageRackForm {
     @NotBlank(message = "Parent shelf ID is required")
     private String parentShelfId;
 
+    @Size(max = 10, message = "Short code must not exceed 10 characters")
+    private String shortCode;
+
     // Getters and Setters
 
     public String getId() {
@@ -88,5 +91,13 @@ public class StorageRackForm {
 
     public void setParentShelfId(String parentShelfId) {
         this.parentShelfId = parentShelfId;
+    }
+
+    public String getShortCode() {
+        return shortCode;
+    }
+
+    public void setShortCode(String shortCode) {
+        this.shortCode = shortCode;
     }
 }

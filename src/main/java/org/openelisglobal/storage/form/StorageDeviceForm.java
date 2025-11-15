@@ -33,6 +33,9 @@ public class StorageDeviceForm {
     @NotBlank(message = "Parent room ID is required")
     private String parentRoomId;
 
+    @Size(max = 10, message = "Short code must not exceed 10 characters")
+    private String shortCode;
+
     // Getters and Setters
 
     public String getId() {
@@ -97,5 +100,13 @@ public class StorageDeviceForm {
 
     public void setParentRoomId(String parentRoomId) {
         this.parentRoomId = parentRoomId;
+    }
+
+    public String getShortCode() {
+        return shortCode;
+    }
+
+    public void setShortCode(String shortCode) {
+        this.shortCode = shortCode;
     }
 }

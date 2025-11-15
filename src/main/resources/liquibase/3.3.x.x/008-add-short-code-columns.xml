@@ -30,13 +30,17 @@
                 <indexExists tableName="storage_device" indexName="uk_device_parent_short_code"/>
             </not>
         </preConditions>
+        <sql>
+            -- Update existing NULL values to unique temporary values based on ID
+            -- This ensures no duplicates when we add the unique constraint
+            -- Users must update these via Edit form to set proper short codes
+            UPDATE clinlims.storage_device 
+            SET short_code = 'TMP' || LPAD(id::text, 7, '0')
+            WHERE short_code IS NULL;
+        </sql>
         <addUniqueConstraint tableName="storage_device" 
                               constraintName="uk_device_parent_short_code"
                               columnNames="parent_room_id, short_code"/>
-        <sql>
-            -- Update existing NULL values to empty string (will be required to be set via Edit form)
-            UPDATE clinlims.storage_device SET short_code = '' WHERE short_code IS NULL;
-        </sql>
         <addNotNullConstraint tableName="storage_device" columnName="short_code" columnDataType="VARCHAR(10)"/>
         <rollback>
             <dropUniqueConstraint tableName="storage_device" constraintName="uk_device_parent_short_code"/>
@@ -69,13 +73,16 @@
                 <indexExists tableName="storage_shelf" indexName="uk_shelf_parent_short_code"/>
             </not>
         </preConditions>
+        <sql>
+            -- Update existing NULL values to unique temporary values based on ID
+            -- Users must update these via Edit form to set proper short codes
+            UPDATE clinlims.storage_shelf 
+            SET short_code = 'TMP' || LPAD(id::text, 7, '0')
+            WHERE short_code IS NULL;
+        </sql>
         <addUniqueConstraint tableName="storage_shelf" 
                               constraintName="uk_shelf_parent_short_code"
                               columnNames="parent_device_id, short_code"/>
-        <sql>
-            -- Update existing NULL values to empty string (will be required to be set via Edit form)
-            UPDATE clinlims.storage_shelf SET short_code = '' WHERE short_code IS NULL;
-        </sql>
         <addNotNullConstraint tableName="storage_shelf" columnName="short_code" columnDataType="VARCHAR(10)"/>
         <rollback>
             <dropUniqueConstraint tableName="storage_shelf" constraintName="uk_shelf_parent_short_code"/>
@@ -108,13 +115,16 @@
                 <indexExists tableName="storage_rack" indexName="uk_rack_parent_short_code"/>
             </not>
         </preConditions>
+        <sql>
+            -- Update existing NULL values to unique temporary values based on ID
+            -- Users must update these via Edit form to set proper short codes
+            UPDATE clinlims.storage_rack 
+            SET short_code = 'TMP' || LPAD(id::text, 7, '0')
+            WHERE short_code IS NULL;
+        </sql>
         <addUniqueConstraint tableName="storage_rack" 
                               constraintName="uk_rack_parent_short_code"
                               columnNames="parent_shelf_id, short_code"/>
-        <sql>
-            -- Update existing NULL values to empty string (will be required to be set via Edit form)
-            UPDATE clinlims.storage_rack SET short_code = '' WHERE short_code IS NULL;
-        </sql>
         <addNotNullConstraint tableName="storage_rack" columnName="short_code" columnDataType="VARCHAR(10)"/>
         <rollback>
             <dropUniqueConstraint tableName="storage_rack" constraintName="uk_rack_parent_short_code"/>

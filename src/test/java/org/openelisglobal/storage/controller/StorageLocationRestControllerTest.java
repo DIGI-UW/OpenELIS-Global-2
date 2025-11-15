@@ -70,12 +70,13 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
             // Delete test-created data (IDs >= 1000 or codes/names starting with TEST-)
             // This preserves fixture data loaded by Liquibase (IDs 1-999)
             // IDs are stored as VARCHAR, so we compare as strings
+            // Also clean up by short_code patterns used in tests (TEST- prefix)
             jdbcTemplate.execute("DELETE FROM sample_storage_movement WHERE id::integer >= 1000 OR id LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM sample_storage_assignment WHERE id::integer >= 1000 OR id LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM storage_position WHERE id::integer >= 1000 OR coordinate LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
+            jdbcTemplate.execute("DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
+            jdbcTemplate.execute("DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
+            jdbcTemplate.execute("DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM storage_room WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
         } catch (Exception e) {
             // Log but don't fail - cleanup is best effort
@@ -1253,5 +1254,182 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
         assertNotNull("Occupied count should not be null", occupiedCount);
         assertEquals("Occupancy should match actual assignments (5 in rack 1 + 4 in rack 2 = 9)", 9,
                 occupiedCount.intValue());
+    }
+
+    // ========== Short Code Field Tests (Iteration 9.5) ==========
+
+    /**
+     * T285: Test PUT endpoint accepts shortCode field for device
+     * Contract: PUT /rest/storage/devices/{id} with shortCode → 200, shortCode in response
+     */
+    @Test
+    public void testPutEndpointAcceptsShortCodeField_Device() throws Exception {
+        // Given: Create room and device with test-specific codes
+        String roomId = createRoomAndGetId("Short Code Test Room", "TEST-SC-ROOM");
+        String deviceId = createDeviceAndGetId("Test Device", "TEST-SC-DEV", "freezer", roomId);
+
+        // Given: Update form with shortCode (using test-specific prefix)
+        StorageDeviceForm updateForm = new StorageDeviceForm();
+        updateForm.setName("Updated Device");
+        updateForm.setType("freezer");
+        updateForm.setActive(true);
+        updateForm.setShortCode("TEST-FRZ01");
+
+        String requestBody = objectMapper.writeValueAsString(updateForm);
+
+        // When: PUT /rest/storage/devices/{id} with shortCode
+        // Then: Expect 200 OK with shortCode in response
+        mockMvc.perform(
+                put("/rest/storage/devices/" + deviceId).contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.shortCode").value("TEST-FRZ01"));
+    }
+
+    /**
+     * T285: Test PUT endpoint accepts shortCode field for shelf
+     * Contract: PUT /rest/storage/shelves/{id} with shortCode → 200, shortCode in response
+     */
+    @Test
+    public void testPutEndpointAcceptsShortCodeField_Shelf() throws Exception {
+        // Given: Create hierarchy and shelf with test-specific codes
+        String roomId = createRoomAndGetId("Short Code Shelf Room", "TEST-SC-SHELF-ROOM");
+        String deviceId = createDeviceAndGetId("Test Device", "TEST-SC-SHELF-DEV", "cabinet", roomId);
+        String shelfId = createShelfAndGetId("Test Shelf", deviceId);
+
+        // Given: Update form with shortCode (using test-specific prefix)
+        StorageShelfForm updateForm = new StorageShelfForm();
+        updateForm.setLabel("Updated Shelf");
+        updateForm.setActive(true);
+        updateForm.setShortCode("TEST-SHA01");
+
+        String requestBody = objectMapper.writeValueAsString(updateForm);
+
+        // When: PUT /rest/storage/shelves/{id} with shortCode
+        // Then: Expect 200 OK with shortCode in response
+        mockMvc.perform(
+                put("/rest/storage/shelves/" + shelfId).contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.shortCode").value("TEST-SHA01"));
+    }
+
+    /**
+     * T285: Test PUT endpoint accepts shortCode field for rack
+     * Contract: PUT /rest/storage/racks/{id} with shortCode → 200, shortCode in response
+     */
+    @Test
+    public void testPutEndpointAcceptsShortCodeField_Rack() throws Exception {
+        // Given: Create hierarchy and rack with test-specific codes
+        String roomId = createRoomAndGetId("Short Code Rack Room", "TEST-SC-RACK-ROOM");
+        String deviceId = createDeviceAndGetId("Test Device", "TEST-SC-RACK-DEV", "cabinet", roomId);
+        String shelfId = createShelfAndGetId("Shelf-1", deviceId);
+        String rackId = createRackAndGetId("Test Rack", 8, 12, shelfId);
+
+        // Given: Update form with shortCode (using test-specific prefix)
+        StorageRackForm updateForm = new StorageRackForm();
+        updateForm.setLabel("Updated Rack");
+        updateForm.setRows(8);
+        updateForm.setColumns(12);
+        updateForm.setActive(true);
+        updateForm.setShortCode("TEST-RKR01");
+
+        String requestBody = objectMapper.writeValueAsString(updateForm);
+
+        // When: PUT /rest/storage/racks/{id} with shortCode
+        // Then: Expect 200 OK with shortCode in response
+        mockMvc.perform(
+                put("/rest/storage/racks/" + rackId).contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.shortCode").value("TEST-RKR01"));
+    }
+
+    /**
+     * T285: Test short code validation on save - invalid format returns 400
+     * Contract: PUT /rest/storage/devices/{id} with invalid shortCode → 400 Bad Request
+     */
+    @Test
+    public void testShortCodeValidationOnSave_InvalidFormat_Returns400() throws Exception {
+        // Given: Create room and device with test-specific codes
+        String roomId = createRoomAndGetId("Validation Test Room", "TEST-VAL-ROOM");
+        String deviceId = createDeviceAndGetId("Test Device", "TEST-VAL-DEV", "freezer", roomId);
+
+        // Given: Update form with invalid shortCode (too long)
+        StorageDeviceForm updateForm = new StorageDeviceForm();
+        updateForm.setName("Updated Device");
+        updateForm.setType("freezer");
+        updateForm.setActive(true);
+        updateForm.setShortCode("INVALID-CODE-TOO-LONG"); // Exceeds 10 characters
+
+        String requestBody = objectMapper.writeValueAsString(updateForm);
+
+        // When: PUT /rest/storage/devices/{id} with invalid shortCode
+        // Then: Expect 400 Bad Request with error message
+        mockMvc.perform(
+                put("/rest/storage/devices/" + deviceId).contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").exists());
+    }
+
+    /**
+     * T285: Test short code validation on save - duplicate shortCode returns 400
+     * Contract: PUT /rest/storage/devices/{id} with duplicate shortCode → 400 Bad Request
+     */
+    @Test
+    public void testShortCodeValidationOnSave_DuplicateCode_Returns400() throws Exception {
+        // Given: Create room and two devices with test-specific codes
+        String roomId = createRoomAndGetId("Duplicate Test Room", "TEST-DUP-ROOM");
+        String deviceId1 = createDeviceAndGetId("Device 1", "TEST-DUP-DEV-1", "freezer", roomId);
+        String deviceId2 = createDeviceAndGetId("Device 2", "TEST-DUP-DEV-2", "freezer", roomId);
+
+        // Use test-specific shortCode that will be cleaned up (unique for this test)
+        String testShortCode = "TEST-DUP01";
+
+        // Given: Set shortCode on first device
+        StorageDeviceForm updateForm1 = new StorageDeviceForm();
+        updateForm1.setName("Device 1");
+        updateForm1.setType("freezer");
+        updateForm1.setActive(true);
+        updateForm1.setShortCode(testShortCode);
+
+        String requestBody1 = objectMapper.writeValueAsString(updateForm1);
+        mockMvc.perform(
+                put("/rest/storage/devices/" + deviceId1).contentType(MediaType.APPLICATION_JSON).content(requestBody1))
+                .andExpect(status().isOk());
+
+        // Given: Attempt to use same shortCode on second device
+        StorageDeviceForm updateForm2 = new StorageDeviceForm();
+        updateForm2.setName("Device 2");
+        updateForm2.setType("freezer");
+        updateForm2.setActive(true);
+        updateForm2.setShortCode(testShortCode); // Duplicate
+
+        String requestBody2 = objectMapper.writeValueAsString(updateForm2);
+
+        // When: PUT /rest/storage/devices/{id} with duplicate shortCode
+        // Then: Expect 400 Bad Request with error message
+        mockMvc.perform(
+                put("/rest/storage/devices/" + deviceId2).contentType(MediaType.APPLICATION_JSON).content(requestBody2))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").exists());
+    }
+
+    /**
+     * T285: Test short code validation on save - auto-uppercase conversion
+     * Contract: PUT /rest/storage/devices/{id} with lowercase shortCode → 200, uppercase in response
+     */
+    @Test
+    public void testShortCodeValidationOnSave_AutoUppercaseConversion() throws Exception {
+        // Given: Create room and device with test-specific codes
+        String roomId = createRoomAndGetId("Uppercase Test Room", "TEST-UC-ROOM");
+        String deviceId = createDeviceAndGetId("Test Device", "TEST-UC-DEV", "freezer", roomId);
+
+        // Given: Update form with lowercase shortCode (using test-specific prefix, unique for this test)
+        StorageDeviceForm updateForm = new StorageDeviceForm();
+        updateForm.setName("Updated Device");
+        updateForm.setType("freezer");
+        updateForm.setActive(true);
+        updateForm.setShortCode("test-uc01"); // Lowercase, will be converted to TEST-UC01
+
+        String requestBody = objectMapper.writeValueAsString(updateForm);
+
+        // When: PUT /rest/storage/devices/{id} with lowercase shortCode
+        // Then: Expect 200 OK with uppercase shortCode in response
+        mockMvc.perform(
+                put("/rest/storage/devices/" + deviceId).contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.shortCode").value("TEST-UC01"));
     }
 }

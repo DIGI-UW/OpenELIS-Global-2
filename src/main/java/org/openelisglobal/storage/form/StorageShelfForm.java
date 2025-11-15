@@ -21,6 +21,9 @@ public class StorageShelfForm {
     @NotBlank(message = "Parent device ID is required")
     private String parentDeviceId;
 
+    @Size(max = 10, message = "Short code must not exceed 10 characters")
+    private String shortCode;
+
     // Getters and Setters
 
     public String getId() {
@@ -61,5 +64,13 @@ public class StorageShelfForm {
 
     public void setParentDeviceId(String parentDeviceId) {
         this.parentDeviceId = parentDeviceId;
+    }
+
+    public String getShortCode() {
+        return shortCode;
+    }
+
+    public void setShortCode(String shortCode) {
+        this.shortCode = shortCode;
     }
 }

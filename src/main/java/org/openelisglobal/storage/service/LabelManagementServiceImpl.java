@@ -145,14 +145,14 @@ public class LabelManagementServiceImpl implements LabelManagementService {
         try {
             switch (locationType.toLowerCase()) {
             case "device":
-                StorageDevice device = storageLocationService.get(Integer.parseInt(locationId), StorageDevice.class);
+                StorageDevice device = (StorageDevice) storageLocationService.get(Integer.parseInt(locationId), StorageDevice.class);
                 return device != null && device.getShortCode() != null
                         && !device.getShortCode().trim().isEmpty();
             case "shelf":
-                StorageShelf shelf = storageLocationService.get(Integer.parseInt(locationId), StorageShelf.class);
+                StorageShelf shelf = (StorageShelf) storageLocationService.get(Integer.parseInt(locationId), StorageShelf.class);
                 return shelf != null && shelf.getShortCode() != null && !shelf.getShortCode().trim().isEmpty();
             case "rack":
-                StorageRack rack = storageLocationService.get(Integer.parseInt(locationId), StorageRack.class);
+                StorageRack rack = (StorageRack) storageLocationService.get(Integer.parseInt(locationId), StorageRack.class);
                 return rack != null && rack.getShortCode() != null && !rack.getShortCode().trim().isEmpty();
             default:
                 return false;
