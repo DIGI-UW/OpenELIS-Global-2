@@ -93,13 +93,16 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 The plan MUST include a complete "Testing Strategy" section that:
 
-1. **References the Testing Roadmap**: Link to `.specify/guides/testing-roadmap.md`
+1. **References the Testing Roadmap**: Link to
+   `.specify/guides/testing-roadmap.md`
 2. **Documents Coverage Goals**: >80% backend, >70% frontend
 3. **Identifies Test Types**: Unit, ORM validation, integration, E2E
 4. **Describes Test Data Management**: Builders/factories, API-based setup
 5. **Specifies Checkpoint Validations**: Which tests must pass at each phase
 
-**Validation**: Ensure the testing strategy references the Testing Roadmap and includes all required subsections (Coverage Goals, Test Types, Test Data Management, Checkpoint Validations, TDD Workflow).
+**Validation**: Ensure the testing strategy references the Testing Roadmap and
+includes all required subsections (Coverage Goals, Test Types, Test Data
+Management, Checkpoint Validations, TDD Workflow).
 
 ## Key rules
 

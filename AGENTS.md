@@ -768,12 +768,18 @@ public class SampleServiceImpl {
 
 **Reference**: [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md)
 
-The Testing Roadmap is the authoritative source for all testing practices, patterns, and procedures. This section provides a high-level overview. For detailed guidance, see the Testing Roadmap.
+The Testing Roadmap is the authoritative source for all testing practices,
+patterns, and procedures. This section provides a high-level overview. For
+detailed guidance, see the Testing Roadmap.
 
 **Key Resources**:
-- **Testing Roadmap**: `.specify/guides/testing-roadmap.md` - Comprehensive testing guide for both agents and humans
-- **Test Templates**: `.specify/templates/testing/` - Standardized test templates for all test types
-- **Constitution**: `.specify/memory/constitution.md` (Principle V) - High-level testing requirements
+
+- **Testing Roadmap**: `.specify/guides/testing-roadmap.md` - Comprehensive
+  testing guide for both agents and humans
+- **Test Templates**: `.specify/templates/testing/` - Standardized test
+  templates for all test types
+- **Constitution**: `.specify/memory/constitution.md` (Principle V) - High-level
+  testing requirements
 
 ### Test-Driven Development (TDD) Workflow
 
@@ -816,16 +822,22 @@ The Testing Roadmap is the authoritative source for all testing practices, patte
 
 ### Backend Testing
 
-**For Comprehensive Guidance**: See [Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing) for detailed patterns, code examples, and best practices.
+**For Comprehensive Guidance**: See
+[Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
+for detailed patterns, code examples, and best practices.
 
-**For Quick Reference**: See [Backend Testing Best Practices Guide](.specify/guides/backend-testing-best-practices.md) for common patterns and cheat sheets.
+**For Quick Reference**: See
+[Backend Testing Best Practices Guide](.specify/guides/backend-testing-best-practices.md)
+for common patterns and cheat sheets.
 
 **TDD Workflow (MANDATORY for complex logic):**
+
 - **Red**: Write failing test first (defines expected behavior)
 - **Green**: Write minimal code to make test pass
 - **Refactor**: Improve code quality while keeping tests green
 
 **SDD Checkpoint Requirements:**
+
 - **After Phase 1 (Entities)**: ORM validation tests MUST pass
 - **After Phase 2 (Services)**: Unit tests MUST pass
 - **After Phase 3 (Controllers)**: Integration tests MUST pass
@@ -836,21 +848,25 @@ The Testing Roadmap is the authoritative source for all testing practices, patte
 **CRITICAL**: Use focused test slices when possible for faster execution.
 
 **Decision Tree**:
+
 1. **Testing REST controller HTTP layer only?** → Use `@WebMvcTest` ✅
 2. **Testing DAO/repository persistence layer only?** → Use `@DataJpaTest` ✅
-3. **Testing complete workflow with full application context?** → Use `@SpringBootTest` ✅
-4. **Legacy integration tests with Testcontainers/DBUnit?** → Use `BaseWebContextSensitiveTest` ⚠️
+3. **Testing complete workflow with full application context?** → Use
+   `@SpringBootTest` ✅
+4. **Legacy integration tests with Testcontainers/DBUnit?** → Use
+   `BaseWebContextSensitiveTest` ⚠️
 
 **When to Use Each**:
 
-| Test Type | Annotation | Use Case | Speed | Context |
-|-----------|------------|----------|-------|---------|
-| Controller | `@WebMvcTest` | HTTP layer only | Fast | Web layer only |
-| DAO | `@DataJpaTest` | Persistence layer only | Fast | JPA layer only |
-| Integration | `@SpringBootTest` | Full workflow | Medium | Full context |
-| Legacy Integration | `BaseWebContextSensitiveTest` | Testcontainers/DBUnit | Slow | Full context |
+| Test Type          | Annotation                    | Use Case               | Speed  | Context        |
+| ------------------ | ----------------------------- | ---------------------- | ------ | -------------- |
+| Controller         | `@WebMvcTest`                 | HTTP layer only        | Fast   | Web layer only |
+| DAO                | `@DataJpaTest`                | Persistence layer only | Fast   | JPA layer only |
+| Integration        | `@SpringBootTest`             | Full workflow          | Medium | Full context   |
+| Legacy Integration | `BaseWebContextSensitiveTest` | Testcontainers/DBUnit  | Slow   | Full context   |
 
-**Reference**: [Testing Roadmap - Test Slicing Strategy Decision Tree](.specify/guides/testing-roadmap.md#test-slicing-strategy-decision-tree)
+**Reference**:
+[Testing Roadmap - Test Slicing Strategy Decision Tree](.specify/guides/testing-roadmap.md#test-slicing-strategy-decision-tree)
 
 ### Unit Tests (JUnit 4 + Mockito)
 
@@ -898,7 +914,8 @@ public class SampleServiceTest {
 **Key Points:**
 
 - Use JUnit 4 imports (`org.junit.Test`, NOT `org.junit.jupiter.api.Test`)
-- Use `@Mock` for isolated unit tests (NOT `@MockBean` - that's for Spring context tests)
+- Use `@Mock` for isolated unit tests (NOT `@MockBean` - that's for Spring
+  context tests)
 - Assertion order: `assertEquals(expected, actual)`
 - Mock DAO layer, test service logic only
 - Use builders/factories for test data (NOT hardcoded values)
@@ -920,10 +937,10 @@ public class SampleServiceTest {
 public class StorageLocationRestControllerTest {
     @Autowired
     private MockMvc mockMvc;
-    
+
     @MockBean  // ✅ Use @MockBean for Spring context tests (NOT @Mock)
     private StorageLocationService storageLocationService;
-    
+
     @Test
     public void testGetLocation_WithValidId_ReturnsLocation() throws Exception {
         StorageRoom room = StorageRoomBuilder.create()
@@ -931,7 +948,7 @@ public class StorageLocationRestControllerTest {
             .withName("Main Laboratory")
             .build();
         when(storageLocationService.getLocationById("ROOM-001")).thenReturn(room);
-        
+
         mockMvc.perform(get("/rest/storage/rooms/ROOM-001")
                 .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
@@ -964,10 +981,10 @@ public class StorageLocationRestControllerTest {
 public class StorageLocationDAOTest {
     @Autowired
     private TestEntityManager entityManager;  // ✅ Use TestEntityManager (NOT JdbcTemplate)
-    
+
     @Autowired
     private StorageLocationDAO storageLocationDAO;
-    
+
     @Test
     public void testFindByParentId_WithValidParent_ReturnsChildLocations() {
         StorageRoom room = StorageRoomBuilder.create()
@@ -975,7 +992,7 @@ public class StorageLocationDAOTest {
             .withName("Main Lab")
             .build();
         entityManager.persist(room);
-        
+
         StorageDevice device = StorageDeviceBuilder.create()
             .withId("DEV-001")
             .withName("Freezer 1")
@@ -983,9 +1000,9 @@ public class StorageLocationDAOTest {
             .build();
         entityManager.persist(device);
         entityManager.flush();
-        
+
         List<StorageDevice> devices = storageLocationDAO.findByParentId("ROOM-001");
-        
+
         assertEquals("Should return one device", 1, devices.size());
         assertEquals("Device ID should match", "DEV-001", devices.get(0).getId());
     }
@@ -1002,13 +1019,19 @@ public class StorageLocationDAOTest {
 
 ### Frontend Unit Tests (Jest + React Testing Library)
 
-**Location:** `frontend/src/components/{feature}/*.test.jsx` or `frontend/src/components/{feature}/__tests__/*.test.jsx`
+**Location:** `frontend/src/components/{feature}/*.test.jsx` or
+`frontend/src/components/{feature}/__tests__/*.test.jsx`
 
-**For Comprehensive Guidance**: See [Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests) for detailed patterns, code examples, and best practices.
+**For Comprehensive Guidance**: See
+[Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
+for detailed patterns, code examples, and best practices.
 
-**For Quick Reference**: See [Jest Best Practices Guide](.specify/guides/jest-best-practices.md) for common patterns and cheat sheets.
+**For Quick Reference**: See
+[Jest Best Practices Guide](.specify/guides/jest-best-practices.md) for common
+patterns and cheat sheets.
 
 **TDD Workflow (MANDATORY for complex logic):**
+
 - **Red**: Write failing test first (defines expected behavior)
 - **Green**: Write minimal code to make test pass
 - **Refactor**: Improve code quality while keeping tests green
@@ -1051,7 +1074,7 @@ describe("ComponentName", () => {
     // Act: Use userEvent for user interactions (PREFERRED)
     const input = screen.getByLabelText(/name/i);
     await userEvent.type(input, "Test Name", { delay: 0 });
-    
+
     const button = screen.getByRole("button", { name: /submit/i });
     await userEvent.click(button);
 
@@ -1066,11 +1089,15 @@ describe("ComponentName", () => {
 
 **Key Points:**
 
-- **Import Order**: React → Testing Library → userEvent → jest-dom → Intl → Router → Component → Utils → Messages
-- **userEvent vs fireEvent**: Prefer `userEvent` for user interactions (more realistic)
-- **Async Testing**: Use `waitFor` with `queryBy*` (NOT `getBy*`) or `findBy*` for async elements
+- **Import Order**: React → Testing Library → userEvent → jest-dom → Intl →
+  Router → Component → Utils → Messages
+- **userEvent vs fireEvent**: Prefer `userEvent` for user interactions (more
+  realistic)
+- **Async Testing**: Use `waitFor` with `queryBy*` (NOT `getBy*`) or `findBy*`
+  for async elements
 - **DON'T**: Use `setTimeout` (no retry logic - use `waitFor` instead)
-- **Carbon Components**: Use `userEvent`, `waitFor` for portals, `within()` for scoped queries
+- **Carbon Components**: Use `userEvent`, `waitFor` for portals, `within()` for
+  scoped queries
 - **Test Behavior**: Test user-visible behavior, NOT implementation details
 - **Edge Cases**: Test null, empty, boundary values
 
@@ -1124,7 +1151,8 @@ public class HibernateMappingValidationTest {
 
 ### Integration Tests (@SpringBootTest)
 
-**Location:** `src/test/java/org/openelisglobal/{module}/controller/` or `src/test/java/org/openelisglobal/{module}/service/`
+**Location:** `src/test/java/org/openelisglobal/{module}/controller/` or
+`src/test/java/org/openelisglobal/{module}/service/`
 
 **Use for**: Testing complete workflows that require full application context.
 
@@ -1163,11 +1191,17 @@ public class SampleServiceIntegrationTest {
 
 **Location:** `frontend/cypress/e2e/{feature}.cy.js`
 
-**For Comprehensive Guidance**: See [Testing Roadmap - Cypress E2E Testing](.specify/guides/testing-roadmap.md#cypress-e2e-testing) for detailed patterns, code examples, and best practices.
+**For Comprehensive Guidance**: See
+[Testing Roadmap - Cypress E2E Testing](.specify/guides/testing-roadmap.md#cypress-e2e-testing)
+for detailed patterns, code examples, and best practices.
 
-**For Quick Reference**: See [Cypress Best Practices Guide](.specify/guides/cypress-best-practices.md) for common patterns and cheat sheets.
+**For Quick Reference**: See
+[Cypress Best Practices Guide](.specify/guides/cypress-best-practices.md) for
+common patterns and cheat sheets.
 
-**For Functional Requirements**: See [Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices) for E2E testing requirements.
+**For Functional Requirements**: See
+[Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices)
+for E2E testing requirements.
 
 **Execution Strategy (Constitution V.5):**
 
@@ -1201,7 +1235,9 @@ module.exports = defineConfig({
 **Post-Run Review (MANDATORY - Constitution V.5):**
 
 After each test execution, review:
-1. **Console Logs:** Review browser console in Cypress UI for errors, failed API requests, warnings
+
+1. **Console Logs:** Review browser console in Cypress UI for errors, failed API
+   requests, warnings
 2. **Screenshots:** Review failure screenshots for UI state at failure point
 3. **Test Output:** Review Cypress command log for execution order and timeouts
 
@@ -1227,8 +1263,8 @@ describe("User Story P1: Sample Storage Assignment", () => {
     cy.get('[data-testid="barcode-input"]').type("SAMPLE-001{enter}");
     cy.get('[data-testid="location-input"]').type("RACK-A1{enter}");
     cy.get('[data-testid="submit-button"]')
-      .should('be.visible')
-      .should('not.be.disabled')
+      .should("be.visible")
+      .should("not.be.disabled")
       .click();
 
     // Assert: Wait for API call and verify success
@@ -1252,23 +1288,43 @@ describe("User Story P1: Sample Storage Assignment", () => {
 ### Testing Resources
 
 **Comprehensive Guides**:
-- **Testing Roadmap**: `.specify/guides/testing-roadmap.md` - Comprehensive testing guide for all test types (backend and frontend)
-- **Backend Testing Best Practices**: `.specify/guides/backend-testing-best-practices.md` - Quick reference for backend Java/Spring Boot testing patterns
-- **Jest Best Practices**: `.specify/guides/jest-best-practices.md` - Quick reference for Jest + React Testing Library patterns
-- **Cypress Best Practices**: `.specify/guides/cypress-best-practices.md` - Quick reference for Cypress patterns
+
+- **Testing Roadmap**: `.specify/guides/testing-roadmap.md` - Comprehensive
+  testing guide for all test types (backend and frontend)
+- **Backend Testing Best Practices**:
+  `.specify/guides/backend-testing-best-practices.md` - Quick reference for
+  backend Java/Spring Boot testing patterns
+- **Jest Best Practices**: `.specify/guides/jest-best-practices.md` - Quick
+  reference for Jest + React Testing Library patterns
+- **Cypress Best Practices**: `.specify/guides/cypress-best-practices.md` -
+  Quick reference for Cypress patterns
 
 **Templates**:
-- **Test Templates**: `.specify/templates/testing/` - Standardized test templates for all test types
-  - JUnit Service: `.specify/templates/testing/JUnit4ServiceTest.java.template` - Unit tests (JUnit 4 + Mockito)
-  - WebMvc Controller: `.specify/templates/testing/WebMvcTestController.java.template` - Controller tests (@WebMvcTest)
-  - DataJpa DAO: `.specify/templates/testing/DataJpaTestDao.java.template` - DAO tests (@DataJpaTest)
-  - Jest Component: `.specify/templates/testing/JestComponent.test.jsx.template` - Frontend unit tests
-  - Cypress E2E: `.specify/templates/testing/CypressE2E.cy.js.template` - E2E tests
+
+- **Test Templates**: `.specify/templates/testing/` - Standardized test
+  templates for all test types
+  - JUnit Service:
+    `.specify/templates/testing/JUnit4ServiceTest.java.template` - Unit tests
+    (JUnit 4 + Mockito)
+  - WebMvc Controller:
+    `.specify/templates/testing/WebMvcTestController.java.template` - Controller
+    tests (@WebMvcTest)
+  - DataJpa DAO: `.specify/templates/testing/DataJpaTestDao.java.template` - DAO
+    tests (@DataJpaTest)
+  - Jest Component:
+    `.specify/templates/testing/JestComponent.test.jsx.template` - Frontend unit
+    tests
+  - Cypress E2E: `.specify/templates/testing/CypressE2E.cy.js.template` - E2E
+    tests
 
 **Constitution**:
-- **Constitution Section V**: `.specify/memory/constitution.md` (Principle V) - High-level testing requirements
-  - Section V.4: ORM Validation Tests - Requirements for Hibernate mapping validation
-  - Section V.5: Cypress E2E Testing Best Practices - Functional requirements and mandates
+
+- **Constitution Section V**: `.specify/memory/constitution.md` (Principle V) -
+  High-level testing requirements
+  - Section V.4: ORM Validation Tests - Requirements for Hibernate mapping
+    validation
+  - Section V.5: Cypress E2E Testing Best Practices - Functional requirements
+    and mandates
 
 ---
 

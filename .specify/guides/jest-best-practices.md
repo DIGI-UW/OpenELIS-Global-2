@@ -1,10 +1,14 @@
 # Jest Best Practices Quick Reference
 
-**Quick Reference Guide** for common Jest + React Testing Library patterns in OpenELIS Global 2.
+**Quick Reference Guide** for common Jest + React Testing Library patterns in
+OpenELIS Global 2.
 
-**For Comprehensive Guidance**: See [Testing Roadmap](.specify/guides/testing-roadmap.md) for detailed patterns and examples.
+**For Comprehensive Guidance**: See
+[Testing Roadmap](.specify/guides/testing-roadmap.md) for detailed patterns and
+examples.
 
-**For Official Documentation**: See [Jest React Tutorial](https://jestjs.io/docs/tutorial-react).
+**For Official Documentation**: See
+[Jest React Tutorial](https://jestjs.io/docs/tutorial-react).
 
 ---
 
@@ -13,41 +17,56 @@
 **STRICT Order** (Jest hoisting requires mocks before imports):
 
 1. **React**
+
    ```javascript
    import React from "react";
    ```
 
 2. **Testing Library**
+
    ```javascript
-   import { render, screen, fireEvent, waitFor, within, act } from "@testing-library/react";
+   import {
+     render,
+     screen,
+     fireEvent,
+     waitFor,
+     within,
+     act,
+   } from "@testing-library/react";
    ```
 
 3. **userEvent** (PREFERRED for user interactions)
+
    ```javascript
    import userEvent from "@testing-library/user-event";
    ```
 
 4. **jest-dom matchers** (MUST be imported)
+
    ```javascript
    import "@testing-library/jest-dom";
    ```
 
 5. **IntlProvider** (if component uses i18n)
+
    ```javascript
    import { IntlProvider } from "react-intl";
    ```
 
 6. **Router** (if component uses routing)
+
    ```javascript
    import { BrowserRouter } from "react-router-dom";
    ```
 
 7. **Component under test**
+
    ```javascript
    import ComponentName from "./ComponentName";
    ```
 
 8. **Utilities**
+
    ```javascript
    import { getFromOpenElisServer } from "../utils/Utils";
    ```
@@ -58,6 +77,7 @@
    ```
 
 **Mocks MUST be before imports**:
+
 ```javascript
 // Mocks FIRST (before imports)
 jest.mock("../utils/Utils", () => ({
@@ -75,6 +95,7 @@ import ComponentName from "./ComponentName";
 **Decision Tree**:
 
 1. **Element MUST exist** → `getBy*`
+
    ```javascript
    screen.getByText("Submit");
    screen.getByRole("button", { name: /submit/i });
@@ -82,11 +103,13 @@ import ComponentName from "./ComponentName";
    ```
 
 2. **Checking if element does NOT exist** → `queryBy*`
+
    ```javascript
    expect(screen.queryByText("Error")).not.toBeInTheDocument();
    ```
 
 3. **Element appears after async operation** → `findBy*`
+
    ```javascript
    const element = await screen.findByText("Loaded Data");
    ```
@@ -104,16 +127,19 @@ import ComponentName from "./ComponentName";
 ## userEvent vs fireEvent Decision Tree
 
 **PREFERRED: userEvent** (for user interactions):
+
 - ✅ Clicking buttons
 - ✅ Typing in inputs
 - ✅ Keyboard navigation
 - ✅ More realistic (triggers all events)
 
 **FALLBACK: fireEvent** (only when userEvent doesn't work):
+
 - ⚠️ Rare edge cases
 - ⚠️ Programmatic events (not user-initiated)
 
 **Examples**:
+
 ```javascript
 // ✅ CORRECT: userEvent for user interactions
 await userEvent.click(button);
@@ -128,20 +154,26 @@ fireEvent.change(input, { target: { value: "text" } });
 
 ## Async Testing Patterns
 
-**DO - waitFor with queryBy***:
+**DO - waitFor with queryBy\***:
+
 ```javascript
-await waitFor(() => {
-  const element = screen.queryByText("Loaded Data");
-  expect(element).toBeInTheDocument();
-}, { timeout: 5000 });
+await waitFor(
+  () => {
+    const element = screen.queryByText("Loaded Data");
+    expect(element).toBeInTheDocument();
+  },
+  { timeout: 5000 }
+);
 ```
 
-**DO - findBy***:
+**DO - findBy\***:
+
 ```javascript
 const element = await screen.findByText("Loaded Data", {}, { timeout: 5000 });
 ```
 
 **DO - act() for state updates**:
+
 ```javascript
 await act(async () => {
   await userEvent.type(input, "Test");
@@ -149,12 +181,14 @@ await act(async () => {
 ```
 
 **DON'T - setTimeout**:
+
 ```javascript
 // ❌ WRONG: No retry logic
 await new Promise((resolve) => setTimeout(resolve, 1000));
 ```
 
-**DON'T - getBy* in waitFor**:
+**DON'T - getBy\* in waitFor**:
+
 ```javascript
 // ❌ WRONG: Throws during retries
 await waitFor(() => {
@@ -167,12 +201,14 @@ await waitFor(() => {
 ## Carbon Component Quick Patterns
 
 **TextInput**:
+
 ```javascript
 const input = screen.getByLabelText(/name/i);
 await userEvent.type(input, "Test Name", { delay: 0 });
 ```
 
 **ComboBox**:
+
 ```javascript
 const input = screen.getByRole("combobox", { name: /room/i });
 await userEvent.type(input, "Main Laboratory", { delay: 0 });
@@ -185,6 +221,7 @@ await userEvent.click(option);
 ```
 
 **OverflowMenu**:
+
 ```javascript
 const menuButton = screen.getByTestId("overflow-menu-button");
 await userEvent.click(menuButton);
@@ -197,6 +234,7 @@ await userEvent.click(menuItem);
 ```
 
 **DataTable**:
+
 ```javascript
 const table = await screen.findByRole("table");
 const row = within(table).getByText("Row Data");
@@ -205,6 +243,7 @@ await userEvent.click(actionButton);
 ```
 
 **Modal/Dialog**:
+
 ```javascript
 const openButton = screen.getByRole("button", { name: /open modal/i });
 await userEvent.click(openButton);
@@ -218,18 +257,21 @@ await userEvent.click(confirmButton);
 ## Edge Case Testing
 
 **Null Values**:
+
 ```javascript
 renderWithIntl(<ComponentName value={null} />);
 expect(screen.getByText("N/A")).toBeInTheDocument();
 ```
 
 **Empty Values**:
+
 ```javascript
 renderWithIntl(<ComponentName items={[]} />);
 expect(screen.getByText("No items")).toBeInTheDocument();
 ```
 
 **Boundary Values**:
+
 ```javascript
 renderWithIntl(<ComponentName maxLength={100} />);
 const input = screen.getByLabelText(/name/i);
@@ -242,6 +284,7 @@ expect(input.value.length).toBe(100);
 ## Anti-Patterns Checklist
 
 **DO NOT**:
+
 - ❌ Use `setTimeout` (use `waitFor` instead)
 - ❌ Use `getBy*` in `waitFor` (use `queryBy*` instead)
 - ❌ Use `fireEvent` when `userEvent` works (prefer `userEvent`)
@@ -258,6 +301,7 @@ expect(input.value.length).toBe(100);
 **Red-Green-Refactor Cycle**:
 
 1. **Red**: Write failing test first
+
    ```javascript
    test("testSubmitForm_ShowsSuccess", async () => {
      renderWithIntl(<ComponentName />);
@@ -266,6 +310,7 @@ expect(input.value.length).toBe(100);
    ```
 
 2. **Green**: Write minimal code to pass
+
    ```javascript
    // Implement just enough to make test pass
    ```
@@ -280,14 +325,17 @@ expect(input.value.length).toBe(100);
 ## Test Organization
 
 **File Naming**:
+
 - `ComponentName.test.jsx` (co-located)
 - OR `__tests__/ComponentName.test.jsx` (separate)
 
 **Test Naming**:
+
 - Format: `test{Scenario}_{ExpectedResult}`
 - Example: `testSubmitForm_WithValidData_ShowsSuccessMessage`
 
 **Grouping**:
+
 ```javascript
 describe("ComponentName Form Validation", () => {
   // Related tests grouped together
@@ -299,6 +347,7 @@ describe("ComponentName Form Validation", () => {
 ## Helper Functions Quick Reference
 
 **renderWithIntl**:
+
 ```javascript
 const renderWithIntl = (component) => {
   return render(
@@ -312,6 +361,7 @@ const renderWithIntl = (component) => {
 ```
 
 **setupApiMocks**:
+
 ```javascript
 const setupApiMocks = (overrides = {}) => {
   const defaults = { rooms: [], devices: [] };
@@ -325,6 +375,7 @@ const setupApiMocks = (overrides = {}) => {
 ```
 
 **createMockRoom** (builder pattern):
+
 ```javascript
 const createMockRoom = (overrides = {}) => ({
   id: "1",
@@ -340,6 +391,7 @@ const createMockRoom = (overrides = {}) => ({
 ## What to Test
 
 **DO Test**:
+
 - ✅ User-visible behavior
 - ✅ User interactions
 - ✅ Inputs and outputs
@@ -347,6 +399,7 @@ const createMockRoom = (overrides = {}) => ({
 - ✅ Error states
 
 **DON'T Test**:
+
 - ❌ Internal component state
 - ❌ Function call counts
 - ❌ Prop values (unless user-visible)
@@ -355,5 +408,5 @@ const createMockRoom = (overrides = {}) => ({
 ---
 
 **Last Updated**: 2025-01-XX  
-**Reference**: [Testing Roadmap](.specify/guides/testing-roadmap.md) for comprehensive guidance
-
+**Reference**: [Testing Roadmap](.specify/guides/testing-roadmap.md) for
+comprehensive guidance

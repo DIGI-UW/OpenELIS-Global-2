@@ -572,9 +572,9 @@ testing catches regressions, enforces contract compliance, and enables confident
 refactoring.
 
 **Reference**: For detailed testing patterns, strategies, and best practices,
-see [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md). This
-roadmap provides comprehensive guidance for both AI agents and human developers
-on test creation, execution, and maintenance.
+see [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md). This roadmap
+provides comprehensive guidance for both AI agents and human developers on test
+creation, execution, and maintenance.
 
 #### Section V.4: ORM Validation Tests (ADDED 2025-10-31)
 
@@ -660,6 +660,7 @@ implementation details.
     debugging, and prevents cascading failures from masking root causes.
 
 **Command Examples**:
+
 ```bash
 # Development (CORRECT - run individual test)
 npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"
@@ -755,12 +756,12 @@ debugging information without performance overhead.
   execution
 - ❌ **Not using data-testid selectors** - Use data-testid as primary selector
   strategy (most stable, survives CSS changes and refactoring)
-- ❌ **Ineffective DOM queries** - Use scoped queries, viewport management, table
-  filtering (see Testing Roadmap for patterns)
+- ❌ **Ineffective DOM queries** - Use scoped queries, viewport management,
+  table filtering (see Testing Roadmap for patterns)
 - ❌ **Recreating test data via UI** - Use API-based setup for test data (10x
   faster than UI interactions)
-- ❌ **Starting new sessions unnecessarily** - Use cy.session() with cacheAcrossSpecs
-  to preserve login state (10-20x faster)
+- ❌ **Starting new sessions unnecessarily** - Use cy.session() with
+  cacheAcrossSpecs to preserve login state (10-20x faster)
 
 **Reference to Testing Roadmap**:
 
@@ -769,6 +770,7 @@ outlined in the authoritative **OpenELIS Testing Roadmap**
 (`.specify/guides/testing-roadmap.md`).
 
 The Testing Roadmap provides comprehensive technical guidance on:
+
 - Selector strategy (data-testid priority, ARIA roles, semantic selectors)
 - Session management (cy.session() patterns with OpenELIS adaptation)
 - Test data management (API-first approach, fixture patterns)
