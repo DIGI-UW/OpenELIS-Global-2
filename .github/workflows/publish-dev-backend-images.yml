@@ -7,7 +7,7 @@ name: Publish Dev Docker Images - Backend
 
 on:
   push:
-    branches: [develop]
+    branches: [developx]
   workflow_dispatch:
 
 env:
