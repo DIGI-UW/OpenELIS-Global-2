@@ -218,13 +218,13 @@ jobs:
   #       with:
   #         # Only show last 100 lines of each
   #         tail: "100"
-  # frontend-qa:
-  #   if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-  #   uses: DIGI-UW/OpenELIS-Global-2/.github/workflows/frontend-qa.yml@develop
+  frontend-qa:
+    if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
+    uses: DIGI-UW/OpenELIS-Global-2/.github/workflows/frontend-qa.yml@develop
 
   build-and-push-image-backend:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    # needs: [frontend-qa]
+    needs: [frontend-qa]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -270,7 +270,7 @@ jobs:
 
   build-and-push-image-frontend:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    # needs: [frontend-qa]
+    needs: [frontend-qa]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -314,7 +314,7 @@ jobs:
 
   build-and-push-image-proxy:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    # needs: [frontend-qa]
+    needs: [frontend-qa]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -357,7 +357,7 @@ jobs:
 
   build-and-push-image-fhir:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    # needs: [frontend-qa]
+    needs: [frontend-qa]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -401,7 +401,7 @@ jobs:
 
   build-and-push-image-database:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    # needs: [frontend-qa]
+    needs: [frontend-qa]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -445,6 +445,6 @@ jobs:
 
   build-installer-and-upload-installer:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' && github.event_name == 'release' && github.event.action == 'published' }}
-    # needs: [frontend-qa]
+    needs: [frontend-qa]
     uses : DIGI-UW/OpenELIS-Global-2/.github/workflows/build-installer.yml@develop
            
