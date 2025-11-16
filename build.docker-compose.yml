@@ -11,13 +11,13 @@ services:
         - KEYSTORE_PW="kspass"
         - TRUSTSTORE_PW="tspass"
     networks:
-        
+        - default  
     volumes:
         - key_trust-store-volume:/etc/openelis-global
         - keys-vol:/etc/ssl/private/
         - certs-vol:/etc/ssl/certs/
 
-  database:
+  db.openelis.org:
       build:
         context: .
         dockerfile: ./db/Dockerfile
@@ -49,7 +49,7 @@ services:
     container_name: openelisglobal-webapp
     image: openelisglobal-webapp.build
     depends_on:
-        - database
+        - db.openelis.org
         - certs
     ports:
         - "8080:8080"
@@ -82,7 +82,7 @@ services:
       context: .
       dockerfile: ./fhir/Dockerfile
     depends_on:
-        - database
+        - db.openelis.org
         - certs
     ports:
         - "8081:8080"
@@ -99,6 +99,7 @@ services:
                         -Djavax.net.ssl.keyStorePassword=${SSL_KEYSTORE_PASSWORD}
                         -Djavax.net.ssl.keyStoreType=pkcs12"
         CATALINA_OPTS: "-Dhapi.ssl.truststorepath=${SSL_TRUSTSTORE_PATH} -Dhapi.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD} -Dhapi.ssl.keystorepath=${SSL_KEYSTORE_PATH} -Dhapi.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD}"  
+        FHIR_DATASOURCE_URL : "jdbc:postgresql://db.openelis.org:5432/clinlims?currentSchema=clinlims"
         FHIR_DATASOURCE_USERNAME: "clinlims"
         FHIR_DATASOURCE_PASSWORD: ${OE_DB_PASSWORD}
         FHIR_SERVER_ADRESS: "http://fhir.openelis.org:8080/fhir/"
