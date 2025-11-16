@@ -113,6 +113,7 @@ RUN mkdir -p /var/lib/lucene_index; \
     chown -R tomcat_admin:tomcat /var/lib/lucene_index; \
     chmod -R 770 /var/lib/lucene_index;
 
+COPY ./tomcat/oe_server.xml /usr/local/tomcat/conf/server.xml    
 USER tomcat_admin
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]

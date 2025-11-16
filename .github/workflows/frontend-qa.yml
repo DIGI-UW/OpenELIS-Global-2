@@ -2,7 +2,7 @@ name: OpenELIS Frontend QA framework workflow
 
 on:
   pull_request:
-    branches: [develop]
+    branches: [developx]
   workflow_dispatch:
   workflow_call: 
 

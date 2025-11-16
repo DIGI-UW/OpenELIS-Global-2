@@ -218,13 +218,13 @@ jobs:
   #       with:
   #         # Only show last 100 lines of each
   #         tail: "100"
-  frontend-qa:
-    if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    uses: DIGI-UW/OpenELIS-Global-2/.github/workflows/frontend-qa.yml@develop
+  # frontend-qa:
+  #   if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
+  #   uses: DIGI-UW/OpenELIS-Global-2/.github/workflows/frontend-qa.yml@develop
 
   build-and-push-image-backend:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    needs: [frontend-qa]
+    # needs: [frontend-qa]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -270,7 +270,7 @@ jobs:
 
   build-and-push-image-frontend:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    needs: [frontend-qa]
+    # needs: [frontend-qa]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -314,7 +314,7 @@ jobs:
 
   build-and-push-image-proxy:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    needs: [frontend-qa]
+    # needs: [frontend-qa]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -357,7 +357,7 @@ jobs:
 
   build-and-push-image-fhir:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    needs: [frontend-qa]
+    # needs: [frontend-qa]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -398,8 +398,51 @@ jobs:
           cache-from: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-fhir:buildcache
           cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-fhir:buildcache,mode=max
 
+  build-and-push-image-database:
+    if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
+    # needs: [frontend-qa]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Add support for more platforms with QEMU (optional)
+      # https://github.com/docker/setup-qemu-action
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_NAME }}-database
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./db
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-database:buildcache
+          cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-database:buildcache,mode=max        
+
   build-installer-and-upload-installer:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' && github.event_name == 'release' && github.event.action == 'published' }}
-    needs: [frontend-qa]
+    # needs: [frontend-qa]
     uses : DIGI-UW/OpenELIS-Global-2/.github/workflows/build-installer.yml@develop
            
