@@ -66,7 +66,7 @@ services:
             - ./volume/plugins/:/var/lib/openelis-global/plugins
             - ./volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
             -  lucene_index-vol:/var/lib/lucene_index
-            - ./volume/test-map/test-loinc-map.csv:/var/lib/openelis-global/plugin-test-mappings/test-loinc-map.csv
+            - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
             - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
             - ./volume/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
             #Runing OpenELIS with the locally compiled war file

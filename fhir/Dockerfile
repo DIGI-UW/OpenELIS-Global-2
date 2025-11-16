@@ -23,7 +23,7 @@ RUN groupadd tomcat; \
     chmod g-w,o-rwx /opt/bitnami/tomcat/conf/web.xml;\
     chown -R tomcat_admin:tomcat /bitnami/tomcat/
 
-COPY ./tomcat/hapi_server.xml /usr/local/tomcat/conf/server.xml
+COPY ./tomcat/hapi_server.xml /opt/bitnami/tomcat/conf/server.xml
 
 # Ensure the target directory exists
 RUN mkdir -p /opt/openelis/config
