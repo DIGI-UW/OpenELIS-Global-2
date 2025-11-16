@@ -15,21 +15,18 @@ services:
             -  keys-vol:/etc/ssl/private/
             -  certs-vol:/etc/ssl/certs/
 
-    database:
+    db.openelis.org:
         container_name: openelisglobal-database 
         image: itechuw/openelis-global-2-database:develop
         platform: linux/amd64
         ports:
             - "15432:5432"
         restart: always
+        env_file:
+            - ./volume/database/database.env
         environment:
-            - POSTGRES_USER=postgres
-            - POSTGRES_PASSWORD=admin
-            - POSTGRES_DB=clinlims
-            - POSTGRES_INITDB_ARGS="--auth-host=md5" 
-
-            - DB_PASSWORD=clinlims
-            - DB_SUPERUSER_PASSWORD=superuser
+            - DB_PASSWORD=${OE_DB_PASSWORD}
+            - DB_SUPERUSER_PASSWORD=${ADMIN_PASSWORD} 
         volumes:
               # preserves the database between containers
              - db-data:/var/lib/postgresql/data                
@@ -46,7 +43,7 @@ services:
         image: itechuw/openelis-global-2:develop   
         platform: linux/amd64 
         depends_on:
-            - database
+            - db.openelis.org
             - certs
         ports:
             - "8080:8080"
@@ -60,11 +57,10 @@ services:
             - DEFAULT_PW=adminADMIN! 
             - TZ=Africa/Nairobi
               # context.xml doesn't seem to be able to pick up environment variables directly, so we are passing them in as CATALINA_OPTS
-            - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://database:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=clinlims -Doe.ssl.truststorepath=/etc/openelis-global/truststore -Doe.ssl.truststorepassword=tspass -Doe.ssl.keystorepath=/etc/openelis-global/keystore -Doe.ssl.keystorepassword=kspass
+            - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=${OE_DB_PASSWORD} -Doe.ssl.truststorepath=${SSL_TRUSTSTORE_PATH} -Doe.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD} -Doe.ssl.keystorepath=${SSL_KEYSTORE_PATH} -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD}
         volumes:
             -  key_trust-store-volume:/etc/openelis-global
             - ./volume/plugins/:/var/lib/openelis-global/plugins
-            - ./volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
             -  lucene_index-vol:/var/lib/lucene_index
             - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
             - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
@@ -79,7 +75,7 @@ services:
         image: itechuw/openelis-global-2-fhir:develop
         platform: linux/amd64
         depends_on:
-            - database
+            - db.openelis.org
             - certs
         ports:
             - "8081:8080"
@@ -89,33 +85,29 @@ services:
         restart: always
         environment:
           TZ: Africa/Nairobi
-          JAVA_OPTS: "-Djavax.net.ssl.trustStore=/etc/openelis-global/truststore 
-                      -Djavax.net.ssl.trustStorePassword=tspass
-                      -Djavax.net.ssl.trustStoreType=pkcs12 
-                      -Djavax.net.ssl.keyStore=/etc/openelis-global/keystore 
-                      -Djavax.net.ssl.keyStorePassword=kspass 
-                      -Djavax.net.ssl.keyStoreType=pkcs12"     
-          CATALINA_OPTS: "-Dhapi.ssl.truststorepath=/etc/openelis-global/truststore -Dhapi.ssl.truststorepassword=tspass -Dhapi.ssl.keystorepath=/etc/openelis-global/keystore -Dhapi.ssl.keystorepassword=kspass"  
-
-          FHIR_DATASOURCE_URL: "jdbc:postgresql://database:5432/clinlims?currentSchema=clinlims"
+          
+          JAVA_OPTS: "-Djavax.net.ssl.trustStore=${SSL_TRUSTSTORE_PATH}
+                      -Djavax.net.ssl.trustStorePassword=${SSL_TRUSTSTORE_PASSWORD}
+                      -Djavax.net.ssl.trustStoreType=pkcs12
+                      -Djavax.net.ssl.keyStore=${SSL_KEYSTORE_PATH}
+                      -Djavax.net.ssl.keyStorePassword=${SSL_KEYSTORE_PASSWORD}
+                      -Djavax.net.ssl.keyStoreType=pkcs12"
+          CATALINA_OPTS: "-Dhapi.ssl.truststorepath=${SSL_TRUSTSTORE_PATH} -Dhapi.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD} -Dhapi.ssl.keystorepath=${SSL_KEYSTORE_PATH} -Dhapi.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD}"  
+          FHIR_DATASOURCE_URL : "jdbc:postgresql://db.openelis.org:5432/clinlims?currentSchema=clinlims"
           FHIR_DATASOURCE_USERNAME: "clinlims"
-          FHIR_DATASOURCE_PASSWORD: "clinlims"  
-          FHIR_SERVER_ADRESS: "http://fhir.openelis.org:8080/fhir/:   
-        
+          FHIR_DATASOURCE_PASSWORD: ${OE_DB_PASSWORD}
+          FHIR_SERVER_ADRESS: "http://fhir.openelis.org:8080/fhir/"      
         volumes:
             -  key_trust-store-volume:/etc/openelis-global
         
-
-
-         
     frontend.openelis.org:
         image: itechuw/openelis-global-2-frontend:develop
         container_name: openelisglobal-front-end
         platform: linux/amd64
         networks:
-        - default
+            - default
         environment:
-        - CHOKIDAR_USEPOLLING=true
+            - CHOKIDAR_USEPOLLING=true
         tty: true
 
     proxy:

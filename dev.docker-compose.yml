@@ -14,7 +14,7 @@ services:
             -  keys-vol:/etc/ssl/private/
             -  certs-vol:/etc/ssl/certs/
 
-    database:
+    db.openelis.org:
         container_name: openelisglobal-database 
         image: postgres:14.4
         ports:
@@ -43,7 +43,7 @@ services:
         image: itechuw/openelis-global-2-dev:develop  
         platform: linux/amd64
         depends_on:
-            - database
+            - db.openelis.org
             - certs
         ports:
             - "8080:8080"
@@ -56,7 +56,7 @@ services:
             - DEFAULT_PW=adminADMIN! 
             - TZ=Africa/Nairobi
               # context.xml doesn't seem to be able to pick up environment variables directly, so we are passing them in as CATALINA_OPTS
-            - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://database:5432/clinlims -Ddatasource.username=clinlims
+            - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims
         volumes:
             -  key_trust-store-volume:/etc/openelis-global
             - ./volume/plugins/:/var/lib/openelis-global/plugins
@@ -79,7 +79,7 @@ services:
         image: itechuw/openelis-global-2-fhir:develop
         platform: linux/amd64
         depends_on:
-            - database
+            - db.openelis.org
             - certs
         ports:
             - "8081:8080"
