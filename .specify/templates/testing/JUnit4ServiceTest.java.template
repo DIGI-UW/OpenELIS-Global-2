@@ -1,0 +1,227 @@
+package org.openelisglobal.{module}.service;
+
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.{module}.dao.{Entity}DAO;
+import org.openelisglobal.{module}.valueholder.{Entity};
+
+/**
+ * Unit tests for {ServiceName} implementation
+ * 
+ * References:
+ * - Testing Roadmap: .specify/guides/testing-roadmap.md
+ * - Backend Best Practices: .specify/guides/backend-testing-best-practices.md
+ * - Template: JUnit 4 Service Test
+ * 
+ * TDD Workflow (MANDATORY for complex logic):
+ * - RED: Write failing test first (defines expected behavior)
+ * - GREEN: Write minimal code to make test pass
+ * - REFACTOR: Improve code quality while keeping tests green
+ * 
+ * SDD Checkpoint: Unit tests MUST pass after Phase 2 (Services)
+ * Test Coverage Goal: >80% (measured via JaCoCo)
+ * 
+ * Test Naming: test{MethodName}_{Scenario}_{ExpectedResult}
+ * Example: testGetLocationById_WithValidId_ReturnsLocation
+ */
+@RunWith(MockitoJUnitRunner.class)
+public class {ServiceName}Test {
+
+    // ✅ CORRECT: Use @Mock for isolated unit tests (NOT @MockBean)
+    // @MockBean is for Spring context tests (@WebMvcTest, @SpringBootTest)
+    // Reference: Testing Roadmap > @MockBean vs @Mock
+    @Mock
+    private {Entity}DAO {entity}DAO;
+    
+    @Mock
+    private FhirPersistanceService fhirService; // Example: Mock other services
+
+    // ✅ CORRECT: Use @InjectMocks to inject mocks into service under test
+    @InjectMocks
+    private {ServiceName}Impl {serviceName};
+
+    // ✅ CORRECT: Use builders/factories for test data (NOT hardcoded values)
+    // Reference: Testing Roadmap > Test Data Management > Builders/Factories Pattern
+    private {Entity} test{Entity};
+
+    @Before
+    public void setUp() {
+        // ✅ CORRECT: Setup common test data using builders
+        // Builders provide reusable, readable test data
+        test{Entity} = {Entity}Builder.create()
+            .withId("TEST-001")
+            .withName("Test {Entity}")
+            .withCode("TEST-CODE")
+            .withActive(true)
+            .build();
+        
+        // ❌ ANTI-PATTERN: Don't use hardcoded values
+        // test{Entity} = new {Entity}();
+        // test{Entity}.setId("TEST-001");
+        // test{Entity}.setName("Test {Entity}");
+    }
+
+    /**
+     * Test: {Test Description}
+     * Task Reference: T{###}
+     * 
+     * Arrange-Act-Assert pattern:
+     * 1. Arrange: Setup test data and mock behavior
+     * 2. Act: Execute method under test
+     * 3. Assert: Verify expected outcome
+     * 
+     * Reference: Testing Roadmap > Unit Tests (JUnit 4 + Mockito)
+     */
+    @Test
+    public void test{MethodName}_{Scenario}_{ExpectedResult}() {
+        // Arrange: Setup test data and mock behavior
+        // ✅ CORRECT: Use builders for test data
+        {Entity} {entity} = {Entity}Builder.create()
+            .withId("TEST-001")
+            .withName("Test {Entity}")
+            .build();
+        
+        // ✅ CORRECT: Mock DAO behavior
+        when({entity}DAO.get("TEST-001")).thenReturn({entity});
+        
+        // Act: Execute method under test
+        {Entity} result = {serviceName}.{methodName}("TEST-001");
+        
+        // Assert: Verify expected outcome
+        assertNotNull("Result should not be null", result);
+        assertEquals("ID should match", "TEST-001", result.getId());
+        assertEquals("Name should match", "Test {Entity}", result.getName());
+    }
+
+    /**
+     * Test: {Test Description for Exception Case}
+     * Task Reference: T{###}
+     * 
+     * Testing exception scenarios:
+     * - Use @Test(expected = ExceptionClass.class) for expected exceptions
+     * - Or use try-catch with fail() for exception message validation
+     * 
+     * Reference: Testing Roadmap > Unit Tests > Exception Testing
+     */
+    @Test(expected = LIMSRuntimeException.class)
+    public void test{MethodName}_{InvalidScenario}_ThrowsException() {
+        // Arrange: Setup scenario that should throw exception
+        // ✅ CORRECT: Mock DAO to return null (not found scenario)
+        when({entity}DAO.get("INVALID-ID")).thenReturn(null);
+        
+        // Act: Execute method that should throw exception
+        {serviceName}.{methodName}("INVALID-ID");
+        
+        // Assert: Exception should be thrown (handled by @Test(expected))
+    }
+
+    /**
+     * Test: {Test Description for Verification}
+     * Task Reference: T{###}
+     * 
+     * Testing that service calls other services (e.g., FHIR sync):
+     * - Use verify() to check method calls
+     * - Use times() to verify call count
+     * 
+     * Reference: Testing Roadmap > Unit Tests > Verification Testing
+     */
+    @Test
+    public void test{MethodName}_CallsFhirService() {
+        // Arrange
+        {Entity} {entity} = {Entity}Builder.create()
+            .withName("Test {Entity}")
+            .build();
+        when({entity}DAO.insert(any({Entity}.class))).thenReturn("TEST-001");
+        
+        // Act
+        String id = {serviceName}.insert({entity});
+        
+        // Assert: Verify FHIR service was called
+        verify(fhirService, times(1)).createUpdateFhirResource(any(Specimen.class));
+        assertEquals("ID should be returned", "TEST-001", id);
+    }
+
+    /**
+     * Test: {Test Description for Edge Case}
+     * Task Reference: T{###}
+     * 
+     * Testing edge cases:
+     * - null values
+     * - empty strings/collections
+     * - boundary values
+     * 
+     * Reference: Testing Roadmap > Unit Tests > Edge Case Testing
+     */
+    @Test
+    public void test{MethodName}_WithNullInput_HandlesGracefully() {
+        // Arrange
+        when({entity}DAO.get(null)).thenReturn(null);
+        
+        // Act
+        {Entity} result = {serviceName}.{methodName}(null);
+        
+        // Assert: Verify null handling
+        assertNull("Result should be null for null input", result);
+    }
+
+    /**
+     * Test: {Test Description for Business Logic}
+     * Task Reference: T{###}
+     * 
+     * Testing business logic calculations:
+     * - Complex calculations
+     * - State transitions
+     * - Validation rules
+     * 
+     * Reference: Testing Roadmap > Unit Tests > Business Logic Testing
+     */
+    @Test
+    public void testCalculateCapacity_WithMultipleChildren_ReturnsSum() {
+        // Arrange
+        {Entity} parent = {Entity}Builder.create()
+            .withId("PARENT-001")
+            .build();
+        
+        {Entity} child1 = {Entity}Builder.create()
+            .withCapacity(50)
+            .withParent(parent)
+            .build();
+        {Entity} child2 = {Entity}Builder.create()
+            .withCapacity(75)
+            .withParent(parent)
+            .build();
+        
+        when({entity}DAO.get("PARENT-001")).thenReturn(parent);
+        when({entity}DAO.findChildrenByParentId("PARENT-001"))
+            .thenReturn(Arrays.asList(child1, child2));
+        
+        // Act
+        int capacity = {serviceName}.calculateCapacity("PARENT-001");
+        
+        // Assert
+        assertEquals("Capacity should sum children", 125, capacity);
+    }
+
+    // Additional test methods following same pattern:
+    // - Test happy path scenarios
+    // - Test edge cases (null, empty, boundary values)
+    // - Test validation rules
+    // - Test business logic calculations
+    // - Test error scenarios
+    // - Test service interactions (verify() calls)
+    
+    // ❌ ANTI-PATTERNS to avoid:
+    // - Don't use @MockBean in isolated unit tests (use @Mock)
+    // - Don't use hardcoded test data (use builders)
+    // - Don't test implementation details (test behavior)
+    // - Don't use @Transactional in unit tests (not needed, no Spring context)
+    // - Don't use JdbcTemplate in unit tests (mock DAOs instead)
+}
+

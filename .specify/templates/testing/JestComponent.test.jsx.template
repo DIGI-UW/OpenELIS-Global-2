@@ -1,0 +1,440 @@
+/**
+ * Unit tests for {ComponentName}
+ * 
+ * References:
+ * - Testing Roadmap: .specify/guides/testing-roadmap.md (comprehensive guidance)
+ * - Jest Best Practices: .specify/guides/jest-best-practices.md (quick reference)
+ * - Jest Official Docs: https://jestjs.io/docs/tutorial-react
+ * 
+ * TDD Workflow (MANDATORY for complex logic):
+ * - RED: Write failing test first (defines expected behavior)
+ * - GREEN: Write minimal code to make test pass
+ * - REFACTOR: Improve code quality while keeping tests green
+ * 
+ * SDD Checkpoint: After Phase 4 (Frontend), all unit tests MUST pass
+ * Test Coverage Goal: >70% (measured via Jest)
+ * 
+ * Test Naming: test{Scenario}_{ExpectedResult}
+ * Example: testSubmitForm_WithValidData_ShowsSuccessMessage
+ */
+
+// ========== MOCKS (MUST be before imports - Jest hoisting) ==========
+
+// Mock utilities BEFORE imports that use them (Jest hoisting)
+jest.mock("../utils/Utils", () => ({
+  getFromOpenElisServer: jest.fn(),
+  postToOpenElisServer: jest.fn(),
+}));
+
+// Mock react-router-dom if component uses routing
+const mockHistory = {
+  replace: jest.fn(),
+  push: jest.fn(),
+};
+
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useHistory: () => mockHistory,
+  useLocation: () => ({ pathname: "/path" }),
+}));
+
+// ========== IMPORTS (Standard order - MANDATORY) ==========
+
+// 1. React
+import React from "react";
+
+// 2. Testing Library (all utilities in one import)
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+  act,
+} from "@testing-library/react";
+
+// 3. userEvent (PREFERRED for user interactions)
+import userEvent from "@testing-library/user-event";
+
+// 4. jest-dom matchers (MUST be imported)
+import "@testing-library/jest-dom";
+
+// 5. IntlProvider (if component uses i18n)
+import { IntlProvider } from "react-intl";
+
+// 6. Router (if component uses routing)
+import { BrowserRouter } from "react-router-dom";
+
+// 7. Component under test
+import {ComponentName} from "./{ComponentName}";
+
+// 8. Utilities (import functions, not just for mocking)
+import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
+
+// 9. Messages/translations
+import messages from "../../../languages/en.json";
+
+// ========== HELPER FUNCTIONS ==========
+
+// Helper function: Standard render with IntlProvider
+const renderWithIntl = (component) => {
+  return render(
+    <BrowserRouter>
+      <IntlProvider locale="en" messages={messages}>
+        {component}
+      </IntlProvider>
+    </BrowserRouter>
+  );
+};
+
+// Helper function: Setup API mocks
+const setupApiMocks = (overrides = {}) => {
+  const defaults = {
+    // Define default mock responses
+    rooms: [],
+    devices: [],
+    samples: [],
+  };
+  const data = { ...defaults, ...overrides };
+
+  getFromOpenElisServer.mockImplementation((url, callback) => {
+    // Map URLs to mock responses
+    if (url.includes("/rest/{module}/rooms")) {
+      callback(data.rooms || []);
+    } else if (url.includes("/rest/{module}/devices")) {
+      callback(data.devices || []);
+    }
+    // Add more URL patterns as needed
+  });
+};
+
+// Helper function: Mock data builder (per Medium article - use generic cases)
+const createMockRoom = (overrides = {}) => ({
+  id: "1",
+  name: "Main Laboratory",
+  code: "MAIN",
+  active: true,
+  ...overrides,
+});
+
+describe("{ComponentName}", () => {
+  beforeEach(() => {
+    // Reset mocks before each test
+    jest.clearAllMocks();
+    setupApiMocks();
+  });
+
+  /**
+   * Test: {Test Description}
+   * Task Reference: T{###}
+   * 
+   * Arrange-Act-Assert pattern:
+   * 1. Arrange: Setup test data and mocks
+   * 2. Act: Render component and interact
+   * 3. Assert: Verify expected outcome
+   */
+  test("test{Scenario}_{ExpectedResult}", async () => {
+    // Arrange: Setup API mocks
+    setupApiMocks({
+      {entities}: [
+        { id: "1", name: "Test {Entity}", active: true },
+      ],
+    });
+
+    // Act: Render component
+    renderWithIntl(<{ComponentName} />);
+
+    // Assert: Verify component renders
+    // Use getBy* for required elements (throws if not found)
+    // Use queryBy* for absence checks (returns null if not found)
+    // Use findBy* for async element queries (waits and retries)
+    expect(screen.getByText("Test {Entity}")).toBeInTheDocument();
+  });
+
+  /**
+   * Test: {Test Description for Async}
+   * Task Reference: T{###}
+   * 
+   * Testing async operations:
+   * - Use waitFor for async element queries
+   * - Use queryBy* inside waitFor (not getBy*)
+   * - Use act() for state updates
+   */
+  test("testAsyncOperation_{ExpectedResult}", async () => {
+    // Arrange
+    setupApiMocks();
+
+    // Act
+    renderWithIntl(<{ComponentName} />);
+
+    // Assert: Wait for async element
+    await waitFor(() => {
+      const element = screen.queryByTestId("async-element");
+      expect(element).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * Test: {Test Description for Carbon Component - ComboBox}
+   * Task Reference: T{###}
+   * 
+   * Testing Carbon ComboBox:
+   * - Use userEvent.type to open dropdown
+   * - Wait for dropdown to appear (Carbon uses portals)
+   * - Select option with userEvent.click
+   */
+  test("testCarbonComboBox_{ExpectedResult}", async () => {
+    // Arrange
+    renderWithIntl(<{ComponentName} />);
+
+    // Act: Interact with ComboBox
+    const input = screen.getByRole("combobox", { name: /room/i });
+    
+    // Type to open dropdown (PREFERRED: userEvent)
+    await userEvent.type(input, "Main Laboratory", { delay: 0 });
+    
+    // Wait for dropdown to open (Carbon renders in portal)
+    await waitFor(
+      () => {
+        const menu = document.querySelector('[role="listbox"]');
+        expect(menu && menu.children.length > 0).toBeTruthy();
+      },
+      { timeout: 2000 }
+    );
+    
+    // Select option
+    const option = await screen.findByRole("option", {
+      name: /main laboratory/i,
+    });
+    await userEvent.click(option);
+
+    // Assert: Verify selection
+    expect(input.value).toContain("Main Laboratory");
+  });
+
+  /**
+   * Test: {Test Description for Carbon Component - OverflowMenu}
+   * Task Reference: T{###}
+   * 
+   * Testing Carbon OverflowMenu:
+   * - Click menu button with userEvent
+   * - Wait for menu items to render in portal
+   * - Select menu item with userEvent
+   */
+  test("testCarbonOverflowMenu_{ExpectedResult}", async () => {
+    // Arrange
+    renderWithIntl(<{ComponentName} />);
+
+    // Act: Interact with OverflowMenu
+    const menuButton = screen.getByTestId("overflow-menu-button");
+    await userEvent.click(menuButton);
+    
+    // Wait for menu items to render in portal
+    await waitFor(
+      () => {
+        const menu = screen.queryByRole("menu");
+        expect(menu).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
+    
+    // Select menu item
+    const menuItem = await screen.findByRole("menuitem", {
+      name: /delete/i,
+    });
+    await userEvent.click(menuItem);
+
+    // Assert: Verify action was triggered
+    // (e.g., verify callback was called, modal opened, etc.)
+  });
+
+  /**
+   * Test: {Test Description for Carbon Component - DataTable}
+   * Task Reference: T{###}
+   * 
+   * Testing Carbon DataTable:
+   * - Wait for table to render
+   * - Use within() for scoped queries
+   * - Interact with row actions
+   */
+  test("testCarbonDataTable_{ExpectedResult}", async () => {
+    // Arrange
+    setupApiMocks({
+      rooms: [createMockRoom({ id: "1", name: "Test Room" })],
+    });
+    renderWithIntl(<{ComponentName} />);
+
+    // Act: Interact with DataTable
+    // Wait for table to render
+    const table = await screen.findByRole("table");
+    
+    // Find row by text (use within for scoped queries)
+    const row = within(table).getByText("Test Room");
+    expect(row).toBeInTheDocument();
+    
+    // Interact with row action
+    const actionButton = within(row).getByRole("button", { name: /edit/i });
+    await userEvent.click(actionButton);
+
+    // Assert: Verify action was triggered
+  });
+
+  /**
+   * Test: {Test Description for User Interaction}
+   * Task Reference: T{###}
+   * 
+   * Testing user interactions (PREFERRED: userEvent):
+   * - Button clicks: await userEvent.click(button)
+   * - Form submissions: await userEvent.type(input, "text")
+   * - Input changes: await userEvent.type(input, "text", { delay: 0 })
+   */
+  test("testUserInteraction_{ExpectedResult}", async () => {
+    // Arrange
+    renderWithIntl(<{ComponentName} />);
+
+    // Act: Simulate user interaction (PREFERRED: userEvent)
+    const input = screen.getByLabelText(/name/i);
+    await userEvent.type(input, "Test Name", { delay: 0 });
+    
+    const button = screen.getByRole("button", { name: /save/i });
+    await userEvent.click(button);
+
+    // Assert: Verify interaction result
+    // Example: Verify API call
+    // expect(postToOpenElisServer).toHaveBeenCalledWith(
+    //   expect.stringContaining("/rest/{module}/{entities}"),
+    //   expect.any(Function)
+    // );
+    
+    // Example: Verify user-visible outcome
+    // expect(await screen.findByText("Success")).toBeInTheDocument();
+  });
+
+  /**
+   * Test: {Test Description for Edge Cases - Null}
+   * Task Reference: T{###}
+   * 
+   * Testing edge cases (per Medium article):
+   * - Null values
+   * - Empty strings/arrays
+   * - Boundary values
+   */
+  test("testEdgeCase_NullValue_ShowsNA", () => {
+    // Arrange: Render with null value
+    renderWithIntl(<{ComponentName} value={null} />);
+
+    // Assert: Verify null handling
+    expect(screen.getByText("N/A")).toBeInTheDocument();
+  });
+
+  /**
+   * Test: {Test Description for Edge Cases - Empty}
+   * Task Reference: T{###}
+   */
+  test("testEdgeCase_EmptyArray_ShowsEmptyState", () => {
+    // Arrange: Render with empty array
+    renderWithIntl(<{ComponentName} items={[]} />);
+
+    // Assert: Verify empty state
+    expect(screen.getByText("No items")).toBeInTheDocument();
+  });
+
+  /**
+   * Test: {Test Description for Edge Cases - Boundary}
+   * Task Reference: T{###}
+   */
+  test("testEdgeCase_BoundaryValue_EnforcesMaxLength", async () => {
+    // Arrange: Render with maxLength constraint
+    renderWithIntl(<{ComponentName} maxLength={100} />);
+
+    // Act: Type boundary value
+    const input = screen.getByLabelText(/name/i);
+    await userEvent.type(input, "a".repeat(100), { delay: 0 });
+
+    // Assert: Verify boundary enforcement
+    expect(input.value.length).toBe(100);
+  });
+
+  /**
+   * Test: {Test Description for Async Operation}
+   * Task Reference: T{###}
+   * 
+   * Testing async operations:
+   * - Use waitFor with queryBy* (NOT getBy*)
+   * - OR use findBy* for async elements
+   * - DON'T use setTimeout (no retry logic)
+   */
+  test("testAsyncOperation_{ExpectedResult}", async () => {
+    // Arrange
+    setupApiMocks();
+
+    // Act
+    renderWithIntl(<{ComponentName} />);
+
+    // Assert: Wait for async element (CORRECT: queryBy* in waitFor)
+    await waitFor(() => {
+      const element = screen.queryByTestId("async-element");
+      expect(element).toBeInTheDocument();
+    }, { timeout: 5000 });
+
+    // Alternative: Use findBy* (also correct)
+    // const element = await screen.findByTestId("async-element");
+    // expect(element).toBeInTheDocument();
+  });
+
+  /**
+   * Test: {Test Description - Anti-Pattern Warning}
+   * Task Reference: T{###}
+   * 
+   * ANTI-PATTERNS TO AVOID:
+   * 
+   * ❌ WRONG: Using setTimeout (no retry logic, brittle timing)
+   * await new Promise((resolve) => setTimeout(resolve, 1000));
+   * expect(screen.getByText("Loaded Data")).toBeInTheDocument();
+   * 
+   * ✅ CORRECT: Use waitFor with queryBy*
+   * await waitFor(() => {
+   *   const element = screen.queryByText("Loaded Data");
+   *   expect(element).toBeInTheDocument();
+   * });
+   * 
+   * ❌ WRONG: Using getBy* in waitFor (throws during retries)
+   * await waitFor(() => {
+   *   expect(screen.getByText("Loaded Data")).toBeInTheDocument();
+   * });
+   * 
+   * ✅ CORRECT: Use queryBy* in waitFor
+   * await waitFor(() => {
+   *   const element = screen.queryByText("Loaded Data");
+   *   expect(element).toBeInTheDocument();
+   * });
+   * 
+   * ❌ WRONG: Using fireEvent when userEvent works
+   * fireEvent.click(button);
+   * 
+   * ✅ CORRECT: Use userEvent for user interactions
+   * await userEvent.click(button);
+   */
+  test("testAntiPatternExamples_{ExpectedResult}", async () => {
+    // This test demonstrates correct patterns
+    renderWithIntl(<{ComponentName} />);
+    
+    // ✅ CORRECT: userEvent for user interactions
+    const button = screen.getByRole("button", { name: /submit/i });
+    await userEvent.click(button);
+    
+    // ✅ CORRECT: waitFor with queryBy* for async operations
+    await waitFor(() => {
+      const element = screen.queryByText("Success");
+      expect(element).toBeInTheDocument();
+    });
+  });
+
+  // Additional test methods to consider:
+  // - Test error handling (API errors, validation errors)
+  // - Test loading states (spinners, disabled buttons)
+  // - Test validation errors (form validation, required fields)
+  // - Test accessibility (ARIA labels, keyboard navigation)
+  // - Test user-visible behavior (NOT implementation details)
+});
+

@@ -53,7 +53,26 @@ public abstract class Label {
     private String sysUserId; // for log tracking
     boolean newInfo; // for deciding if insert or update
 
-    BarcodeLabelInfoService barcodeLabelService = SpringContext.getBean(BarcodeLabelInfoService.class);
+    private BarcodeLabelInfoService barcodeLabelService;
+
+    /**
+     * Lazy initialization of barcodeLabelService. Initializes on first use to
+     * ensure SpringContext is ready.
+     * 
+     * @return BarcodeLabelInfoService instance
+     */
+    private BarcodeLabelInfoService getBarcodeLabelService() {
+        if (barcodeLabelService == null) {
+            try {
+                barcodeLabelService = SpringContext.getBean(BarcodeLabelInfoService.class);
+            } catch (Exception e) {
+                LogEvent.logError("Label", "getBarcodeLabelService",
+                        "Failed to get BarcodeLabelInfoService from SpringContext: " + e.getMessage());
+                throw new RuntimeException("BarcodeLabelInfoService not available", e);
+            }
+        }
+        return barcodeLabelService;
+    }
 
     /**
      * Gets how many rows will be above the bar code
@@ -242,7 +261,9 @@ public abstract class Label {
     }
 
     public void setSysUserId(String sysUserId) {
-        labelInfo.setSysUserId(sysUserId);
+        if (labelInfo != null) {
+            labelInfo.setSysUserId(sysUserId);
+        }
         this.sysUserId = sysUserId;
     }
 
@@ -291,7 +312,7 @@ public abstract class Label {
      */
     public boolean checkIfPrintable() {
         boolean printable = true;
-        if (labelInfo.getNumPrinted() >= getMaxNumLabels()) {
+        if (labelInfo != null && labelInfo.getNumPrinted() >= getMaxNumLabels()) {
             printable = false;
         }
 
@@ -304,12 +325,30 @@ public abstract class Label {
      */
     public void linkBarcodeLabelInfo() {
         try {
-            labelInfo = barcodeLabelService.getDataByCode(code);
+            if (code == null || code.trim().isEmpty()) {
+                // If code is not set, create a new label info without database lookup
+                labelInfo = new BarcodeLabelInfo("");
+                return;
+            }
+            BarcodeLabelInfoService service = getBarcodeLabelService();
+            if (service != null) {
+                labelInfo = service.getDataByCode(code);
+            }
             if (labelInfo == null) {
                 labelInfo = new BarcodeLabelInfo(code);
             }
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e);
+            // Create new label info if database lookup fails
+            if (labelInfo == null) {
+                labelInfo = new BarcodeLabelInfo(code != null ? code : "");
+            }
+        } catch (Exception e) {
+            LogEvent.logError("Label", "linkBarcodeLabelInfo", "Failed to link barcode label info: " + e.getMessage());
+            // Create new label info if service is not available
+            if (labelInfo == null) {
+                labelInfo = new BarcodeLabelInfo(code != null ? code : "");
+            }
         }
     }
 
@@ -318,6 +357,8 @@ public abstract class Label {
     }
 
     public void incrementNumPrinted() {
-        labelInfo.incrementNumPrinted();
+        if (labelInfo != null) {
+            labelInfo.incrementNumPrinted();
+        }
     }
 }

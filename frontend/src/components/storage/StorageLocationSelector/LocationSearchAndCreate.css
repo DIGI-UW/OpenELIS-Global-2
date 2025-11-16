@@ -1,0 +1,33 @@
+.location-search-and-create {
+  width: 100%;
+}
+
+.location-search-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.location-search-wrapper {
+  flex: 1;
+}
+
+.location-create-container {
+  display: block;
+  width: 100%;
+}
+
+.location-create-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.cancel-create-button {
+  align-self: flex-start;
+}
+
+.add-location-create-button {
+  align-self: flex-end;
+}
