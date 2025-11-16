@@ -2,6 +2,8 @@ FROM hapiproject/hapi:v6.6.0-tomcat
 
 USER root
 RUN apt-get update && apt-get install -y curl
+
+COPY ./tomcat/hapi_server.xml /opt/bitnami/tomcat/conf/server.xml
 RUN groupadd tomcat; \
     groupadd tomcat-ssl-cert -g 8443; \ 
     useradd -M -s /bin/bash -u 8443 tomcat_admin; \
@@ -22,8 +24,6 @@ RUN groupadd tomcat; \
     chmod g-w,o-rwx /opt/bitnami/tomcat/conf/tomcat-users.xml; \
     chmod g-w,o-rwx /opt/bitnami/tomcat/conf/web.xml;\
     chown -R tomcat_admin:tomcat /bitnami/tomcat/
-
-COPY ./tomcat/hapi_server.xml /opt/bitnami/tomcat/conf/server.xml
 
 # Ensure the target directory exists
 RUN mkdir -p /opt/openelis/config
