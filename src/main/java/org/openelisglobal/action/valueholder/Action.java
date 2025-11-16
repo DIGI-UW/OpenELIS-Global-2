@@ -1,3 +1,4 @@
+
 /**
  * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
  * you may not use this file except in compliance with the License. You may obtain a copy of the
@@ -13,35 +14,17 @@
  */
 package org.openelisglobal.action.valueholder;
 
-import jakarta.persistence.AttributeOverride;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import org.hibernate.annotations.GenericGenerator;
-import org.hibernate.annotations.Parameter;
-import org.hibernate.annotations.Type;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
 
-@Entity
-@Table(name = "action")
-@AttributeOverride(name = "lastupdated", column = @Column(name = "lastupdated"))
 public class Action extends BaseObject<String> {
 
-    @Id
-    @GenericGenerator(name = "action_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "action_seq"))
-    @GeneratedValue(generator = "action_seq_gen ")
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
-    @Column(name = "id", precision = 10, scale = 0)
+    private String code;
+
     private String id;
 
-    @Column(name = "code", nullable = false, length = 10)
-    private String code;
-    @Column(name = "description", nullable = false, length = 256)
     private String description;
-    @Column(name = "type", nullable = false, length = 10)
+
     private String type;
 
     // (concatenate action code name/desc)
