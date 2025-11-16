@@ -23,13 +23,13 @@ RUN groupadd tomcat; \
     chmod g-w,o-rwx /opt/bitnami/tomcat/conf/web.xml;\
     chown -R tomcat_admin:tomcat /bitnami/tomcat/
 
-COPY ../tomcat/hapi_server.xml /usr/local/tomcat/conf/server.xml
+COPY ./tomcat/hapi_server.xml /usr/local/tomcat/conf/server.xml
 
 # Ensure the target directory exists
 RUN mkdir -p /opt/openelis/config
 
 # Copy your HAPI application YAML into the image
-COPY ./hapi_application.yaml /opt/openelis/config/hapi_application.yaml
+COPY ./fhir/hapi_application.yaml /opt/openelis/config/hapi_application.yaml
 
 # Ensure proper permissions so tomcat can read it
 RUN chown tomcat_admin:tomcat /opt/openelis/config/hapi_application.yaml \

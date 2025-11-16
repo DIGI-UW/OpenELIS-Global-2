@@ -4,9 +4,9 @@ FROM postgres:14.4
 RUN apt-get update && apt-get install -y gettext-base && rm -rf /var/lib/apt/lists/*
 # Copy initialization scripts and data files into the container
 # PostgreSQL will automatically run any *.sql or *.sh files in this folder
-COPY ./dbInit /docker-entrypoint-initdb.d
-COPY ../volume/database/dbInit/OpenELIS-Global.sql /docker-entrypoint-initdb.d/OpenELIS-Global.sql
-COPY ../volume/database/dbInit/siteInfo.sql /docker-entrypoint-initdb.d/siteInfo.sql
+COPY ./db/dbInit /docker-entrypoint-initdb.d
+COPY ./volume/database/dbInit/OpenELIS-Global.sql /docker-entrypoint-initdb.d/OpenELIS-Global.sql
+COPY ./volume/database/dbInit/siteInfo.sql /docker-entrypoint-initdb.d/siteInfo.sql
 
 RUN chmod -R 755 /docker-entrypoint-initdb.d \
     && chown -R postgres:postgres /docker-entrypoint-initdb.d
