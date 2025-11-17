@@ -108,8 +108,8 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
         // Then: Expect 201 Created with room ID in response
         mockMvc.perform(post("/rest/storage/rooms").contentType(MediaType.APPLICATION_JSON).content(requestBody))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.code").value(uniqueCode))
-                .andExpect(jsonPath("$.name").value("Main Laboratory")).andExpect(jsonPath("$.fhirUuid").exists());
+                .andExpect(jsonPath("$.code").value(uniqueCode)).andExpect(jsonPath("$.name").value("Main Laboratory"))
+                .andExpect(jsonPath("$.fhirUuid").exists());
     }
 
     /**
