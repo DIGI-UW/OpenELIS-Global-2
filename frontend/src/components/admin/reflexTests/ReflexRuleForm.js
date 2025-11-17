@@ -521,8 +521,7 @@ function ReflexRule() {
 
                           <Column lg={16} sm={3}>
                             {" "}
-                            &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
-                            &nbsp;{" "}
+                            &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
                           </Column>
                           <Column lg={16} sm={3}>
                             <Select
@@ -548,13 +547,11 @@ function ReflexRule() {
                           </Column>
                           <Column lg={16}>
                             {" "}
-                            &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
-                            &nbsp;{" "}
+                            &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
                           </Column>
                           <Column lg={16}>
                             {" "}
-                            &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
-                            &nbsp;{" "}
+                            &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
                           </Column>
                         </Grid>
                         {rule.conditions.map((condition, condition_index) => (
@@ -934,13 +931,11 @@ function ReflexRule() {
                             </Column>
                             <Column lg={16}>
                               {" "}
-                              &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
-                              &nbsp;{" "}
+                              &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
                             </Column>
                             <Column lg={16}>
                               {" "}
-                              &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
-                              &nbsp;{" "}
+                              &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
                             </Column>
                           </Grid>
                         ))}
@@ -1145,13 +1140,11 @@ function ReflexRule() {
                             </Column>
                             <Column lg={16}>
                               {" "}
-                              &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
-                              &nbsp;{" "}
+                              &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
                             </Column>
                             <Column lg={16}>
                               {" "}
-                              &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
-                              &nbsp;{" "}
+                              &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
                             </Column>
                           </Grid>
                         ))}

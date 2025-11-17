@@ -93,6 +93,36 @@
     </changeSet>
 
     <!-- ======================================================== -->
+    <!-- NOTEBOOK_COMMENT TABLE -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-comment-table" author="mozzymutesa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_comment" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_COMMENT table to store comments associated with a notebook.</comment>
+        <createTable tableName="notebook_comment">
+            <column name="id" type="INTEGER" valueSequenceNext="notebook_comment_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_notebook_comment"/>
+            </column>
+            <column name="comment_text" type="TEXT"/>
+            <column name="date_created" type="datetime" valueComputed="${now}" />
+            <column name="last_updated" type="datetime" valueComputed="${now}" />
+            <column name="notebook_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_comment_notebook"
+                             referencedTableName="notebook" referencedColumnNames="id"/>
+            </column>
+            <column name="system_user_id" type="NUMERIC(10)">
+                <constraints nullable="false" foreignKeyName="fk_comment_system_user"
+                             referencedTableName="system_user" referencedColumnNames="id"/>
+            </column>
+        </createTable>
+
+        <createSequence sequenceName="notebook_comment_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <!-- ======================================================== -->
     <!-- NOTEBOOK_TAGS TABLE -->
     <!-- ======================================================== -->
     <changeSet id="create-notebook-tags-table" author="mozzymutesa">
@@ -225,5 +255,28 @@
             <column name="local_abbrev" value="NoteExpTyp" />
             <column name="name" value="notebook_experiment_type" />
         </insert>
+    </changeSet>
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK REFERENCE TABLE ENTRY -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-reference-table-entry" author="mozzymutesa">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'NOTEBOOK'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating NOTEBOOK reference table entry to enable audit trail tracking.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq" />
+            <column name="name" value="NOTEBOOK" />
+            <column name="keep_history" value="Y" />
+            <column name="is_hl7_encoded" value="N" />
+            <column name="lastupdated" valueComputed="${now}" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='NOTEBOOK'</where>
+            </delete>
+        </rollback>
     </changeSet>
 </databaseChangeLog>
