@@ -361,7 +361,8 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         // Then: Device should be persisted with ID
         assertNotNull("Device ID should not be null", deviceId);
 
-        // Then: Retrieve device and verify code is set correctly (code ≤10 chars, no shortCode needed)
+        // Then: Retrieve device and verify code is set correctly (code ≤10 chars, no
+        // shortCode needed)
         StorageDevice retrieved = (StorageDevice) storageLocationService.get(deviceId, StorageDevice.class);
         assertNotNull("Retrieved device should not be null", retrieved);
         assertEquals("Device code should match", "TEST-DEV02", retrieved.getCode());
