@@ -3,18 +3,47 @@
 # Load Test Fixtures for OpenELIS Global
 # Single unified script for loading storage + E2E test fixtures
 # Supports both Docker and direct psql connections
-# Usage: ./load-test-fixtures.sh
+# Usage: ./load-test-fixtures.sh [--reset] [--no-verify]
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SQL_FILE="$SCRIPT_DIR/storage-test-data.sql"
+RESET_SCRIPT="$SCRIPT_DIR/reset-test-database.sh"
+
+RESET=false
+VERIFY=true
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --reset)
+            RESET=true
+            shift
+            ;;
+        --no-verify)
+            VERIFY=false
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Usage: $0 [--reset] [--no-verify]"
+            exit 1
+            ;;
+    esac
+done
 
 echo "======================================"
 echo "Loading Test Fixtures"
 echo "======================================"
 echo ""
 echo "SQL File: $SQL_FILE"
+if [ "$RESET" = true ]; then
+    echo "Reset: Enabled (will reset test data before loading)"
+fi
+if [ "$VERIFY" = true ]; then
+    echo "Verify: Enabled (will verify fixtures after loading)"
+fi
 echo ""
 
 # Check if SQL file exists
@@ -23,27 +52,66 @@ if [ ! -f "$SQL_FILE" ]; then
     exit 1
 fi
 
-# Determine execution method: Docker or direct psql
-USE_DOCKER=false
-if command -v docker &> /dev/null; then
-    if docker ps | grep -q openelisglobal-database; then
-        USE_DOCKER=true
-        echo "Using Docker container: openelisglobal-database"
+# Reset database if requested
+if [ "$RESET" = true ]; then
+    if [ ! -f "$RESET_SCRIPT" ]; then
+        echo "ERROR: Reset script not found: $RESET_SCRIPT"
+        exit 1
     fi
+    echo "Resetting test database..."
+    bash "$RESET_SCRIPT" --force
+    echo ""
 fi
 
-if [ "$USE_DOCKER" = true ]; then
-    # Load via Docker
-    echo "Loading fixtures via Docker..."
-    docker exec -i openelisglobal-database psql -U clinlims -d clinlims < "$SQL_FILE"
+# Dependency check function
+check_dependencies() {
+    local USE_DOCKER=$1
+    local DB_USER=$2
+    local DB_NAME=$3
+    local DB_HOST=$4
+    local DB_PORT=$5
 
-    if [ $? -eq 0 ]; then
-        echo ""
-        echo "✅ Fixtures loaded successfully!"
-        echo ""
-        echo "Verifying fixture data..."
-        echo ""
+    echo "Checking dependencies..."
+    
+    if [ "$USE_DOCKER" = true ]; then
+        TYPE_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
+        # Check for required statuses: Entered (any type), Not Tested (ANALYSIS), Finalized (ANALYSIS)
+        # Note: Entered may be EXTERNAL_ORDER or SAMPLE depending on database initialization
+        STATUS_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM status_of_sample WHERE (name = 'Entered' OR (name IN ('Not Tested', 'Finalized') AND status_type = 'ANALYSIS'));" 2>/dev/null | tr -d '[:space:]' || echo "0")
+    else
+        TYPE_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
+        STATUS_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM status_of_sample WHERE (name = 'Entered' OR (name IN ('Not Tested', 'Finalized') AND status_type = 'ANALYSIS'));" 2>/dev/null | tr -d '[:space:]' || echo "0")
+    fi
 
+    if [ "$TYPE_COUNT" -lt 3 ]; then
+        echo "ERROR: type_of_sample table has fewer than 3 rows ($TYPE_COUNT). Required for test fixtures."
+        echo "Please ensure database is properly initialized with sample types."
+        exit 1
+    fi
+
+    if [ "$STATUS_COUNT" -lt 3 ]; then
+        echo "ERROR: status_of_sample table missing required statuses. Found $STATUS_COUNT matching rows, need at least 3."
+        echo "Required statuses: 'Entered' (any type), 'Not Tested' (ANALYSIS), 'Finalized' (ANALYSIS)"
+        echo "Please ensure database is properly initialized with status values."
+        exit 1
+    fi
+
+    echo "✅ Dependencies verified (type_of_sample: $TYPE_COUNT rows, status_of_sample: required statuses present)"
+    echo ""
+}
+
+# Verification function
+verify_fixtures() {
+    local USE_DOCKER=$1
+    local DB_USER=$2
+    local DB_NAME=$3
+    local DB_HOST=$4
+    local DB_PORT=$5
+
+    echo "Verifying fixture data..."
+    echo ""
+
+    if [ "$USE_DOCKER" = true ]; then
         # Verify storage hierarchy
         docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "
             SELECT
@@ -78,10 +146,94 @@ if [ "$USE_DOCKER" = true ]; then
             SELECT '', 'Results', COUNT(*) FROM result WHERE id BETWEEN 30000 AND 40000;
         " | sed 's/^[[:space:]]*//' | grep -v '^$'
 
+        # Check specific counts
+        ROOM_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" | tr -d '[:space:]')
+        SAMPLE_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM sample WHERE accession_number LIKE 'E2E-%';" | tr -d '[:space:]')
+        PATIENT_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM patient WHERE external_id LIKE 'E2E-%';" | tr -d '[:space:]')
+    else
+        # Verify storage hierarchy
+        psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "
+            SELECT
+                'Storage Hierarchy' AS category,
+                'Rooms' AS type, COUNT(*) AS count FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE')
+            UNION ALL
+            SELECT '', 'Devices', COUNT(*) FROM storage_device WHERE id BETWEEN 10 AND 20
+            UNION ALL
+            SELECT '', 'Shelves', COUNT(*) FROM storage_shelf WHERE id BETWEEN 20 AND 30
+            UNION ALL
+            SELECT '', 'Racks', COUNT(*) FROM storage_rack WHERE id BETWEEN 30 AND 40
+            UNION ALL
+            SELECT '', 'Positions', COUNT(*) FROM storage_position WHERE id BETWEEN 100 AND 10000;
+        " | sed 's/^[[:space:]]*//' | grep -v '^$'
+
         echo ""
-        echo "======================================"
-        echo "✅ Verification complete!"
-        echo "======================================"
+
+        # Verify E2E test data
+        psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "
+            SELECT
+                'E2E Test Data' AS category,
+                'Patients' AS type, COUNT(*) AS count FROM patient WHERE external_id LIKE 'E2E-%'
+            UNION ALL
+            SELECT '', 'Samples', COUNT(*) FROM sample WHERE accession_number LIKE 'E2E-%'
+            UNION ALL
+            SELECT '', 'Sample Items', COUNT(*) FROM sample_item WHERE id BETWEEN 10000 AND 20000
+            UNION ALL
+            SELECT '', 'Storage Assignments', COUNT(*) FROM sample_storage_assignment WHERE id >= 1000
+            UNION ALL
+            SELECT '', 'Analyses', COUNT(*) FROM analysis WHERE id BETWEEN 20000 AND 30000
+            UNION ALL
+            SELECT '', 'Results', COUNT(*) FROM result WHERE id BETWEEN 30000 AND 40000;
+        " | sed 's/^[[:space:]]*//' | grep -v '^$'
+
+        # Check specific counts
+        ROOM_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" | tr -d '[:space:]')
+        SAMPLE_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM sample WHERE accession_number LIKE 'E2E-%';" | tr -d '[:space:]')
+        PATIENT_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM patient WHERE external_id LIKE 'E2E-%';" | tr -d '[:space:]')
+    fi
+
+    echo ""
+    
+    # Validate counts
+    if [ "$ROOM_COUNT" -lt 3 ]; then
+        echo "⚠️  WARNING: Expected 3 test rooms, found $ROOM_COUNT"
+    fi
+    if [ "$SAMPLE_COUNT" -lt 10 ]; then
+        echo "⚠️  WARNING: Expected 10+ test samples, found $SAMPLE_COUNT"
+    fi
+    if [ "$PATIENT_COUNT" -lt 3 ]; then
+        echo "⚠️  WARNING: Expected 3 test patients, found $PATIENT_COUNT"
+    fi
+}
+
+# Determine execution method: Docker or direct psql
+USE_DOCKER=false
+if command -v docker &> /dev/null; then
+    if docker ps | grep -q openelisglobal-database; then
+        USE_DOCKER=true
+        echo "Using Docker container: openelisglobal-database"
+    fi
+fi
+
+if [ "$USE_DOCKER" = true ]; then
+    # Check dependencies before loading
+    check_dependencies true "" "" "" ""
+
+    # Load via Docker
+    echo "Loading fixtures via Docker..."
+    docker exec -i openelisglobal-database psql -U clinlims -d clinlims < "$SQL_FILE"
+
+    if [ $? -eq 0 ]; then
+        echo ""
+        echo "✅ Fixtures loaded successfully!"
+        echo ""
+        
+        if [ "$VERIFY" = true ]; then
+            verify_fixtures true "" "" "" ""
+            echo "======================================"
+            echo "✅ Verification complete!"
+            echo "======================================"
+        fi
+        
         echo ""
         echo "Test data ready for:"
         echo "  - Manual testing"
@@ -113,6 +265,10 @@ else
     echo "Database: $DB_NAME@$DB_HOST:$DB_PORT"
     echo "User: $DB_USER"
     echo ""
+
+    # Check dependencies before loading
+    check_dependencies false "$DB_USER" "$DB_NAME" "$DB_HOST" "$DB_PORT"
+
     echo "Loading test data..."
     echo ""
 
@@ -125,47 +281,13 @@ else
         echo "✅ Test data loaded successfully!"
         echo "======================================"
         echo ""
-        echo "Verifying fixture data..."
-        echo ""
-
-        # Verify storage hierarchy
-        psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "
-            SELECT
-                'Storage Hierarchy' AS category,
-                'Rooms' AS type, COUNT(*) AS count FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE')
-            UNION ALL
-            SELECT '', 'Devices', COUNT(*) FROM storage_device WHERE id BETWEEN 10 AND 20
-            UNION ALL
-            SELECT '', 'Shelves', COUNT(*) FROM storage_shelf WHERE id BETWEEN 20 AND 30
-            UNION ALL
-            SELECT '', 'Racks', COUNT(*) FROM storage_rack WHERE id BETWEEN 30 AND 40
-            UNION ALL
-            SELECT '', 'Positions', COUNT(*) FROM storage_position WHERE id BETWEEN 100 AND 10000;
-        " | sed 's/^[[:space:]]*//' | grep -v '^$'
-
-        echo ""
-
-        # Verify E2E test data
-        psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "
-            SELECT
-                'E2E Test Data' AS category,
-                'Patients' AS type, COUNT(*) AS count FROM patient WHERE external_id LIKE 'E2E-%'
-            UNION ALL
-            SELECT '', 'Samples', COUNT(*) FROM sample WHERE accession_number LIKE 'E2E-%'
-            UNION ALL
-            SELECT '', 'Sample Items', COUNT(*) FROM sample_item WHERE id BETWEEN 10000 AND 20000
-            UNION ALL
-            SELECT '', 'Storage Assignments', COUNT(*) FROM sample_storage_assignment WHERE id >= 1000
-            UNION ALL
-            SELECT '', 'Analyses', COUNT(*) FROM analysis WHERE id BETWEEN 20000 AND 30000
-            UNION ALL
-            SELECT '', 'Results', COUNT(*) FROM result WHERE id BETWEEN 30000 AND 40000;
-        " | sed 's/^[[:space:]]*//' | grep -v '^$'
-
-        echo ""
-        echo "======================================"
-        echo "✅ Verification complete!"
-        echo "======================================"
+        
+        if [ "$VERIFY" = true ]; then
+            verify_fixtures false "$DB_USER" "$DB_NAME" "$DB_HOST" "$DB_PORT"
+            echo "======================================"
+            echo "✅ Verification complete!"
+            echo "======================================"
+        fi
     else
         echo ""
         echo "======================================"

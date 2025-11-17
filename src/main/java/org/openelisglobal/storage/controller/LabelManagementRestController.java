@@ -77,8 +77,8 @@ public class LabelManagementRestController extends BaseRestController {
             String currentShortCode = getCurrentShortCode(location);
 
             // Validate format
-            if (form.getShortCode() != null && !form.getShortCode().trim().isEmpty()) {
-                var formatResult = shortCodeValidationService.validateFormat(form.getShortCode());
+            if (form.getCode() != null && !form.getCode().trim().isEmpty()) {
+                var formatResult = shortCodeValidationService.validateFormat(form.getCode());
                 if (!formatResult.isValid()) {
                     Map<String, Object> error = new HashMap<>();
                     error.put("error", formatResult.getErrorMessage());
@@ -273,11 +273,11 @@ public class LabelManagementRestController extends BaseRestController {
      */
     private String getCurrentShortCode(Object location) {
         if (location instanceof StorageDevice) {
-            return ((StorageDevice) location).getShortCode();
+            return ((StorageDevice) location).getCode();
         } else if (location instanceof StorageShelf) {
-            return ((StorageShelf) location).getShortCode();
+            return ((StorageShelf) location).getCode();
         } else if (location instanceof StorageRack) {
-            return ((StorageRack) location).getShortCode();
+            return ((StorageRack) location).getCode();
         }
         return null;
     }
@@ -288,15 +288,15 @@ public class LabelManagementRestController extends BaseRestController {
     private void updateShortCodeInDatabase(Object location, String shortCode) {
         if (location instanceof StorageDevice) {
             StorageDevice device = (StorageDevice) location;
-            device.setShortCode(shortCode);
+            device.setCode(shortCode);
             storageDeviceDAO.update(device);
         } else if (location instanceof StorageShelf) {
             StorageShelf shelf = (StorageShelf) location;
-            shelf.setShortCode(shortCode);
+            shelf.setCode(shortCode);
             storageShelfDAO.update(shelf);
         } else if (location instanceof StorageRack) {
             StorageRack rack = (StorageRack) location;
-            rack.setShortCode(shortCode);
+            rack.setCode(shortCode);
             storageRackDAO.update(rack);
         }
     }

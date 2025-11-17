@@ -75,25 +75,20 @@ Cypress.Commands.add("waitForBackend", (restEndpoint = null) => {
 });
 
 /**
- * Load storage test fixtures (only if not already loaded)
- * Usage: cy.loadStorageFixtures()
- */
-Cypress.Commands.add("loadStorageFixtures", () => {
-  cy.task("loadStorageTestData");
-});
-
-/**
  * Check if storage test fixtures already exist
  * Usage: cy.checkStorageFixturesExist()
+ *
+ * Note: loadStorageFixtures and cleanStorageFixtures are defined in
+ * load-storage-fixtures.js to avoid duplication
  */
 Cypress.Commands.add("checkStorageFixturesExist", () => {
   return cy.task("checkStorageFixturesExist");
 });
 
 /**
- * Clean storage test fixtures
- * Usage: cy.cleanStorageFixtures()
+ * Verify storage test fixtures are complete
+ * Usage: cy.verifyStorageFixtures()
  */
-Cypress.Commands.add("cleanStorageFixtures", () => {
-  cy.task("cleanStorageTestData");
+Cypress.Commands.add("verifyStorageFixtures", () => {
+  return cy.task("verifyFixtures");
 });

@@ -314,11 +314,10 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
 
         // Given: Create device with shortCode (using test-specific prefix)
         StorageDevice device = new StorageDevice();
-        device.setCode("TEST-DEV01");
         device.setName("Test Device 01");
         device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(parentRoom);
-        device.setShortCode("test-frz01"); // Lowercase, should be converted to uppercase
+        device.setCode("test-frz01"); // Lowercase, should be converted to uppercase
         device.setActive(true);
         device.setSysUserIdValue(1); // Required field
 
@@ -331,8 +330,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         // Then: Retrieve device and verify shortCode was normalized to uppercase
         StorageDevice retrieved = (StorageDevice) storageLocationService.get(deviceId, StorageDevice.class);
         assertNotNull("Retrieved device should not be null", retrieved);
-        assertEquals("Short code should be normalized to uppercase", "TEST-FRZ01", retrieved.getShortCode());
-        assertEquals("Device code should match", "TEST-DEV01", retrieved.getCode());
+        assertEquals("Code should be normalized to uppercase", "TEST-FRZ01", retrieved.getCode());
     }
 
     /**
@@ -367,7 +365,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         // labels)
         StorageDevice retrieved = (StorageDevice) storageLocationService.get(deviceId, StorageDevice.class);
         assertNotNull("Retrieved device should not be null", retrieved);
-        assertNull("Short code should be null when code ≤10 chars", retrieved.getShortCode());
+        assertNull("Short code should be null when code ≤10 chars", retrieved.getCode());
         assertEquals("Device code should match", "TEST-DEV02", retrieved.getCode());
     }
 
@@ -424,7 +422,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device1.setName("Test Device 03");
         device1.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device1.setParentRoom(parentRoom);
-        device1.setShortCode("TEST-DUP");
+        device1.setCode("TEST-DUP");
         device1.setActive(true);
         device1.setSysUserIdValue(1); // Required field
         Integer deviceId1 = storageLocationService.insert(device1);
@@ -436,7 +434,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device2.setName("Test Device 04");
         device2.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device2.setParentRoom(parentRoom);
-        device2.setShortCode("TEST-DUP"); // Duplicate
+        device2.setCode("TEST-DUP"); // Duplicate
         device2.setActive(true);
         device2.setSysUserIdValue(1); // Required field
 
@@ -474,7 +472,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device.setName("Test Device 05");
         device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(parentRoom);
-        device.setShortCode("TEST-OLD");
+        device.setCode("TEST-OLD");
         device.setActive(true);
         device.setSysUserIdValue(1); // Required field
         Integer deviceId = storageLocationService.insert(device);
@@ -482,7 +480,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
 
         // Given: Update device with new shortCode (lowercase, should be converted)
         StorageDevice updatedDevice = (StorageDevice) storageLocationService.get(deviceId, StorageDevice.class);
-        updatedDevice.setShortCode("test-new"); // Lowercase
+        updatedDevice.setCode("test-new"); // Lowercase
 
         // When: Update device through service layer
         storageLocationService.update(updatedDevice);
@@ -490,7 +488,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         // Then: Retrieve device and verify shortCode was updated and normalized
         StorageDevice retrieved = (StorageDevice) storageLocationService.get(deviceId, StorageDevice.class);
         assertNotNull("Retrieved device should not be null", retrieved);
-        assertEquals("Short code should be updated and normalized to uppercase", "TEST-NEW", retrieved.getShortCode());
+        assertEquals("Short code should be updated and normalized to uppercase", "TEST-NEW", retrieved.getCode());
     }
 
     /**
@@ -508,7 +506,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         StorageShelf shelf = new StorageShelf();
         shelf.setLabel("TEST-SHELF01");
         shelf.setParentDevice(parentDevice);
-        shelf.setShortCode("test-sha01"); // Lowercase, should be converted
+        shelf.setCode("test-sha01"); // Lowercase, should be converted
         shelf.setActive(true);
         shelf.setSysUserIdValue(1); // Required field
 
@@ -521,7 +519,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         // Then: Retrieve shelf and verify shortCode was normalized
         StorageShelf retrieved = (StorageShelf) storageLocationService.get(shelfId, StorageShelf.class);
         assertNotNull("Retrieved shelf should not be null", retrieved);
-        assertEquals("Short code should be normalized to uppercase", "TEST-SHA01", retrieved.getShortCode());
+        assertEquals("Short code should be normalized to uppercase", "TEST-SHA01", retrieved.getCode());
     }
 
     /**
@@ -541,7 +539,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         rack.setParentShelf(parentShelf);
         rack.setRows(8);
         rack.setColumns(12);
-        rack.setShortCode("test-rkr01"); // Lowercase, should be converted
+        rack.setCode("test-rkr01"); // Lowercase, should be converted
         rack.setActive(true);
         rack.setSysUserIdValue(1); // Required field
 
@@ -554,7 +552,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         // Then: Retrieve rack and verify shortCode was normalized
         StorageRack retrieved = (StorageRack) storageLocationService.get(rackId, StorageRack.class);
         assertNotNull("Retrieved rack should not be null", retrieved);
-        assertEquals("Short code should be normalized to uppercase", "TEST-RKR01", retrieved.getShortCode());
+        assertEquals("Short code should be normalized to uppercase", "TEST-RKR01", retrieved.getCode());
     }
 
     /**
@@ -572,7 +570,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         StorageShelf shelf = new StorageShelf();
         shelf.setLabel("TEST-SHELF02");
         shelf.setParentDevice(parentDevice);
-        shelf.setShortCode("TEST-OLD2");
+        shelf.setCode("TEST-OLD2");
         shelf.setActive(true);
         shelf.setSysUserIdValue(1); // Required field
         Integer shelfId = storageLocationService.insert(shelf);
@@ -580,7 +578,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
 
         // Given: Update shelf with new shortCode
         StorageShelf updatedShelf = (StorageShelf) storageLocationService.get(shelfId, StorageShelf.class);
-        updatedShelf.setShortCode("TEST-NEW2");
+        updatedShelf.setCode("TEST-NEW2");
 
         // When: Update shelf through service layer
         storageLocationService.update(updatedShelf);
@@ -588,7 +586,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         // Then: Retrieve shelf and verify shortCode was updated
         StorageShelf retrieved = (StorageShelf) storageLocationService.get(shelfId, StorageShelf.class);
         assertNotNull("Retrieved shelf should not be null", retrieved);
-        assertEquals("Short code should be updated", "TEST-NEW2", retrieved.getShortCode());
+        assertEquals("Short code should be updated", "TEST-NEW2", retrieved.getCode());
     }
 
     /**
@@ -608,7 +606,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         rack.setParentShelf(parentShelf);
         rack.setRows(8);
         rack.setColumns(12);
-        rack.setShortCode("TEST-OLD3");
+        rack.setCode("TEST-OLD3");
         rack.setActive(true);
         rack.setSysUserIdValue(1); // Required field
         Integer rackId = storageLocationService.insert(rack);
@@ -616,7 +614,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
 
         // Given: Update rack with new shortCode
         StorageRack updatedRack = (StorageRack) storageLocationService.get(rackId, StorageRack.class);
-        updatedRack.setShortCode("TEST-NEW3");
+        updatedRack.setCode("TEST-NEW3");
 
         // When: Update rack through service layer
         storageLocationService.update(updatedRack);
@@ -624,6 +622,6 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         // Then: Retrieve rack and verify shortCode was updated
         StorageRack retrieved = (StorageRack) storageLocationService.get(rackId, StorageRack.class);
         assertNotNull("Retrieved rack should not be null", retrieved);
-        assertEquals("Short code should be updated", "TEST-NEW3", retrieved.getShortCode());
+        assertEquals("Short code should be updated", "TEST-NEW3", retrieved.getCode());
     }
 }

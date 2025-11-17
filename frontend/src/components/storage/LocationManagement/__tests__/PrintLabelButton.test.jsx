@@ -152,10 +152,10 @@ describe("PrintLabelButton", () => {
   });
 
   /**
-   * T287: Test error message if shortCode missing
+   * T290: Test error message if code missing or invalid
    * Expected: Error message displayed when backend returns 400 with JSON error
    */
-  test("testErrorMessageIfShortCodeMissing", async () => {
+  test("testErrorMessageIfCodeMissingOrInvalid", async () => {
     // Mock fetch to return JSON error response (not PDF)
     global.fetch.mockResolvedValueOnce({
       ok: false,
@@ -166,7 +166,7 @@ describe("PrintLabelButton", () => {
       json: () =>
         Promise.resolve({
           error:
-            "Short code is required for label printing. Please set short code in Edit form first.",
+            "Code is required for label printing. Please set code in Edit form first.",
         }),
     });
 
@@ -201,9 +201,9 @@ describe("PrintLabelButton", () => {
       expect(mockOnPrintError).toHaveBeenCalled();
     });
 
-    // Verify error callback was called with error containing "Short code"
+    // Verify error callback was called with error containing "Code"
     const errorCall = mockOnPrintError.mock.calls[0][0];
-    expect(errorCall.message).toContain("Short code");
+    expect(errorCall.message).toContain("Code");
   });
 
   /**

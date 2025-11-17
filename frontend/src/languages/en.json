@@ -1757,6 +1757,8 @@
   "barcode.additionalInvalidLevels.warning": "Additional invalid levels detected",
   "barcode.additionalInvalidLevels.message": "The barcode contains levels beyond the valid portion. Only valid levels are pre-filled.",
   "label.printLabel": "Print Label",
+  "storage.location.code": "Code",
+  "storage.location.code.helper": "Max 10 characters, alphanumeric with hyphens/underscores",
   "label.shortCode": "Short Code",
 <<<<<<< HEAD
   "label.print": "Print Label",

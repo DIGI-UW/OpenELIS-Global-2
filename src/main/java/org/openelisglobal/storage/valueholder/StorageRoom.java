@@ -38,7 +38,7 @@ public class StorageRoom extends BaseObject<Integer> {
     @Column(name = "NAME", length = 255, nullable = false)
     private String name;
 
-    @Column(name = "CODE", length = 50, nullable = false, unique = true)
+    @Column(name = "CODE", length = 10, nullable = false, unique = true)
     private String code;
 
     @Column(name = "DESCRIPTION")

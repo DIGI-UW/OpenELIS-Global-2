@@ -189,7 +189,7 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         // Given: Test device exists
         String deviceId = createTestDevice();
         ShortCodeUpdateForm form = new ShortCodeUpdateForm();
-        form.setShortCode("FRZ01");
+        form.setCode("FRZ01");
 
         // When: PUT /rest/storage/device/{id}/short-code
         // Then: Expect 200 OK with short code in response
@@ -207,7 +207,7 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         // Given: Test device exists
         String deviceId = createTestDevice();
         ShortCodeUpdateForm form = new ShortCodeUpdateForm();
-        form.setShortCode("INVALID-CODE-TOO-LONG"); // Exceeds 10 characters
+        form.setCode("INVALID-CODE-TOO-LONG"); // Exceeds 10 characters
 
         // When: PUT /rest/storage/device/{id}/short-code
         // Then: Expect 400 Bad Request
@@ -224,7 +224,7 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
     public void testPutShortCodeEndpoint_LocationNotFound_Returns404() throws Exception {
         // Given: Non-existent device ID
         ShortCodeUpdateForm form = new ShortCodeUpdateForm();
-        form.setShortCode("FRZ01");
+        form.setCode("FRZ01");
 
         // When: PUT /rest/storage/device/99999/short-code
         // Then: Expect 404 Not Found
@@ -248,8 +248,8 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         assertNotNull("Device should have code", device.getCode());
         assertNotNull("Device should have parentRoom", device.getParentRoom());
         assertNotNull("ParentRoom should have code", device.getParentRoom().getCode());
-        assertNotNull("Device should have shortCode", device.getShortCode());
-        assertEquals("Device shortCode should be FRZ01", "FRZ01", device.getShortCode());
+        assertNotNull("Device should have shortCode", device.getCode());
+        assertEquals("Device shortCode should be FRZ01", "FRZ01", device.getCode());
 
         // When: POST /rest/storage/device/{id}/print-label (no shortCode parameter -
         // uses entity)
@@ -385,7 +385,7 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         // Verify device has shortCode
         StorageDevice device = storageDeviceDAO.get(Integer.parseInt(deviceId)).orElse(null);
         assertNotNull("Device should exist", device);
-        assertEquals("Device should have shortCode FRZ01", "FRZ01", device.getShortCode());
+        assertEquals("Device should have shortCode FRZ01", "FRZ01", device.getCode());
 
         // When: POST /rest/storage/device/{id}/print-label (no shortCode parameter)
         // Then: PDF is generated using shortCode from entity

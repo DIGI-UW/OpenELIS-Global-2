@@ -50,7 +50,6 @@ const EditLocationModal = ({
     rows: "",
     columns: "",
     positionSchemaHint: "",
-    shortCode: "",
   });
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -98,7 +97,6 @@ const EditLocationModal = ({
       rows: loc.rows || "",
       columns: loc.columns || "",
       positionSchemaHint: loc.positionSchemaHint || "",
-      shortCode: loc.shortCode || "",
     };
   };
 
@@ -134,7 +132,6 @@ const EditLocationModal = ({
               rows: fullLocation.rows || "",
               columns: fullLocation.columns || "",
               positionSchemaHint: fullLocation.positionSchemaHint || "",
-              shortCode: fullLocation.shortCode || "",
             });
             setError(null);
             setIsLoading(false);
@@ -206,27 +203,28 @@ const EditLocationModal = ({
       const payload = {};
       if (locationType === "room") {
         payload.name = formData.name;
+        payload.code = formData.code || null;
         payload.description = formData.description || null;
         payload.active = formData.active;
       } else if (locationType === "device") {
         payload.name = formData.name;
+        payload.code = formData.code || null;
         payload.type = formData.type;
         payload.temperatureSetting = formData.temperatureSetting || null;
         payload.capacityLimit = formData.capacityLimit || null;
         payload.active = formData.active;
-        payload.shortCode = formData.shortCode || null;
       } else if (locationType === "shelf") {
         payload.label = formData.label;
+        payload.code = formData.code || null;
         payload.capacityLimit = formData.capacityLimit || null;
         payload.active = formData.active;
-        payload.shortCode = formData.shortCode || null;
       } else if (locationType === "rack") {
         payload.label = formData.label;
+        payload.code = formData.code || null;
         payload.rows = formData.rows;
         payload.columns = formData.columns;
         payload.positionSchemaHint = formData.positionSchemaHint || null;
         payload.active = formData.active;
-        payload.shortCode = formData.shortCode || null;
       }
 
       // Use putToOpenElisServer utility
@@ -333,8 +331,17 @@ const EditLocationModal = ({
                   defaultMessage: "Code",
                 })}
                 value={formData.code || ""}
-                disabled
-                readOnly
+                onChange={(e) => {
+                  // Auto-uppercase on input and limit to 10 chars
+                  const value = e.target.value.toUpperCase().slice(0, 10);
+                  handleFieldChange("code", value);
+                }}
+                maxLength={10}
+                helperText={intl.formatMessage({
+                  id: "storage.location.code.helper",
+                  defaultMessage:
+                    "Max 10 characters, alphanumeric with hyphens/underscores",
+                })}
               />
               <TextArea
                 id="room-description"
@@ -384,8 +391,17 @@ const EditLocationModal = ({
                   defaultMessage: "Code",
                 })}
                 value={formData.code || ""}
-                disabled
-                readOnly
+                onChange={(e) => {
+                  // Auto-uppercase on input and limit to 10 chars
+                  const value = e.target.value.toUpperCase().slice(0, 10);
+                  handleFieldChange("code", value);
+                }}
+                maxLength={10}
+                helperText={intl.formatMessage({
+                  id: "storage.location.code.helper",
+                  defaultMessage:
+                    "Max 10 characters, alphanumeric with hyphens/underscores",
+                })}
               />
               <TextInput
                 id="device-parent-room"
@@ -449,37 +465,6 @@ const EditLocationModal = ({
                 }
                 type="number"
               />
-              <TextInput
-                id="device-short-code"
-                data-testid="edit-location-device-short-code"
-                labelText={intl.formatMessage({
-                  id: "label.shortCode",
-                  defaultMessage: "Short Code",
-                })}
-                value={formData.shortCode || ""}
-                onChange={(e) => {
-                  // Auto-uppercase on input
-                  const value = e.target.value.toUpperCase();
-                  handleFieldChange("shortCode", value);
-                }}
-                maxLength={10}
-                required={
-                  location && location.code && location.code.length > 10
-                }
-                helperText={
-                  location && location.code && location.code.length > 10
-                    ? intl.formatMessage({
-                        id: "label.shortCode.required.helper",
-                        defaultMessage:
-                          "Required when code > 10 characters. Max 10 characters, alphanumeric with hyphens/underscores",
-                      })
-                    : intl.formatMessage({
-                        id: "label.shortCode.optional.helper",
-                        defaultMessage:
-                          "Optional (code will be used if ≤10 chars). Max 10 characters, alphanumeric with hyphens/underscores",
-                      })
-                }
-              />
               <Toggle
                 id="device-active"
                 data-testid="edit-location-device-active"
@@ -537,33 +522,24 @@ const EditLocationModal = ({
                 type="number"
               />
               <TextInput
-                id="shelf-short-code"
-                data-testid="edit-location-shelf-short-code"
+                id="shelf-code"
+                data-testid="edit-location-shelf-code"
                 labelText={intl.formatMessage({
-                  id: "label.shortCode",
-                  defaultMessage: "Short Code",
+                  id: "storage.location.code",
+                  defaultMessage: "Code",
                 })}
-                value={formData.shortCode || ""}
+                value={formData.code || ""}
                 onChange={(e) => {
-                  // Auto-uppercase on input
-                  const value = e.target.value.toUpperCase();
-                  handleFieldChange("shortCode", value);
+                  // Auto-uppercase on input and limit to 10 chars
+                  const value = e.target.value.toUpperCase().slice(0, 10);
+                  handleFieldChange("code", value);
                 }}
                 maxLength={10}
-                required={formData.label && formData.label.length > 10}
-                helperText={
-                  formData.label && formData.label.length > 10
-                    ? intl.formatMessage({
-                        id: "label.shortCode.required.helper",
-                        defaultMessage:
-                          "Required when label > 10 characters. Max 10 characters, alphanumeric with hyphens/underscores",
-                      })
-                    : intl.formatMessage({
-                        id: "label.shortCode.optional.helper",
-                        defaultMessage:
-                          "Optional (label will be used if ≤10 chars). Max 10 characters, alphanumeric with hyphens/underscores",
-                      })
-                }
+                helperText={intl.formatMessage({
+                  id: "storage.location.code.helper",
+                  defaultMessage:
+                    "Max 10 characters, alphanumeric with hyphens/underscores",
+                })}
               />
               <Toggle
                 id="shelf-active"
@@ -651,33 +627,24 @@ const EditLocationModal = ({
                 }
               />
               <TextInput
-                id="rack-short-code"
-                data-testid="edit-location-rack-short-code"
+                id="rack-code"
+                data-testid="edit-location-rack-code"
                 labelText={intl.formatMessage({
-                  id: "label.shortCode",
-                  defaultMessage: "Short Code",
+                  id: "storage.location.code",
+                  defaultMessage: "Code",
                 })}
-                value={formData.shortCode || ""}
+                value={formData.code || ""}
                 onChange={(e) => {
-                  // Auto-uppercase on input
-                  const value = e.target.value.toUpperCase();
-                  handleFieldChange("shortCode", value);
+                  // Auto-uppercase on input and limit to 10 chars
+                  const value = e.target.value.toUpperCase().slice(0, 10);
+                  handleFieldChange("code", value);
                 }}
                 maxLength={10}
-                required={formData.label && formData.label.length > 10}
-                helperText={
-                  formData.label && formData.label.length > 10
-                    ? intl.formatMessage({
-                        id: "label.shortCode.required.helper",
-                        defaultMessage:
-                          "Required when label > 10 characters. Max 10 characters, alphanumeric with hyphens/underscores",
-                      })
-                    : intl.formatMessage({
-                        id: "label.shortCode.optional.helper",
-                        defaultMessage:
-                          "Optional (label will be used if ≤10 chars). Max 10 characters, alphanumeric with hyphens/underscores",
-                      })
-                }
+                helperText={intl.formatMessage({
+                  id: "storage.location.code.helper",
+                  defaultMessage:
+                    "Max 10 characters, alphanumeric with hyphens/underscores",
+                })}
               />
               <Toggle
                 id="rack-active"
@@ -708,24 +675,10 @@ const EditLocationModal = ({
           disabled={
             isSubmitting ||
             (locationType === "room" && !formData.name) ||
-            (locationType === "device" &&
-              (!formData.name ||
-                (location &&
-                  location.code &&
-                  location.code.length > 10 &&
-                  !formData.shortCode))) ||
-            (locationType === "shelf" &&
-              (!formData.label ||
-                (formData.label &&
-                  formData.label.length > 10 &&
-                  !formData.shortCode))) ||
+            (locationType === "device" && !formData.name) ||
+            (locationType === "shelf" && !formData.label) ||
             (locationType === "rack" &&
-              (!formData.label ||
-                !formData.rows ||
-                !formData.columns ||
-                (formData.label &&
-                  formData.label.length > 10 &&
-                  !formData.shortCode)))
+              (!formData.label || !formData.rows || !formData.columns))
           }
           data-testid="edit-location-save-button"
         >
