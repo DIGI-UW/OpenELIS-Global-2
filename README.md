@@ -137,7 +137,27 @@ accessing any of these links, simply follow these steps:
 
         mvn spotless:apply
 
-#### To ensure your code passes the same checks as the CI pipeline, you can run the following commands from your project directory
+#### To ensure your code passes the same checks as the CI pipeline
+
+**Recommended: Use the CI check scripts** (replicates exact CI workflow):
+
+```bash
+# Run backend CI checks (formatting + build + tests)
+./scripts/run-ci-checks.sh
+
+# Run frontend CI checks (formatting + unit tests + E2E tests)
+./scripts/run-frontend-ci-checks.sh
+
+# Run both (full CI simulation)
+./scripts/run-ci-checks.sh && ./scripts/run-frontend-ci-checks.sh
+```
+
+**Options:**
+- `--skip-submodules`: Skip submodule build (faster, for quick checks)
+- `--skip-tests`: Skip tests (formatting only)
+- `--skip-e2e`: Skip E2E tests (frontend only)
+
+**Manual commands** (if you prefer to run steps individually):
 
 1.  Run Code Formatting Check (Backend). This command checks code formatting and
     performs validation similar to the CI
