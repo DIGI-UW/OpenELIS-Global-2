@@ -17,7 +17,6 @@ public class NoteBookFullDisplayBean extends NoteBookDisplayBean {
     private List<SampleDisplayBean> samples;
     private Integer technicianId;
     private String technicianName;
-    private Integer patientId;
 
     public String getProtocol() {
         return protocol;
@@ -89,14 +88,6 @@ public class NoteBookFullDisplayBean extends NoteBookDisplayBean {
 
     public void setTechnicianName(String technicianName) {
         this.technicianName = technicianName;
-    }
-
-    public Integer getPatientId() {
-        return patientId;
-    }
-
-    public void setPatientId(Integer patientId) {
-        this.patientId = patientId;
     }
 
     public List<IdValuePair> getAnalyzers() {

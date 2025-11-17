@@ -22,7 +22,9 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
 RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     --mount=target=/var/cache/apt,type=cache,sharing=locked \
     rm -f /etc/apt/apt.conf.d/docker-clean \
-    && apt-get -y update \
+    && apt-get clean \
+    && apt-get -y update -o Acquire::Retries=3 -o Acquire::http::Timeout=30 --allow-releaseinfo-change || \
+       (sleep 5 && apt-get -y update -o Acquire::Retries=3 -o Acquire::http::Timeout=30 --allow-releaseinfo-change) \
     && apt-get -y --no-install-recommends install \
     git apache2-utils 
 
@@ -52,7 +54,7 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn dependency:go-offline 
 
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn clean install -DskipTests -Dspotless.check.skip=true
+    mvn clean install -DskipTests -Dspotless.check.skip=true -Dmaven.test.skip=true
 
 ##
 # Run Stage

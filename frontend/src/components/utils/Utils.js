@@ -131,12 +131,37 @@ export const postToOpenElisServerJsonResponse = (
       body: payLoad,
     },
   )
-    .then((response) => response.json())
+    .then((response) => {
+      // Check if response is ok (status 200-299)
+      if (!response.ok) {
+        // For error responses, try to parse JSON error message
+        return response.json().then((errorJson) => {
+          // Include status code in error response for better error handling
+          return {
+            ...errorJson,
+            status: response.status,
+            statusCode: response.status,
+            statusText: response.statusText,
+          };
+        });
+      }
+      // For successful responses, parse JSON normally
+      return response.json();
+    })
     .then((json) => {
       callback(json, extraParams);
     })
     .catch((error) => {
-      console.error(error);
+      console.error("postToOpenElisServerJsonResponse error:", error);
+      // Pass error to callback so calling code can handle it
+      callback(
+        {
+          error: error.message || "Network error",
+          message: error.message || "Network error",
+          status: 0,
+        },
+        extraParams,
+      );
     });
 };
 

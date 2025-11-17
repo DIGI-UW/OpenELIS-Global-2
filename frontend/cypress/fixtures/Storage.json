@@ -1,0 +1,240 @@
+{
+  "rooms": [
+    {
+      "id": "1",
+      "name": "Main Laboratory",
+      "code": "MAIN",
+      "description": "Primary storage facility",
+      "active": true,
+      "fhirUuid": "room-1-uuid"
+    },
+    {
+      "id": "2",
+      "name": "Secondary Laboratory",
+      "code": "SEC",
+      "description": "Secondary storage facility",
+      "active": true,
+      "fhirUuid": "room-2-uuid"
+    },
+    {
+      "id": "3",
+      "name": "Inactive Room",
+      "code": "INACTIVE",
+      "description": "Inactive storage room",
+      "active": false,
+      "fhirUuid": "room-3-uuid"
+    }
+  ],
+  "devices": [
+    {
+      "id": "1",
+      "name": "Freezer 01",
+      "code": "FRZ01",
+      "roomId": "1",
+      "roomName": "Main Laboratory",
+      "roomCode": "MAIN",
+      "deviceType": "FREEZER",
+      "active": true,
+      "fhirUuid": "device-1-uuid"
+    },
+    {
+      "id": "2",
+      "name": "Refrigerator 01",
+      "code": "REF01",
+      "roomId": "1",
+      "roomName": "Main Laboratory",
+      "roomCode": "MAIN",
+      "deviceType": "REFRIGERATOR",
+      "active": true,
+      "fhirUuid": "device-2-uuid"
+    },
+    {
+      "id": "3",
+      "name": "Cabinet 01",
+      "code": "CAB01",
+      "roomId": "1",
+      "roomName": "Main Laboratory",
+      "roomCode": "MAIN",
+      "deviceType": "CABINET",
+      "active": true,
+      "fhirUuid": "device-3-uuid"
+    },
+    {
+      "id": "4",
+      "name": "Inactive Freezer",
+      "code": "INACTIVE-FRZ",
+      "roomId": "2",
+      "roomName": "Secondary Laboratory",
+      "roomCode": "SEC",
+      "deviceType": "FREEZER",
+      "active": false,
+      "fhirUuid": "device-4-uuid"
+    }
+  ],
+  "shelves": [
+    {
+      "id": "1",
+      "label": "Shelf-A",
+      "deviceId": "1",
+      "deviceName": "Freezer 01",
+      "deviceCode": "FRZ01",
+      "roomName": "Main Laboratory",
+      "roomCode": "MAIN",
+      "active": true,
+      "fhirUuid": "shelf-1-uuid"
+    },
+    {
+      "id": "2",
+      "label": "Shelf-B",
+      "deviceId": "1",
+      "deviceName": "Freezer 01",
+      "deviceCode": "FRZ01",
+      "roomName": "Main Laboratory",
+      "roomCode": "MAIN",
+      "active": true,
+      "fhirUuid": "shelf-2-uuid"
+    },
+    {
+      "id": "3",
+      "label": "Shelf-1",
+      "deviceId": "2",
+      "deviceName": "Refrigerator 01",
+      "deviceCode": "REF01",
+      "roomName": "Main Laboratory",
+      "roomCode": "MAIN",
+      "active": true,
+      "fhirUuid": "shelf-3-uuid"
+    },
+    {
+      "id": "4",
+      "label": "Shelf-1",
+      "deviceId": "3",
+      "deviceName": "Cabinet 01",
+      "deviceCode": "CAB01",
+      "roomName": "Main Laboratory",
+      "roomCode": "MAIN",
+      "active": true,
+      "fhirUuid": "shelf-4-uuid"
+    }
+  ],
+  "racks": [
+    {
+      "id": "1",
+      "label": "RKR1",
+      "shelfId": "1",
+      "shelfLabel": "Shelf-A",
+      "deviceName": "Freezer 01",
+      "deviceCode": "FRZ01",
+      "roomName": "Main Laboratory",
+      "roomCode": "MAIN",
+      "rows": 5,
+      "columns": 5,
+      "totalPositions": 25,
+      "occupiedPositions": 5,
+      "occupancyPercentage": 20,
+      "active": true,
+      "fhirUuid": "rack-1-uuid"
+    },
+    {
+      "id": "2",
+      "label": "RKR2",
+      "shelfId": "1",
+      "shelfLabel": "Shelf-A",
+      "deviceName": "Freezer 01",
+      "deviceCode": "FRZ01",
+      "roomName": "Main Laboratory",
+      "roomCode": "MAIN",
+      "rows": 5,
+      "columns": 5,
+      "totalPositions": 25,
+      "occupiedPositions": 20,
+      "occupancyPercentage": 80,
+      "active": true,
+      "fhirUuid": "rack-2-uuid"
+    },
+    {
+      "id": "3",
+      "label": "RKR3",
+      "shelfId": "2",
+      "shelfLabel": "Shelf-B",
+      "deviceName": "Freezer 01",
+      "deviceCode": "FRZ01",
+      "roomName": "Main Laboratory",
+      "roomCode": "MAIN",
+      "rows": 5,
+      "columns": 5,
+      "totalPositions": 25,
+      "occupiedPositions": 0,
+      "occupancyPercentage": 0,
+      "active": true,
+      "fhirUuid": "rack-3-uuid"
+    },
+    {
+      "id": "4",
+      "label": "RKR1",
+      "shelfId": "3",
+      "shelfLabel": "Shelf-1",
+      "deviceName": "Refrigerator 01",
+      "deviceCode": "REF01",
+      "roomName": "Main Laboratory",
+      "roomCode": "MAIN",
+      "rows": 4,
+      "columns": 4,
+      "totalPositions": 16,
+      "occupiedPositions": 2,
+      "occupancyPercentage": 12,
+      "active": true,
+      "fhirUuid": "rack-4-uuid"
+    }
+  ],
+  "samples": [
+    {
+      "sampleId": "101",
+      "id": "101",
+      "type": "Blood",
+      "status": "active",
+      "location": "MAIN > FRZ01 > Shelf-A > RKR1 > A5",
+      "hierarchicalPath": "MAIN > FRZ01 > Shelf-A > RKR1 > A5",
+      "roomName": "Main Laboratory",
+      "roomCode": "MAIN",
+      "deviceName": "Freezer 01",
+      "deviceCode": "FRZ01",
+      "assignedBy": "admin",
+      "date": "2025-01-15T10:30:00Z"
+    },
+    {
+      "sampleId": "102",
+      "id": "102",
+      "type": "Urine",
+      "status": "active",
+      "location": "MAIN > FRZ01 > Shelf-A > RKR1 > B3",
+      "hierarchicalPath": "MAIN > FRZ01 > Shelf-A > RKR1 > B3",
+      "roomName": "Main Laboratory",
+      "roomCode": "MAIN",
+      "deviceName": "Freezer 01",
+      "deviceCode": "FRZ01",
+      "assignedBy": "technician",
+      "date": "2025-01-15T11:00:00Z"
+    },
+    {
+      "sampleId": "103",
+      "id": "103",
+      "type": "Blood",
+      "status": "disposed",
+      "location": "MAIN > REF01 > Shelf-1 > RKR1 > C2",
+      "hierarchicalPath": "MAIN > REF01 > Shelf-1 > RKR1 > C2",
+      "roomName": "Main Laboratory",
+      "roomCode": "MAIN",
+      "deviceName": "Refrigerator 01",
+      "deviceCode": "REF01",
+      "assignedBy": "admin",
+      "date": "2025-01-10T09:00:00Z"
+    }
+  ],
+  "metrics": {
+    "totalSamples": 3,
+    "active": 2,
+    "disposed": 1,
+    "storageLocations": 15
+  }
+}
