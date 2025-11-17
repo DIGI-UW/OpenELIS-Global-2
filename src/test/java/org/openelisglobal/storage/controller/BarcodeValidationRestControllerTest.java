@@ -73,17 +73,19 @@ public class BarcodeValidationRestControllerTest extends BaseWebContextSensitive
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
                 baseId + 1, "Barcode Test Freezer", deviceCode, "freezer", baseId, true, 1);
 
-        // Create shelf - use simple label without hyphens
+        // Create shelf - use simple label without hyphens (code must be ≤10 chars)
+        String shelfCode = "SHELF" + (timestamp % 100);
         jdbcTemplate.update(
-                "INSERT INTO storage_shelf (id, label, parent_device_id, active, sys_user_id, last_updated, fhir_uuid) "
-                        + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId + 2, "SHELF" + timestamp, baseId + 1, true, 1);
+                "INSERT INTO storage_shelf (id, label, code, parent_device_id, active, sys_user_id, last_updated, fhir_uuid) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                baseId + 2, "SHELF" + timestamp, shelfCode, baseId + 1, true, 1);
 
-        // Create rack - use simple label without hyphens
+        // Create rack - use simple label without hyphens (code must be ≤10 chars)
+        String rackCode = "RACK" + (timestamp % 100);
         jdbcTemplate.update(
-                "INSERT INTO storage_rack (id, label, parent_shelf_id, active, sys_user_id, last_updated, fhir_uuid) "
-                        + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId + 3, "RACK" + timestamp, baseId + 2, true, 1);
+                "INSERT INTO storage_rack (id, label, code, parent_shelf_id, active, sys_user_id, last_updated, fhir_uuid) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                baseId + 3, "RACK" + timestamp, rackCode, baseId + 2, true, 1);
 
         // Create position (Note: coordinate is singular, no active column)
         jdbcTemplate.update(

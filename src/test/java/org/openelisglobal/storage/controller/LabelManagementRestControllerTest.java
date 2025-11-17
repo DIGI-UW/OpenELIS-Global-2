@@ -123,8 +123,8 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         device.setActive(true);
 
         jdbcTemplate.update(
-                "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid, short_code) "
-                        + "VALUES (nextval('storage_device_seq'), ?, ?, 'freezer', ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid(), 'FRZ01')",
+                "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid) "
+                        + "VALUES (nextval('storage_device_seq'), ?, ?, 'freezer', ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
                 device.getName(), device.getCode(), roomId, device.getActive(), 1);
         Integer id = jdbcTemplate.queryForObject("SELECT id FROM storage_device WHERE code = ?", Integer.class,
                 device.getCode());
@@ -153,8 +153,8 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         // due to service validation,
         // so we'll create it with NULL and test the validation in the endpoint
         jdbcTemplate.update(
-                "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid, short_code) "
-                        + "VALUES (nextval('storage_device_seq'), ?, ?, 'freezer', ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid(), NULL)",
+                "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid) "
+                        + "VALUES (nextval('storage_device_seq'), ?, ?, 'freezer', ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
                 "Test Device No SC", "TEST-DEVICE-LONG-CODE-" + timestamp, roomId, true, 1);
         Integer id = jdbcTemplate.queryForObject("SELECT id FROM storage_device WHERE code = ?", Integer.class,
                 "TEST-DEVICE-LONG-CODE-" + timestamp);
@@ -178,8 +178,8 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         // Create device with code ≤10 chars and no short_code (should work - code will
         // be used for labels)
         jdbcTemplate.update(
-                "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid, short_code) "
-                        + "VALUES (nextval('storage_device_seq'), ?, ?, 'freezer', ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid(), NULL)",
+                "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid) "
+                        + "VALUES (nextval('storage_device_seq'), ?, ?, 'freezer', ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
                 "Test Device Short", "TEST-DEV01", roomId, true, 1);
         Integer id = jdbcTemplate.queryForObject("SELECT id FROM storage_device WHERE code = ?", Integer.class,
                 "TEST-DEV01");
