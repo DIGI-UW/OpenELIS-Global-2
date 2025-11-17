@@ -332,25 +332,25 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Test creating a device without shortCode - should auto-generate temporary code
-     * Expected: Device is persisted with auto-generated temporary shortCode
+     * Test creating a device without shortCode when code ≤10 chars - shortCode can be null
+     * Expected: Device is persisted with null shortCode (code will be used for labels)
      */
     @Test
-    public void testInsertDevice_WithoutShortCode_AutoGeneratesTemporaryCode() {
+    public void testInsertDevice_WithoutShortCode_CodeLeq10Chars_ShortCodeCanBeNull() {
         // Given: Get a room from fixtures to use as parent
         List<StorageRoom> rooms = storageLocationService.getRooms();
         assertFalse("Should have at least one room in fixtures", rooms.isEmpty());
         StorageRoom parentRoom = rooms.get(0);
 
-        // Given: Create device without shortCode
+        // Given: Create device without shortCode, code ≤10 chars
         StorageDevice device = new StorageDevice();
-        device.setCode("TEST-DEV02");
+        device.setCode("TEST-DEV02"); // 10 chars
         device.setName("Test Device 02");
         device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(parentRoom);
         device.setActive(true);
         device.setSysUserIdValue(1); // Required field
-        // shortCode is null - should be auto-generated
+        // shortCode is null - should be allowed since code ≤10 chars
 
         // When: Insert device through service layer
         Integer deviceId = storageLocationService.insert(device);
@@ -358,11 +358,44 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         // Then: Device should be persisted with ID
         assertNotNull("Device ID should not be null", deviceId);
 
-        // Then: Retrieve device and verify shortCode was auto-generated (starts with TMP)
+        // Then: Retrieve device and verify shortCode is null (code will be used for labels)
         StorageDevice retrieved = (StorageDevice) storageLocationService.get(deviceId, StorageDevice.class);
         assertNotNull("Retrieved device should not be null", retrieved);
-        assertNotNull("Short code should be auto-generated", retrieved.getShortCode());
-        assertTrue("Short code should start with TMP", retrieved.getShortCode().startsWith("TMP"));
+        assertNull("Short code should be null when code ≤10 chars", retrieved.getShortCode());
+        assertEquals("Device code should match", "TEST-DEV02", retrieved.getCode());
+    }
+
+    /**
+     * Test creating a device without shortCode when code > 10 chars - should throw exception
+     * Expected: Exception is thrown because shortCode is required when code > 10 chars
+     */
+    @Test
+    public void testInsertDevice_WithoutShortCode_CodeGt10Chars_ThrowsException() {
+        // Given: Get a room from fixtures to use as parent
+        List<StorageRoom> rooms = storageLocationService.getRooms();
+        assertFalse("Should have at least one room in fixtures", rooms.isEmpty());
+        StorageRoom parentRoom = rooms.get(0);
+
+        // Given: Create device without shortCode, code > 10 chars
+        StorageDevice device = new StorageDevice();
+        device.setCode("TEST-DEVICE-LONG-CODE"); // > 10 chars
+        device.setName("Test Device Long Code");
+        device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
+        device.setParentRoom(parentRoom);
+        device.setActive(true);
+        device.setSysUserIdValue(1); // Required field
+        // shortCode is null - should throw exception since code > 10 chars
+
+        // When: Insert device through service layer
+        // Then: Should throw LIMSRuntimeException
+        try {
+            storageLocationService.insert(device);
+            fail("Should have thrown exception when code > 10 chars and shortCode is missing");
+        } catch (LIMSRuntimeException e) {
+            // Expected: Service validation caught the missing shortCode
+            assertTrue("Exception message should mention short code", 
+                e.getMessage().contains("short") || e.getMessage().contains("code") || e.getMessage().contains("10"));
+        }
     }
 
     /**

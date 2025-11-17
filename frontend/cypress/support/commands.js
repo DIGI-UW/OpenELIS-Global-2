@@ -51,14 +51,18 @@ Cypress.Commands.add("enterText", (selector, value) => {
  * Checks both login endpoint and optionally a specific REST endpoint
  */
 Cypress.Commands.add("waitForBackend", (restEndpoint = null) => {
-  // Wait for login endpoint
-  cy.intercept("/api/OpenELIS-Global/LoginPage").as("backendReady");
-  cy.visit("/");
-  cy.wait("@backendReady", { timeout: 30000 });
+  // Use cy.request to check backend is ready (more reliable than intercept)
+  cy.request({
+    method: "GET",
+    url: "/api/OpenELIS-Global/LoginPage",
+    failOnStatusCode: false, // Don't fail if endpoint returns error, just check it responds
+  }).then((response) => {
+    // API is responding (even if 404/500, it means backend is up)
+    expect(response.status).to.be.a("number");
+  });
 
   // If a REST endpoint is specified, wait for it too
   if (restEndpoint) {
-    cy.intercept("GET", restEndpoint).as("restApiReady");
     cy.request({
       method: "GET",
       url: restEndpoint,

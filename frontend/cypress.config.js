@@ -6,7 +6,7 @@ const path = require("path");
 const PROJECT_ROOT = path.resolve(__dirname, "..");
 
 module.exports = defineConfig({
-  defaultCommandTimeout: 30000, // Increased timeout for slow operations
+  defaultCommandTimeout: 10000, // Standard timeout (10s) - Cypress retry-ability handles most cases
   viewportWidth: 1200,
   viewportHeight: 700,
   video: false, // Disabled by default per Constitution V.5 (enable only for debugging specific failures)

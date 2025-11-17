@@ -106,7 +106,7 @@ room.
 | `fhir_uuid`           | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier             |
 | `name`                | VARCHAR(255) | NOT NULL                | Device name (e.g., "Freezer Unit 1")          |
 | `code`                | VARCHAR(50)  | NOT NULL                | Device code (unique within parent room)       |
-| `short_code`          | VARCHAR(10)  | NOT NULL                | Short code for barcode labels (max 10 chars, alphanumeric, unique within parent room) |
+| `short_code`          | VARCHAR(10)  | NULL                    | Short code for barcode labels (max 10 chars, alphanumeric, unique within parent room). Optional: only required if code > 10 chars. If code ≤10 chars, code is used for labels. |
 | `type`                | VARCHAR(20)  | NOT NULL                | Enum: freezer, refrigerator, cabinet, other   |
 | `temperature_setting` | DECIMAL(5,2) | NULL                    | Optional temperature in Celsius               |
 | `capacity_limit`      | INT          | NULL                    | Optional capacity limit (number of positions) |
@@ -163,7 +163,7 @@ room.
 | `id`               | VARCHAR(36)  | PK, AUTO                | Primary key                          |
 | `fhir_uuid`        | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier    |
 | `label`            | VARCHAR(100) | NOT NULL                | Shelf label (e.g., "Shelf-A", "Top") |
-| `short_code`       | VARCHAR(10)  | NOT NULL                | Short code for barcode labels (max 10 chars, alphanumeric, unique within parent device) |
+| `short_code`       | VARCHAR(10)  | NULL                    | Short code for barcode labels (max 10 chars, alphanumeric, unique within parent device). Optional: only required if label > 10 chars. If label ≤10 chars, label is used for labels. |
 | `capacity_limit`   | INT          | NULL                    | Optional capacity limit              |
 | `active`           | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status               |
 | `parent_device_id` | VARCHAR(36)  | NOT NULL, FK            | Parent device reference              |
@@ -215,7 +215,7 @@ room.
 | `id`                   | VARCHAR(36)  | PK, AUTO                | Primary key                                           |
 | `fhir_uuid`            | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier                     |
 | `label`                | VARCHAR(100) | NOT NULL                | Rack label (e.g., "Rack R1", "Tray-1")                |
-| `short_code`           | VARCHAR(10)  | NOT NULL                | Short code for barcode labels (max 10 chars, alphanumeric, unique within parent shelf) |
+| `short_code`           | VARCHAR(10)  | NULL                    | Short code for barcode labels (max 10 chars, alphanumeric, unique within parent shelf). Optional: only required if label > 10 chars. If label ≤10 chars, label is used for labels. |
 | `rows`                 | INT          | NOT NULL, DEFAULT 0     | Grid rows (0 = no grid)                               |
 | `columns`              | INT          | NOT NULL, DEFAULT 0     | Grid columns (0 = no grid)                            |
 | `position_schema_hint` | VARCHAR(50)  | NULL                    | Optional hint for position naming (e.g., "A1", "1-1") |

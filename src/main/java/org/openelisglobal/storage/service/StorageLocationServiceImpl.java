@@ -208,7 +208,8 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (existing != null) {
                 throw new LIMSRuntimeException("Device with code " + device.getCode() + " already exists in this room");
             }
-            // Validate short_code if provided, otherwise auto-generate temporary value
+            // Validate short_code if provided
+            // short_code is only required if code > 10 chars (otherwise code is used for labels)
             if (device.getShortCode() != null && !device.getShortCode().trim().isEmpty()) {
                 var formatResult = shortCodeValidationService.validateFormat(device.getShortCode());
                 if (!formatResult.isValid()) {
@@ -220,17 +221,16 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                     throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
                 }
                 device.setShortCode(formatResult.getNormalizedCode());
-            } else {
-                // Auto-generate temporary short_code for new device (user can update via Edit form)
-                // Use device ID after insertion, but we need a unique value now
-                // Generate based on timestamp + random to ensure uniqueness
-                String tempCode = "TMP" + System.currentTimeMillis() % 10000000;
-                device.setShortCode(tempCode);
+            } else if (device.getCode() != null && device.getCode().length() > 10) {
+                // If code > 10 chars, short_code is required
+                throw new LIMSRuntimeException("Short code is required when device code exceeds 10 characters");
             }
+            // If code ≤10 chars, short_code can be null (code will be used for labels)
             return storageDeviceDAO.insert(device);
         } else if (entity instanceof StorageShelf) {
             StorageShelf shelf = (StorageShelf) entity;
-            // Validate short_code if provided, otherwise auto-generate temporary value
+            // Validate short_code if provided
+            // short_code is only required if label > 10 chars (otherwise label is used for labels)
             if (shelf.getShortCode() != null && !shelf.getShortCode().trim().isEmpty()) {
                 var formatResult = shortCodeValidationService.validateFormat(shelf.getShortCode());
                 if (!formatResult.isValid()) {
@@ -242,11 +242,11 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                     throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
                 }
                 shelf.setShortCode(formatResult.getNormalizedCode());
-            } else {
-                // Auto-generate temporary short_code for new shelf (user can update via Edit form)
-                String tempCode = "TMP" + System.currentTimeMillis() % 10000000;
-                shelf.setShortCode(tempCode);
+            } else if (shelf.getLabel() != null && shelf.getLabel().length() > 10) {
+                // If label > 10 chars, short_code is required
+                throw new LIMSRuntimeException("Short code is required when shelf label exceeds 10 characters");
             }
+            // If label ≤10 chars, short_code can be null (label will be used for labels)
             return storageShelfDAO.insert(shelf);
         } else if (entity instanceof StorageRack) {
             StorageRack rack = (StorageRack) entity;
@@ -254,7 +254,8 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (rack.getRows() < 0 || rack.getColumns() < 0) {
                 throw new IllegalArgumentException("Grid dimensions cannot be negative");
             }
-            // Validate short_code if provided, otherwise auto-generate temporary value
+            // Validate short_code if provided
+            // short_code is only required if label > 10 chars (otherwise label is used for labels)
             if (rack.getShortCode() != null && !rack.getShortCode().trim().isEmpty()) {
                 var formatResult = shortCodeValidationService.validateFormat(rack.getShortCode());
                 if (!formatResult.isValid()) {
@@ -266,11 +267,11 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                     throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
                 }
                 rack.setShortCode(formatResult.getNormalizedCode());
-            } else {
-                // Auto-generate temporary short_code for new rack (user can update via Edit form)
-                String tempCode = "TMP" + System.currentTimeMillis() % 10000000;
-                rack.setShortCode(tempCode);
+            } else if (rack.getLabel() != null && rack.getLabel().length() > 10) {
+                // If label > 10 chars, short_code is required
+                throw new LIMSRuntimeException("Short code is required when rack label exceeds 10 characters");
             }
+            // If label ≤10 chars, short_code can be null (label will be used for labels)
             return storageRackDAO.insert(rack);
         } else if (entity instanceof StoragePosition) {
             return storagePositionDAO.insert((StoragePosition) entity);
@@ -308,6 +309,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             existingDevice.setActive(device.getActive());
             
             // Validate and update short_code if provided
+            // short_code is only required if code > 10 chars (otherwise code is used for labels)
             if (device.getShortCode() != null) {
                 var formatResult = shortCodeValidationService.validateFormat(device.getShortCode());
                 if (!formatResult.isValid()) {
@@ -319,7 +321,11 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                     throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
                 }
                 existingDevice.setShortCode(formatResult.getNormalizedCode());
+            } else if (existingDevice.getCode() != null && existingDevice.getCode().length() > 10) {
+                // If code > 10 chars, short_code is required
+                throw new LIMSRuntimeException("Short code is required when device code exceeds 10 characters");
             }
+            // If code ≤10 chars, short_code can be null (code will be used for labels)
             
             // Check for active samples when deactivating (null-safe check)
             if (existingDevice.getActive() != null && !existingDevice.getActive()) {
@@ -344,6 +350,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             existingShelf.setActive(shelf.getActive());
             
             // Validate and update short_code if provided
+            // short_code is only required if label > 10 chars (otherwise label is used for labels)
             if (shelf.getShortCode() != null) {
                 var formatResult = shortCodeValidationService.validateFormat(shelf.getShortCode());
                 if (!formatResult.isValid()) {
@@ -355,7 +362,11 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                     throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
                 }
                 existingShelf.setShortCode(formatResult.getNormalizedCode());
+            } else if (existingShelf.getLabel() != null && existingShelf.getLabel().length() > 10) {
+                // If label > 10 chars, short_code is required
+                throw new LIMSRuntimeException("Short code is required when shelf label exceeds 10 characters");
             }
+            // If label ≤10 chars, short_code can be null (label will be used for labels)
             
             storageShelfDAO.update(existingShelf);
             return null;
@@ -374,6 +385,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             existingRack.setActive(rack.getActive());
             
             // Validate and update short_code if provided
+            // short_code is only required if label > 10 chars (otherwise label is used for labels)
             if (rack.getShortCode() != null) {
                 var formatResult = shortCodeValidationService.validateFormat(rack.getShortCode());
                 if (!formatResult.isValid()) {
@@ -385,7 +397,11 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                     throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
                 }
                 existingRack.setShortCode(formatResult.getNormalizedCode());
+            } else if (existingRack.getLabel() != null && existingRack.getLabel().length() > 10) {
+                // If label > 10 chars, short_code is required
+                throw new LIMSRuntimeException("Short code is required when rack label exceeds 10 characters");
             }
+            // If label ≤10 chars, short_code can be null (label will be used for labels)
             
             storageRackDAO.update(existingRack);
             return null;

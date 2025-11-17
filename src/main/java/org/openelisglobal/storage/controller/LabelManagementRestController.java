@@ -153,11 +153,12 @@ public class LabelManagementRestController extends BaseRestController {
                 return;
             }
 
-            // Validate short_code exists before printing
+            // Validate that location has a valid code for label printing
+            // (code ≤10 chars OR short_code exists)
             if (!labelManagementService.validateShortCodeExists(id, type)) {
                 response.setStatus(HttpStatus.BAD_REQUEST.value());
                 response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                response.getWriter().write("{\"error\":\"Short code is required for label printing. Please set short code in Edit form.\"}");
+                response.getWriter().write("{\"error\":\"Code or short code is required for label printing. If code > 10 chars, short code must be set in Edit form.\"}");
                 return;
             }
 

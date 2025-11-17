@@ -91,11 +91,23 @@ class LoginPage {
   goToHomePage() {
     cy.wait(1000);
     cy.url().then((url) => {
+      cy.log(`Current URL: ${url}`);
       if (url.includes("/login")) {
-        cy.contains("button", "Login", { timeout: 10000 }).should("be.visible");
+        // Debug: Check what's actually on the page
+        cy.get("body").then(($body) => {
+          cy.log(`Body HTML length: ${$body.html().length}`);
+          cy.log(
+            `Login button exists: ${$body.find(SELECTORS.LOGIN_BUTTON).length > 0}`,
+          );
+        });
+
+        // Use the correct selector instead of text search
+        cy.get(SELECTORS.LOGIN_BUTTON, { timeout: 10000 }).should("be.visible");
         this.enterUsername(this.testProperties.getUsername());
         this.enterPassword(this.testProperties.getPassword());
         this.signIn();
+      } else {
+        cy.log(`Not on login page, URL: ${url}`);
       }
     });
     cy.wait(5000);

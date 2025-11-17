@@ -763,7 +763,9 @@ const LocationSearchAndCreate = ({
         >
           <EnhancedCascadingMode
             onLocationChange={handleCreateSelect}
-            selectedLocation={internalSelectedLocation || prefillLocation || null}
+            selectedLocation={
+              internalSelectedLocation || prefillLocation || null
+            }
             focusField={focusField}
           />
           <div className="location-create-actions">
