@@ -116,9 +116,10 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
                 + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid()) " + "ON CONFLICT (id) DO NOTHING",
                 roomId, "Test Room", roomCode, true, 1);
 
-        // Create device with proper room relationship
+        // Create device with proper room relationship (code must be ≤10 chars)
         StorageDevice device = new StorageDevice();
-        device.setCode("TEST-DEVICE-" + timestamp);
+        // Use shorter code: "TESTDEV" + 2 digits = 8 chars max
+        device.setCode("TESTDEV" + (timestamp % 100));
         device.setName("Test Device");
         device.setActive(true);
 
@@ -132,10 +133,10 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Helper: Create a test device with code > 10 chars but without shortCode and
-     * return its ID Note: Since shortCode is now optional (only required if code >
-     * 10 chars), we create a device with a long code (> 10 chars) and no shortCode
-     * to test the validation
+     * Helper: Create a test device with NULL code to test validation
+     * Note: Since codes must always be ≤10 chars and NOT NULL, we can't create devices with invalid codes.
+     * This helper creates a device with a valid code but tests can manually set code to NULL via UPDATE
+     * to test validation scenarios.
      */
     private String createTestDeviceWithoutShortCode() throws Exception {
         // Create a test room first
@@ -147,17 +148,17 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
                 + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid()) " + "ON CONFLICT (id) DO NOTHING",
                 roomId, "Test Room No SC", roomCode, true, 1);
 
-        // Create device with code > 10 chars but without short_code (should fail
-        // validation)
-        // Note: We can't actually persist this with NULL short_code if code > 10 chars
-        // due to service validation,
-        // so we'll create it with NULL and test the validation in the endpoint
+        // Create device with empty code to test validation
+        // Note: We can't set code to NULL due to NOT NULL constraint, but we can test empty string
+        // The validation checks for null or empty, so empty string will trigger the error
+        String deviceCode = ""; // Empty string to test validation
         jdbcTemplate.update(
                 "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid) "
                         + "VALUES (nextval('storage_device_seq'), ?, ?, 'freezer', ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                "Test Device No SC", "TEST-DEVICE-LONG-CODE-" + timestamp, roomId, true, 1);
-        Integer id = jdbcTemplate.queryForObject("SELECT id FROM storage_device WHERE code = ?", Integer.class,
-                "TEST-DEVICE-LONG-CODE-" + timestamp);
+                "Test Device No SC", deviceCode, roomId, true, 1);
+        Integer id = jdbcTemplate.queryForObject("SELECT id FROM storage_device WHERE name = ? AND code = ?", Integer.class,
+                "Test Device No SC", deviceCode);
+        
         return String.valueOf(id);
     }
 
@@ -266,24 +267,24 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * T285: Test POST /rest/storage/{type}/{id}/print-label with code > 10 chars
-     * and missing shortCode Expected: 400 Bad Request with error message
+     * T285: Test POST /rest/storage/{type}/{id}/print-label with missing code
+     * Expected: 400 Bad Request with error message
      */
     @Test
     public void testPrintValidationChecksShortCodeExists_CodeGt10Chars_MissingShortCode_Returns400() throws Exception {
-        // Given: Test device exists with code > 10 chars but without shortCode
+        // Given: Test device exists with NULL code (simulating missing code scenario)
         String deviceId = createTestDeviceWithoutShortCode();
 
         // When: POST /rest/storage/device/{id}/print-label
-        // Then: Expect 400 Bad Request with error message about missing shortCode
+        // Then: Expect 400 Bad Request with error message about missing code
         MvcResult result = mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label"))
                 .andExpect(status().isBadRequest()).andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error").exists()).andReturn();
 
-        // Verify error message contains "short code" or "code"
+        // Verify error message contains "code"
         String errorMessage = objectMapper.readTree(result.getResponse().getContentAsString()).get("error").asText();
-        assertTrue("Error message should mention short code or code",
-                errorMessage.toLowerCase().contains("short code") || errorMessage.toLowerCase().contains("code"));
+        assertTrue("Error message should mention code",
+                errorMessage.toLowerCase().contains("code"));
     }
 
     /**
@@ -304,12 +305,12 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * T285: Test error response if code > 10 chars and shortCode missing Expected:
-     * JSON error response with specific message
+     * T285: Test error response if code is missing Expected: JSON error response
+     * with specific message
      */
     @Test
     public void testErrorResponseIfShortCodeMissing_ReturnsJsonError() throws Exception {
-        // Given: Test device exists with code > 10 chars but without shortCode
+        // Given: Test device exists with NULL code (simulating missing code scenario)
         String deviceId = createTestDeviceWithoutShortCode();
 
         // When: POST /rest/storage/device/{id}/print-label
@@ -318,10 +319,10 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
                 .andExpect(status().isBadRequest()).andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
 
-        // Verify error message contains "short code" or "code"
+        // Verify error message contains "code"
         String errorMessage = objectMapper.readTree(result.getResponse().getContentAsString()).get("error").asText();
-        assertTrue("Error message should mention short code or code",
-                errorMessage.toLowerCase().contains("short code") || errorMessage.toLowerCase().contains("code"));
+        assertTrue("Error message should mention code",
+                errorMessage.toLowerCase().contains("code"));
     }
 
     /**
