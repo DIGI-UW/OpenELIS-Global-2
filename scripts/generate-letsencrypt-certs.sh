@@ -58,7 +58,7 @@ if [ -f "$CERT_PATH" ]; then
         -v "$(pwd)/volume/nginx/certbot:/var/www/certbot" \
         certbot/certbot:latest \
         renew --webroot --webroot-path=/var/www/certbot
-    
+
     if [ $? -eq 0 ]; then
         echo "✓ Certificate renewed successfully for ${DOMAIN}"
         echo ""
@@ -104,4 +104,3 @@ else
         exit 1
     fi
 fi
-

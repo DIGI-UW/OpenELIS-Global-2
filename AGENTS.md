@@ -777,10 +777,11 @@ detailed guidance, see the Testing Roadmap.
 **MANDATORY**: All test types (E2E, backend integration, manual) use the unified
 fixture loading system.
 
-**Reference**: [Test Data Strategy Guide](.specify/guides/test-data-strategy.md) for
-comprehensive guide.
+**Reference**: [Test Data Strategy Guide](.specify/guides/test-data-strategy.md)
+for comprehensive guide.
 
 **Key Principles:**
+
 - Single source of truth: `storage-test-data.sql` contains all test fixtures
 - Unified loader: `load-test-fixtures.sh` used by all test types
 - Dependency validation: Scripts verify required tables exist before loading
@@ -788,6 +789,7 @@ comprehensive guide.
 - Safe cleanup: Only removes test-created data, preserves fixtures
 
 **Quick Start:**
+
 ```bash
 # Load test fixtures (basic usage)
 ./src/test/resources/load-test-fixtures.sh
@@ -800,13 +802,18 @@ comprehensive guide.
 ```
 
 **Fixture Loading:**
-- **E2E/Cypress**: `cy.loadStorageFixtures()` → Cypress task → `load-test-fixtures.sh`
+
+- **E2E/Cypress**: `cy.loadStorageFixtures()` → Cypress task →
+  `load-test-fixtures.sh`
 - **Backend Integration**: `BaseStorageTest` → `load-test-fixtures.sh`
 - **Manual Testing**: Direct execution of `load-test-fixtures.sh`
 
 **For detailed information**, see:
-- [Test Data Strategy Guide](.specify/guides/test-data-strategy.md) - Comprehensive guide
-- [E2E Fixtures Quick Reference](.specify/guides/e2e-fixtures-readme.md) - E2E-specific reference
+
+- [Test Data Strategy Guide](.specify/guides/test-data-strategy.md) -
+  Comprehensive guide
+- [E2E Fixtures Quick Reference](.specify/guides/e2e-fixtures-readme.md) -
+  E2E-specific reference
 
 **Key Resources**:
 
@@ -1690,12 +1697,18 @@ Before creating PR, verify ALL items:
 
 ### Testing Documentation
 
-- **Testing Roadmap:** `.specify/guides/testing-roadmap.md` - Comprehensive testing guide
-- **Test Data Strategy:** `.specify/guides/test-data-strategy.md` - Unified test data management
-- **E2E Fixtures Reference:** `.specify/guides/e2e-fixtures-readme.md` - E2E-specific fixture guide
-- **Cypress Best Practices:** `.specify/guides/cypress-best-practices.md` - Cypress patterns
-- **Jest Best Practices:** `.specify/guides/jest-best-practices.md` - Jest patterns
-- **Backend Testing Best Practices:** `.specify/guides/backend-testing-best-practices.md` - Backend patterns
+- **Testing Roadmap:** `.specify/guides/testing-roadmap.md` - Comprehensive
+  testing guide
+- **Test Data Strategy:** `.specify/guides/test-data-strategy.md` - Unified test
+  data management
+- **E2E Fixtures Reference:** `.specify/guides/e2e-fixtures-readme.md` -
+  E2E-specific fixture guide
+- **Cypress Best Practices:** `.specify/guides/cypress-best-practices.md` -
+  Cypress patterns
+- **Jest Best Practices:** `.specify/guides/jest-best-practices.md` - Jest
+  patterns
+- **Backend Testing Best Practices:**
+  `.specify/guides/backend-testing-best-practices.md` - Backend patterns
 
 ### SpecKit Templates
 

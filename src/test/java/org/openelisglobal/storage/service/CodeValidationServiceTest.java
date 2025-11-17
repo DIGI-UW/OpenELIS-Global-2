@@ -3,6 +3,7 @@ package org.openelisglobal.storage.service;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -13,7 +14,6 @@ import org.openelisglobal.storage.dao.StorageDeviceDAO;
 import org.openelisglobal.storage.dao.StorageRackDAO;
 import org.openelisglobal.storage.dao.StorageRoomDAO;
 import org.openelisglobal.storage.dao.StorageShelfDAO;
-import java.util.Optional;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.storage.valueholder.StorageShelf;
@@ -21,15 +21,13 @@ import org.openelisglobal.storage.valueholder.StorageShelf;
 /**
  * Unit tests for CodeValidationService
  * 
- * References:
- * - Testing Roadmap: .specify/guides/testing-roadmap.md
- * - Backend Best Practices: .specify/guides/backend-testing-best-practices.md
- * - Template: JUnit 4 Service Test
+ * References: - Testing Roadmap: .specify/guides/testing-roadmap.md - Backend
+ * Best Practices: .specify/guides/backend-testing-best-practices.md - Template:
+ * JUnit 4 Service Test
  * 
- * TDD Workflow (MANDATORY for complex logic):
- * - RED: Write failing test first (defines expected behavior)
- * - GREEN: Write minimal code to make test pass
- * - REFACTOR: Improve code quality while keeping tests green
+ * TDD Workflow (MANDATORY for complex logic): - RED: Write failing test first
+ * (defines expected behavior) - GREEN: Write minimal code to make test pass -
+ * REFACTOR: Improve code quality while keeping tests green
  * 
  * Task Reference: T285
  * 
@@ -59,8 +57,8 @@ public class CodeValidationServiceTest {
     }
 
     /**
-     * Test code length constraint
-     * T285: Code Length Constraint - Code must be ≤10 characters
+     * Test code length constraint T285: Code Length Constraint - Code must be ≤10
+     * characters
      */
     @Test
     public void testCodeLengthConstraint() {
@@ -79,8 +77,8 @@ public class CodeValidationServiceTest {
     }
 
     /**
-     * Test code format validation
-     * T285: Code Format Validation - Alphanumeric, hyphen, underscore only, must start with letter/number
+     * Test code format validation T285: Code Format Validation - Alphanumeric,
+     * hyphen, underscore only, must start with letter/number
      */
     @Test
     public void testCodeFormatValidation() {
@@ -112,8 +110,8 @@ public class CodeValidationServiceTest {
     }
 
     /**
-     * Test auto-uppercase conversion
-     * T285: Auto-Uppercase Conversion - Input auto-converted to uppercase
+     * Test auto-uppercase conversion T285: Auto-Uppercase Conversion - Input
+     * auto-converted to uppercase
      */
     @Test
     public void testAutoUppercaseConversion() {
@@ -132,8 +130,8 @@ public class CodeValidationServiceTest {
     }
 
     /**
-     * Test must start with letter or number
-     * T285: Must Start With Letter Or Number - Reject codes starting with hyphen/underscore
+     * Test must start with letter or number T285: Must Start With Letter Or Number
+     * - Reject codes starting with hyphen/underscore
      */
     @Test
     public void testMustStartWithLetterOrNumber() {
@@ -208,8 +206,8 @@ public class CodeValidationServiceTest {
     }
 
     /**
-     * Test auto-uppercase helper method
-     * T285: Auto-Uppercase Helper - Converts input to uppercase
+     * Test auto-uppercase helper method T285: Auto-Uppercase Helper - Converts
+     * input to uppercase
      */
     @Test
     public void testAutoUppercase() {
@@ -223,4 +221,3 @@ public class CodeValidationServiceTest {
         assertEquals("Should convert to uppercase", "RACK-1", result);
     }
 }
-

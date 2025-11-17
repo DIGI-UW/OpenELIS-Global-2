@@ -152,7 +152,6 @@ public class StorageDevice extends BaseObject<Integer> {
         this.capacityLimit = capacityLimit;
     }
 
-
     public Boolean getActive() {
         return active;
     }

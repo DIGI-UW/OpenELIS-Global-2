@@ -1,8 +1,8 @@
 package org.openelisglobal.storage.service;
 
 /**
- * Validation result for code validation
- * Contains validation status, normalized code, and error message
+ * Validation result for code validation Contains validation status, normalized
+ * code, and error message
  */
 public class CodeValidationResult {
 
@@ -58,4 +58,3 @@ public class CodeValidationResult {
         return new CodeValidationResult(false, null, errorMessage);
     }
 }
-

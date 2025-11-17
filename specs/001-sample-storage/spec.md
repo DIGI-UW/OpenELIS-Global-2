@@ -226,7 +226,8 @@ information displayed for context and sorting/grouping capabilities.
   columns
 - Q: Which fields should be editable vs read-only in the Edit modal? → A: Code
   and Parent are read-only (only name/description/attributes editable, prevents
-  structural changes). [NOTE: Superseded by Session 2025-11-16 - Code is now editable in edit modal; Parent remains read-only]
+  structural changes). [NOTE: Superseded by Session 2025-11-16 - Code is now
+  editable in edit modal; Parent remains read-only]
 
 ### Session 2025-11-06
 
@@ -464,11 +465,29 @@ information displayed for context and sorting/grouping capabilities.
 
 ### Session 2025-11-16 (Code/Short-Code Simplification)
 
-- Q: Which location levels should have the code ≤10 characters constraint and auto-generation? → A: All levels (Room, Device, Shelf, Rack) - enforce code ≤10 chars and auto-generation for all location types. This simplifies the data model by eliminating the separate short_code field and ensures consistent code length across all hierarchy levels.
-- Q: How should the code be auto-generated from the location name? → A: Uppercase name, remove non-alphanumeric characters (keep hyphens/underscores), truncate to 10 chars, append numeric suffix if conflict (e.g., "Main Lab" → "MAINLAB", conflict → "MAINLAB-1"). This standardizes codes, handles special characters, and resolves conflicts via numeric suffixes.
-- Q: When should code auto-generation occur? → A: Auto-generate on create only; never regenerate (user must manually update code if name changes). This preserves user control over codes once created, allowing manual customization without automatic overwrites.
-- Q: Should the code field be editable in the create modal, or only pre-filled and editable in the edit modal? → A: Pre-fill code in create modal (if implemented) but allow editing; code is editable in edit modal. This allows immediate correction if auto-generation is incorrect while maintaining flexibility for manual updates.
-- Q: What should happen to existing locations with codes > 10 characters? → A: This is a new feature - all new locations MUST comply with ≤10 char code constraint. Legacy location migration (if needed) will be handled separately. For now, enforce code rules on all new location creates/edits.
+- Q: Which location levels should have the code ≤10 characters constraint and
+  auto-generation? → A: All levels (Room, Device, Shelf, Rack) - enforce code
+  ≤10 chars and auto-generation for all location types. This simplifies the data
+  model by eliminating the separate short_code field and ensures consistent code
+  length across all hierarchy levels.
+- Q: How should the code be auto-generated from the location name? → A:
+  Uppercase name, remove non-alphanumeric characters (keep hyphens/underscores),
+  truncate to 10 chars, append numeric suffix if conflict (e.g., "Main Lab" →
+  "MAINLAB", conflict → "MAINLAB-1"). This standardizes codes, handles special
+  characters, and resolves conflicts via numeric suffixes.
+- Q: When should code auto-generation occur? → A: Auto-generate on create only;
+  never regenerate (user must manually update code if name changes). This
+  preserves user control over codes once created, allowing manual customization
+  without automatic overwrites.
+- Q: Should the code field be editable in the create modal, or only pre-filled
+  and editable in the edit modal? → A: Pre-fill code in create modal (if
+  implemented) but allow editing; code is editable in edit modal. This allows
+  immediate correction if auto-generation is incorrect while maintaining
+  flexibility for manual updates.
+- Q: What should happen to existing locations with codes > 10 characters? → A:
+  This is a new feature - all new locations MUST comply with ≤10 char code
+  constraint. Legacy location migration (if needed) will be handled separately.
+  For now, enforce code rules on all new location creates/edits.
 
 - Q: When both "Manual Select" dropdowns and "Enter / Scan" field are visible,
   what happens if user fills BOTH? → A: Last-modified wins. If user selects from
@@ -1399,12 +1418,42 @@ npm run cy:run
   levels including human-readable text and barcode
 - **FR-027**: System MUST support printing individual or batch labels
 - **FR-027a**: System MUST provide "Print Label" button in overflow menu for
-  Devices, Shelves, and Racks only (Rooms excluded - see clarification below). Button MUST replace the previous "Label Management" menu item.
-  Clicking "Print Label" MUST display confirmation dialog: "Print label for
-  [Location Name] ([Location Code])?" with Cancel and Print buttons. No modal
-  required - simple confirmation dialog only. **Note**: Rooms do not require label printing functionality, but Rooms MUST have code fields (≤10 chars) since room codes are included in hierarchical barcode paths for all lower-level locations (Device, Shelf, Rack).
-- **FR-027b**: Code field MUST be stored in location entity (Room, Device, Shelf, Rack) as a database field with maximum 10 characters constraint. Code MUST be auto-generated from location name on create using algorithm: uppercase name, remove non-alphanumeric characters (keep hyphens/underscores), truncate to 10 chars, append numeric suffix if conflict (e.g., "Main Lab" → "MAINLAB", conflict → "MAINLAB-1"). Code MUST be editable in create modal (if implemented) and edit modal. Code MUST be unique within its context (Room: globally unique; Device/Shelf/Rack: unique within parent). System MUST validate uniqueness and length (≤10 chars) before allowing save. Code format MUST be: maximum 10 characters, alphanumeric only (A-Z, 0-9, hyphen and underscore allowed), auto-uppercase all input for consistency, must start with a letter or number (not hyphen/underscore). Code is used directly for barcode generation and label printing (see Session 2025-11-16 for code/short-code simplification details). **Note**: This is a new feature - all new locations MUST comply with ≤10 char code constraint. Legacy location migration (if needed) will be handled separately.
-- **FR-027c**: Print Label functionality MUST validate that a valid code exists (≤10 characters) for label printing before printing. If code is missing or invalid, block printing with error: "Code is required for label printing. Please set code in Edit form." If a valid code exists, generate PDF label using barcode format and size specified in system admin settings (inherited: label size/dimensions, barcode format preference with Code 128 default for locations, label template layout). Labels MUST include human-readable text and barcode encoding using the location's code. Show preview of PDF label in new tab (browser PDF viewer handles printer selection - user selects printer when printing from browser). Settings are fixed from system admin - no override at print time (see Session 2025-11-06 and Session 2025-11-15 for inheritance and validation details).
+  Devices, Shelves, and Racks only (Rooms excluded - see clarification below).
+  Button MUST replace the previous "Label Management" menu item. Clicking "Print
+  Label" MUST display confirmation dialog: "Print label for [Location Name]
+  ([Location Code])?" with Cancel and Print buttons. No modal required - simple
+  confirmation dialog only. **Note**: Rooms do not require label printing
+  functionality, but Rooms MUST have code fields (≤10 chars) since room codes
+  are included in hierarchical barcode paths for all lower-level locations
+  (Device, Shelf, Rack).
+- **FR-027b**: Code field MUST be stored in location entity (Room, Device,
+  Shelf, Rack) as a database field with maximum 10 characters constraint. Code
+  MUST be auto-generated from location name on create using algorithm: uppercase
+  name, remove non-alphanumeric characters (keep hyphens/underscores), truncate
+  to 10 chars, append numeric suffix if conflict (e.g., "Main Lab" → "MAINLAB",
+  conflict → "MAINLAB-1"). Code MUST be editable in create modal (if
+  implemented) and edit modal. Code MUST be unique within its context (Room:
+  globally unique; Device/Shelf/Rack: unique within parent). System MUST
+  validate uniqueness and length (≤10 chars) before allowing save. Code format
+  MUST be: maximum 10 characters, alphanumeric only (A-Z, 0-9, hyphen and
+  underscore allowed), auto-uppercase all input for consistency, must start with
+  a letter or number (not hyphen/underscore). Code is used directly for barcode
+  generation and label printing (see Session 2025-11-16 for code/short-code
+  simplification details). **Note**: This is a new feature - all new locations
+  MUST comply with ≤10 char code constraint. Legacy location migration (if
+  needed) will be handled separately.
+- **FR-027c**: Print Label functionality MUST validate that a valid code exists
+  (≤10 characters) for label printing before printing. If code is missing or
+  invalid, block printing with error: "Code is required for label printing.
+  Please set code in Edit form." If a valid code exists, generate PDF label
+  using barcode format and size specified in system admin settings (inherited:
+  label size/dimensions, barcode format preference with Code 128 default for
+  locations, label template layout). Labels MUST include human-readable text and
+  barcode encoding using the location's code. Show preview of PDF label in new
+  tab (browser PDF viewer handles printer selection - user selects printer when
+  printing from browser). Settings are fixed from system admin - no override at
+  print time (see Session 2025-11-06 and Session 2025-11-15 for inheritance and
+  validation details).
 - **FR-027d**: [REMOVED - Short code changes now handled in Edit form, no
   separate confirmation dialog needed]
 - **FR-027e**: System MUST track print history: record basic print audit trail
@@ -1530,17 +1579,23 @@ operations.
   proper accessibility attributes
 - **FR-037l**: Edit modal MUST display all editable fields for the location
   type:
-  - **Room**: Name (editable), Code (editable, ≤10 chars, auto-generated on create), Description (optional,
-    editable), Active/Inactive status (editable)
-  - **Device**: Name (editable), Code (editable, ≤10 chars, auto-generated on create), Type (editable), Temperature
-    setting (optional, editable), Capacity limit (optional, editable),
-    Active/Inactive status (editable), Parent Room (read-only)
-  - **Shelf**: Name (editable), Code (editable, ≤10 chars, auto-generated on create), Capacity limit (optional, editable),
-    Active/Inactive status (editable), Parent Device (read-only)
-  - **Rack**: Name (editable), Code (editable, ≤10 chars, auto-generated on create), Dimensions (rows, columns, editable), Position
-    schema hint (optional, editable), Active/Inactive status (editable), Parent
-    Shelf (read-only)
-- **FR-037l1**: Code field MUST be editable in Edit modal (see Session 2025-11-16 for code/short-code simplification). Parent relationship fields MUST be read-only in Edit modal to prevent structural changes that could break references or hierarchy integrity
+  - **Room**: Name (editable), Code (editable, ≤10 chars, auto-generated on
+    create), Description (optional, editable), Active/Inactive status (editable)
+  - **Device**: Name (editable), Code (editable, ≤10 chars, auto-generated on
+    create), Type (editable), Temperature setting (optional, editable), Capacity
+    limit (optional, editable), Active/Inactive status (editable), Parent Room
+    (read-only)
+  - **Shelf**: Name (editable), Code (editable, ≤10 chars, auto-generated on
+    create), Capacity limit (optional, editable), Active/Inactive status
+    (editable), Parent Device (read-only)
+  - **Rack**: Name (editable), Code (editable, ≤10 chars, auto-generated on
+    create), Dimensions (rows, columns, editable), Position schema hint
+    (optional, editable), Active/Inactive status (editable), Parent Shelf
+    (read-only)
+- **FR-037l1**: Code field MUST be editable in Edit modal (see Session
+  2025-11-16 for code/short-code simplification). Parent relationship fields
+  MUST be read-only in Edit modal to prevent structural changes that could break
+  references or hierarchy integrity
 - **FR-037m**: Edit modal MUST validate code uniqueness within parent scope and
   parent-child relationships before saving
 - **FR-037n**: Edit modal MUST display Cancel and "Save Changes" buttons in

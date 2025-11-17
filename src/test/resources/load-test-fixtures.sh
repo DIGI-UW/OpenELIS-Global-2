@@ -72,7 +72,7 @@ check_dependencies() {
     local DB_PORT=$5
 
     echo "Checking dependencies..."
-    
+
     if [ "$USE_DOCKER" = true ]; then
         TYPE_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
         # Check for required statuses: Entered (any type), Not Tested (ANALYSIS), Finalized (ANALYSIS)
@@ -192,7 +192,7 @@ verify_fixtures() {
     fi
 
     echo ""
-    
+
     # Validate counts
     if [ "$ROOM_COUNT" -lt 3 ]; then
         echo "⚠️  WARNING: Expected 3 test rooms, found $ROOM_COUNT"
@@ -226,14 +226,14 @@ if [ "$USE_DOCKER" = true ]; then
         echo ""
         echo "✅ Fixtures loaded successfully!"
         echo ""
-        
+
         if [ "$VERIFY" = true ]; then
             verify_fixtures true "" "" "" ""
             echo "======================================"
             echo "✅ Verification complete!"
             echo "======================================"
         fi
-        
+
         echo ""
         echo "Test data ready for:"
         echo "  - Manual testing"
@@ -281,7 +281,7 @@ else
         echo "✅ Test data loaded successfully!"
         echo "======================================"
         echo ""
-        
+
         if [ "$VERIFY" = true ]; then
             verify_fixtures false "$DB_USER" "$DB_NAME" "$DB_HOST" "$DB_PORT"
             echo "======================================"

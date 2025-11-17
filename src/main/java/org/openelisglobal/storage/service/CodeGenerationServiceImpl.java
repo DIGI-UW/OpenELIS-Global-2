@@ -5,8 +5,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 /**
- * Implementation of CodeGenerationService
- * Generates codes from location names following specified algorithm
+ * Implementation of CodeGenerationService Generates codes from location names
+ * following specified algorithm
  */
 @Service
 public class CodeGenerationServiceImpl implements CodeGenerationService {
@@ -84,4 +84,3 @@ public class CodeGenerationServiceImpl implements CodeGenerationService {
         return codeWithSuffix;
     }
 }
-

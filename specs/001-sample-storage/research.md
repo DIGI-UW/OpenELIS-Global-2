@@ -1200,8 +1200,8 @@ public class StorageLocationLabel extends Label {
 4. **Print History Tracking**:
    - Reuse existing `BarcodeLabelInfo` entity or create new
      `StorageLocationPrintHistory` entity
-   - Track: location entity ID, code (≤10 chars), printed by (user ID),
-     printed date, print count
+   - Track: location entity ID, code (≤10 chars), printed by (user ID), printed
+     date, print count
    - Store in database for audit trail
 
 **Rationale**: Leveraging existing infrastructure reduces development effort and
@@ -1311,20 +1311,24 @@ pattern. Additional hardware testing recommended during implementation phase.
 
    - **Simplified Approach**: Replace "Label Management" modal with "Print
      Label" button in overflow menu
-   - Code field (≤10 chars) stored in location entities (Room, Device, Shelf, Rack) as database
-     field
-   - Code auto-generated from name on create (uppercase, remove non-alphanumeric, keep hyphens/underscores, truncate to 10 chars, append numeric suffix if conflict)
+   - Code field (≤10 chars) stored in location entities (Room, Device, Shelf,
+     Rack) as database field
+   - Code auto-generated from name on create (uppercase, remove
+     non-alphanumeric, keep hyphens/underscores, truncate to 10 chars, append
+     numeric suffix if conflict)
    - Code editable in create and edit modals
    - Code does NOT regenerate when name changes
    - Print Label button shows simple confirmation dialog: "Print label for
      [Location Name] ([Location Code])?"
    - PDF opens in new tab (browser handles printing)
    - Print history tracked in database but NOT displayed in UI (compliance only)
-   - Error message if code missing or > 10 chars: "Code is required for label printing. Please set code in Edit form."
+   - Error message if code missing or > 10 chars: "Code is required for label
+     printing. Please set code in Edit form."
 
 3. **Database Changes** (Updated 2025-11-16 per spec clarifications):
 
-   - Update `code` column to VARCHAR(10) for all location tables (Room, Device, Shelf, Rack) (Liquibase changeset)
+   - Update `code` column to VARCHAR(10) for all location tables (Room, Device,
+     Shelf, Rack) (Liquibase changeset)
    - Remove `short_code` column from `STORAGE_DEVICE`, `STORAGE_SHELF`,
      `STORAGE_RACK` tables (Liquibase changeset)
    - Migrate existing codes > 10 chars to ≤10 chars (Liquibase changeset)
