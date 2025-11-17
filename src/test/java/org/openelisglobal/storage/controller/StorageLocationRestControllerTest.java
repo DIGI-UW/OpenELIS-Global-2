@@ -93,10 +93,12 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
      */
     @Test
     public void testCreateRoom_ValidInput_Returns201() throws Exception {
-        // Given: Valid room form data
+        // Given: Valid room form data (code must be ≤10 chars)
         StorageRoomForm roomForm = new StorageRoomForm();
         roomForm.setName("Main Laboratory");
-        roomForm.setCode("TEST-ROOM-" + System.currentTimeMillis()); // Unique code to avoid fixture conflicts
+        // Use unique code ≤10 chars: "TESTROOM" + 2 digits = 9 chars
+        String uniqueCode = "TESTROOM" + (System.currentTimeMillis() % 100);
+        roomForm.setCode(uniqueCode);
         roomForm.setDescription("Primary laboratory room");
         roomForm.setActive(true);
 
@@ -106,7 +108,7 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
         // Then: Expect 201 Created with room ID in response
         mockMvc.perform(post("/rest/storage/rooms").contentType(MediaType.APPLICATION_JSON).content(requestBody))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.code").value(roomForm.getCode()))
+                .andExpect(jsonPath("$.code").value(uniqueCode))
                 .andExpect(jsonPath("$.name").value("Main Laboratory")).andExpect(jsonPath("$.fhirUuid").exists());
     }
 
