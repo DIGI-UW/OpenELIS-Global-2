@@ -8,5 +8,10 @@ RUN apk update; \
     
 ADD healthcheck.sh /healthcheck.sh
 RUN chown nginx:nginx /healthcheck.sh; \
-    chmod 770 /healthcheck.sh;  
+    chmod 770 /healthcheck.sh
+
+ADD docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
