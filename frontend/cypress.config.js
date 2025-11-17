@@ -27,6 +27,16 @@ module.exports = defineConfig({
     // Set CYPRESS_FORCE_FIXTURES=true to always reload
     // Default: false (check existence first)
     FORCE_FIXTURES: process.env.CYPRESS_FORCE_FIXTURES === "true",
+
+    // Reset database before loading fixtures
+    // Set CYPRESS_RESET_DATABASE=true to reset before loading
+    // Default: false (preserves existing data)
+    RESET_DATABASE: process.env.CYPRESS_RESET_DATABASE === "true",
+
+    // Verify fixtures even when skipping load
+    // Set CYPRESS_VERIFY_FIXTURES=true to verify fixtures
+    // Default: false (skip verification when skipping load)
+    VERIFY_FIXTURES: process.env.CYPRESS_VERIFY_FIXTURES === "true",
   },
   e2e: {
     setupNodeEvents(on, config) {
@@ -52,9 +62,32 @@ module.exports = defineConfig({
         },
       });
 
-      // Task to load storage test fixtures
+      // Task to reset test database
       on("task", {
-        loadStorageTestData() {
+        resetDatabase() {
+          const { execSync } = require("child_process");
+          const resetScript = path.join(
+            PROJECT_ROOT,
+            "src/test/resources/reset-test-database.sh",
+          );
+          if (!fs.existsSync(resetScript)) {
+            throw new Error(
+              `Reset script not found: ${resetScript} (PROJECT_ROOT: ${PROJECT_ROOT})`,
+            );
+          }
+          try {
+            execSync(`bash "${resetScript}" --force`, {
+              stdio: "inherit",
+              cwd: PROJECT_ROOT,
+              shell: "/bin/bash",
+            });
+            return null;
+          } catch (error) {
+            console.error("Error resetting database:", error);
+            throw error;
+          }
+        },
+        loadStorageTestData(options = {}) {
           const { execSync } = require("child_process");
           // Use unified fixture loader script
           const loaderScript = path.join(
@@ -68,7 +101,15 @@ module.exports = defineConfig({
             );
           }
           try {
-            execSync(`bash "${loaderScript}"`, {
+            // Build command with optional --reset flag
+            let command = `bash "${loaderScript}"`;
+            if (options.reset) {
+              command += " --reset";
+            }
+            if (options.noVerify) {
+              command += " --no-verify";
+            }
+            execSync(command, {
               stdio: "inherit",
               cwd: PROJECT_ROOT,
               shell: "/bin/bash",
@@ -78,14 +119,17 @@ module.exports = defineConfig({
             console.error("Error loading test fixtures:", error);
             console.error("Loader script path:", loaderScript);
             console.error("Project root:", PROJECT_ROOT);
-            return null;
+            throw error;
           }
         },
         checkStorageFixturesExist() {
           const { execSync } = require("child_process");
-          // Check if E2E test data exists (quick check for a known test room)
+          // Comprehensive check: rooms, samples, and patients
           const checkSql = `
-            SELECT COUNT(*) as count FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');
+            SELECT 
+              (SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE')) as rooms,
+              (SELECT COUNT(*) FROM sample WHERE accession_number LIKE 'E2E-%') as samples,
+              (SELECT COUNT(*) FROM patient WHERE external_id LIKE 'E2E-%') as patients;
           `;
           try {
             const result = execSync(
@@ -96,10 +140,84 @@ module.exports = defineConfig({
                 encoding: "utf8",
               },
             );
-            const count = parseInt(result.trim(), 10);
-            return count >= 2; // At least 2 test rooms exist
+            // Parse result: "3 | 10 | 3"
+            const parts = result
+              .trim()
+              .split("|")
+              .map((s) => parseInt(s.trim(), 10));
+            const rooms = parts[0] || 0;
+            const samples = parts[1] || 0;
+            const patients = parts[2] || 0;
+
+            // Fixtures exist if we have at least 3 rooms, 10 samples, and 3 patients
+            return rooms >= 3 && samples >= 10 && patients >= 3;
           } catch (error) {
             console.error("Error checking storage fixtures:", error);
+            return false;
+          }
+        },
+        verifyFixtures() {
+          const { execSync } = require("child_process");
+          // Comprehensive verification query
+          const verifySql = `
+            SELECT 
+              'Storage Hierarchy' AS category,
+              'Rooms' AS type, 
+              COUNT(*) AS count,
+              CASE WHEN COUNT(*) >= 3 THEN 'OK' ELSE 'MISSING' END AS status
+            FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE')
+            UNION ALL
+            SELECT '', 'Devices', COUNT(*), CASE WHEN COUNT(*) >= 5 THEN 'OK' ELSE 'MISSING' END
+            FROM storage_device WHERE id BETWEEN 10 AND 20
+            UNION ALL
+            SELECT '', 'Shelves', COUNT(*), CASE WHEN COUNT(*) >= 6 THEN 'OK' ELSE 'MISSING' END
+            FROM storage_shelf WHERE id BETWEEN 20 AND 30
+            UNION ALL
+            SELECT '', 'Racks', COUNT(*), CASE WHEN COUNT(*) >= 6 THEN 'OK' ELSE 'MISSING' END
+            FROM storage_rack WHERE id BETWEEN 30 AND 40
+            UNION ALL
+            SELECT '', 'Positions', COUNT(*), CASE WHEN COUNT(*) >= 99 THEN 'OK' ELSE 'MISSING' END
+            FROM storage_position WHERE id BETWEEN 100 AND 10000
+            UNION ALL
+            SELECT 
+              'E2E Test Data' AS category,
+              'Patients' AS type,
+              COUNT(*),
+              CASE WHEN COUNT(*) >= 3 THEN 'OK' ELSE 'MISSING' END
+            FROM patient WHERE external_id LIKE 'E2E-%'
+            UNION ALL
+            SELECT '', 'Samples', COUNT(*), CASE WHEN COUNT(*) >= 10 THEN 'OK' ELSE 'MISSING' END
+            FROM sample WHERE accession_number LIKE 'E2E-%'
+            UNION ALL
+            SELECT '', 'Sample Items', COUNT(*), CASE WHEN COUNT(*) >= 20 THEN 'OK' ELSE 'MISSING' END
+            FROM sample_item WHERE id BETWEEN 10000 AND 20000
+            UNION ALL
+            SELECT '', 'Storage Assignments', COUNT(*), CASE WHEN COUNT(*) >= 15 THEN 'OK' ELSE 'MISSING' END
+            FROM sample_storage_assignment WHERE id >= 1000
+            UNION ALL
+            SELECT '', 'Analyses', COUNT(*), CASE WHEN COUNT(*) >= 5 THEN 'OK' ELSE 'MISSING' END
+            FROM analysis WHERE id BETWEEN 20000 AND 30000
+            UNION ALL
+            SELECT '', 'Results', COUNT(*), CASE WHEN COUNT(*) >= 2 THEN 'OK' ELSE 'MISSING' END
+            FROM result WHERE id BETWEEN 30000 AND 40000;
+          `;
+          try {
+            const result = execSync(
+              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -c "${verifySql}"`,
+              {
+                cwd: PROJECT_ROOT,
+                shell: "/bin/bash",
+                encoding: "utf8",
+              },
+            );
+            console.log("Fixture Verification Results:");
+            console.log(result);
+
+            // Check if any status is MISSING
+            const hasMissing = result.includes("MISSING");
+            return !hasMissing;
+          } catch (error) {
+            console.error("Error verifying fixtures:", error);
             return false;
           }
         },

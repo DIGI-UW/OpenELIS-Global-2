@@ -64,7 +64,7 @@ public class StorageDevice extends BaseObject<Integer> {
     @Column(name = "NAME", length = 255, nullable = false)
     private String name;
 
-    @Column(name = "CODE", length = 50, nullable = false)
+    @Column(name = "CODE", length = 10, nullable = false)
     private String code;
 
     @Column(name = "TYPE", length = 20, nullable = false)
@@ -75,9 +75,6 @@ public class StorageDevice extends BaseObject<Integer> {
 
     @Column(name = "CAPACITY_LIMIT")
     private Integer capacityLimit;
-
-    @Column(name = "SHORT_CODE", length = 10, nullable = true)
-    private String shortCode;
 
     @Column(name = "ACTIVE", nullable = false)
     private Boolean active;
@@ -155,13 +152,6 @@ public class StorageDevice extends BaseObject<Integer> {
         this.capacityLimit = capacityLimit;
     }
 
-    public String getShortCode() {
-        return shortCode;
-    }
-
-    public void setShortCode(String shortCode) {
-        this.shortCode = shortCode;
-    }
 
     public Boolean getActive() {
         return active;

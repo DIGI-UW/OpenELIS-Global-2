@@ -8,7 +8,7 @@ import "../SampleStorage/SampleActionsOverflowMenu.css";
  * Displays menu items: Edit, Delete, Print Label (for devices, shelves, racks only)
  *
  * Props:
- * - location: object - Location entity data { id, name, code, type, shortCode, ... }
+ * - location: object - Location entity data { id, name, code, type, ... }
  * - onEdit: function - Callback when Edit clicked
  * - onDelete: function - Callback when Delete clicked
  * - onPrintLabel: function - Callback when Print Label clicked

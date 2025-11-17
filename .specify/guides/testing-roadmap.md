@@ -2252,6 +2252,50 @@ module.exports = defineConfig({
 
 ## Test Data Management
 
+### Unified Test Data Strategy
+
+**MANDATORY**: All test types (E2E, backend integration, manual) use the unified fixture loading system.
+
+**Reference**: [Test Data Strategy Guide](test-data-strategy.md) for comprehensive guide.
+
+**Key Principles:**
+- Single source of truth: `storage-test-data.sql` contains all test fixtures
+- Unified loader: `load-test-fixtures.sh` used by all test types
+- Dependency validation: Scripts verify required tables exist before loading
+- Comprehensive verification: Automatic verification after loading
+- Safe cleanup: Only removes test-created data, preserves fixtures
+
+**Fixture Loading:**
+- **E2E/Cypress**: `cy.loadStorageFixtures()` → Cypress task → `load-test-fixtures.sh`
+- **Backend Integration**: `BaseStorageTest` → `load-test-fixtures.sh`
+- **Manual Testing**: Direct execution of `load-test-fixtures.sh`
+
+**Fixture Data Ranges (Preserved):**
+- Storage: IDs 1-999 (fixtures)
+- Samples: E2E-* and TEST-* accession numbers
+- Patients: E2E-PAT-* external IDs
+- Sample items: IDs 10000-20000 (fixtures)
+- Analyses: IDs 20000-30000 (fixtures)
+- Results: IDs 30000-40000 (fixtures)
+
+**Reset Database:**
+```bash
+# Reset test data ranges only (preserves production data)
+./src/test/resources/reset-test-database.sh --force
+```
+
+**Load Fixtures:**
+```bash
+# Basic usage (loads and verifies)
+./src/test/resources/load-test-fixtures.sh
+
+# Reset before loading
+./src/test/resources/load-test-fixtures.sh --reset
+
+# Load without verification
+./src/test/resources/load-test-fixtures.sh --no-verify
+```
+
 ### Builders/Factories Pattern
 
 **MANDATORY**: Use builders/factories, NOT hardcoded values.

@@ -210,8 +210,8 @@ describe("Label Printing", () => {
     cy.get(".storage-dashboard").should("be.visible");
   });
 
-  it("should print label after adding short code via Edit form", () => {
-    // Core functionality: Edit → add short code → print label
+  it("should print label after updating code via Edit form", () => {
+    // Core functionality: Edit → update code → print label
     cy.get('[data-testid="tab-devices"]').click();
     cy.screenshot("label-01-devices-tab-clicked");
 
@@ -235,11 +235,16 @@ describe("Label Printing", () => {
     cy.wait("@getDevice", { timeout: 10000 });
     cy.screenshot("label-04-edit-modal-opened");
 
-    // Add short code
-    cy.get('[data-testid="edit-location-device-short-code"]').type(
-      "TEST-FRZ01",
-    );
-    cy.screenshot("label-05-short-code-entered");
+    // Verify code field exists and is editable
+    cy.get('[data-testid="edit-location-device-code"]')
+      .should("be.visible")
+      .should("not.be.disabled");
+    
+    // Update code (ensure it's ≤10 chars)
+    cy.get('[data-testid="edit-location-device-code"]')
+      .clear()
+      .type("TEST-FRZ01");
+    cy.screenshot("label-05-code-entered");
 
     cy.get('[data-testid="edit-location-save-button"]')
       .should("not.be.disabled")

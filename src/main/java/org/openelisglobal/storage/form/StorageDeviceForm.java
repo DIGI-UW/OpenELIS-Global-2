@@ -17,7 +17,7 @@ public class StorageDeviceForm {
     @Size(max = 255, message = "Device name must not exceed 255 characters")
     private String name;
 
-    @Size(max = 50, message = "Device code must not exceed 50 characters")
+    @Size(max = 10, message = "Device code must not exceed 10 characters")
     private String code; // Optional - will be auto-generated if not provided
 
     @NotBlank(message = "Device type is required")
@@ -32,9 +32,6 @@ public class StorageDeviceForm {
 
     @NotBlank(message = "Parent room ID is required")
     private String parentRoomId;
-
-    @Size(max = 10, message = "Short code must not exceed 10 characters")
-    private String shortCode;
 
     // Getters and Setters
 
@@ -100,13 +97,5 @@ public class StorageDeviceForm {
 
     public void setParentRoomId(String parentRoomId) {
         this.parentRoomId = parentRoomId;
-    }
-
-    public String getShortCode() {
-        return shortCode;
-    }
-
-    public void setShortCode(String shortCode) {
-        this.shortCode = shortCode;
     }
 }

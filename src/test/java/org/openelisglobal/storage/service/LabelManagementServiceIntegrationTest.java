@@ -96,7 +96,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         device.setName("Test Device Label 01");
         device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(parentRoom);
-        device.setShortCode("TEST-FRZ01");
+        device.setCode("TEST-FRZ01");
         device.setActive(true);
         device.setSysUserIdValue(1); // Required field
 
@@ -141,8 +141,8 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
     public void testGenerateLabel_DeviceWithShortCode_GeneratesPdf() {
         // Given: Device with shortCode
         StorageDevice device = createTestDeviceWithShortCode();
-        assertNotNull("Device should have shortCode", device.getShortCode());
-        assertEquals("Device should have expected shortCode", "TEST-FRZ01", device.getShortCode());
+        assertNotNull("Device should have shortCode", device.getCode());
+        assertEquals("Device should have expected shortCode", "TEST-FRZ01", device.getCode());
 
         // When: Generate label through service layer
         ByteArrayOutputStream pdf = labelManagementService.generateLabel(device);
@@ -178,7 +178,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
 
         // Given: Retrieve device
         StorageDevice retrieved = (StorageDevice) storageLocationService.get(deviceId, StorageDevice.class);
-        assertNull("Device should not have shortCode", retrieved.getShortCode());
+        assertNull("Device should not have shortCode", retrieved.getCode());
         assertEquals("Device code should be ≤10 chars", "TEST-DEV01", retrieved.getCode());
 
         // When: Generate label through service layer (should use code since ≤10 chars)
@@ -198,7 +198,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
     public void testGenerateLabel_DeviceWithCodeGt10Chars_NoShortCode_ThrowsException() {
         // Given: Device with code > 10 chars but no shortCode
         StorageDevice device = createTestDeviceWithoutShortCode();
-        assertNull("Device should not have shortCode", device.getShortCode());
+        assertNull("Device should not have shortCode", device.getCode());
         assertTrue("Device code should be > 10 chars", device.getCode().length() > 10);
 
         // When: Generate label through service layer
@@ -220,7 +220,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         StorageShelf shelf = new StorageShelf();
         shelf.setLabel("TEST-SHELF-LBL01");
         shelf.setParentDevice(parentDevice);
-        shelf.setShortCode("TEST-SHA01");
+        shelf.setCode("TEST-SHA01");
         shelf.setActive(true);
         shelf.setSysUserIdValue(1); // Required field
 
@@ -230,7 +230,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
 
         // Given: Retrieve shelf
         StorageShelf retrieved = (StorageShelf) storageLocationService.get(shelfId, StorageShelf.class);
-        assertNotNull("Shelf should have shortCode", retrieved.getShortCode());
+        assertNotNull("Shelf should have shortCode", retrieved.getCode());
 
         // When: Generate label through service layer
         ByteArrayOutputStream pdf = labelManagementService.generateLabel(retrieved);
@@ -255,7 +255,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         rack.setParentShelf(parentShelf);
         rack.setRows(8);
         rack.setColumns(12);
-        rack.setShortCode("TEST-RKR01");
+        rack.setCode("TEST-RKR01");
         rack.setActive(true);
         rack.setSysUserIdValue(1); // Required field
 
@@ -265,7 +265,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
 
         // Given: Retrieve rack
         StorageRack retrieved = (StorageRack) storageLocationService.get(rackId, StorageRack.class);
-        assertNotNull("Rack should have shortCode", retrieved.getShortCode());
+        assertNotNull("Rack should have shortCode", retrieved.getCode());
 
         // When: Generate label through service layer
         ByteArrayOutputStream pdf = labelManagementService.generateLabel(retrieved);
@@ -350,7 +350,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         // Given: Device with shortCode
         StorageDevice device = createTestDeviceWithShortCode();
         String deviceId = String.valueOf(device.getId());
-        String shortCode = device.getShortCode();
+        String shortCode = device.getCode();
         String userId = "1"; // Test user ID
 
         // When: Track print history
@@ -387,7 +387,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         assertTrue("PDF should have content", pdf.size() > 0);
 
         // When: Track print history
-        labelManagementService.trackPrintHistory(deviceId, "device", device.getShortCode(), userId);
+        labelManagementService.trackPrintHistory(deviceId, "device", device.getCode(), userId);
 
         // Then: Print history should be recorded
         Integer count = jdbcTemplate.queryForObject(

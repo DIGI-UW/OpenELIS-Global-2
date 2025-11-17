@@ -10,13 +10,13 @@ public class ShortCodeUpdateForm {
 
     @Size(max = 10, message = "Short code cannot exceed 10 characters")
     @Pattern(regexp = "^[A-Z0-9][A-Z0-9_-]*$", message = "Short code must start with letter or number and contain only alphanumeric characters, hyphens, and underscores")
-    private String shortCode;
+    private String code;
 
-    public String getShortCode() {
-        return shortCode;
+    public String getCode() {
+        return code;
     }
 
-    public void setShortCode(String shortCode) {
-        this.shortCode = shortCode;
+    public void setCode(String code) {
+        this.code = code;
     }
 }

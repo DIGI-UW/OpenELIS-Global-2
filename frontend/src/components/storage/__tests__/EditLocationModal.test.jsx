@@ -37,12 +37,11 @@ describe("EditLocationModal", () => {
   const mockDevice = {
     id: "2",
     name: "Freezer Unit 1",
-    code: "FRZ-001",
+    code: "FRZ01",
     type: "freezer",
     temperatureSetting: -20,
     capacityLimit: 100,
     active: true,
-    shortCode: "FRZ01",
     parentRoom: { id: "1", name: "Main Laboratory" },
   };
 
@@ -50,7 +49,7 @@ describe("EditLocationModal", () => {
     id: "3",
     label: "Shelf A",
     active: true,
-    shortCode: "SHA01",
+    code: "SHA01",
     parentDevice: { id: "2", name: "Freezer Unit 1" },
   };
 
@@ -60,7 +59,7 @@ describe("EditLocationModal", () => {
     rows: 8,
     columns: 12,
     active: true,
-    shortCode: "RKR01",
+    code: "RKR01",
     parentShelf: { id: "3", label: "Shelf A" },
   };
 
@@ -139,9 +138,9 @@ describe("EditLocationModal", () => {
   });
 
   /**
-   * T106: Test code field is read-only (disabled)
+   * T310: Test code field is editable (not read-only)
    */
-  test("testEditModal_CodeFieldReadOnly", async () => {
+  test("testEditModal_CodeFieldEditable", async () => {
     renderWithIntl(
       <EditLocationModal
         open={true}
@@ -154,8 +153,12 @@ describe("EditLocationModal", () => {
 
     const codeField = await screen.findByTestId("edit-location-room-code");
     const inputElement = codeField.querySelector("input") || codeField;
-    expect(inputElement.disabled || inputElement.readOnly).toBe(true);
+    // Code field should be editable (not disabled or read-only)
+    expect(inputElement.disabled).toBe(false);
+    expect(inputElement.readOnly).toBe(false);
     expect(inputElement.value || codeField.value).toBe(mockRoom.code);
+    // Verify maxLength constraint
+    expect(inputElement.maxLength).toBe(10);
   });
 
   /**
@@ -423,20 +426,20 @@ describe("EditLocationModal", () => {
     expect(mockOnSave).not.toHaveBeenCalled();
   });
 
-  // ========== T286: Short Code Field Tests ==========
+  // ========== T286: Code Field Tests ==========
 
   /**
-   * T286: Test shortCode field appears in Edit form for device
-   * Expected: Short code field is visible and editable for device
+   * T310: Test code field appears in Edit form for device
+   * Expected: Code field is visible and editable for device
    */
-  test("testShortCodeFieldInEditForm_Device", async () => {
-    const deviceWithShortCode = { ...mockDevice, shortCode: "FRZ01" };
-    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithShortCode);
+  test("testCodeFieldInEditForm_Device", async () => {
+    const deviceWithCode = { ...mockDevice, code: "FRZ01" };
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithCode);
 
     renderWithIntl(
       <EditLocationModal
         open={true}
-        location={deviceWithShortCode}
+        location={deviceWithCode}
         locationType="device"
         onClose={mockOnClose}
         onSave={mockOnSave}
@@ -446,31 +449,28 @@ describe("EditLocationModal", () => {
     // Wait for form to load
     await screen.findByTestId("edit-location-device-name");
 
-    // Verify shortCode field exists
-    const shortCodeField = await screen.findByTestId(
-      "edit-location-device-short-code",
-    );
-    expect(shortCodeField).toBeTruthy();
+    // Verify code field exists
+    const codeField = await screen.findByTestId("edit-location-device-code");
+    expect(codeField).toBeTruthy();
 
     // Verify field is editable (not disabled)
-    const inputElement =
-      shortCodeField.querySelector("input") || shortCodeField;
+    const inputElement = codeField.querySelector("input") || codeField;
     expect(inputElement.disabled).toBe(false);
     expect(inputElement.readOnly).toBe(false);
   });
 
   /**
-   * T286: Test shortCode field appears in Edit form for shelf
-   * Expected: Short code field is visible and editable for shelf
+   * T286: Test code field appears in Edit form for shelf
+   * Expected: Code field is visible and editable for shelf
    */
-  test("testShortCodeFieldInEditForm_Shelf", async () => {
-    const shelfWithShortCode = { ...mockShelf, shortCode: "SHA01" };
-    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(shelfWithShortCode);
+  test("testCodeFieldInEditForm_Shelf", async () => {
+    const shelfWithCode = { ...mockShelf, code: "SHA01" };
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(shelfWithCode);
 
     renderWithIntl(
       <EditLocationModal
         open={true}
-        location={shelfWithShortCode}
+        location={shelfWithCode}
         locationType="shelf"
         onClose={mockOnClose}
         onSave={mockOnSave}
@@ -480,25 +480,23 @@ describe("EditLocationModal", () => {
     // Wait for form to load
     await screen.findByTestId("edit-location-shelf-label");
 
-    // Verify shortCode field exists
-    const shortCodeField = await screen.findByTestId(
-      "edit-location-shelf-short-code",
-    );
-    expect(shortCodeField).toBeTruthy();
+    // Verify code field exists
+    const codeField = await screen.findByTestId("edit-location-shelf-code");
+    expect(codeField).toBeTruthy();
   });
 
   /**
-   * T286: Test shortCode field appears in Edit form for rack
-   * Expected: Short code field is visible and editable for rack
+   * T286: Test code field appears in Edit form for rack
+   * Expected: Code field is visible and editable for rack
    */
-  test("testShortCodeFieldInEditForm_Rack", async () => {
-    const rackWithShortCode = { ...mockRack, shortCode: "RKR01" };
-    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(rackWithShortCode);
+  test("testCodeFieldInEditForm_Rack", async () => {
+    const rackWithCode = { ...mockRack, code: "RKR01" };
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(rackWithCode);
 
     renderWithIntl(
       <EditLocationModal
         open={true}
-        location={rackWithShortCode}
+        location={rackWithCode}
         locationType="rack"
         onClose={mockOnClose}
         onSave={mockOnSave}
@@ -508,25 +506,23 @@ describe("EditLocationModal", () => {
     // Wait for form to load
     await screen.findByTestId("edit-location-rack-label");
 
-    // Verify shortCode field exists
-    const shortCodeField = await screen.findByTestId(
-      "edit-location-rack-short-code",
-    );
-    expect(shortCodeField).toBeTruthy();
+    // Verify code field exists
+    const codeField = await screen.findByTestId("edit-location-rack-code");
+    expect(codeField).toBeTruthy();
   });
 
   /**
-   * T286: Test shortCode input validation - auto-uppercase conversion
+   * T286: Test code input validation - auto-uppercase conversion
    * Expected: Lowercase input is automatically converted to uppercase
    */
-  test("testShortCodeInputValidation_AutoUppercaseConversion", async () => {
-    const deviceWithShortCode = { ...mockDevice, shortCode: "frz01" };
-    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithShortCode);
+  test("testCodeInputValidation_AutoUppercaseConversion", async () => {
+    const deviceWithCode = { ...mockDevice, code: "frz01" };
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithCode);
 
     renderWithIntl(
       <EditLocationModal
         open={true}
-        location={deviceWithShortCode}
+        location={deviceWithCode}
         locationType="device"
         onClose={mockOnClose}
         onSave={mockOnSave}
@@ -536,12 +532,9 @@ describe("EditLocationModal", () => {
     // Wait for form to load
     await screen.findByTestId("edit-location-device-name");
 
-    // Find shortCode field
-    const shortCodeField = await screen.findByTestId(
-      "edit-location-device-short-code",
-    );
-    const inputElement =
-      shortCodeField.querySelector("input") || shortCodeField;
+    // Find code field
+    const codeField = await screen.findByTestId("edit-location-device-code");
+    const inputElement = codeField.querySelector("input") || codeField;
 
     // Clear existing value and type lowercase value
     // For v8.1.3: use fireEvent to clear (per testing roadmap fallback guidance)
@@ -556,22 +549,21 @@ describe("EditLocationModal", () => {
   });
 
   /**
-   * T286: Test required field validation - save button disabled without shortCode when code > 10 chars
-   * Expected: Save button is disabled when shortCode is empty AND code > 10 chars for device
+   * T310: Test code field validation - code is always required and ≤10 chars
+   * Expected: Code field is editable and enforces ≤10 chars constraint
    */
-  test("testRequiredFieldValidation_SaveButtonDisabledWithoutShortCode_CodeGt10Chars", async () => {
-    // Device with code > 10 chars - shortCode is required
-    const deviceWithLongCode = {
+  test("testCodeFieldValidation_MaxLength10Chars", async () => {
+    // Device with valid code ≤10 chars
+    const deviceWithCode = {
       ...mockDevice,
-      code: "TEST-DEVICE-LONG-CODE",
-      shortCode: "",
+      code: "FRZ01",
     };
-    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithLongCode);
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithCode);
 
     renderWithIntl(
       <EditLocationModal
         open={true}
-        location={deviceWithLongCode}
+        location={deviceWithCode}
         locationType="device"
         onClose={mockOnClose}
         onSave={mockOnSave}
@@ -581,49 +573,14 @@ describe("EditLocationModal", () => {
     // Wait for form to load
     await screen.findByTestId("edit-location-device-name");
 
-    // Find shortCode field and clear it
-    const shortCodeField = await screen.findByTestId(
-      "edit-location-device-short-code",
-    );
-    const inputElement =
-      shortCodeField.querySelector("input") || shortCodeField;
-    // Use fireEvent to clear (per testing roadmap fallback guidance)
-    fireEvent.change(inputElement, { target: { value: "" } });
+    // Find code field
+    const codeField = await screen.findByTestId("edit-location-device-code");
+    const inputElement = codeField.querySelector("input") || codeField;
 
-    // Verify save button is disabled when shortCode is empty AND code > 10 chars
-    const saveButton = screen.getByTestId("edit-location-save-button");
-    await waitFor(() => {
-      expect(saveButton.disabled).toBe(true);
-    });
-  });
+    // Verify maxLength is 10
+    expect(inputElement.maxLength).toBe(10);
 
-  /**
-   * T286: Test optional field validation - save button enabled without shortCode when code ≤10 chars
-   * Expected: Save button is enabled when shortCode is empty BUT code ≤10 chars for device
-   */
-  test("testOptionalFieldValidation_SaveButtonEnabledWithoutShortCode_CodeLeq10Chars", async () => {
-    // Device with code ≤10 chars - shortCode is optional
-    const deviceWithShortCode = {
-      ...mockDevice,
-      code: "TEST-DEV01",
-      shortCode: "",
-    };
-    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithShortCode);
-
-    renderWithIntl(
-      <EditLocationModal
-        open={true}
-        location={deviceWithShortCode}
-        locationType="device"
-        onClose={mockOnClose}
-        onSave={mockOnSave}
-      />,
-    );
-
-    // Wait for form to load
-    await screen.findByTestId("edit-location-device-name");
-
-    // Verify save button is enabled when code ≤10 chars (shortCode not required)
+    // Verify save button is enabled when code is valid
     const saveButton = screen.getByTestId("edit-location-save-button");
     await waitFor(() => {
       expect(saveButton.disabled).toBe(false);
@@ -631,12 +588,50 @@ describe("EditLocationModal", () => {
   });
 
   /**
-   * T286: Test shortCode is included in save payload for device
-   * Expected: shortCode value is sent in PUT request payload
+   * T310: Test code field is editable and can be updated
+   * Expected: Code field can be edited and saved successfully
    */
-  test("testShortCodeIncludedInSavePayload_Device", async () => {
-    const deviceWithShortCode = { ...mockDevice, shortCode: "FRZ01" };
-    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithShortCode);
+  test("testCodeFieldEditable_CanBeUpdated", async () => {
+    // Device with valid code
+    const deviceWithCode = {
+      ...mockDevice,
+      code: "FRZ01",
+    };
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithCode);
+
+    renderWithIntl(
+      <EditLocationModal
+        open={true}
+        location={deviceWithCode}
+        locationType="device"
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+      />,
+    );
+
+    // Wait for form to load
+    await screen.findByTestId("edit-location-device-name");
+
+    // Verify code field is editable (not disabled)
+    const codeField = await screen.findByTestId("edit-location-device-code");
+    const inputElement = codeField.querySelector("input") || codeField;
+    expect(inputElement.disabled).toBe(false);
+    expect(inputElement.readOnly).toBe(false);
+
+    // Verify save button is enabled
+    const saveButton = screen.getByTestId("edit-location-save-button");
+    await waitFor(() => {
+      expect(saveButton.disabled).toBe(false);
+    });
+  });
+
+  /**
+   * T286: Test code is included in save payload for device
+   * Expected: code value is sent in PUT request payload
+   */
+  test("testCodeIncludedInSavePayload_Device", async () => {
+    const deviceWithCode = { ...mockDevice, code: "FRZ01" };
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithCode);
 
     Utils.putToOpenElisServer.mockImplementation(
       (endpoint, payload, callback) => {
@@ -647,14 +642,14 @@ describe("EditLocationModal", () => {
     global.fetch = jest.fn(() =>
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve(deviceWithShortCode),
+        json: () => Promise.resolve(deviceWithCode),
       }),
     );
 
     renderWithIntl(
       <EditLocationModal
         open={true}
-        location={deviceWithShortCode}
+        location={deviceWithCode}
         locationType="device"
         onClose={mockOnClose}
         onSave={mockOnSave}
@@ -664,12 +659,9 @@ describe("EditLocationModal", () => {
     // Wait for form to load
     await screen.findByTestId("edit-location-device-name");
 
-    // Update shortCode
-    const shortCodeField = await screen.findByTestId(
-      "edit-location-device-short-code",
-    );
-    const inputElement =
-      shortCodeField.querySelector("input") || shortCodeField;
+    // Update code
+    const codeField = await screen.findByTestId("edit-location-device-code");
+    const inputElement = codeField.querySelector("input") || codeField;
     // Use fireEvent to clear, then userEvent to type (per testing roadmap)
     fireEvent.change(inputElement, { target: { value: "" } });
     await userEvent.type(inputElement, "FRZ02", { delay: 0 });
@@ -683,9 +675,9 @@ describe("EditLocationModal", () => {
       expect(Utils.putToOpenElisServer).toHaveBeenCalled();
     });
 
-    // Verify shortCode is in payload
+    // Verify code is in payload
     const putCall = Utils.putToOpenElisServer.mock.calls[0];
     const payload = JSON.parse(putCall[1]);
-    expect(payload.shortCode).toBe("FRZ02");
+    expect(payload.code).toBe("FRZ02");
   });
 });

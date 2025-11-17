@@ -1,6 +1,37 @@
 -- Test Data for Storage Management Integration Testing
 -- Run this script to populate test storage hierarchy for testing P1 user story
 -- Usage: psql -U clinlims -d clinlims -f storage-test-data.sql
+--
+-- Fixture Data Ranges:
+--   Storage: IDs 1-999 (fixtures), 1000+ (test-created)
+--   Samples: E2E-* and TEST-* accession numbers
+--   Patients: E2E-PAT-* external IDs
+--   Sample items: IDs 10000-20000 (fixtures), 20000+ (test-created)
+--   Analyses: IDs 20000-30000 (fixtures)
+--   Results: IDs 30000-40000 (fixtures)
+
+-- Dependency validation: Check required tables and data exist
+DO $$
+DECLARE
+  type_count INTEGER;
+  status_count INTEGER;
+BEGIN
+  -- Check type_of_sample table exists and has data
+  SELECT COUNT(*) INTO type_count FROM type_of_sample;
+  IF type_count < 3 THEN
+    RAISE EXCEPTION 'type_of_sample table has fewer than 3 rows (found: %). Required for test fixtures. Please ensure database is properly initialized.', type_count;
+  END IF;
+
+  -- Check status_of_sample table has required statuses
+  -- Note: Entered may be EXTERNAL_ORDER or SAMPLE depending on database initialization
+  SELECT COUNT(*) INTO status_count 
+  FROM status_of_sample 
+  WHERE (name = 'Entered' OR (name IN ('Not Tested', 'Finalized') AND status_type = 'ANALYSIS'));
+  
+  IF status_count < 3 THEN
+    RAISE EXCEPTION 'status_of_sample table missing required statuses (found: % matching rows, need at least 3). Required statuses: Entered (any type), Not Tested (ANALYSIS), Finalized (ANALYSIS). Please ensure database is properly initialized.', status_count;
+  END IF;
+END $$;
 
 -- Clean up existing test data (if any)
 -- Clean up E2E test data (patients, samples, sample items, assignments, analyses, results)
@@ -265,11 +296,22 @@ BEGIN
     SELECT id INTO blood_type_id FROM type_of_sample ORDER BY id LIMIT 1 OFFSET 2;
   END IF;
 
-  -- Get status ID once
-  SELECT id INTO status_id_val FROM status_of_sample WHERE name = 'Entered' LIMIT 1;
+  -- Get status ID once (validated in dependency check above)
+  -- Try SAMPLE type first, then EXTERNAL_ORDER (database may have either)
+  SELECT id INTO status_id_val FROM status_of_sample WHERE name = 'Entered' AND status_type = 'SAMPLE' LIMIT 1;
+  
+  -- Fallback to EXTERNAL_ORDER if SAMPLE not found
+  IF status_id_val IS NULL THEN
+    SELECT id INTO status_id_val FROM status_of_sample WHERE name = 'Entered' AND status_type = 'EXTERNAL_ORDER' LIMIT 1;
+  END IF;
+  
+  -- Final fallback: try SampleEntered
+  IF status_id_val IS NULL THEN
+    SELECT id INTO status_id_val FROM status_of_sample WHERE name = 'SampleEntered' AND status_type = 'SAMPLE' LIMIT 1;
+  END IF;
   
   IF status_id_val IS NULL THEN
-    RAISE EXCEPTION 'Status "Entered" not found';
+    RAISE EXCEPTION 'Status "Entered" (SAMPLE or EXTERNAL_ORDER type) or "SampleEntered" (SAMPLE type) not found. This should have been caught by dependency validation.';
   END IF;
 
   -- Insert test samples with storage assignments
@@ -873,16 +915,96 @@ LEFT JOIN storage_rack k ON ssa.location_type = 'rack' AND k.id = ssa.location_i
 WHERE s.accession_number LIKE 'E2E-%'
 ORDER BY s.accession_number, si.sort_order;
 
+-- Verification queries: Verify all fixtures loaded correctly
 \echo ''
+\echo '========================================'
+\echo 'Verification Summary'
+\echo '========================================'
+\echo ''
+
+-- Storage Hierarchy Verification
+\echo 'Storage Hierarchy:'
+SELECT 
+    'Rooms' AS type, 
+    COUNT(*) AS count,
+    CASE WHEN COUNT(*) >= 3 THEN '✅' ELSE '❌' END AS status
+FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE')
+UNION ALL
+SELECT 
+    'Devices', 
+    COUNT(*),
+    CASE WHEN COUNT(*) >= 5 THEN '✅' ELSE '❌' END
+FROM storage_device WHERE id BETWEEN 10 AND 20
+UNION ALL
+SELECT 
+    'Shelves', 
+    COUNT(*),
+    CASE WHEN COUNT(*) >= 6 THEN '✅' ELSE '❌' END
+FROM storage_shelf WHERE id BETWEEN 20 AND 30
+UNION ALL
+SELECT 
+    'Racks', 
+    COUNT(*),
+    CASE WHEN COUNT(*) >= 6 THEN '✅' ELSE '❌' END
+FROM storage_rack WHERE id BETWEEN 30 AND 40
+UNION ALL
+SELECT 
+    'Positions', 
+    COUNT(*),
+    CASE WHEN COUNT(*) >= 99 THEN '✅' ELSE '❌' END
+FROM storage_position WHERE id BETWEEN 100 AND 10000;
+
+\echo ''
+\echo 'E2E Test Data:'
+SELECT 
+    'Patients' AS type,
+    COUNT(*) AS count,
+    CASE WHEN COUNT(*) >= 3 THEN '✅' ELSE '❌' END AS status
+FROM patient WHERE external_id LIKE 'E2E-%'
+UNION ALL
+SELECT 
+    'Samples',
+    COUNT(*),
+    CASE WHEN COUNT(*) >= 10 THEN '✅' ELSE '❌' END
+FROM sample WHERE accession_number LIKE 'E2E-%'
+UNION ALL
+SELECT 
+    'Sample Items',
+    COUNT(*),
+    CASE WHEN COUNT(*) >= 20 THEN '✅' ELSE '❌' END
+FROM sample_item WHERE id BETWEEN 10000 AND 20000
+UNION ALL
+SELECT 
+    'Storage Assignments',
+    COUNT(*),
+    CASE WHEN COUNT(*) >= 15 THEN '✅' ELSE '❌' END
+FROM sample_storage_assignment WHERE id >= 1000
+UNION ALL
+SELECT 
+    'Analyses',
+    COUNT(*),
+    CASE WHEN COUNT(*) >= 5 THEN '✅' ELSE '❌' END
+FROM analysis WHERE id BETWEEN 20000 AND 30000
+UNION ALL
+SELECT 
+    'Results',
+    COUNT(*),
+    CASE WHEN COUNT(*) >= 2 THEN '✅' ELSE '❌' END
+FROM result WHERE id BETWEEN 30000 AND 40000;
+
+\echo ''
+\echo '========================================'
 \echo '✅ Complete test fixtures loaded successfully!'
-\echo '   Storage Hierarchy:'
+\echo '========================================'
+\echo ''
+\echo 'Storage Hierarchy:'
 \echo '   - 3 Rooms (Main Laboratory, Secondary Laboratory, Inactive Room)'
 \echo '   - 5 Devices (Main Lab Freezer, Main Lab Refrigerator, Secondary Lab Cabinet, Secondary Lab Freezer, Inactive Freezer)'
 \echo '   - 6 Shelves (each uniquely named per device)'
 \echo '   - 6 Racks (each uniquely named per shelf)'
 \echo '   - 100+ Positions (mix of occupied/unoccupied)'
 \echo ''
-\echo '   E2E Test Data:'
+\echo 'E2E Test Data:'
 \echo '   - 3 test patients (John E2E-Smith, Jane E2E-Jones, Bob E2E-Williams)'
 \echo '   - 10 test samples (E2E-001 through E2E-010)'
 \echo '   - 20+ test SampleItems (multiple items per sample, various types)'

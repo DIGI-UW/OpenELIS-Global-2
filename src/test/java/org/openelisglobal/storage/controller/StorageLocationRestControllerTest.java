@@ -1276,7 +1276,7 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
         updateForm.setName("Updated Device");
         updateForm.setType("freezer");
         updateForm.setActive(true);
-        updateForm.setShortCode("TEST-FRZ01");
+        updateForm.setCode("TEST-FRZ01");
 
         String requestBody = objectMapper.writeValueAsString(updateForm);
 
@@ -1302,7 +1302,7 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
         StorageShelfForm updateForm = new StorageShelfForm();
         updateForm.setLabel("Updated Shelf");
         updateForm.setActive(true);
-        updateForm.setShortCode("TEST-SHA01");
+        updateForm.setCode("TEST-SHA01");
 
         String requestBody = objectMapper.writeValueAsString(updateForm);
 
@@ -1331,7 +1331,7 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
         updateForm.setRows(8);
         updateForm.setColumns(12);
         updateForm.setActive(true);
-        updateForm.setShortCode("TEST-RKR01");
+        updateForm.setCode("TEST-RKR01");
 
         String requestBody = objectMapper.writeValueAsString(updateForm);
 
@@ -1358,7 +1358,7 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
         updateForm.setName("Updated Device");
         updateForm.setType("freezer");
         updateForm.setActive(true);
-        updateForm.setShortCode("INVALID-CODE-TOO-LONG"); // Exceeds 10 characters
+        updateForm.setCode("INVALID-CODE-TOO-LONG"); // Exceeds 10 characters
 
         String requestBody = objectMapper.writeValueAsString(updateForm);
 
@@ -1389,7 +1389,7 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
         updateForm1.setName("Device 1");
         updateForm1.setType("freezer");
         updateForm1.setActive(true);
-        updateForm1.setShortCode(testShortCode);
+        updateForm1.setCode(testShortCode);
 
         String requestBody1 = objectMapper.writeValueAsString(updateForm1);
         mockMvc.perform(
@@ -1401,7 +1401,7 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
         updateForm2.setName("Device 2");
         updateForm2.setType("freezer");
         updateForm2.setActive(true);
-        updateForm2.setShortCode(testShortCode); // Duplicate
+        updateForm2.setCode(testShortCode); // Duplicate
 
         String requestBody2 = objectMapper.writeValueAsString(updateForm2);
 
@@ -1429,7 +1429,7 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
         updateForm.setName("Updated Device");
         updateForm.setType("freezer");
         updateForm.setActive(true);
-        updateForm.setShortCode("test-uc01"); // Lowercase, will be converted to TEST-UC01
+        updateForm.setCode("test-uc01"); // Lowercase, will be converted to TEST-UC01
 
         String requestBody = objectMapper.writeValueAsString(updateForm);
 

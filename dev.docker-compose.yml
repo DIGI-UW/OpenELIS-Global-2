@@ -28,7 +28,9 @@ services:
               # files here will run on install
              - ./volume/database/dbInit:/docker-entrypoint-initdb.d
         networks:
-            - default
+          default:
+            aliases:
+              - db.openelis.org
         healthcheck:
             test: [ "CMD", "pg_isready", "-q", "-d", "clinlims", "-U", "clinlims" ]
             timeout: 45s
