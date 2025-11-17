@@ -55,7 +55,8 @@ const LocationManagementModal = ({
   const [autoOpenCreateForm, setAutoOpenCreateForm] = useState(false);
   const [prefillLocation, setPrefillLocation] = useState(null);
   const [focusField, setFocusField] = useState(null); // 'device' | 'shelf' | 'rack' | 'position'
-  const [showAdditionalInvalidWarning, setShowAdditionalInvalidWarning] = useState(false);
+  const [showAdditionalInvalidWarning, setShowAdditionalInvalidWarning] =
+    useState(false);
 
   // Determine modal mode: assignment (no location) or movement (location exists)
   const isMovementMode = !!currentLocation;
@@ -243,7 +244,9 @@ const LocationManagementModal = ({
 
   const handleBarcodeScan = (barcode) => {
     // Barcode scan detected - validation will be triggered automatically
-    console.log("Barcode scanned:", barcode);
+    console.log("[LocationManagementModal] handleBarcodeScan called", {
+      barcode,
+    });
   };
 
   const handleSampleScan = (sampleData) => {
@@ -253,21 +256,47 @@ const LocationManagementModal = ({
   };
 
   const handleBarcodeValidationResult = (result) => {
+    console.log(
+      "[LocationManagementModal] handleBarcodeValidationResult called",
+      {
+        success: result.success,
+        hasData: !!result.data,
+        error: result.error,
+        result,
+      },
+    );
     if (result.success && result.data) {
       // Successful barcode validation
+      console.log(
+        "[LocationManagementModal] Setting validation state to success",
+      );
       setBarcodeValidationState("success");
       setBarcodeErrorMessage("");
 
       // Auto-populate location from barcode validation
+      // Backend returns location data in validComponents map when valid=true
       const locationData = result.data;
+      const validComponents = locationData.validComponents || {};
+
+      // Extract location components from validComponents map (backend structure)
+      // or use direct properties if available (for backward compatibility)
       const location = {
-        room: locationData.room,
-        device: locationData.device,
-        shelf: locationData.shelf,
-        rack: locationData.rack,
-        position: locationData.position,
-        hierarchicalPath: locationData.hierarchicalPath,
+        room: locationData.room || validComponents.room || null,
+        device: locationData.device || validComponents.device || null,
+        shelf: locationData.shelf || validComponents.shelf || null,
+        rack: locationData.rack || validComponents.rack || null,
+        position: locationData.position || validComponents.position || null,
+        hierarchicalPath: locationData.hierarchicalPath || null,
       };
+
+      console.log(
+        "[LocationManagementModal] Extracted location from validation result",
+        {
+          hasValidComponents: !!locationData.validComponents,
+          validComponentsKeys: Object.keys(validComponents),
+          extractedLocation: location,
+        },
+      );
 
       // Implement "last-modified wins" logic: only overwrite if barcode is newer
       const timestamp = Date.now();
@@ -313,17 +342,62 @@ const LocationManagementModal = ({
 
       if (firstMissingLevel && Object.keys(validComponents).length > 0) {
         // Partial valid hierarchy - auto-open create form
+        console.log(
+          "[LocationManagementModal] Partial valid hierarchy detected, setting error state but auto-opening form",
+        );
         setBarcodeValidationState("error");
         setBarcodeErrorMessage("");
 
         // Convert validComponents to location format for pre-filling
+        // validComponents is a Map<String, Object> where each value is { id, name, code } or { id, label, label }
+        // Ensure all required fields are present for proper selection (not creation mode)
         const prefillLoc = {
-          room: validComponents.room || null,
-          device: validComponents.device || null,
-          shelf: validComponents.shelf || null,
-          rack: validComponents.rack || null,
-          position: validComponents.position || null,
+          room: validComponents.room
+            ? {
+                id: validComponents.room.id,
+                name: validComponents.room.name,
+                code: validComponents.room.code,
+                active: validComponents.room.active !== false, // Default to true if not specified
+              }
+            : null,
+          device: validComponents.device
+            ? {
+                id: validComponents.device.id,
+                name: validComponents.device.name,
+                code: validComponents.device.code,
+              }
+            : null,
+          shelf: validComponents.shelf
+            ? {
+                id: validComponents.shelf.id,
+                label:
+                  validComponents.shelf.label || validComponents.shelf.name,
+                name: validComponents.shelf.name || validComponents.shelf.label,
+              }
+            : null,
+          rack: validComponents.rack
+            ? {
+                id: validComponents.rack.id,
+                label: validComponents.rack.label || validComponents.rack.name,
+                name: validComponents.rack.name || validComponents.rack.label,
+              }
+            : null,
+          position: validComponents.position
+            ? {
+                id: validComponents.position.id,
+                coordinate: validComponents.position.coordinate,
+              }
+            : null,
         };
+
+        console.log(
+          "[LocationManagementModal] Pre-fill location from validComponents",
+          {
+            firstMissingLevel,
+            validComponentsKeys: Object.keys(validComponents),
+            prefillLoc,
+          },
+        );
 
         // Set auto-open state
         setAutoOpenCreateForm(true);
@@ -343,6 +417,9 @@ const LocationManagementModal = ({
         }
       } else {
         // Complete validation failure - no valid levels
+        console.log(
+          "[LocationManagementModal] Complete validation failure, setting error state",
+        );
         setBarcodeValidationState("error");
         setAutoOpenCreateForm(false);
         setPrefillLocation(null);

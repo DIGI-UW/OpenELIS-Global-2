@@ -4,26 +4,30 @@ import { Printer } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import PropTypes from "prop-types";
 import PrintLabelConfirmationDialog from "./PrintLabelConfirmationDialog";
+import config from "../../../config.json";
 
 /**
  * PrintLabelButton - Component that triggers label printing
- * Shows confirmation dialog before printing
- * Can be used as a button or auto-triggered when location is provided
+ *
+ * NOTE: This component still contains PrintLabelConfirmationDialog internally for backward compatibility.
+ * New code should use the callback pattern: pass onPrintClick callback to parent, which manages dialog at parent level.
  *
  * Props:
  * - locationType: string - "device" | "shelf" | "rack"
  * - locationId: string - Location ID
  * - locationName: string - Location name for confirmation dialog
  * - locationCode: string - Location code for confirmation dialog
- * - onPrintSuccess: function - Optional callback when print succeeds
- * - onPrintError: function - Optional callback when print fails
- * - autoTrigger: boolean - If true, automatically shows dialog when component mounts (for overflow menu usage)
+ * - onPrintClick: function - Optional callback when button clicked (preferred pattern - parent manages dialog)
+ * - onPrintSuccess: function - Optional callback when print succeeds (legacy - used with internal dialog)
+ * - onPrintError: function - Optional callback when print fails (legacy - used with internal dialog)
+ * - autoTrigger: boolean - If true, automatically shows dialog when component mounts (legacy - for overflow menu usage)
  */
 const PrintLabelButton = ({
   locationType,
   locationId,
   locationName,
   locationCode,
+  onPrintClick,
   onPrintSuccess,
   onPrintError,
   autoTrigger = false,
@@ -32,7 +36,7 @@ const PrintLabelButton = ({
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
-  // Auto-trigger confirmation dialog when component mounts (for overflow menu usage)
+  // Auto-trigger confirmation dialog when component mounts (for overflow menu usage - legacy)
   useEffect(() => {
     if (autoTrigger && locationId) {
       setShowConfirmation(true);
@@ -40,6 +44,18 @@ const PrintLabelButton = ({
   }, [autoTrigger, locationId]);
 
   const handlePrintClick = () => {
+    // If onPrintClick callback provided, use new pattern (parent manages dialog)
+    if (onPrintClick) {
+      onPrintClick({
+        type: locationType,
+        id: locationId,
+        name: locationName,
+        label: locationName,
+        code: locationCode,
+      });
+      return;
+    }
+    // Otherwise, use legacy pattern (internal dialog)
     setShowConfirmation(true);
   };
 
@@ -48,14 +64,16 @@ const PrintLabelButton = ({
     setShowConfirmation(false);
 
     try {
-      const endpoint = `/rest/storage/${locationType}/${locationId}/print-label`;
+      const endpoint = `${config.serverBaseUrl}/rest/storage/${locationType}/${locationId}/print-label`;
 
       // Fetch PDF using POST request
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-CSRF-Token": localStorage.getItem("CSRF"),
         },
+        credentials: "include",
       });
 
       // Check if response is PDF or error JSON
@@ -126,13 +144,16 @@ const PrintLabelButton = ({
         </Button>
       )}
 
-      <PrintLabelConfirmationDialog
-        open={showConfirmation}
-        locationName={locationName}
-        locationCode={locationCode}
-        onConfirm={handleConfirmPrint}
-        onCancel={handleCancelPrint}
-      />
+      {/* Legacy: Internal dialog (only used when onPrintClick not provided) */}
+      {!onPrintClick && (
+        <PrintLabelConfirmationDialog
+          open={showConfirmation}
+          locationName={locationName}
+          locationCode={locationCode}
+          onConfirm={handleConfirmPrint}
+          onCancel={handleCancelPrint}
+        />
+      )}
     </>
   );
 };
@@ -142,9 +163,10 @@ PrintLabelButton.propTypes = {
   locationId: PropTypes.string.isRequired,
   locationName: PropTypes.string,
   locationCode: PropTypes.string,
-  onPrintSuccess: PropTypes.func,
-  onPrintError: PropTypes.func,
-  autoTrigger: PropTypes.bool,
+  onPrintClick: PropTypes.func, // New pattern: parent manages dialog
+  onPrintSuccess: PropTypes.func, // Legacy: used with internal dialog
+  onPrintError: PropTypes.func, // Legacy: used with internal dialog
+  autoTrigger: PropTypes.bool, // Legacy: auto-trigger internal dialog
 };
 
 PrintLabelButton.defaultProps = {

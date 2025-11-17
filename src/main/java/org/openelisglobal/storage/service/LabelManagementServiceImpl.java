@@ -39,9 +39,10 @@ public class LabelManagementServiceImpl implements LabelManagementService {
             throw new IllegalArgumentException("Device cannot be null");
         }
 
-        // Validate short_code exists
-        if (device.getShortCode() == null || device.getShortCode().trim().isEmpty()) {
-            throw new IllegalArgumentException("Device short_code is required for label printing");
+        // Determine barcode code: use code if ≤10 chars, otherwise use short_code
+        String barcodeCode = getBarcodeCode(device.getCode(), device.getShortCode());
+        if (barcodeCode == null || barcodeCode.trim().isEmpty()) {
+            throw new IllegalArgumentException("Device code or short_code is required for label printing. If code > 10 chars, short_code must be set.");
         }
 
         // Build hierarchical path using codes (for barcode): RoomCode-DeviceCode
@@ -53,9 +54,9 @@ public class LabelManagementServiceImpl implements LabelManagementService {
             hierarchicalPath = device.getCode();
         }
 
-        // Create label using short_code from entity
+        // Create label using determined barcode code
         StorageLocationLabel label = new StorageLocationLabel(device.getName(), device.getCode(), hierarchicalPath,
-                device.getShortCode());
+                barcodeCode);
 
         // Generate PDF using BarcodeLabelMaker
         return generatePDF(label);
@@ -68,9 +69,10 @@ public class LabelManagementServiceImpl implements LabelManagementService {
             throw new IllegalArgumentException("Shelf cannot be null");
         }
 
-        // Validate short_code exists
-        if (shelf.getShortCode() == null || shelf.getShortCode().trim().isEmpty()) {
-            throw new IllegalArgumentException("Shelf short_code is required for label printing");
+        // Determine barcode code: use label if ≤10 chars, otherwise use short_code
+        String barcodeCode = getBarcodeCode(shelf.getLabel(), shelf.getShortCode());
+        if (barcodeCode == null || barcodeCode.trim().isEmpty()) {
+            throw new IllegalArgumentException("Shelf label or short_code is required for label printing. If label > 10 chars, short_code must be set.");
         }
 
         // Build hierarchical path using codes: RoomCode-DeviceCode-ShelfLabel
@@ -87,9 +89,9 @@ public class LabelManagementServiceImpl implements LabelManagementService {
             hierarchicalPath = shelf.getLabel();
         }
 
-        // Create label using short_code from entity
+        // Create label using determined barcode code
         StorageLocationLabel label = new StorageLocationLabel(shelf.getLabel(), shelf.getLabel(), hierarchicalPath,
-                shelf.getShortCode());
+                barcodeCode);
 
         // Generate PDF using BarcodeLabelMaker
         return generatePDF(label);
@@ -102,9 +104,10 @@ public class LabelManagementServiceImpl implements LabelManagementService {
             throw new IllegalArgumentException("Rack cannot be null");
         }
 
-        // Validate short_code exists
-        if (rack.getShortCode() == null || rack.getShortCode().trim().isEmpty()) {
-            throw new IllegalArgumentException("Rack short_code is required for label printing");
+        // Determine barcode code: use label if ≤10 chars, otherwise use short_code
+        String barcodeCode = getBarcodeCode(rack.getLabel(), rack.getShortCode());
+        if (barcodeCode == null || barcodeCode.trim().isEmpty()) {
+            throw new IllegalArgumentException("Rack label or short_code is required for label printing. If label > 10 chars, short_code must be set.");
         }
 
         // Build hierarchical path using codes: RoomCode-DeviceCode-ShelfLabel-RackLabel
@@ -127,12 +130,31 @@ public class LabelManagementServiceImpl implements LabelManagementService {
             hierarchicalPath = rack.getLabel();
         }
 
-        // Create label using short_code from entity
+        // Create label using determined barcode code
         StorageLocationLabel label = new StorageLocationLabel(rack.getLabel(), rack.getLabel(), hierarchicalPath,
-                rack.getShortCode());
+                barcodeCode);
 
         // Generate PDF using BarcodeLabelMaker
         return generatePDF(label);
+    }
+
+    /**
+     * Determine barcode code: use primaryCode if ≤10 chars, otherwise use shortCode
+     * @param primaryCode The primary code (device.code, shelf.label, rack.label)
+     * @param shortCode The short code (nullable)
+     * @return The code to use for barcode generation
+     */
+    private String getBarcodeCode(String primaryCode, String shortCode) {
+        if (primaryCode == null) {
+            return shortCode;
+        }
+        // Use primaryCode if ≤10 chars, otherwise use shortCode
+        if (primaryCode.length() <= 10) {
+            return primaryCode;
+        } else {
+            // If primaryCode > 10 chars, shortCode is required
+            return (shortCode != null && !shortCode.trim().isEmpty()) ? shortCode : null;
+        }
     }
 
     @Override
@@ -146,14 +168,33 @@ public class LabelManagementServiceImpl implements LabelManagementService {
             switch (locationType.toLowerCase()) {
             case "device":
                 StorageDevice device = (StorageDevice) storageLocationService.get(Integer.parseInt(locationId), StorageDevice.class);
-                return device != null && device.getShortCode() != null
-                        && !device.getShortCode().trim().isEmpty();
+                if (device == null) {
+                    return false;
+                }
+                // Valid if code ≤10 chars OR shortCode exists
+                // If code is null, check shortCode only
+                if (device.getCode() == null || device.getCode().trim().isEmpty()) {
+                    return device.getShortCode() != null && !device.getShortCode().trim().isEmpty();
+                }
+                // If code exists, valid if ≤10 chars OR shortCode exists
+                return device.getCode().length() <= 10
+                        || (device.getShortCode() != null && !device.getShortCode().trim().isEmpty());
             case "shelf":
                 StorageShelf shelf = (StorageShelf) storageLocationService.get(Integer.parseInt(locationId), StorageShelf.class);
-                return shelf != null && shelf.getShortCode() != null && !shelf.getShortCode().trim().isEmpty();
+                if (shelf == null) {
+                    return false;
+                }
+                // Valid if label ≤10 chars OR shortCode exists
+                return shelf.getLabel() != null && shelf.getLabel().length() <= 10
+                        || (shelf.getShortCode() != null && !shelf.getShortCode().trim().isEmpty());
             case "rack":
                 StorageRack rack = (StorageRack) storageLocationService.get(Integer.parseInt(locationId), StorageRack.class);
-                return rack != null && rack.getShortCode() != null && !rack.getShortCode().trim().isEmpty();
+                if (rack == null) {
+                    return false;
+                }
+                // Valid if label ≤10 chars OR shortCode exists
+                return rack.getLabel() != null && rack.getLabel().length() <= 10
+                        || (rack.getShortCode() != null && !rack.getShortCode().trim().isEmpty());
             default:
                 return false;
             }

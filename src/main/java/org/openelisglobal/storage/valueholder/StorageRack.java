@@ -49,7 +49,7 @@ public class StorageRack extends BaseObject<Integer> {
     @Column(name = "POSITION_SCHEMA_HINT", length = 50)
     private String positionSchemaHint;
 
-    @Column(name = "SHORT_CODE", length = 10, nullable = false)
+    @Column(name = "SHORT_CODE", length = 10, nullable = true)
     private String shortCode;
 
     @Column(name = "ACTIVE", nullable = false)

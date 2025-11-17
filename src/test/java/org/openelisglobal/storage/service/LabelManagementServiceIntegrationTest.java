@@ -106,17 +106,25 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Helper: Create a test device and return it with shortCode set to null
-     * Note: Since the database requires NOT NULL shortCode, we create a device with valid shortCode,
-     * then manually set shortCode to null on the entity object (not persisted) for testing
+     * Helper: Create a test device with code > 10 chars but without shortCode
+     * Note: Since shortCode is now optional (only required if code > 10 chars), we create
+     * a device with a long code (> 10 chars) and no shortCode to test the validation
      */
     private StorageDevice createTestDeviceWithoutShortCode() {
-        // Given: Create device with shortCode first (required by database)
-        StorageDevice device = createTestDeviceWithShortCode();
+        // Given: Get a room from fixtures to use as parent
+        StorageRoom parentRoom = storageLocationService.getRooms().get(0);
+
+        // Given: Create device with code > 10 chars but no shortCode
+        StorageDevice device = new StorageDevice();
+        device.setCode("TEST-DEVICE-LONG"); // > 10 chars
+        device.setName("Test Device Long Code");
+        device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
+        device.setParentRoom(parentRoom);
+        device.setActive(true);
+        device.setSysUserIdValue(1); // Required field
+        // shortCode is null - this should fail validation since code > 10 chars
         
-        // Then: Manually set shortCode to null on the entity object (not persisted)
-        // This simulates a device without shortCode for testing the validation
-        device.setShortCode(null);
+        // Note: We can't actually persist this, so we'll test the validation in the generateLabel test
         return device;
     }
 
@@ -140,17 +148,54 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Test generating label for device without shortCode throws exception
-     * Expected: IllegalArgumentException is thrown when shortCode is missing
+     * Test generating label for device with code ≤10 chars and no shortCode - should use code
+     * Expected: PDF is generated successfully using code (since code ≤10 chars)
+     */
+    @Test
+    public void testGenerateLabel_DeviceWithCodeLeq10Chars_NoShortCode_UsesCode() {
+        // Given: Get a room from fixtures to use as parent
+        StorageRoom parentRoom = storageLocationService.getRooms().get(0);
+
+        // Given: Create device with code ≤10 chars and no shortCode
+        StorageDevice device = new StorageDevice();
+        device.setCode("TEST-DEV01"); // 10 chars
+        device.setName("Test Device 01");
+        device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
+        device.setParentRoom(parentRoom);
+        device.setActive(true);
+        device.setSysUserIdValue(1); // Required field
+        // shortCode is null - should be allowed since code ≤10 chars
+
+        // When: Insert device through service layer
+        Integer deviceId = storageLocationService.insert(device);
+        assertNotNull("Device should be created", deviceId);
+
+        // Given: Retrieve device
+        StorageDevice retrieved = (StorageDevice) storageLocationService.get(deviceId, StorageDevice.class);
+        assertNull("Device should not have shortCode", retrieved.getShortCode());
+        assertEquals("Device code should be ≤10 chars", "TEST-DEV01", retrieved.getCode());
+
+        // When: Generate label through service layer (should use code since ≤10 chars)
+        ByteArrayOutputStream pdf = labelManagementService.generateLabel(retrieved);
+
+        // Then: PDF should be generated (non-empty)
+        assertNotNull("PDF should not be null", pdf);
+        assertTrue("PDF should have content", pdf.size() > 0);
+    }
+
+    /**
+     * Test generating label for device with code > 10 chars and no shortCode throws exception
+     * Expected: IllegalArgumentException is thrown when code > 10 chars and shortCode is missing
      */
     @Test(expected = IllegalArgumentException.class)
-    public void testGenerateLabel_DeviceWithoutShortCode_ThrowsException() {
-        // Given: Device with shortCode set to null (simulating missing shortCode)
+    public void testGenerateLabel_DeviceWithCodeGt10Chars_NoShortCode_ThrowsException() {
+        // Given: Device with code > 10 chars but no shortCode
         StorageDevice device = createTestDeviceWithoutShortCode();
         assertNull("Device should not have shortCode", device.getShortCode());
+        assertTrue("Device code should be > 10 chars", device.getCode().length() > 10);
 
         // When: Generate label through service layer
-        // Then: Should throw IllegalArgumentException
+        // Then: Should throw IllegalArgumentException (code > 10 chars requires shortCode)
         labelManagementService.generateLabel(device);
     }
 
@@ -237,6 +282,36 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
 
         // Then: Should return true
         assertTrue("Short code should exist", exists);
+    }
+
+    /**
+     * Test validateShortCodeExists returns true when code ≤10 chars (even without shortCode)
+     * Expected: Returns true for device with code ≤10 chars (code can be used for labels)
+     */
+    @Test
+    public void testValidateShortCodeExists_DeviceWithCodeLeq10Chars_ReturnsTrue() {
+        // Given: Get a room from fixtures to use as parent
+        StorageRoom parentRoom = storageLocationService.getRooms().get(0);
+
+        // Given: Create device with code ≤10 chars and no shortCode
+        StorageDevice device = new StorageDevice();
+        device.setCode("TEST-DEV01"); // 10 chars
+        device.setName("Test Device 01");
+        device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
+        device.setParentRoom(parentRoom);
+        device.setActive(true);
+        device.setSysUserIdValue(1); // Required field
+        // shortCode is null - should be allowed since code ≤10 chars
+
+        // When: Insert device through service layer
+        Integer deviceId = storageLocationService.insert(device);
+        assertNotNull("Device should be created", deviceId);
+
+        // When: Validate shortCode exists (should return true since code ≤10 chars)
+        boolean exists = labelManagementService.validateShortCodeExists(String.valueOf(deviceId), "device");
+
+        // Then: Should return true (code ≤10 chars can be used for labels)
+        assertTrue("Should return true when code ≤10 chars (even without shortCode)", exists);
     }
 
     /**

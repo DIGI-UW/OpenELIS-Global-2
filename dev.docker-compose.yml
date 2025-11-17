@@ -23,8 +23,8 @@ services:
         env_file:
             - ./volume/database/database.env
         volumes:
-              # preserves the database between containers
-             - ./volume/database/data:/var/lib/postgresql/data                
+              # Use named Docker volume instead of local mount for easier drop/recreate
+             - db-data:/var/lib/postgresql/data                
               # files here will run on install
              - ./volume/database/dbInit:/docker-entrypoint-initdb.d
         networks:

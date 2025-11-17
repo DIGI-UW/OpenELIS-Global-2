@@ -29,7 +29,15 @@ Cypress.Commands.add("setupStorageTests", () => {
   // Wait for backend API to be available
   cy.waitForBackend("/rest/storage/samples");
 
-  // Login
+  // Use cy.session() to cache and reuse login session across tests
+  cy.session("storage-tests-session", () => {
+    // Login only if session doesn't exist
+    const loginPage = new LoginPage();
+    loginPage.visit();
+    loginPage.goToHomePage();
+  });
+
+  // After session is established, navigate to home page
   const loginPage = new LoginPage();
   loginPage.visit();
   const homePage = loginPage.goToHomePage();

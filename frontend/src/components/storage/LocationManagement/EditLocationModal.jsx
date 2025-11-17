@@ -463,11 +463,22 @@ const EditLocationModal = ({
                   handleFieldChange("shortCode", value);
                 }}
                 maxLength={10}
-                required
-                helperText={intl.formatMessage({
-                  id: "label.shortCode.helper",
-                  defaultMessage: "Max 10 characters, alphanumeric with hyphens/underscores",
-                })}
+                required={
+                  location && location.code && location.code.length > 10
+                }
+                helperText={
+                  location && location.code && location.code.length > 10
+                    ? intl.formatMessage({
+                        id: "label.shortCode.required.helper",
+                        defaultMessage:
+                          "Required when code > 10 characters. Max 10 characters, alphanumeric with hyphens/underscores",
+                      })
+                    : intl.formatMessage({
+                        id: "label.shortCode.optional.helper",
+                        defaultMessage:
+                          "Optional (code will be used if ≤10 chars). Max 10 characters, alphanumeric with hyphens/underscores",
+                      })
+                }
               />
               <Toggle
                 id="device-active"
@@ -539,11 +550,20 @@ const EditLocationModal = ({
                   handleFieldChange("shortCode", value);
                 }}
                 maxLength={10}
-                required
-                helperText={intl.formatMessage({
-                  id: "label.shortCode.helper",
-                  defaultMessage: "Max 10 characters, alphanumeric with hyphens/underscores",
-                })}
+                required={formData.label && formData.label.length > 10}
+                helperText={
+                  formData.label && formData.label.length > 10
+                    ? intl.formatMessage({
+                        id: "label.shortCode.required.helper",
+                        defaultMessage:
+                          "Required when label > 10 characters. Max 10 characters, alphanumeric with hyphens/underscores",
+                      })
+                    : intl.formatMessage({
+                        id: "label.shortCode.optional.helper",
+                        defaultMessage:
+                          "Optional (label will be used if ≤10 chars). Max 10 characters, alphanumeric with hyphens/underscores",
+                      })
+                }
               />
               <Toggle
                 id="shelf-active"
@@ -644,11 +664,20 @@ const EditLocationModal = ({
                   handleFieldChange("shortCode", value);
                 }}
                 maxLength={10}
-                required
-                helperText={intl.formatMessage({
-                  id: "label.shortCode.helper",
-                  defaultMessage: "Max 10 characters, alphanumeric with hyphens/underscores",
-                })}
+                required={formData.label && formData.label.length > 10}
+                helperText={
+                  formData.label && formData.label.length > 10
+                    ? intl.formatMessage({
+                        id: "label.shortCode.required.helper",
+                        defaultMessage:
+                          "Required when label > 10 characters. Max 10 characters, alphanumeric with hyphens/underscores",
+                      })
+                    : intl.formatMessage({
+                        id: "label.shortCode.optional.helper",
+                        defaultMessage:
+                          "Optional (label will be used if ≤10 chars). Max 10 characters, alphanumeric with hyphens/underscores",
+                      })
+                }
               />
               <Toggle
                 id="rack-active"
@@ -679,10 +708,24 @@ const EditLocationModal = ({
           disabled={
             isSubmitting ||
             (locationType === "room" && !formData.name) ||
-            (locationType === "device" && (!formData.name || !formData.shortCode)) ||
-            (locationType === "shelf" && (!formData.label || !formData.shortCode)) ||
+            (locationType === "device" &&
+              (!formData.name ||
+                (location &&
+                  location.code &&
+                  location.code.length > 10 &&
+                  !formData.shortCode))) ||
+            (locationType === "shelf" &&
+              (!formData.label ||
+                (formData.label &&
+                  formData.label.length > 10 &&
+                  !formData.shortCode))) ||
             (locationType === "rack" &&
-              (!formData.label || !formData.rows || !formData.columns || !formData.shortCode))
+              (!formData.label ||
+                !formData.rows ||
+                !formData.columns ||
+                (formData.label &&
+                  formData.label.length > 10 &&
+                  !formData.shortCode)))
           }
           data-testid="edit-location-save-button"
         >

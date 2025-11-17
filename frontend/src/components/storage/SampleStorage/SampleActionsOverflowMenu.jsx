@@ -30,8 +30,7 @@ const SampleActionsOverflowMenu = ({ sample, onManageLocation, onDispose }) => {
   const handleManageLocation = useCallback(
     (event) => {
       console.log("SampleActionsOverflowMenu: handleManageLocation called", {
-        sample,
-        event,
+        sampleId: sample?.sampleId || sample?.id,
         hasOnManageLocation: !!onManageLocation,
       });
       // Prevent default behavior and stop propagation

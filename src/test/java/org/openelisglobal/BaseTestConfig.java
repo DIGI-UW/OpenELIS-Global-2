@@ -42,6 +42,7 @@ public class BaseTestConfig {
         SpringLiquibase liquibase = new SpringLiquibase();
         liquibase.setChangeLog("classpath:liquibase/base-changelog.xml");
         liquibase.setDataSource(dataSource);
+        liquibase.setContexts("test");
         return liquibase;
     }
 

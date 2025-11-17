@@ -60,7 +60,11 @@ const PrintLabelConfirmationDialog = ({
         </p>
       </ModalBody>
       <ModalFooter>
-        <Button kind="secondary" onClick={onCancel} data-testid="cancel-print-button">
+        <Button
+          kind="secondary"
+          onClick={onCancel}
+          data-testid="cancel-print-button"
+        >
           <FormattedMessage id="label.button.cancel" defaultMessage="Cancel" />
         </Button>
         <Button
@@ -89,4 +93,3 @@ PrintLabelConfirmationDialog.defaultProps = {
 };
 
 export default PrintLabelConfirmationDialog;
-
