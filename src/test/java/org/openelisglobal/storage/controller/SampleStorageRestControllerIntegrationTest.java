@@ -85,9 +85,11 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
 
         // Create room directly via JDBC to avoid validation issues
         // Note: Using actual column names from schema (last_updated not lastupdated)
+        // Room code must be ≤10 chars: "TESTINT" + 3 digits = 10 chars max
+        String roomCode = "TESTINT" + (timestamp % 1000);
         jdbcTemplate.update(
                 "INSERT INTO storage_room (id, name, code, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId, "Test Integration Room", "TEST-INT-ROOM-" + timestamp, true, 1);
+                baseId, "Test Integration Room", roomCode, true, 1);
         Integer roomId = baseId;
 
         // Create device directly via JDBC

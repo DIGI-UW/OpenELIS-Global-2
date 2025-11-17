@@ -110,9 +110,11 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         // Create a test room first (following pattern from other storage tests)
         long timestamp = System.currentTimeMillis() % 9000;
         Integer roomId = 1000 + (int) timestamp;
+        // Room code must be ≤10 chars: "TESTROOM" + 2 digits = 9 chars
+        String roomCode = "TESTROOM" + (timestamp % 100);
         jdbcTemplate.update("INSERT INTO storage_room (id, name, code, active, sys_user_id, last_updated, fhir_uuid) "
                 + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid()) " + "ON CONFLICT (id) DO NOTHING",
-                roomId, "Test Room", "TEST-ROOM-" + timestamp, true, 1);
+                roomId, "Test Room", roomCode, true, 1);
 
         // Create device with proper room relationship
         StorageDevice device = new StorageDevice();
@@ -139,9 +141,11 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         // Create a test room first
         long timestamp = System.currentTimeMillis() % 9000;
         Integer roomId = 1000 + (int) timestamp;
+        // Room code must be ≤10 chars: "TESTROOM" + 2 digits = 9 chars
+        String roomCode = "TESTROOM" + (timestamp % 100);
         jdbcTemplate.update("INSERT INTO storage_room (id, name, code, active, sys_user_id, last_updated, fhir_uuid) "
                 + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid()) " + "ON CONFLICT (id) DO NOTHING",
-                roomId, "Test Room No SC", "TEST-ROOM-NO-SC-" + timestamp, true, 1);
+                roomId, "Test Room No SC", roomCode, true, 1);
 
         // Create device with code > 10 chars but without short_code (should fail
         // validation)
@@ -165,9 +169,11 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         // Create a test room first
         long timestamp = System.currentTimeMillis() % 9000;
         Integer roomId = 1000 + (int) timestamp;
+        // Room code must be ≤10 chars: "TESTROOM" + 2 digits = 9 chars
+        String roomCode = "TESTROOM" + (timestamp % 100);
         jdbcTemplate.update("INSERT INTO storage_room (id, name, code, active, sys_user_id, last_updated, fhir_uuid) "
                 + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid()) " + "ON CONFLICT (id) DO NOTHING",
-                roomId, "Test Room Short", "TEST-ROOM-SHORT-" + timestamp, true, 1);
+                roomId, "Test Room Short", roomCode, true, 1);
 
         // Create device with code ≤10 chars and no short_code (should work - code will
         // be used for labels)

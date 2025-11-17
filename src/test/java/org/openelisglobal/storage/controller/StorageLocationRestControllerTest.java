@@ -677,8 +677,10 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
     private String createRoomAndGetId(String name, String code) throws Exception {
         StorageRoomForm roomForm = new StorageRoomForm();
         roomForm.setName(name);
-        // Ensure unique code to avoid conflicts with fixture data
-        String uniqueCode = code + "-" + System.currentTimeMillis();
+        // Ensure unique code to avoid conflicts with fixture data (max 10 chars)
+        // Use last 2 digits of timestamp to keep code ≤10 chars
+        long timestamp = System.currentTimeMillis() % 100;
+        String uniqueCode = (code.length() <= 8 ? code : code.substring(0, 8)) + timestamp;
         roomForm.setCode(uniqueCode);
         roomForm.setActive(true);
 
