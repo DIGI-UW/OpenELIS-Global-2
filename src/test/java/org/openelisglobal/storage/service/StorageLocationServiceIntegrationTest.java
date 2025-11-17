@@ -361,11 +361,9 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         // Then: Device should be persisted with ID
         assertNotNull("Device ID should not be null", deviceId);
 
-        // Then: Retrieve device and verify shortCode is null (code will be used for
-        // labels)
+        // Then: Retrieve device and verify code is set correctly (code ≤10 chars, no shortCode needed)
         StorageDevice retrieved = (StorageDevice) storageLocationService.get(deviceId, StorageDevice.class);
         assertNotNull("Retrieved device should not be null", retrieved);
-        assertNull("Short code should be null when code ≤10 chars", retrieved.getCode());
         assertEquals("Device code should match", "TEST-DEV02", retrieved.getCode());
     }
 
@@ -446,8 +444,8 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
             fail("Should have thrown exception for duplicate shortCode");
         } catch (LIMSRuntimeException e) {
             // Expected: Service validation caught the duplicate
-            assertTrue("Exception message should mention short code",
-                    e.getMessage().contains("short") || e.getMessage().contains("code"));
+            assertTrue("Exception message should mention code",
+                    e.getMessage().contains("code") || e.getMessage().contains("duplicate"));
         } catch (jakarta.persistence.PersistenceException e) {
             // Also acceptable: Database constraint caught the duplicate
             assertTrue("Exception should be related to constraint violation",

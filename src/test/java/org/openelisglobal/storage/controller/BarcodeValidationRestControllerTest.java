@@ -59,17 +59,19 @@ public class BarcodeValidationRestControllerTest extends BaseWebContextSensitive
      * hyphens for barcode compatibility
      */
     private void createTestStorageHierarchy() throws Exception {
-        // Create room - use simple code without hyphens
+        // Create room - use simple code without hyphens (max 10 chars: "TESTROOM" + 2 digits = 9 chars)
+        String roomCode = "TESTROOM" + (timestamp % 100);
         jdbcTemplate.update(
                 "INSERT INTO storage_room (id, name, code, active, sys_user_id, last_updated, fhir_uuid) "
                         + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId, "Barcode Test Room", "TESTROOM" + timestamp, true, 1);
+                baseId, "Barcode Test Room", roomCode, true, 1);
 
-        // Create device - use simple code without hyphens
+        // Create device - use simple code without hyphens (max 10 chars: "TESTDEV" + 2 digits = 8 chars)
+        String deviceCode = "TESTDEV" + (timestamp % 100);
         jdbcTemplate.update(
                 "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId + 1, "Barcode Test Freezer", "TESTDEV" + timestamp, "freezer", baseId, true, 1);
+                baseId + 1, "Barcode Test Freezer", deviceCode, "freezer", baseId, true, 1);
 
         // Create shelf - use simple label without hyphens
         jdbcTemplate.update(
