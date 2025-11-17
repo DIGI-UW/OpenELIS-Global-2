@@ -37,4 +37,8 @@ public interface NoteBookService extends BaseObjectService<NoteBook, Integer> {
     Long getTotalCount();
 
     List<SampleDisplayBean> searchSampleItems(String accession);
+    
+    List<SampleDisplayBean> searchSampleItems(String patientId, String accession);
+
+    List<NoteBook> getAllActiveNotebooks();
 }

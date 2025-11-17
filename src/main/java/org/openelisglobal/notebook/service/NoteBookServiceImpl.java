@@ -199,11 +199,32 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             displayBean.setTitle(noteBook.getTitle());
             displayBean.setType(Integer.valueOf(noteBook.getType()));
             displayBean.setTags(noteBook.getTags());
+
+            // Handle type - it could be a dictionary ID (numeric) or a string value
+            if (noteBook.getType() != null) {
+                try {
+                    displayBean.setType(Integer.valueOf(noteBook.getType()));
+                    displayBean.setTypeName(dictionaryService.get(noteBook.getType()).getDictEntry());
+                } catch (NumberFormatException e) {
+                    // If type is not numeric, use it as the type name directly
+                    displayBean.setTypeName(noteBook.getType());
+                }
+            }
+
+            // Only set patient fields if patient is not null
+            if (noteBook.getPatient() != null) {
+                Patient patient = patientService.getData(noteBook.getPatient().getId());
+                if (patient != null) {
+                    displayBean.setLastName(patientService.getLastName(patient));
+                    displayBean.setFirstName(patientService.getFirstName(patient));
+                    displayBean.setGender(patientService.getGender(patient));
+                }
+            }
             displayBean.setDateCreated(DateUtil.formatDateAsText(noteBook.getDateCreated()));
             displayBean.setStatus(noteBook.getStatus());
-            displayBean.setTypeName(dictionaryService.get(noteBook.getType().toString()).getDictEntry());
             displayBean.setIsTemplate(noteBook.getIsTemplate());
             displayBean.setEntriesCount(noteBook.getEntries().size());
+            displayBean.setQuestionnaireFhirUuid(noteBook.getQuestionnaireFhirUuid());
         }
         return displayBean;
     }
@@ -410,7 +431,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 .map(this::convertSampleToDisplayBean).collect(Collectors.toList());
     }
 
-    @Override
+    
     @Transactional
     public List<NoteBook> getAllTemplateNoteBooks() {
         return baseObjectDAO.getAllMatching("isTemplate", true);
@@ -425,6 +446,15 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             return template.getEntries();
         }
         return new ArrayList<>();
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public List<NoteBook> getAllActiveNotebooks() {
+        // Get all notebooks that are not archived
+        List<NoteBookStatus> activeStatuses = List.of(NoteBookStatus.DRAFT, NoteBookStatus.SUBMITTED,
+                NoteBookStatus.FINALIZED, NoteBookStatus.LOCKED);
+        return filterNoteBooks(activeStatuses, null, null, null, null);
     }
 
 }

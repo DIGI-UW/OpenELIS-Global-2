@@ -21,6 +21,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -111,6 +112,8 @@ public class NoteBook extends BaseObject<Integer> {
     @OneToMany
     @JoinTable(name = "notebook_entries", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "entry_id"))
     private List<NoteBook> entries;
+    @Column(name = "questionnaire_fhir_uuid")
+    private UUID questionnaireFhirUuid;
 
     @Override
     public Integer getId() {
@@ -277,6 +280,14 @@ public class NoteBook extends BaseObject<Integer> {
 
     public void setIsTemplate(Boolean isTemplate) {
         this.isTemplate = isTemplate;
+    }
+    
+    public UUID getQuestionnaireFhirUuid() {
+        return questionnaireFhirUuid;
+    }
+
+    public void setQuestionnaireFhirUuid(UUID questionnaireFhirUuid) {
+        this.questionnaireFhirUuid = questionnaireFhirUuid;
     }
 
 }

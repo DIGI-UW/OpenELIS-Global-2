@@ -1,0 +1,85 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "example-questionnaire-uuid",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">\n      <h2>Example Generic Sample Questionnaire</h2>\n      <p>This is an example questionnaire for generic sample orders.</p>\n    </div>"
+  },
+  "identifier": [
+    {
+      "system": "urn:ietf:rfc:3986",
+      "value": "urn:oid:2.16.840.1.113883.4.642.20.999"
+    }
+  ],
+  "name": "GenericSampleQuestionnaire",
+  "title": "Generic Sample Order Questionnaire",
+  "status": "active",
+  "subjectType": ["Patient", "Specimen", "ServiceRequest"],
+  "description": "Additional information for generic sample orders",
+  "item": [
+    {
+      "linkId": "1",
+      "text": "Sample Source",
+      "type": "choice",
+      "required": false,
+      "answerOption": [
+        {
+          "valueString": "Hospital"
+        },
+        {
+          "valueString": "Clinic"
+        },
+        {
+          "valueString": "Field"
+        },
+        {
+          "valueString": "Other"
+        }
+      ]
+    },
+    {
+      "linkId": "2",
+      "text": "Transport Conditions",
+      "type": "choice",
+      "required": false,
+      "answerOption": [
+        {
+          "valueString": "Room Temperature"
+        },
+        {
+          "valueString": "Refrigerated"
+        },
+        {
+          "valueString": "Frozen"
+        },
+        {
+          "valueString": "Other"
+        }
+      ]
+    },
+    {
+      "linkId": "3",
+      "text": "Special Instructions",
+      "type": "text",
+      "required": false
+    },
+    {
+      "linkId": "4",
+      "text": "Urgency Level",
+      "type": "choice",
+      "required": false,
+      "answerOption": [
+        {
+          "valueString": "Routine"
+        },
+        {
+          "valueString": "Urgent"
+        },
+        {
+          "valueString": "STAT"
+        }
+      ]
+    }
+  ]
+}
+
