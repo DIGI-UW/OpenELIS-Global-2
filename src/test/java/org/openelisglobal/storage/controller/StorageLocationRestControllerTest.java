@@ -680,7 +680,9 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
         // Ensure unique code to avoid conflicts with fixture data (max 10 chars)
         // Use last 2 digits of timestamp to keep code ≤10 chars
         long timestamp = System.currentTimeMillis() % 100;
-        String uniqueCode = (code.length() <= 8 ? code : code.substring(0, 8)) + timestamp;
+        // Truncate code to max 8 chars to leave room for 2-digit suffix
+        String baseCode = code.length() <= 8 ? code : code.substring(0, 8);
+        String uniqueCode = baseCode + String.format("%02d", timestamp);
         roomForm.setCode(uniqueCode);
         roomForm.setActive(true);
 
