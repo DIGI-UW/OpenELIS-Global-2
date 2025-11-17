@@ -153,6 +153,7 @@ accessing any of these links, simply follow these steps:
 ```
 
 **Options:**
+
 - `--skip-submodules`: Skip submodule build (faster, for quick checks)
 - `--skip-tests`: Skip tests (formatting only)
 - `--skip-e2e`: Skip E2E tests (frontend only)
