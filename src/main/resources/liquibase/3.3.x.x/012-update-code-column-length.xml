@@ -48,9 +48,10 @@
                 <columnExists tableName="storage_shelf" columnName="code"/>
             </not>
         </preConditions>
+        <!-- Add column as nullable first (required when table has existing rows) -->
         <addColumn tableName="storage_shelf">
             <column name="code" type="VARCHAR(10)">
-                <constraints nullable="false"/>
+                <constraints nullable="true"/>
             </column>
         </addColumn>
         <sql>
@@ -67,6 +68,8 @@
             SET code = LEFT(code, 10)
             WHERE LENGTH(code) > 10;
         </sql>
+        <!-- Add NOT NULL constraint after populating data -->
+        <addNotNullConstraint tableName="storage_shelf" columnName="code" columnDataType="VARCHAR(10)"/>
         <rollback>
             <dropColumn tableName="storage_shelf" columnName="code"/>
         </rollback>
@@ -79,9 +82,10 @@
                 <columnExists tableName="storage_rack" columnName="code"/>
             </not>
         </preConditions>
+        <!-- Add column as nullable first (required when table has existing rows) -->
         <addColumn tableName="storage_rack">
             <column name="code" type="VARCHAR(10)">
-                <constraints nullable="false"/>
+                <constraints nullable="true"/>
             </column>
         </addColumn>
         <sql>
@@ -98,6 +102,8 @@
             SET code = LEFT(code, 10)
             WHERE LENGTH(code) > 10;
         </sql>
+        <!-- Add NOT NULL constraint after populating data -->
+        <addNotNullConstraint tableName="storage_rack" columnName="code" columnDataType="VARCHAR(10)"/>
         <rollback>
             <dropColumn tableName="storage_rack" columnName="code"/>
         </rollback>
