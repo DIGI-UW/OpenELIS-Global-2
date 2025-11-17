@@ -569,13 +569,12 @@ public class BarcodeValidationServiceTest {
         assertFalse("Validation should fail when rack is missing", response.isValid());
         assertEquals("First missing level should be 'rack'", "rack", response.getFirstMissingLevel());
         assertNotNull("Valid components should be populated", response.getValidComponents());
-        assertEquals("Should have 3 valid components (room, device, shelf)", 3,
-                response.getValidComponents().size());
+        assertEquals("Should have 3 valid components (room, device, shelf)", 3, response.getValidComponents().size());
     }
 
     /**
-     * Test returns valid hierarchy portion Expected: Returns all valid components up
-     * to first missing level
+     * Test returns valid hierarchy portion Expected: Returns all valid components
+     * up to first missing level
      */
     @Test
     public void testReturnsValidHierarchyPortion() {
@@ -655,8 +654,7 @@ public class BarcodeValidationServiceTest {
         // Assert
         assertNotNull("Response should not be null", response);
         assertFalse("Validation should fail when room doesn't exist", response.isValid());
-        assertNull("First missing level should be null when no valid levels exist",
-                response.getFirstMissingLevel());
+        assertNull("First missing level should be null when no valid levels exist", response.getFirstMissingLevel());
         assertTrue("Valid components should be empty", response.getValidComponents().isEmpty());
         assertNotNull("Error message should be present", response.getErrorMessage());
     }

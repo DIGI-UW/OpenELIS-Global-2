@@ -19,9 +19,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Integration tests for LabelManagementService that verify label generation
- * through the service layer (not REST endpoints). These tests validate:
- * - PDF generation using shortCode from entity
- * - Validation when shortCode is missing
+ * through the service layer (not REST endpoints). These tests validate: - PDF
+ * generation using shortCode from entity - Validation when shortCode is missing
  * - Print history tracking
  * 
  * Following OpenELIS test patterns: extends BaseWebContextSensitiveTest to load
@@ -68,11 +67,15 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
             // This preserves fixture data loaded by Liquibase (IDs 1-999)
             // IDs are stored as VARCHAR, so we compare as strings
             // Also clean up by short_code patterns used in tests (TEST- prefix)
-            jdbcTemplate.execute("DELETE FROM storage_location_print_history WHERE location_id::integer >= 1000 OR location_id LIKE 'TEST-%'");
+            jdbcTemplate.execute(
+                    "DELETE FROM storage_location_print_history WHERE location_id::integer >= 1000 OR location_id LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM storage_position WHERE id::integer >= 1000 OR coordinate LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
+            jdbcTemplate.execute(
+                    "DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
+            jdbcTemplate.execute(
+                    "DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
+            jdbcTemplate.execute(
+                    "DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM storage_room WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
         } catch (Exception e) {
             // Log but don't fail - cleanup is best effort
@@ -106,9 +109,10 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Helper: Create a test device with code > 10 chars but without shortCode
-     * Note: Since shortCode is now optional (only required if code > 10 chars), we create
-     * a device with a long code (> 10 chars) and no shortCode to test the validation
+     * Helper: Create a test device with code > 10 chars but without shortCode Note:
+     * Since shortCode is now optional (only required if code > 10 chars), we create
+     * a device with a long code (> 10 chars) and no shortCode to test the
+     * validation
      */
     private StorageDevice createTestDeviceWithoutShortCode() {
         // Given: Get a room from fixtures to use as parent
@@ -123,8 +127,9 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         device.setActive(true);
         device.setSysUserIdValue(1); // Required field
         // shortCode is null - this should fail validation since code > 10 chars
-        
-        // Note: We can't actually persist this, so we'll test the validation in the generateLabel test
+
+        // Note: We can't actually persist this, so we'll test the validation in the
+        // generateLabel test
         return device;
     }
 
@@ -148,8 +153,9 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Test generating label for device with code ≤10 chars and no shortCode - should use code
-     * Expected: PDF is generated successfully using code (since code ≤10 chars)
+     * Test generating label for device with code ≤10 chars and no shortCode -
+     * should use code Expected: PDF is generated successfully using code (since
+     * code ≤10 chars)
      */
     @Test
     public void testGenerateLabel_DeviceWithCodeLeq10Chars_NoShortCode_UsesCode() {
@@ -184,8 +190,9 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Test generating label for device with code > 10 chars and no shortCode throws exception
-     * Expected: IllegalArgumentException is thrown when code > 10 chars and shortCode is missing
+     * Test generating label for device with code > 10 chars and no shortCode throws
+     * exception Expected: IllegalArgumentException is thrown when code > 10 chars
+     * and shortCode is missing
      */
     @Test(expected = IllegalArgumentException.class)
     public void testGenerateLabel_DeviceWithCodeGt10Chars_NoShortCode_ThrowsException() {
@@ -195,7 +202,8 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         assertTrue("Device code should be > 10 chars", device.getCode().length() > 10);
 
         // When: Generate label through service layer
-        // Then: Should throw IllegalArgumentException (code > 10 chars requires shortCode)
+        // Then: Should throw IllegalArgumentException (code > 10 chars requires
+        // shortCode)
         labelManagementService.generateLabel(device);
     }
 
@@ -233,8 +241,8 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Test generating label for rack with shortCode through service layer
-     * Expected: PDF is generated successfully using shortCode from entity
+     * Test generating label for rack with shortCode through service layer Expected:
+     * PDF is generated successfully using shortCode from entity
      */
     @Test
     public void testGenerateLabel_RackWithShortCode_GeneratesPdf() {
@@ -268,8 +276,8 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Test validateShortCodeExists returns true when shortCode exists
-     * Expected: Returns true for device with shortCode
+     * Test validateShortCodeExists returns true when shortCode exists Expected:
+     * Returns true for device with shortCode
      */
     @Test
     public void testValidateShortCodeExists_DeviceWithShortCode_ReturnsTrue() {
@@ -285,8 +293,9 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Test validateShortCodeExists returns true when code ≤10 chars (even without shortCode)
-     * Expected: Returns true for device with code ≤10 chars (code can be used for labels)
+     * Test validateShortCodeExists returns true when code ≤10 chars (even without
+     * shortCode) Expected: Returns true for device with code ≤10 chars (code can be
+     * used for labels)
      */
     @Test
     public void testValidateShortCodeExists_DeviceWithCodeLeq10Chars_ReturnsTrue() {
@@ -316,9 +325,9 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
 
     /**
      * Test validateShortCodeExists returns false when device doesn't exist
-     * Expected: Returns false for non-existent device ID
-     * Note: Since database requires NOT NULL shortCode and service auto-generates it,
-     * we can't test a device without shortCode. Instead, we test with a non-existent device ID.
+     * Expected: Returns false for non-existent device ID Note: Since database
+     * requires NOT NULL shortCode and service auto-generates it, we can't test a
+     * device without shortCode. Instead, we test with a non-existent device ID.
      */
     @Test
     public void testValidateShortCodeExists_DeviceDoesNotExist_ReturnsFalse() {
@@ -333,8 +342,8 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Test trackPrintHistory records print history in database
-     * Expected: Print history record is created in storage_location_print_history table
+     * Test trackPrintHistory records print history in database Expected: Print
+     * history record is created in storage_location_print_history table
      */
     @Test
     public void testTrackPrintHistory_RecordsInDatabase() {
@@ -362,8 +371,8 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Test full workflow: generate label and track print history
-     * Expected: PDF is generated and print history is recorded
+     * Test full workflow: generate label and track print history Expected: PDF is
+     * generated and print history is recorded
      */
     @Test
     public void testGenerateLabelAndTrackHistory_FullWorkflow() {
@@ -387,4 +396,3 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         assertTrue("Print history should be recorded", count > 0);
     }
 }
-

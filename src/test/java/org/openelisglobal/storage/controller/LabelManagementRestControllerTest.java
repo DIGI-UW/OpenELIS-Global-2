@@ -130,9 +130,10 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Helper: Create a test device with code > 10 chars but without shortCode and return its ID
-     * Note: Since shortCode is now optional (only required if code > 10 chars), we create
-     * a device with a long code (> 10 chars) and no shortCode to test the validation
+     * Helper: Create a test device with code > 10 chars but without shortCode and
+     * return its ID Note: Since shortCode is now optional (only required if code >
+     * 10 chars), we create a device with a long code (> 10 chars) and no shortCode
+     * to test the validation
      */
     private String createTestDeviceWithoutShortCode() throws Exception {
         // Create a test room first
@@ -142,8 +143,10 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
                 + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid()) " + "ON CONFLICT (id) DO NOTHING",
                 roomId, "Test Room No SC", "TEST-ROOM-NO-SC-" + timestamp, true, 1);
 
-        // Create device with code > 10 chars but without short_code (should fail validation)
-        // Note: We can't actually persist this with NULL short_code if code > 10 chars due to service validation,
+        // Create device with code > 10 chars but without short_code (should fail
+        // validation)
+        // Note: We can't actually persist this with NULL short_code if code > 10 chars
+        // due to service validation,
         // so we'll create it with NULL and test the validation in the endpoint
         jdbcTemplate.update(
                 "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid, short_code) "
@@ -155,7 +158,8 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Helper: Create a test device with code ≤10 chars and no shortCode (should work)
+     * Helper: Create a test device with code ≤10 chars and no shortCode (should
+     * work)
      */
     private String createTestDeviceWithCodeLeq10Chars() throws Exception {
         // Create a test room first
@@ -165,7 +169,8 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
                 + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid()) " + "ON CONFLICT (id) DO NOTHING",
                 roomId, "Test Room Short", "TEST-ROOM-SHORT-" + timestamp, true, 1);
 
-        // Create device with code ≤10 chars and no short_code (should work - code will be used for labels)
+        // Create device with code ≤10 chars and no short_code (should work - code will
+        // be used for labels)
         jdbcTemplate.update(
                 "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid, short_code) "
                         + "VALUES (nextval('storage_device_seq'), ?, ?, 'freezer', ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid(), NULL)",
@@ -229,8 +234,8 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * T285: Test POST /rest/storage/{type}/{id}/print-label generates PDF
-     * Expected: 200 OK with PDF content type (shortCode from entity)
+     * T285: Test POST /rest/storage/{type}/{id}/print-label generates PDF Expected:
+     * 200 OK with PDF content type (shortCode from entity)
      */
     @Test
     public void testPostPrintLabelEndpoint_GeneratesPdf_Returns200() throws Exception {
@@ -246,16 +251,17 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         assertNotNull("Device should have shortCode", device.getShortCode());
         assertEquals("Device shortCode should be FRZ01", "FRZ01", device.getShortCode());
 
-        // When: POST /rest/storage/device/{id}/print-label (no shortCode parameter - uses entity)
+        // When: POST /rest/storage/device/{id}/print-label (no shortCode parameter -
+        // uses entity)
         // Then: Expect 200 OK with PDF content
-        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label"))
-                .andExpect(status().isOk()).andExpect(header().string("Content-Type", "application/pdf"))
+        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label")).andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
                 .andExpect(header().exists("Content-Disposition"));
     }
 
     /**
-     * T285: Test POST /rest/storage/{type}/{id}/print-label with code > 10 chars and missing shortCode
-     * Expected: 400 Bad Request with error message
+     * T285: Test POST /rest/storage/{type}/{id}/print-label with code > 10 chars
+     * and missing shortCode Expected: 400 Bad Request with error message
      */
     @Test
     public void testPrintValidationChecksShortCodeExists_CodeGt10Chars_MissingShortCode_Returns400() throws Exception {
@@ -265,37 +271,35 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         // When: POST /rest/storage/device/{id}/print-label
         // Then: Expect 400 Bad Request with error message about missing shortCode
         MvcResult result = mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label"))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").exists())
-                .andReturn();
-        
+                .andExpect(status().isBadRequest()).andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error").exists()).andReturn();
+
         // Verify error message contains "short code" or "code"
         String errorMessage = objectMapper.readTree(result.getResponse().getContentAsString()).get("error").asText();
-        assertTrue("Error message should mention short code or code", 
-            errorMessage.toLowerCase().contains("short code") || errorMessage.toLowerCase().contains("code"));
+        assertTrue("Error message should mention short code or code",
+                errorMessage.toLowerCase().contains("short code") || errorMessage.toLowerCase().contains("code"));
     }
 
     /**
-     * T285: Test POST /rest/storage/{type}/{id}/print-label with code ≤10 chars (no shortCode needed)
-     * Expected: 200 OK with PDF (code will be used for labels)
+     * T285: Test POST /rest/storage/{type}/{id}/print-label with code ≤10 chars (no
+     * shortCode needed) Expected: 200 OK with PDF (code will be used for labels)
      */
     @Test
     public void testPostPrintLabelEndpoint_CodeLeq10Chars_NoShortCode_GeneratesPdf_Returns200() throws Exception {
         // Given: Test device exists with code ≤10 chars and no shortCode
         String deviceId = createTestDeviceWithCodeLeq10Chars();
 
-        // When: POST /rest/storage/device/{id}/print-label (code ≤10 chars, no shortCode needed)
+        // When: POST /rest/storage/device/{id}/print-label (code ≤10 chars, no
+        // shortCode needed)
         // Then: Expect 200 OK with PDF content (code will be used for labels)
-        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label"))
-                .andExpect(status().isOk())
+        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label")).andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/pdf"))
                 .andExpect(header().exists("Content-Disposition"));
     }
 
     /**
-     * T285: Test error response if code > 10 chars and shortCode missing
-     * Expected: JSON error response with specific message
+     * T285: Test error response if code > 10 chars and shortCode missing Expected:
+     * JSON error response with specific message
      */
     @Test
     public void testErrorResponseIfShortCodeMissing_ReturnsJsonError() throws Exception {
@@ -305,14 +309,13 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         // When: POST /rest/storage/device/{id}/print-label
         // Then: Expect JSON error response (not PDF)
         MvcResult result = mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label"))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest()).andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
-        
+
         // Verify error message contains "short code" or "code"
         String errorMessage = objectMapper.readTree(result.getResponse().getContentAsString()).get("error").asText();
-        assertTrue("Error message should mention short code or code", 
-            errorMessage.toLowerCase().contains("short code") || errorMessage.toLowerCase().contains("code"));
+        assertTrue("Error message should mention short code or code",
+                errorMessage.toLowerCase().contains("short code") || errorMessage.toLowerCase().contains("code"));
     }
 
     /**
@@ -325,8 +328,7 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         String deviceId = createTestDevice();
 
         // When: POST /rest/storage/device/{id}/print-label
-        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label"))
-                .andExpect(status().isOk());
+        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label")).andExpect(status().isOk());
 
         // Then: Print history record exists in database
         Integer count = jdbcTemplate.queryForObject(
@@ -371,9 +373,9 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * T285: Test PDF generation with shortCode from entity
-     * Expected: PDF is generated using shortCode from entity (not parameter)
-     * Note: This test verifies the endpoint works, actual dimension testing is in service layer
+     * T285: Test PDF generation with shortCode from entity Expected: PDF is
+     * generated using shortCode from entity (not parameter) Note: This test
+     * verifies the endpoint works, actual dimension testing is in service layer
      */
     @Test
     public void testPdfGenerationWithShortCode_FromEntity() throws Exception {
@@ -387,7 +389,7 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
 
         // When: POST /rest/storage/device/{id}/print-label (no shortCode parameter)
         // Then: PDF is generated using shortCode from entity
-        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label"))
-                .andExpect(status().isOk()).andExpect(header().string("Content-Type", "application/pdf"));
+        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label")).andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"));
     }
 }

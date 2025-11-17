@@ -12,8 +12,8 @@ import org.openelisglobal.storage.valueholder.StorageShelf;
 public interface LabelManagementService {
 
     /**
-     * Generate PDF label for a storage device
-     * Uses short_code from the device entity
+     * Generate PDF label for a storage device Uses short_code from the device
+     * entity
      * 
      * @param device The storage device (must have short_code set)
      * @return PDF as ByteArrayOutputStream
@@ -22,8 +22,7 @@ public interface LabelManagementService {
     ByteArrayOutputStream generateLabel(StorageDevice device);
 
     /**
-     * Generate PDF label for a storage shelf
-     * Uses short_code from the shelf entity
+     * Generate PDF label for a storage shelf Uses short_code from the shelf entity
      * 
      * @param shelf The storage shelf (must have short_code set)
      * @return PDF as ByteArrayOutputStream
@@ -32,8 +31,7 @@ public interface LabelManagementService {
     ByteArrayOutputStream generateLabel(StorageShelf shelf);
 
     /**
-     * Generate PDF label for a storage rack
-     * Uses short_code from the rack entity
+     * Generate PDF label for a storage rack Uses short_code from the rack entity
      * 
      * @param rack The storage rack (must have short_code set)
      * @return PDF as ByteArrayOutputStream

@@ -140,7 +140,8 @@ public class LabelManagementRestController extends BaseRestController {
             if (!"device".equals(type) && !"shelf".equals(type) && !"rack".equals(type)) {
                 response.setStatus(HttpStatus.BAD_REQUEST.value());
                 response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                response.getWriter().write("{\"error\":\"Invalid location type. Must be 'device', 'shelf', or 'rack'\"}");
+                response.getWriter()
+                        .write("{\"error\":\"Invalid location type. Must be 'device', 'shelf', or 'rack'\"}");
                 return;
             }
 
@@ -158,7 +159,8 @@ public class LabelManagementRestController extends BaseRestController {
             if (!labelManagementService.validateShortCodeExists(id, type)) {
                 response.setStatus(HttpStatus.BAD_REQUEST.value());
                 response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                response.getWriter().write("{\"error\":\"Code or short code is required for label printing. If code > 10 chars, short code must be set in Edit form.\"}");
+                response.getWriter().write(
+                        "{\"error\":\"Code or short code is required for label printing. If code > 10 chars, short code must be set in Edit form.\"}");
                 return;
             }
 

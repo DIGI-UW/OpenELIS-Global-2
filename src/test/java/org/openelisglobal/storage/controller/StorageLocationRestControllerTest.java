@@ -74,9 +74,12 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
             jdbcTemplate.execute("DELETE FROM sample_storage_movement WHERE id::integer >= 1000 OR id LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM sample_storage_assignment WHERE id::integer >= 1000 OR id LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM storage_position WHERE id::integer >= 1000 OR coordinate LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
+            jdbcTemplate.execute(
+                    "DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
+            jdbcTemplate.execute(
+                    "DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
+            jdbcTemplate.execute(
+                    "DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM storage_room WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
         } catch (Exception e) {
             // Log but don't fail - cleanup is best effort
@@ -1259,8 +1262,8 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
     // ========== Short Code Field Tests (Iteration 9.5) ==========
 
     /**
-     * T285: Test PUT endpoint accepts shortCode field for device
-     * Contract: PUT /rest/storage/devices/{id} with shortCode → 200, shortCode in response
+     * T285: Test PUT endpoint accepts shortCode field for device Contract: PUT
+     * /rest/storage/devices/{id} with shortCode → 200, shortCode in response
      */
     @Test
     public void testPutEndpointAcceptsShortCodeField_Device() throws Exception {
@@ -1285,8 +1288,8 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * T285: Test PUT endpoint accepts shortCode field for shelf
-     * Contract: PUT /rest/storage/shelves/{id} with shortCode → 200, shortCode in response
+     * T285: Test PUT endpoint accepts shortCode field for shelf Contract: PUT
+     * /rest/storage/shelves/{id} with shortCode → 200, shortCode in response
      */
     @Test
     public void testPutEndpointAcceptsShortCodeField_Shelf() throws Exception {
@@ -1311,8 +1314,8 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * T285: Test PUT endpoint accepts shortCode field for rack
-     * Contract: PUT /rest/storage/racks/{id} with shortCode → 200, shortCode in response
+     * T285: Test PUT endpoint accepts shortCode field for rack Contract: PUT
+     * /rest/storage/racks/{id} with shortCode → 200, shortCode in response
      */
     @Test
     public void testPutEndpointAcceptsShortCodeField_Rack() throws Exception {
@@ -1341,7 +1344,8 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
 
     /**
      * T285: Test short code validation on save - invalid format returns 400
-     * Contract: PUT /rest/storage/devices/{id} with invalid shortCode → 400 Bad Request
+     * Contract: PUT /rest/storage/devices/{id} with invalid shortCode → 400 Bad
+     * Request
      */
     @Test
     public void testShortCodeValidationOnSave_InvalidFormat_Returns400() throws Exception {
@@ -1367,7 +1371,8 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
 
     /**
      * T285: Test short code validation on save - duplicate shortCode returns 400
-     * Contract: PUT /rest/storage/devices/{id} with duplicate shortCode → 400 Bad Request
+     * Contract: PUT /rest/storage/devices/{id} with duplicate shortCode → 400 Bad
+     * Request
      */
     @Test
     public void testShortCodeValidationOnSave_DuplicateCode_Returns400() throws Exception {
@@ -1409,7 +1414,8 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
 
     /**
      * T285: Test short code validation on save - auto-uppercase conversion
-     * Contract: PUT /rest/storage/devices/{id} with lowercase shortCode → 200, uppercase in response
+     * Contract: PUT /rest/storage/devices/{id} with lowercase shortCode → 200,
+     * uppercase in response
      */
     @Test
     public void testShortCodeValidationOnSave_AutoUppercaseConversion() throws Exception {
@@ -1417,7 +1423,8 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
         String roomId = createRoomAndGetId("Uppercase Test Room", "TEST-UC-ROOM");
         String deviceId = createDeviceAndGetId("Test Device", "TEST-UC-DEV", "freezer", roomId);
 
-        // Given: Update form with lowercase shortCode (using test-specific prefix, unique for this test)
+        // Given: Update form with lowercase shortCode (using test-specific prefix,
+        // unique for this test)
         StorageDeviceForm updateForm = new StorageDeviceForm();
         updateForm.setName("Updated Device");
         updateForm.setType("freezer");

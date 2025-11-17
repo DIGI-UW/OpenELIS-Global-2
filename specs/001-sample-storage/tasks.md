@@ -2482,9 +2482,11 @@ through FR-027f, following TDD approach with 7 iterations.
 completed (see `research.md` Section 9). Integration strategy documented.
 
 **Amendment (2025-11-15)**: Two clarifications add new requirements:
-1. **Barcode Scan Auto-Open Location Modal**: Successful barcode scans with valid
-   partial hierarchies automatically open the "+ Location" form with valid hierarchy
-   pre-filled to the first missing level. See Session 2025-11-15 in spec.md.
+
+1. **Barcode Scan Auto-Open Location Modal**: Successful barcode scans with
+   valid partial hierarchies automatically open the "+ Location" form with valid
+   hierarchy pre-filled to the first missing level. See Session 2025-11-15 in
+   spec.md.
 2. **Label Management Simplification**: Replace "Label Management" modal with
    "Print Label" button. Short code stored in location entities and edited via
    Edit form. See Session 2025-11-15 in spec.md.
@@ -2496,10 +2498,10 @@ feedback, simplified label printing (Print Label button, short_code in Edit
 form), and error recovery.
 
 **Independent Test**: Scan a barcode with valid partial hierarchy (e.g.,
-"MAIN-FRZ01-SHA-RKR1" where Room/Device/Shelf exist but Rack doesn't), verify
-"+ Location" form auto-opens with valid hierarchy pre-filled and focuses on
-first missing level. Edit location to add short_code, then print label from
-Print Label button, verify PDF generates.
+"MAIN-FRZ01-SHA-RKR1" where Room/Device/Shelf exist but Rack doesn't), verify "+
+Location" form auto-opens with valid hierarchy pre-filled and focuses on first
+missing level. Edit location to add short_code, then print label from Print
+Label button, verify PDF generates.
 
 ### Iteration 9.1: Backend Barcode Parsing and Validation
 
@@ -2679,13 +2681,15 @@ hierarchies (see Amendment 2025-11-15).
       `frontend/src/components/storage/StorageLocationSelector/UnifiedBarcodeInput.test.jsx`
       with test methods: testAutoOpensLocationFormWhenValidPartialHierarchy,
       testPrefillsValidHierarchyLevels, testFocusesOnFirstMissingLevelField,
-      testShowsWarningIfAdditionalInvalidLevels, testShowsErrorAndKeepsModalClosedIfCompletelyInvalid
+      testShowsWarningIfAdditionalInvalidLevels,
+      testShowsErrorAndKeepsModalClosedIfCompletelyInvalid
 - [ ] T278 Run unified barcode input tests → Verify new tests FAIL:
       `cd frontend && npm test UnifiedBarcodeInput`
 - [ ] T279 [P] [US1] Write integration test
       `frontend/src/components/storage/StorageLocationSelector/LocationSelectorModal.integration.test.jsx`
       with test methods: testLocationFormOpensAutomaticallyAfterBarcodeScan,
-      testValidHierarchyPrefilledCorrectly, testFirstMissingLevelFieldReceivesFocus
+      testValidHierarchyPrefilledCorrectly,
+      testFirstMissingLevelFieldReceivesFocus
 
 #### Implementation (Make Tests Pass)
 
@@ -2706,8 +2710,8 @@ hierarchies (see Amendment 2025-11-15).
       behavior: barcode.autoOpenForm, barcode.validHierarchyPrefilled,
       barcode.firstMissingLevel, barcode.additionalInvalidLevelsWarning
 
-**Checkpoint**: Barcode scan with valid partial hierarchy auto-opens "+ Location"
-form, valid hierarchy pre-filled, first missing level receives focus
+**Checkpoint**: Barcode scan with valid partial hierarchy auto-opens "+
+Location" form, valid hierarchy pre-filled, first missing level receives focus
 
 ### Iteration 9.5: Simplified Label Printing (Short Code in Edit Form)
 
@@ -2725,12 +2729,14 @@ location entities and edited via Edit form (see Amendment 2025-11-15).
       `src/test/java/org/openelisglobal/storage/controller/StorageLocationRestControllerTest.java`
       with test methods: testPutEndpointAcceptsShortCodeField,
       testShortCodeValidationOnSave, testPostPrintLabelEndpoint,
-      testPrintValidationChecksShortCodeExists, testErrorResponseIfShortCodeMissing,
-      testPrintHistoryTracking, testPdfGenerationWithShortCode
+      testPrintValidationChecksShortCodeExists,
+      testErrorResponseIfShortCodeMissing, testPrintHistoryTracking,
+      testPdfGenerationWithShortCode
 - [ ] T286 [P] [US1] Update unit test
       `frontend/src/components/storage/LocationManagement/EditLocationModal.test.jsx`
-      with test methods: testShortCodeFieldInEditForm, testShortCodeInputValidation,
-      testAutoUppercaseOnInput, testRequiredFieldValidation
+      with test methods: testShortCodeFieldInEditForm,
+      testShortCodeInputValidation, testAutoUppercaseOnInput,
+      testRequiredFieldValidation
 - [ ] T287 [P] [US1] Write unit test
       `frontend/src/components/storage/LocationManagement/PrintLabelButton.test.jsx`
       with test methods: testPrintLabelButtonShowsConfirmationDialog,
@@ -2748,8 +2754,9 @@ location entities and edited via Edit form (see Amendment 2025-11-15).
 
 - [ ] T292 [US1] Add `short_code VARCHAR(10) NOT NULL` column to
       `STORAGE_DEVICE`, `STORAGE_SHELF`, `STORAGE_RACK` tables via Liquibase
-      changeset `src/main/resources/liquibase/storage/004-add-short-code-columns.xml`
-      with UNIQUE constraint within parent context
+      changeset
+      `src/main/resources/liquibase/storage/004-add-short-code-columns.xml` with
+      UNIQUE constraint within parent context
 - [ ] T293 [US1] Add `short_code` field to
       `src/main/java/org/openelisglobal/storage/valueholder/StorageDevice.java`,
       `StorageShelf.java`, `StorageRack.java` valueholders with JPA annotations
@@ -2764,8 +2771,9 @@ location entities and edited via Edit form (see Amendment 2025-11-15).
 - [ ] T296 [US1] Create
       `src/main/java/org/openelisglobal/storage/service/LabelPrintingService.java`
       integrating with existing BarcodeLabelMaker (see research.md Section 9),
-      methods: generateLabel(StorageDevice/StorageShelf/StorageRack), validateShortCodeExists(String locationId),
-      trackPrintHistory(String locationId, String userId)
+      methods: generateLabel(StorageDevice/StorageShelf/StorageRack),
+      validateShortCodeExists(String locationId), trackPrintHistory(String
+      locationId, String userId)
 - [ ] T297 [US1] Create
       `src/main/java/org/openelisglobal/storage/barcode/labeltype/StorageLocationLabel.java`
       extending `org.openelisglobal.barcode.labeltype.Label` class, implementing
@@ -2777,7 +2785,8 @@ location entities and edited via Edit form (see Amendment 2025-11-15).
 - [ ] T299 [US1] Create Liquibase changeset
       `src/main/resources/liquibase/storage/005-create-print-history-table.xml`
       for storage_location_print_history table with columns: id, location_type,
-      location_id, short_code, printed_by, printed_date (tracked but not displayed in UI)
+      location_id, short_code, printed_by, printed_date (tracked but not
+      displayed in UI)
 - [ ] T300 [US1] Add `STORAGE_LOCATION_BARCODE_HEIGHT` and
       `STORAGE_LOCATION_BARCODE_WIDTH` to
       `src/main/java/org/openelisglobal/common/util/ConfigurationProperties.java`
@@ -2819,12 +2828,14 @@ short_code exists, error message shown if short_code missing
 - [ ] T307 [P] [US1] Update Cypress E2E test
       `frontend/cypress/e2e/barcodeWorkflow.cy.js` with test cases:
       testScan4LevelBarcodePopulatesFields, testScan2LevelBarcodeMinimum,
-      testScanInvalidBarcodeShowsError, testScanWithValidPartialHierarchyAutoOpensForm,
-      testFirstMissingLevelFieldReceivesFocus, testCompletelyInvalidBarcodeShowsError,
+      testScanInvalidBarcodeShowsError,
+      testScanWithValidPartialHierarchyAutoOpensForm,
+      testFirstMissingLevelFieldReceivesFocus,
+      testCompletelyInvalidBarcodeShowsError,
       testDebouncingPreventsDuplicateScans, testLastModifiedWinsLogic,
       testPrintLabelButtonOpensConfirmationDialog, testPrintLabelGeneratesPdf,
-      testErrorMessageIfShortCodeMissing, testShortCodeFieldInEditForm
-      (per Constitution V.5: run individually, review console logs, video disabled)
+      testErrorMessageIfShortCodeMissing, testShortCodeFieldInEditForm (per
+      Constitution V.5: run individually, review console logs, video disabled)
 - [x] T274 Run E2E tests → Verify all FAIL:
       `cd frontend && npm run cy:run -- --spec "cypress/e2e/barcodeWorkflow.cy.js"`
 
@@ -3053,7 +3064,8 @@ Phase 2 (Foundational) ← BLOCKS all user stories
 - T227-T229 (Backend tests) can run in parallel
 - T237-T238, T245, T275, T277, T279 (Frontend/Backend tests) can run in parallel
 - T233-T234, T280, T295-T296 (Backend services) can run in parallel
-- T240-T241, T247, T281-T282, T302-T304 (Frontend components) can run in parallel
+- T240-T241, T247, T281-T282, T302-T304 (Frontend components) can run in
+  parallel
 
 **Phase 11 (Polish)**:
 

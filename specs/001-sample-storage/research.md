@@ -1310,17 +1310,22 @@ pattern. Additional hardware testing recommended during implementation phase.
 
 2. **Frontend Changes** (Updated 2025-11-15 per spec clarifications):
 
-   - **Simplified Approach**: Replace "Label Management" modal with "Print Label" button in overflow menu
-   - Short code stored in location entities (Device, Shelf, Rack) as database field
+   - **Simplified Approach**: Replace "Label Management" modal with "Print
+     Label" button in overflow menu
+   - Short code stored in location entities (Device, Shelf, Rack) as database
+     field
    - Short code edited via Edit CRUD operation (required field)
-   - Print Label button shows simple confirmation dialog: "Print label for [Location Name] ([Location Code])?"
+   - Print Label button shows simple confirmation dialog: "Print label for
+     [Location Name] ([Location Code])?"
    - PDF opens in new tab (browser handles printing)
    - Print history tracked in database but NOT displayed in UI (compliance only)
-   - Error message if short_code missing: "Short code required. Please set short code in Edit form first."
+   - Error message if short_code missing: "Short code required. Please set short
+     code in Edit form first."
 
 3. **Database Changes**:
 
-   - Add `short_code` column to `STORAGE_DEVICE`, `STORAGE_SHELF`, `STORAGE_RACK` tables (Liquibase changeset)
+   - Add `short_code` column to `STORAGE_DEVICE`, `STORAGE_SHELF`,
+     `STORAGE_RACK` tables (Liquibase changeset)
    - Add `storage_location_print_history` table (Liquibase changeset)
    - Add configuration properties to `site_information` table (via system admin
      UI)
