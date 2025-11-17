@@ -13,7 +13,7 @@
         <!-- Drop unique constraint first if it exists -->
         <sql>
             -- Drop unique constraint if it exists
-            ALTER TABLE clinlims.storage_device 
+            ALTER TABLE clinlims.storage_device
             DROP CONSTRAINT IF EXISTS uk_device_parent_short_code;
         </sql>
         <dropColumn tableName="storage_device" columnName="short_code"/>
@@ -34,7 +34,7 @@
         <!-- Drop unique constraint first if it exists -->
         <sql>
             -- Drop unique constraint if it exists
-            ALTER TABLE clinlims.storage_shelf 
+            ALTER TABLE clinlims.storage_shelf
             DROP CONSTRAINT IF EXISTS uk_shelf_parent_short_code;
         </sql>
         <dropColumn tableName="storage_shelf" columnName="short_code"/>
@@ -55,7 +55,7 @@
         <!-- Drop unique constraint first if it exists -->
         <sql>
             -- Drop unique constraint if it exists
-            ALTER TABLE clinlims.storage_rack 
+            ALTER TABLE clinlims.storage_rack
             DROP CONSTRAINT IF EXISTS uk_rack_parent_short_code;
         </sql>
         <dropColumn tableName="storage_rack" columnName="short_code"/>
@@ -69,4 +69,3 @@
     </changeSet>
 
 </databaseChangeLog>
-

@@ -15,14 +15,14 @@ NGINX_KEY="/etc/nginx/keys/apache-selfsigned.key"
 if [ -f "$LETSENCRYPT_CERT" ] && [ -f "$LETSENCRYPT_KEY" ]; then
     echo "✓ Let's Encrypt certificates found for ${DOMAIN}"
     echo "Creating symlinks to Let's Encrypt certificates..."
-    
+
     # Remove existing files/symlinks if they exist
     rm -f "$NGINX_CERT" "$NGINX_KEY"
-    
+
     # Create symlinks to Let's Encrypt certificates
     ln -sf "$LETSENCRYPT_CERT" "$NGINX_CERT"
     ln -sf "$LETSENCRYPT_KEY" "$NGINX_KEY"
-    
+
     echo "✓ Symlinks created:"
     echo "  $NGINX_CERT -> $LETSENCRYPT_CERT"
     echo "  $NGINX_KEY -> $LETSENCRYPT_KEY"

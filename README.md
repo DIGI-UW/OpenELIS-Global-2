@@ -171,7 +171,8 @@ For comprehensive testing guidance, see:
 - **Test Templates**: `.specify/templates/testing/` - Standardized test
   templates
 - **AGENTS.md**: Testing Strategy section - Overview of testing approach
-- **Test Data Strategy**: `.specify/guides/test-data-strategy.md` - Unified test data management guide
+- **Test Data Strategy**: `.specify/guides/test-data-strategy.md` - Unified test
+  data management guide
 
 ### Test Data Setup
 
@@ -188,7 +189,9 @@ For E2E testing, integration testing, and manual testing, load test fixtures:
 ./src/test/resources/load-test-fixtures.sh --no-verify
 ```
 
-**Note**: The unified loader script provides dependency checks, verification, and reset capabilities. See [Test Data Strategy Guide](.specify/guides/test-data-strategy.md) for details.
+**Note**: The unified loader script provides dependency checks, verification,
+and reset capabilities. See
+[Test Data Strategy Guide](.specify/guides/test-data-strategy.md) for details.
 
 ### Pull request guidelines
 

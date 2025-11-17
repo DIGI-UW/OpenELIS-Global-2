@@ -4,7 +4,6 @@ import static org.junit.Assert.*;
 
 import java.util.HashSet;
 import java.util.Set;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -13,15 +12,13 @@ import org.mockito.junit.MockitoJUnitRunner;
 /**
  * Unit tests for CodeGenerationService
  * 
- * References:
- * - Testing Roadmap: .specify/guides/testing-roadmap.md
- * - Backend Best Practices: .specify/guides/backend-testing-best-practices.md
- * - Template: JUnit 4 Service Test
+ * References: - Testing Roadmap: .specify/guides/testing-roadmap.md - Backend
+ * Best Practices: .specify/guides/backend-testing-best-practices.md - Template:
+ * JUnit 4 Service Test
  * 
- * TDD Workflow (MANDATORY for complex logic):
- * - RED: Write failing test first (defines expected behavior)
- * - GREEN: Write minimal code to make test pass
- * - REFACTOR: Improve code quality while keeping tests green
+ * TDD Workflow (MANDATORY for complex logic): - RED: Write failing test first
+ * (defines expected behavior) - GREEN: Write minimal code to make test pass -
+ * REFACTOR: Improve code quality while keeping tests green
  * 
  * Task Reference: T284
  * 
@@ -38,8 +35,8 @@ public class CodeGenerationServiceTest {
     }
 
     /**
-     * Test code generation algorithm
-     * T284: Code Generation Algorithm - Uppercase, remove non-alphanumeric, keep hyphens/underscores, truncate to 10 chars
+     * Test code generation algorithm T284: Code Generation Algorithm - Uppercase,
+     * remove non-alphanumeric, keep hyphens/underscores, truncate to 10 chars
      */
     @Test
     public void testCodeGenerationAlgorithm() {
@@ -66,8 +63,8 @@ public class CodeGenerationServiceTest {
     }
 
     /**
-     * Test uppercase conversion
-     * T284: Auto-Uppercase Conversion - All input converted to uppercase
+     * Test uppercase conversion T284: Auto-Uppercase Conversion - All input
+     * converted to uppercase
      */
     @Test
     public void testUppercaseConversion() {
@@ -82,8 +79,8 @@ public class CodeGenerationServiceTest {
     }
 
     /**
-     * Test removal of non-alphanumeric characters
-     * T284: Remove Non-Alphanumeric - Keep only A-Z, 0-9, hyphens, underscores
+     * Test removal of non-alphanumeric characters T284: Remove Non-Alphanumeric -
+     * Keep only A-Z, 0-9, hyphens, underscores
      */
     @Test
     public void testRemoveNonAlphanumeric() {
@@ -105,8 +102,8 @@ public class CodeGenerationServiceTest {
     }
 
     /**
-     * Test truncation to 10 characters
-     * T284: Truncate To 10 Chars - Code must be ≤10 characters
+     * Test truncation to 10 characters T284: Truncate To 10 Chars - Code must be
+     * ≤10 characters
      */
     @Test
     public void testTruncateTo10Chars() {
@@ -125,8 +122,8 @@ public class CodeGenerationServiceTest {
     }
 
     /**
-     * Test conflict resolution with numeric suffix
-     * T284: Conflict Resolution - Append numeric suffix if conflict (e.g., "MAINLAB-1")
+     * Test conflict resolution with numeric suffix T284: Conflict Resolution -
+     * Append numeric suffix if conflict (e.g., "MAINLAB-1")
      */
     @Test
     public void testConflictResolution() {
@@ -149,8 +146,8 @@ public class CodeGenerationServiceTest {
     }
 
     /**
-     * Test numeric suffix appending
-     * T284: Numeric Suffix Appending - Append "-1", "-2", etc. for conflicts
+     * Test numeric suffix appending T284: Numeric Suffix Appending - Append "-1",
+     * "-2", etc. for conflicts
      */
     @Test
     public void testNumericSuffixAppending() {
@@ -195,8 +192,8 @@ public class CodeGenerationServiceTest {
             assertNotNull("Should handle null", code);
         } catch (Exception e) {
             // Exception is acceptable for null input
-            assertTrue("Should throw meaningful exception", e instanceof IllegalArgumentException || e instanceof NullPointerException);
+            assertTrue("Should throw meaningful exception",
+                    e instanceof IllegalArgumentException || e instanceof NullPointerException);
         }
     }
 }
-

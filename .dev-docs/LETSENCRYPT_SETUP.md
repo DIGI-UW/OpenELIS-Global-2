@@ -30,13 +30,13 @@ storage.openelis-global.org domain using a simplified standalone approach.
    docker compose -f dev.docker-compose.yml -f docker-compose.letsencrypt.yml up -d
    ```
 
-The proxy will automatically detect and use Let's Encrypt certificates if they exist,
-falling back to self-signed certificates if not found.
+The proxy will automatically detect and use Let's Encrypt certificates if they
+exist, falling back to self-signed certificates if not found.
 
 ## Environment Variables
 
-- **LETSENCRYPT_EMAIL** (required for cert generation): Email address for Let's Encrypt
-  notifications and account recovery
+- **LETSENCRYPT_EMAIL** (required for cert generation): Email address for Let's
+  Encrypt notifications and account recovery
 - **LETSENCRYPT_DOMAIN** (optional): Domain name for the certificate. Defaults
   to `storage.openelis-global.org`
 - **LETSENCRYPT_STAGING** (optional): Set to `"true"` to use Let's Encrypt
@@ -57,14 +57,15 @@ falling back to self-signed certificates if not found.
 
 ## How It Works
 
-The simplified setup uses a standalone certificate generation script and automatic
-certificate detection:
+The simplified setup uses a standalone certificate generation script and
+automatic certificate detection:
 
 1. **Certificate Generation**: Run `./scripts/generate-letsencrypt-certs.sh` to
    generate certificates using certbot in a one-off container
 2. **Certificate Storage**: Certificates are stored in `./volume/letsencrypt/`
 3. **Automatic Detection**: The proxy entrypoint automatically creates symlinks
-   from Let's Encrypt certificates to the expected nginx paths if certificates exist
+   from Let's Encrypt certificates to the expected nginx paths if certificates
+   exist
 4. **Fallback**: If Let's Encrypt certificates don't exist, the proxy uses
    self-signed certificates from the certs service
 
@@ -238,6 +239,7 @@ The simplified setup works as follows:
    certs when available
 
 This approach ensures:
+
 - No changes to the base proxy setup when Let's Encrypt isn't used
 - Simple certificate generation workflow
 - Automatic certificate detection

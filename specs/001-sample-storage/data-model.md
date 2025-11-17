@@ -49,16 +49,16 @@ facility areas.
 
 **Fields**:
 
-| Field         | Type         | Constraints             | Description                                   |
-| ------------- | ------------ | ----------------------- | --------------------------------------------- |
-| `id`          | VARCHAR(36)  | PK, AUTO                | Primary key (StringSequenceGenerator)         |
-| `fhir_uuid`   | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier             |
-| `name`        | VARCHAR(255) | NOT NULL                | Human-readable room name                      |
-| `code`        | VARCHAR(10)  | NOT NULL, UNIQUE        | Unique room code (≤10 chars, auto-generated from name on create, editable) (e.g., "MAIN", "LAB-2")      |
-| `description` | TEXT         | NULL                    | Optional room description                     |
-| `active`      | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status                        |
-| `sys_user_id` | INT          | NOT NULL                | User who created/modified (audit)             |
-| `lastupdated` | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp (optimistic lock) |
+| Field         | Type         | Constraints             | Description                                                                                        |
+| ------------- | ------------ | ----------------------- | -------------------------------------------------------------------------------------------------- |
+| `id`          | VARCHAR(36)  | PK, AUTO                | Primary key (StringSequenceGenerator)                                                              |
+| `fhir_uuid`   | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier                                                                  |
+| `name`        | VARCHAR(255) | NOT NULL                | Human-readable room name                                                                           |
+| `code`        | VARCHAR(10)  | NOT NULL, UNIQUE        | Unique room code (≤10 chars, auto-generated from name on create, editable) (e.g., "MAIN", "LAB-2") |
+| `description` | TEXT         | NULL                    | Optional room description                                                                          |
+| `active`      | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status                                                                             |
+| `sys_user_id` | INT          | NOT NULL                | User who created/modified (audit)                                                                  |
+| `lastupdated` | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp (optimistic lock)                                                      |
 
 **Constraints**:
 
@@ -85,7 +85,9 @@ facility areas.
 
 - Code must be unique across all rooms (globally unique)
 - Code must be ≤10 characters
-- Code is auto-generated from name on create (uppercase, remove non-alphanumeric, keep hyphens/underscores, truncate to 10 chars, append numeric suffix if conflict)
+- Code is auto-generated from name on create (uppercase, remove
+  non-alphanumeric, keep hyphens/underscores, truncate to 10 chars, append
+  numeric suffix if conflict)
 - Code is editable in create and edit modals
 - Code does NOT regenerate when name changes
 - Name cannot be empty
@@ -104,19 +106,19 @@ room.
 
 **Fields**:
 
-| Field                 | Type         | Constraints             | Description                                                                                                                                                                    |
-| --------------------- | ------------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `id`                  | VARCHAR(36)  | PK, AUTO                | Primary key                                                                                                                                                                    |
-| `fhir_uuid`           | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier                                                                                                                                              |
-| `name`                | VARCHAR(255) | NOT NULL                | Device name (e.g., "Freezer Unit 1")                                                                                                                                           |
-| `code`                | VARCHAR(10)  | NOT NULL                | Device code (≤10 chars, auto-generated from name on create, editable, unique within parent room)                                                                                                                                        |
-| `type`                | VARCHAR(20)  | NOT NULL                | Enum: freezer, refrigerator, cabinet, other                                                                                                                                    |
-| `temperature_setting` | DECIMAL(5,2) | NULL                    | Optional temperature in Celsius                                                                                                                                                |
-| `capacity_limit`      | INT          | NULL                    | Optional capacity limit (number of positions)                                                                                                                                  |
-| `active`              | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status                                                                                                                                                         |
-| `parent_room_id`      | VARCHAR(36)  | NOT NULL, FK            | Parent room reference                                                                                                                                                          |
-| `sys_user_id`         | INT          | NOT NULL                | User who created/modified                                                                                                                                                      |
-| `lastupdated`         | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp                                                                                                                                                    |
+| Field                 | Type         | Constraints             | Description                                                                                      |
+| --------------------- | ------------ | ----------------------- | ------------------------------------------------------------------------------------------------ |
+| `id`                  | VARCHAR(36)  | PK, AUTO                | Primary key                                                                                      |
+| `fhir_uuid`           | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier                                                                |
+| `name`                | VARCHAR(255) | NOT NULL                | Device name (e.g., "Freezer Unit 1")                                                             |
+| `code`                | VARCHAR(10)  | NOT NULL                | Device code (≤10 chars, auto-generated from name on create, editable, unique within parent room) |
+| `type`                | VARCHAR(20)  | NOT NULL                | Enum: freezer, refrigerator, cabinet, other                                                      |
+| `temperature_setting` | DECIMAL(5,2) | NULL                    | Optional temperature in Celsius                                                                  |
+| `capacity_limit`      | INT          | NULL                    | Optional capacity limit (number of positions)                                                    |
+| `active`              | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status                                                                           |
+| `parent_room_id`      | VARCHAR(36)  | NOT NULL, FK            | Parent room reference                                                                            |
+| `sys_user_id`         | INT          | NOT NULL                | User who created/modified                                                                        |
+| `lastupdated`         | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp                                                                      |
 
 **Constraints**:
 
@@ -147,7 +149,9 @@ room.
 
 - Code must be unique within parent room (not globally unique)
 - Code must be ≤10 characters
-- Code is auto-generated from name on create (uppercase, remove non-alphanumeric, keep hyphens/underscores, truncate to 10 chars, append numeric suffix if conflict)
+- Code is auto-generated from name on create (uppercase, remove
+  non-alphanumeric, keep hyphens/underscores, truncate to 10 chars, append
+  numeric suffix if conflict)
 - Code is editable in create and edit modals
 - Code does NOT regenerate when name changes
 - Type must be one of enumerated values
@@ -165,17 +169,17 @@ room.
 
 **Fields**:
 
-| Field              | Type         | Constraints             | Description                                                                                                                                                                         |
-| ------------------ | ------------ | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`               | VARCHAR(36)  | PK, AUTO                | Primary key                                                                                                                                                                         |
-| `fhir_uuid`        | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier                                                                                                                                                   |
-| `name`            | VARCHAR(255) | NOT NULL                | Shelf name (e.g., "Shelf-A", "Top")                                                                                                                                                |
-| `code`            | VARCHAR(10)  | NOT NULL                | Shelf code (≤10 chars, auto-generated from name on create, editable, unique within parent device)                                                                                                                                                |
-| `capacity_limit`   | INT          | NULL                    | Optional capacity limit                                                                                                                                                             |
-| `active`           | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status                                                                                                                                                              |
-| `parent_device_id` | VARCHAR(36)  | NOT NULL, FK            | Parent device reference                                                                                                                                                             |
-| `sys_user_id`      | INT          | NOT NULL                | User who created/modified                                                                                                                                                           |
-| `lastupdated`      | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp                                                                                                                                                         |
+| Field              | Type         | Constraints             | Description                                                                                       |
+| ------------------ | ------------ | ----------------------- | ------------------------------------------------------------------------------------------------- |
+| `id`               | VARCHAR(36)  | PK, AUTO                | Primary key                                                                                       |
+| `fhir_uuid`        | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier                                                                 |
+| `name`             | VARCHAR(255) | NOT NULL                | Shelf name (e.g., "Shelf-A", "Top")                                                               |
+| `code`             | VARCHAR(10)  | NOT NULL                | Shelf code (≤10 chars, auto-generated from name on create, editable, unique within parent device) |
+| `capacity_limit`   | INT          | NULL                    | Optional capacity limit                                                                           |
+| `active`           | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status                                                                            |
+| `parent_device_id` | VARCHAR(36)  | NOT NULL, FK            | Parent device reference                                                                           |
+| `sys_user_id`      | INT          | NOT NULL                | User who created/modified                                                                         |
+| `lastupdated`      | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp                                                                       |
 
 **Constraints**:
 
@@ -206,7 +210,9 @@ room.
 - Name must be unique within parent device
 - Code must be unique within parent device
 - Code must be ≤10 characters
-- Code is auto-generated from name on create (uppercase, remove non-alphanumeric, keep hyphens/underscores, truncate to 10 chars, append numeric suffix if conflict)
+- Code is auto-generated from name on create (uppercase, remove
+  non-alphanumeric, keep hyphens/underscores, truncate to 10 chars, append
+  numeric suffix if conflict)
 - Code is editable in create and edit modals
 - Code does NOT regenerate when name changes
 - Cannot delete shelf with active child racks
@@ -222,19 +228,19 @@ room.
 
 **Fields**:
 
-| Field                  | Type         | Constraints             | Description                                                                                                                                                                        |
-| ---------------------- | ------------ | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`                   | VARCHAR(36)  | PK, AUTO                | Primary key                                                                                                                                                                        |
-| `fhir_uuid`            | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier                                                                                                                                                  |
-| `name`                | VARCHAR(255) | NOT NULL                | Rack name (e.g., "Rack R1", "Tray-1")                                                                                                                                             |
-| `code`                | VARCHAR(10)  | NOT NULL                | Rack code (≤10 chars, auto-generated from name on create, editable, unique within parent shelf)                                                                                                                                             |
-| `rows`                 | INT          | NOT NULL, DEFAULT 0     | Grid rows (0 = no grid)                                                                                                                                                            |
-| `columns`              | INT          | NOT NULL, DEFAULT 0     | Grid columns (0 = no grid)                                                                                                                                                         |
-| `position_schema_hint` | VARCHAR(50)  | NULL                    | Optional hint for position naming (e.g., "A1", "1-1")                                                                                                                              |
-| `active`               | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status                                                                                                                                                             |
-| `parent_shelf_id`      | VARCHAR(36)  | NOT NULL, FK            | Parent shelf reference                                                                                                                                                             |
-| `sys_user_id`          | INT          | NOT NULL                | User who created/modified                                                                                                                                                          |
-| `lastupdated`          | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp                                                                                                                                                        |
+| Field                  | Type         | Constraints             | Description                                                                                     |
+| ---------------------- | ------------ | ----------------------- | ----------------------------------------------------------------------------------------------- |
+| `id`                   | VARCHAR(36)  | PK, AUTO                | Primary key                                                                                     |
+| `fhir_uuid`            | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier                                                               |
+| `name`                 | VARCHAR(255) | NOT NULL                | Rack name (e.g., "Rack R1", "Tray-1")                                                           |
+| `code`                 | VARCHAR(10)  | NOT NULL                | Rack code (≤10 chars, auto-generated from name on create, editable, unique within parent shelf) |
+| `rows`                 | INT          | NOT NULL, DEFAULT 0     | Grid rows (0 = no grid)                                                                         |
+| `columns`              | INT          | NOT NULL, DEFAULT 0     | Grid columns (0 = no grid)                                                                      |
+| `position_schema_hint` | VARCHAR(50)  | NULL                    | Optional hint for position naming (e.g., "A1", "1-1")                                           |
+| `active`               | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status                                                                          |
+| `parent_shelf_id`      | VARCHAR(36)  | NOT NULL, FK            | Parent shelf reference                                                                          |
+| `sys_user_id`          | INT          | NOT NULL                | User who created/modified                                                                       |
+| `lastupdated`          | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp                                                                     |
 
 **Constraints**:
 
@@ -273,7 +279,9 @@ room.
 - Name must be unique within parent shelf
 - Code must be unique within parent shelf
 - Code must be ≤10 characters
-- Code is auto-generated from name on create (uppercase, remove non-alphanumeric, keep hyphens/underscores, truncate to 10 chars, append numeric suffix if conflict)
+- Code is auto-generated from name on create (uppercase, remove
+  non-alphanumeric, keep hyphens/underscores, truncate to 10 chars, append
+  numeric suffix if conflict)
 - Code is editable in create and edit modals
 - Code does NOT regenerate when name changes
 - Rows and columns must be non-negative integers
@@ -353,8 +361,8 @@ and enforced by database constraint.
   - Rack level: "{room_code}-{device_code}-{shelf_code}-{rack_code}"
   - Position level:
     "{room_code}-{device_code}-{shelf_code}-{rack_code}-{coordinate}"
-- `Location.name` = coordinate (if position level) or device/shelf/rack name
-  (if lower level)
+- `Location.name` = coordinate (if position level) or device/shelf/rack name (if
+  lower level)
 - `Location.physicalType.code` = "co" (container)
 - `Location.partOf.reference` = "Location/{parent_fhir_uuid}" (parent device,
   shelf, or rack depending on level)

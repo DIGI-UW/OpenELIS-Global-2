@@ -118,8 +118,8 @@ public class LabelManagementServiceImpl implements LabelManagementService {
             if (parentDevice != null) {
                 StorageRoom parentRoom = parentDevice.getParentRoom();
                 if (parentRoom != null && parentRoom.getCode() != null) {
-                    hierarchicalPath = parentRoom.getCode() + "-" + parentDevice.getCode() + "-"
-                            + parentShelf.getCode() + "-" + rack.getCode();
+                    hierarchicalPath = parentRoom.getCode() + "-" + parentDevice.getCode() + "-" + parentShelf.getCode()
+                            + "-" + rack.getCode();
                 } else {
                     hierarchicalPath = parentDevice.getCode() + "-" + parentShelf.getCode() + "-" + rack.getCode();
                 }
@@ -139,8 +139,8 @@ public class LabelManagementServiceImpl implements LabelManagementService {
     }
 
     /**
-     * Note: This method is deprecated - code field is now always ≤10 chars.
-     * Kept for backward compatibility but no longer used.
+     * Note: This method is deprecated - code field is now always ≤10 chars. Kept
+     * for backward compatibility but no longer used.
      */
     @Deprecated
     private String getBarcodeCode(String primaryCode, String shortCode) {

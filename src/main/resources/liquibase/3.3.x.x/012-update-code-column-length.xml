@@ -10,10 +10,10 @@
         <preConditions onFail="MARK_RAN">
             <columnExists tableName="storage_room" columnName="code"/>
             <sqlCheck expectedResult="50">
-                SELECT character_maximum_length 
-                FROM information_schema.columns 
-                WHERE table_schema = 'clinlims' 
-                AND table_name = 'storage_room' 
+                SELECT character_maximum_length
+                FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'storage_room'
                 AND column_name = 'code'
             </sqlCheck>
         </preConditions>
@@ -28,10 +28,10 @@
         <preConditions onFail="MARK_RAN">
             <columnExists tableName="storage_device" columnName="code"/>
             <sqlCheck expectedResult="50">
-                SELECT character_maximum_length 
-                FROM information_schema.columns 
-                WHERE table_schema = 'clinlims' 
-                AND table_name = 'storage_device' 
+                SELECT character_maximum_length
+                FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'storage_device'
                 AND column_name = 'code'
             </sqlCheck>
         </preConditions>
@@ -61,7 +61,7 @@
                 UPPER(REGEXP_REPLACE(label, '[^A-Z0-9_-]', '', 'g'))
             )
             WHERE code IS NULL;
-            
+
             -- Truncate to 10 chars if needed
             UPDATE clinlims.storage_shelf
             SET code = LEFT(code, 10)
@@ -92,7 +92,7 @@
                 UPPER(REGEXP_REPLACE(label, '[^A-Z0-9_-]', '', 'g'))
             )
             WHERE code IS NULL;
-            
+
             -- Truncate to 10 chars if needed
             UPDATE clinlims.storage_rack
             SET code = LEFT(code, 10)
@@ -104,4 +104,3 @@
     </changeSet>
 
 </databaseChangeLog>
-

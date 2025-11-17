@@ -5,7 +5,10 @@
 
 ## Overview
 
-This document describes the unified test data strategy for OpenELIS Global 2, covering E2E testing (Cypress), backend integration testing, and manual testing. All test data loading follows consistent patterns and uses the same fixture files.
+This document describes the unified test data strategy for OpenELIS Global 2,
+covering E2E testing (Cypress), backend integration testing, and manual testing.
+All test data loading follows consistent patterns and uses the same fixture
+files.
 
 ## Architecture
 
@@ -13,32 +16,39 @@ This document describes the unified test data strategy for OpenELIS Global 2, co
 
 All test types use the same fixture loading mechanism:
 
-1. **E2E/Cypress**: `cy.loadStorageFixtures()` → Cypress task → `load-test-fixtures.sh` → `storage-test-data.sql`
-2. **Backend Integration**: `BaseStorageTest` → `load-test-fixtures.sh` → `storage-test-data.sql`
-3. **Manual Testing**: Direct execution of `load-test-fixtures.sh` → `storage-test-data.sql`
+1. **E2E/Cypress**: `cy.loadStorageFixtures()` → Cypress task →
+   `load-test-fixtures.sh` → `storage-test-data.sql`
+2. **Backend Integration**: `BaseStorageTest` → `load-test-fixtures.sh` →
+   `storage-test-data.sql`
+3. **Manual Testing**: Direct execution of `load-test-fixtures.sh` →
+   `storage-test-data.sql`
 
 ### Fixture Data Ranges
 
 **Fixture Data (Preserved during cleanup):**
+
 - Storage: IDs 1-999 (fixtures)
-- Samples: E2E-* and TEST-* accession numbers
-- Patients: E2E-PAT-* external IDs
+- Samples: E2E-_ and TEST-_ accession numbers
+- Patients: E2E-PAT-\* external IDs
 - Sample items: IDs 10000-20000 (fixtures)
 - Analyses: IDs 20000-30000 (fixtures)
 - Results: IDs 30000-40000 (fixtures)
 
 **Test-Created Data (Cleaned up after tests):**
+
 - Storage: IDs >= 1000, codes/names starting with TEST-
-- Samples: TEST-* accession numbers (if created by tests)
+- Samples: TEST-\* accession numbers (if created by tests)
 - Sample items: IDs >= 20000 (test-created)
 
 ## Scripts
 
 ### `load-test-fixtures.sh`
 
-Unified fixture loader script that supports both Docker and direct psql connections.
+Unified fixture loader script that supports both Docker and direct psql
+connections.
 
 **Usage:**
+
 ```bash
 # Basic usage (loads fixtures, verifies automatically)
 ./src/test/resources/load-test-fixtures.sh
@@ -54,6 +64,7 @@ Unified fixture loader script that supports both Docker and direct psql connecti
 ```
 
 **Features:**
+
 - Dependency checks (verifies `type_of_sample`, `status_of_sample` exist)
 - Comprehensive verification (storage hierarchy, E2E test data)
 - Docker and direct psql support
@@ -64,6 +75,7 @@ Unified fixture loader script that supports both Docker and direct psql connecti
 Resets test data ranges only (preserves production data).
 
 **Usage:**
+
 ```bash
 # Interactive (prompts for confirmation)
 ./src/test/resources/reset-test-database.sh
@@ -73,6 +85,7 @@ Resets test data ranges only (preserves production data).
 ```
 
 **Safety:**
+
 - Only resets test data ranges (IDs 1-999 for fixtures, 1000+ for test-created)
 - Preserves production data
 - Requires explicit `--force` flag for non-interactive use
@@ -82,10 +95,12 @@ Resets test data ranges only (preserves production data).
 SQL fixture script that loads all test data.
 
 **Features:**
+
 - Dependency validation (checks required tables exist)
 - Error handling for missing dependencies
 - Verification queries at end of script
-- Comprehensive test data (storage hierarchy, patients, samples, sample items, assignments, analyses, results)
+- Comprehensive test data (storage hierarchy, patients, samples, sample items,
+  assignments, analyses, results)
 
 ## Backend Integration
 
@@ -94,6 +109,7 @@ SQL fixture script that loads all test data.
 Base test class for storage-related tests that provides unified fixture loading.
 
 **Usage:**
+
 ```java
 public class MyStorageTest extends BaseStorageTest {
     @Before
@@ -101,7 +117,7 @@ public class MyStorageTest extends BaseStorageTest {
         super.setUp(); // Loads fixtures automatically
         // Your test setup
     }
-    
+
     @After
     public void tearDown() throws Exception {
         super.tearDown(); // Cleans up test-created data
@@ -111,53 +127,66 @@ public class MyStorageTest extends BaseStorageTest {
 ```
 
 **Features:**
+
 - Loads fixtures once per test run (static flag)
 - Verifies fixtures exist before loading
 - Cleans up test-created data (preserves fixtures)
 - Provides `cleanStorageTestData()` helper method
 
 **Migration:**
+
 - Existing tests can gradually migrate to extend `BaseStorageTest`
-- Tests continue to create their own data (IDs >= 1000) but also have fixtures available
+- Tests continue to create their own data (IDs >= 1000) but also have fixtures
+  available
 
 ## Cypress E2E Integration
 
 ### Commands
 
 **`cy.loadStorageFixtures(options)`**
+
 - Loads test fixtures
-- Options: `{ reset: true }` to reset before loading, `{ noVerify: true }` to skip verification
+- Options: `{ reset: true }` to reset before loading, `{ noVerify: true }` to
+  skip verification
 
 **`cy.checkStorageFixturesExist()`**
+
 - Checks if fixtures exist (rooms, samples, patients)
 - Returns boolean
 
 **`cy.verifyStorageFixtures()`**
+
 - Comprehensive verification of all fixtures
 - Returns boolean (true if all fixtures present)
 
 **`cy.cleanStorageFixtures()`**
+
 - Cleans up test fixtures
 
 ### Environment Variables
 
 **`CYPRESS_SKIP_FIXTURES=true`**
+
 - Skip fixture loading entirely (assumes fixtures exist)
 - Fastest option for iteration
 
 **`CYPRESS_FORCE_FIXTURES=true`**
+
 - Force reload fixtures even if they exist
 - Use when fixtures may be corrupted
 
 **`CYPRESS_RESET_DATABASE=true`**
+
 - Reset database before loading fixtures
 - Use with `FORCE_FIXTURES` for clean state
 
 **`CYPRESS_VERIFY_FIXTURES=true`**
+
 - Verify fixtures even when skipping load
 - Useful for debugging fixture issues
 
 **`CYPRESS_CLEANUP_FIXTURES=true`**
+
 - Clean up fixtures after tests
 - Default: false (preserves fixtures for next run)
 
@@ -194,12 +223,13 @@ CYPRESS_CLEANUP_FIXTURES=true npm run cy:run -- --spec "cypress/e2e/storage*.cy.
 
 ### Verifying Fixtures
 
-The loader script automatically verifies fixtures after loading. You can also verify manually:
+The loader script automatically verifies fixtures after loading. You can also
+verify manually:
 
 ```bash
 # Check if fixtures exist
 docker exec openelisglobal-database psql -U clinlims -d clinlims -c "
-  SELECT 
+  SELECT
     (SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE')) as rooms,
     (SELECT COUNT(*) FROM sample WHERE accession_number LIKE 'E2E-%') as samples,
     (SELECT COUNT(*) FROM patient WHERE external_id LIKE 'E2E-%') as patients;
@@ -209,6 +239,7 @@ docker exec openelisglobal-database psql -U clinlims -d clinlims -c "
 ### Test Data Available
 
 **Storage Hierarchy:**
+
 - 3 rooms (MAIN, SEC, INACTIVE)
 - 5 devices (MAIN-FRZ01, MAIN-REF01, SEC-CAB01, SEC-FRZ01, INACTIVE-FRZ)
 - 6 shelves
@@ -216,6 +247,7 @@ docker exec openelisglobal-database psql -U clinlims -d clinlims -c "
 - 99+ positions
 
 **E2E Test Data:**
+
 - 3 patients (John E2E-Smith, Jane E2E-Jones, Bob E2E-Williams)
 - 10 samples (E2E-001 through E2E-010)
 - 20+ sample items
@@ -230,6 +262,7 @@ docker exec openelisglobal-database psql -U clinlims -d clinlims -c "
 The loader script automatically verifies:
 
 1. **Storage Hierarchy:**
+
    - 3 rooms (MAIN, SEC, INACTIVE)
    - 5 devices
    - 6 shelves
@@ -237,6 +270,7 @@ The loader script automatically verifies:
    - 99+ positions
 
 2. **E2E Test Data:**
+
    - 3 patients (E2E-PAT-001, E2E-PAT-002, E2E-PAT-003)
    - 10 samples (E2E-001 through E2E-010)
    - 20+ sample items
@@ -246,7 +280,8 @@ The loader script automatically verifies:
 
 3. **Dependencies:**
    - `type_of_sample` table has at least 3 rows
-   - `status_of_sample` table has required statuses (Entered, Not Tested, Finalized, etc.)
+   - `status_of_sample` table has required statuses (Entered, Not Tested,
+     Finalized, etc.)
 
 ### Manual Verification
 
@@ -277,6 +312,7 @@ docker exec openelisglobal-database psql -U clinlims -d clinlims -c "
 ### Fixtures Not Loading
 
 1. **Check dependencies:**
+
    ```bash
    docker exec openelisglobal-database psql -U clinlims -d clinlims -c "
      SELECT COUNT(*) FROM type_of_sample;
@@ -285,6 +321,7 @@ docker exec openelisglobal-database psql -U clinlims -d clinlims -c "
    ```
 
 2. **Check script permissions:**
+
    ```bash
    chmod +x src/test/resources/load-test-fixtures.sh
    chmod +x src/test/resources/reset-test-database.sh
@@ -298,6 +335,7 @@ docker exec openelisglobal-database psql -U clinlims -d clinlims -c "
 ### Samples Not Visible in UI
 
 1. **Verify samples exist:**
+
    ```bash
    docker exec openelisglobal-database psql -U clinlims -d clinlims -c "
      SELECT COUNT(*) FROM sample WHERE accession_number LIKE 'E2E-%';
@@ -305,9 +343,10 @@ docker exec openelisglobal-database psql -U clinlims -d clinlims -c "
    ```
 
 2. **Verify sample_human links:**
+
    ```bash
    docker exec openelisglobal-database psql -U clinlims -d clinlims -c "
-     SELECT COUNT(*) FROM sample_human WHERE samp_id IN 
+     SELECT COUNT(*) FROM sample_human WHERE samp_id IN
      (SELECT id FROM sample WHERE accession_number LIKE 'E2E-%');
    "
    ```
@@ -315,7 +354,7 @@ docker exec openelisglobal-database psql -U clinlims -d clinlims -c "
 3. **Check storage assignments:**
    ```bash
    docker exec openelisglobal-database psql -U clinlims -d clinlims -c "
-     SELECT COUNT(*) FROM sample_storage_assignment WHERE sample_id IN 
+     SELECT COUNT(*) FROM sample_storage_assignment WHERE sample_id IN
      (SELECT id FROM sample WHERE accession_number LIKE 'E2E-%');
    "
    ```
@@ -323,6 +362,7 @@ docker exec openelisglobal-database psql -U clinlims -d clinlims -c "
 ### Patients Not Found
 
 1. **Verify patients exist:**
+
    ```bash
    docker exec openelisglobal-database psql -U clinlims -d clinlims -c "
      SELECT COUNT(*) FROM patient WHERE external_id LIKE 'E2E-%';
@@ -338,16 +378,19 @@ docker exec openelisglobal-database psql -U clinlims -d clinlims -c "
 
 ## Best Practices
 
-1. **Use unified scripts**: Always use `load-test-fixtures.sh` rather than executing SQL directly
+1. **Use unified scripts**: Always use `load-test-fixtures.sh` rather than
+   executing SQL directly
 2. **Reset when needed**: Use `--reset` flag when fixtures may be corrupted
-3. **Verify after loading**: Verification runs automatically, but can be disabled with `--no-verify`
+3. **Verify after loading**: Verification runs automatically, but can be
+   disabled with `--no-verify`
 4. **Preserve fixtures**: Cleanup only removes test-created data, not fixtures
-5. **Check dependencies**: Ensure database is properly initialized before loading fixtures
+5. **Check dependencies**: Ensure database is properly initialized before
+   loading fixtures
 
 ## References
 
 - [Testing Roadmap](testing-roadmap.md) - Comprehensive testing guide
-- [E2E Fixtures Quick Reference](e2e-fixtures-readme.md) - E2E-specific fixture documentation
+- [E2E Fixtures Quick Reference](e2e-fixtures-readme.md) - E2E-specific fixture
+  documentation
 - [Cypress Best Practices](cypress-best-practices.md) - Cypress testing patterns
 - [AGENTS.md](../../AGENTS.md) - Project overview and testing strategy section
-

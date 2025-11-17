@@ -239,7 +239,7 @@ describe("Label Printing", () => {
     cy.get('[data-testid="edit-location-device-code"]')
       .should("be.visible")
       .should("not.be.disabled");
-    
+
     // Update code (ensure it's ≤10 chars)
     cy.get('[data-testid="edit-location-device-code"]')
       .clear()
