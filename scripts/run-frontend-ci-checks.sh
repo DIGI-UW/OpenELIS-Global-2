@@ -47,11 +47,12 @@ cd frontend
 
 # Step 1: Check formatting
 echo -e "${YELLOW}[1/3] Checking frontend code formatting...${NC}"
-if npm run format:check 2>/dev/null || npx prettier --check "src/**/*.{js,jsx,ts,tsx}" "cypress/**/*.{js,ts}"; then
+# Use prettier check command (matches CI workflow)
+if npx prettier ./ --check; then
     echo -e "${GREEN}✓ Formatting check passed${NC}"
 else
     echo -e "${RED}✗ Formatting check failed${NC}"
-    echo -e "${YELLOW}Run 'npm run format' to fix formatting issues${NC}"
+    echo -e "${YELLOW}Run 'npm run format' or 'npx prettier ./ --write' to fix formatting issues${NC}"
     exit 1
 fi
 echo ""
