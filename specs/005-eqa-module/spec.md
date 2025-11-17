@@ -5,6 +5,16 @@
 **Status**: Draft
 **Input**: User description: "External Quality Assurance (EQA) module for proficiency testing"
 
+## Clarifications
+
+### Session 2025-11-17
+
+- Q: Does the Figma design include the priority level field (Standard/Urgent/Critical) required by FR-003 on the Program Selection screen? → A: Priority field already exists in implementation
+- Q: Does "provider sample ID" in FR-003 refer to one field or two separate fields (Shipment ID and Sample ID shown in Figma)? → A: Sample ID only - Shipment ID is for outgoing distributions, not incoming samples
+- Q: Should the system capture which external organization (e.g., WHO, CAP, National Reference Lab) sent the EQA sample? → A: Yes - Add EQA Provider field to track the sending organization
+- Q: Should the system capture the laboratory's participant ID assigned by the EQA provider? → A: Yes - Add as optional field for result submission traceability
+- Q: How should supervisors be notified when critical alerts escalate after 4 hours? → A: Dashboard badge + in-app notification using Carbon ToastNotification
+
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Register and Process Incoming EQA Samples (Priority: P1)
@@ -18,7 +28,7 @@ A laboratory technician receives an EQA sample from an external proficiency test
 **Acceptance Scenarios**:
 
 1. **Given** I am on the sample entry screen, **When** I select "EQA sample" checkbox during patient information entry, **Then** all patient demographic fields become disabled with "N/A" placeholders and EQA-specific fields become available on the Program tab
-2. **Given** I have selected "EQA sample", **When** I navigate to the Program tab, **Then** I must select an EQA program, enter the provider's sample ID, set a testing deadline, and choose a priority level (Standard/Urgent/Critical) before proceeding
+2. **Given** I have selected "EQA sample", **When** I navigate to the Program tab, **Then** I must select the EQA provider organization, select an EQA program, enter the sample ID from the EQA provider, set a testing deadline, and choose a priority level (Standard/Urgent/Critical) before proceeding
 3. **Given** I have registered an EQA sample, **When** I view the work queue, **Then** the sample displays an EQA badge/icon for visual identification and can be filtered separately from patient samples
 4. **Given** I am processing an EQA sample, **When** I enter results, **Then** the system prevents result modification after the submission deadline has passed
 
@@ -114,7 +124,7 @@ A laboratory supervisor needs a centralized dashboard to monitor multiple types 
 5. **Given** a sample is expiring within 7 days, **When** I view the alerts dashboard, **Then** I see an informational (blue) alert; at 2 days it escalates to warning (orange); at 1 day it becomes critical (red)
 6. **Given** a STAT order is at 50% of target time, **When** it appears in the dashboard, **Then** it shows as informational; at 75% it becomes warning; at 100% it becomes critical
 7. **Given** I acknowledge an alert, **When** I click "Acknowledge" on a critical alert, **Then** I must provide a resolution comment before the alert is marked as resolved with my user ID and timestamp
-8. **Given** a critical alert is unacknowledged for 4 hours, **When** the escalation timer expires, **Then** the alert automatically escalates to supervisor level with notification
+8. **Given** a critical alert is unacknowledged for 4 hours, **When** the escalation timer expires, **Then** the alert automatically escalates to supervisor level with notification badge increment and Carbon ToastNotification displayed on supervisor's next login
 
 ---
 
@@ -166,7 +176,7 @@ A laboratory administrator needs to create and manage EQA programs, defining pro
 
 - **FR-001**: System MUST allow users to designate a sample as "EQA sample" during registration through a checkbox on the patient information tab
 - **FR-002**: System MUST automatically disable patient demographic fields and populate them with "N/A" placeholders when "EQA sample" is selected
-- **FR-003**: System MUST provide EQA-specific fields on the Program tab including EQA program selection (mandatory), provider sample ID, testing deadline, and priority level (Standard/Urgent/Critical)
+- **FR-003**: System MUST provide EQA-specific fields on the Program tab including EQA provider organization (mandatory), EQA program selection (mandatory), sample ID (identifier from EQA provider), participant ID (optional - laboratory's ID in the EQA program), testing deadline, and priority level (Standard/Urgent/Critical)
 - **FR-004**: System MUST prevent EQA sample registration from completing without selecting an EQA program
 - **FR-005**: System MUST display EQA badge/icon on all samples marked as EQA in work queues, sample listings, and result entry screens
 - **FR-006**: System MUST support filtering work queues to show/hide EQA samples independently from patient samples
@@ -223,7 +233,7 @@ A laboratory administrator needs to create and manage EQA programs, defining pro
 - **FR-042**: System MUST generate STAT order alerts at 50% of target time (info/blue), 75% (warning/orange), and 100% (critical/red)
 - **FR-043**: System MUST require resolution comments for critical alert acknowledgment
 - **FR-044**: System MUST log acknowledgment with user ID and timestamp in audit trail
-- **FR-045**: System MUST escalate unacknowledged critical alerts to supervisor level after 4 hours
+- **FR-045**: System MUST escalate unacknowledged critical alerts to supervisor level after 4 hours by incrementing notification badge on alerts menu icon and displaying Carbon ToastNotification when supervisor next accesses the system
 - **FR-046**: System MUST auto-refresh alerts dashboard every 60 seconds with notification count badge updates
 - **FR-047**: System MUST support pagination with selectable items per page (25, 50, 100, 200)
 
@@ -274,8 +284,10 @@ A laboratory administrator needs to create and manage EQA programs, defining pro
 
 - **Order (Extended)**: Existing entity extended with EQA-specific fields:
   - `is_eqa_sample` (boolean) - Flag to identify EQA samples
+  - `eqa_provider_organization_id` (foreign key to Organization) - External organization that sent the EQA sample (e.g., WHO, CAP, National Reference Lab)
   - `eqa_program_id` (foreign key to EQAProgram) - Associated proficiency testing program
   - `eqa_provider_sample_id` (string) - Sample identifier from external EQA provider
+  - `eqa_participant_id` (string, nullable) - Optional laboratory participant ID assigned by the EQA provider (e.g., "LAB-237")
   - `eqa_deadline` (datetime) - Testing and submission deadline
   - `eqa_priority` (enum: STANDARD, URGENT, CRITICAL) - Processing priority level
   - `eqa_distribution_id` (foreign key to EQADistribution) - Reference for distributed samples
