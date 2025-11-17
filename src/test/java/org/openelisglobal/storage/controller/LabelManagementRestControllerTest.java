@@ -133,10 +133,10 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Helper: Create a test device with NULL code to test validation
-     * Note: Since codes must always be ≤10 chars and NOT NULL, we can't create devices with invalid codes.
-     * This helper creates a device with a valid code but tests can manually set code to NULL via UPDATE
-     * to test validation scenarios.
+     * Helper: Create a test device with NULL code to test validation Note: Since
+     * codes must always be ≤10 chars and NOT NULL, we can't create devices with
+     * invalid codes. This helper creates a device with a valid code but tests can
+     * manually set code to NULL via UPDATE to test validation scenarios.
      */
     private String createTestDeviceWithoutShortCode() throws Exception {
         // Create a test room first
@@ -149,16 +149,18 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
                 roomId, "Test Room No SC", roomCode, true, 1);
 
         // Create device with empty code to test validation
-        // Note: We can't set code to NULL due to NOT NULL constraint, but we can test empty string
-        // The validation checks for null or empty, so empty string will trigger the error
+        // Note: We can't set code to NULL due to NOT NULL constraint, but we can test
+        // empty string
+        // The validation checks for null or empty, so empty string will trigger the
+        // error
         String deviceCode = ""; // Empty string to test validation
         jdbcTemplate.update(
                 "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid) "
                         + "VALUES (nextval('storage_device_seq'), ?, ?, 'freezer', ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
                 "Test Device No SC", deviceCode, roomId, true, 1);
-        Integer id = jdbcTemplate.queryForObject("SELECT id FROM storage_device WHERE name = ? AND code = ?", Integer.class,
-                "Test Device No SC", deviceCode);
-        
+        Integer id = jdbcTemplate.queryForObject("SELECT id FROM storage_device WHERE name = ? AND code = ?",
+                Integer.class, "Test Device No SC", deviceCode);
+
         return String.valueOf(id);
     }
 
@@ -283,8 +285,7 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
 
         // Verify error message contains "code"
         String errorMessage = objectMapper.readTree(result.getResponse().getContentAsString()).get("error").asText();
-        assertTrue("Error message should mention code",
-                errorMessage.toLowerCase().contains("code"));
+        assertTrue("Error message should mention code", errorMessage.toLowerCase().contains("code"));
     }
 
     /**
@@ -321,8 +322,7 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
 
         // Verify error message contains "code"
         String errorMessage = objectMapper.readTree(result.getResponse().getContentAsString()).get("error").asText();
-        assertTrue("Error message should mention code",
-                errorMessage.toLowerCase().contains("code"));
+        assertTrue("Error message should mention code", errorMessage.toLowerCase().contains("code"));
     }
 
     /**
